@@ -64,6 +64,42 @@ To publish to a local maven repo, run this:
 ./metrow publish --local --version 1.0.0-LOCAL01 # whatever version you want
 ```
 
+### Testing with a Local Clone (Included Build)
+
+If you want to test a consuming project against a local Metro clone without publishing, you can use Gradle's included build feature. Add this to your consuming project's `settings.gradle.kts`:
+
+```kotlin
+// Check for local Metro clone path via gradle property or system property
+val metroLocalClone: String? = providers.gradleProperty("metro.localClone").orNull
+  ?: System.getProperty("metro.localClone")
+
+if (metroLocalClone != null) {
+  includeBuild(metroLocalClone) {
+    dependencySubstitution {
+      substitute(module("dev.zacsweers.metro:compiler")).using(project(":compiler"))
+      substitute(module("dev.zacsweers.metro:runtime")).using(project(":runtime"))
+      substitute(module("dev.zacsweers.metro:gradle-plugin")).using(project(":gradle-plugin"))
+      substitute(module("dev.zacsweers.metro:interop-dagger")).using(project(":interop-dagger"))
+      // Add any other substitutions you need (interop-guice, metrox-*, etc)
+    }
+  }
+}
+```
+
+Then run your build with the property:
+
+```bash
+./gradlew compileKotlin -Pmetro.localClone=/path/to/metro
+```
+
+Or add it to your `gradle.properties` (useful during active development):
+
+```properties
+metro.localClone=/path/to/metro
+```
+
+This approach is useful for debugging issues or testing changes without going through a full publish cycle.
+
 ## Debugging
 
 There are a few different scenarios for debugging.

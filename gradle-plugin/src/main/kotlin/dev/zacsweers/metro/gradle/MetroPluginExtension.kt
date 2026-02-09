@@ -7,7 +7,9 @@ import org.gradle.api.Action
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.provider.SetProperty
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
@@ -17,7 +19,7 @@ import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 public abstract class MetroPluginExtension
 @Inject
 constructor(
-  toolingVersion: KotlinToolingVersion,
+  compilerVersion: Provider<KotlinToolingVersion>,
   layout: ProjectLayout,
   objects: ObjectFactory,
   private val providers: ProviderFactory,
@@ -68,6 +70,8 @@ constructor(
    *   jvm/android targets.
    * - Prior to Kotlin 2.3.20-Beta1, top-level function injection is not yet compatible with
    *   incremental compilation on any platform
+   * - Kotlin/JS does not support this with incremental compilation enabled. See
+   *   https://youtrack.jetbrains.com/issue/KT-82395
    */
   @DelicateMetroGradleApi(
     "Top-level function injection is experimental and does not work yet in all cases. See the kdoc."
@@ -76,9 +80,12 @@ constructor(
     objects
       .booleanProperty()
       .convention(
-        providers.provider {
-          // Kotlin 2.3.20-Beta1, top-level declaration gen is fully supported
-          KotlinVersions.supportsTopLevelFirGen(toolingVersion)
+        compilerVersion.map {
+          // Kotlin 2.3.20-Beta1, top-level declaration gen is fully supported on all platforms are
+          // supported except JS
+          // https://youtrack.jetbrains.com/issue/KT-82395
+          // https://youtrack.jetbrains.com/issue/KT-82989
+          KotlinVersions.supportsTopLevelFirGen(it)
         }
       )
 
@@ -100,6 +107,8 @@ constructor(
    *   targets.
    * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint gen is not yet compatible with
    *   incremental compilation on any platform
+   * - Kotlin/JS does not support this with incremental compilation enabled. See
+   *   https://youtrack.jetbrains.com/issue/KT-82395
    */
   @DelicateMetroGradleApi(
     "FIR contribution hint gen is experimental and does not work yet in all cases. See the kdoc."
@@ -108,9 +117,12 @@ constructor(
     objects
       .booleanProperty()
       .convention(
-        providers.provider {
-          // Kotlin 2.3.20-Beta1, FIR hint gen is fully supported
-          KotlinVersions.supportsTopLevelFirGen(toolingVersion)
+        compilerVersion.map {
+          // Kotlin 2.3.20-Beta1, FIR hint gen is fully supported on all platforms.
+          // JS is further gated on incremental compilation being disabled in MetroGradleSubplugin.
+          // https://youtrack.jetbrains.com/issue/KT-82395
+          // https://youtrack.jetbrains.com/issue/KT-82989
+          KotlinVersions.supportsTopLevelFirGen(it)
         }
       )
 
@@ -121,6 +133,9 @@ constructor(
    * **Warnings** Prior to Kotlin 2.3.20, contribution hint gen is
    * - ...only compatible with jvm/android targets.
    * - ...does not support incremental compilation on any targets.
+   *
+   * Kotlin/JS does not support this with incremental compilation enabled. See
+   * https://youtrack.jetbrains.com/issue/KT-82395
    */
   @DelicateMetroGradleApi(
     "Contribution hint gen does not work yet in all platforms on all Kotlin versions. See the kdoc."
@@ -129,10 +144,12 @@ constructor(
     objects
       .setProperty(KotlinPlatformType::class.javaObjectType)
       .convention(
-        providers.provider {
-          if (KotlinVersions.supportsTopLevelFirGen(toolingVersion)) {
-            // Kotlin 2.3.20, all platforms are supported
-            KotlinPlatformType.entries
+        compilerVersion.map { version ->
+          if (KotlinVersions.supportsTopLevelFirGen(version)) {
+            // Kotlin 2.3.20, all platforms are supported. JS is further gated on
+            // incremental compilation being disabled in MetroGradleSubplugin.
+            // https://youtrack.jetbrains.com/issue/KT-82395
+            KotlinPlatformType.entries.toSet()
           } else {
             // Only jvm/android work prior to Kotlin 2.3.20
             setOf(KotlinPlatformType.common, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm)
@@ -279,6 +296,70 @@ constructor(
     objects.booleanProperty("metro.contributesAsInject", true)
 
   /**
+   * Enable/disable klib parameter qualifier checking.
+   *
+   * This is automatically enabled for Kotlin versions `[2.3.0, 2.3.20-Beta2)` and disabled
+   * otherwise.
+   *
+   * See https://github.com/ZacSweers/metro/issues/1556 for more information.
+   */
+  public val enableKlibParamsCheck: Property<Boolean> =
+    objects
+      .booleanProperty()
+      .convention(
+        compilerVersion.map {
+          it >= KotlinVersions.kotlin230 && it < KotlinVersions.kotlin2320Beta2
+        }
+      )
+
+  /**
+   * Enable/disable patching of klib parameter qualifiers to work around a kotlinc bug. Only applies
+   * when [enableKlibParamsCheck] is also enabled.
+   *
+   * When enabled, Metro will patch the affected parameter qualifiers at compile time and emit a
+   * warning instead of an error.
+   *
+   * See https://github.com/ZacSweers/metro/issues/1556 for more information.
+   */
+  public val patchKlibParams: Property<Boolean> =
+    objects.booleanProperty("metro.patchKlibParams", true)
+
+  /**
+   * Force enable Metro's FIR extensions in IDE even if the compat layer cannot be determined.
+   *
+   * This is useful when working with IDE versions where Metro cannot automatically detect the
+   * correct compatibility layer.
+   *
+   * Disabled by default.
+   */
+  public val forceEnableFirInIde: Property<Boolean> =
+    objects.booleanProperty("metro.forceEnableFirInIde", false)
+
+  /**
+   * Override the Kotlin compiler version Metro operates with.
+   *
+   * If set, Metro will behave as if running in this Kotlin environment (e.g., "2.3.20-dev-1234").
+   * This is useful for testing or working around version detection issues.
+   *
+   * Null by default (uses the detected runtime Kotlin version).
+   */
+  public val compilerVersion: Property<String> = objects.metroProperty("metro.compilerVersion", "")
+
+  /**
+   * Compiler version aliases mapping fake IDE versions to their real compiler versions.
+   *
+   * This is useful for IDE builds (e.g., Android Studio canary) that report a fake Kotlin compiler
+   * version. When Metro detects a compiler version that matches an alias key, it will use the
+   * corresponding value as the real version.
+   *
+   * User-defined aliases take priority over built-in aliases.
+   *
+   * Empty by default.
+   */
+  public val compilerVersionAliases: MapProperty<String, String> =
+    objects.mapProperty(String::class.java, String::class.java).convention(emptyMap())
+
+  /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
    * graphs to the given destination. Outputs are per-compilation granularity (i.e.
    * `build/metro/main/...`).
@@ -303,6 +384,23 @@ constructor(
         providers.gradleProperty("metro.reportsDestination").flatMap {
           layout.buildDirectory.dir(it)
         }
+      )
+
+  /**
+   * If set, the Metro compiler will dump compiler trace information to the given destination.
+   * Outputs are per-compilation granularity (i.e. `build/metro-traces/main/...`).
+   *
+   * Unlike [reportsDestination], this is designed for low-overhead performance tracing and can be
+   * used in realistic scenarios without significantly impacting compilation performance.
+   *
+   * Optionally, you can specify a `metro.traceDestination` gradle property whose value is a
+   * _relative_ path from the project's **build** directory.
+   */
+  public val traceDestination: DirectoryProperty =
+    objects
+      .directoryProperty()
+      .convention(
+        providers.gradleProperty("metro.traceDestination").flatMap { layout.buildDirectory.dir(it) }
       )
 
   /**
@@ -437,6 +535,13 @@ constructor(
 
   private fun ObjectFactory.intProperty(name: String, defaultValue: Int): Property<Int> {
     return property(Int::class.java).propertyNameConventionImpl(name, defaultValue, String::toInt)
+  }
+
+  private fun ObjectFactory.metroProperty(name: String, defaultValue: String): Property<String> {
+    return property(String::class.java)
+      .convention(
+        providers.gradleProperty(name).orElse(providers.systemProperty(name)).orElse(defaultValue)
+      )
   }
 
   private fun <T : Any> Property<T>.propertyNameConventionImpl(

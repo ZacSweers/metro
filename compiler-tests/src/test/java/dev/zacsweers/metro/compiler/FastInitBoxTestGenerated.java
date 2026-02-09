@@ -140,6 +140,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("InheritedBindingsDoNotCauseDuplicatesFromNestedContainers.kt")
+    public void testInheritedBindingsDoNotCauseDuplicatesFromNestedContainers() {
+      runTest("compiler-tests/src/test/data/box/aggregation/InheritedBindingsDoNotCauseDuplicatesFromNestedContainers.kt");
+    }
+
+    @Test
     @TestMetadata("InternalHintsInContributedGraph.kt")
     public void testInternalHintsInContributedGraph() {
       runTest("compiler-tests/src/test/data/box/aggregation/InternalHintsInContributedGraph.kt");
@@ -1641,6 +1647,18 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
         @TestMetadata("DaggerMergeComponentModulesAnnotationInterop.kt")
         public void testDaggerMergeComponentModulesAnnotationInterop() {
           runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/DaggerMergeComponentModulesAnnotationInterop.kt");
+        }
+
+        @Test
+        @TestMetadata("InheritedBindingsDoNotCauseDuplicates.kt")
+        public void testInheritedBindingsDoNotCauseDuplicates() {
+          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/InheritedBindingsDoNotCauseDuplicates.kt");
+        }
+
+        @Test
+        @TestMetadata("InheritedBindingsDoNotCauseDuplicates2.kt")
+        public void testInheritedBindingsDoNotCauseDuplicates2() {
+          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/InheritedBindingsDoNotCauseDuplicates2.kt");
         }
       }
     }

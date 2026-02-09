@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
@@ -113,7 +112,7 @@ internal fun validateInjectionSiteType(
 
   // Check if we're directly injecting a qualifier type
   if (qualifier == null) {
-    val clazz = type.classLikeLookupTagIfAny?.toClassSymbol(session) ?: return false
+    val clazz = type.classLikeLookupTagIfAny?.toClassSymbolCompat(session) ?: return false
 
     if (clazz.classKind.isObject) {
       // Injecting a plain object doesn't really make sense when it's a singleton
@@ -222,7 +221,7 @@ private fun checkLazyAssistedFactory(
   source: KtSourceElement?,
 ) {
   val canonicalType = contextKey.typeKey.type
-  val canonicalClass = canonicalType.toClassSymbol(session)
+  val canonicalClass = canonicalType.toClassSymbolCompat(session)
 
   if (
     canonicalClass != null &&

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.sharding
 
+import androidx.collection.MutableObjectIntMap
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
@@ -25,7 +26,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
  * Cross-shard edges represent dependencies from bindings in one shard to bindings in another. High
  * edge counts may indicate heavy coupling between shards.
  *
- * Reports are written to `sharding-plan-{GraphName}.txt` in [MetroOptions.reportsDestination].
+ * Reports are written to `sharding-plan-{GraphName}.txt` in [MetroOptions.reportsDir].
  */
 internal object ShardingDiagnostics {
   private const val MAX_CROSS_SHARD_DEPS = 100
@@ -51,7 +52,7 @@ internal object ShardingDiagnostics {
     appendLine()
 
     // First compute cross-shard dependencies to get per-shard counts
-    val bindingToShard = mutableMapOf<IrTypeKey, Int>()
+    val bindingToShard = MutableObjectIntMap<IrTypeKey>()
     for (shard in shards) {
       for (binding in shard.bindings) {
         bindingToShard[binding.typeKey] = shard.index
@@ -64,8 +65,8 @@ internal object ShardingDiagnostics {
       for (binding in shard.bindings) {
         val deps = bindingGraph.requireBinding(binding.typeKey).dependencies
         for (dep in deps) {
-          val depShard = bindingToShard[dep.typeKey]
-          if (depShard != null && depShard != shard.index) {
+          val depShard = bindingToShard.getOrDefault(dep.typeKey, -1)
+          if (depShard != -1 && depShard != shard.index) {
             crossShardEdgeCounts[shard.index]++
           }
         }
@@ -107,8 +108,8 @@ internal object ShardingDiagnostics {
       for (binding in shard.bindings) {
         val deps = bindingGraph.requireBinding(binding.typeKey).dependencies
         deps.forEach { dep ->
-          val depShard = bindingToShard[dep.typeKey]
-          if (depShard != null && depShard != shard.index) {
+          val depShard = bindingToShard.getOrDefault(dep.typeKey, -1)
+          if (depShard != -1 && depShard != shard.index) {
             if (reportedCount < MAX_CROSS_SHARD_DEPS) {
               appendLine(
                 "  Shard${shard.index + 1}.${binding.typeKey} → Shard${depShard + 1}.${dep.typeKey}"

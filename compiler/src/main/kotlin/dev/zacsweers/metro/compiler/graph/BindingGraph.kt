@@ -14,7 +14,7 @@ import dev.zacsweers.metro.compiler.joinWithDynamicSeparatorTo
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.traceNested
+import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.SortedMap
 import java.util.SortedSet
 import java.util.TreeSet
@@ -117,7 +117,7 @@ internal open class MutableBindingGraph<
         bindings: ScatterMap<TypeKey, Binding>,
         stack: BindingStack,
         roots: Map<ContextualTypeKey, BindingStackEntry>,
-        adjacency: Map<TypeKey, Set<TypeKey>>,
+        adjacency: GraphAdjacency<TypeKey>,
       ) -> Unit =
       { _, _, _, _ -> /* noop */
       },
@@ -135,11 +135,11 @@ internal open class MutableBindingGraph<
     /**
      * Build the full adjacency mapping of keys to all their dependencies.
      *
-     * Note that `onMissing` will gracefully allow missing targets that have default values (i.e.
+     * Note that `onMissing` will gracefully allow missing targets that have default values (i.e.,
      * optional bindings).
      */
     val fullAdjacency =
-      traceNested("Build adjacency list") {
+      trace("Build adjacency list") {
         buildFullAdjacency(
           bindings = bindings,
           dependenciesOf = { binding -> binding.dependencies.map { it.typeKey } },
@@ -163,11 +163,8 @@ internal open class MutableBindingGraph<
     // Report all missing bindings _after_ building adjacency so we can backtrace where possible
     missingBindings.forEach { (key, stack) -> reportMissingBinding(key, stack) }
 
-    // Validate bindings
-    validateBindings(bindings, stack, roots, fullAdjacency)
-
     val topo =
-      traceNested("Sort and validate") {
+      trace("Sort and validate") {
         val allKeeps =
           if (shrinkUnusedBindings) {
             keep.keys.mapToSet { it.typeKey }
@@ -177,11 +174,15 @@ internal open class MutableBindingGraph<
         sortAndValidate(roots, allKeeps, fullAdjacency, stack, onSortedCycle)
       }
 
-    traceNested("Compute binding indices") {
+    // Validate bindings using the reachable adjacency computed during topo sort.
+    // This is more efficient as it only includes reachable bindings/edges.
+    validateBindings(bindings, stack, roots, topo.adjacency)
+
+    trace("Compute binding indices") {
       // If it depends itself or something that comes later in the topo sort, it
       // must be deferred. This is how we handle cycles that are broken by deferrable
       // types like Provider/Lazy/...
-      // O(1) “does A depend on B?”
+      // O(1) ("does A depend on B?")
       for ((i, key) in topo.sortedKeys.withIndex()) {
         bindingIndices.put(key, i)
       }
@@ -218,7 +219,7 @@ internal open class MutableBindingGraph<
     // it while we're validating it.
     val bindingQueue = ArrayDeque<Binding>().apply { bindings.forEachValue(::add) }
 
-    traceNested("Populate bindings") {
+    trace("Populate bindings") {
       while (bindingQueue.isNotEmpty()) {
         val binding = bindingQueue.removeFirst()
         if (binding.typeKey !in bindings && !binding.isTransient) {
@@ -265,7 +266,7 @@ internal open class MutableBindingGraph<
 
     // Run topo sort. It gives back either a valid order or calls onCycle for errors
     val result =
-      traceNested("Topo sort") {
+      trace("Topo sort") {
         topologicalSort(
           fullAdjacency = fullAdjacency,
           roots = sortedRootKeys,
@@ -277,31 +278,42 @@ internal open class MutableBindingGraph<
             }
           },
           onSortedCycle = onSortedCycle,
-          onCycle = { cycle ->
-            val fullCycle =
-              buildList {
-                  addAll(cycle)
-                  add(cycle.first())
-                }
-                // Reverse upfront so we can backward look at dependency requests
-                .reversed()
-            // Populate the BindingStack for a readable cycle trace
-            val entriesInCycle =
-              fullCycle.mapIndexed { i, key ->
-                val callingBinding =
-                  if (i == 0) {
-                    // This is the first index, back around to the back
-                    bindings.getValue(fullCycle[fullCycle.lastIndex - 1])
-                  } else {
-                    bindings.getValue(fullCycle[i - 1])
-                  }
-                stack.newBindingStackEntry(
-                  callingBinding.dependencies.firstOrNull { it.typeKey == key }
-                    ?: bindings.getValue(key).contextualTypeKey,
-                  callingBinding,
-                  roots,
+          onCycle = { sccVertices ->
+            val sccSet = sccVertices.toSet()
+            val isHardEdge: (TypeKey, TypeKey) -> Boolean = { from, to ->
+              val toBinding = bindings.getValue(to)
+              if (toBinding.isImplicitlyDeferrable) false
+              else bindings.getValue(from).dependencies.any { it.typeKey == to && !it.isDeferrable }
+            }
+
+            val cyclePath: List<TypeKey> =
+              sccVertices.firstNotNullOfOrNull { candidate ->
+                findSimpleCycle(
+                  startNode = candidate,
+                  sccNodes = sccSet,
+                  fullAdjacency = fullAdjacency,
+                  isEdgeAllowed = isHardEdge,
                 )
+              } ?: sccVertices
+
+            val entriesInCycle = buildList {
+              val size = cyclePath.size
+              for (i in 0..size) {
+                val currentDep = cyclePath[i % size]
+                val prevReq = if (i == 0) cyclePath.last() else cyclePath[i - 1]
+                val callingBinding = bindings.getValue(prevReq)
+                val contextKey =
+                  callingBinding.dependencies.firstOrNull {
+                    it.typeKey == currentDep && !it.isDeferrable
+                  }
+                    ?: reportCompilerBug(
+                      "Found a hard cycle, but no scalar dependency exists from " +
+                        "${prevReq.render(short = true)} to ${currentDep.render(short = true)}."
+                    )
+                add(stack.newBindingStackEntry(contextKey, callingBinding, roots))
               }
+            }
+
             reportCycle(entriesInCycle, stack)
           },
           isImplicitlyDeferrable = { key -> bindings.getValue(key).isImplicitlyDeferrable },
@@ -309,6 +321,40 @@ internal open class MutableBindingGraph<
       }
 
     return result
+  }
+
+  private fun <V : Comparable<V>> findSimpleCycle(
+    startNode: V,
+    sccNodes: Set<V>,
+    fullAdjacency: Map<V, Set<V>>,
+    isEdgeAllowed: (from: V, to: V) -> Boolean,
+  ): List<V>? {
+    val parents = mutableMapOf<V, V>()
+    val queue = ArrayDeque<V>().apply { add(startNode) }
+    val visited = mutableSetOf<V>()
+
+    while (queue.isNotEmpty()) {
+      val current = queue.removeFirst()
+      val neighbors = fullAdjacency[current].orEmpty()
+      for (neighbor in neighbors) {
+        if (neighbor !in sccNodes || !isEdgeAllowed(current, neighbor)) continue
+        if (neighbor == startNode) {
+          val cycle = mutableListOf<V>()
+          var curr: V? = current
+          while (curr != null) {
+            cycle.add(curr)
+            curr = parents[curr]
+          }
+          return cycle.reversed()
+        }
+        if (neighbor !in visited) {
+          visited.add(neighbor)
+          parents[neighbor] = current
+          queue.addLast(neighbor)
+        }
+      }
+    }
+    return null
   }
 
   private fun reportCycle(fullCycle: List<BindingStackEntry>, stack: BindingStack): Nothing {

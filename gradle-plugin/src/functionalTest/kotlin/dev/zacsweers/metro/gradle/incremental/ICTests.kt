@@ -338,26 +338,13 @@ class ICTests : BaseIncrementalCompilationTest() {
   fun contributedProviderExternalChangeInGraphExtensionDetected() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = throw IllegalStateException()
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = listOf(appGraph, appGraph2)
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib"))
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("lib") {
-                sources.add(dependency)
-                sources.add(dependencyProvider)
-                withBuildScript { applyMetroDefault() }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph, appGraph2)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(dependency, dependencyProvider) }
+        }
 
         // First graph with a StringGraph extension
         val appGraph =
@@ -638,50 +625,29 @@ class ICTests : BaseIncrementalCompilationTest() {
   fun internalBindings() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = listOf(scopes, graphs, repo, repoImpl, exampleGraph)
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = listOf(exampleGraph)
-                  applyMetroDefault()
-                  dependencies(
-                    Dependency.implementation(":lib:impl"),
-                    Dependency.implementation(":scopes"),
-                    Dependency.implementation(":graphs"),
-                  )
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("scopes") {
-                sources.add(scopes)
-                withBuildScript { applyMetroDefault() }
-              }
-              .withSubproject("graphs") {
-                sources.add(graphs)
-                withBuildScript {
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":scopes"))
-                }
-              }
-              .withSubproject("lib") {
-                sources.add(repo)
-                withBuildScript {
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":scopes"))
-                }
-              }
-              .withSubproject("lib:impl") {
-                sources.add(repoImpl)
-                withBuildScript {
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":scopes"), Dependency.api(":lib"))
-                }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(exampleGraph)
+            dependencies(
+              Dependency.implementation(":lib:impl"),
+              Dependency.implementation(":scopes"),
+              Dependency.implementation(":graphs"),
+            )
+          }
+          subproject("scopes") { sources(scopes) }
+          subproject("graphs") {
+            sources(graphs)
+            dependencies(Dependency.implementation(":scopes"))
+          }
+          subproject("lib") {
+            sources(repo)
+            dependencies(Dependency.implementation(":scopes"))
+          }
+          subproject("lib:impl") {
+            sources(repoImpl)
+            dependencies(Dependency.implementation(":scopes"), Dependency.api(":lib"))
+          }
+        }
 
         private val scopes =
           source(
@@ -758,31 +724,17 @@ class ICTests : BaseIncrementalCompilationTest() {
   fun contributesToAddedInApiDependencyIsDetectedButNotAddedAsSupertype() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = throw IllegalStateException()
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject { withMetroSettings() }
-              .withSubproject("app") {
-                sources.add(appGraph)
-                withBuildScript {
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib:impl"))
-                }
-              }
-              .withSubproject("lib") {
-                sources.add(dummy)
-                withBuildScript { applyMetroDefault() }
-              }
-              .withSubproject("lib:impl") {
-                sources.add(source("class LibImpl"))
-                withBuildScript {
-                  applyMetroDefault()
-                  dependencies(Dependency.api(":lib"))
-                }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          subproject("app") {
+            sources(appGraph)
+            dependencies(Dependency.implementation(":lib:impl"))
+          }
+          subproject("lib") { sources(dummy) }
+          subproject("lib:impl") {
+            sources(source("class LibImpl"))
+            dependencies(Dependency.api(":lib"))
+          }
+        }
 
         private val appGraph =
           source(
@@ -1482,35 +1434,17 @@ class ICTests : BaseIncrementalCompilationTest() {
   fun icWorksWhenAddingAParamToExistingInjectedTypeWithScopeWithZeroToOneParams() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = listOf(appGraph, main)
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = sources()
-                  applyMetroDefault()
-                  dependencies(
-                    Dependency.implementation(":common"),
-                    Dependency.implementation(":lib"),
-                  )
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("common") {
-                sources.add(bar)
-                withBuildScript { applyMetroDefault() }
-              }
-              .withSubproject("lib") {
-                sources.add(foo)
-                withBuildScript {
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":common"))
-                }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph, main)
+            dependencies(Dependency.implementation(":common"), Dependency.implementation(":lib"))
+          }
+          subproject("common") { sources(bar) }
+          subproject("lib") {
+            sources(foo)
+            dependencies(Dependency.implementation(":common"))
+          }
+        }
 
         private val bar =
           source(
@@ -1593,35 +1527,17 @@ class ICTests : BaseIncrementalCompilationTest() {
   fun icWorksWhenAddingAParamToExistingInjectedTypeWithScopeWithMultipleParams() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = listOf(appGraph, main)
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = sources()
-                  applyMetroDefault()
-                  dependencies(
-                    Dependency.implementation(":common"),
-                    Dependency.implementation(":lib"),
-                  )
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("common") {
-                sources.add(bar)
-                withBuildScript { applyMetroDefault() }
-              }
-              .withSubproject("lib") {
-                sources.add(foo)
-                withBuildScript {
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":common"))
-                }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph, main)
+            dependencies(Dependency.implementation(":common"), Dependency.implementation(":lib"))
+          }
+          subproject("common") { sources(bar) }
+          subproject("lib") {
+            sources(foo)
+            dependencies(Dependency.implementation(":common"))
+          }
+        }
 
         private val bar =
           source(
@@ -1706,26 +1622,13 @@ class ICTests : BaseIncrementalCompilationTest() {
   fun multiModuleNonAbiChangeDoesNotTriggerRootRecompilation() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = listOf(appGraph, target)
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = sources()
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib"))
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("lib") {
-                sources.add(provider)
-                sources.add(unrelatedClass)
-                withBuildScript { applyMetroDefault() }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph, target)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(provider, unrelatedClass) }
+        }
 
         private val appGraph =
           source(
@@ -1866,35 +1769,17 @@ class ICTests : BaseIncrementalCompilationTest() {
   fun multipleBindingReplacementsAreRespectedWhenAddingNewContribution() {
     val fixture =
       object : MetroProject(debug = true) {
-        override fun sources() = listOf(appGraph, fakeImpl, main)
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = sources()
-                  applyMetroDefault()
-                  dependencies(
-                    Dependency.implementation(":common"),
-                    Dependency.implementation(":lib"),
-                  )
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("common") {
-                sources.add(fooBar)
-                withBuildScript { applyMetroDefault() }
-              }
-              .withSubproject("lib") {
-                sources.add(realImpl)
-                withBuildScript {
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":common"))
-                }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph, fakeImpl, main)
+            dependencies(Dependency.implementation(":common"), Dependency.implementation(":lib"))
+          }
+          subproject("common") { sources(fooBar) }
+          subproject("lib") {
+            sources(realImpl)
+            dependencies(Dependency.implementation(":common"))
+          }
+        }
 
         private val appGraph =
           source(
@@ -1992,26 +1877,13 @@ class ICTests : BaseIncrementalCompilationTest() {
   fun graphExtensionFactoryContributionExternalChangeIsDetected() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = throw IllegalStateException()
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = listOf(main)
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib"))
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("lib") {
-                sources.add(appGraph)
-                sources.add(featureGraph)
-                withBuildScript { applyMetroDefault() }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(main)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(appGraph, featureGraph) }
+        }
 
         private val appGraph =
           source(
@@ -2185,26 +2057,13 @@ class ICTests : BaseIncrementalCompilationTest() {
   fun changingScopeForContributedInterfaceInGraphExtensionIsDetected() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = throw IllegalStateException()
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = listOf(main, appGraph, stringProvider)
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib"))
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("lib") {
-                sources.add(myActivity)
-                sources.add(myActivityInjector)
-                withBuildScript { applyMetroDefault() }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(main, appGraph, stringProvider)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(myActivity, myActivityInjector) }
+        }
 
         private val appGraph =
           source(
@@ -2329,20 +2188,19 @@ class ICTests : BaseIncrementalCompilationTest() {
             )
           )
 
-        override val gradleProject: GradleProject
-          get() {
-            val projectSources = sources()
-            return newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                sources = projectSources
-                withBuildScript {
-                  plugins(
-                    GradlePlugins.Kotlin.multiplatform(),
-                    GradlePlugins.agpKmp,
-                    GradlePlugins.metro,
-                  )
-                  withKotlin(
-                    """
+        override fun buildGradleProject(): GradleProject {
+          val projectSources = sources()
+          return newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject {
+              sources = projectSources
+              withBuildScript {
+                plugins(
+                  GradlePlugins.Kotlin.multiplatform(),
+                  GradlePlugins.agpKmp,
+                  GradlePlugins.metro,
+                )
+                withKotlin(
+                  """
                     kotlin {
                       jvm()
 
@@ -2354,21 +2212,21 @@ class ICTests : BaseIncrementalCompilationTest() {
                     }
 
                     ${buildMetroBlock()}
-                    """
-                      .trimIndent()
-                  )
-                }
-
-                withMetroSettings()
-
-                val androidHome = System.getProperty("metro.androidHome")
-                assumeTrue(androidHome != null) // skip if environment not set up for Android
-                // Use invariantSeparatorsPath for cross-platform .properties file compatibility
-                val sdkDir = File(androidHome).invariantSeparatorsPath
-                withFile("local.properties", "sdk.dir=$sdkDir")
+                  """
+                    .trimIndent()
+                )
               }
-              .write()
-          }
+
+              withMetroSettings()
+
+              val androidHome = System.getProperty("metro.androidHome")
+              assumeTrue(androidHome != null) // skip if environment not set up for Android
+              // Use invariantSeparatorsPath for cross-platform .properties file compatibility
+              val sdkDir = File(androidHome).invariantSeparatorsPath
+              withFile("local.properties", "sdk.dir=$sdkDir")
+            }
+            .write()
+        }
       }
 
     val project = fixture.gradleProject

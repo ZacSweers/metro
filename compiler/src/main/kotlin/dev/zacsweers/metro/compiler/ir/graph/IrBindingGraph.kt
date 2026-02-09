@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getValue
+import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
@@ -36,7 +37,7 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.traceNested
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -194,9 +195,10 @@ internal class IrBindingGraph(
 
   fun requireBinding(contextKey: IrContextualTypeKey): IrBinding {
     return realGraph[contextKey.typeKey]
-      ?: run {
-        if (contextKey.hasDefault) return IrBinding.Absent(contextKey.typeKey)
-        exitProcessing()
+      ?: if (contextKey.hasDefault) {
+        IrBinding.Absent(contextKey.typeKey)
+      } else {
+        reportCompilerBug("No expected binding found for key $contextKey")
       }
   }
 
@@ -229,7 +231,7 @@ internal class IrBindingGraph(
   context(traceScope: TraceScope)
   fun seal(onError: (List<GraphError>) -> Unit): BindingGraphResult {
     val topologyResult =
-      traceNested("seal graph") {
+      trace("seal graph") {
         val roots = buildMap {
           putAll(accessors)
           putAll(injectors)
@@ -286,18 +288,18 @@ internal class IrBindingGraph(
       }
     }
 
-    traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
-    traceNested("check for absent bindings") {
+    trace("check empty multibindings") { checkEmptyMultibindings(onError) }
+    trace("check for absent bindings") {
       check(!realGraph.bindings.any { _, v -> v is IrBinding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
       }
     }
 
     val shardGroups =
-      traceNested("compute shard groups") {
+      trace("compute shard groups") {
         val maxPerShard = metroContext.options.keysPerGraphShard
         val enableSharding = metroContext.options.enableGraphSharding
-        if (enableSharding && topologyResult.adjacency.size > maxPerShard) {
+        if (enableSharding && topologyResult.adjacency.forward.size > maxPerShard) {
           topologyResult.partitionBySCCs(maxPerShard)
         } else {
           null
@@ -681,27 +683,14 @@ internal class IrBindingGraph(
     bindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
     roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
-    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+    adjacency: GraphAdjacency<IrTypeKey>,
   ) {
-    val reverseAdjacency = buildReverseAdjacency(adjacency)
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     bindings.forEachValue { binding ->
-      checkScope(binding, stack, roots, adjacency)
-      validateMultibindings(binding, bindings, roots, adjacency)
-      validateAssistedInjection(binding, bindings, rootsByTypeKey, reverseAdjacency)
+      checkScope(binding, stack, roots, adjacency.forward)
+      validateMultibindings(binding, bindings, roots, adjacency.forward)
+      validateAssistedInjection(binding, bindings, rootsByTypeKey, adjacency.reverse)
     }
-  }
-
-  private fun buildReverseAdjacency(
-    adjacency: Map<IrTypeKey, Set<IrTypeKey>>
-  ): Map<IrTypeKey, Set<IrTypeKey>> {
-    val reverse = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()
-    for ((from, tos) in adjacency) {
-      for (to in tos) {
-        reverse.getAndAdd(to, from)
-      }
-    }
-    return reverse
   }
 
   // Check scoping compatibility
@@ -847,7 +836,7 @@ internal class IrBindingGraph(
         bindings
           .asMap()
           .values
-          .find { it is IrBinding.Assisted && it.target.typeKey == binding.typeKey }
+          .find { it is IrBinding.AssistedFactory && it.targetBinding.typeKey == binding.typeKey }
           ?.typeKey
           // Check in the class itself for @AssistedFactory
           ?: binding.typeKey.type.rawTypeOrNull()?.let { rawType ->
@@ -880,7 +869,7 @@ internal class IrBindingGraph(
     reverseAdjacency[binding.typeKey]?.let { dependents ->
       for (dependentKey in dependents) {
         val dependentBinding = bindings[dependentKey] ?: continue
-        if (dependentBinding !is IrBinding.Assisted) {
+        if (dependentBinding !is IrBinding.AssistedFactory) {
           reportInvalidBinding(
             dependentBinding.parameters.allParameters
               .find { it.typeKey == binding.typeKey }

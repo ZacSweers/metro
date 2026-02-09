@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
@@ -12,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.isPlatformType
@@ -26,13 +28,17 @@ import org.jetbrains.kotlin.fir.analysis.checkers.toClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 
 internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.Common) {
   private val NON_INCLUDES_KINDS = setOf(ClassKind.ENUM_CLASS, ClassKind.ANNOTATION_CLASS)
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
+    context(context.session.compatContext) { checkImpl(declaration) }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
+  private fun checkImpl(declaration: FirClass) {
     declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -76,7 +82,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         return
       }
 
-    val targetGraph = createFunction.resolvedReturnType.toClassSymbol(session)
+    val targetGraph = createFunction.resolvedReturnType.toClassSymbolCompat(session)
     val targetGraphAnnotation =
       targetGraph
         ?.resolvedCompilerAnnotationsWithClassIds

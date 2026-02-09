@@ -4,12 +4,11 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
-  alias(libs.plugins.mavenPublish)
   alias(libs.plugins.poko)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
   alias(libs.plugins.shadow) apply false
-  alias(libs.plugins.testkit)
+  id("metro.publish")
 }
 
 kotlin {
@@ -106,6 +105,7 @@ val shadowJar =
     mergeServiceFiles()
 
     relocate("androidx.collection", "dev.zacsweers.metro.compiler.shaded.androidx.collection")
+    relocate("androidx.tracing", "dev.zacsweers.metro.compiler.shaded.androidx.tracing")
     relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
     relocate("com.squareup.okio", "dev.zacsweers.metro.compiler.shaded.com.squareup.okio")
     relocate("com.jakewharton.picnic", "dev.zacsweers.metro.compiler.shaded.com.jakewharton.picnic")
@@ -147,6 +147,7 @@ dependencies {
   compileOnly(libs.androidx.collection)
 
   add(embedded.name, libs.androidx.collection)
+  add(embedded.name, libs.androidx.tracing.wire)
   add(embedded.name, libs.picnic)
   add(embedded.name, libs.wire.runtime)
   add(embedded.name, libs.kotlinx.serialization.json)

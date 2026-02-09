@@ -6,17 +6,76 @@ Changelog
 
 ### New
 
+- Metro now has experimental support for Kotlin 2.4.0. At the time of writing, this is only really helpful if you are testing IDE support in IntelliJ 2026.1 EAPs.
+- Metro's compiler now embeds `androidx.tracing` and can produce perfetto traces of its IR transformations.
+- **[FIR]**: Metro now does early detection of whether or not it's running in the IDE or CLI. If it's in the IDE, Metro will disable any FIR generators that do not generate user-visible code.
+
 ### Enhancements
+
+- **[FIR]**: When reporting diagnostics about types that are aliases, include the aliased type in the message. This is helpful for messages like below
+    ```kotlin
+    typealias UserId = String
+    interface Bindings {
+      // error: Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `UserId (typealias to kotlin.String)`.
+      @Binds fun String.bind(): UserId
+    }
+    ```
+- **[FIR]**: Add full integration tests for FIR-based IDE features.
+    - This is really only in the changelog because getting Android Studio to not show its blocking analytics consent dialog on CI might be the most difficult technical problem this project has faced so far and what's a changelog for if not the occasional itsfinallyover.gif bragging rights.
+- **[IR]**: Use `androidx.collection` primitive and scatter collections in a few more places to further help improve memory performance.
+- **[IR]**: Don't attempt to generate a graph impl if validation at any level in processing fails, as this could result in obscure extra errors getting reported after the relevant initial error.
+
+### Fixes
+
+- **[IR]**: Avoid `IllegalStateException: No value parameter found` issues when reconstructing dependency cycle stacks to report cycle errors.
+- **[IR]**: Fix a scenario where bindings available in both graphs and their extensions didn't properly consolidate to one binding.
+- **[Gradle]**: Make the `metrox-android` artifact single-variant (release only).
+
+### Changes
+
+- **[FIR/IR]** Add aliases for a bunch of "known" mappings for Kotlin IDE plugin versions to Kotlin versions. This is still best-effort but should hopefully be more robust, especially in situations like Android Studio canaries (which do not report real Kotlin versions). Please star this issue: https://issuetracker.google.com/issues/474940910
+- **[FIR]**: One downside of the above is that it revealed that Android Studio Otter 3 is effectively running on Kotlin 2.2.0, which is just a bit too far back to still support. However, now that Studio is switching to monthly releases it should track upstream IJ changes much quicker and Studio Panda is in RC1 now.
+    - Previously, an incompatible version could cause the IDE file analysis to hang or error out if IDE support was enabled. Now, Metro's IDE support will gracefully degrade on incompatible IDE versions. This includes Android Studio Otter and IntelliJ `2025.2.x` as of this version. Android Studio Panda and IntelliJ 2025.3 are tested and working though!
+        ```
+        2026-02-08 01:14:27,225 [  56672]   INFO - STDERR - [METRO] Skipping enabling Metro extensions in IDE. Detected Kotlin version '2.2.255-dev-255' is not supported for IDE use (CLI_ONLY).
+        ```
+- **[IR]**: Rework assisted inject bindings to be encapsulated by their consuming assisted factory bindings in graph validation.
+    - This ensures these classes can't accidentally participate in `SwitchingProvider`s or valid cycle breaking with `DelegateFactory`, as both of those require `Provider` types and assisted-inject types' factories don't implement `Provider`.
+- **[Gradle]**: Avoid deprecated `KotlinCompilation.implementationConfigurationName` API.
+- `enableTopLevelFunctionInjection`, `generateContributionHintsInFir`, and `supportedHintContributionPlatforms` will error if enabled on Kotlin/JS with JS incremental compilation enabled as it turns out this does not yet support generating top-level declarations from compiler plugins with incremental compilation enabled.
+    - Please star https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989.
+- Fold `2.3.20-dev-7791` compat into `2.3.20-Beta2` compat, meaning the former is no longer tested on CI.
+- Fold `2.3.20-dev-5437` compat into `2.3.20-dev-5706` compat. This is to help Metro's main branch stay stable as the `5437` artifact came from a dev maven repo with ephemeral artifacts.
+- Test Kotlin `2.3.20-Beta2`.
+- Test Kotlin `2.3.10`.
+- Test Kotlin `2.4.0-dev-539`.
+- Drop testing of Kotlin `2.3.10-RC`.
+- Metro now _compiles_ against Kotlin `2.3.0`. This allows it to test `2.4.0` builds, but is still compatible down to Kotlin `2.2.20`. Metro's runtime artifacts also explicitly have their language version still set to `2.2` (and `2.0` for the Gradle plugin).
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@DaniilPavlenko](https://github.com/DaniilPavlenko)
+- [@heorhiipopov](https://github.com/heorhiipopov)
+- [@C2H6O](https://github.com/C2H6O)
+
+0.10.2
+------
+
+_2026-01-28_
+
+### Enhancements
+
+- **[FIR]** Add a diagnostic warning for `@IntoSet` callables returning collections, as these probably intended to use `@ElementsIntoSet`.
+- **[IR]** Automatically patch [#1556](https://github.com/ZacSweers/metro/issues/1556) issues between Kotlin versions `[2.3.0 - 2.3.20-Beta2)` for any klib-using compilation or JVM compilation that enables the `-Xannotations-in-metadata` compiler option (which isn't enabled by default). This auto-patching is best effort and a fix in kotlinx is targeting `2.3.20-Beta2`. If you have any issues, it can be disabled via the `patchKlibParams` Gradle DSL property.
 
 ### Fixes
 
 - **[IR]** Don't try class binding lookups for nullable types. These must always be explicitly provided.
 - **[IR]** Disambiguate return-type overloads of generated `@Binds` functions for `@Contributes` annotations that contribute multiple interfaces of the same simple name but different package name.
 - **[IR]** Skip assisted parameters when validating parameter type matching on native compilations.
-
-### Changes
-
-### Contributors
 
 0.10.1
 ------

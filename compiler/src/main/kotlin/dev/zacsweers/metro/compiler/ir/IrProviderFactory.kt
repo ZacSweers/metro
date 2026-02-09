@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.memoize
@@ -17,12 +16,10 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.platform.konan.isNative
 
 internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallable {
   /**
@@ -141,40 +138,26 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       callableMetadata: IrCallableMetadata,
       /** Pre-computed real declaration for in-compilation case. If null, will be looked up. */
       realDeclaration: IrDeclaration? = null,
-    ): Metro {
+    ): Metro? {
       val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
       val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
 
-      if (mirrorFunction.isExternalParent && context.platform.isNative()) {
-        // Validate qualifiers due to https://github.com/ZacSweers/metro/issues/1556
-        val createFunctionParams =
-          clazz
-            .requireStaticIshDeclarationContainer()
-            .requireSimpleFunction(Symbols.StringNames.CREATE)
-            .owner
-            .parameters()
-            .regularParameters
-            .drop(1) // Drop the dispatch receiver for this
-
-        for ((i, mirrorP) in
-          callableMetadata.mirrorFunction.parameters().nonDispatchParameters.withIndex()) {
-          val createP = createFunctionParams[i]
-          if (createP.typeKey != mirrorP.typeKey) {
-            context.reportCompat(
-              callableMetadata.function,
-              MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR,
-              """
-                Mirror/create function parameter type mismatch:
-                  - Source:         ${callableMetadata.function.kotlinFqName.asString()}
-                  - Mirror param:   ${mirrorP.typeKey}
-                  - create() param: ${createP.typeKey}
-
-                This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
-              """
-                .trimIndent(),
-            )
-          }
+      // Validate and optionally patch parameter types due to
+      // https://github.com/ZacSweers/metro/issues/1556
+      val hadUnpatchedMismatch =
+        checkMirrorParamMismatches(
+          factoryClass = clazz,
+          newInstanceFunctionName = callableMetadata.newInstanceName!!.asString(),
+          mirrorFunction = callableMetadata.mirrorFunction,
+          mirrorParams = { callableMetadata.mirrorFunction.parameters().nonDispatchParameters },
+          reportingFunction = callableMetadata.function,
+          primaryConstructorParamOffset = 1,
+        ) {
+          it.parameters().regularParameters.drop(1) // Drop the dispatch receiver
         }
+
+      if (hadUnpatchedMismatch) {
+        return null
       }
 
       return Metro(

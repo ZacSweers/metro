@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -61,8 +60,10 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
  * }
  * ```
  */
-internal class GraphFactoryFirSupertypeGenerator(session: FirSession) :
-  FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
+internal class GraphFactoryFirSupertypeGenerator(
+  session: FirSession,
+  compatContext: CompatContext,
+) : FirSupertypeGenerationExtension(session), CompatContext by compatContext {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.dependencyGraphPredicate)

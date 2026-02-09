@@ -50,7 +50,7 @@ Snapshots of the development version are available in [Sonatype's `snapshots` re
 
 The compiler plugin itself supports all multiplatform project types. The first-party annotations artifact is also multiplatform and supports all common JVM, JS, and native targets.
 
-Contribution hint generation is _not_ currently supported on native or Wasm targets until [KT-58886](https://youtrack.jetbrains.com/issue/KT-58886) is resolved. They do work within the same compilation though.
+Contribution hint generation is _not_ currently supported on native or Wasm targets until Kotlin `2.3.20-Beta1` or later. They do work within the same compilation though.
 
 ## Caveats
 

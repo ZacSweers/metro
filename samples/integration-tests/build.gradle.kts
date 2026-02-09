@@ -3,7 +3,6 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
@@ -15,20 +14,27 @@ android {
   namespace = "dev.zacsweers.metro.test.integration.android"
 
   buildFeatures { viewBinding = true }
-
-  compileOptions {
-    val javaVersion = libs.versions.jvmTarget.get().let(JavaVersion::toVersion)
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
-  }
 }
+
+metro {}
 
 @OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
 kotlin {
   androidTarget()
   jvm()
 
-  js { browser() }
+  js {
+    browser()
+    // https://youtrack.jetbrains.com/issue/KT-82989
+    compilations.configureEach {
+      compileTaskProvider.configure {
+        incremental = false
+        @Suppress("INVISIBLE_REFERENCE")
+        incrementalJsKlib = false
+      }
+    }
+  }
+
   wasmJs { browser() }
   wasmWasi { nodejs() }
 
@@ -62,19 +68,12 @@ kotlin {
   }
 
   targets.configureEach {
-    val target = this
     compilations.configureEach {
       compileTaskProvider.configure {
         compilerOptions.freeCompilerArgs.add(
           // Big yikes in how this was rolled out as noisy compiler warnings
           "-Xannotation-default-target=param-property"
         )
-        if (target.platformType == KotlinPlatformType.js) {
-          compilerOptions.freeCompilerArgs.add(
-            // These are all read at compile-time
-            "-Xwarning-level=RUNTIME_ANNOTATION_NOT_SUPPORTED:disabled"
-          )
-        }
       }
     }
   }

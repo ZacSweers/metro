@@ -34,6 +34,7 @@ import dev.zacsweers.metro.compiler.ir.toIrVararg
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.suffixIfNot
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
@@ -82,7 +83,8 @@ internal class SyntheticGraphGenerator(
   private val parentGraph: IrClass?,
   private val originDeclaration: IrDeclaration,
   private val containerToAddTo: IrDeclarationContainer,
-) : IrMetroContext by metroContext {
+  private val traceScope: TraceScope,
+) : IrMetroContext by metroContext, TraceScope by traceScope {
 
   val contributions =
     sourceAnnotation?.let { contributionMerger.computeContributions(it, originDeclaration) }
@@ -178,7 +180,7 @@ internal class SyntheticGraphGenerator(
     }
 
   /** Builds a `@DependencyGraph` annotation for a generated graph class. */
-  internal fun buildDependencyGraphAnnotation(targetClass: IrClass): IrConstructorCall {
+  private fun buildDependencyGraphAnnotation(targetClass: IrClass): IrConstructorCall {
     return buildAnnotation(
       targetClass.symbol,
       metroSymbols.metroDependencyGraphAnnotationConstructor,
@@ -204,9 +206,10 @@ internal class SyntheticGraphGenerator(
           addAll(declaredContainers)
           contributions?.let { addAll(it.bindingContainers.values) }
         }
-        allContainers.let(bindingContainerResolver::resolveTransitiveClosure).toIrVararg()?.let {
-          annotation.arguments[3] = it
-        }
+        allContainers
+          .let { bindingContainerResolver.resolveTransitiveClosure(it) }
+          .toIrVararg()
+          ?.let { annotation.arguments[3] = it }
       }
     }
   }

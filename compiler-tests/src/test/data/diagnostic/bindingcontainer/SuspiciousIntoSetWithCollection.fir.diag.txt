@@ -1,0 +1,3 @@
+/SuspiciousIntoSetWithCollection.kt:(144,152): warning: Suspicious `@IntoSet` return type. This declaration returns a `Set<Int>`, which would create a `Set<Set<Int>>` multibinding. Did you mean to use `@ElementsIntoSet`? Or if this is intentional, suppress this warning with `@Suppress("SUSPICIOUS_SET_INTO_SET")`
+
+/SuspiciousIntoSetWithCollection.kt:(210,220): warning: Suspicious `@IntoSet` return type. This declaration returns a `List<Long>`, which would create a `Set<List<Long>>` multibinding. Did you mean to use `@ElementsIntoSet`? Or if this is intentional, suppress this warning with `@Suppress("SUSPICIOUS_SET_INTO_SET")`

@@ -18,25 +18,27 @@ androidx-lifecycle = "2.10.0"
 androidx-lint-gradle = "1.0.0-alpha05"
 annotation = "1.9.1"
 anvil = "0.5.2"
-atomicfu = "0.29.0"
-circuit = "0.30.0"
+atomicfu = "0.31.0"
+circuit = "0.32.0"
 compose-jb = "1.10.0"
-jetbrains-lifecycle-navigation3 = "2.10.0-alpha07"
+jetbrains-lifecycle-navigation3 = "2.10.0-alpha08"
 jetbrains-navigation3 = "1.0.0-alpha06"
-dagger = "2.59"
-gjf = "1.33.0"
+dagger = "2.59.1"
+gjf = "1.34.1"
 jdk = "25"
 robolectric = "4.16.1"
+junit-jupiter = "6.0.2"
 jvmTarget = "11"
 kct = "0.12.1"
-kotlin = "2.2.20"
+kotlin = "2.3.0"
 kotlinInject = "0.9.0"
-metro = "0.10.1"
-kotlinInject-anvil = "0.1.6"
-kotlinx-benchmark = "0.4.15"
+metro = "0.10.2"
+metro-runtime-languageVersion = "2.2"
+kotlinInject-anvil = "0.1.7"
+kotlinx-benchmark = "0.4.16"
 kotlinx-coroutines = "1.10.2"
-kotlinx-serialization = "1.9.0"
-ksp = "2.3.4"
+kotlinx-serialization = "1.10.0"
+ksp = "2.3.5"
 ktfmt = "0.61"
 ktor = "3.4.0"
 okhttp = "5.3.2"
@@ -57,6 +59,8 @@ binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibilit
 buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.7" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
 dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
+gradleTestRetry = { id = "org.gradle.test-retry", version = "1.6.4" }
+intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.11.0" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
@@ -71,12 +75,14 @@ mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
 shadow = { id = "com.gradleup.shadow", version = "9.2.2" }
-spotless = { id = "com.diffplug.spotless", version = "8.2.0" }
+spotless = { id = "com.diffplug.spotless", version = "8.2.1" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.17" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
-androidx-activity = "androidx.activity:activity-compose:1.12.2"
+android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
+
+androidx-activity = "androidx.activity:activity-compose:1.12.3"
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-collection = "androidx.collection:collection:1.6.0-beta01"
@@ -86,7 +92,7 @@ androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-ru
 androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
 androidx-material3 = "com.google.android.material:material:1.13.0"
 androidx-viewmodelKtx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle" }
-androidx-work = "androidx.work:work-runtime:2.11.0"
+androidx-work = "androidx.work:work-runtime:2.11.1"
 androidx-test = "androidx.test:core-ktx:1.7.0"
 androidx-test-runner = "androidx.test:runner:1.7.0"
 androidx-test-rules = "androidx.test:rules:1.7.0"
@@ -95,6 +101,7 @@ androidx-test-uiautomator = "androidx.test.uiautomator:uiautomator:2.3.0"
 androidx-benchmark-macro = "androidx.benchmark:benchmark-macro-junit4:1.4.1"
 androidx-benchmark-micro = "androidx.benchmark:benchmark-junit4:1.4.1"
 androidx-profileinstaller = "androidx.profileinstaller:profileinstaller:1.4.1"
+androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha01"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
@@ -177,13 +184,15 @@ picnic = "com.jakewharton.picnic:picnic:0.7.0"
 
 poko-annotations = { module = "dev.drewhamilton.poko:poko-annotations", version.ref = "poko" }
 
-r8 = "com.android.tools:r8:8.13.19"
+r8 = "com.android.tools:r8:9.0.32"
 
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
 slf4jNop = "org.slf4j:slf4j-nop:2.0.17"
 
 junit = { module = "junit:junit", version = "4.13.2" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+junit-jupiter-platformLauncher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-jupiter" }
 ksp-symbolProcessing = { module = "com.google.devtools.ksp:symbol-processing", version.ref = "ksp" }
 ksp-symbolProcessing-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 ksp-symbolProcessing-commonDeps = { module = "com.google.devtools.ksp:symbol-processing-common-deps", version.ref = "ksp" }

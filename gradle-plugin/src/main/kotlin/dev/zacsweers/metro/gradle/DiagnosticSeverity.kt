@@ -13,5 +13,5 @@ public enum class DiagnosticSeverity {
   ERROR;
 
   public val isEnabled: Boolean
-    get() = this != DiagnosticSeverity.NONE
+    get() = this != NONE
 }

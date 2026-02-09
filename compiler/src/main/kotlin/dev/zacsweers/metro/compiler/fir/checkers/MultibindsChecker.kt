@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.isAnnotationClass
@@ -21,8 +22,6 @@ import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
-import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
@@ -132,7 +131,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
                   keyType.isPrimitive ||
                     keyType.isString ||
                     keyType.isKClassType() ||
-                    keyType.toRegularClassSymbol(session)?.isEnumClass == true
+                    keyType.toClassSymbolCompat(session)?.isEnumClass == true
                 ) {
                   // ok
                 } else if (keyType.isArrayType) {
@@ -143,7 +142,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
                     "Multibinding map keys cannot be arrays.",
                   )
                 } else {
-                  keyType.toClassSymbol(session)?.let { keyClass ->
+                  keyType.toClassSymbolCompat(session)?.let { keyClass ->
                     if (keyClass.classKind.isAnnotationClass) {
                       // Ensure this annotation is annotated with MapKey
                       val mapKey =
@@ -218,7 +217,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     if (annotations.isElementsIntoSet) {
       // Provides checker will check separately for an explicit return type
       declaration.returnTypeRef.coneTypeOrNull?.let { returnConeType ->
-        returnConeType.toClassSymbol(session)?.let { returnType ->
+        returnConeType.toClassSymbolCompat(session)?.let { returnType ->
           if (!returnType.isOrImplements(StandardClassIds.Collection, session)) {
             reporter.reportOn(
               declaration.returnTypeRef.source ?: source,

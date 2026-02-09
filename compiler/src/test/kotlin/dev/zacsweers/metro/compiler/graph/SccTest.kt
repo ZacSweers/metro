@@ -115,8 +115,8 @@ class SccTest {
     val graph = sortedMapOf(1 to untypedSortedSetOf(2))
 
     assertFailsWith<NoSuchElementException> {
-      graph.computeStronglyConnectedComponents()
-      graph.getValue(2)
+      val _ = graph.computeStronglyConnectedComponents()
+      val _ = graph.getValue(2)
     }
   }
 

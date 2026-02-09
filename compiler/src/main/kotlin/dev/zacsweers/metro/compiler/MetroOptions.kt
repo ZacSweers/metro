@@ -9,9 +9,12 @@ import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
+import org.jetbrains.kotlin.js.config.jsIncrementalCompilationEnabled
+import org.jetbrains.kotlin.js.config.wasmCompilation
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -96,6 +99,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       defaultValue = "",
       valueDescription = "Path to a directory to dump Metro reports information",
       description = "Path to a directory to dump Metro reports information",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
+  ),
+  TRACE_DESTINATION(
+    RawMetroOption(
+      name = "trace-destination",
+      defaultValue = "",
+      valueDescription = "Path to a directory to dump Metro trace information",
+      description = "Path to a directory to dump Metro trace information",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -660,6 +674,28 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_KLIB_PARAMS_CHECK(
+    RawMetroOption.boolean(
+      name = "enable-klib-params-check",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable klib parameter qualifier checking. Should be enabled for Kotlin versions [2.3.0, 2.3.20-Beta2).",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  PATCH_KLIB_PARAMS(
+    RawMetroOption.boolean(
+      name = "patch-klib-params",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable patching of klib parameter qualifiers to work around kotlinc bug. Only applies when enable-klib-params-check is also enabled.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   INTEROP_INCLUDE_JAVAX_ANNOTATIONS(
     RawMetroOption.boolean(
       name = "interop-include-javax-annotations",
@@ -732,6 +768,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  FORCE_ENABLE_FIR_IN_IDE(
+    RawMetroOption.boolean(
+      name = "force-enable-fir-in-ide",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Force enable Metro's FIR extensions in IDE even if the compat layer cannot be determined.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PLUGIN_ORDER_SET(
     RawMetroOption(
       name = "plugin-order-set",
@@ -742,6 +789,39 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
+    )
+  ),
+  COMPILER_VERSION(
+    RawMetroOption(
+      name = "compiler-version",
+      defaultValue = "",
+      valueDescription = "<version>",
+      description =
+        "Override the Kotlin compiler version Metro operates with. If set, Metro will behave as if running in this Kotlin environment (e.g., 2.3.20-dev-1234).",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
+  ),
+  COMPILER_VERSION_ALIASES(
+    RawMetroOption(
+      name = "compiler-version-aliases",
+      defaultValue = emptyMap(),
+      valueDescription = "<from1=to1:from2=to2>",
+      description =
+        "Compiler version aliases mapping fake IDE versions to real compiler versions. Format: from1=to1:from2=to2",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { value ->
+        if (value.isBlank()) {
+          emptyMap()
+        } else {
+          value.split(":").associate { entry ->
+            val (from, to) = entry.split("=", limit = 2)
+            from to to
+          }
+        }
+      },
     )
   );
 
@@ -755,6 +835,11 @@ public data class MetroOptions(
   public val enabled: Boolean = MetroOption.ENABLED.raw.defaultValue.expectAs(),
   private val rawReportsDestination: Path? =
     MetroOption.REPORTS_DESTINATION.raw.defaultValue
+      .expectAs<String>()
+      .takeUnless(String::isBlank)
+      ?.let(Paths::get),
+  private val rawTraceDestination: Path? =
+    MetroOption.TRACE_DESTINATION.raw.defaultValue
       .expectAs<String>()
       .takeUnless(String::isBlank)
       ?.let(Paths::get),
@@ -886,11 +971,20 @@ public data class MetroOptions(
     MetroOption.CUSTOM_OPTIONAL_BINDING.raw.defaultValue.expectAs(),
   public val contributesAsInject: Boolean =
     MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
+  public val enableKlibParamsCheck: Boolean =
+    MetroOption.ENABLE_KLIB_PARAMS_CHECK.raw.defaultValue.expectAs(),
+  public val patchKlibParams: Boolean = MetroOption.PATCH_KLIB_PARAMS.raw.defaultValue.expectAs(),
+  public val forceEnableFirInIde: Boolean =
+    MetroOption.FORCE_ENABLE_FIR_IN_IDE.raw.defaultValue.expectAs(),
   public val pluginOrderSet: Boolean? =
     MetroOption.PLUGIN_ORDER_SET.raw.defaultValue
       .expectAs<String>()
       .takeUnless(String::isBlank)
       ?.toBooleanStrict(),
+  public val compilerVersion: String? =
+    MetroOption.COMPILER_VERSION.raw.defaultValue.expectAs<String>().takeUnless(String::isBlank),
+  public val compilerVersionAliases: Map<String, String> =
+    MetroOption.COMPILER_VERSION_ALIASES.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -906,12 +1000,26 @@ public data class MetroOptions(
     }
   }
 
+  public val traceEnabled: Boolean
+    get() = rawTraceDestination != null
+
+  @OptIn(ExperimentalPathApi::class)
+  public val traceDir: Lazy<Path?> = lazy {
+    rawTraceDestination?.apply {
+      if (exists()) {
+        deleteRecursively()
+      }
+      createDirectories()
+    }
+  }
+
   public fun toBuilder(): Builder = Builder(this)
 
   public class Builder(base: MetroOptions = MetroOptions()) {
     public var debug: Boolean = base.debug
     public var enabled: Boolean = base.enabled
     public var reportsDestination: Path? = base.rawReportsDestination
+    public var traceDestination: Path? = base.rawTraceDestination
     public var generateAssistedFactories: Boolean = base.generateAssistedFactories
     public var generateThrowsAnnotations: Boolean = base.generateThrowsAnnotations
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
@@ -988,7 +1096,12 @@ public data class MetroOptions(
     public var customOptionalBindingAnnotations: MutableSet<ClassId> =
       base.customOptionalBindingAnnotations.toMutableSet()
     public var contributesAsInject: Boolean = base.contributesAsInject
+    public var enableKlibParamsCheck: Boolean = base.enableKlibParamsCheck
+    public var patchKlibParams: Boolean = base.patchKlibParams
+    public var forceEnableFirInIde: Boolean = base.forceEnableFirInIde
     public var pluginOrderSet: Boolean? = base.pluginOrderSet
+    public var compilerVersion: String? = base.compilerVersion
+    public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1108,6 +1221,7 @@ public data class MetroOptions(
         debug = debug,
         enabled = enabled,
         rawReportsDestination = reportsDestination,
+        rawTraceDestination = traceDestination,
         generateAssistedFactories = generateAssistedFactories,
         generateThrowsAnnotations = generateThrowsAnnotations,
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
@@ -1159,7 +1273,12 @@ public data class MetroOptions(
         customOriginAnnotations = customOriginAnnotations,
         customOptionalBindingAnnotations = customOptionalBindingAnnotations,
         contributesAsInject = contributesAsInject,
+        enableKlibParamsCheck = enableKlibParamsCheck,
+        patchKlibParams = patchKlibParams,
+        forceEnableFirInIde = forceEnableFirInIde,
         pluginOrderSet = pluginOrderSet,
+        compilerVersion = compilerVersion,
+        compilerVersionAliases = compilerVersionAliases,
       )
     }
 
@@ -1190,6 +1309,23 @@ public data class MetroOptions(
       return Builder().apply(body).build()
     }
 
+    private fun validateKotlinJsIC(
+      enabled: Boolean,
+      optionName: String,
+      configuration: CompilerConfiguration,
+    ) {
+      if (
+        enabled && configuration.jsIncrementalCompilationEnabled && !configuration.wasmCompilation
+      ) {
+        configuration.messageCollector.report(
+          CompilerMessageSeverity.ERROR,
+          "Kotlin/JS does not support generating top-level declarations with incremental compilation enabled. " +
+            "See https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989. " +
+            "Either disable $optionName for JS targets or disable JS IC.",
+        )
+      }
+    }
+
     internal fun load(configuration: CompilerConfiguration): MetroOptions = buildOptions {
       for (entry in MetroOption.entries) {
         when (entry) {
@@ -1202,6 +1338,11 @@ public data class MetroOptions(
               configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
           }
 
+          TRACE_DESTINATION -> {
+            traceDestination =
+              configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
+          }
+
           GENERATE_ASSISTED_FACTORIES ->
             generateAssistedFactories = configuration.getAsBoolean(entry)
 
@@ -1209,13 +1350,22 @@ public data class MetroOptions(
             generateThrowsAnnotations = configuration.getAsBoolean(entry)
 
           ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
-            enableTopLevelFunctionInjection = configuration.getAsBoolean(entry)
+            enableTopLevelFunctionInjection =
+              configuration.getAsBoolean(entry).also { enabled ->
+                validateKotlinJsIC(enabled, "enableTopLevelFunctionInjection", configuration)
+              }
 
           GENERATE_CONTRIBUTION_HINTS ->
-            generateContributionHints = configuration.getAsBoolean(entry)
+            generateContributionHints =
+              configuration.getAsBoolean(entry).also { enabled ->
+                validateKotlinJsIC(enabled, "generateContributionHints", configuration)
+              }
 
           GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
-            generateContributionHintsInFir = configuration.getAsBoolean(entry)
+            generateContributionHintsInFir =
+              configuration.getAsBoolean(entry).also { enabled ->
+                validateKotlinJsIC(enabled, "generateContributionHintsInFir", configuration)
+              }
 
           TRANSFORM_PROVIDERS_TO_PRIVATE ->
             transformProvidersToPrivate = configuration.getAsBoolean(entry)
@@ -1329,6 +1479,10 @@ public data class MetroOptions(
 
           CONTRIBUTES_AS_INJECT -> contributesAsInject = configuration.getAsBoolean(entry)
 
+          ENABLE_KLIB_PARAMS_CHECK -> enableKlibParamsCheck = configuration.getAsBoolean(entry)
+
+          PATCH_KLIB_PARAMS -> patchKlibParams = configuration.getAsBoolean(entry)
+
           INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeJavaxAnnotations()
           }
@@ -1350,9 +1504,16 @@ public data class MetroOptions(
           INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeGuiceAnnotations()
           }
+          FORCE_ENABLE_FIR_IN_IDE -> forceEnableFirInIde = configuration.getAsBoolean(entry)
           PLUGIN_ORDER_SET -> {
             pluginOrderSet =
               configuration.getAsString(entry).takeUnless(String::isBlank)?.toBooleanStrict()
+          }
+          COMPILER_VERSION -> {
+            compilerVersion = configuration.getAsString(entry).takeUnless(String::isBlank)
+          }
+          COMPILER_VERSION_ALIASES -> {
+            compilerVersionAliases = configuration.getAsMap(entry)
           }
         }
       }
@@ -1375,6 +1536,11 @@ public data class MetroOptions(
 
     private fun <E> CompilerConfiguration.getAsSet(option: MetroOption): Set<E> {
       @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Set<E>>
+      return get(typed.key, typed.defaultValue)
+    }
+
+    private fun <K, V> CompilerConfiguration.getAsMap(option: MetroOption): Map<K, V> {
+      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Map<K, V>>
       return get(typed.key, typed.defaultValue)
     }
   }

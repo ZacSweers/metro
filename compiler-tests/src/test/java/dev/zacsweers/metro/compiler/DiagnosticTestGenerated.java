@@ -130,6 +130,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testNoProvidesOnParams() {
       runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/NoProvidesOnParams.kt");
     }
+
+    @Test
+    @TestMetadata("SuspiciousIntoSetWithCollection.kt")
+    public void testSuspiciousIntoSetWithCollection() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/SuspiciousIntoSetWithCollection.kt");
+    }
+
+    @Test
+    @TestMetadata("TypeAliasesAreSpecifiedInDiagnostics.kt")
+    public void testTypeAliasesAreSpecifiedInDiagnostics() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/TypeAliasesAreSpecifiedInDiagnostics.kt");
+    }
   }
 
   @Nested
@@ -185,6 +197,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("CyclesShouldFailAcrossMultipleGraphs.kt")
     public void testCyclesShouldFailAcrossMultipleGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/cycles/CyclesShouldFailAcrossMultipleGraphs.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesSccShouldNotCrashReporter.kt")
+    public void testProvidesSccShouldNotCrashReporter() {
+      runTest("compiler-tests/src/test/data/diagnostic/cycles/ProvidesSccShouldNotCrashReporter.kt");
     }
   }
 

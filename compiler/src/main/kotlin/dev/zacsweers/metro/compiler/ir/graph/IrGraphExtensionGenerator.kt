@@ -20,7 +20,7 @@ import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.traceNested
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.irAttribute
@@ -95,11 +95,12 @@ internal class IrGraphExtensionGenerator(
   ): IrClass {
     val sourceFactory = factoryFunction.parentAsClass
     val sourceGraph = sourceFactory.parentAsClass
-    return traceNested("Generate graph extension ${sourceGraph.name}") {
+    return trace("Generate graph extension ${sourceGraph.name}") {
       generateImpl(sourceGraph = sourceGraph, creatorFunction = factoryFunction, typeKey = typeKey)
     }
   }
 
+  context(traceScope: TraceScope)
   private fun generateImpl(
     sourceGraph: IrClass,
     creatorFunction: IrSimpleFunction?,
@@ -120,6 +121,7 @@ internal class IrGraphExtensionGenerator(
         parentGraph = parentGraph,
         originDeclaration = parentGraph,
         containerToAddTo = parentGraph,
+        traceScope = traceScope,
       )
 
     // Ensure a unique name

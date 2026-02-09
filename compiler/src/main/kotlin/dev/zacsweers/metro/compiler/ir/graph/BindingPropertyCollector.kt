@@ -34,6 +34,8 @@ internal class BindingPropertyCollector(
   private val injectorRoots: Set<IrContextualTypeKey> = emptySet(),
   private val extraKeeps: Collection<IrContextualTypeKey> = emptyList(),
   private val deferredTypes: Set<IrTypeKey> = emptySet(),
+  /** Keys that are reachable from roots, used to filter the init order. */
+  private val reachableKeys: Set<IrTypeKey> = emptySet(),
 ) {
 
   data class CollectedProperty(
@@ -85,6 +87,13 @@ internal class BindingPropertyCollector(
   /** Cache of alias type keys to their resolved non-alias target type keys. */
   private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
 
+  /**
+   * Tracks assisted-inject target bindings and their usage counts. Only targets used by multiple
+   * Assisted bindings need FIELD properties for sharing.
+   */
+  private val assistedTargetCounts =
+    LinkedHashMap<IrTypeKey, Pair<IrBinding.ConstructorInjected, Int>>()
+
   /** Counter for assigning switching IDs in switching providers mode. */
   private var nextSwitchingId = 0
 
@@ -106,7 +115,7 @@ internal class BindingPropertyCollector(
       is GraphDependency,
       is Alias,
       is Absent,
-      is Assisted,
+      is AssistedFactory,
       is GraphExtension,
       // Multibindings use GETTER properties, never FIELD (this check is redundant but explicit)
       is Multibinding,
@@ -114,7 +123,7 @@ internal class BindingPropertyCollector(
       is ObjectClass,
       is GraphExtensionFactory -> false
 
-      // Assisted inject factories have different lifecycle
+      // Assisted inject factories do not implement Provider
       is ConstructorInjected if binding.isAssisted -> false
 
       // These can use SwitchingProvider
@@ -142,7 +151,7 @@ internal class BindingPropertyCollector(
     }
   }
 
-  fun collect(): Map<IrContextualTypeKey, CollectedProperty> {
+  fun collect(): List<CollectedProperty> {
     val keysWithBackingProperties = mutableMapOf<IrContextualTypeKey, CollectedProperty>()
 
     // Roots (accessors/injectors) + keeps don't get properties themselves, but they contribute to
@@ -196,7 +205,48 @@ internal class BindingPropertyCollector(
     // factory access.
     visitKeys(sortedKeys.asReversed())
 
-    return keysWithBackingProperties
+    // Add FIELD properties for assisted-inject targets used by multiple Assisted bindings.
+    // Single-use targets don't need fields - they can be inlined.
+    // Collect these separately so we can append them to init order at the end.
+    // Iterate in reverse order to get forward topological order (dependencies before dependents),
+    // since targets were tracked during reverse topological iteration of sortedKeys.
+    val assistedTargetProperties = mutableListOf<CollectedProperty>()
+    for ((_, pair) in assistedTargetCounts.entries.toList().asReversed()) {
+      val (targetBinding, count) = pair
+      if (count > 1) {
+        val prop =
+          CollectedProperty(
+            binding = targetBinding,
+            propertyKind = PropertyKind.FIELD,
+            contextualTypeKey = targetBinding.contextualTypeKey,
+            // Assisted-inject factories don't implement Provider
+            isProviderType = false,
+            // Assisted-inject factories can't use SwitchingProvider
+            switchingId = null,
+          )
+        keysWithBackingProperties[targetBinding.contextualTypeKey] = prop
+        assistedTargetProperties += prop
+      }
+    }
+
+    // Build init order: iterate sorted keys and collect any properties for reachable bindings
+    // For multibindings (especially maps), there may be multiple contextual variants
+    val collectedTypeKeys = keysWithBackingProperties.entries.groupBy { it.key.typeKey }
+    val orderedProperties =
+      buildList(keysWithBackingProperties.size) {
+        for (key in sortedKeys) {
+          if (key in reachableKeys) {
+            collectedTypeKeys[key]?.forEach { (_, prop) -> add(prop) }
+          }
+        }
+        // Add assisted-inject target bindings at the end.
+        // These are not in sortedKeys (they're encapsulated within Assisted bindings).
+        // They must come after their dependencies (which are in sortedKeys) are initialized.
+        // Nothing in sortedKeys depends on them since they're not in the graph.
+        addAll(assistedTargetProperties)
+      }
+
+    return orderedProperties
   }
 
   /**
@@ -209,6 +259,15 @@ internal class BindingPropertyCollector(
   ) {
     // Initialize node (may already exist from markAccess)
     val node = nodes.getOrPut(contextKey) { Node(binding) }
+
+    // Track assisted-inject target usage. Only targets used by multiple Assisted bindings
+    // need FIELD properties for sharing. Single-use targets are inlined.
+    if (binding is IrBinding.AssistedFactory) {
+      val targetBinding = binding.targetBinding
+      val targetKey = targetBinding.typeKey
+      val (existingBinding, count) = assistedTargetCounts[targetKey] ?: (targetBinding to 0)
+      assistedTargetCounts[targetKey] = existingBinding to (count + 1)
+    }
 
     // Graph extensions should never have FIELD properties - they're always scalar getters or
     // inlined. If Provider access is needed, the getter call gets wrapped in InstanceFactory.
@@ -325,10 +384,9 @@ internal class BindingPropertyCollector(
     return when (binding) {
       // Graph dependencies always need fields, unless it's accessing a parent's property
       is GraphDependency if (binding.token == null) -> PropertyKind.FIELD
-      // Assisted types always need to be a single field to ensure use of the same provider
-      is Assisted -> PropertyKind.FIELD
-      // Assisted inject factories use factory path
-      is ConstructorInjected if binding.isAssisted -> PropertyKind.FIELD
+      // Assisted factories are stateless (they just wrap the target's MetroFactory),
+      // so they don't need their own cached field. The target's MetroFactory field
+      // is added separately in processBindingNode when Assisted bindings are encountered.
       // Non-empty multibindings get a getter
       is Multibinding if binding.sourceBindings.isNotEmpty() -> {
         PropertyKind.GETTER

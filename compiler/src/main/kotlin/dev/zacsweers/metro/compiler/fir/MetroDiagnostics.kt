@@ -29,6 +29,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_B
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_TYPE_PARAM_ERROR
@@ -64,6 +65,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_WARNIN
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_SET_INTO_SET
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
 import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
@@ -86,6 +88,7 @@ import org.jetbrains.kotlin.diagnostics.rendering.BaseDiagnosticRendererFactory
 import org.jetbrains.kotlin.diagnostics.rendering.CommonRenderers.STRING
 import org.jetbrains.kotlin.diagnostics.warning0
 import org.jetbrains.kotlin.diagnostics.warning1
+import org.jetbrains.kotlin.diagnostics.warningWithoutSource
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtElement
 
@@ -141,6 +144,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val BINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val SUSPICIOUS_SET_INTO_SET by warning1<KtElement, String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val NON_PUBLIC_CONTRIBUTION_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val NON_PUBLIC_CONTRIBUTION_WARNING by warning1<KtElement, String>(VISIBILITY_MODIFIER)
@@ -173,11 +177,12 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val METRO_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val KNOWN_KOTLINC_BUG_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val KNOWN_KOTLINC_BUG_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SOURCELESS_METRO_ERROR by errorWithoutSource()
-  val SOURCELESS_METRO_WARNING by errorWithoutSource()
+  val SOURCELESS_METRO_WARNING by warningWithoutSource()
 
   override fun getRendererFactory(): BaseDiagnosticRendererFactory {
-    return FirMetroErrorMessages
+    return MetroErrorMessages
   }
 }
 
@@ -185,7 +190,7 @@ internal fun AbstractKtDiagnosticFactory.asSourcelessFactory(): KtSourcelessDiag
   return KtSourcelessDiagnosticFactory(name, severity, rendererFactory)
 }
 
-private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
+private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
   override val MAP by
     KtDiagnosticFactoryToRendererMap("Metro") { map ->
       map.apply {
@@ -273,6 +278,7 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(BINDS_ERROR, "{0}", STRING)
         put(BINDS_OPTIONAL_OF_ERROR, "{0}", STRING)
         put(BINDS_OPTIONAL_OF_WARNING, "{0}", STRING)
+        put(SUSPICIOUS_SET_INTO_SET, "{0}", STRING)
         put(MULTIBINDS_ERROR, "{0}", STRING)
         put(MULTIBINDS_OVERRIDE_ERROR, "{0}", STRING)
         put(MAP_KEY_ERROR, "{0}", STRING)
@@ -301,6 +307,7 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(METRO_ERROR, "{0}", TO_STRING)
         put(METRO_WARNING, "{0}", TO_STRING)
         put(KNOWN_KOTLINC_BUG_ERROR, "{0}", TO_STRING)
+        put(KNOWN_KOTLINC_BUG_WARNING, "{0}", TO_STRING)
         put(SOURCELESS_METRO_ERROR, "{0}")
         put(SOURCELESS_METRO_WARNING, "{0}")
         put(GRAPH_DEPENDENCY_CYCLE, "[Metro/GraphDependencyCycle] {0}", TO_STRING)

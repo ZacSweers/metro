@@ -45,14 +45,11 @@ abstract class BaseIncrementalCompilationTest {
     val lookups
       get() = dir.resolveSafe("lookups.csv").readText()
 
-    val traceLog
-      get() = dir.resolveSafe("traceLog.txt").readText()
-
     val log
       get() = dir.resolveSafe("log.txt").readText()
 
-    val timings
-      get() = dir.resolveSafe("timings.csv").readText()
+    val trace
+      get() = dir.resolveSafe("trace").listFiles().single()
 
     fun irHintsForScope(scopeFqName: String): String {
       return dir.resolveSafe("discovered-hints-ir-$scopeFqName.txt").readText()

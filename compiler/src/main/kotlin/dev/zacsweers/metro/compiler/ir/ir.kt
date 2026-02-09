@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
@@ -13,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.isGraphImpl
@@ -38,6 +40,7 @@ import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
@@ -170,7 +173,11 @@ import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.TargetPlatform
+import org.jetbrains.kotlin.platform.isJs
+import org.jetbrains.kotlin.platform.isWasm
 import org.jetbrains.kotlin.platform.jvm.isJvm
+import org.jetbrains.kotlin.platform.konan.isNative
 import org.jetbrains.kotlin.types.Variance
 
 /** Finds the line and column of [this] within its file. */
@@ -1551,6 +1558,139 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
     it.type.classOrNull?.owner?.isAnnotatedWithAny(annotationsToLookFor) == true
   }
 }
+
+/**
+ * Patches the qualifier annotation on an [IrValueParameter] to match the correct one.
+ *
+ * This is used to work around https://github.com/ZacSweers/metro/issues/1556 where klib
+ * deserialization can produce incorrect qualifier annotations on parameters.
+ */
+context(context: IrMetroContext)
+internal fun patchQualifierAnnotation(
+  parameter: IrValueParameter,
+  correctQualifier: IrConstructorCall?,
+) {
+  // Remove any existing qualifier annotations
+  parameter.annotations -=
+    parameter.annotationsAnnotatedWith(context.metroSymbols.classIds.qualifierAnnotations)
+  // Add the correct qualifier if present
+  correctQualifier?.let { parameter.annotations += it }
+}
+
+/**
+ * Checks and optionally patches mismatches between mirror function parameters and their
+ * corresponding generated function parameters.
+ *
+ * This is used to work around https://github.com/ZacSweers/metro/issues/1556 where klib
+ * deserialization can produce incorrect qualifier annotations on parameters.
+ *
+ * @param factoryClass the factory class containing the create/newInstance functions
+ * @param newInstanceFunctionName the name of the newInstance function to look up
+ * @param mirrorParams the parameters from the mirror function to compare against
+ * @param reportingFunction the function to report diagnostics on (for error messages)
+ * @param primaryConstructorParamOffset offset when indexing into primary constructor params
+ * @param extractParams function to extract the list of [Parameter]s from a function
+ * @return true if there was an unpatched mismatch, false otherwise
+ */
+context(context: IrMetroContext)
+internal fun checkMirrorParamMismatches(
+  factoryClass: IrClass,
+  newInstanceFunctionName: String,
+  mirrorFunction: IrSimpleFunction,
+  mirrorParams: () -> List<Parameter>,
+  reportingFunction: IrFunction?,
+  primaryConstructorParamOffset: Int,
+  extractParams: (IrFunction) -> List<Parameter>,
+): Boolean {
+  if (!factoryClass.shouldCheckMirrorParamMismatches()) return false
+
+  val staticContainer = factoryClass.requireStaticIshDeclarationContainer()
+
+  val newInstanceFunction by memoize {
+    staticContainer.requireSimpleFunction(newInstanceFunctionName).owner
+  }
+  val newInstanceFunctionParams by memoize { extractParams(newInstanceFunction) }
+
+  val createFunction = staticContainer.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+  val createFunctionParams = extractParams(createFunction)
+
+  var hadUnpatchedMismatch = false
+  for ((i, mirrorP) in mirrorParams().withIndex()) {
+    val createP = createFunctionParams[i]
+    if (createP.typeKey != mirrorP.typeKey) {
+      reportMirrorParamMismatch(reportingFunction ?: mirrorFunction, mirrorP, createP)
+
+      if (context.options.patchKlibParams) {
+        val correctQualifier = mirrorP.contextualTypeKey.typeKey.qualifier?.ir
+        patchQualifierAnnotation(createFunctionParams[i].asValueParameter, correctQualifier)
+        patchQualifierAnnotation(newInstanceFunctionParams[i].asValueParameter, correctQualifier)
+        factoryClass.primaryConstructor
+          ?.parameters()
+          ?.regularParameters
+          ?.getOrNull(i + primaryConstructorParamOffset)
+          ?.asValueParameter
+          ?.let { patchQualifierAnnotation(it, correctQualifier) }
+      } else {
+        hadUnpatchedMismatch = true
+      }
+    }
+  }
+  return hadUnpatchedMismatch
+}
+
+context(context: IrMetroContext)
+internal fun IrDeclarationParent.shouldCheckMirrorParamMismatches(): Boolean {
+  return isExternalParent &&
+    shouldCheckMirrorParamMismatches(context.options, context.platform) {
+      context.languageVersionSettings.supportsFeature(LanguageFeature.AnnotationsInMetadata)
+    }
+}
+
+internal inline fun shouldCheckMirrorParamMismatches(
+  options: MetroOptions,
+  platform: TargetPlatform?,
+  annotationsInMetadataEnabled: () -> Boolean,
+): Boolean {
+  return options.enableKlibParamsCheck &&
+    // Only on klib platforms by default
+    (platform.isNative() ||
+      platform.isWasm() ||
+      platform.isJs() ||
+      // Enabled on JVM IFF the AnnotationsInMetadata flag is enabled
+      (platform.isJvm() && annotationsInMetadataEnabled()))
+}
+
+context(context: IrMetroContext)
+private fun reportMirrorParamMismatch(
+  function: IrFunction?,
+  mirrorParameter: Parameter,
+  createParameter: Parameter,
+): Unit =
+  with(context) {
+    if (options.patchKlibParams) {
+      // We'll patch it
+      return
+    }
+    val diagnostic =
+      if (options.patchKlibParams) {
+        MetroDiagnostics.KNOWN_KOTLINC_BUG_WARNING
+      } else {
+        MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR
+      }
+
+    val message = buildString {
+      appendLine("Mirror/create function parameter type mismatch:")
+      appendLine("  - Source:         ${function?.kotlinFqName?.asString()}")
+      appendLine("  - Mirror param:   ${mirrorParameter.typeKey}")
+      appendLine("  - create() param: ${createParameter.typeKey}")
+      appendLine()
+      appendLine(
+        "This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556"
+      )
+    }
+
+    reportCompat(function, diagnostic, message)
+  }
 
 context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {

@@ -23,6 +23,7 @@ internal class MetroFirBuiltIns(
   val classIds: ClassIds,
   val predicates: ExtensionPredicates,
   val options: MetroOptions,
+  val compatContext: CompatContext,
 ) : FirExtensionSessionComponent(session) {
 
   val errorFunctionSymbol by memoize {
@@ -179,9 +180,10 @@ internal class MetroFirBuiltIns(
   }
 
   companion object {
-    fun getFactory(classIds: ClassIds, options: MetroOptions) = Factory { session ->
-      MetroFirBuiltIns(session, classIds, ExtensionPredicates(classIds), options)
-    }
+    fun getFactory(classIds: ClassIds, options: MetroOptions, compatContext: CompatContext) =
+      Factory { session ->
+        MetroFirBuiltIns(session, classIds, ExtensionPredicates(classIds), options, compatContext)
+      }
   }
 }
 
@@ -193,6 +195,5 @@ internal val FirSession.classIds: ClassIds
 internal val FirSession.predicates: ExtensionPredicates
   get() = metroFirBuiltIns.predicates
 
-@Suppress("UnusedReceiverParameter")
-internal val FirSession.compatContext: CompatContext
-  get() = CompatContext.getInstance()
+internal inline val FirSession.compatContext: CompatContext
+  get() = metroFirBuiltIns.compatContext

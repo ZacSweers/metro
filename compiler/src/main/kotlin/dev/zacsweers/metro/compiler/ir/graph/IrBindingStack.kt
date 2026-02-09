@@ -484,7 +484,7 @@ internal fun bindingStackEntryForDependency(
         isMirrorFunction = false,
       )
     }
-    is Assisted -> {
+    is AssistedFactory -> {
       Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
     }
     is MembersInjected -> {

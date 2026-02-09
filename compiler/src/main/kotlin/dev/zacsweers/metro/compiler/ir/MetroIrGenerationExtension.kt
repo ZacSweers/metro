@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
-import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -41,36 +40,53 @@ public class MetroIrGenerationExtension(
         expectActualTracker,
       )
 
-    context(context) { generateInner(moduleFragment) }
+    context.traceDriver.use {
+      context.generateInner(moduleFragment)
+      if (options.traceEnabled) {
+        // Find and print the trace file
+        options.traceDir.value?.let { traceDir ->
+          traceDir
+            .toFile()
+            .walkTopDown()
+            .find { it.extension == "perfetto-trace" }
+            ?.let {
+              context.log(
+                // Trailing space intentional for terminal linkifying
+                "Metro trace written to file://${it.absolutePath} "
+              )
+            }
+        }
+      }
+    }
   }
 
-  context(context: IrMetroContext)
-  private fun generateInner(moduleFragment: IrModuleFragment) {
-    context.log("Starting IR processing of ${moduleFragment.name.asString()}")
+  private fun IrMetroContext.generateInner(moduleFragment: IrModuleFragment) {
+    log("Starting IR processing of ${moduleFragment.name.asString()}")
     try {
-      tracer(moduleFragment.name.asString().removePrefix("<").removeSuffix(">"), "Metro compiler")
-        .trace {
+      traceWithScope(moduleFragment.name.asString().removePrefix("<").removeSuffix(">")) {
+        trace("Metro compiler") {
           // Create contribution data container
-          val contributionData = IrContributionData(context)
+          val contributionData = IrContributionData(metroContext)
 
           // First - transform `MetroContribution` interfaces and collect contribution data in a
           // single pass
-          traceNested("Transform contributions") {
-            moduleFragment.transform(ContributionTransformer(context), contributionData)
+          trace("Transform contributions") {
+            moduleFragment.transform(ContributionTransformer(metroContext, this), contributionData)
           }
 
           // Second - transform the dependency graphs
-          traceNested("Core transformers") {
+          trace("Core transformers") {
             val dependencyGraphTransformer =
               DependencyGraphTransformer(
-                context,
+                metroContext,
                 contributionData,
                 this,
-                HintGenerator(context, moduleFragment),
+                HintGenerator(metroContext, moduleFragment),
               )
             moduleFragment.transform(dependencyGraphTransformer, null)
           }
         }
+      }
     } catch (_: ExitProcessingException) {
       // Reported internally
       return

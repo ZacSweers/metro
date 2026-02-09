@@ -4,14 +4,14 @@ package dev.zacsweers.metro.compiler.graph
 
 import androidx.collection.ScatterMap
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.compiler.testTraceScope
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.Tracer
 import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import org.junit.Test
 
-class BindingGraphTest : TraceScope by TraceScope(Tracer.NONE) {
+class BindingGraphTest : TraceScope by testTraceScope() {
 
   @Test
   fun put() {
@@ -85,7 +85,9 @@ class BindingGraphTest : TraceScope by TraceScope(Tracer.NONE) {
     bindingGraph.tryPut(bBinding)
 
     val exception =
-      assertFailsWith<IllegalStateException> { bindingGraph.seal(shrinkUnusedBindings = false) }
+      assertFailsWith<IllegalStateException> {
+        val _ = bindingGraph.seal(shrinkUnusedBindings = false)
+      }
     assertThat(exception)
       .hasMessageThat()
       .contains(
@@ -105,6 +107,51 @@ class BindingGraphTest : TraceScope by TraceScope(Tracer.NONE) {
   }
 
   @Test
+  fun `seal ignores soft cycles and reports only the hard cycle within a complex SCC`() {
+    val a = "A".typeKey
+    val b = "B".typeKey
+    val c = "C".typeKey
+    val d = "D".typeKey
+
+    // SCC: {A, B, C, D}
+    // Legal cycle: A -> B -> Provider<A>
+    // Illegal cycle : D -> B -> C -> D
+
+    val aBinding = a.toBinding(b.contextualTypeKey)
+    val bBinding = b.toBinding("Provider<A>".contextualTypeKey, c.contextualTypeKey)
+    val cBinding = c.toBinding(d.contextualTypeKey)
+    val dBinding = d.toBinding(b.contextualTypeKey)
+
+    val bindingGraph = newStringBindingGraph()
+    bindingGraph.tryPut(aBinding)
+    bindingGraph.tryPut(bBinding)
+    bindingGraph.tryPut(cBinding)
+    bindingGraph.tryPut(dBinding)
+
+    val exception =
+      assertFailsWith<IllegalStateException> {
+        val _ = bindingGraph.seal(shrinkUnusedBindings = false)
+      }
+
+    val message = exception.message!!
+
+    val cycleLine = message.lines().find { it.contains("-->") }?.trim() ?: ""
+
+    // Must contain B, C, and D, not A
+    assertThat(cycleLine).contains("B")
+    assertThat(cycleLine).contains("C")
+    assertThat(cycleLine).contains("D")
+    assertThat(cycleLine).doesNotContain("A")
+
+    // Verify Trace
+    val traceSection = message.substringAfter("Trace:")
+    assertThat(traceSection).doesNotContain("A")
+    assertThat(traceSection).contains("B")
+    assertThat(traceSection).contains("C")
+    assertThat(traceSection).contains("D")
+  }
+
+  @Test
   fun `TypeKey dependsOn returns true for dependent keys`() {
     val a = "A".typeKey
     val b = "B".typeKey
@@ -114,7 +161,7 @@ class BindingGraphTest : TraceScope by TraceScope(Tracer.NONE) {
 
     bindingGraph.tryPut(aBinding)
     bindingGraph.tryPut(bBinding)
-    bindingGraph.seal(shrinkUnusedBindings = false)
+    val _ = bindingGraph.seal(shrinkUnusedBindings = false)
 
     with(bindingGraph) {
       assertThat(a.dependsOn(b)).isTrue()
@@ -135,7 +182,7 @@ class BindingGraphTest : TraceScope by TraceScope(Tracer.NONE) {
     bindingGraph.tryPut(aBinding)
     bindingGraph.tryPut(bBinding)
     bindingGraph.tryPut(bindingC)
-    bindingGraph.seal(shrinkUnusedBindings = false)
+    val _ = bindingGraph.seal(shrinkUnusedBindings = false)
 
     with(bindingGraph) {
       // Direct dependency
@@ -371,6 +418,7 @@ private fun newStringBindingGraph(
   )
 }
 
+@IgnorableReturnValue
 context(traceScope: TraceScope)
 private fun buildGraph(
   body: StringGraphBuilder.() -> Unit
@@ -396,11 +444,13 @@ internal class StringGraphBuilder {
     setOfNotNull(constructorInjectedTypes[contextKey.typeKey])
   }
 
+  @IgnorableReturnValue
   fun binding(key: String): String {
     binding(key.contextualTypeKey)
     return key
   }
 
+  @IgnorableReturnValue
   fun binding(contextKey: StringContextualTypeKey): StringContextualTypeKey {
     tryPut(contextKey.typeKey.toBinding())
     return contextKey
@@ -410,21 +460,25 @@ internal class StringGraphBuilder {
     graph.tryPut(binding)
   }
 
+  @IgnorableReturnValue
   infix fun String.dependsOn(other: String): String {
     typeKey.dependsOn(other.contextualTypeKey)
     return other
   }
 
+  @IgnorableReturnValue
   infix fun StringTypeKey.dependsOn(other: String): String {
     dependsOn(other.contextualTypeKey)
     return other
   }
 
+  @IgnorableReturnValue
   infix fun StringTypeKey.dependsOn(other: StringTypeKey): StringTypeKey {
     dependsOn(other.contextualTypeKey)
     return other
   }
 
+  @IgnorableReturnValue
   infix fun StringTypeKey.dependsOn(other: StringContextualTypeKey): StringContextualTypeKey {
     val currentDeps = graph[this]?.dependencies.orEmpty()
     val newBinding = StringBinding(this, currentDeps + other)
@@ -435,6 +489,7 @@ internal class StringGraphBuilder {
     return other
   }
 
+  @IgnorableReturnValue
   infix fun StringBinding.dependsOn(other: StringContextualTypeKey): StringContextualTypeKey {
     val currentDeps = dependencies
     graph.tryPut(typeKey.toBinding(currentDeps + other))

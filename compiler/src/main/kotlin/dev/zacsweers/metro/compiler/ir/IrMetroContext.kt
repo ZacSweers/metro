@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import androidx.tracing.TraceDriver
+import androidx.tracing.wire.TraceDriver
+import androidx.tracing.wire.TraceSink
 import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
@@ -11,15 +14,18 @@ import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import dev.zacsweers.metro.compiler.ir.cache.IrCachesFactory
 import dev.zacsweers.metro.compiler.ir.cache.IrThreadUnsafeCachesFactory
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import dev.zacsweers.metro.compiler.tracing.Tracer
-import dev.zacsweers.metro.compiler.tracing.tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.io.File
 import java.nio.file.Path
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.io.path.appendText
+import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
+import okio.blackholeSink
+import okio.buffer
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -35,6 +41,7 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 
 internal interface IrMetroContext : IrPluginContext, CompatContext {
+  // TODO inline extension?
   val metroContext
     get() = this
 
@@ -51,11 +58,11 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   val reportsDir: Path?
 
+  val traceDriver: TraceDriver
+
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
   val logFile: Path?
-  val traceLogFile: Path?
-  val timingsFile: Path?
   val lookupFile: Path?
   val expectActualFile: Path?
 
@@ -78,19 +85,9 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     logFile?.appendText("$message\n")
   }
 
-  fun logTrace(message: String) {
-    @Suppress("DEPRECATION")
-    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
-    traceLogFile?.appendText("$message\n")
-  }
-
   fun logVerbose(message: String) {
     @Suppress("DEPRECATION")
     messageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
-  }
-
-  fun logTiming(tag: String, description: String, durationMs: Long) {
-    timingsFile?.appendText("\n$tag,$description,${durationMs}")
   }
 
   fun logLookup(
@@ -206,23 +203,18 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
           }
         }
       }
-      override val traceLogFile: Path? by lazy {
-        reportsDir?.let {
-          it.resolve("traceLog.txt").apply {
-            deleteIfExists()
-            createFile()
-          }
-        }
-      }
 
-      override val timingsFile: Path? by lazy {
-        reportsDir?.let {
-          it.resolve("timings.csv").apply {
-            deleteIfExists()
-            createFile()
-            appendText("tag,description,durationMs")
+      override val traceDriver: TraceDriver by lazy {
+        val tracePath = options.traceDir.value
+        val sink =
+          if (tracePath == null) {
+            TraceSink(sequenceId = 1, blackholeSink().buffer(), EmptyCoroutineContext)
+          } else {
+            tracePath.deleteIfExists()
+            tracePath.createDirectories()
+            TraceSink(sequenceId = 1, directory = tracePath.toFile())
           }
-        }
+        TraceDriver(sink = sink, isEnabled = tracePath != null)
       }
 
       override val lookupFile: Path? by lazy {
@@ -287,11 +279,8 @@ internal fun writeDiagnostic(fileName: () -> String, text: () -> String) {
 }
 
 context(context: IrMetroContext)
-internal fun tracer(tag: String, description: String): Tracer =
-  if (context.traceLogFile != null || context.timingsFile != null || context.debug) {
-    check(tag.isNotBlank()) { "Tag must not be blank" }
-    check(description.isNotBlank()) { "description must not be blank" }
-    tracer(tag, description, context::logTrace, context::logTiming)
-  } else {
-    Tracer.NONE
-  }
+internal inline fun traceWithScope(category: String, body: TraceScope.() -> Unit) {
+  val driver = context.traceDriver
+  check(category.isNotBlank()) { "Category must not be blank" }
+  TraceScope(driver.tracer, category).body()
+}

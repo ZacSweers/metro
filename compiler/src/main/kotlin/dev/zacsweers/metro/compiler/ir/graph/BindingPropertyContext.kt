@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.MutableObjectIntMap
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -52,7 +53,7 @@ internal class BindingPropertyContext(
 ) {
   private val properties = mutableMapOf<IrContextualTypeKey, IrProperty>()
   private val shardProperties = mutableMapOf<IrContextualTypeKey, IrProperty>()
-  private val shardIndices = mutableMapOf<IrContextualTypeKey, Int>()
+  private val shardIndices = MutableObjectIntMap<IrContextualTypeKey>()
 
   /** Lazily computed map of ancestor graph keys to their contexts. */
   private val ancestorContextCache: Map<IrTypeKey, BindingPropertyContext> by lazy {
@@ -98,8 +99,13 @@ internal class BindingPropertyContext(
   context(metroContext: IrMetroContext)
   fun get(key: IrContextualTypeKey, searchParents: Boolean = false): BindingProperty? {
     // Direct match in current context
-    properties[key]?.let {
-      return BindingProperty(it, key, shardProperties[key], shardIndices[key])
+    properties[key]?.let { property ->
+      return BindingProperty(
+        property = property,
+        storedKey = key,
+        shardProperty = shardProperties[key],
+        shardIndex = shardIndices.getOrDefault(key, -1).takeUnless { it == -1 },
+      )
     }
 
     // For non-provider requests, try provider key (a provider can satisfy an instance request)
@@ -117,7 +123,7 @@ internal class BindingPropertyContext(
           property = it,
           storedKey = providerKey,
           shardProperty = shardProperties[providerKey],
-          shardIndex = shardIndices[providerKey],
+          shardIndex = shardIndices.getOrDefault(providerKey, -1).takeUnless { it == -1 },
         )
       }
     }

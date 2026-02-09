@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
+import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
@@ -28,7 +29,6 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
@@ -65,7 +65,6 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class InjectConstructorTransformer(
   context: IrMetroContext,
@@ -134,35 +133,22 @@ internal class InjectConstructorTransformer(
           // Look up the injectable constructor for direct invocation optimization
           val externalTargetConstructor = targetConstructor()
 
-          if (platform.isNative()) {
-            // Validate qualifiers due to https://github.com/ZacSweers/metro/issues/1556
-            val createFunctionParams =
-              factoryCls
-                .requireStaticIshDeclarationContainer()
-                .requireSimpleFunction(Symbols.StringNames.CREATE)
-                .owner
-                .parameters()
-                .allParameters
-            for ((i, mirrorP) in
-              parameters.nonDispatchParameters.filterNot { it.isAssisted }.withIndex()) {
-              val createP = createFunctionParams[i]
-              if (createP.typeKey != mirrorP.typeKey) {
-                reportCompat(
-                  parameters.ir,
-                  MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR,
-                  """
-                Mirror/create function parameter type mismatch:
-                  - Source:         ${parameters.ir?.kotlinFqName?.asString()}
-                  - Mirror param:   ${mirrorP.typeKey}
-                  - create() param: ${createP.typeKey}
-
-                This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
-              """
-                    .trimIndent(),
-                )
-                return null
-              }
+          // Validate and optionally patch parameter types due to
+          // https://github.com/ZacSweers/metro/issues/1556
+          val hadUnpatchedMismatch =
+            checkMirrorParamMismatches(
+              factoryClass = factoryCls,
+              newInstanceFunctionName = Symbols.StringNames.NEW_INSTANCE,
+              mirrorFunction = mirrorFunction,
+              mirrorParams = { parameters.nonDispatchParameters.filterNot { it.isAssisted } },
+              reportingFunction = externalTargetConstructor,
+              primaryConstructorParamOffset = 0,
+            ) {
+              it.parameters().allParameters
             }
+
+          if (hadUnpatchedMismatch) {
+            return null
           }
 
           val wrapper = ClassFactory.MetroFactory(factoryCls, parameters, externalTargetConstructor)

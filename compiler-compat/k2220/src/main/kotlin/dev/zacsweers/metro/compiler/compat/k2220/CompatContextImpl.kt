@@ -6,6 +6,8 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
+import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
@@ -14,6 +16,7 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol as getContainingClassSymbolNative
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingSymbol as getContainingSymbolNative
 import org.jetbrains.kotlin.fir.copy as copyDeclarationNative
+import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
@@ -26,9 +29,12 @@ import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.FirSimpleFunctionBuilder
 import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.impl.FirResolvedDeclarationStatusImpl
+import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
 import org.jetbrains.kotlin.fir.plugin.createMemberFunction as createMemberFunctionNative
@@ -231,6 +237,26 @@ public class CompatContextImpl : CompatContext {
 
   override fun IrProperty.addBackingFieldCompat(builder: IrFieldBuilder.() -> Unit): IrField {
     return addBackingField(builder)
+  }
+
+  override val FirClassLikeSymbol<*>.isLocalCompat: Boolean
+    get() = isLocal
+
+  override val FirClass.isLocalCompat: Boolean
+    get() = isLocal
+
+  context(_: CompilerPluginRegistrar)
+  override fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
+    extension: FirExtensionRegistrar
+  ) {
+    FirExtensionRegistrarAdapter.registerExtension(extension)
+  }
+
+  context(_: CompilerPluginRegistrar)
+  override fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
+    extension: IrGenerationExtension
+  ) {
+    IrGenerationExtension.registerExtension(extension)
   }
 
   public class Factory : CompatContext.Factory {
