@@ -26,24 +26,10 @@ Yes, Metro is _functionally_ stable and ready for production use. Its runtime an
 
 See the [stability docs](stability.md) for more details.
 
-### **Why doesn't Metro support `@Reusable`?**
-
-!!! tip "Some technical context"
-    `@Reusable` works almost identically in code gen as scoped types, it just uses `SingleCheck` instead of `DoubleCheck`. It's basically like using `lazy(NONE)` instead of `lazy(SYNCHRONIZED)`.
-
-A few different reasons Metro doesn't have it
-
-- I think it risks being like `@Stable` in compose where people chase it for perceived performance benefits that they have not profiled or would not actualize if they did. Basically it becomes a premature optimization vector
-    - Ron Shapiro (the author of it) even said you shouldn't use it or scoping in general [for performance reasons] unless you've measured it: https://medium.com/@shapiro.rd/reusable-has-many-of-the-same-costs-as-singleton-c20b5d1ef308
-- Most people don't really know when to use it. It doesn't really strike a balance so much as blurs the line for limited value (see: the first bullet).
-- It invites people to make unclear assumptions. It's pretty simple to assume something stateful is always a new instance or always the same scoped instance. It is harder to envision scenarios where you have stateful types where you don't care about knowing if it's shared or not. You could say this should only be for stateless types then, but then you're deciding...
-    - Do you want to limit instances? Just scope it
-    - Do you not care about limiting instances? Don't scope it
-- What's the expected behavior if you have a `@Reusable` type `Thing` and then request a `Lazy<Thing>` elsewhere? Currently, Metro `DoubleCheck.lazy(...)`'s whatever binding provides it at the injection site, which would then defeat this. To undo that, Metro would need to introduce some means of indicating "what kind" of `Lazy` is needed, which just complicates things for the developer.
-
 ### **Why doesn't Metro support kotlin-inject-style `@IntoMap` bindings?**
 
 !!! tip "Some technical context"
+
     kotlin-inject allows you to provide key/value pairs from an `@IntoMap` function rather than use `@MapKey` annotations.
 
 This allows some dynamism with keys but has some downsides. A few different reasons Metro doesn't use this approach
@@ -56,7 +42,31 @@ This allows some dynamism with keys but has some downsides. A few different reas
 
 No.
 
-## Hilt FAQ
+## Dagger/Hilt FAQ
+
+### **In Dagger I could make declarations `internal` and it worked, why doesn't that work in Metro?**
+
+In short, it "works" in Dagger in the same way that any other access of Kotlin internal types "works" in **Java** sources. These types are always `public` (albeit sometimes with mangled names). This led to patterns of `internal` providers, `internal` Dagger modules, etc. This almost certainly also led to some degree of incremental compilation issues since `internal` declarations are usually excluded from a given module's ABI unless you use `@PublishedApi`.
+
+This pattern doesn't fly in Metro because Metro is an all-Kotlin system, meaning it fully understands the Kotlin language's visibility system and must also abide by it. It's necessary for both correctness and incremental compilation.
+
+Test source sets are able to do this because of a separate compiler mechanism called "associated compilations" that allow them to declare external compilations as "friend paths", and that must be configured at the build system level (it's done automatically by KGP for `main`/`test` source sets). Metro _does_ respect associated compilations, and will use `internal` symbols from other modules IFF they are designated "friend" modules.
+
+### **Why doesn't Metro support `@Reusable`?**
+
+!!! tip "Some technical context"
+
+    `@Reusable` works almost identically in code gen as scoped types, it just uses `SingleCheck` instead of `DoubleCheck`. It's basically like using `lazy(NONE)` instead of `lazy(SYNCHRONIZED)`.
+
+A few different reasons Metro doesn't have it
+
+- I think it risks being like `@Stable` in compose where people chase it for perceived performance benefits that they have not profiled or would not actualize if they did. Basically it becomes a premature optimization vector
+    - Ron Shapiro (the author of it) even said you shouldn't use it or scoping in general [for performance reasons] unless you've measured it: https://medium.com/@shapiro.rd/reusable-has-many-of-the-same-costs-as-singleton-c20b5d1ef308
+- Most people don't really know when to use it. It doesn't really strike a balance so much as blurs the line for limited value (see: the first bullet).
+- It invites people to make unclear assumptions. It's pretty simple to assume something stateful is always a new instance or always the same scoped instance. It is harder to envision scenarios where you have stateful types where you don't care about knowing if it's shared or not. You could say this should only be for stateless types then, but then you're deciding...
+    - Do you want to limit instances? Just scope it
+    - Do you not care about limiting instances? Don't scope it
+- What's the expected behavior if you have a `@Reusable` type `Thing` and then request a `Lazy<Thing>` elsewhere? Currently, Metro `DoubleCheck.lazy(...)`'s whatever binding provides it at the injection site, which would then defeat this. To undo that, Metro would need to introduce some means of indicating "what kind" of `Lazy` is needed, which just complicates things for the developer.
 
 ### **Will Metro add support for Hilt features or Hilt interop?**
 
