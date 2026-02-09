@@ -93,7 +93,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#kotlin-compatibility" class="md-skip">
+        <a href="#kotlin-compiler-compatibility" class="md-skip">
           Skip to content
         </a>
       
@@ -1010,6 +1010,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#runtime-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gradle-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradle Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-about-metros-stability" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1529,6 +1551,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#runtime-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gradle-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradle Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-about-metros-stability" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1572,7 +1616,7 @@
   
 
 
-<h1 id="kotlin-compatibility">Kotlin Compatibility<a class="headerlink" href="#kotlin-compatibility" title="Permanent link">&para;</a></h1>
+<h1 id="kotlin-compiler-compatibility">Kotlin Compiler Compatibility<a class="headerlink" href="#kotlin-compiler-compatibility" title="Permanent link">&para;</a></h1>
 <p>The Kotlin compiler plugin API is not a stable API, so not every version of Metro will work with every version of the Kotlin compiler.</p>
 <p>Starting with Metro <code>0.6.9</code>, Metro tries to support forward compatibility on a best-effort basis. Usually, it&rsquo;s <code>N+.2</code> (so a Metro version built against Kotlin <code>2.3.0</code> will try to support up to <code>2.3.20</code>.</p>
 <p>Pre-release versions are normally only tested during their development cycle. After their stable release, Metro should continue to work with them but they will no longer be tested against. Their last tested release is indicated by putting the version in brackets like <code>[0.9.1]</code>.</p>
@@ -1698,7 +1742,7 @@
 </thead>
 <tbody>
 <tr>
-<td>2.3.20-dev-5437</td>
+<td>2.3.20-dev-5706</td>
 </tr>
 <tr>
 <td>2.3.20-Beta2</td>
@@ -1741,6 +1785,10 @@
 </tr>
 </tbody>
 </table>
+<h2 id="runtime-compatibility">Runtime Compatibility<a class="headerlink" href="#runtime-compatibility" title="Permanent link">&para;</a></h2>
+<p>Metro&rsquo;s runtime artifacts target Kotlin languageVersion and apiVersion <code>2.2</code>.</p>
+<h2 id="gradle-compatibility">Gradle Compatibility<a class="headerlink" href="#gradle-compatibility" title="Permanent link">&para;</a></h2>
+<p>Metro&rsquo;s Gradle plugin targets Kotlin languageVersion and apiVersion <code>2.0</code>.</p>
 <h2 id="what-about-metros-stability">What about Metro&rsquo;s stability?<a class="headerlink" href="#what-about-metros-stability" title="Permanent link">&para;</a></h2>
 <p>See the <a href="../stability/">stability docs</a>.</p>
 
