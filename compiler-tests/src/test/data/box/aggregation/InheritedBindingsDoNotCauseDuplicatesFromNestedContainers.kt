@@ -1,6 +1,4 @@
-// Tests that modules nested inside a component class don't cause duplicate bindings.
-// When a @ContributesTo module is nested inside another class (like a component),
-// it should only be contributed once, not twice.
+// Tests that bindings that are inherited by graph extensions don't get reported as duplicates
 
 interface Repository
 

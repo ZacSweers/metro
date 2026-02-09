@@ -1,6 +1,6 @@
 // ENABLE_DAGGER_INTEROP
 // WITH_ANVIL
-// Simplified test for nested modules bug
+// Simplified test that bindings that are inherited by graph extensions don't get reported as duplicates
 
 import com.squareup.anvil.annotations.ContributesTo
 import com.squareup.anvil.annotations.MergeComponent

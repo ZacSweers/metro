@@ -140,6 +140,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("InheritedBindingsDoNotCauseDuplicatesFromNestedContainers.kt")
+    public void testInheritedBindingsDoNotCauseDuplicatesFromNestedContainers() {
+      runTest("compiler-tests/src/test/data/box/aggregation/InheritedBindingsDoNotCauseDuplicatesFromNestedContainers.kt");
+    }
+
+    @Test
     @TestMetadata("InternalHintsInContributedGraph.kt")
     public void testInternalHintsInContributedGraph() {
       runTest("compiler-tests/src/test/data/box/aggregation/InternalHintsInContributedGraph.kt");
@@ -173,12 +179,6 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("MultipleBindingReplacementsFromSameClassDifferentScopes.kt")
     public void testMultipleBindingReplacementsFromSameClassDifferentScopes() {
       runTest("compiler-tests/src/test/data/box/aggregation/MultipleBindingReplacementsFromSameClassDifferentScopes.kt");
-    }
-
-    @Test
-    @TestMetadata("NestedContributedModuleShouldNotCauseDuplicateBindings.kt")
-    public void testNestedContributedModuleShouldNotCauseDuplicateBindings() {
-      runTest("compiler-tests/src/test/data/box/aggregation/NestedContributedModuleShouldNotCauseDuplicateBindings.kt");
     }
 
     @Test
@@ -1650,15 +1650,15 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
         }
 
         @Test
-        @TestMetadata("NestedDaggerModulesShouldNotCauseDuplicateBindings.kt")
-        public void testNestedDaggerModulesShouldNotCauseDuplicateBindings() {
-          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/NestedDaggerModulesShouldNotCauseDuplicateBindings.kt");
+        @TestMetadata("InheritedBindingsDoNotCauseDuplicates.kt")
+        public void testInheritedBindingsDoNotCauseDuplicates() {
+          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/InheritedBindingsDoNotCauseDuplicates.kt");
         }
 
         @Test
-        @TestMetadata("NestedDaggerModulesShouldNotCauseDuplicateBindingsSimple.kt")
-        public void testNestedDaggerModulesShouldNotCauseDuplicateBindingsSimple() {
-          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/NestedDaggerModulesShouldNotCauseDuplicateBindingsSimple.kt");
+        @TestMetadata("InheritedBindingsDoNotCauseDuplicates2.kt")
+        public void testInheritedBindingsDoNotCauseDuplicates2() {
+          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/InheritedBindingsDoNotCauseDuplicates2.kt");
         }
       }
     }

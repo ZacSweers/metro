@@ -1,10 +1,7 @@
 // ENABLE_DAGGER_INTEROP
 // WITH_ANVIL
-// Tests that Dagger @Module classes nested inside a component class don't cause duplicate bindings.
-// When a @ContributesTo @Module is nested inside another class (like a component),
-// it should only be contributed once, not twice.
+// Tests that bindings that are inherited by graph extensions don't get reported as duplicates
 //
-// This is a regression test for a bug where nested modules caused duplicate binding errors.
 // The bug manifests in two ways depending on the component hierarchy:
 // 1. "Multiple bindings found for X ... (Hint) Bindings are all equal" - when both duplicate
 //    bindings have distinct reportable locations
