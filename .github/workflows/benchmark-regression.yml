@@ -44,23 +44,11 @@ jobs:
             echo "current_name=PR #${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Limit the size of the cache entry.
-          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
-          gradle-home-cache-excludes: |
-            caches/jars-9
-            caches/transforms-3
 
       # Run baseline benchmark
       - name: Checkout baseline (${{ steps.refs.outputs.baseline_name }})
@@ -367,23 +355,11 @@ jobs:
             echo "current_name=PR #${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Limit the size of the cache entry.
-          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
-          gradle-home-cache-excludes: |
-            caches/jars-9
-            caches/transforms-3
 
       - name: Get cache key for gradle-profiler
         id: gradle-profiler-cache-key

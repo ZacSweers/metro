@@ -37,28 +37,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
-          # Only save Gradle User Home state for builds on the 'main' branch.
-          # Builds on other branches will only read existing entries from the cache.
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-
-          # Don't reuse cache entries from any other Job.
-          gradle-home-cache-strict-match: true
-
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Limit the size of the cache entry.
-          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
-          gradle-home-cache-excludes: |
-            caches/jars-9
-            caches/transforms-3
 
       - name: Generate API docs
         # NOTE: The `dokkaPublications.html` task is pre-configured to generate HTML in `/docs/api`.
@@ -169,23 +152,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Limit the size of the cache entry.
-          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
-          gradle-home-cache-excludes: |
-            caches/jars-9
-            caches/transforms-3
 
       - name: Generate API docs
         run: ./scripts/generate_docs_dokka.sh

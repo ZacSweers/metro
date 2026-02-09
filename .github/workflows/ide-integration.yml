@@ -53,39 +53,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          gradle-home-cache-excludes: |
-            caches/jars-9
-            caches/transforms-3
-
-      - name: Cache konan
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.konan/cache
-            ~/.konan/dependencies
-            ~/.konan/kotlin-native-macos*
-            ~/.konan/kotlin-native-mingw*
-            ~/.konan/kotlin-native-windows*
-            ~/.konan/kotlin-native-linux*
-            ~/.konan/kotlin-native-prebuilt-macos*
-            ~/.konan/kotlin-native-prebuilt-mingw*
-            ~/.konan/kotlin-native-prebuilt-windows*
-            ~/.konan/kotlin-native-prebuilt-linux*
-          key: ${{ runner.os }}-konan-${{ hashFiles('**/*.gradle*') }}
-          restore-keys: |
-            ${{ runner.os }}-konan-
+          konan: true
 
       - name: Publish Metro to functionalTestRepo
         run: ./gradlew :installForFunctionalTest --quiet
@@ -120,21 +93,11 @@ jobs:
           name: metro-repo
           path: build/functionalTestRepo
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          gradle-home-cache-excludes: |
-            caches/jars-9
-            caches/transforms-3
 
       - name: Install aria2
         run: sudo apt-get install -y aria2
