@@ -38,8 +38,7 @@ pluginManager.withPlugin("com.android.application") {
     configureCommonAndroid()
     defaultConfig { targetSdk = 36 }
     buildTypes {
-      maybeCreate("release").apply {
-        signingConfig = signingConfigs.getByName("debug")
+      maybeCreate("debug").apply {
         matchingFallbacks += listOf("release")
       }
     }
