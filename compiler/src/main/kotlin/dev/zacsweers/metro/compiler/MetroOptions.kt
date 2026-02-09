@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
 import org.jetbrains.kotlin.js.config.jsIncrementalCompilationEnabled
+import org.jetbrains.kotlin.js.config.wasmCompilation
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -1313,7 +1314,7 @@ public data class MetroOptions(
       optionName: String,
       configuration: CompilerConfiguration,
     ) {
-      if (enabled && configuration.jsIncrementalCompilationEnabled) {
+      if (enabled && configuration.jsIncrementalCompilationEnabled && !configuration.wasmCompilation) {
         configuration.messageCollector.report(
           CompilerMessageSeverity.ERROR,
           "Kotlin/JS does not support generating top-level declarations with incremental compilation enabled. " +
