@@ -1314,7 +1314,9 @@ public data class MetroOptions(
       optionName: String,
       configuration: CompilerConfiguration,
     ) {
-      if (enabled && configuration.jsIncrementalCompilationEnabled && !configuration.wasmCompilation) {
+      if (
+        enabled && configuration.jsIncrementalCompilationEnabled && !configuration.wasmCompilation
+      ) {
         configuration.messageCollector.report(
           CompilerMessageSeverity.ERROR,
           "Kotlin/JS does not support generating top-level declarations with incremental compilation enabled. " +
