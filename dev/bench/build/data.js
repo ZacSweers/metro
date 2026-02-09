@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770615703699,
+  "lastUpdate": 1770679091007,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -5040,6 +5040,62 @@ window.BENCHMARK_DATA = {
             "value": 21488.329999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.01%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5199c399~1",
+          "message": "[before] Kotlin 2.4.0 support + small fixes (#1794)",
+          "timestamp": "2026-02-09T17:43:53-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5199c3992ec463998ea5a66a5414d240dd8d8dfa"
+        },
+        "date": 1770679091007,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19598.0,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5199c3992ec463998ea5a66a5414d240dd8d8dfa",
+          "message": "[after] Kotlin 2.4.0 support + small fixes (#1794)",
+          "timestamp": "2026-02-09T17:43:53-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5199c3992ec463998ea5a66a5414d240dd8d8dfa"
+        },
+        "date": 1770679091008,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20256.5,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +3.36%"
           }
         ]
       }
