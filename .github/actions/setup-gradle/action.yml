@@ -27,12 +27,6 @@ runs:
         distribution: 'zulu'
         java-version-file: .github/workflows/.java-version
 
-    - name: Cache Gradle wrapper
-      uses: actions/cache@v5
-      with:
-        path: ~/.gradle/wrapper/dists
-        key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
-
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v5
       with:
@@ -43,6 +37,12 @@ runs:
           caches/jars-9
           caches/transforms-3
           wrapper/dists
+
+    - name: Cache Gradle wrapper
+      uses: actions/cache@v5
+      with:
+        path: ~/.gradle/wrapper/dists
+        key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
 
     - name: Cache konan
       if: inputs.konan == 'true'
