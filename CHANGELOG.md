@@ -40,8 +40,7 @@ Changelog
 - **[IR]**: Rework assisted inject bindings to be encapsulated by their consuming assisted factory bindings in graph validation.
     - This ensures these classes can't accidentally participate in `SwitchingProvider`s or valid cycle breaking with `DelegateFactory`, as both of those require `Provider` types and assisted-inject types' factories don't implement `Provider`.
 - **[Gradle]**: Avoid deprecated `KotlinCompilation.implementationConfigurationName` API.
-- `enableTopLevelFunctionInjection`, `generateContributionHintsInFir`, and `supportedHintContributionPlatforms` are no longer enabled by default on `2.3.20+` for Kotlin/JS as it turns out this does not yet support generating top-level declarations from compiler plugins with incremental compilation enabled.
-    - You can enable them manually still, but you must disable incremental compilation for JS compilations in order for it to succeed.
+- `enableTopLevelFunctionInjection`, `generateContributionHintsInFir`, and `supportedHintContributionPlatforms` will error if enabled on Kotlin/JS with JS incremental compilation enabled as it turns out this does not yet support generating top-level declarations from compiler plugins with incremental compilation enabled.
     - Please star https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989.
 - Fold `2.3.20-dev-7791` compat into `2.3.20-Beta2` compat, meaning the former is no longer tested on CI.
 - Test Kotlin `2.3.20-Beta2`.

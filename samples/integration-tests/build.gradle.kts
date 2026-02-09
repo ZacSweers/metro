@@ -16,22 +16,31 @@ android {
   buildFeatures { viewBinding = true }
 }
 
+metro {}
+
+// TODO: Re-enable JS targets for 2.2.20 and 2.2.21
+val kotlinVersion = libs.versions.kotlin.get()
+val enableJsTargets = kotlinVersion != "2.2.20" && kotlinVersion != "2.2.21"
+
 @OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
 kotlin {
   androidTarget()
   jvm()
 
-  js {
-    browser()
-    // https://youtrack.jetbrains.com/issue/KT-82989
-    compilations.configureEach {
-      compileTaskProvider.configure {
-        incremental = false
-        @Suppress("INVISIBLE_REFERENCE")
-        incrementalJsKlib = false
+  if (enableJsTargets) {
+    js {
+      browser()
+      // https://youtrack.jetbrains.com/issue/KT-82989
+      compilations.configureEach {
+        compileTaskProvider.configure {
+          incremental = false
+          @Suppress("INVISIBLE_REFERENCE")
+          incrementalJsKlib = false
+        }
       }
     }
   }
+
   wasmJs { browser() }
   wasmWasi { nodejs() }
 
@@ -65,7 +74,6 @@ kotlin {
   }
 
   targets.configureEach {
-    val target = this
     compilations.configureEach {
       compileTaskProvider.configure {
         compilerOptions.freeCompilerArgs.add(

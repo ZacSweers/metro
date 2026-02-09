@@ -118,11 +118,10 @@ constructor(
       .booleanProperty()
       .convention(
         compilerVersion.map {
-          // Kotlin 2.3.20-Beta1, FIR hint gen is fully supported on all platforms are supported
-          // except JS
+          // Kotlin 2.3.20-Beta1, FIR hint gen is fully supported on all platforms.
+          // JS is further gated on incremental compilation being disabled in MetroGradleSubplugin.
           // https://youtrack.jetbrains.com/issue/KT-82395
           // https://youtrack.jetbrains.com/issue/KT-82989
-          KotlinPlatformType.entries.filterNot { it == KotlinPlatformType.js }
           KotlinVersions.supportsTopLevelFirGen(it)
         }
       )
@@ -147,10 +146,10 @@ constructor(
       .convention(
         compilerVersion.map { version ->
           if (KotlinVersions.supportsTopLevelFirGen(version)) {
-            // Kotlin 2.3.20, all platforms are supported except JS
+            // Kotlin 2.3.20, all platforms are supported. JS is further gated on
+            // incremental compilation being disabled in MetroGradleSubplugin.
             // https://youtrack.jetbrains.com/issue/KT-82395
-            // https://youtrack.jetbrains.com/issue/KT-82989
-            KotlinPlatformType.entries.filterNot { it == KotlinPlatformType.js }
+            KotlinPlatformType.entries.toSet()
           } else {
             // Only jvm/android work prior to Kotlin 2.3.20
             setOf(KotlinPlatformType.common, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm)

@@ -9,9 +9,11 @@ import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
+import org.jetbrains.kotlin.js.config.jsIncrementalCompilationEnabled
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -1306,6 +1308,21 @@ public data class MetroOptions(
       return Builder().apply(body).build()
     }
 
+    private fun validateKotlinJsIC(
+      enabled: Boolean,
+      optionName: String,
+      configuration: CompilerConfiguration,
+    ) {
+      if (enabled && configuration.jsIncrementalCompilationEnabled) {
+        configuration.messageCollector.report(
+          CompilerMessageSeverity.ERROR,
+          "Kotlin/JS does not support generating top-level declarations incremental compilation enabled. " +
+            "See https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989. " +
+            "Either disable $optionName for JS targets or disable JS IC.",
+        )
+      }
+    }
+
     internal fun load(configuration: CompilerConfiguration): MetroOptions = buildOptions {
       for (entry in MetroOption.entries) {
         when (entry) {
@@ -1330,13 +1347,22 @@ public data class MetroOptions(
             generateThrowsAnnotations = configuration.getAsBoolean(entry)
 
           ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
-            enableTopLevelFunctionInjection = configuration.getAsBoolean(entry)
+            enableTopLevelFunctionInjection =
+              configuration.getAsBoolean(entry).also { enabled ->
+                validateKotlinJsIC(enabled, "enableTopLevelFunctionInjection", configuration)
+              }
 
           GENERATE_CONTRIBUTION_HINTS ->
-            generateContributionHints = configuration.getAsBoolean(entry)
+            generateContributionHints =
+              configuration.getAsBoolean(entry).also { enabled ->
+                validateKotlinJsIC(enabled, "generateContributionHints", configuration)
+              }
 
           GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
-            generateContributionHintsInFir = configuration.getAsBoolean(entry)
+            generateContributionHintsInFir =
+              configuration.getAsBoolean(entry).also { enabled ->
+                validateKotlinJsIC(enabled, "generateContributionHintsInFir", configuration)
+              }
 
           TRANSFORM_PROVIDERS_TO_PRIVATE ->
             transformProvidersToPrivate = configuration.getAsBoolean(entry)
