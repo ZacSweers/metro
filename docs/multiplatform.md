@@ -12,10 +12,10 @@ The runtime and code gen have been implemented to be entirely platform-agnostic 
 | interop-dagger               |  ✅  | ✅       | ―  |        ―        |        ―        |        ―        |        ―        |        ―        |
 | interop-guice                |  ✅  | ✅       | ―  |        ―        |        ―        |        ―        |        ―        |        ―        |
 | ---                          |  -  | -       | -  |        -        |        -        |        -        |        -        |        -        |
-| Multi-module aggregation     |  ✅  | ✅       | ❌  | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` |
-| Top-level function injection |  ✅  | ✅       | ❌  | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` |
+| Multi-module aggregation     |  ✅  | ✅       | 🟡 | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` |
+| Top-level function injection |  ✅  | ✅       | 🟡 | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` |
 
-Kotlin/JS does not yet support generating top-level declarations from compiler plugins on any version. Please star https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989.
+🟡 — Kotlin/JS does not yet support generating top-level declarations from compiler plugins on any version with incremental compilation enabled. Please star https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989.
 
 **Legend:**
 - **WASM**: wasmJs, wasmWasi
