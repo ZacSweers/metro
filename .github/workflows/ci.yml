@@ -77,12 +77,8 @@ jobs:
           check_name: 'Test Report - core / ${{ matrix.kotlin-compiler }}'
 
   samples:
-    name: "samples / ${{ matrix.kotlin-compiler }}"
+    name: samples
     runs-on: ubuntu-latest
-    needs: generate-matrix
-    strategy:
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
-      fail-fast: false
     permissions:
       checks: write
 
@@ -100,14 +96,14 @@ jobs:
       - name: Check samples
         run: |
           # We have to regen package locks because the kotlin yarn/node/etc build tooling is brittle
-          ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet '-Dmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-          ./gradlew -p samples check --continue --quiet '-Dmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          ./gradlew -p samples check --continue --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: reports-samples-${{ runner.os }}-${{ matrix.kotlin-compiler }}
+          name: reports-samples
           path: |
             **/build/reports/**
 
@@ -116,7 +112,7 @@ jobs:
         if: failure()
         with:
           report_paths: 'samples/**/build/test-results/**/TEST-*.xml'
-          check_name: 'Test Report - samples / ${{ matrix.kotlin-compiler }}'
+          check_name: 'Test Report - samples'
 
   # Run multiplatform tests on main only to reduce PR time
   # Note: We use step-level conditions instead of job-level to ensure matrix expands and shows nice names

@@ -32,30 +32,24 @@ run_gradle_all() {
 run_checks() {
     local compiler_version="$1"
     local version_flag=""
-    local version_sys_flag=""
 
     if [[ -n "$compiler_version" ]]; then
         version_flag="-Pmetro.testCompilerVersion=$compiler_version"
-        version_sys_flag="-Dmetro.testCompilerVersion=$compiler_version"
         echo "Running checks with Kotlin version $compiler_version..."
     else
         echo "Running checks..."
     fi
 
     ./gradlew check -x dokkaGeneratePublicationHtml $version_flag
-    # TODO enable samples check with version flag
-    #./gradlew -p samples check $version_sys_flag
 }
 
 # Function to run tests with optional compiler version
 run_tests() {
     local compiler_version="$1"
     local version_flag=""
-    local version_sys_flag=""
 
     if [[ -n "$compiler_version" ]]; then
         version_flag="-Pmetro.testCompilerVersion=$compiler_version"
-        version_sys_flag="-Dmetro.testCompilerVersion=$compiler_version"
         echo "Running tests with Kotlin version $compiler_version..."
     else
         echo "Running tests..."
@@ -63,8 +57,8 @@ run_tests() {
 
     ./gradlew :compiler:test :compiler-tests:test :gradle-plugin:functionalTest :runtime:allTests $version_flag --quiet -x logLinkDokkaGeneratePublicationHtml -x dokkaGeneratePublicationHtml
     # We have to regen package locks because the kotlin yarn/node/etc build tooling is brittle
-    ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_sys_flag
-    ./gradlew -p samples :integration-tests:allTests $version_sys_flag --quiet
+    ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet
+    ./gradlew -p samples :integration-tests:allTests --quiet
 }
 
 case "$1" in

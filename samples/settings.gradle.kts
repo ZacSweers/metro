@@ -23,7 +23,6 @@ dependencyResolutionManagement {
   versionCatalogs {
     maybeCreate("libs").apply {
       from(files("../gradle/libs.versions.toml"))
-      System.getProperty("metro.testCompilerVersion")?.let { version("kotlin", it) }
     }
   }
   repositories {
