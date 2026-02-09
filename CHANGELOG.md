@@ -28,7 +28,6 @@ Changelog
 
 - **[IR]**: Avoid `IllegalStateException: No value parameter found` issues when reconstructing dependency cycle stacks to report cycle errors.
 - **[IR]**: Fix a scenario where bindings available in both graphs and their extensions didn't properly consolidate to one binding.
-- **[IR]**: Fix an internal binding lookup collection that was accidentally using a Set to collect duplicate bindings, resulting in "Multiple bindings found for X ... (Hint) Bindings are all equal" compiler errors.
 
 ### Changes
 

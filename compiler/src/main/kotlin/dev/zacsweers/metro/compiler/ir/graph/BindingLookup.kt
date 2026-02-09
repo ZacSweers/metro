@@ -65,7 +65,7 @@ internal class BindingLookup(
 
   // Single cache for all bindings, storing lists to track duplicates naturally
   private val bindingsCache = mutableMapOf<IrTypeKey, IrBinding>()
-  private val duplicateBindings = mutableMapOf<IrTypeKey, MutableList<IrBinding>>()
+  private val duplicateBindings = mutableMapOf<IrTypeKey, MutableSet<IrBinding>>()
   private val classBindingsCache = mutableMapOf<IrContextualTypeKey, Set<IrBinding>>()
 
   private data class ParentGraphDepKey(val owner: IrClass, val typeKey: IrTypeKey)
@@ -585,7 +585,7 @@ internal class BindingLookup(
       // First check cached bindings
       bindingsCache[key]?.let { binding ->
         // Report duplicates if there are multiple bindings
-        duplicateBindings[key]?.let { onDuplicateBindings(key, it) }
+        duplicateBindings[key]?.let { onDuplicateBindings(key, it.toList()) }
 
         // Check if this is available from parent and is scoped
         if (binding.scope != null && parentContext?.contains(key) == true) {
