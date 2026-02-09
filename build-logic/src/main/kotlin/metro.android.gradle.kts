@@ -3,6 +3,7 @@
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.CommonExtension
 import com.android.build.api.dsl.LibraryExtension
+import com.android.build.api.variant.LibraryAndroidComponentsExtension
 
 val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
 val jvmTargetVersion = catalog.findVersion("jvmTarget").get().requiredVersion
@@ -23,6 +24,13 @@ fun CommonExtension<*, *, *, *, *, *>.configureCommonAndroid() {
 // Android Library configuration
 pluginManager.withPlugin("com.android.library") {
   extensions.configure<LibraryExtension> { configureCommonAndroid() }
+  configure<LibraryAndroidComponentsExtension> {
+    logger.lifecycle("Single-varianting android lib ${project.path}")
+    beforeVariants { variant ->
+      // Single-variant libraries
+      variant.enable = variant.buildType != "debug"
+    }
+  }
 }
 
 // Android Application configuration
