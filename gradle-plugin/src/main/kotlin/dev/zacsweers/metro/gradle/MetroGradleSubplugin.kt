@@ -1,4 +1,4 @@
-// Copyright (C) 2021 Zac Sweers
+// Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
@@ -30,13 +30,17 @@ import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
   KotlinCompilerPluginSupportPlugin {
 
-  private companion object {
-    val gradleMetroKotlinVersion by
+  public companion object {
+    /** The version of Kotlin that this build of Metro was compiled against */
+    public val metroCompiledKotlinVersion: String
+      get() = BASE_KOTLIN_VERSION
+
+    private val gradleMetroKotlinVersion by
       lazy(LazyThreadSafetyMode.NONE) {
         KotlinVersion.fromVersion(BASE_KOTLIN_VERSION.substringBeforeLast('.'))
       }
 
-    val PROBLEM_GROUP: ProblemGroup = ProblemGroup.create("metro-group", "Metro Problems")
+    private val PROBLEM_GROUP: ProblemGroup = ProblemGroup.create("metro-group", "Metro Problems")
 
     private const val COMPILER_VERSION_OVERRIDE = "metro.compilerVersionOverride"
     private const val COMPILER_VERSION_OVERRIDE_PROPERTY = "metroCompilerVersionOverride"
@@ -230,7 +234,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
 
     if (extension.automaticallyAddRuntimeDependencies.get()) {
       project.dependencies.add(
-        kotlinCompilation.implementationConfigurationName,
+        kotlinCompilation.defaultSourceSet.implementationConfigurationName,
         "dev.zacsweers.metro:runtime:$VERSION",
       )
       if (

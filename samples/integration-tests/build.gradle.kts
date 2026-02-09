@@ -1,5 +1,6 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import dev.zacsweers.metro.gradle.MetroGradleSubplugin
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -49,7 +50,11 @@ kotlin {
   sourceSets {
     commonTest {
       dependencies {
-        implementation(libs.kotlin.test)
+        // Because klib reasons, force use of the same kotlin-test version that we compiled it
+        // against
+        implementation(
+          "org.jetbrains.kotlin:kotlin-test:${MetroGradleSubplugin.metroCompiledKotlinVersion}"
+        )
         implementation(libs.coroutines)
       }
     }
