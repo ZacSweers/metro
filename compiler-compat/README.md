@@ -131,14 +131,14 @@ This allows Metro to support multiple Kotlin versions without requiring separate
 
 ### Track-Based Resolution
 
-dev track versions (e.g., `2.3.20-dev-5437`) are handled specially to avoid issues with divergent release tracks.
+dev track versions (e.g., `2.3.20-dev-5706`) are handled specially to avoid issues with divergent release tracks.
 
 Kotlin's release process can create divergent version tracks:
 - **dev builds** are from the main development branch (trunk)
 - **Beta/RC builds** are cut from stable branches with different changes
 
 For example:
-- `2.3.20-dev-5437` - has API change X
+- `2.3.20-dev-5706` - has API change X
 - `2.3.20-Beta1` - released from a branch, has API change X + Y
 - `2.3.20-dev-7791` - new dev build, has X + Z (not Y from Beta1)
 
