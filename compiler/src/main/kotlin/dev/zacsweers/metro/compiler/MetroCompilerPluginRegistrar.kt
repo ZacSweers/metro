@@ -7,7 +7,6 @@ import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
-import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector

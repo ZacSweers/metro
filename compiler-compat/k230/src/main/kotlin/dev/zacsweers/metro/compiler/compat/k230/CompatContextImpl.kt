@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.compat.k230
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.k2220.CompatContextImpl as DelegateType
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
@@ -10,7 +11,9 @@ import org.jetbrains.kotlin.KtSourceElementOffsetStrategy
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.fakeElement as fakeElementNative
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.copy as copyDeclarationNative
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
@@ -30,6 +33,8 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
+import org.jetbrains.kotlin.fir.plugin.createMemberFunction as createMemberFunctionNative
+import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelFunctionNative
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
@@ -50,14 +55,9 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
+import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
-import dev.zacsweers.metro.compiler.compat.k2220.CompatContextImpl as DelegateType
-import org.jetbrains.kotlin.fakeElement as fakeElementNative
-import org.jetbrains.kotlin.fir.copy as copyDeclarationNative
-import org.jetbrains.kotlin.fir.plugin.createMemberFunction as createMemberFunctionNative
-import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelFunctionNative
-import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 
 public class CompatContextImpl : CompatContext by DelegateType() {
 

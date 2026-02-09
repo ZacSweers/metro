@@ -490,7 +490,9 @@ public interface CompatContext {
     message = "2.4 moved APIs around here",
   )
   context(_: CompilerPluginRegistrar)
-  public fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(extension: FirExtensionRegistrar)
+  public fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
+    extension: FirExtensionRegistrar
+  )
 
   @CompatApi(
     since = "2.4.0",
@@ -498,7 +500,9 @@ public interface CompatContext {
     message = "2.4 moved APIs around here",
   )
   context(_: CompilerPluginRegistrar)
-  public fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(extension: IrGenerationExtension)
+  public fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
+    extension: IrGenerationExtension
+  )
 }
 
 private data class FactoryData(
