@@ -16,7 +16,6 @@ public abstract interface annotation class dev/zacsweers/metro/gradle/MetroExten
 }
 
 public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrains/kotlin/gradle/plugin/KotlinCompilerPluginSupportPlugin {
-	public static final field Companion Ldev/zacsweers/metro/gradle/MetroGradleSubplugin$Companion;
 	public fun <init> (Lorg/gradle/api/problems/Problems;)V
 	public synthetic fun apply (Ljava/lang/Object;)V
 	public fun apply (Lorg/gradle/api/Project;)V
@@ -25,10 +24,6 @@ public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrai
 	public fun getPluginArtifact ()Lorg/jetbrains/kotlin/gradle/plugin/SubpluginArtifact;
 	public fun getPluginArtifactForNative ()Lorg/jetbrains/kotlin/gradle/plugin/SubpluginArtifact;
 	public fun isApplicable (Lorg/jetbrains/kotlin/gradle/plugin/KotlinCompilation;)Z
-}
-
-public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin$Companion {
-	public final fun getMetroCompiledKotlinVersion ()Ljava/lang/String;
 }
 
 public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {

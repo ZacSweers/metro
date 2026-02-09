@@ -30,17 +30,13 @@ import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
   KotlinCompilerPluginSupportPlugin {
 
-  public companion object {
-    /** The version of Kotlin that this build of Metro was compiled against */
-    public val metroCompiledKotlinVersion: String
-      get() = BASE_KOTLIN_VERSION
-
-    private val gradleMetroKotlinVersion by
+  private companion object {
+    val gradleMetroKotlinVersion by
       lazy(LazyThreadSafetyMode.NONE) {
         KotlinVersion.fromVersion(BASE_KOTLIN_VERSION.substringBeforeLast('.'))
       }
 
-    private val PROBLEM_GROUP: ProblemGroup = ProblemGroup.create("metro-group", "Metro Problems")
+    val PROBLEM_GROUP: ProblemGroup = ProblemGroup.create("metro-group", "Metro Problems")
 
     private const val COMPILER_VERSION_OVERRIDE = "metro.compilerVersionOverride"
     private const val COMPILER_VERSION_OVERRIDE_PROPERTY = "metroCompilerVersionOverride"
@@ -238,7 +234,8 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
         "dev.zacsweers.metro:runtime:$VERSION",
       )
       if (
-        kotlinCompilation.implementationConfigurationName == "metadataCompilationImplementation"
+        kotlinCompilation.defaultSourceSet.implementationConfigurationName ==
+          "metadataCompilationImplementation"
       ) {
         project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
       }
@@ -246,13 +243,13 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       if (isJvmTarget) {
         if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
           project.dependencies.add(
-            kotlinCompilation.implementationConfigurationName,
+            kotlinCompilation.defaultSourceSet.implementationConfigurationName,
             "dev.zacsweers.metro:interop-dagger:$VERSION",
           )
         }
         if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
           project.dependencies.add(
-            kotlinCompilation.implementationConfigurationName,
+            kotlinCompilation.defaultSourceSet.implementationConfigurationName,
             "dev.zacsweers.metro:interop-guice:$VERSION",
           )
         }

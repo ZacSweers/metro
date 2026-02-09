@@ -10,12 +10,9 @@ import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
-
-interface MetroProjectExtension {
-  val jvmTarget: Property<String>
-}
 
 val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
 val jdkVersion = catalog.findVersion("jdk").get().requiredVersion
@@ -56,34 +53,57 @@ plugins.withType<KotlinBasePlugin> {
     configure<KotlinProjectExtension> { explicitApi() }
   }
 
-  // TODO move this to a DSL
-  // Configuration required to produce unique META-INF/*.kotlin_module file names
-  val artifactId = project.findProperty("POM_ARTIFACT_ID")?.toString()
   tasks.withType<KotlinCompilationTask<*>>().configureEach {
     compilerOptions {
-      progressiveMode.convention(true)
+      progressiveMode.convention(metroExtension.progressiveMode)
+      languageVersion.convention(metroExtension.languageVersion)
+      apiVersion.convention(metroExtension.apiVersion)
       if (this is KotlinJvmCompilerOptions) {
         jvmTarget.convention(metroExtension.jvmTarget.map(JvmTarget::fromTarget))
         jvmDefault.convention(JvmDefaultMode.NO_COMPATIBILITY)
         freeCompilerArgs.addAll("-Xassertions=jvm", "-Xannotation-default-target=param-property")
-        artifactId?.let(moduleName::convention)
       }
     }
   }
 }
 
-// Maven publish configuration
-plugins.withId("com.vanniktech.maven.publish") {
-  // Apply dokka for non-compiler projects
-  if (project.path != ":compiler" && !project.path.startsWith(":compiler-compat")) {
-    apply(plugin = "org.jetbrains.dokka")
+pluginManager.withPlugin("metro.publish") {
+  val metroPublish = extensions.getByType<MetroPublishExtension>()
+  tasks.withType<KotlinCompilationTask<*>>().configureEach {
+    compilerOptions {
+      if (this is KotlinJvmCompilerOptions) {
+        // Configuration required to produce unique META-INF/*.kotlin_module file names
+        moduleName.set(metroPublish.artifactId)
+      }
+    }
   }
 
-  extensions.configure<MavenPublishBaseExtension> {
-    publishToMavenCentral(
-      automaticRelease = true,
-      validateDeployment = DeploymentValidation.VALIDATED,
-    )
+  val isNotCompiler = project.path != ":compiler" && !project.path.startsWith(":compiler-compat")
+
+  if (isNotCompiler) {
+    val metroRuntimeLanguageVersion =
+      catalog.findVersion("metro-runtime-languageVersion").get().requiredVersion
+    val runtimeKotlinVersion = KotlinVersion.fromVersion(metroRuntimeLanguageVersion)
+    metroExtension.languageVersion.convention(runtimeKotlinVersion)
+    metroExtension.apiVersion.convention(runtimeKotlinVersion)
+    if (runtimeKotlinVersion < KotlinVersion.DEFAULT) {
+      metroExtension.progressiveMode.set(false)
+    }
+  }
+
+  // Maven publish configuration
+  plugins.withId("com.vanniktech.maven.publish") {
+    // Apply dokka for non-compiler projects
+    if (isNotCompiler) {
+      apply(plugin = "org.jetbrains.dokka")
+    }
+
+    extensions.configure<MavenPublishBaseExtension> {
+      publishToMavenCentral(
+        automaticRelease = true,
+        validateDeployment = DeploymentValidation.VALIDATED,
+      )
+    }
   }
 }
 

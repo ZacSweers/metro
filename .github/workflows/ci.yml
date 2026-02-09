@@ -98,7 +98,10 @@ jobs:
           konan: true
 
       - name: Check samples
-        run: ./gradlew -p samples check --continue --quiet '-Dmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+        run:
+          # We have to regen package locks because the kotlin yarn/node/etc build tooling is brittle
+          ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet '-Dmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          ./gradlew -p samples check --continue --quiet '-Dmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()

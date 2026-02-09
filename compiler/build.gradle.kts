@@ -4,12 +4,12 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
-  alias(libs.plugins.mavenPublish)
   alias(libs.plugins.poko)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
   alias(libs.plugins.shadow) apply false
   alias(libs.plugins.testkit)
+  id("metro.publish")
 }
 
 kotlin {
