@@ -1316,7 +1316,7 @@ public data class MetroOptions(
       if (enabled && configuration.jsIncrementalCompilationEnabled) {
         configuration.messageCollector.report(
           CompilerMessageSeverity.ERROR,
-          "Kotlin/JS does not support generating top-level declarations incremental compilation enabled. " +
+          "Kotlin/JS does not support generating top-level declarations with incremental compilation enabled. " +
             "See https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989. " +
             "Either disable $optionName for JS targets or disable JS IC.",
         )
