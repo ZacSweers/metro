@@ -521,7 +521,6 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
       // Get its computed value to plug in below
       val providerValue = provideValueProvider()
-      assertThat(graph.javaClass.getDeclaredField("provideValueProvider"))
       assertThat(graph.callProperty<Int>("valueLengths")).isEqualTo(providerValue.length * 2)
     }
   }
