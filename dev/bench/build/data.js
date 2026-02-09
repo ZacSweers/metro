@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770590446004,
+  "lastUpdate": 1770615703699,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -4984,6 +4984,62 @@ window.BENCHMARK_DATA = {
             "value": 22215.291999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.18%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Alex Doubov",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Alex Doubov",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "96db7814~1",
+          "message": "[before] Fix inherited bindings duplicate binding error (#1",
+          "timestamp": "2026-02-09T05:02:24Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/96db78140e20edcd941088b38736e1d32aa37811"
+        },
+        "date": 1770615703699,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21708.052000000003,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Alex Doubov",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Alex Doubov",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "96db78140e20edcd941088b38736e1d32aa37811",
+          "message": "[after] Fix inherited bindings duplicate binding error (#1",
+          "timestamp": "2026-02-09T05:02:24Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/96db78140e20edcd941088b38736e1d32aa37811"
+        },
+        "date": 1770615703700,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21488.329999999998,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.01%"
           }
         ]
       }
