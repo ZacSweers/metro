@@ -6,14 +6,12 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
+import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
-import org.jetbrains.kotlin.fakeElement as fakeElementNative
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol as getContainingClassSymbolNative
-import org.jetbrains.kotlin.fir.analysis.checkers.getContainingSymbol as getContainingSymbolNative
-import org.jetbrains.kotlin.fir.copy as copyDeclarationNative
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
@@ -31,10 +29,10 @@ import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
-import org.jetbrains.kotlin.fir.plugin.createMemberFunction as createMemberFunctionNative
-import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelFunctionNative
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -54,9 +52,15 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
-import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.fakeElement as fakeElementNative
+import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol as getContainingClassSymbolNative
+import org.jetbrains.kotlin.fir.analysis.checkers.getContainingSymbol as getContainingSymbolNative
+import org.jetbrains.kotlin.fir.copy as copyDeclarationNative
+import org.jetbrains.kotlin.fir.plugin.createMemberFunction as createMemberFunctionNative
+import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelFunctionNative
+import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 
 public class CompatContextImpl : CompatContext {
   override fun FirBasedSymbol<*>.getContainingClassSymbol(): FirClassLikeSymbol<*>? =
@@ -240,6 +244,18 @@ public class CompatContextImpl : CompatContext {
 
   override val FirClass.isLocalCompat: Boolean
     get() = isLocal
+
+  context(_: CompilerPluginRegistrar)
+  override fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(extension: FirExtensionRegistrar) {
+    FirExtensionRegistrarAdapter.registerExtension(extension)
+  }
+
+  context(_: CompilerPluginRegistrar)
+  override fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
+    extension: IrGenerationExtension
+  ) {
+    IrGenerationExtension.registerExtension(extension)
+  }
 
   public class Factory : CompatContext.Factory {
     override val minVersion: String = "2.2.20"

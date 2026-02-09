@@ -12,7 +12,6 @@ plugins {
   alias(libs.plugins.kotlin.plugin.serialization)
   `java-gradle-plugin`
   alias(libs.plugins.buildConfig)
-  alias(libs.plugins.testkit)
   alias(libs.plugins.android.lint)
   alias(libs.plugins.shadow) apply false
   id("metro.base")

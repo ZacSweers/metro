@@ -6,7 +6,9 @@ import java.util.ServiceLoader
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
@@ -481,6 +483,22 @@ public interface CompatContext {
     message = "2.3 moved APIs around here",
   )
   public val FirClass.isLocalCompat: Boolean
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 moved APIs around here",
+  )
+  context(_: CompilerPluginRegistrar)
+  public fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(extension: FirExtensionRegistrar)
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 moved APIs around here",
+  )
+  context(_: CompilerPluginRegistrar)
+  public fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(extension: IrGenerationExtension)
 }
 
 private data class FactoryData(

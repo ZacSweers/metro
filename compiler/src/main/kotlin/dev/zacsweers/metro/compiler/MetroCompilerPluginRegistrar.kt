@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.cli.common.messages.MessageRenderer.PLAIN_FULL_PATHS
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 
 public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
@@ -110,9 +109,11 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
-    FirExtensionRegistrarAdapter.registerExtension(
-      MetroFirExtensionRegistrar(classIds, options, isIde, compatContext)
-    )
+    with(compatContext) {
+      registerFirExtensionCompat(
+        MetroFirExtensionRegistrar(classIds, options, isIde, compatContext)
+      )
+    }
 
     if (!isIde) {
       val lookupTracker = configuration.get(CommonConfigurationKeys.LOOKUP_TRACKER)
@@ -121,16 +122,18 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
           CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER,
           ExpectActualTracker.DoNothing,
         )
-      IrGenerationExtension.registerExtension(
-        MetroIrGenerationExtension(
-          messageCollector = configuration.messageCollector,
-          classIds = classIds,
-          options = options,
-          lookupTracker = lookupTracker,
-          expectActualTracker = expectActualTracker,
-          compatContext = compatContext,
+      with(compatContext) {
+        registerIrExtensionCompat(
+          MetroIrGenerationExtension(
+            messageCollector = configuration.messageCollector,
+            classIds = classIds,
+            options = options,
+            lookupTracker = lookupTracker,
+            expectActualTracker = expectActualTracker,
+            compatContext = compatContext,
+          )
         )
-      )
+      }
     }
   }
 }

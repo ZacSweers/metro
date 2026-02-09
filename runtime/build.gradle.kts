@@ -8,7 +8,6 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
   alias(libs.plugins.atomicfu)
-  alias(libs.plugins.testkit)
   id("metro.publish")
 }
 

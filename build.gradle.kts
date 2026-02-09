@@ -16,6 +16,7 @@ plugins {
   alias(libs.plugins.binaryCompatibilityValidator)
   alias(libs.plugins.poko) apply false
   alias(libs.plugins.wire) apply false
+  alias(libs.plugins.testkit) apply false
   id("metro.yarnNode")
 }
 

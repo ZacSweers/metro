@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Zac Sweers
+// Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 plugins { alias(libs.plugins.kotlin.jvm) }
 
@@ -18,5 +18,5 @@ dependencies {
   compileOnly(kotlinVersion.map { "org.jetbrains.kotlin:kotlin-compiler:$it" })
   compileOnly(libs.kotlin.stdlib)
   api(project(":compiler-compat"))
-  implementation(project(":compiler-compat:k2220"))
+  implementation(project(":compiler-compat:k2320_beta2"))
 }

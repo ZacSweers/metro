@@ -8,7 +8,6 @@ plugins {
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
   alias(libs.plugins.shadow) apply false
-  alias(libs.plugins.testkit)
   id("metro.publish")
 }
 

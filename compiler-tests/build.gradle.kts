@@ -75,7 +75,7 @@ if (testKotlinVersion >= KotlinToolingVersion(KotlinVersion(2, 3))) {
     }
   compilerTestFrameworkVersion = testCompilerVersion
   reflectVersion =
-    if (testKotlinVersion.isDev) {
+    if (testKotlinVersion.minor == 3 && testKotlinVersion.isDev) {
       "2.3.20-Beta1"
     } else {
       testCompilerVersion

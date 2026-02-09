@@ -6,6 +6,7 @@ Changelog
 
 ### New
 
+- Metro now has experimental support for Kotlin 2.4.0. At the time of writing, this is only really helpful if you are testing IDE support in IntelliJ 2026.1 EAPs.
 - Metro's compiler now embeds `androidx.tracing` and can produce perfetto traces of its IR transformations.
 - **[FIR]**: Metro now does early detection of whether or not it's running in the IDE or CLI. If it's in the IDE, Metro will disable any FIR generators that do not generate user-visible code.
 
@@ -47,6 +48,7 @@ Changelog
 - Fold `2.3.20-dev-5437` compat into `2.3.20-dev-5706` compat. This is to help Metro's main branch stay stable as the `5437` artifact came from a dev maven repo with ephemeral artifacts.
 - Test Kotlin `2.3.20-Beta2`.
 - Test Kotlin `2.3.10`.
+- Test Kotlin `2.4.0-dev-539`.
 - Drop testing of Kotlin `2.3.10-RC`.
 - Metro now _compiles_ against Kotlin `2.3.0`. This allows it to test `2.4.0` builds, but is still compatible down to Kotlin `2.2.20`. Metro's runtime artifacts also explicitly have their language version still set to `2.2` (and `2.0` for the Gradle plugin).
 
