@@ -43,6 +43,7 @@ Changelog
 - `enableTopLevelFunctionInjection`, `generateContributionHintsInFir`, and `supportedHintContributionPlatforms` will error if enabled on Kotlin/JS with JS incremental compilation enabled as it turns out this does not yet support generating top-level declarations from compiler plugins with incremental compilation enabled.
     - Please star https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989.
 - Fold `2.3.20-dev-7791` compat into `2.3.20-Beta2` compat, meaning the former is no longer tested on CI.
+- Fold `2.3.20-dev-5437` compat into `2.3.20-dev-5706` compat. This is to help Metro's main branch stay stable as the `5437` artifact came from a dev maven repo with ephemeral artifacts.
 - Test Kotlin `2.3.20-Beta2`.
 - Test Kotlin `2.3.10`.
 - Drop testing of Kotlin `2.3.10-RC`.
