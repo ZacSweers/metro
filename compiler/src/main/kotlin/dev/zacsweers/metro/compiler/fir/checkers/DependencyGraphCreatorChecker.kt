@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
@@ -33,6 +34,11 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
+    context(context.session.compatContext) { checkImpl(declaration) }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
+  private fun checkImpl(declaration: FirClass) {
     declaration.source ?: return
     val session = context.session
     val classIds = session.classIds

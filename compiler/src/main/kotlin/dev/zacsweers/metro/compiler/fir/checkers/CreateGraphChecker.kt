@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isLocalClassOrAnonymousObject
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -33,6 +35,11 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(expression: FirFunctionCall) {
+    context(context.session.compatContext) { checkImpl(expression) }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
+  private fun checkImpl(expression: FirFunctionCall) {
     val source = expression.source ?: return
 
     val callee = expression.toResolvedCallableSymbol() ?: return

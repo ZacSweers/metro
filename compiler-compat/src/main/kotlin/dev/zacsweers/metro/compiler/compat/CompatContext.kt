@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
@@ -466,6 +467,20 @@ public interface CompatContext {
   ) {
     throw NotImplementedError("reportCompat is not implemented on this version of the compiler")
   }
+
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.COMPAT,
+    message = "2.3 moved APIs around here",
+  )
+  public val FirClassLikeSymbol<*>.isLocalCompat: Boolean
+
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.COMPAT,
+    message = "2.3 moved APIs around here",
+  )
+  public val FirClass.isLocalCompat: Boolean
 }
 
 private data class FactoryData(

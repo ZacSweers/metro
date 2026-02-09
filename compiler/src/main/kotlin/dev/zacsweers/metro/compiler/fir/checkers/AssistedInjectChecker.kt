@@ -3,11 +3,13 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker.FirAssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -40,6 +42,11 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
+    context(context.session.compatContext) { checkImpl(declaration) }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
+  private fun checkImpl(declaration: FirClass) {
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -68,7 +75,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
   }
 
   // TODO validate the assisted injection here too?
-  context(context: CheckerContext, reporter: DiagnosticReporter)
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
   private fun checkAssistedFactory(
     declaration: FirClass,
     source: KtSourceElement,

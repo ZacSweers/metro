@@ -51,7 +51,6 @@ import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isFinal
 import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
-import org.jetbrains.kotlin.fir.declarations.utils.isNonLocal
 import org.jetbrains.kotlin.fir.declarations.utils.isOpen
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
@@ -104,7 +103,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirFileSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
@@ -535,12 +533,13 @@ internal data class FirInjectConstructor(
   val ctorCount: Int,
 )
 
+context(compatContext: CompatContext)
 internal fun FirClass.validateInjectedClass(
   context: CheckerContext,
   reporter: DiagnosticReporter,
   classInjectAnnotations: List<FirAnnotation>,
 ) {
-  if (isLocalCompat) {
+  if (with(compatContext) { isLocalCompat }) {
     reporter.reportOn(source, MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
     return
   }
@@ -595,13 +594,13 @@ internal fun FirCallableSymbol<*>.allAnnotations(): Sequence<FirAnnotation> {
   }
 }
 
-context(context: CheckerContext, reporter: DiagnosticReporter)
+context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
 internal inline fun FirClass.validateApiDeclaration(
   type: String,
   checkConstructor: Boolean,
   onError: () -> Nothing,
 ) {
-  if (isLocalCompat) {
+  if (with(compatContext) { isLocalCompat }) {
     reporter.reportOn(
       source,
       MetroDiagnostics.METRO_DECLARATION_ERROR,
@@ -1487,6 +1486,7 @@ internal fun FirCallableSymbol<*>.isEffectivelyOpen(): Boolean =
  * If this returns null, it's a valid container type. If this returns non-null, the string is the
  * error message.
  */
+context(compatContext: CompatContext)
 internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
   session: FirSession,
   alreadyCheckedAnnotation: Boolean = false,
@@ -1495,7 +1495,7 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
     "Platform type '${classId.asFqNameString()}' is not a binding container."
   } else if (this is FirAnonymousObjectSymbol) {
     "Anonymous objects cannot be binding containers."
-  } else if (isLocalCompat) {
+  } else if (with(compatContext) { isLocalCompat }) {
     "Local class '${classId.shortClassName}' cannot be a binding container."
   } else if (isInner) {
     "Inner class '${classId.shortClassName}' cannot be a binding container."
@@ -1510,24 +1510,6 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
 
 internal inline val FirClassSymbol<*>.isLocalClassOrAnonymousObject: Boolean
   get() = classId.isLocal || this is FirAnonymousObjectSymbol
-
-// Compat to avoid inlined new API in 2.3+
-internal val FirClassLikeSymbol<*>.isLocalCompat: Boolean
-  get() = !isNonLocal
-
-// Compat to avoid inlined new API in 2.3+
-internal val FirClass.isLocalCompat: Boolean
-  get() = !isNonLocal
-
-// compat as it was removed in 2.3.20
-internal val FirBasedSymbol<*>.isNonLocal: Boolean
-  get() =
-    when (this) {
-      is FirFileSymbol -> true
-      is FirCallableSymbol -> !callableId.isLocal
-      is FirClassLikeSymbol -> !isLocal
-      else -> false
-    }
 
 // Compat to avoid the deprecation warning in new context-based overloads in 2.3+
 internal fun ConeClassLikeLookupTag.toClassSymbolCompat(s: FirSession): FirClassSymbol<*>? {

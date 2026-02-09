@@ -13,7 +13,6 @@ import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
-import dev.zacsweers.metro.compiler.fir.isLocalCompat
 import dev.zacsweers.metro.compiler.fir.joinToRender
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.markImpl
