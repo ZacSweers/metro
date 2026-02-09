@@ -37,5 +37,11 @@ pluginManager.withPlugin("com.android.application") {
   extensions.configure<ApplicationExtension> {
     configureCommonAndroid()
     defaultConfig { targetSdk = 36 }
+    buildTypes {
+      maybeCreate("release").apply {
+        signingConfig = signingConfigs.getByName("debug")
+        matchingFallbacks += listOf("release")
+      }
+    }
   }
 }
