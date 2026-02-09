@@ -27,6 +27,7 @@ Changelog
 ### Fixes
 
 - **[IR]**: Avoid `IllegalStateException: No value parameter found` issues when reconstructing dependency cycle stacks to report cycle errors.
+- **[IR]**: Fix a scenario where bindings available in both graphs and their extensions didn't properly consolidate to one binding.
 
 ### Changes
 
@@ -52,6 +53,7 @@ Special thanks to the following contributors for contributing to this release!
 - [@kevinguitar](https://github.com/kevinguitar)
 - [@DaniilPavlenko](https://github.com/DaniilPavlenko)
 - [@heorhiipopov](https://github.com/heorhiipopov)
+- [@C2H6O](https://github.com/C2H6O)
 
 0.10.2
 ------
