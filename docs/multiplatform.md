@@ -4,16 +4,18 @@ The runtime and code gen have been implemented to be entirely platform-agnostic 
 
 ## Supported Targets for artifacts/features
 
-| Artifact/feature             | JVM | Android |       JS        |      WASM       |      Apple      |      Linux      |     Windows     | Android Native  |
-|------------------------------|:---:|---------|:---------------:|:---------------:|:---------------:|:---------------:|:---------------:|:---------------:|
-| runtime                      |  ✅  | ✅       |        ✅        |        ✅        |        ✅        |        ✅        |        ✅        |        ✅        |
-| interop-javax                |  ✅  | ✅       |        ―        |        ―        |        ―        |        ―        |        ―        |        ―        |
-| interop-jakarta              |  ✅  | ✅       |        ―        |        ―        |        ―        |        ―        |        ―        |        ―        |
-| interop-dagger               |  ✅  | ✅       |        ―        |        ―        |        ―        |        ―        |        ―        |        ―        |
-| interop-guice                |  ✅  | ✅       |        ―        |        ―        |        ―        |        ―        |        ―        |        ―        |
-| ---                          |  -  | -       |        -        |        -        |        -        |        -        |        -        |        -        |
-| Multi-module aggregation     |  ✅  | ✅       | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` |
-| Top-level function injection |  ✅  | ✅       | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` |
+| Artifact/feature             | JVM | Android | JS |      WASM       |      Apple      |      Linux      |     Windows     | Android Native  |
+|------------------------------|:---:|---------|:--:|:---------------:|:---------------:|:---------------:|:---------------:|:---------------:|
+| runtime                      |  ✅  | ✅       | ✅  |        ✅        |        ✅        |        ✅        |        ✅        |        ✅        |
+| interop-javax                |  ✅  | ✅       | ―  |        ―        |        ―        |        ―        |        ―        |        ―        |
+| interop-jakarta              |  ✅  | ✅       | ―  |        ―        |        ―        |        ―        |        ―        |        ―        |
+| interop-dagger               |  ✅  | ✅       | ―  |        ―        |        ―        |        ―        |        ―        |        ―        |
+| interop-guice                |  ✅  | ✅       | ―  |        ―        |        ―        |        ―        |        ―        |        ―        |
+| ---                          |  -  | -       | -  |        -        |        -        |        -        |        -        |        -        |
+| Multi-module aggregation     |  ✅  | ✅       | ❌  | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` |
+| Top-level function injection |  ✅  | ✅       | ❌  | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` | Kotlin `2.3.20` |
+
+Kotlin/JS does not yet support generating top-level declarations from compiler plugins on any version. Please star https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989.
 
 **Legend:**
 - **WASM**: wasmJs, wasmWasi
