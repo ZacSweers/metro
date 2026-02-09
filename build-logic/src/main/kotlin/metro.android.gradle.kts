@@ -25,7 +25,6 @@ fun CommonExtension<*, *, *, *, *, *>.configureCommonAndroid() {
 pluginManager.withPlugin("com.android.library") {
   extensions.configure<LibraryExtension> { configureCommonAndroid() }
   configure<LibraryAndroidComponentsExtension> {
-    logger.lifecycle("Single-varianting android lib ${project.path}")
     beforeVariants { variant ->
       // Single-variant libraries
       variant.enable = variant.buildType != "debug"
