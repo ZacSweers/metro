@@ -8,6 +8,8 @@ Changelog
 
 ### Enhancements
 
+- **[FIR]**: Add suspicious scope diagnostics for cases where a developer might accidentally try to contribute to a concrete `@Scope` class or graph-like class, as that's not usually what you want!
+
 ### Fixes
 
 ### Changes

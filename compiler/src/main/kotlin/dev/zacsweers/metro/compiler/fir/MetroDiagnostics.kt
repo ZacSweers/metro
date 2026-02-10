@@ -63,6 +63,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_SET_INTO_SET
@@ -140,6 +141,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val PROVIDES_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val REDUNDANT_PROVIDES by warning1<KtElement, String>(NAME_IDENTIFIER)
   val CONFLICTING_PROVIDES_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val SUSPICIOUS_AGGREGATION_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
   val BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -263,6 +265,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(PROVIDES_WARNING, "{0}", STRING)
         put(REDUNDANT_PROVIDES, "{0}", STRING)
         put(CONFLICTING_PROVIDES_SCOPE, "{0}", STRING)
+        put(SUSPICIOUS_AGGREGATION_SCOPE, "{0}", STRING)
         put(AGGREGATION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_WARNING, "{0}", STRING)
