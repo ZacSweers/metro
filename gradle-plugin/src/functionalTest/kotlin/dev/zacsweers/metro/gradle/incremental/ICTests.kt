@@ -2331,4 +2331,62 @@ class ICTests : BaseIncrementalCompilationTest() {
     // This is the key assertion - member injection should still work after IC
     assertThat(project.invokeMain<String>()).isEqualTo("Demo")
   }
+
+  /**
+   * Tests that having a graph and its injected dependencies in the same file doesn't cause IC
+   * issues. Previously, `linkDeclarationsInCompilation` would link a file to itself via the
+   * expect/actual tracker, which could cause incorrect IC behavior.
+   *
+   * https://github.com/ZacSweers/metro/pull/883
+   */
+  @Test
+  fun sameFileDeclarationsDoNotCauseSelfReferentialICTracking() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(graphAndDeps, unrelated)
+
+        private val graphAndDeps =
+          source(
+            """
+            @Inject class Target(val string: String)
+
+            @DependencyGraph
+            interface AppGraph {
+              val target: Target
+
+              @Provides fun provideString(): String = "Hello"
+            }
+            """
+              .trimIndent()
+          )
+
+        val unrelated =
+          source(
+            """
+            class Unrelated {
+              fun doSomething(): String = "original"
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    project.modify(
+      fixture.unrelated,
+      """
+      class Unrelated {
+        fun doSomething(): String = "modified"
+      }
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = project.compileKotlin()
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+  }
 }
