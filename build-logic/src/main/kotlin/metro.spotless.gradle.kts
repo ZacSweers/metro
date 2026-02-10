@@ -60,7 +60,7 @@ configure<SpotlessExtension> {
     endWithNewline()
     licenseHeaderFile(
       spotlessDir.resolve("spotless.kt"),
-      "(import|plugins|buildscript|dependencies|pluginManagement|dependencyResolutionManagement)",
+      "(@file:|import|plugins|buildscript|dependencies|pluginManagement|dependencyResolutionManagement)",
     )
   }
   format("licenseKotlin") {
