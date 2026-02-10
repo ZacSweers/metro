@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
-import dev.zacsweers.metro.compiler.ir.addThrowsAnnotation
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
@@ -112,7 +111,6 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
           declaration.apply {
             body = stubExpressionBody()
             comptimeOnlyConstructor?.let { ctor -> annotations += buildAnnotation(symbol, ctor) }
-            addThrowsAnnotation(addToMetadata = true)
           }
         }
 

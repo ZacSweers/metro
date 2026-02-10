@@ -125,16 +125,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  GENERATE_THROWS_ANNOTATIONS(
-    RawMetroOption.boolean(
-      name = "generate-throws-annotations",
-      defaultValue = false,
-      valueDescription = "<true | false>",
-      description = "Enable/disable generation of @Throws annotations on stubbed function bodies",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   ENABLE_TOP_LEVEL_FUNCTION_INJECTION(
     RawMetroOption.boolean(
       name = "enable-top-level-function-injection",
@@ -845,8 +835,6 @@ public data class MetroOptions(
       ?.let(Paths::get),
   public val generateAssistedFactories: Boolean =
     MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
-  public val generateThrowsAnnotations: Boolean =
-    MetroOption.GENERATE_THROWS_ANNOTATIONS.raw.defaultValue.expectAs(),
   public val enableTopLevelFunctionInjection: Boolean =
     MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
   public val generateContributionHints: Boolean =
@@ -1021,7 +1009,6 @@ public data class MetroOptions(
     public var reportsDestination: Path? = base.rawReportsDestination
     public var traceDestination: Path? = base.rawTraceDestination
     public var generateAssistedFactories: Boolean = base.generateAssistedFactories
-    public var generateThrowsAnnotations: Boolean = base.generateThrowsAnnotations
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
     public var generateContributionHints: Boolean = base.generateContributionHints
     public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
@@ -1223,7 +1210,6 @@ public data class MetroOptions(
         rawReportsDestination = reportsDestination,
         rawTraceDestination = traceDestination,
         generateAssistedFactories = generateAssistedFactories,
-        generateThrowsAnnotations = generateThrowsAnnotations,
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
         generateContributionHints = generateContributionHints,
         generateContributionHintsInFir = generateContributionHintsInFir,
@@ -1345,9 +1331,6 @@ public data class MetroOptions(
 
           GENERATE_ASSISTED_FACTORIES ->
             generateAssistedFactories = configuration.getAsBoolean(entry)
-
-          GENERATE_THROWS_ANNOTATIONS ->
-            generateThrowsAnnotations = configuration.getAsBoolean(entry)
 
           ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
             enableTopLevelFunctionInjection =

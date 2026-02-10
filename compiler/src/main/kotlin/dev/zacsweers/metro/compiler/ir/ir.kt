@@ -178,7 +178,6 @@ import org.jetbrains.kotlin.platform.isJs
 import org.jetbrains.kotlin.platform.isWasm
 import org.jetbrains.kotlin.platform.jvm.isJvm
 import org.jetbrains.kotlin.platform.konan.isNative
-import org.jetbrains.kotlin.types.Variance
 
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
@@ -1235,30 +1234,6 @@ internal val IrClass.sourceGraphIfMetroGraph: IrClass
       this
     }
   }
-
-// Adds `@Throws` annotations to relevant functions with stubbed expression bodies for native
-// linking that requires it
-context(context: IrMetroContext)
-internal fun IrSimpleFunction.addThrowsAnnotation(addToMetadata: Boolean) {
-  if (!context.options.generateThrowsAnnotations) return
-
-  val throwsConstructor = context.metroSymbols.throwsAnnotationConstructor ?: return
-  val newAnnotation =
-    buildAnnotation(symbol, throwsConstructor) {
-      it.arguments[0] =
-        irVararg(
-          context.irBuiltIns.kClassClass.typeWithArguments(
-            listOf(makeTypeProjection(context.irBuiltIns.nothingType, Variance.OUT_VARIANCE))
-          ),
-          listOf(kClassReference(context.metroSymbols.illegalStateExceptionClassSymbol)),
-        )
-    }
-  if (addToMetadata) {
-    context.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(this, newAnnotation)
-  } else {
-    annotations += newAnnotation
-  }
-}
 
 // Adapted from compose-compiler
 // https://github.com/JetBrains/kotlin/blob/d36a97bb4b935c719c44b76dc8de952579404f91/plugins/compose/compiler-hosted/src/main/java/androidx/compose/compiler/plugins/kotlin/lower/AbstractComposeLowering.kt#L1608

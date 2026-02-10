@@ -4,6 +4,18 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+### Enhancements
+
+### Fixes
+
+### Changes
+
+- Deprecate the `generateThrowsAnnotations` option and make it no-op. This was only in place when debugging a past kotlin/native issue.
+
+### Contributors
+
 0.10.3
 ------
 

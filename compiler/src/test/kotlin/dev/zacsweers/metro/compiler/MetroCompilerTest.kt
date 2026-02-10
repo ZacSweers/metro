@@ -101,8 +101,6 @@ abstract class MetroCompilerTest {
                 )
               GENERATE_ASSISTED_FACTORIES ->
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
-              GENERATE_THROWS_ANNOTATIONS ->
-                processor.option(entry.raw.cliOption, generateThrowsAnnotations)
               ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
                 processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
               GENERATE_CONTRIBUTION_HINTS ->

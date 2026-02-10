@@ -286,7 +286,6 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           add(lazyOption("max-ir-errors-count", extension.maxIrErrors))
           add(lazyOption("debug", extension.debug))
           add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
-          add(lazyOption("generate-throws-annotations", extension.generateThrowsAnnotations))
           add(
             lazyOption(
               "generate-contribution-hints",
