@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
 import org.jetbrains.kotlin.test.util.KtTestUtil;
+import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ import java.util.regex.Pattern;
 public class IrDumpTestGenerated extends AbstractIrDumpTest {
   @Test
   public void testAllFilesPresentInIr() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
   }
 
   @Test
@@ -51,7 +52,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Aggregation {
     @Test
     public void testAllFilesPresentInAggregation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/aggregation"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
     }
 
     @Test
@@ -79,7 +80,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Cycles {
     @Test
     public void testAllFilesPresentInCycles() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/cycles"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/cycles"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
     }
 
     @Test
@@ -113,7 +114,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Dependencygraph {
     @Test
     public void testAllFilesPresentInDependencygraph() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
     }
 
     @Test
@@ -242,7 +243,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public class Dynamic {
       @Test
       public void testAllFilesPresentInDynamic() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
       }
 
       @Test
@@ -258,7 +259,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public class Interop {
       @Test
       public void testAllFilesPresentInInterop() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/interop"), Pattern.compile("^(.+)\\.kt$"), null, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/interop"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
       }
 
       @Test
@@ -274,7 +275,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public class Sharding {
       @Test
       public void testAllFilesPresentInSharding() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
       }
 
       @Test
@@ -356,7 +357,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public class Switchingproviders {
       @Test
       public void testAllFilesPresentInSwitchingproviders() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders"), Pattern.compile("^(.+)\\.kt$"), null, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
       }
 
       @Test
@@ -409,7 +410,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Injectconstructor {
     @Test
     public void testAllFilesPresentInInjectconstructor() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/injectconstructor"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/injectconstructor"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
     }
 
     @Test
@@ -431,7 +432,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Multibindings {
     @Test
     public void testAllFilesPresentInMultibindings() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/multibindings"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
     }
 
     @Test
@@ -495,7 +496,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Provides {
     @Test
     public void testAllFilesPresentInProvides() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/provides"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/provides"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
     }
 
     @Test
@@ -517,7 +518,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Visibility {
     @Test
     public void testAllFilesPresentInVisibility() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/visibility"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/visibility"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
     }
 
     @Test
