@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -39,7 +40,6 @@ import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -83,7 +83,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         // Check if the target looks suspicious
         // - If it's a `@Scope` annotation class that's prolly not right
         // - If it's a graph class
-        val scopeClass = scope.toLookupTag().toClassSymbol() ?: continue
+        val scopeClass = scope.toLookupTag().toClassSymbolCompat(session) ?: continue
         if (scopeClass.classKind == ClassKind.ANNOTATION_CLASS) {
           scopeClass.annotationsIn(session, classIds.scopeAnnotations).firstOrNull()?.let {
             reporter.reportOn(
