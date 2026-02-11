@@ -416,16 +416,6 @@ public interface CompatContext {
   public fun IrProperty.addBackingFieldCompat(builder: IrFieldBuilder.() -> Unit = {}): IrField
 
   @CompatApi(
-    since = "2.3.20-Beta2",
-    reason = CompatApi.Reason.COMPAT,
-    message =
-      "External repeatable annotations are not readable in IR until 2.3.20-Beta2. https://youtrack.jetbrains.com/issue/KT-83185",
-  )
-  // TODO enable in 2.3.20-dev-7429 dev build
-  public val supportsExternalRepeatableAnnotations: Boolean
-    get() = false
-
-  @CompatApi(
     since = "2.3.20",
     reason = CompatApi.Reason.COMPAT,
     message =

@@ -4,17 +4,12 @@ package dev.zacsweers.metro.compiler.ir
 
 import androidx.collection.MutableScatterMap
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
-import dev.zacsweers.metro.compiler.fir.replacesArgument
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.SortedMap
 import java.util.SortedSet
-import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
-import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -262,21 +257,10 @@ internal class IrContributionMerger(
       trace("Process replacements") {
         for (irClass in allClassesToScan) {
           val replacedClasses =
-            irClass.repeatableAnnotationsIn(
-              metroSymbols.classIds.allContributesAnnotationsWithContainers,
-              irBody = { annotations ->
-                annotations
-                  .flatMap { annotation -> annotation.replacedClasses() }
-                  .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
-              },
-              firBody = { _, annotations ->
-                annotations
-                  .flatMap { it.replacesArgument()?.argumentList?.arguments.orEmpty() }
-                  .mapNotNull {
-                    it.expectAsOrNull<FirGetClassCall>()?.coneTypeIfResolved()?.classId
-                  }
-              },
-            )
+            irClass
+              .annotationsIn(metroSymbols.classIds.allContributesAnnotationsWithContainers)
+              .flatMap { annotation -> annotation.replacedClasses() }
+              .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
           classesToReplace.addAll(replacedClasses)
         }
 

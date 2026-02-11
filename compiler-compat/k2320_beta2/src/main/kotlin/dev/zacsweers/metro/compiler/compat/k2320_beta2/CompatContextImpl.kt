@@ -12,8 +12,6 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 
 public class CompatContextImpl : CompatContext by DelegateType() {
-  override val supportsExternalRepeatableAnnotations: Boolean = true
-
   override fun KtSourcelessDiagnosticFactory.createCompat(
     message: String,
     location: CompilerMessageSourceLocation?,
