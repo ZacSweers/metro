@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770920440345,
+  "lastUpdate": 1770932751788,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -5320,6 +5320,62 @@ window.BENCHMARK_DATA = {
             "value": 24376.170000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.63%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Marcin Robaczy\u0144ski",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Marcin Robaczy\u0144ski",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7a5d1f96~1",
+          "message": "[before] Validate compatible annotations in synthetic graph",
+          "timestamp": "2026-02-12T21:07:16Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7a5d1f96d31fd17514c3e4ba11b7e71a553351a0"
+        },
+        "date": 1770932751788,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 30377.071999999996,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Marcin Robaczy\u0144ski",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Marcin Robaczy\u0144ski",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7a5d1f96d31fd17514c3e4ba11b7e71a553351a0",
+          "message": "[after] Validate compatible annotations in synthetic graph",
+          "timestamp": "2026-02-12T21:07:16Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7a5d1f96d31fd17514c3e4ba11b7e71a553351a0"
+        },
+        "date": 1770932751789,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31267.672,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.93%"
           }
         ]
       }

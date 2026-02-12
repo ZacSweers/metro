@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770920440215,
+  "lastUpdate": 1770932751654,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -5320,6 +5320,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21596985631424914,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +1.13%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Marcin Robaczy\u0144ski",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Marcin Robaczy\u0144ski",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7a5d1f96~1",
+          "message": "[before] Validate compatible annotations in synthetic graph",
+          "timestamp": "2026-02-12T21:07:16Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7a5d1f96d31fd17514c3e4ba11b7e71a553351a0"
+        },
+        "date": 1770932751654,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.20842527696767413,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Marcin Robaczy\u0144ski",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Marcin Robaczy\u0144ski",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7a5d1f96d31fd17514c3e4ba11b7e71a553351a0",
+          "message": "[after] Validate compatible annotations in synthetic graph",
+          "timestamp": "2026-02-12T21:07:16Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7a5d1f96d31fd17514c3e4ba11b7e71a553351a0"
+        },
+        "date": 1770932751655,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2091803419826253,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.36%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
