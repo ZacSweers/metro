@@ -222,7 +222,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   ENABLE_GRAPH_SHARDING(
     RawMetroOption.boolean(
       name = "enable-graph-sharding",
-      defaultValue = true,
+      defaultValue = false,
       valueDescription = "<true | false>",
       description = "Enable/disable graph sharding of binding graphs.",
       required = false,
