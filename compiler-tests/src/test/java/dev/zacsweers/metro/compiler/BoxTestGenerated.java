@@ -1980,6 +1980,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("SwitchingProviderWithNullableBinding.kt")
+    public void testSwitchingProviderWithNullableBinding() {
+      runTest("compiler-tests/src/test/data/box/provides/SwitchingProviderWithNullableBinding.kt");
+    }
+
+    @Test
     @TestMetadata("TransitiveSuccessorScope.kt")
     public void testTransitiveSuccessorScope() {
       runTest("compiler-tests/src/test/data/box/provides/TransitiveSuccessorScope.kt");

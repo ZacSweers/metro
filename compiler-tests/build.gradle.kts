@@ -143,7 +143,7 @@ val generateTests =
       .withPropertyName("testData")
       .withPathSensitivity(PathSensitivity.RELATIVE)
 
-    testCompilerVersionProvider.orNull?.let { inputs.property("testCompilerVersion", it) }
+    inputs.property("testCompilerVersion", testCompilerVersion)
 
     outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
 

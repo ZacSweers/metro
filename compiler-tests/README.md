@@ -19,6 +19,8 @@ Essentially, you can have different kinds of categories of tests and then each t
    ```
    Expected files are named `<testFile>.<reportName>.txt` (e.g., `MyTest.merging-unmatched-replacements-fir-AppGraph.txt`).
 
+Note that `FastInitBoxTest` runs all the same box tests with switching providers enabled (`ENABLE_SWITCHING_PROVIDERS`), so every box test automatically gets coverage for both normal and switching provider code paths.
+
 In all of these tests, the biggest way you will modify their behavior is through [directives](https://github.com/JetBrains/kotlin/tree/master/compiler/test-infrastructure#directives). You can create your own - I've done so with `GENERATE_ASSISTED_FACTORIES` to enable that plugin option - or you can use many of the [existing directives](https://github.com/JetBrains/kotlin/tree/master/compiler/tests-common-new/tests/org/jetbrains/kotlin/test/directives). They are specified as line comments and can be simple boolean flags like `RENDER_DIAGNOSTICS_FULL_TEXT` or be more complex like disabling to rendering of certain diagnostics with `DIAGNOSTICS: -PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE`. In each of the base tests, you can also configure default directives that you want with `defaultDirectives`. For example, the dump tests are basically diagnostics tests but with the `FIR_DUMP` diagnostic always enabled.
 
 Strongly recommend installing this plugin in IntelliJ: https://github.com/JetBrains/kotlin-compiler-devkit
