@@ -355,11 +355,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
           val scopeAnnotations = callable.allAnnotations().scopeAnnotations(session)
           for (scopeAnnotation in scopeAnnotations) {
-            reporter.reportOn(
-              scopeAnnotation.fir.source,
-              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-              "Graph accessor members cannot be scoped.",
-            )
+            reporter.reportOn(scopeAnnotation.fir.source, MetroDiagnostics.SCOPED_GRAPH_ACCESSOR)
           }
         }
 
