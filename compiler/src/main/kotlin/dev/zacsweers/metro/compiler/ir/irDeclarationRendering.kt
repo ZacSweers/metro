@@ -3,8 +3,10 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -14,7 +16,9 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -255,6 +259,60 @@ private fun StringBuilder.renderForDiagnosticImpl(
       append(returnTypeString)
     }
   }
+}
+
+/**
+ * Renders an [IrOverridableDeclaration] (function or property) for diagnostics. This is a
+ * convenience overload that works directly with IR declarations without requiring binding-level
+ * types like [IrTypeKey] or [Parameters], rendering the return type from the IR type directly.
+ */
+internal fun StringBuilder.renderForDiagnostic(
+  declaration: IrOverridableDeclaration<*>,
+  short: Boolean = false,
+  annotations: MetroAnnotations<IrAnnotation>? = null,
+) {
+  val function =
+    when (declaration) {
+      is IrSimpleFunction -> declaration
+      is IrProperty -> declaration.getter ?: return
+    }
+  val isProperty = declaration is IrProperty || function.correspondingPropertySymbol != null
+  // Render annotations, val/fun keyword, and name using existing infra
+  renderForDiagnosticImpl(
+    declaration = function,
+    short = short,
+    annotations = annotations,
+    isProperty = isProperty,
+  )
+  // Render return type from IR type since we don't have an IrTypeKey
+  val returnType = function.returnType
+  if (!returnType.isUnit()) {
+    append(": ")
+    append(returnType.render(short = short))
+  }
+}
+
+/**
+ * Creates a [LocationDiagnostic] for an [IrOverridableDeclaration]. Uses [renderSourceLocation] for
+ * the location (respecting [MetroOptions.SystemProperties.SHORTEN_LOCATIONS]) and
+ * [renderForDiagnostic] for the description.
+ */
+internal fun IrOverridableDeclaration<*>.renderLocationDiagnostic(
+  shortLocation: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+  annotations: MetroAnnotations<IrAnnotation>? = null,
+  short: Boolean = false,
+): LocationDiagnostic {
+  val location =
+    (this as IrDeclaration).renderSourceLocation(short = shortLocation)
+      ?: parentAsClass.kotlinFqName.asString()
+  val description = buildString {
+    renderForDiagnostic(
+      declaration = this@renderLocationDiagnostic,
+      short = short,
+      annotations = annotations,
+    )
+  }
+  return LocationDiagnostic(location, description)
 }
 
 private fun StringBuilder.renderAnnotations(

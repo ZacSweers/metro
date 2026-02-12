@@ -27,6 +27,7 @@ import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.render
+import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireMapKeyType
 import dev.zacsweers.metro.compiler.ir.requireMapValueType
@@ -1004,7 +1005,7 @@ internal class IrBindingGraph(
           append(". Type: ")
           append(binding.javaClass.simpleName)
           append('.')
-          binding.reportableDeclaration?.locationOrNull()?.render(short)?.let {
+          binding.reportableDeclaration?.renderSourceLocation(short = short)?.let {
             append(" Source: ")
             append(it)
           }

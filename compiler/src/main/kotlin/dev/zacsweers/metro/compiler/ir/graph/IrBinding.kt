@@ -23,13 +23,13 @@ import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.computeMultibindingId
 import dev.zacsweers.metro.compiler.ir.createMapBindingId
 import dev.zacsweers.metro.compiler.ir.implements
-import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
+import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -81,7 +81,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // First check if we have the contributing file and line number
     val binding = this
     val locationString =
-      reportableDeclaration?.locationOrNull()?.render(shortLocation)
+      reportableDeclaration?.renderSourceLocation(short = shortLocation)
         // Or the fully-qualified contributing class name
         // TODO is this right
         ?: parameters.allParameters.firstOrNull()?.typeKey?.render(short = short)

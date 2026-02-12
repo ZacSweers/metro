@@ -228,6 +228,14 @@ internal fun CompilerMessageSourceLocation.render(short: Boolean): String? {
   }
 }
 
+/**
+ * Renders the source location of this [IrDeclaration] as a string, or returns null if no location
+ * is available. Respects [MetroOptions.SystemProperties.SHORTEN_LOCATIONS] by default.
+ */
+internal fun IrDeclaration.renderSourceLocation(
+  short: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+): String? = locationOrNull()?.render(short = short)
+
 /** Returns the raw [IrClass] of this [IrType] or throws. */
 internal fun IrType.rawType(): IrClass {
   return rawTypeOrNull()
