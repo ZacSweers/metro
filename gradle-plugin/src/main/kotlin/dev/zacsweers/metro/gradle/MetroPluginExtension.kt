@@ -185,14 +185,16 @@ constructor(
   public val statementsPerInitFun: Property<Int> =
     objects.intProperty("metro.statementsPerInitFun", 25)
 
-  /** Enable/disable graph sharding of binding graphs. Enabled by default. */
+  /** Enable/disable graph sharding of binding graphs. Disabled by default. */
+  @DelicateMetroGradleApi("Sharding is an experimental feature")
   public val enableGraphSharding: Property<Boolean> =
-    objects.booleanProperty("metro.enableGraphSharding", true)
+    objects.booleanProperty("metro.enableGraphSharding", false)
 
   /**
    * Maximum number of binding keys per graph shard when sharding is enabled. Default is 2000, must
    * be > 0.
    */
+  @DelicateMetroGradleApi("Sharding is an experimental feature")
   public val keysPerGraphShard: Property<Int> = objects.intProperty("metro.keysPerGraphShard", 2000)
 
   /**
@@ -206,6 +208,7 @@ constructor(
    *
    * Disabled by default.
    */
+  @DelicateMetroGradleApi("Switching providers are an experimental feature")
   public val enableSwitchingProviders: Property<Boolean> =
     objects.booleanProperty("metro.enableSwitchingProviders", false)
 
