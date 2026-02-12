@@ -5,6 +5,7 @@ interface AppGraph {
   val contributedInterface: ContributedInterface
 }
 
+@Qualifier annotation class MyScope
 @MyScope
 @GraphExtension(scope = MyScope::class)
 interface MyGraph {
@@ -39,10 +40,10 @@ interface MyModule {
 fun box(): String {
 
   val myGraph = createGraph<AppGraph>().createMyGraph()
-  val firstNonClashing = myGraph.otherCoroutineScope()
-  val secondNonClashing = myGraph.otherCoroutineScope()
-  val firstClashing = myGraph.coroutineScope()
-  val secondClashing = myGraph.coroutineScope()
+  val firstNonClashing = myGraph.otherDependency()
+  val secondNonClashing = myGraph.otherDependency()
+  val firstClashing = myGraph.dependency()
+  val secondClashing = myGraph.dependency()
 
   assertEquals(firstNonClashing, secondNonClashing)
   assertTrue(firstNonClashing === secondNonClashing)
