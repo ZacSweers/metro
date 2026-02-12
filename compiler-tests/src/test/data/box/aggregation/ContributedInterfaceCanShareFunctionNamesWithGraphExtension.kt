@@ -4,7 +4,8 @@ data class Dependency(val name: String)
 interface AppGraph {
 }
 
-@Qualifier annotation class MyScope
+@Scope annotation class MyScope
+
 @MyScope
 @GraphExtension(scope = MyScope::class)
 interface MyGraph {
@@ -45,10 +46,10 @@ fun box(): String {
   val secondClashing = myGraph.dependency()
 
   assertEquals(firstNonClashing, secondNonClashing)
-  assertTrue(firstNonClashing === secondNonClashing)
+  assertTrue(firstNonClashing === secondNonClashing, "Same instance is provided for otherDependency()")
 
   assertEquals(firstClashing, secondClashing)
-  assertTrue(firstClashing === secondClashing)
+  assertTrue(firstClashing === secondClashing, "Same instance is provided for dependency()")
 
   return "OK"
 }
