@@ -2,7 +2,6 @@ data class Dependency(val name: String)
 
 @DependencyGraph(scope = AppScope::class)
 interface AppGraph {
-  val contributedInterface: ContributedInterface
 }
 
 @Qualifier annotation class MyScope
