@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PA
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_VARARG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
@@ -60,6 +61,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_OR_BINDS_SHOUL
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_GRAPH_ACCESSOR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
@@ -108,6 +110,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
 
   // DependencyGraph errors
   val DEPENDENCY_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val SCOPED_GRAPH_ACCESSOR by error0<KtElement>(NAME_IDENTIFIER)
   val SUSPICIOUS_MEMBER_INJECT_FUNCTION by warning1<KtElement, String>(NAME_IDENTIFIER)
   val UNUSED_GRAPH_INPUT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val UNUSED_GRAPH_INPUT_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -176,6 +179,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
 
   // IR errors
   val GRAPH_DEPENDENCY_CYCLE by error1<KtElement, String>(NAME_IDENTIFIER)
+  val INCOMPATIBLE_OVERRIDES by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val KNOWN_KOTLINC_BUG_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -218,6 +222,10 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
 
         // DependencyGraph errors
         put(DEPENDENCY_GRAPH_ERROR, "{0}", STRING)
+        put(
+          SCOPED_GRAPH_ACCESSOR,
+          "Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?",
+        )
         put(SUSPICIOUS_MEMBER_INJECT_FUNCTION, "{0}", STRING)
         put(UNUSED_GRAPH_INPUT_ERROR, "{0}", STRING)
         put(UNUSED_GRAPH_INPUT_WARNING, "{0}", STRING)
@@ -314,6 +322,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(SOURCELESS_METRO_ERROR, "{0}")
         put(SOURCELESS_METRO_WARNING, "{0}")
         put(GRAPH_DEPENDENCY_CYCLE, "[Metro/GraphDependencyCycle] {0}", TO_STRING)
+        put(INCOMPATIBLE_OVERRIDES, "[Metro/IncompatibleOverrides] {0}", TO_STRING)
       }
     }
 }
