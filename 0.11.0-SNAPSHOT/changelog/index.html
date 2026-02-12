@@ -3746,6 +3746,8 @@
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR]</strong>: Add suspicious scope diagnostics for cases where a developer might accidentally try to contribute to a concrete <code>@Scope</code> class or graph-like class, as that&rsquo;s not usually what you want!</li>
+<li><strong>[IR]</strong>: Extend conflicting overrides diagnostic in synthetic graphs (graph extension impls, dynamic graphs) to also validate compatible annotations. This catches scenarios where you may accidentally contribute something like a <code>fun dependency(): Dependency</code> accessor <em>and</em> <code>@Provides fun dependency(): Dependency</code> provider elsewhere, which previously resulted in undefined runtime behavior.</li>
+<li><strong>[IR]</strong>: When reporting conflicting override types in synthetic graphs, underline the type and include the source location (when possible) to better indicate the issue.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
@@ -3753,6 +3755,10 @@
 <li>Deprecate the <code>generateThrowsAnnotations</code> option and make it no-op. This was only in place when debugging a past kotlin/native issue.</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
+<p>Special thanks to the following contributors for contributing to this release!</p>
+<ul>
+<li><a href="https://github.com/scana">@scana</a></li>
+</ul>
 <h2 id="0103">0.10.3<a class="headerlink" href="#0103" title="Permanent link">&para;</a></h2>
 <p><em>2026-02-09</em></p>
 <h3 id="new_1">New<a class="headerlink" href="#new_1" title="Permanent link">&para;</a></h3>
