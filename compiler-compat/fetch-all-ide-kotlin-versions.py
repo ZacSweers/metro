@@ -42,26 +42,33 @@ HEADER_LINES = {
 }
 
 
-def read_cli_only_entries(filepath):
-    """Read existing ide-mappings.txt and return a dict of version -> list of comment lines
-    for entries marked as CLI_ONLY."""
-    cli_only = OrderedDict()  # version -> list of comment lines
+def read_all_existing_entries(filepath):
+    """Read existing ide-mappings.txt and return:
+    - entries: OrderedDict of version -> target
+    - comments: OrderedDict of version -> list of comment strings (without '# ' prefix)
+    """
+    entries = OrderedDict()
+    comments = OrderedDict()
     if not os.path.exists(filepath):
-        return cli_only
+        return entries, comments
     pending_comments = []
     with open(filepath) as f:
         for line in f:
             line = line.rstrip("\n")
             if line.startswith("#"):
                 if line not in HEADER_LINES:
-                    pending_comments.append(line)
-            elif "=CLI_ONLY" in line:
-                version = line.split("=", 1)[0]
-                cli_only[version] = pending_comments
+                    if line.startswith("# "):
+                        pending_comments.append(line[2:])
+                    else:
+                        pending_comments.append(line[1:])
+            elif "=" in line:
+                version, target = line.split("=", 1)
+                entries[version] = target
+                comments[version] = pending_comments
                 pending_comments = []
             else:
                 pending_comments = []
-    return cli_only
+    return entries, comments
 
 
 def read_kotlin_version_from_toml():
@@ -468,12 +475,12 @@ def main():
     channels = set(args.channels.split(","))
     min_kotlin = parse_kotlin_base_version(args.min_kotlin)
 
-    # Read existing CLI_ONLY entries to preserve them
+    # Read existing entries to preserve them (additive mode)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_file = os.path.join(script_dir, "ide-mappings.txt")
-    cli_only_entries = read_cli_only_entries(output_file)
-    if cli_only_entries:
-        print(f"Preserving {len(cli_only_entries)} CLI_ONLY entries: {', '.join(cli_only_entries.keys())}")
+    existing_entries, existing_comments = read_all_existing_entries(output_file)
+    if existing_entries:
+        print(f"Loaded {len(existing_entries)} existing entries from ide-mappings.txt")
 
     # Check for gh CLI
     try:
@@ -663,28 +670,60 @@ def main():
                     print(f"  WARNING: Skipping IntelliJ alias for {release['ide_name']} - "
                           f"used fallback tag, actual ij version unknown")
 
-    # Deduplicate: group by (fake_version, alias_target)
-    alias_map = OrderedDict()  # fake_version -> alias_target
-    alias_comments = OrderedDict()  # fake_version -> list of IDE names
+    # Deduplicate new results: group by (fake_version, alias_target)
+    new_map = OrderedDict()  # fake_version -> alias_target
+    new_comments = OrderedDict()  # fake_version -> list of IDE names
 
     for ide_name, fake_version, alias_target in alias_entries:
         if fake_version == alias_target:
             continue
-        alias_map[fake_version] = alias_target
-        if fake_version not in alias_comments:
-            alias_comments[fake_version] = []
-        if ide_name not in alias_comments[fake_version]:
-            alias_comments[fake_version].append(ide_name)
+        new_map[fake_version] = alias_target
+        if fake_version not in new_comments:
+            new_comments[fake_version] = []
+        if ide_name not in new_comments[fake_version]:
+            new_comments[fake_version].append(ide_name)
 
-    # Apply CLI_ONLY overrides
-    for version in cli_only_entries:
-        if version in alias_map:
-            alias_map[version] = "CLI_ONLY"
+    # Additive merge: start with existing entries, add/update from new results
+    final_map = OrderedDict(existing_entries)
+    final_comments = OrderedDict()
+    for version in existing_entries:
+        final_comments[version] = list(existing_comments.get(version, []))
+
+    additions = 0
+    updates = 0
+    for fake_version, alias_target in new_map.items():
+        comments_for_version = new_comments.get(fake_version, [])
+
+        if fake_version in final_map:
+            existing_target = final_map[fake_version]
+            if existing_target == "CLI_ONLY":
+                # Never override CLI_ONLY entries, but merge comments
+                for c in comments_for_version:
+                    if c not in final_comments.get(fake_version, []):
+                        final_comments.setdefault(fake_version, []).append(c)
+                continue
+            if existing_target != alias_target:
+                # Update: same version key, different target
+                print(f"  Updating {fake_version}: {existing_target} -> {alias_target}")
+                final_map[fake_version] = alias_target
+                merged = list(final_comments.get(fake_version, []))
+                for c in comments_for_version:
+                    if c not in merged:
+                        merged.append(c)
+                final_comments[fake_version] = merged
+                updates += 1
+            else:
+                # Same target, just merge any new comments
+                for c in comments_for_version:
+                    if c not in final_comments.get(fake_version, []):
+                        final_comments.setdefault(fake_version, []).append(c)
         else:
-            # Preserve CLI_ONLY entries even if the version wasn't found in this run
-            alias_map[version] = "CLI_ONLY"
-            if version not in alias_comments:
-                alias_comments[version] = []
+            # New entry
+            final_map[fake_version] = alias_target
+            final_comments[fake_version] = comments_for_version
+            additions += 1
+
+    print(f"\n  {additions} new entries, {updates} updated entries")
 
     # Output
     print()
@@ -693,7 +732,7 @@ def main():
     print("═══════════════════════════════════════════════════════════════════════════")
     print()
 
-    if not alias_entries and not cli_only_entries:
+    if not final_map:
         print("No aliases needed (all versions are already dev builds).")
         print()
         return
@@ -701,9 +740,9 @@ def main():
     # Table output — one row per unique mapping
     print(f"{'IDE (representative)':<45} {'Fake/IDE Version':<25} → Alias Target")
     print("─" * 95)
-    for fake_version in sorted(alias_map.keys()):
-        alias_target = alias_map[fake_version]
-        names = alias_comments.get(fake_version, [])
+    for fake_version in sorted(final_map.keys()):
+        alias_target = final_map[fake_version]
+        names = final_comments.get(fake_version, [])
         representative = names[0] if names else "?"
         extra = f" (+{len(names) - 1} more)" if len(names) > 1 else ""
         print(f"{representative + extra:<45} {fake_version:<25} → {alias_target}")
@@ -720,16 +759,11 @@ def main():
         f.write("# Format: <ide-version>=<dev-version>\n")
         f.write("#\n")
 
-        for fake_version in sorted(alias_map.keys()):
-            alias_target = alias_map[fake_version]
-            comments = alias_comments.get(fake_version, [])
-            if alias_target == "CLI_ONLY" and not comments and fake_version in cli_only_entries:
-                # Preserve original comments from existing file
-                for comment_line in cli_only_entries[fake_version]:
-                    f.write(f"{comment_line}\n")
-            else:
-                for comment in comments:
-                    f.write(f"# {comment}\n")
+        for fake_version in sorted(final_map.keys()):
+            alias_target = final_map[fake_version]
+            comments = final_comments.get(fake_version, [])
+            for comment in comments:
+                f.write(f"# {comment}\n")
             f.write(f"{fake_version}={alias_target}\n")
 
     print(f"Written to: {output_file}")
