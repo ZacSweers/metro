@@ -196,7 +196,8 @@ internal fun Name.suffixIfNot(suffix: String) =
 // TODO this doesn't include the package name, should we include it
 internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClassName
 
-internal fun reportCompilerBug(message: String): Nothing {
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun reportCompilerBug(message: String): Nothing {
   error("${message.suffixIfNot(".")} $REPORT_METRO_MESSAGE ")
 }
 

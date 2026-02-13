@@ -9,11 +9,13 @@ Changelog
 ### Enhancements
 
 - **[FIR]**: Add suspicious scope diagnostics for cases where a developer might accidentally try to contribute to a concrete `@Scope` class or graph-like class, as that's not usually what you want!
+- **[FIR]**: Add a diagnostic error for function member injection parameters with default values as they are not currently supported.
 - **[IR]**: Extend conflicting overrides diagnostic in synthetic graphs (graph extension impls, dynamic graphs) to also validate compatible annotations. This catches scenarios where you may accidentally contribute something like a `fun dependency(): Dependency` accessor _and_ `@Provides fun dependency(): Dependency` provider elsewhere, which previously resulted in undefined runtime behavior.
 - **[IR]**: When reporting conflicting override types in synthetic graphs, underline the type and include the source location (when possible) to better indicate the issue.
 
 ### Fixes
 
+- **[IR]**: Gracefully handle skipping code gen for absent member-injected properties/single-arg setters.
 - **[IR/Native]**: Fix mirror parameter check for providers in `object` classes in non-jvm compilations.
 
 ### Changes

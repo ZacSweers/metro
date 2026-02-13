@@ -1497,32 +1497,49 @@ internal class IrGraphGenerator(
                   }
                 // Record for IC
                 trackFunctionCall(this@apply, function)
+
+                var isOptional = false
+
+                val args = buildList {
+                  add(irGet(targetParam))
+                  for (parameter in parameters.regularParameters) {
+                    val paramBinding = bindingGraph.requireBinding(parameter.contextualTypeKey)
+                    if (paramBinding is IrBinding.Absent) {
+                      isOptional = true
+                      if (parameters.regularParameters.size > 1) {
+                        reportCompilerBug(
+                          "Unexpected multiple parameters for member injection: $contextKey"
+                        )
+                      }
+                      break
+                    } else {
+                      add(
+                        typeAsProviderArgument(
+                          parameter.contextualTypeKey,
+                          expressionGeneratorFactory
+                            .create(overriddenFunction.ir.dispatchReceiverParameter!!)
+                            .generateBindingCode(
+                              paramBinding,
+                              contextualTypeKey = parameter.contextualTypeKey,
+                            ),
+                          isAssisted = false,
+                          isGraphInstance = false,
+                        )
+                      )
+                    }
+                  }
+                }
+
+                // If it's a simple property with a default value and absent, omit injecting it here
+                if (isOptional) continue
+
                 +irInvoke(
                   callee = function.symbol,
                   typeArgs =
                     targetParam.type.requireSimpleType(targetParam).arguments.map {
                       it.typeOrNullableAny
                     },
-                  args =
-                    buildList {
-                      add(irGet(targetParam))
-                      for (parameter in parameters.regularParameters) {
-                        val paramBinding = bindingGraph.requireBinding(parameter.contextualTypeKey)
-                        add(
-                          typeAsProviderArgument(
-                            parameter.contextualTypeKey,
-                            expressionGeneratorFactory
-                              .create(overriddenFunction.ir.dispatchReceiverParameter!!)
-                              .generateBindingCode(
-                                paramBinding,
-                                contextualTypeKey = parameter.contextualTypeKey,
-                              ),
-                            isAssisted = false,
-                            isGraphInstance = false,
-                          )
-                        )
-                      }
-                    },
+                  args = args,
                 )
               }
             }

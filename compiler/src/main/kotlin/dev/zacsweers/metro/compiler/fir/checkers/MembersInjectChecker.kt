@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.hasMetroDefault
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
@@ -130,6 +131,16 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             MetroDiagnostics.MEMBERS_INJECT_TYPE_PARAMETERS_ERROR,
             "Injected member functions cannot have type parameters.",
           )
+        }
+
+        for (param in callable.valueParameterSymbols) {
+          if (param.hasMetroDefault(session)) {
+            reporter.reportOn(
+              param.defaultValueSource ?: param.source,
+              MetroDiagnostics.MEMBERS_INJECT_ERROR,
+              "Function member injection cannot have default values.",
+            )
+          }
         }
       }
     }

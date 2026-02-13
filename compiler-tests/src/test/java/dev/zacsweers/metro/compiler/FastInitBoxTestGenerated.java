@@ -1816,6 +1816,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("MemberInjectWithNullableMutableProperties.kt")
+    public void testMemberInjectWithNullableMutableProperties() {
+      runTest("compiler-tests/src/test/data/box/member/MemberInjectWithNullableMutableProperties.kt");
+    }
+
+    @Test
     @TestMetadata("MemberInjectsAcrossModules.kt")
     public void testMemberInjectsAcrossModules() {
       runTest("compiler-tests/src/test/data/box/member/MemberInjectsAcrossModules.kt");

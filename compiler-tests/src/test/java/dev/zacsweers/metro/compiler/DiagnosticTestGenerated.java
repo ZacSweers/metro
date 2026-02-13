@@ -721,6 +721,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("FunctionMemberInjectionCannotHaveDefaultValues.kt")
+      public void testFunctionMemberInjectionCannotHaveDefaultValues() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/FunctionMemberInjectionCannotHaveDefaultValues.kt");
+      }
+
+      @Test
       @TestMetadata("FunctionMemberInjectsCannotHaveTypeParams.kt")
       public void testFunctionMemberInjectsCannotHaveTypeParams() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/member/FunctionMemberInjectsCannotHaveTypeParams.kt");
