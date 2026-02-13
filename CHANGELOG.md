@@ -18,6 +18,7 @@ Changelog
 
 ### Changes
 
+- `enableGraphSharding` is now enabled by default. Note this only kicks in (by default) for graphs with 2000+ bindings by default.
 - Deprecate the `generateThrowsAnnotations` option and make it no-op. This was only in place when debugging a past kotlin/native issue.
 
 ### Contributors
