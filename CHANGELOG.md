@@ -12,11 +12,47 @@ Changelog
 - **[FIR]**: Add a diagnostic error for function member injection parameters with default values as they are not currently supported.
 - **[IR]**: Extend conflicting overrides diagnostic in synthetic graphs (graph extension impls, dynamic graphs) to also validate compatible annotations. This catches scenarios where you may accidentally contribute something like a `fun dependency(): Dependency` accessor _and_ `@Provides fun dependency(): Dependency` provider elsewhere, which previously resulted in undefined runtime behavior.
 - **[IR]**: When reporting conflicting override types in synthetic graphs, underline the type and include the source location (when possible) to better indicate the issue.
+- **[IR]**: Add a graph validation failure hint to report when a direct Map binding exists that cannot satisfy a Provider/Lazy map.
+    - For example, the below snippet
+      ```kotlin
+      @DependencyGraph
+      interface ExampleGraph {
+        val mapSize: Int
+    
+        @Provides fun provideInt(map: Map<String, Provider<String>>): Int = map.size
+    
+        @DependencyGraph.Factory
+        interface Factory {
+          fun create(@Provides map: Map<String, String>): ExampleGraph
+        }
+      }
+      ```
+    
+      Now yields this error trace
+    
+      ```
+      error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Map<kotlin.String, kotlin.String>
+    
+          kotlin.collections.Map<kotlin.String, kotlin.String> is injected at
+              [ExampleGraph] ExampleGraph.provideInt(…, map)
+          kotlin.Int is requested at
+              [ExampleGraph] ExampleGraph.mapSize
+    
+      (Hint)
+      A directly-provided 'Map<String, String>' binding exists, but direct Map bindings cannot satisfy 'Map<String, Provider<String>>' requests.
+    
+          IncompatibleMapValueType.kt:15:16
+          @Provides map: kotlin.collections.Map<kotlin.String, kotlin.String>
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+      Provider/Lazy-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map **multibinding** created with `@IntoMap` or `@Multibinds`.
+      ```
 
 ### Fixes
 
 - **[IR]**: Gracefully handle skipping code gen for absent member-injected properties/single-arg setters.
 - **[IR]**: Decompose `Map` graph factory inputs correctly so they can properly satisfy map requests on the graph.
+- **[IR]**: Validate directly-provided map inputs from map-requesting injection sites.
 - **[IR/Native]**: Fix mirror parameter check for providers in `object` classes in non-jvm compilations.
 
 ### Changes

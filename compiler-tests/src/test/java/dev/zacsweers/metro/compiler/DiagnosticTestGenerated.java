@@ -865,6 +865,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("IncompatibleMapValueType.kt")
+    public void testIncompatibleMapValueType() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/IncompatibleMapValueType.kt");
+    }
+
+    @Test
     @TestMetadata("MapKeyDiagnostics.kt")
     public void testMapKeyDiagnostics() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/MapKeyDiagnostics.kt");
