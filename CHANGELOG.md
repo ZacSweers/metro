@@ -42,8 +42,8 @@ Changelog
       A directly-provided 'Map<String, String>' binding exists, but direct Map bindings cannot satisfy 'Map<String, Provider<String>>' requests.
 
           IncompatibleMapValueType.kt:15:16
-          @Provides map: kotlin.collections.Map<kotlin.String, kotlin.String>
-                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              @Provides map: kotlin.collections.Map<kotlin.String, kotlin.String>
+                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
       Provider/Lazy-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map **multibinding** created with `@IntoMap` or `@Multibinds`.
       ```
