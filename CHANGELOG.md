@@ -14,6 +14,8 @@ Changelog
 
 ### Fixes
 
+- **[IR/Native]**: Fix mirror parameter check for providers in `object` classes in non-jvm compilations.
+
 ### Changes
 
 - Deprecate the `generateThrowsAnnotations` option and make it no-op. This was only in place when debugging a past kotlin/native issue.
