@@ -436,6 +436,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val irElement: IrElement? = null,
     val token: ParentContext.Token? = null,
     val isGraphInput: Boolean = false,
+    override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey),
   ) : IrBinding {
     constructor(
       parameter: Parameter,
@@ -446,12 +447,12 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       nameHint = "${parameter.name.asString()}Instance",
       reportableDeclaration = reportableLocation,
       isGraphInput = isGraphInput,
+      contextualTypeKey = parameter.contextualTypeKey,
     )
 
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val scope: IrAnnotation? = null
     override val parameters: Parameters = Parameters.empty()
-    override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val isImplicitlyDeferrable: Boolean = true
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {

@@ -469,27 +469,26 @@ internal class IrGraphGenerator(
     typeKey: IrTypeKey,
     name: Name,
     thisReceiverParameter: IrValueParameter,
+    contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey),
     initializer:
       IrBuilderWithScope.(thisReceiver: IrValueParameter, typeKey: IrTypeKey) -> IrExpression,
   ) {
     // Don't add it if it's not used
     if (typeKey !in sealResult.reachableKeys) return
 
-    val instanceContextKey = IrContextualTypeKey.create(typeKey)
     val instanceProperty =
       createBindingProperty(
-          instanceContextKey,
+          contextualTypeKey,
           name.decapitalizeUS().suffixIfNot("Instance"),
           typeKey.type,
           PropertyKind.FIELD,
         )
         .initFinal { initializer(thisReceiverParameter, typeKey) }
 
-    bindingPropertyContext.put(instanceContextKey, instanceProperty)
+    bindingPropertyContext.put(contextualTypeKey, instanceProperty)
 
     val providerType = metroSymbols.metroProvider.typeWith(typeKey.type)
-    val providerContextKey =
-      IrContextualTypeKey.create(typeKey, isWrappedInProvider = true, rawType = providerType)
+    val providerContextKey = contextualTypeKey.wrapInProvider()
     val providerProperty =
       createBindingProperty(
           providerContextKey,
@@ -534,7 +533,12 @@ internal class IrGraphGenerator(
           // Don't add it if there's a dynamic replacement
           continue
         }
-        addBoundInstanceProperty(param.typeKey, param.name, thisReceiverParameter) { _, _ ->
+        addBoundInstanceProperty(
+          param.typeKey,
+          param.name,
+          thisReceiverParameter,
+          contextualTypeKey = param.contextualTypeKey,
+        ) { _, _ ->
           irGet(irParam)
         }
       } else {

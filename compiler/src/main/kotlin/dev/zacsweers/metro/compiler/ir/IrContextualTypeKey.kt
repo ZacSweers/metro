@@ -4,6 +4,8 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.WrappedType.Canonical
+import dev.zacsweers.metro.compiler.graph.WrappedType.Provider
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -88,7 +90,7 @@ internal class IrContextualTypeKey(
 
         // Create a Map type with the key type and the processed value type
         val mapClass = context.irBuiltIns.mapClass
-        return mapClass.typeWith(keyType, valueType)
+        mapClass.typeWith(keyType, valueType)
       }
     }
   }

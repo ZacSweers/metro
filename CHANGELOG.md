@@ -16,6 +16,7 @@ Changelog
 ### Fixes
 
 - **[IR]**: Gracefully handle skipping code gen for absent member-injected properties/single-arg setters.
+- **[IR]**: Decompose `Map` graph factory inputs correctly so they can properly satisfy map requests on the graph.
 - **[IR/Native]**: Fix mirror parameter check for providers in `object` classes in non-jvm compilations.
 
 ### Changes
