@@ -3746,11 +3746,13 @@
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR]</strong>: Add suspicious scope diagnostics for cases where a developer might accidentally try to contribute to a concrete <code>@Scope</code> class or graph-like class, as that&rsquo;s not usually what you want!</li>
+<li><strong>[FIR]</strong>: Add a diagnostic error for function member injection parameters with default values as they are not currently supported.</li>
 <li><strong>[IR]</strong>: Extend conflicting overrides diagnostic in synthetic graphs (graph extension impls, dynamic graphs) to also validate compatible annotations. This catches scenarios where you may accidentally contribute something like a <code>fun dependency(): Dependency</code> accessor <em>and</em> <code>@Provides fun dependency(): Dependency</code> provider elsewhere, which previously resulted in undefined runtime behavior.</li>
 <li><strong>[IR]</strong>: When reporting conflicting override types in synthetic graphs, underline the type and include the source location (when possible) to better indicate the issue.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[IR]</strong>: Gracefully handle skipping code gen for absent member-injected properties/single-arg setters.</li>
 <li><strong>[IR/Native]</strong>: Fix mirror parameter check for providers in <code>object</code> classes in non-jvm compilations.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
