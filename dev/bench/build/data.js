@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770932751788,
+  "lastUpdate": 1770959994914,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -5376,6 +5376,62 @@ window.BENCHMARK_DATA = {
             "value": 31267.672,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.93%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c8f56268~1",
+          "message": "[before] Fix mirror parameter check for providers in `objec",
+          "timestamp": "2026-02-13T04:41:58Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c8f56268889d27ae39c7c3aba994953b262bb2b4"
+        },
+        "date": 1770959994914,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 29898.832000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c8f56268889d27ae39c7c3aba994953b262bb2b4",
+          "message": "[after] Fix mirror parameter check for providers in `objec",
+          "timestamp": "2026-02-13T04:41:58Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c8f56268889d27ae39c7c3aba994953b262bb2b4"
+        },
+        "date": 1770959994915,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 29696.964,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.68%"
           }
         ]
       }
