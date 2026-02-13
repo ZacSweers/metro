@@ -5,17 +5,6 @@ plugins {
   alias(libs.plugins.buildConfig)
 }
 
-kotlin {
-  compilerOptions {
-    freeCompilerArgs.addAll("-Xcontext-parameters", "-Xreturn-value-checker=full")
-
-    optIn.addAll(
-      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
-      "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-    )
-  }
-}
-
 buildConfig {
   packageName("dev.zacsweers.metro.compiler.compat")
   kotlin {

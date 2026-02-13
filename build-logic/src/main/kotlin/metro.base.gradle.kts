@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import com.vanniktech.maven.publish.DeploymentValidation
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
+import kotlin.collections.addAll
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.jetbrains.dokka.gradle.DokkaExtension
@@ -17,10 +18,17 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
 val jdkVersion = catalog.findVersion("jdk").get().requiredVersion
 val jvmTargetVersion = catalog.findVersion("jvmTarget").get().requiredVersion
+val compilerJvmTargetVersion = catalog.findVersion("compilerJvmTarget").get().requiredVersion
 
 val metroExtension =
   project.extensions.create<MetroProjectExtension>("metroProject").apply {
-    jvmTarget.convention(jvmTargetVersion)
+    jvmTarget.convention(
+      if (isCompilerProject) {
+        compilerJvmTargetVersion
+      } else {
+        jvmTargetVersion
+      }
+    )
   }
 
 // Java configuration
@@ -44,15 +52,6 @@ tasks.withType<JavaExec>().configureEach {
 
 // Kotlin configuration
 plugins.withType<KotlinBasePlugin> {
-  // Skip explicitApi for samples and benchmark projects
-  val useExplicitApi =
-    "sample" !in project.path &&
-      rootProject.name != "metro-samples" &&
-      rootProject.name != "metro-benchmark"
-  if (useExplicitApi) {
-    configure<KotlinProjectExtension> { explicitApi() }
-  }
-
   tasks.withType<KotlinCompilationTask<*>>().configureEach {
     compilerOptions {
       progressiveMode.convention(metroExtension.progressiveMode)
@@ -62,6 +61,29 @@ plugins.withType<KotlinBasePlugin> {
         jvmTarget.convention(metroExtension.jvmTarget.map(JvmTarget::fromTarget))
         jvmDefault.convention(JvmDefaultMode.NO_COMPATIBILITY)
         freeCompilerArgs.addAll("-Xassertions=jvm", "-Xannotation-default-target=param-property")
+        if (isCompilerProject) {
+          freeCompilerArgs.addAll(
+            "-Xcontext-parameters",
+            "-Xreturn-value-checker=full",
+            "-Xcontext-sensitive-resolution",
+            "-Xdata-flow-based-exhaustiveness",
+            //  "-Xallow-contracts-on-more-functions",
+            //  "-Xallow-condition-implies-returns-contracts",
+            //  "-Xallow-holdsin-contract",
+            // TODO next minor release
+            //  "-Xwhen-expressions=indy",
+            // TODO Kotlin 2.3.0
+            //  "-Xexplicit-backing-fields",
+          )
+          if (project.name != "compiler-tests") {
+            optIn.addAll(
+              "kotlin.contracts.ExperimentalContracts",
+              "kotlin.contracts.ExperimentalExtendedContracts",
+              "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
+              "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
+            )
+          }
+        }
       }
     }
   }
