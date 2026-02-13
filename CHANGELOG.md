@@ -18,33 +18,33 @@ Changelog
       @DependencyGraph
       interface ExampleGraph {
         val mapSize: Int
-    
+
         @Provides fun provideInt(map: Map<String, Provider<String>>): Int = map.size
-    
+
         @DependencyGraph.Factory
         interface Factory {
           fun create(@Provides map: Map<String, String>): ExampleGraph
         }
       }
       ```
-    
+
       Now yields this error trace
-    
+
       ```
       error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Map<kotlin.String, kotlin.String>
-    
+
           kotlin.collections.Map<kotlin.String, kotlin.String> is injected at
               [ExampleGraph] ExampleGraph.provideInt(…, map)
           kotlin.Int is requested at
               [ExampleGraph] ExampleGraph.mapSize
-    
+
       (Hint)
       A directly-provided 'Map<String, String>' binding exists, but direct Map bindings cannot satisfy 'Map<String, Provider<String>>' requests.
-    
+
           IncompatibleMapValueType.kt:15:16
           @Provides map: kotlin.collections.Map<kotlin.String, kotlin.String>
                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
+
       Provider/Lazy-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map **multibinding** created with `@IntoMap` or `@Multibinds`.
       ```
 
