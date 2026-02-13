@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
 import org.jetbrains.kotlin.test.util.KtTestUtil;
-import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,7 +18,7 @@ import java.util.regex.Pattern;
 public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   @Test
   public void testAllFilesPresentInBox() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box"), Pattern.compile("^(.+)\\.kt$"), null, true);
   }
 
   @Nested
@@ -28,7 +27,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   public class Aggregation {
     @Test
     public void testAllFilesPresentInAggregation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -217,7 +216,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public class Interop {
       @Test
       public void testAllFilesPresentInInterop() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/interop"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/interop"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -282,7 +281,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   public class Api {
     @Test
     public void testAllFilesPresentInApi() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -298,7 +297,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   public class Bindingcontainers {
     @Test
     public void testAllFilesPresentInBindingcontainers() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -386,7 +385,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   public class Contributesgraphextension {
     @Test
     public void testAllFilesPresentInContributesgraphextension() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/contributesgraphextension"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/contributesgraphextension"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -468,7 +467,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   public class Cycles {
     @Test
     public void testAllFilesPresentInCycles() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/cycles"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/cycles"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -544,7 +543,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInDependencygraph() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -623,6 +622,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("InjectedGenericsClassWorksWithBinds.kt")
     public void testInjectedGenericsClassWorksWithBinds() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/InjectedGenericsClassWorksWithBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("MapGraphInputsCanSatisfyMapRequests.kt")
+    public void testMapGraphInputsCanSatisfyMapRequests() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/MapGraphInputsCanSatisfyMapRequests.kt");
     }
 
     @Test
@@ -745,7 +750,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public class Bindingcontainers {
       @Test
       public void testAllFilesPresentInBindingcontainers() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -785,7 +790,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public class Dynamic {
       @Test
       public void testAllFilesPresentInDynamic() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -843,7 +848,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public class Extensions {
       @Test
       public void testAllFilesPresentInExtensions() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/extensions"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/extensions"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1051,7 +1056,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public class Leniency {
       @Test
       public void testAllFilesPresentInLeniency() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1079,7 +1084,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public class Optional {
       @Test
       public void testAllFilesPresentInOptional() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/optional"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/optional"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1107,7 +1112,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public class Sharding {
       @Test
       public void testAllFilesPresentInSharding() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1178,7 +1183,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   public class Inject {
     @Test
     public void testAllFilesPresentInInject() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -1223,7 +1228,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public class Assisted {
       @Test
       public void testAllFilesPresentInAssisted() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1335,7 +1340,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public class Member {
       @Test
       public void testAllFilesPresentInMember() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/member"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1436,7 +1441,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   public class Interop {
     @Test
     public void testAllFilesPresentInInterop() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Nested
@@ -1445,7 +1450,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public class Dagger {
       @Test
       public void testAllFilesPresentInDagger() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/dagger"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/dagger"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1712,7 +1717,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       public class Anvil {
         @Test
         public void testAllFilesPresentInAnvil() {
-          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/dagger/anvil"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/dagger/anvil"), Pattern.compile("^(.+)\\.kt$"), null, true);
         }
 
         @Test
@@ -1747,7 +1752,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public class Guice {
       @Test
       public void testAllFilesPresentInGuice() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/guice"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/guice"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1776,7 +1781,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   public class Member {
     @Test
     public void testAllFilesPresentInMember() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/member"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/member"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -1864,7 +1869,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   public class Multibindings {
     @Test
     public void testAllFilesPresentInMultibindings() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/multibindings"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -1934,7 +1939,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   public class Provides {
     @Test
     public void testAllFilesPresentInProvides() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/provides"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/provides"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -2004,7 +2009,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
   public class Reports {
     @Test
     public void testAllFilesPresentInReports() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/reports"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/reports"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
