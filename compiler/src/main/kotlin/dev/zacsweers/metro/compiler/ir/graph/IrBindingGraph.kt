@@ -472,7 +472,7 @@ internal class IrBindingGraph(
               val locationDiagnostic =
                 directBinding.renderLocationDiagnostic(underlineTypeKey = true)
               appendLine("    ${locationDiagnostic.location}")
-              locationDiagnostic.description?.let { appendLine(it.prependIndent("    ")) }
+              locationDiagnostic.description?.let { appendLine(it.prependIndent("        ")) }
               appendLine()
               append(
                 "Provider/Lazy-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map **multibinding** created with `@IntoMap` or `@Multibinds`."
@@ -841,7 +841,7 @@ internal class IrBindingGraph(
               underlineTypeKey = false,
             )
           appendLine("    ${locationDiagnostic.location}")
-          locationDiagnostic.description?.let { appendLine(it.prependIndent("    ")) }
+          locationDiagnostic.description?.let { appendLine(it.prependIndent("        ")) }
         }
         appendLine()
         appendBindingStack(stack)
