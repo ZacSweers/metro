@@ -3749,10 +3749,47 @@
 <li><strong>[FIR]</strong>: Add a diagnostic error for function member injection parameters with default values as they are not currently supported.</li>
 <li><strong>[IR]</strong>: Extend conflicting overrides diagnostic in synthetic graphs (graph extension impls, dynamic graphs) to also validate compatible annotations. This catches scenarios where you may accidentally contribute something like a <code>fun dependency(): Dependency</code> accessor <em>and</em> <code>@Provides fun dependency(): Dependency</code> provider elsewhere, which previously resulted in undefined runtime behavior.</li>
 <li><strong>[IR]</strong>: When reporting conflicting override types in synthetic graphs, underline the type and include the source location (when possible) to better indicate the issue.</li>
+<li>
+<p><strong>[IR]</strong>: Add a graph validation failure hint to report when a direct Map binding exists that cannot satisfy a Provider/Lazy map.</p>
+<ul>
+<li>For example, the below snippet<br />
+  <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">ExampleGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">mapSize</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span>
+
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideInt</span><span class="p">(</span><span class="n">map</span><span class="p">:</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="kt">String</span><span class="p">,</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="kt">String</span><span class="o">&gt;&gt;</span><span class="p">):</span><span class="w"> </span><span class="kt">Int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">map</span><span class="p">.</span><span class="na">size</span>
+
+<span class="w">  </span><span class="nd">@DependencyGraph.Factory</span>
+<span class="w">  </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="nd">@Provides</span><span class="w"> </span><span class="n">map</span><span class="p">:</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="kt">String</span><span class="p">,</span><span class="w"> </span><span class="kt">String</span><span class="o">&gt;</span><span class="p">):</span><span class="w"> </span><span class="n">ExampleGraph</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></li>
+</ul>
+<p>Now yields this error trace</p>
+<div class="highlight"><pre><span></span><code>error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Map&lt;kotlin.String, kotlin.String&gt;
+
+    kotlin.collections.Map&lt;kotlin.String, kotlin.String&gt; is injected at
+        [ExampleGraph] ExampleGraph.provideInt(…, map)
+    kotlin.Int is requested at
+        [ExampleGraph] ExampleGraph.mapSize
+
+(Hint)
+A directly-provided &#39;Map&lt;String, String&gt;&#39; binding exists, but direct Map bindings cannot satisfy &#39;Map&lt;String, Provider&lt;String&gt;&gt;&#39; requests.
+
+    IncompatibleMapValueType.kt:15:16
+        @Provides map: kotlin.collections.Map&lt;kotlin.String, kotlin.String&gt;
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Provider/Lazy-wrapped map values (e.g., Map&lt;K, Provider&lt;V&gt;&gt;) only work with a Map **multibinding** created with `@IntoMap` or `@Multibinds`.
+</code></pre></div>
+</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[IR]</strong>: Gracefully handle skipping code gen for absent member-injected properties/single-arg setters.</li>
+<li><strong>[IR]</strong>: Decompose <code>Map</code> graph factory inputs correctly so they can properly satisfy map requests on the graph.</li>
+<li><strong>[IR]</strong>: Validate directly-provided map inputs from map-requesting injection sites.</li>
 <li><strong>[IR/Native]</strong>: Fix mirror parameter check for providers in <code>object</code> classes in non-jvm compilations.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
