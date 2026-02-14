@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771106604705,
+  "lastUpdate": 1771108436438,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -5768,6 +5768,62 @@ window.BENCHMARK_DATA = {
             "value": 31549.974,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +4.12%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6a9ec4d8~1",
+          "message": "[before] Dedupe typekeys in generated factories (#1824)",
+          "timestamp": "2026-02-14T21:53:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6a9ec4d8bd8bb4352de58825cc89a0aabb21cb77"
+        },
+        "date": 1771108436438,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 28156.833999999995,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6a9ec4d8bd8bb4352de58825cc89a0aabb21cb77",
+          "message": "[after] Dedupe typekeys in generated factories (#1824)",
+          "timestamp": "2026-02-14T21:53:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6a9ec4d8bd8bb4352de58825cc89a0aabb21cb77"
+        },
+        "date": 1771108436439,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 29626.328,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +5.22%"
           }
         ]
       }
