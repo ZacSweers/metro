@@ -24,7 +24,7 @@ import java.util.concurrent.Callable
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Test
 
-class InjectConstructorTransformerTest : MetroCompilerTest() {
+class InjectedClassTransformerTest : MetroCompilerTest() {
 
   @Test
   fun simple() {

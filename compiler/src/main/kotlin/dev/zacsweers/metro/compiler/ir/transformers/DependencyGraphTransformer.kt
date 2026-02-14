@@ -110,10 +110,10 @@ internal class DependencyGraphTransformer(
   TraceScope by traceScope {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
-  private val injectConstructorTransformer =
-    InjectConstructorTransformer(context, membersInjectorTransformer)
+  private val injectedClassTransformer =
+    InjectedClassTransformer(context, membersInjectorTransformer)
   private val assistedFactoryTransformer =
-    AssistedFactoryTransformer(context, injectConstructorTransformer)
+    AssistedFactoryTransformer(context, injectedClassTransformer)
   private val bindingContainerTransformer = BindingContainerTransformer(context)
   private val contributionHintIrTransformer by memoize {
     ContributionHintIrTransformer(context, hintGenerator)
@@ -195,7 +195,7 @@ internal class DependencyGraphTransformer(
       contributionHintIrTransformer.visitClass(declaration)
     }
     membersInjectorTransformer.visitClass(declaration)
-    injectConstructorTransformer.visitClass(declaration)
+    injectedClassTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
 
     if (!declaration.isCompanionObject) {
@@ -336,7 +336,7 @@ internal class DependencyGraphTransformer(
             metroContext,
             this,
             node,
-            injectConstructorTransformer,
+            injectedClassTransformer,
             membersInjectorTransformer,
             contributionData,
             parentContext,

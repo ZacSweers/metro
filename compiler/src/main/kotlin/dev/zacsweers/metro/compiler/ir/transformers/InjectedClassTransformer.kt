@@ -66,7 +66,7 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
-internal class InjectConstructorTransformer(
+internal class InjectedClassTransformer(
   context: IrMetroContext,
   private val membersInjectorTransformer: MembersInjectorTransformer,
 ) : IrMetroContext by context {

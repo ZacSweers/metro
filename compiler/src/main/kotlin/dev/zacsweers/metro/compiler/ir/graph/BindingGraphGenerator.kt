@@ -27,7 +27,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
-import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.InjectedClassTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -49,7 +49,7 @@ internal class BindingGraphGenerator(
   traceScope: TraceScope,
   private val node: GraphNode.Local,
   // TODO preprocess these instead and just lookup via irAttribute
-  private val injectConstructorTransformer: InjectConstructorTransformer,
+  private val injectedClassTransformer: InjectedClassTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val contributionData: IrContributionData,
   private val parentContext: ParentContext?,
@@ -67,7 +67,7 @@ internal class BindingGraphGenerator(
         metroContext = metroContext,
         sourceGraph = node.sourceGraph,
         findClassFactory = { clazz ->
-          injectConstructorTransformer.getOrGenerateFactory(
+          injectedClassTransformer.getOrGenerateFactory(
             clazz,
             previouslyFoundConstructor = null,
             doNotErrorOnMissing = true,

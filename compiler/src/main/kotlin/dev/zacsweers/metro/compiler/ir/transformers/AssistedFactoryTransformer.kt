@@ -79,7 +79,7 @@ import org.jetbrains.kotlin.name.SpecialNames
 
 internal class AssistedFactoryTransformer(
   context: IrMetroContext,
-  private val injectConstructorTransformer: InjectConstructorTransformer,
+  private val injectedClassTransformer: InjectedClassTransformer,
 ) : IrMetroContext by context {
 
   private val implsCache = mutableMapOf<ClassId, AssistedFactoryImpl>()
@@ -336,7 +336,7 @@ internal class AssistedFactoryTransformer(
     val creatorFunction = samFunction.toAssistedFactoryFunction(implSamFunction, remapper)
 
     val generatedFactory =
-      injectConstructorTransformer.getOrGenerateFactory(
+      injectedClassTransformer.getOrGenerateFactory(
         targetType,
         injectConstructor,
         doNotErrorOnMissing = false,
