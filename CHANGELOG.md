@@ -8,8 +8,11 @@ Changelog
 
 ### Enhancements
 
+- **[FIR/IR]**: When generating class and provider factories now, the compiler dedupes non-assisted, non-optional injections of the same type key (i.e. type ± qualifier). This shrinks generated code size in (uncommon) scenarios where you inject the same type multiple types.
+
 ### Fixes
 
+- **[FIR]**: Improve optional binding member injections detection.
 - **[IR]**: Fix propagation of `Map` graph inputs down to graph extensions.
 
 ### Changes
