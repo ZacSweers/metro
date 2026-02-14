@@ -351,6 +351,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
             )
           )
           add(lazyOption("contributes-as-inject", extension.contributesAsInject))
+          add(lazyOption("deduplicate-injected-params", extension.deduplicateInjectedParams))
           add(lazyOption("enable-klib-params-check", extension.enableKlibParamsCheck))
           add(lazyOption("patch-klib-params", extension.patchKlibParams))
           add(lazyOption("force-enable-fir-in-ide", extension.forceEnableFirInIde))

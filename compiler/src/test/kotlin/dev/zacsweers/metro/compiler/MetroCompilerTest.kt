@@ -284,6 +284,9 @@ abstract class MetroCompilerTest {
               CONTRIBUTES_AS_INJECT -> {
                 processor.option(entry.raw.cliOption, contributesAsInject)
               }
+              DEDUPLICATE_INJECTED_PARAMS -> {
+                processor.option(entry.raw.cliOption, deduplicateInjectedParams)
+              }
               ENABLE_KLIB_PARAMS_CHECK -> {
                 processor.option(entry.raw.cliOption, enableKlibParamsCheck)
               }

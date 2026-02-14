@@ -238,7 +238,9 @@ internal class InjectedClassTransformer(
     // Deduplicate parameters to match the FIR-generated factory constructor.
     // The FIR side deduplicates by type key, so the factory constructor has fewer
     // parameters when multiple source params share the same type+qualifier.
-    val dedupedParameters = nonAssistedParameters.dedupeParameters()
+    val dedupedParameters =
+      if (options.deduplicateInjectedParams) nonAssistedParameters.dedupeParameters()
+      else nonAssistedParameters
 
     val ctor = factoryCls.primaryConstructor!!
 
@@ -305,7 +307,10 @@ internal class InjectedClassTransformer(
 
     val dedupedConstructorParams =
       constructorParameters.copy(
-        regularParameters = constructorParameters.regularParameters.dedupeParameters()
+        regularParameters =
+          if (options.deduplicateInjectedParams)
+            constructorParameters.regularParameters.dedupeParameters()
+          else constructorParameters.regularParameters
       )
     implementFactoryInvokeOrGetBody(
       invoke.owner,
@@ -612,7 +617,10 @@ internal class InjectedClassTransformer(
     // Deduplicate to match the FIR-generated create() function signature
     val dedupedMerged =
       mergedParameters.copy(
-        regularParameters = mergedParameters.regularParameters.dedupeParameters()
+        regularParameters =
+          if (options.deduplicateInjectedParams)
+            mergedParameters.regularParameters.dedupeParameters()
+          else mergedParameters.regularParameters
       )
 
     // Generate create()
@@ -626,7 +634,10 @@ internal class InjectedClassTransformer(
     )
 
     // Deduplicate to match the FIR-generated newInstance() function signature
-    val dedupedConstructorRegularParams = constructorParameters.regularParameters.dedupeParameters()
+    val dedupedConstructorRegularParams =
+      if (options.deduplicateInjectedParams)
+        constructorParameters.regularParameters.dedupeParameters()
+      else constructorParameters.regularParameters
     val dedupedConstructorParameters =
       constructorParameters.copy(regularParameters = dedupedConstructorRegularParams)
 

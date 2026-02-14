@@ -645,6 +645,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
   }
 
   private fun List<MetroFirValueParameter>.dedupeParameters(): List<MetroFirValueParameter> {
+    if (!session.metroFirBuiltIns.options.deduplicateInjectedParams) return this
     // Map from typeKey to index in the result list, so we can replace entries if needed
     val seenKeys = HashMap<FirTypeKey, Int>(size)
     val result = mutableListOf<MetroFirValueParameter>()

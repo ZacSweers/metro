@@ -664,6 +664,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  DEDUPLICATE_INJECTED_PARAMS(
+    RawMetroOption.boolean(
+      name = "deduplicate-injected-params",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable deduplication of injected parameters with the same type key in generated factories.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   ENABLE_KLIB_PARAMS_CHECK(
     RawMetroOption.boolean(
       name = "enable-klib-params-check",
@@ -959,6 +970,8 @@ public data class MetroOptions(
     MetroOption.CUSTOM_OPTIONAL_BINDING.raw.defaultValue.expectAs(),
   public val contributesAsInject: Boolean =
     MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
+  public val deduplicateInjectedParams: Boolean =
+    MetroOption.DEDUPLICATE_INJECTED_PARAMS.raw.defaultValue.expectAs(),
   public val enableKlibParamsCheck: Boolean =
     MetroOption.ENABLE_KLIB_PARAMS_CHECK.raw.defaultValue.expectAs(),
   public val patchKlibParams: Boolean = MetroOption.PATCH_KLIB_PARAMS.raw.defaultValue.expectAs(),
@@ -1083,6 +1096,7 @@ public data class MetroOptions(
     public var customOptionalBindingAnnotations: MutableSet<ClassId> =
       base.customOptionalBindingAnnotations.toMutableSet()
     public var contributesAsInject: Boolean = base.contributesAsInject
+    public var deduplicateInjectedParams: Boolean = base.deduplicateInjectedParams
     public var enableKlibParamsCheck: Boolean = base.enableKlibParamsCheck
     public var patchKlibParams: Boolean = base.patchKlibParams
     public var forceEnableFirInIde: Boolean = base.forceEnableFirInIde
@@ -1259,6 +1273,7 @@ public data class MetroOptions(
         customOriginAnnotations = customOriginAnnotations,
         customOptionalBindingAnnotations = customOptionalBindingAnnotations,
         contributesAsInject = contributesAsInject,
+        deduplicateInjectedParams = deduplicateInjectedParams,
         enableKlibParamsCheck = enableKlibParamsCheck,
         patchKlibParams = patchKlibParams,
         forceEnableFirInIde = forceEnableFirInIde,
@@ -1461,6 +1476,9 @@ public data class MetroOptions(
               }
 
           CONTRIBUTES_AS_INJECT -> contributesAsInject = configuration.getAsBoolean(entry)
+
+          DEDUPLICATE_INJECTED_PARAMS ->
+            deduplicateInjectedParams = configuration.getAsBoolean(entry)
 
           ENABLE_KLIB_PARAMS_CHECK -> enableKlibParamsCheck = configuration.getAsBoolean(entry)
 
