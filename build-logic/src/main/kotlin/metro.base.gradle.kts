@@ -67,12 +67,11 @@ plugins.withType<KotlinBasePlugin> {
             "-Xreturn-value-checker=full",
             "-Xcontext-sensitive-resolution",
             "-Xdata-flow-based-exhaustiveness",
+            "-Xwhen-expressions=indy",
             //  "-Xallow-contracts-on-more-functions",
             //  "-Xallow-condition-implies-returns-contracts",
             //  "-Xallow-holdsin-contract",
-            // TODO next minor release
-            //  "-Xwhen-expressions=indy",
-            // TODO Kotlin 2.3.0
+            // TODO whenever it doesn't poison the binary
             //  "-Xexplicit-backing-fields",
           )
           if (project.name != "compiler-tests") {
