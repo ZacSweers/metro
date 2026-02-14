@@ -35,6 +35,11 @@ internal interface MetroFirValueParameter {
        * injection.
        */
       qualifierSource: FirCallableSymbol<*>? = null,
+      /**
+       * Explicit override for hasDefault, used when the callable itself doesn't carry this info
+       * (e.g. setter value parameters where the default lives on the property).
+       */
+      hasDefault: Boolean? = null,
     ): MetroFirValueParameter =
       object : MetroFirValueParameter {
         override val symbol = symbol
@@ -65,6 +70,7 @@ internal interface MetroFirValueParameter {
             wrapInProvider = wrapInProvider,
             stripLazyIfWrappedInProvider = stripLazyIfWrappedInProvider,
             qualifierSource = qualifierSource,
+            hasDefault = hasDefault,
           )
         }
         override val contextKey by contextKeyLazy
