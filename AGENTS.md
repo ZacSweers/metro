@@ -5,6 +5,7 @@ See @README.md, @docs, and @.github/CONTRIBUTING.md for project overview.
 ## Common Commands
 
 ### Building and Testing
+
 - `./gradlew :compiler:test` - Run legacy compiler tests
 - `./gradlew :compiler-tests:test` - Run new compiler tests
 - `./gradlew :gradle-plugin:functionalTest` - Run Gradle integration tests
@@ -14,13 +15,17 @@ See @README.md, @docs, and @.github/CONTRIBUTING.md for project overview.
 Generally you should run with `--quiet` to reduce noise. Failures would be reported to the console as needed.
 
 ### Code Quality
-Don't bother running code formatting, I'll handle that in commits.
+
+- Don't bother running code formatting or cleaning up imports, I'll handle that in commits.
+- Reuse existing infrastructure. When the codebase already has a pattern, utility, or abstraction for something, USE IT. Do not duplicate code, copy patterns into new locations, or reimplement what already exists. If you're unsure whether infra exists, grep first.
 
 ### Documentation
+
 - `./gradlew dokkaHtml` - Generate API documentation
 - `docs/` - Contains all Markdown documentation
 
 ### Benchmarks
+
 - `cd benchmark && ./run_benchmarks.sh metro` - Run performance benchmarks
 
 ## Project Architecture
@@ -50,7 +55,7 @@ Metro is a compile-time dependency injection framework implemented as a Kotlin c
 - Bridge functions between Metro and Dagger provider types
 - Allows gradual migration from Dagger to Metro
 
-### Testing Strategy
+## Testing Strategy
 
 **compiler/src/test** - Legacy compiler tests
 
@@ -66,7 +71,9 @@ To create a new test, add a source file under the appropriate directory and then
 - `android-app/` - Android-specific integration
 - `multi-module-test/` - Complex multi-module dependency graph
 
-### Key Files for Development
+- Prefer fakes over mocks in tests. Do not use wiremock or mock-based testing approaches unless explicitly asked.
+
+## Key Files for Development
 
 **Compiler Plugin Development:**
 - `compiler/src/main/kotlin/dev/zacsweers/metro/compiler/fir/` - FIR analysis extensions
@@ -82,7 +89,7 @@ To create a new test, add a source file under the appropriate directory and then
 - Each module has `gradle.properties` for module-specific configuration
 - Root `build.gradle.kts` contains shared build logic and conventions
 
-### Development Patterns
+## Development Patterns
 
 - **Code Generation**: Uses KotlinPoet for generating factory classes and injection code
 - **Graph Analysis**: Topological sorting with cycle detection for dependency resolution
@@ -90,14 +97,15 @@ To create a new test, add a source file under the appropriate directory and then
 - **Binary Compatibility**: API validation enabled for public modules (excluding compiler internals)
 - **Shadow JAR**: Compiler uses shadow JAR to avoid dependency conflicts at runtime
 
-### Testing New Features
+## Testing New Features
 
 1. Add compiler tests in `compiler-tests/src/test/data/` using the appropriate test type
 2. Test existing tests with `./gradlew :compiler:test`.
 3. Test integration with samples in `samples/` directory
-4. Run `./metrow check` to validate all tests and API compatibility
 
-### Important Notes
+Never run tests yourself without asking me first. You are not usually able to debug them yourself.
+
+## Important Notes
 
 - Kotlin compiler plugins are not stable APIs – Metro tracks Kotlin releases closely
 - FIR is for analysis/validation, IR is for code generation – don't mix concerns
@@ -105,5 +113,11 @@ To create a new test, add a source file under the appropriate directory and then
 - Use existing test infrastructure patterns rather than creating new test types
 - Don't run Gradle commands with unnecessary flags like `--info`, `--no-daemon`, etc.
 - Don't cd into a module directory and run Gradle commands - use `./gradlew` instead from the directory that wrapper is in.
-- Do not run tests automatically, prompt first.
-- Do not try reading `.gradle/caches` or anything similar, prefer reading sources rather than jars.
+
+## Working Style
+
+- When I ask you to fix or change something, work on the EXACT file I specify. Do not edit related files, adjacent modules, or 'nearby' code unless explicitly asked. If you're unsure which file to edit, ask first.
+- NEVER explore Gradle caches, .gradle directories, or external library internals to understand dependencies. If you need to understand an external API, ask me or check official docs via WebFetch. Do not spelunk.
+- Explain your plan BEFORE making edits, especially for non-trivial changes. Do not jump straight to editing files. Wait for my approval of the approach.
+- Do not make changes beyond what I asked for. No 'while I'm here' improvements, no proactive additions to other files, no scope creep. If you think something adjacent should also change, mention it but don't do it.
+- When I explicitly tell you to skip something, leave something commented out, or not touch a specific thing - respect that completely. Do not revisit, re-enable, or re-suggest it.
