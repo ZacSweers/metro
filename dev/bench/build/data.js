@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771011739670,
+  "lastUpdate": 1771028144268,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -5544,6 +5544,62 @@ window.BENCHMARK_DATA = {
             "value": 29650.528000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.07%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "4d7ab8ff~1",
+          "message": "[before] Fix mapping graph map inputs (#1818)",
+          "timestamp": "2026-02-13T23:34:24Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/4d7ab8ffe8668ef8c4f3067098f12c9d2d9d44b3"
+        },
+        "date": 1771028144268,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 29862.8,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "4d7ab8ffe8668ef8c4f3067098f12c9d2d9d44b3",
+          "message": "[after] Fix mapping graph map inputs (#1818)",
+          "timestamp": "2026-02-13T23:34:24Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/4d7ab8ffe8668ef8c4f3067098f12c9d2d9d44b3"
+        },
+        "date": 1771028144269,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 28648.712,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -4.07%"
           }
         ]
       }
