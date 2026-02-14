@@ -1,33 +1,26 @@
-// MODULE: lib
 @DependencyGraph
-interface FooComponent {
-  fun subcomponent(): FooSubcomponent
+interface AppGraph {
+  fun loggedInGraph(): LoggedInGraph
 
-  @Provides fun provideFoo(bar: Map<String, String>): String = "foo"
+  @Provides fun provideSize(map: Map<String, String>): Int = map.size
 
   @DependencyGraph.Factory
   interface Factory {
-    fun create(@Provides bar: Map<String, String>): FooComponent
+    fun create(@Provides map: Map<String, String>): AppGraph
   }
 }
 
 @GraphExtension
-interface FooSubcomponent {
-  fun inject(activity: Activity)
+interface LoggedInGraph {
+  val example: Example
 }
 
-class Activity {
-  @Inject
-  lateinit var foo: String
-}
+@Inject class Example(val mapSize: Int)
 
 fun box(): String {
-  val activity = Activity()
-  createGraphFactory<FooComponent.Factory>()
-    .create(bar = emptyMap())
-    .subcomponent()
-    .inject(activity)
+  val example =
+    createGraphFactory<AppGraph.Factory>().create(map = emptyMap()).loggedInGraph().example
 
-  assertEquals("foo", activity.foo)
+  assertEquals(0, example.mapSize)
   return "OK"
 }

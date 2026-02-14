@@ -4,6 +4,22 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+### Enhancements
+
+### Fixes
+
+- **[IR]**: Fix propagation of `Map` graph inputs down to graph extensions.
+
+### Changes
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@inorichi](https://github.com/inorichi)
+
 0.10.4
 ------
 
