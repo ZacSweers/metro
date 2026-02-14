@@ -437,6 +437,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ProvidesMapIntoGraphExtensionAsLateinit.kt")
+    public void testProvidesMapIntoGraphExtensionAsLateinit() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ProvidesMapIntoGraphExtensionAsLateinit.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidesWithMemberInjection.kt")
     public void testProvidesWithMemberInjection() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ProvidesWithMemberInjection.kt");
