@@ -458,7 +458,10 @@ internal class SyntheticGraphGenerator(
       loc2.description?.let { appendLine("    $it (defined in '$parent2')") }
       appendLine()
       append(
-        "Declarations with the same name and compatible return types must have compatible DI annotations too. Otherwise, these can lead to ambiguous/undefined behavior at runtime."
+        "Declarations with the same name and compatible return types must have compatible DI annotations too. " +
+          "Otherwise, these can lead to ambiguous/undefined behavior at runtime. To fix this, either align these " +
+          "annotations if they are meant to represent the same thing or rename one of the declarations to " +
+          "disambiguate them."
       )
     }
 

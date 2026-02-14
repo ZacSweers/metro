@@ -7,9 +7,10 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 abstract class MetroProjectExtension @Inject constructor(objects: ObjectFactory) {
   abstract val jvmTarget: Property<String>
-  val progressiveMode: Property<Boolean> = objects.property(Boolean::class.java).convention(true)
   val languageVersion: Property<KotlinVersion> =
     objects.property(KotlinVersion::class.java).convention(KotlinVersion.DEFAULT)
   val apiVersion: Property<KotlinVersion> =
     objects.property(KotlinVersion::class.java).convention(KotlinVersion.DEFAULT)
+  val progressiveMode: Property<Boolean> = objects.property(Boolean::class.java)
+    .convention(languageVersion.map { it < KotlinVersion.DEFAULT })
 }

@@ -453,6 +453,34 @@ internal class IrBindingGraph(
         )
         return@buildList
       }
+
+      bindingLookup.skippedDirectMapRequests[key]?.let { requestedContextKey ->
+        bindingLookup.getAvailableBindings()[key]?.let { directBinding ->
+          // Use rawType to render with Provider/Lazy wrapping preserved, since
+          // IrContextualTypeKey.render() delegates to WrappedType.Map.render() which
+          // renders the canonical map type without value wrapping.
+          // Short render here since we already have the full render mentioned earlier in the trace
+          val requestedType =
+            requestedContextKey.rawType?.render(short = true)
+              ?: requestedContextKey.render(short = true, includeQualifier = false)
+          add(
+            buildString {
+              appendLine(
+                "A directly-provided '${key.render(short = true, includeQualifier = false)}' binding exists, but direct Map bindings cannot satisfy '$requestedType' requests."
+              )
+              appendLine()
+              val locationDiagnostic =
+                directBinding.renderLocationDiagnostic(underlineTypeKey = true)
+              appendLine("    ${locationDiagnostic.location}")
+              locationDiagnostic.description?.let { appendLine(it.prependIndent("        ")) }
+              appendLine()
+              append(
+                "Provider/Lazy-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map **multibinding** created with `@IntoMap` or `@Multibinds`."
+              )
+            }
+          )
+        }
+      }
     }
   }
 

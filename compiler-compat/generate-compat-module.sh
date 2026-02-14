@@ -268,16 +268,6 @@ if [ -n "$DELEGATES_TO" ]; then
 // SPDX-License-Identifier: Apache-2.0
 plugins { alias(libs.plugins.kotlin.jvm) }
 
-kotlin {
-  compilerOptions {
-    freeCompilerArgs.add("-Xcontext-parameters")
-    optIn.addAll(
-      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
-      "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-    )
-  }
-}
-
 dependencies {
   val kotlinVersion =
     providers.fileContents(layout.projectDirectory.file("version.txt")).asText.map { it.trim() }
@@ -293,16 +283,6 @@ else
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 plugins { alias(libs.plugins.kotlin.jvm) }
-
-kotlin {
-  compilerOptions {
-    freeCompilerArgs.add("-Xcontext-parameters")
-    optIn.addAll(
-      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
-      "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-    )
-  }
-}
 
 dependencies {
   val kotlinVersion = providers.fileContents(layout.projectDirectory.file("version.txt")).asText.map { it.trim() }

@@ -14,3 +14,4 @@ The following bindings contribute the same map key '@dev.zacsweers.metro.StringK
 
     Map<String, String> is requested at
         [AppGraph] AppGraph.multibindings
+

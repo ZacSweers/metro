@@ -271,7 +271,7 @@ class GenerateImplIrExtension : IrGenerationExtension {
       object : IrElementTransformerVoid() {
         override fun visitConstructor(declaration: IrConstructor): IrStatement {
           if (declaration.origin == IMPL_ORIGIN && declaration.body == null) {
-            context(pluginContext) { declaration.apply { body = generateDefaultConstructorBody() } }
+            with(pluginContext) { declaration.apply { body = generateDefaultConstructorBody() } }
           }
           return super.visitConstructor(declaration)
         }

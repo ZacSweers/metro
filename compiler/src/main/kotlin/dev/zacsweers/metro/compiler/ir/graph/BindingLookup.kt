@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.alsoIf
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -100,6 +101,17 @@ internal class BindingLookup(
   // Keys explicitly declared in this graph (for unused key reporting)
   private val locallyDeclaredKeys = mutableSetOf<IrTypeKey>()
 
+  // Type keys for non-multibinding Map bindings, for targeted incompatible value type validation
+  private val _directMapTypeKeys = mutableSetOf<IrTypeKey>()
+  val directMapTypeKeys: Set<IrTypeKey>
+    get() = _directMapTypeKeys
+
+  // Tracks the actual requested contextual type when a direct Map binding is skipped
+  // (e.g., the Map<K, Provider<V>> that was requested but couldn't be satisfied)
+  private val _skippedDirectMapRequests = mutableMapOf<IrTypeKey, IrContextualTypeKey>()
+  val skippedDirectMapRequests: Map<IrTypeKey, IrContextualTypeKey>
+    get() = _skippedDirectMapRequests
+
   /** Information about a registered injector function for MembersInjected binding creation. */
   private data class InjectorFunctionInfo(
     val function: IrSimpleFunction,
@@ -146,6 +158,14 @@ internal class BindingLookup(
 
     if (isLocallyDeclared) {
       locallyDeclaredKeys += binding.typeKey
+    }
+
+    // Track non-multibinding Map bindings for targeted validation.
+    // Direct Map<K, V> bindings cannot satisfy Map<K, Provider<V>> requests.
+    if (
+      binding !is IrBinding.Multibinding && binding.contextualTypeKey.wrappedType is WrappedType.Map
+    ) {
+      _directMapTypeKeys += binding.typeKey
     }
 
     // If this is a multibinding contributor, register it
@@ -197,6 +217,8 @@ internal class BindingLookup(
     optionalBindingDeclarations.clear()
     optionalBindingsCache.clear()
     locallyDeclaredKeys.clear()
+    _directMapTypeKeys.clear()
+    _skippedDirectMapRequests.clear()
     registeredInjectorFunctions.clear()
   }
 
@@ -580,6 +602,13 @@ internal class BindingLookup(
 
       // First check cached bindings
       bindingsCache[key]?.let { binding ->
+        // Don't satisfy Map<K, Provider<V>>/Map<K, Lazy<V>> from a direct (non-multibinding)
+        // Map<K, V> binding. Only multibinding contributions can provide wrapped map values.
+        if ((contextKey.isMapProvider || contextKey.isMapLazy) && key in _directMapTypeKeys) {
+          _skippedDirectMapRequests[key] = contextKey
+          return@let // Fall through to missing binding
+        }
+
         // Report duplicates if there are multiple bindings
         duplicateBindings[key]?.let { onDuplicateBindings(key, it.toList()) }
 

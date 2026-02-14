@@ -20,7 +20,10 @@ plugins {
 
 metroProject {
   // Lower version for Gradle compat
-  progressiveMode.set(false)
+  // https://docs.gradle.org/current/userguide/compatibility.html#kotlin
+  // TODO for Gradle 9+
+  //  move to 2.2
+  //  move to JVM 17
   @Suppress("DEPRECATION") languageVersion.set(KotlinVersion.KOTLIN_2_0)
   @Suppress("DEPRECATION") apiVersion.set(KotlinVersion.KOTLIN_2_0)
 }

@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 public class ReportsTestGenerated extends AbstractReportsTest {
   @Test
   public void testAllFilesPresentInReports() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2220\\b)\\w+\\.kt(s)?$"), true);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports"), Pattern.compile("^(.+)\\.kt$"), null, true);
   }
 
   @Test
