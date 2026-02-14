@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
@@ -303,6 +304,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                     symbol = setterParam,
                     name = parameterNameAllocator.newName(propertyName),
                     memberKey = memberKeyAllocator.newName(propertyName),
+                    // Resolve qualifier from the property so annotations like @Named
+                    // on the property are properly included in the type key.
+                    qualifierSource = injectedMember,
                   )
                 } else if (fieldSymbol != null) {
                   MetroFirValueParameter(
@@ -628,7 +632,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         val injectedClass =
           injectFactoryClassIdsToInjectedClass[context.owner.classId] ?: return emptyList()
         injectedClass.populateAncestorMemberInjections(session)
-        buildFactoryConstructor(context, null, null, injectedClass.allParameters)
+        buildFactoryConstructor(context, null, null, injectedClass.allParameters.dedupeParameters())
       } else if (context.owner.hasOrigin(Keys.MembersInjectorClassDeclaration)) {
         val injectedClass =
           membersInjectorClassIdsToInjectedClass[context.owner.classId] ?: return emptyList()
@@ -638,6 +642,30 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         return emptyList()
       }
     return listOf(constructor.symbol)
+  }
+
+  private fun List<MetroFirValueParameter>.dedupeParameters(): List<MetroFirValueParameter> {
+    // Map from typeKey to index in the result list, so we can replace entries if needed
+    val seenKeys = HashMap<FirTypeKey, Int>(size)
+    val result = mutableListOf<MetroFirValueParameter>()
+    for (param in this) {
+      if (param.isAssisted || param.contextKey.hasDefault) {
+        // Assisted params are always unique (distinct caller-provided values).
+        // Params with default are always uniquely handled.
+        result.add(param)
+      } else {
+        val existingIndex = seenKeys[param.contextKey.typeKey]
+        if (existingIndex == null) {
+          seenKeys[param.contextKey.typeKey] = result.size
+          result.add(param)
+        } else if (!param.contextKey.isCanonical && result[existingIndex].contextKey.isCanonical) {
+          // Prefer the wrapped type (e.g., Provider<X>) over the canonical type (X),
+          // since we can derive the canonical value by invoking the provider.
+          result[existingIndex] = param
+        }
+      }
+    }
+    return result
   }
 
   override fun generateFunctions(
@@ -772,7 +800,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               },
               null,
               null,
-              injectedClass.allParameters,
+              injectedClass.allParameters.dedupeParameters(),
             )
           }
           Symbols.Names.newInstance -> {
@@ -782,7 +810,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               returnType,
               null,
               null,
-              injectedClass.constructorParameters,
+              injectedClass.constructorParameters.dedupeParameters(),
             )
           }
           else -> {

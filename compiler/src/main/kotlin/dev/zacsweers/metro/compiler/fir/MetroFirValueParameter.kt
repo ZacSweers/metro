@@ -30,6 +30,11 @@ internal interface MetroFirValueParameter {
       memberKey: Name? = null,
       wrapInProvider: Boolean = false,
       stripLazyIfWrappedInProvider: Boolean = false,
+      /**
+       * Optional source for qualifier resolution, e.g. a property symbol for setter-based
+       * injection.
+       */
+      qualifierSource: FirCallableSymbol<*>? = null,
     ): MetroFirValueParameter =
       object : MetroFirValueParameter {
         override val symbol = symbol
@@ -59,6 +64,7 @@ internal interface MetroFirValueParameter {
             symbol,
             wrapInProvider = wrapInProvider,
             stripLazyIfWrappedInProvider = stripLazyIfWrappedInProvider,
+            qualifierSource = qualifierSource,
           )
         }
         override val contextKey by contextKeyLazy

@@ -57,7 +57,6 @@ class ScopedClass {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<ScopedClass> {
     private /* final field */ val injectable: Provider<MembersInjector<Injectable>> = injectable
-    private /* final field */ val injectable2: Provider<MembersInjector<Injectable>> = injectable2
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -65,24 +64,24 @@ class ScopedClass {
 
       }
 
-      fun create(injectable: Provider<MembersInjector<Injectable>>, injectable2: Provider<MembersInjector<Injectable>>): Factory<ScopedClass> {
-        return MetroFactory(injectable = injectable, injectable2 = injectable2)
+      fun create(injectable: Provider<MembersInjector<Injectable>>): Factory<ScopedClass> {
+        return MetroFactory(injectable = injectable)
       }
 
-      fun newInstance(injectable: MembersInjector<Injectable>, injectable2: MembersInjector<Injectable>): ScopedClass {
-        return ScopedClass(injectable = injectable, injectable2 = injectable2)
+      fun newInstance(injectable: MembersInjector<Injectable>): ScopedClass {
+        return ScopedClass(injectable = injectable, injectable2 = injectable)
       }
 
     }
 
-    private constructor(injectable: Provider<MembersInjector<Injectable>>, injectable2: Provider<MembersInjector<Injectable>>) /* primary */ {
+    private constructor(injectable: Provider<MembersInjector<Injectable>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
     override operator fun invoke(): ScopedClass {
-      return Companion.newInstance(injectable = <this>.#injectable.invoke(), injectable2 = <this>.#injectable2.invoke())
+      return Companion.newInstance(injectable = <this>.#injectable.invoke())
     }
 
     @SingleIn(scope = AppScope::class)

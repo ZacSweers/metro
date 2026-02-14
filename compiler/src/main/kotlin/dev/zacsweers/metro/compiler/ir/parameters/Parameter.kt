@@ -6,6 +6,7 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.generatedContextParameterName
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -416,3 +417,40 @@ internal fun IrFunction.memberInjectParameters(
 
 internal fun Parameter.remapTypes(remapper: TypeRemapper): Parameter =
   copy(contextualTypeKey = contextualTypeKey.remapType(remapper))
+
+/**
+ * Deduplicates parameters by [IrTypeKey], matching the FIR-side dedup logic. Parameters that are
+ * always kept (never deduped):
+ * - Assisted parameters: each is a distinct caller-provided value
+ * - Non-member parameters with [Parameter.hasDefault]: their defaults may differ
+ *
+ * Member inject parameters are always deduplicated by type key regardless of defaults, since their
+ * "defaults" are property initializers rather than constructor parameter defaults.
+ *
+ * When two parameters share the same type key but differ in wrapping (e.g., `Provider<X>` vs `X`),
+ * the wrapped variant is preferred since the canonical value can be derived from it.
+ */
+internal fun List<Parameter>.dedupeParameters(): List<Parameter> {
+  // Map from typeKey to index in the result list, so we can replace entries if needed
+  val seenKeys = HashMap<IrTypeKey, Int>(size)
+  val result = mutableListOf<Parameter>()
+  for (param in this) {
+    if (param.isAssisted || (param.hasDefault && !param.isMember)) {
+      result.add(param)
+    } else {
+      val existingIndex = seenKeys[param.typeKey]
+      if (existingIndex == null) {
+        seenKeys[param.typeKey] = result.size
+        result.add(param)
+      } else if (
+        param.contextualTypeKey.wrappedType !is WrappedType.Canonical &&
+          result[existingIndex].contextualTypeKey.wrappedType is WrappedType.Canonical
+      ) {
+        // Prefer the wrapped type (e.g., Provider<X>) over the canonical type (X),
+        // since we can derive the canonical value by invoking the provider.
+        result[existingIndex] = param
+      }
+    }
+  }
+  return result
+}

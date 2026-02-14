@@ -6,8 +6,10 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
@@ -24,6 +26,7 @@ import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -232,17 +235,44 @@ internal class InjectedClassTransformer(
     val allValueParameters = allParameters.flatMap { it.regularParameters }
     val nonAssistedParameters = allValueParameters.filterNot { it.isAssisted }
 
+    // Deduplicate parameters to match the FIR-generated factory constructor.
+    // The FIR side deduplicates by type key, so the factory constructor has fewer
+    // parameters when multiple source params share the same type+qualifier.
+    val dedupedParameters = nonAssistedParameters.dedupeParameters()
+
     val ctor = factoryCls.primaryConstructor!!
 
     val constructorParametersToFields = assignConstructorParamsToFields(ctor, factoryCls)
 
-    // TODO This is ugly. Can we just source all the params directly from the FIR class now?
-    val sourceParametersToFields: Map<Parameter, IrField> =
+    // Build a mapping from ALL source parameters to fields, handling the fact that
+    // multiple source params with the same type key share the same deduped field.
+    val dedupedParamToField: Map<Parameter, IrField> =
       constructorParametersToFields.entries.withIndex().associate { (index, pair) ->
         val (_, field) = pair
-        val sourceParam = nonAssistedParameters[index]
+        val sourceParam = dedupedParameters[index]
         sourceParam to field
       }
+    val typeKeyToField: Map<IrTypeKey, IrField> = buildMap {
+      for ((param, field) in dedupedParamToField) {
+        // Non-member params with defaults get their own entries and shouldn't be in the
+        // type-key map (they're looked up by identity). Member params with defaults ARE
+        // deduped by type key, so they need to be in this map.
+        if (!param.hasDefault || param.isMember) {
+          putIfAbsent(param.typeKey, field)
+        }
+      }
+    }
+    val sourceParametersToFields: Map<Parameter, IrField> = buildMap {
+      for (param in nonAssistedParameters) {
+        if (param.hasDefault && !param.isMember) {
+          // Non-member params with defaults have their own deduped entries
+          dedupedParamToField[param]?.let { put(param, it) }
+        } else {
+          // Member params (even with defaults) and non-default params share fields by type key
+          typeKeyToField[param.typeKey]?.let { put(param, it) }
+        }
+      }
+    }
 
     val newInstanceFunction =
       generateCreators(
@@ -273,11 +303,16 @@ internal class InjectedClassTransformer(
     */
     val invoke = factoryCls.requireSimpleFunction(Symbols.StringNames.INVOKE)
 
+    val dedupedConstructorParams =
+      constructorParameters.copy(
+        regularParameters = constructorParameters.regularParameters.dedupeParameters()
+      )
     implementFactoryInvokeOrGetBody(
       invoke.owner,
       factoryCls.thisReceiverOrFail,
       newInstanceFunction,
       constructorParameters,
+      dedupedConstructorParams,
       injectors,
       sourceParametersToFields,
     )
@@ -322,6 +357,7 @@ internal class InjectedClassTransformer(
     thisReceiver: IrValueParameter,
     newInstanceFunction: IrSimpleFunction,
     constructorParameters: Parameters,
+    dedupedConstructorParameters: Parameters,
     injectors: List<MembersInjectorTransformer.MemberInjectClass>,
     parametersToFields: Map<Parameter, IrField>,
   ) {
@@ -338,8 +374,10 @@ internal class InjectedClassTransformer(
         val functionParamsByName =
           invokeFunction.regularParameters.associate { it.name to irGet(it) }
 
+        // Use deduped constructor params for newInstance args since
+        // newInstance has a deduped parameter list
         val args =
-          constructorParameters.regularParameters.map { targetParam ->
+          dedupedConstructorParameters.regularParameters.map { targetParam ->
             when (val parameterName = targetParam.originalName) {
               in constructorParameterNames -> {
                 val constructorParam = constructorParameterNames.getValue(parameterName)
@@ -568,12 +606,14 @@ internal class InjectedClassTransformer(
         factoryCls.companionObject()!!
       }
 
-    // TODO
-    //  Dagger will de-dupe these by type key to shrink the code. We could do the same but only for
-    //  parameters that don't have default values. For those cases, we would need to keep them
-    //  as-is. Something for another day.
     val mergedParameters =
       allParameters.reduce { current, next -> current.mergeValueParametersWithUntyped(next) }
+
+    // Deduplicate to match the FIR-generated create() function signature
+    val dedupedMerged =
+      mergedParameters.copy(
+        regularParameters = mergedParameters.regularParameters.dedupeParameters()
+      )
 
     // Generate create()
     @Suppress("RETURN_VALUE_NOT_USED")
@@ -581,15 +621,20 @@ internal class InjectedClassTransformer(
       parentClass = classToGenerateCreatorsIn,
       targetClass = factoryCls,
       targetConstructor = factoryConstructor,
-      parameters = mergedParameters,
+      parameters = dedupedMerged,
       providerFunction = null,
     )
+
+    // Deduplicate to match the FIR-generated newInstance() function signature
+    val dedupedConstructorRegularParams = constructorParameters.regularParameters.dedupeParameters()
+    val dedupedConstructorParameters =
+      constructorParameters.copy(regularParameters = dedupedConstructorRegularParams)
 
     val newInstanceFunction =
       generateStaticNewInstanceFunction(
         parentClass = classToGenerateCreatorsIn,
-        sourceMetroParameters = constructorParameters,
-        sourceParameters = constructorParameters.regularParameters.map { it.asValueParameter },
+        sourceMetroParameters = dedupedConstructorParameters,
+        sourceParameters = dedupedConstructorRegularParams.map { it.asValueParameter },
       ) { function ->
         irCallConstructor(
             callee = targetConstructor,
@@ -598,10 +643,47 @@ internal class InjectedClassTransformer(
           .apply {
             // The function may have a dispatch receiver so we need to offset
             val functionParameters = function.nonDispatchParameters
-            val indexOffset = if (function.dispatchReceiverParameter == null) 0 else 1
-            for (index in constructorParameters.allParameters.indices) {
-              val parameter = functionParameters[index]
-              arguments[parameter.indexInParameters - indexOffset] = irGet(parameter)
+            // Build lookups from deduped params to function params.
+            // Assisted and default params are mapped by identity (they're never deduped).
+            // Other params are mapped by type key (duplicates share one function param).
+            val typeKeyToFuncParam = mutableMapOf<IrTypeKey, IrValueParameter>()
+            val typeKeyToDedupedParam = mutableMapOf<IrTypeKey, Parameter>()
+            val identityParamToFuncParam = mutableMapOf<Parameter, IrValueParameter>()
+            for ((i, param) in dedupedConstructorRegularParams.withIndex()) {
+              val funcParam = functionParameters[i]
+              if (param.isAssisted || param.hasDefault) {
+                identityParamToFuncParam[param] = funcParam
+              } else {
+                typeKeyToFuncParam.putIfAbsent(param.typeKey, funcParam)
+                typeKeyToDedupedParam.putIfAbsent(param.typeKey, param)
+              }
+            }
+            // Map each original constructor param to the right deduped function param
+            for (originalParam in constructorParameters.allParameters) {
+              val funcParam =
+                if (originalParam.isAssisted || originalParam.hasDefault) {
+                  identityParamToFuncParam.getValue(originalParam)
+                } else {
+                  typeKeyToFuncParam.getValue(originalParam.typeKey)
+                }
+              // If the original param is canonical (e.g., X) but the deduped param is
+              // wrapped (e.g., Provider<X>), we need to invoke the provider to get X.
+              val dedupedParam = typeKeyToDedupedParam[originalParam.typeKey]
+              val arg =
+                if (
+                  dedupedParam != null &&
+                    originalParam.contextualTypeKey.wrappedType is WrappedType.Canonical &&
+                    dedupedParam.contextualTypeKey.wrappedType is WrappedType.Provider
+                ) {
+                  irInvoke(
+                    dispatchReceiver = irGet(funcParam),
+                    callee = metroSymbols.providerInvoke,
+                    typeHint = originalParam.typeKey.type,
+                  )
+                } else {
+                  irGet(funcParam)
+                }
+              arguments[originalParam.asValueParameter.indexInParameters] = arg
             }
           }
       }

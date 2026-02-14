@@ -116,6 +116,11 @@ internal class FirContextualTypeKey(
       type: ConeKotlinType = callable.resolvedTypeSafe(session),
       wrapInProvider: Boolean = false,
       stripLazyIfWrappedInProvider: Boolean = false,
+      /**
+       * Optional source for qualifier resolution, e.g. a property symbol for setter-based
+       * injection.
+       */
+      qualifierSource: FirCallableSymbol<*>? = null,
     ): FirContextualTypeKey {
       return type
         .letIf(wrapInProvider) {
@@ -130,7 +135,10 @@ internal class FirContextualTypeKey(
         .asFirContextualTypeKey(
           session = session,
           qualifierAnnotation =
-            callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
+            (qualifierSource ?: callable).findAnnotation(
+              session,
+              FirBasedSymbol<*>::qualifierAnnotation,
+            ),
           hasDefault = callable is FirValueParameterSymbol && callable.hasMetroDefault(session),
         )
     }
