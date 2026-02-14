@@ -437,9 +437,9 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("ProvidesMapIntoGraphExtensionAsLateinit.kt")
-    public void testProvidesMapIntoGraphExtensionAsLateinit() {
-      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ProvidesMapIntoGraphExtensionAsLateinit.kt");
+    @TestMetadata("ProvidesMapIntoGraphInheritedByExtension.kt")
+    public void testProvidesMapIntoGraphInheritedByExtension() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ProvidesMapIntoGraphInheritedByExtension.kt");
     }
 
     @Test

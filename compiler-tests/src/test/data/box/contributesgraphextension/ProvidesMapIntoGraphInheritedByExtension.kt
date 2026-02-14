@@ -1,3 +1,5 @@
+// https://github.com/ZacSweers/metro/pull/1823
+
 @DependencyGraph
 interface AppGraph {
   fun loggedInGraph(): LoggedInGraph
