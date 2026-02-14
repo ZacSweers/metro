@@ -144,7 +144,6 @@ interface AppGraph {
   class ProvideDoubleMetroFactory : Factory<Double> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val long: Provider<Long> = long
-    private /* final field */ val long2: Provider<Long> = long2
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -152,8 +151,8 @@ interface AppGraph {
 
       }
 
-      fun create(instance: AppGraph, long: Provider<Long>, long2: Provider<Long>): Factory<Double> {
-        return ProvideDoubleMetroFactory(instance = instance, long = long, long2 = long2)
+      fun create(instance: AppGraph, long: Provider<Long>): Factory<Double> {
+        return ProvideDoubleMetroFactory(instance = instance, long = long)
       }
 
       fun provideDouble(instance: AppGraph, long: Long, long2: Long): Double {
@@ -162,14 +161,14 @@ interface AppGraph {
 
     }
 
-    private constructor(instance: AppGraph, long: Provider<Long>, long2: Provider<Long>) /* primary */ {
+    private constructor(instance: AppGraph, long: Provider<Long>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
     override operator fun invoke(): Double {
-      return Companion.provideDouble(instance = <this>.#instance, long = <this>.#long.invoke(), long2 = <this>.#long2.invoke())
+      return Companion.provideDouble(instance = <this>.#instance, long = <this>.#long.invoke(), long2 = <this>.#long.invoke())
     }
 
     fun mirrorFunction(long: Long, long2: Long): Double {
@@ -220,7 +219,6 @@ interface AppGraph {
   class ProvideLongMetroFactory : Factory<Long> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val int: Provider<Int> = int
-    private /* final field */ val int2: Provider<Int> = int2
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -228,8 +226,8 @@ interface AppGraph {
 
       }
 
-      fun create(instance: AppGraph, int: Provider<Int>, int2: Provider<Int>): Factory<Long> {
-        return ProvideLongMetroFactory(instance = instance, int = int, int2 = int2)
+      fun create(instance: AppGraph, int: Provider<Int>): Factory<Long> {
+        return ProvideLongMetroFactory(instance = instance, int = int)
       }
 
       fun provideLong(instance: AppGraph, int: Int, int2: Int): Long {
@@ -238,14 +236,14 @@ interface AppGraph {
 
     }
 
-    private constructor(instance: AppGraph, int: Provider<Int>, int2: Provider<Int>) /* primary */ {
+    private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
     override operator fun invoke(): Long {
-      return Companion.provideLong(instance = <this>.#instance, int = <this>.#int.invoke(), int2 = <this>.#int2.invoke())
+      return Companion.provideLong(instance = <this>.#instance, int = <this>.#int.invoke(), int2 = <this>.#int.invoke())
     }
 
     fun mirrorFunction(int: Int, int2: Int): Long {

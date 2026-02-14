@@ -42,6 +42,7 @@ import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
@@ -313,35 +314,33 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     val constructorParametersToFields = assignConstructorParamsToFields(ctor, factoryCls)
 
-    val sourceParametersToFields: Map<Parameter, IrField> =
-      constructorParametersToFields.entries.associate { (irParam, field) ->
-        val sourceParam =
-          if (irParam.origin == Origins.InstanceParameter) {
-            sourceParameters.dispatchReceiverParameter!!
-          } else if (irParam.indexInParameters == -1) {
-            reportCompilerBug(
-              "No source parameter found for $irParam. Index was somehow -1.\n${reference.parent.owner.dumpKotlinLike()}"
-            )
-          } else if (reference.callee != null) {
-            // Get all regular parameters from the source function
-            val regularParams =
-              reference.callee.owner.parameters.filter { it.kind == IrParameterKind.Regular }
-
-            // Find the corresponding source parameter by matching names
-            sourceParameters.regularParameters.getOrNull(
-              regularParams.indexOfFirst { it.name == irParam.name }
-            )
-              ?: reportCompilerBug(
-                "No source parameter found for $irParam\nparam is ${irParam.name} in function ${ctor.dumpKotlinLike()}\n${reference.parent.owner.dumpKotlinLike()}"
-              )
-          } else {
-            // Backing field case - no callee, so no regular parameters to match
-            reportCompilerBug(
-              "Unexpected parameter $irParam for backing field provider ${reference.callableId}"
-            )
-          }
-        sourceParam to field
+    // Build type-key-to-field from the (potentially deduped) constructor params.
+    // Multiple source params with the same type key will share one field.
+    val typeKeyToField = mutableMapOf<IrTypeKey, IrField>()
+    var instanceField: IrField? = null
+    for ((irParam, field) in constructorParametersToFields) {
+      if (irParam.origin == Origins.InstanceParameter) {
+        instanceField = field
+      } else if (reference.callee != null) {
+        val regularParams =
+          reference.callee.owner.parameters.filter { it.kind == IrParameterKind.Regular }
+        val sourceParamIndex = regularParams.indexOfFirst { it.name == irParam.name }
+        if (sourceParamIndex >= 0) {
+          val sourceParam = sourceParameters.regularParameters[sourceParamIndex]
+          typeKeyToField.putIfAbsent(sourceParam.typeKey, field)
+        }
       }
+    }
+
+    // Map all source params to fields by type key
+    val sourceParametersToFields: Map<Parameter, IrField> = buildMap {
+      sourceParameters.dispatchReceiverParameter?.let { param ->
+        instanceField?.let { put(param, it) }
+      }
+      for (param in sourceValueParameters) {
+        typeKeyToField[param.typeKey]?.let { put(param, it) }
+      }
+    }
 
     val bytecodeFunction =
       implementCreatorBodies(factoryCls, ctor.symbol, reference, sourceParameters)
@@ -514,13 +513,23 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         factoryCls.companionObject()!!
       }
 
+    // Deduplicate parameters to match the FIR-generated create() function signature
+    val dedupedParameters =
+      if (options.deduplicateInjectedParams) {
+        factoryParameters.copy(
+          regularParameters = factoryParameters.regularParameters.dedupeParameters()
+        )
+      } else {
+        factoryParameters
+      }
+
     // Generate create()
     @Suppress("RETURN_VALUE_NOT_USED")
     generateStaticCreateFunction(
       parentClass = classToGenerateCreatorsIn,
       targetClass = factoryCls,
       targetConstructor = factoryConstructor,
-      parameters = factoryParameters,
+      parameters = dedupedParameters,
       providerFunction = reference.callee?.owner,
     )
 

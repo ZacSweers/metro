@@ -127,7 +127,12 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       } else {
         val callable =
           providerFactoryClassIdsToCallables[context.owner.classId] ?: return emptyList()
-        buildFactoryConstructor(context, callable.instanceReceiver, null, callable.valueParameters)
+        buildFactoryConstructor(
+          context,
+          callable.instanceReceiver,
+          null,
+          callable.valueParameters.dedupeParameters(session),
+        )
       }
     return listOf(constructor.symbol)
   }
@@ -148,11 +153,12 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       when (callableId.callableName) {
         Symbols.Names.create -> {
           buildFactoryCreateFunction(
-            nonNullContext,
-            Symbols.ClassIds.metroFactory.constructClassLikeType(arrayOf(callable.returnType)),
-            callable.instanceReceiver,
-            null,
-            callable.valueParameters,
+            context = nonNullContext,
+            returnType =
+              Symbols.ClassIds.metroFactory.constructClassLikeType(arrayOf(callable.returnType)),
+            instanceReceiver = callable.instanceReceiver,
+            extensionReceiver = null,
+            valueParameters = callable.valueParameters.dedupeParameters(session),
           )
         }
         callable.newInstanceName -> {

@@ -68,8 +68,8 @@ class ScopedClass {
         return MetroFactory(injectable = injectable)
       }
 
-      fun newInstance(injectable: MembersInjector<Injectable>): ScopedClass {
-        return ScopedClass(injectable = injectable, injectable2 = injectable)
+      fun newInstance(injectable: MembersInjector<Injectable>, injectable2: MembersInjector<Injectable>): ScopedClass {
+        return ScopedClass(injectable = injectable, injectable2 = injectable2)
       }
 
     }
@@ -81,7 +81,7 @@ class ScopedClass {
     }
 
     override operator fun invoke(): ScopedClass {
-      return Companion.newInstance(injectable = <this>.#injectable.invoke())
+      return Companion.newInstance(injectable = <this>.#injectable.invoke(), injectable2 = <this>.#injectable.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
