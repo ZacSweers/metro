@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771030395838,
+  "lastUpdate": 1771096557161,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -5656,6 +5656,62 @@ window.BENCHMARK_DATA = {
             "value": 31619.112,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.71%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "db8d43eb~1",
+          "message": "[before] Fix token gen for direct map inputs to extensions ",
+          "timestamp": "2026-02-14T18:37:56Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/db8d43eb982def1f07449eabed891a7329bc1f79"
+        },
+        "date": 1771096557161,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 30148.303999999996,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "db8d43eb982def1f07449eabed891a7329bc1f79",
+          "message": "[after] Fix token gen for direct map inputs to extensions ",
+          "timestamp": "2026-02-14T18:37:56Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/db8d43eb982def1f07449eabed891a7329bc1f79"
+        },
+        "date": 1771096557162,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 27915.321999999996,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -7.41%"
           }
         ]
       }

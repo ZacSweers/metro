@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771030395706,
+  "lastUpdate": 1771096557024,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -5656,6 +5656,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21575813658291082,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.78%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "db8d43eb~1",
+          "message": "[before] Fix token gen for direct map inputs to extensions ",
+          "timestamp": "2026-02-14T18:37:56Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/db8d43eb982def1f07449eabed891a7329bc1f79"
+        },
+        "date": 1771096557024,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2182024245088156,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "db8d43eb982def1f07449eabed891a7329bc1f79",
+          "message": "[after] Fix token gen for direct map inputs to extensions ",
+          "timestamp": "2026-02-14T18:37:56Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/db8d43eb982def1f07449eabed891a7329bc1f79"
+        },
+        "date": 1771096557025,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21679590507868873,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.64%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
