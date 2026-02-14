@@ -667,7 +667,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   DEDUPLICATE_INJECTED_PARAMS(
     RawMetroOption.boolean(
       name = "deduplicate-injected-params",
-      defaultValue = false,
+      defaultValue = true,
       valueDescription = "<true | false>",
       description =
         "Enable/disable deduplication of injected parameters with the same type key in generated factories.",
