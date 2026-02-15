@@ -1238,6 +1238,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedAnnotationsUseParamNameByDefault.kt")
+      public void testAssistedAnnotationsUseParamNameByDefault() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedAnnotationsUseParamNameByDefault.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedFactoryContributesIntoMap.kt")
       public void testAssistedFactoryContributesIntoMap() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedFactoryContributesIntoMap.kt");

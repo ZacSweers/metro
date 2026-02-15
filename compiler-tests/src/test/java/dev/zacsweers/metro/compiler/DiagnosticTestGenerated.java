@@ -692,6 +692,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testLazyAssistedFactoryInjection() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/LazyAssistedFactoryInjection.kt");
       }
+
+      @Test
+      @TestMetadata("RedundantAssistedNamesAreWarned.kt")
+      public void testRedundantAssistedNamesAreWarned() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/RedundantAssistedNamesAreWarned.kt");
+      }
     }
 
     @Nested

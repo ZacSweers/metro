@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_WARNING
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker.FirAssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -26,12 +27,11 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
-import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
-import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
@@ -104,7 +104,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         ASSISTED_INJECTION_ERROR,
         "`@AssistedFactory` functions cannot have type parameters.",
       )
-      return
     }
 
     // Ensure target type has an assisted inject constructor
@@ -168,7 +167,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         ASSISTED_INJECTION_ERROR,
         "Assisted factory parameters must be unique. Found duplicates: ${dupeFactoryKeys.joinToString(", ")}",
       )
-      return
     }
 
     val constructorSubstitutor = substitutorByMap(targetSubstitutionMap, session)
@@ -183,7 +181,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         ASSISTED_INJECTION_ERROR,
         "Assisted constructor parameters must be unique. Found duplicates: $dupeConstructorKeys",
       )
-      return
     }
 
     // for (parameters in listOf(factoryKeys, constructorKeys)) {
@@ -212,22 +209,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
           }
         },
       )
-      return
-    }
-  }
-
-  private fun findAssistedFactories(
-    declaration: FirClass,
-    session: FirSession,
-    classIds: ClassIds,
-  ): List<FirClassSymbol<*>> = buildList {
-    declaration.processAllDeclarations(session) { declaration ->
-      if (
-        declaration is FirClassSymbol<*> &&
-          declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
-      ) {
-        add(declaration)
-      }
     }
   }
 
@@ -248,18 +229,33 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     override fun toString() = cachedToString
 
     companion object {
+      context(context: CheckerContext, reporter: DiagnosticReporter)
       fun FirValueParameterSymbol.toAssistedParameterKey(
         session: FirSession,
         typeKey: FirTypeKey,
       ): FirAssistedParameterKey {
-        return FirAssistedParameterKey(
-          typeKey,
+        val paramName = name.asString()
+
+        val assistedAnnotation =
           resolvedCompilerAnnotationsWithClassIds
             .annotationsIn(session, session.classIds.assistedAnnotations)
             .singleOrNull()
+
+        val explicitIdentifier =
+          assistedAnnotation
             ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
-            .orEmpty(),
-        )
+            ?.takeUnless { it.isBlank() }
+
+        if (explicitIdentifier != null && explicitIdentifier == paramName) {
+          val rawArg = assistedAnnotation.findArgumentByName(StandardNames.DEFAULT_VALUE_PARAMETER)
+          reporter.reportOn(
+            rawArg?.source,
+            ASSISTED_INJECTION_WARNING,
+            "The explicit argument '$paramName' is redundant as it's the same as the parameter name, which is what Metro will use by default.",
+          )
+        }
+
+        return FirAssistedParameterKey(typeKey, explicitIdentifier ?: paramName)
       }
     }
   }

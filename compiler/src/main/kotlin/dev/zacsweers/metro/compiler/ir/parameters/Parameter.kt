@@ -148,7 +148,7 @@ private constructor(
           annotationsIn(symbols.assistedAnnotations)
             .singleOrNull()
             ?.constArgumentOfTypeAt<String>(0)
-            .orEmpty(),
+            ?.takeUnless { it.isBlank() } ?: name.asString(),
         )
       }
     }
@@ -265,7 +265,9 @@ internal fun IrValueParameter.toConstructorParameter(
     }
   }
 
-  val assistedIdentifier = assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty()
+  val assistedIdentifier =
+    assistedAnnotation?.constArgumentOfTypeAt<String>(0)?.takeUnless { it.isBlank() }
+      ?: name.asString()
 
   val adjustedName =
     name.letIf(kind == IrParameterKind.Context && name == UNDERSCORE_FOR_UNUSED_VAR) {
