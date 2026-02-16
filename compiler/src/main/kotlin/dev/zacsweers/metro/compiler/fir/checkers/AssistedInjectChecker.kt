@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
@@ -29,6 +30,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
@@ -60,9 +62,9 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       return
     }
 
-    val isAssistedInject =
-      declaration.symbol.findAssistedInjectConstructors(session, checkClass = true).isNotEmpty()
-    if (isAssistedInject) {
+    val assistedInjectConstructors =
+      declaration.symbol.findAssistedInjectConstructors(session, checkClass = true)
+    if (assistedInjectConstructors.isNotEmpty()) {
       val qualifier = declaration.symbol.qualifierAnnotation(session)
       if (qualifier != null) {
         reporter.reportOn(
@@ -235,27 +237,64 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         typeKey: FirTypeKey,
       ): FirAssistedParameterKey {
         val paramName = name.asString()
+        val classIds = session.classIds
+        val options = session.metroFirBuiltIns.options
 
         val assistedAnnotation =
           resolvedCompilerAnnotationsWithClassIds
-            .annotationsIn(session, session.classIds.assistedAnnotations)
+            .annotationsIn(session, classIds.assistedAnnotations)
             .singleOrNull()
+
+        // Custom/interop annotations (e.g. Dagger's @Assisted) always use param names.
+        // For Metro's native @Assisted or no annotation (factory method params), the flag controls
+        // whether param names are used as identifiers.
+        val isNativeMetroAssisted =
+          assistedAnnotation != null &&
+            assistedAnnotation.toAnnotationClassIdSafe(session) == classIds.metroAssisted
+        val hasCustomAssistedAnnotation = assistedAnnotation != null && !isNativeMetroAssisted
+
+        val useParamNames =
+          if (hasCustomAssistedAnnotation) {
+            true
+          } else {
+            options.useAssistedParamNamesAsIdentifiers
+          }
 
         val explicitIdentifier =
           assistedAnnotation
             ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
             ?.takeUnless { it.isBlank() }
 
-        if (explicitIdentifier != null && explicitIdentifier == paramName) {
-          val rawArg = assistedAnnotation.findArgumentByName(StandardNames.DEFAULT_VALUE_PARAMETER)
-          reporter.reportOn(
-            rawArg?.source,
-            ASSISTED_INJECTION_WARNING,
-            "The explicit argument '$paramName' is redundant as it's the same as the parameter name, which is what Metro will use by default.",
-          )
+        if (useParamNames && explicitIdentifier != null) {
+          if (explicitIdentifier == paramName) {
+            val rawArg =
+              assistedAnnotation.findArgumentByName(StandardNames.DEFAULT_VALUE_PARAMETER)
+            reporter.reportOn(
+              rawArg?.source,
+              ASSISTED_INJECTION_WARNING,
+              "The explicit argument '$paramName' is redundant as it's the same as the parameter name, which is what Metro will use by default.",
+            )
+          } else if (options.assistedIdentifierSeverity.isEnabled) {
+            val rawArg =
+              assistedAnnotation.findArgumentByName(StandardNames.DEFAULT_VALUE_PARAMETER)
+            val (kind, diagnostic) =
+              when (options.assistedIdentifierSeverity) {
+                ERROR -> "ERROR" to ASSISTED_INJECTION_ERROR
+                else -> "WARN" to ASSISTED_INJECTION_WARNING
+              }
+            reporter.reportOn(
+              rawArg?.source,
+              diagnostic,
+              "Explicit @Assisted identifier '$explicitIdentifier' on parameter '$paramName' " +
+                "but assistedIdentifierSeverity mode is set to $kind. " +
+                "Migrate to using matching parameter names instead of explicit identifiers " +
+                "as this support will eventually be removed.",
+            )
+          }
         }
 
-        return FirAssistedParameterKey(typeKey, explicitIdentifier ?: paramName)
+        val defaultIdentifier = if (useParamNames) paramName else ""
+        return FirAssistedParameterKey(typeKey, explicitIdentifier ?: defaultIdentifier)
       }
     }
   }

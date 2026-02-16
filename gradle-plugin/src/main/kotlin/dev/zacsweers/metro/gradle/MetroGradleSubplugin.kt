@@ -364,6 +364,13 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               },
             )
           )
+          add(
+            lazyOption(
+              "use-assisted-param-names-as-identifiers",
+              extension.useAssistedParamNamesAsIdentifiers,
+            )
+          )
+          add(lazyOption("assisted-identifier-severity", extension.assistedIdentifierSeverity))
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
           reportsDir.orNull

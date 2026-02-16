@@ -142,13 +142,23 @@ private constructor(
       fun IrValueParameter.toAssistedParameterKey(
         symbols: Symbols,
         typeKey: IrTypeKey,
+        useAssistedParamNamesAsIdentifiers: Boolean = true,
       ): AssistedParameterKey {
+        val assistedAnnotation = annotationsIn(symbols.assistedAnnotations).singleOrNull()
+        // Custom/interop annotations (e.g. Dagger's @Assisted) always use param names.
+        // For Metro's native @Assisted or no annotation (factory method params), the flag controls
+        // whether param names are used as identifiers.
+        val isNativeMetroAssisted =
+          assistedAnnotation != null &&
+            assistedAnnotation.symbol.owner.parentAsClass.classId == symbols.classIds.metroAssisted
+        val hasCustomAssistedAnnotation = assistedAnnotation != null && !isNativeMetroAssisted
+        val useParamNames = if (hasCustomAssistedAnnotation) true else useAssistedParamNamesAsIdentifiers
+        val defaultIdentifier = if (useParamNames) name.asString() else ""
         return AssistedParameterKey(
-          typeKey,
-          annotationsIn(symbols.assistedAnnotations)
-            .singleOrNull()
-            ?.constArgumentOfTypeAt<String>(0)
-            ?.takeUnless { it.isBlank() } ?: name.asString(),
+          typeKey = typeKey,
+          assistedIdentifier =
+            assistedAnnotation?.constArgumentOfTypeAt<String>(0)?.takeUnless { it.isBlank() }
+              ?: defaultIdentifier,
         )
       }
     }
@@ -265,9 +275,23 @@ internal fun IrValueParameter.toConstructorParameter(
     }
   }
 
+  val isNativeMetroAssisted =
+    assistedAnnotation != null &&
+      assistedAnnotation.symbol.owner.parentAsClass.classId ==
+        context.metroSymbols.classIds.metroAssisted
+  val hasCustomAssistedAnnotation = assistedAnnotation != null && !isNativeMetroAssisted
+
+  val useParamNames =
+    if (hasCustomAssistedAnnotation) {
+      true
+    } else {
+      context.options.useAssistedParamNamesAsIdentifiers
+    }
+
+  val defaultIdentifier = if (useParamNames) name.asString() else ""
   val assistedIdentifier =
     assistedAnnotation?.constArgumentOfTypeAt<String>(0)?.takeUnless { it.isBlank() }
-      ?: name.asString()
+      ?: defaultIdentifier
 
   val adjustedName =
     name.letIf(kind == IrParameterKind.Context && name == UNDERSCORE_FOR_UNUSED_VAR) {

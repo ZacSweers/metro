@@ -509,6 +509,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AssistedUnderscoreContextParamRequiresIdentifier.kt")
+    public void testAssistedUnderscoreContextParamRequiresIdentifier() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/AssistedUnderscoreContextParamRequiresIdentifier.kt");
+    }
+
+    @Test
     @TestMetadata("CannotBeScoped.kt")
     public void testCannotBeScoped() {
       runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotBeScoped.kt");
@@ -679,6 +685,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("AssistedFactoryWithMultipleSAMs.kt")
       public void testAssistedFactoryWithMultipleSAMs() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/AssistedFactoryWithMultipleSAMs.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedIdentifierSeverityError.kt")
+      public void testAssistedIdentifierSeverityError() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/AssistedIdentifierSeverityError.kt");
       }
 
       @Test

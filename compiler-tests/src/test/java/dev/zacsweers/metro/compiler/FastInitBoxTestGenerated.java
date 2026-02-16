@@ -1280,6 +1280,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedParamNamesDisabled.kt")
+      public void testAssistedParamNamesDisabled() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedParamNamesDisabled.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedParametersInLaterOrderWork.kt")
       public void testAssistedParametersInLaterOrderWork() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedParametersInLaterOrderWork.kt");
@@ -1475,6 +1481,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("AnotherBindsOptionalPresentTest.kt")
       public void testAnotherBindsOptionalPresentTest() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/AnotherBindsOptionalPresentTest.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedDaggerAnnotationsAlwaysUseParamNames.kt")
+      public void testAssistedDaggerAnnotationsAlwaysUseParamNames() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/AssistedDaggerAnnotationsAlwaysUseParamNames.kt");
       }
 
       @Test

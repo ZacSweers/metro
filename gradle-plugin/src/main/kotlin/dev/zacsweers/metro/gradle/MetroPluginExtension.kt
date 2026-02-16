@@ -357,6 +357,31 @@ constructor(
   public val compilerVersion: Property<String> = objects.metroProperty("metro.compilerVersion", "")
 
   /**
+   * When enabled, Metro's native `@Assisted` annotation uses the parameter name as the default
+   * assisted identifier. When disabled, defaults to an empty string (legacy/Dagger behavior).
+   *
+   * This only affects Metro's own `@Assisted` annotation, not custom/interop annotations which may
+   * use the legacy empty-string default.
+   *
+   * Enabled by default.
+   */
+  public val useAssistedParamNamesAsIdentifiers: Property<Boolean> =
+    objects.booleanProperty("metro.useAssistedParamNamesAsIdentifiers", true)
+
+  /**
+   * Controls the diagnostic severity when explicit `@Assisted("value")` identifiers are used on
+   * Metro's native `@Assisted` annotation _where the value differs from the parameter name_.
+   *
+   * This is an initial step toward deprecating explicit assisted identifiers in favor of parameter
+   * names. Only meaningful when [useAssistedParamNamesAsIdentifiers] is `true`.
+   *
+   * Set to [DiagnosticSeverity.WARN] by default. Eventually it will become a proper deprecation
+   * warning, then error, then removed.
+   */
+  public val assistedIdentifierSeverity: Property<DiagnosticSeverity> =
+    objects.enumProperty<DiagnosticSeverity>("assistedIdentifierSeverity", DiagnosticSeverity.WARN)
+
+  /**
    * Compiler version aliases mapping fake IDE versions to their real compiler versions.
    *
    * This is useful for IDE builds (e.g., Android Studio canary) that report a fake Kotlin compiler

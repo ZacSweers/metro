@@ -78,6 +78,16 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive(
       "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations."
     )
+  val USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS by
+    valueDirective(
+      "When enabled, Metro's native @Assisted annotation uses the parameter name as the default identifier."
+    ) {
+      it.toBoolean()
+    }
+  val ASSISTED_IDENTIFIER_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity when explicit @Assisted(\"value\") identifiers are used."
+    )
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
