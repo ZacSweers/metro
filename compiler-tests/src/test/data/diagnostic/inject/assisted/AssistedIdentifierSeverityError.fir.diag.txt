@@ -1,3 +1,3 @@
-/AssistedIdentifierSeverityError.kt:(153,163): error: Explicit @Assisted identifier 'customId' on parameter 'size' but assistedIdentifierSeverity mode is set to ERROR. Migrate to using matching parameter names instead of explicit identifiers as this support will eventually be removed.
+/AssistedIdentifierSeverityError.kt:(153,163): error: Explicit @Assisted identifiers are deprecated. Use matching parameter names instead.
 
-/AssistedIdentifierSeverityError.kt:(250,260): error: Explicit @Assisted identifier 'customId' on parameter 'size' but assistedIdentifierSeverity mode is set to ERROR. Migrate to using matching parameter names instead of explicit identifiers as this support will eventually be removed.
+/AssistedIdentifierSeverityError.kt:(250,260): error: Explicit @Assisted identifiers are deprecated. Use matching parameter names instead.

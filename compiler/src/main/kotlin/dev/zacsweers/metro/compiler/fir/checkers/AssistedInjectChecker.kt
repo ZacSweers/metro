@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
@@ -265,32 +266,22 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
             ?.takeUnless { it.isBlank() }
 
-        if (useParamNames && explicitIdentifier != null) {
-          if (explicitIdentifier == paramName) {
-            val rawArg =
-              assistedAnnotation.findArgumentByName(StandardNames.DEFAULT_VALUE_PARAMETER)
-            reporter.reportOn(
-              rawArg?.source,
-              ASSISTED_INJECTION_WARNING,
-              "The explicit argument '$paramName' is redundant as it's the same as the parameter name, which is what Metro will use by default.",
-            )
-          } else if (options.assistedIdentifierSeverity.isEnabled) {
-            val rawArg =
-              assistedAnnotation.findArgumentByName(StandardNames.DEFAULT_VALUE_PARAMETER)
-            val (kind, diagnostic) =
-              when (options.assistedIdentifierSeverity) {
-                ERROR -> "ERROR" to ASSISTED_INJECTION_ERROR
-                else -> "WARN" to ASSISTED_INJECTION_WARNING
-              }
-            reporter.reportOn(
-              rawArg?.source,
-              diagnostic,
-              "Explicit @Assisted identifier '$explicitIdentifier' on parameter '$paramName' " +
-                "but assistedIdentifierSeverity mode is set to $kind. " +
-                "Migrate to using matching parameter names instead of explicit identifiers " +
-                "as this support will eventually be removed.",
-            )
-          }
+        if (
+          useParamNames &&
+            explicitIdentifier != null &&
+            options.assistedIdentifierSeverity.isEnabled
+        ) {
+          val rawArg = assistedAnnotation.findArgumentByName(StandardNames.DEFAULT_VALUE_PARAMETER)
+          val diagnostic =
+            when (options.assistedIdentifierSeverity) {
+              MetroOptions.DiagnosticSeverity.ERROR -> ASSISTED_INJECTION_ERROR
+              else -> ASSISTED_INJECTION_WARNING
+            }
+          reporter.reportOn(
+            rawArg?.source,
+            diagnostic,
+            "Explicit @Assisted identifiers are deprecated. Use matching parameter names instead.",
+          )
         }
 
         val defaultIdentifier = if (useParamNames) paramName else ""
