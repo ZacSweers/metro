@@ -1,0 +1,74 @@
+#!/bin/bash
+
+######## FORMAT HOOK START ########
+
+if [[ "$METRO_COMMIT_HOOK_OPT_OUT" == "true" ]]; then
+    echo 'Warning: Skipping pre-commit hook because METRO_COMMIT_HOOK_OPT_OUT is true'
+    exit
+fi
+
+# Opt-out for cases where --no-verify isn't available
+# Usage: `git -c hooks.pre-commit.enabled=false commit`
+enabled="$(git config --bool hooks.pre-commit.enabled)"
+
+if [[ "$enabled" == "false" ]]; then
+    echo 'Warning: Skipping pre-commit hook...'
+    exit
+fi
+
+# Don't run formatting hooks during rebase
+# shellcheck disable=2010
+ls "$(git rev-parse --git-dir)" | grep -q rebase
+if [[ $? == 0 ]]; then
+    exit
+fi
+
+# Don't run formatting hooks during merge commits
+git rev-parse -q --verify MERGE_HEAD
+if [[ $? == 0 ]]; then
+    exit
+fi
+
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+REPO_ROOT_DIR="$(git rev-parse --show-toplevel)"
+
+#### Store Original State section
+function partially_staged_chksum() {
+    staged_files=$(git diff --cached --name-only --diff-filter=ACMR "-G.*" | grep -Ei "(\.kt(s)?)|(.*java)$" | sort)
+    unstaged_files=$(git diff --name-only --diff-filter=ACM | grep -Ei "(\.kt(s)?)|(.*java)$" | sort)
+    comm -12 <(echo "$staged_files") <(echo "$unstaged_files") | xargs cksum
+}
+
+original_partially_staged_chksum=$(partially_staged_chksum)
+original_partially_staged_filenames=$(echo "$original_partially_staged_chksum" | grep -oE '[^ ]+$')
+
+#### Run unified formatter on staged files
+"${REPO_ROOT_DIR}/scripts/format.sh"
+
+#### Re-stage fully-staged files that were modified by formatting
+all_files="$(git diff --cached --name-only --diff-filter=ACMR "-G.*" | grep -Ei "(\.kt(s)?)|(.*java)$")"
+for file in ${all_files}; do
+    if [[ -f ${file} && ! "${original_partially_staged_filenames}" == *"${file}"* ]]; then
+        git add "${file}"
+    fi
+done
+
+#### Check that all fixes were staged section
+modified_partially_staged_filenames=$(comm -13 \
+  <(partially_staged_chksum) \
+  <(echo "$original_partially_staged_chksum") |
+  grep -oE '[^ ]+$')
+
+modified_partially_staged_filenames=$(comm -12 \
+  <(partially_staged_chksum | grep -oE '[^ ]+$') \
+  <(echo "$modified_partially_staged_filenames"))
+
+if [ -n "$modified_partially_staged_filenames" ]; then
+  printf "%bCould not automatically add all fixed files to commit: some files had unstaged changes:%b\n" "$RED" "$NC"
+  echo "$modified_partially_staged_filenames"
+  echo "Manually stage the fixes that were just made and try again."
+  exit 2
+fi
+
+######## FORMAT HOOK END ########
