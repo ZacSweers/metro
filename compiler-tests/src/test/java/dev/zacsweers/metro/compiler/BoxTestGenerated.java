@@ -1228,6 +1228,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/inject/InjectedTypeInheritsAnAnnotatedAbstractClass.kt");
     }
 
+    @Test
+    @TestMetadata("ReusedMultiInjectRespectsProviderCalls.kt")
+    public void testReusedMultiInjectRespectsProviderCalls() {
+      runTest("compiler-tests/src/test/data/box/inject/ReusedMultiInjectRespectsProviderCalls.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/inject/assisted")
     @TestDataPath("$PROJECT_ROOT")
