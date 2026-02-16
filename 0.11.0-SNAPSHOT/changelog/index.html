@@ -1345,6 +1345,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="New">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#meep-1826-assisted-parameters-now-rely-on-matching-parameter-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [MEEP-1826] @Assisted parameters now rely on matching parameter names.
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -2655,6 +2672,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="New">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#meep-1826-assisted-parameters-now-rely-on-matching-parameter-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [MEEP-1826] @Assisted parameters now rely on matching parameter names.
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -3865,9 +3899,56 @@
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
+<h4 id="meep-1826-assisted-parameters-now-rely-on-matching-parameter-names"><a href="https://github.com/ZacSweers/metro/discussions/1826"><strong>[MEEP-1826]</strong></a> <code>@Assisted</code> parameters now rely on matching parameter names.<a class="headerlink" href="#meep-1826-assisted-parameters-now-rely-on-matching-parameter-names" title="Permanent link">&para;</a></h4>
+<p>Historically, Dagger/Guice&rsquo;s <code>@Assisted</code> parameters allowed specifying a custom identifier via <code>@Assisted("some string")</code>, and Metro matched this behavior. However, this is a vestige of Java support, which did not include parameter names in bytecode until Java 8&rsquo;s <code>-parameters</code> flag.</p>
+<p>Since Metro is in an all-Kotlin world and parameter names are a first-class citizen in Kotlin APIs, Metro is now leveraging that and phasing out support for implicit type matching and custom identifiers.</p>
+<p>This means that <code>@Assisted</code> parameter names in assisted-inject constructors/top-level-functions <em>must</em> match their analogous parameters in <code>@AssistedFactory</code> creators. No more matching by types, no more disambiguating with <code>@Assisted("customIdentifier")</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Before: Using type matching or custom identifiers</span>
+<span class="nd">@AssistedInject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">Taco</span><span class="p">(</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;name&quot;</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">name</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;type&quot;</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">type</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">spiciness</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="p">,</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">tortilla</span><span class="p">:</span><span class="w"> </span><span class="n">Tortilla</span>
+<span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@AssistedFactory</span>
+<span class="w">  </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span>
+<span class="w">      </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;name&quot;</span><span class="p">)</span><span class="w"> </span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+<span class="w">      </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;type&quot;</span><span class="p">)</span><span class="w"> </span><span class="n">type</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+<span class="w">      </span><span class="nd">@Assisted</span><span class="w"> </span><span class="n">spiciness</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span>
+<span class="w">    </span><span class="p">):</span><span class="w"> </span><span class="n">TacoFactory</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// After: Using parameter name matching</span>
+<span class="nd">@AssistedInject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">Taco</span><span class="p">(</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">name</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">type</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">spiciness</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="p">,</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">tortilla</span><span class="p">:</span><span class="w"> </span><span class="n">Tortilla</span>
+<span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@AssistedFactory</span>
+<span class="w">  </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Parameter names must match the constructor exactly</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span><span class="w"> </span><span class="n">type</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span><span class="w"> </span><span class="n">spiciness</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="p">):</span><span class="w"> </span><span class="n">TacoFactory</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>To ease migration to this, this will be rolled out in phases.</p>
+<ol>
+<li>Starting with this release, <code>@Assisted.value</code> is soft-deprecated. This is controlled by the <code>assistedIdentifierSeverity</code> Gradle DSL option, which is set to <code>WARN</code> by default in this release. This control allows for easy disabling or promotion to error.</li>
+<li>In a future release, <code>assistedIdentifierSeverity</code> will be removed and <code>@Assisted.value</code> will be formally deprecated.</li>
+<li>In a future release after that, <code>@Assisted.value</code> will be fully deleted and legacy behavior will be unsupported with Metro&rsquo;s first-party annotation.</li>
+</ol>
+<p>Note that <em>interop</em> annotations are not affected by this change, and any previous Dagger/Guice interop <code>@Assisted</code> annotation&rsquo;s custom identifiers will still be respected.</p>
+<p>If you want to completely restore the legacy behavior, you can disable this new mode via <code>useAssistedParamNamesAsIdentifiers</code> Gradle DSL option. Note, however, that this option will eventually be removed.</p>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR]</strong>: Disallow <code>_</code> assisted context parameter names in top-level function injection.</li>
 <li><strong>[FIR/IR]</strong>: When generating class and provider factories now, the compiler dedupes non-assisted, non-optional injections of the same type key (i.e. type ± qualifier). This shrinks generated code size in (uncommon) scenarios where you inject the same type multiple types.</li>
+<li><strong>[Gradle]</strong>: Allow <code>DiagnosticSeverity</code> metro extension properties to be configurable as <code>metro.*</code> gradle properties of the same name.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>

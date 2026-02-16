@@ -1787,22 +1787,26 @@
 <span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">httpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">httpClientFactory</span><span class="p">.</span><span class="na">create</span><span class="p">(</span><span class="m">30.</span><span class="n">seconds</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Like Dagger, the <code>@Assisted</code> parameters can take optional <code>value</code> keys to disambiguate matching types.</p>
+<p>Metro matches assisted parameters between the constructor and factory by their parameter names, so you can add multiple assisted parameters of the same type and Metro will match them.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@AssistedInject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">HttpClient</span><span class="p">(</span>
-<span class="w">  </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;connect&quot;</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">connectTimeout</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
-<span class="w">  </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;request&quot;</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">requestTimeout</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">connectTimeout</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">requestTimeout</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">cache</span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
 <span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@AssistedFactory</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span>
-<span class="w">      </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;connect&quot;</span><span class="p">)</span><span class="w"> </span><span class="n">connectTimeout</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
-<span class="w">      </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;request&quot;</span><span class="p">)</span><span class="w"> </span><span class="n">requestTimeout</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
+<span class="w">      </span><span class="n">connectTimeout</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
+<span class="w">      </span><span class="n">requestTimeout</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
 <span class="w">    </span><span class="p">):</span><span class="w"> </span><span class="n">HttpClient</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Difference from Dagger</p>
+<p>Unlike Dagger, Metro uses parameter names as implicit identifiers rather than requiring explicit <code>@Assisted("identifier")</code> values. This is because parameter names are a first-class citizen in Kotlin&rsquo;s API. Dagger&rsquo;s <code>@Assisted</code> annotations&rsquo; identifiers <em>are</em> supported for interop purposes.</p>
+</div>
 <h3 id="automatic-assisted-factory-generation">Automatic Assisted Factory Generation<a class="headerlink" href="#automatic-assisted-factory-generation" title="Permanent link">&para;</a></h3>
 <p>Metro supports automatic generation of assisted factories via opt-in compiler option. If enabled,<br />
 Metro will automatically generate a default factory as a nested class within the injected type.</p>
