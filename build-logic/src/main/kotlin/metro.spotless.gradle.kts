@@ -8,8 +8,30 @@ val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named
 val ktfmtVersion = catalog.findVersion("ktfmt").get().requiredVersion
 val gjfVersion = catalog.findVersion("gjf").get().requiredVersion
 
+val isolatedRoot = rootProject.isolated
+
 val spotlessDir =
-  rootProject.file("spotless").takeIf(File::exists) ?: rootProject.file("../spotless")
+  if (isolatedRoot.projectDirectory.dir("spotless").asFile.exists()) {
+    isolatedRoot.projectDirectory.dir("spotless")
+  } else {
+    isolatedRoot.projectDirectory.dir("../spotless")
+  }
+
+val configDir =
+  if (isolatedRoot.projectDirectory.dir("config").asFile.exists()) {
+    isolatedRoot.projectDirectory.dir("config")
+  } else {
+    isolatedRoot.projectDirectory.dir("../config")
+  }
+
+fun loadExcludes(name: String) =
+  providers.fileContents(configDir.file(name)).asText.map { text ->
+    text.lineSequence().filter { it.isNotBlank() && !it.startsWith("#") }.toList()
+  }
+
+// TODO spotless is too eager here, sigh
+val ktLicenseExcludes = loadExcludes("license-header-excludes-kt.txt").get()
+val javaLicenseExcludes = loadExcludes("license-header-excludes-java.txt").get()
 
 apply(plugin = "com.diffplug.spotless")
 
@@ -42,8 +64,7 @@ configure<SpotlessExtension> {
     trimTrailingWhitespace()
     endWithNewline()
     targetExclude("**/spotless.java")
-    targetExclude("**/src/test/data/**")
-    targetExclude("**/*Generated.java")
+    targetExclude(javaLicenseExcludes)
   }
   kotlin {
     ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
@@ -51,7 +72,7 @@ configure<SpotlessExtension> {
     trimTrailingWhitespace()
     endWithNewline()
     targetExclude("**/spotless.kt")
-    targetExclude("**/src/test/data/**")
+    targetExclude(ktLicenseExcludes)
   }
   kotlinGradle {
     ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
@@ -59,56 +80,18 @@ configure<SpotlessExtension> {
     trimTrailingWhitespace()
     endWithNewline()
     licenseHeaderFile(
-      spotlessDir.resolve("spotless.kt"),
+      spotlessDir.file("spotless.kt"),
       "(@file:|import|plugins|buildscript|dependencies|pluginManagement|dependencyResolutionManagement)",
     )
   }
   format("licenseKotlin") {
-    licenseHeaderFile(spotlessDir.resolve("spotless.kt"), "(package|@file:)")
+    licenseHeaderFile(spotlessDir.file("spotless.kt"), "(package|@file:)")
     target("src/**/*.kt")
-    targetExclude(
-      "**/src/test/data/**",
-      "**/AbstractMapFactory.kt",
-      "**/Assisted.kt",
-      "**/AssistedFactory.kt",
-      "**/BaseDoubleCheck.kt",
-      "**/ClassKey.kt",
-      "**/DelegateFactory.kt",
-      "**/DoubleCheck.kt",
-      "**/DoubleCheckCycleTest.kt",
-      "**/DoubleCheckTest.kt",
-      "**/ElementsIntoSet.kt",
-      "**/InstanceFactory.kt",
-      "**/InstanceFactoryTest.kt",
-      "**/IntKey.kt",
-      "**/IntoMap.kt",
-      "**/IntoSet.kt",
-      "**/KotlinToolingVersion.kt",
-      "**/LongKey.kt",
-      "**/MapFactory.kt",
-      "**/MapKey.kt",
-      "**/MapLazyFactory.kt",
-      "**/MapProviderFactory.kt",
-      "**/MapProviderFactoryTest.kt",
-      "**/MapProviderLazyFactory.kt",
-      "**/MembersInjector.kt",
-      "**/MemoizedSequence.kt",
-      "**/Multibinds.kt",
-      "**/NameAllocator.kt",
-      "**/NameAllocatorTest.kt",
-      "**/ProviderOfLazy.kt",
-      "**/SetFactory.kt",
-      "**/SetFactoryTest.kt",
-      "**/StringKey.kt",
-      "**/TopologicalSortTest.kt",
-      "**/collectionUtil.kt",
-      "**/ir/cache/*.kt",
-      "**/topologicalSort.kt",
-    )
+    targetExclude(ktLicenseExcludes)
   }
   format("licenseJava") {
-    licenseHeaderFile(spotlessDir.resolve("spotless.java"), "package")
+    licenseHeaderFile(spotlessDir.file("spotless.java"), "package")
     target("src/**/*.java")
-    targetExclude("**/BetweennessCentrality.java", "**/*Generated.java")
+    targetExclude(javaLicenseExcludes)
   }
 }
