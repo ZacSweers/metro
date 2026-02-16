@@ -152,7 +152,8 @@ private constructor(
           assistedAnnotation != null &&
             assistedAnnotation.symbol.owner.parentAsClass.classId == symbols.classIds.metroAssisted
         val hasCustomAssistedAnnotation = assistedAnnotation != null && !isNativeMetroAssisted
-        val useParamNames = if (hasCustomAssistedAnnotation) true else useAssistedParamNamesAsIdentifiers
+        val useParamNames =
+          if (hasCustomAssistedAnnotation) true else useAssistedParamNamesAsIdentifiers
         val defaultIdentifier = if (useParamNames) name.asString() else ""
         return AssistedParameterKey(
           typeKey = typeKey,
