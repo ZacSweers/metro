@@ -1244,6 +1244,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AnotherCustomIdentifiersTest.kt")
+      public void testAnotherCustomIdentifiersTest() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AnotherCustomIdentifiersTest.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedAnnotationsUseParamNameByDefault.kt")
       public void testAssistedAnnotationsUseParamNameByDefault() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedAnnotationsUseParamNameByDefault.kt");
