@@ -2651,10 +2651,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(graphAndMain)
-            dependencies(
-              Dependency.implementation(":factory"),
-              Dependency.implementation(":lib"),
-            )
+            dependencies(Dependency.implementation(":factory"), Dependency.implementation(":lib"))
           }
           subproject("factory") {
             sources(assistedFactory)
