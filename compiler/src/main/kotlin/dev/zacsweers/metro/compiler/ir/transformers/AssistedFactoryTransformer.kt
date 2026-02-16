@@ -450,7 +450,12 @@ internal class AssistedFactoryTransformer(
             originalDeclaration.regularParameters.mapIndexed { index, param ->
               val baseTypeKey = params.regularParameters[index].typeKey
               val substitutedTypeKey = remapper?.let { baseTypeKey.remapTypes(it) } ?: baseTypeKey
-              param.toAssistedParameterKey(context.metroSymbols, substitutedTypeKey)
+              param.toAssistedParameterKey(
+                symbols = context.metroSymbols,
+                typeKey = substitutedTypeKey,
+                useAssistedParamNamesAsIdentifiers =
+                  context.options.useAssistedParamNamesAsIdentifiers,
+              )
             },
         )
       }

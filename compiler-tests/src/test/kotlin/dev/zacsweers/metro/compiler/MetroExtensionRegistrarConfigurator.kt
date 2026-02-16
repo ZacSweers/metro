@@ -122,6 +122,12 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           reportsDestination =
             Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
         }
+        module.directives
+          .singleOrZeroValue(MetroDirectives.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS)
+          ?.let { useAssistedParamNamesAsIdentifiers = it }
+        module.directives.singleOrZeroValue(MetroDirectives.ASSISTED_IDENTIFIER_SEVERITY)?.let {
+          assistedIdentifierSeverity = it
+        }
         contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
 
         // Configure interop annotations using builder helper methods

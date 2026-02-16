@@ -28,6 +28,7 @@ public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrai
 
 public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public fun <init> (Lorg/gradle/api/provider/Provider;Lorg/gradle/api/file/ProjectLayout;Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
+	public final fun getAssistedIdentifierSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getAutomaticallyAddRuntimeDependencies ()Lorg/gradle/api/provider/Property;
 	public final fun getChunkFieldInits ()Lorg/gradle/api/provider/Property;
 	public final fun getCompilerVersion ()Lorg/gradle/api/provider/Property;
@@ -63,6 +64,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getTraceDestination ()Lorg/gradle/api/file/DirectoryProperty;
 	public final fun getTransformProvidersToPrivate ()Lorg/gradle/api/provider/Property;
 	public final fun getUnusedGraphInputsSeverity ()Lorg/gradle/api/provider/Property;
+	public final fun getUseAssistedParamNamesAsIdentifiers ()Lorg/gradle/api/provider/Property;
 	public final fun getWarnOnInjectAnnotationPlacement ()Lorg/gradle/api/provider/Property;
 	public final fun interop (Lorg/gradle/api/Action;)V
 }

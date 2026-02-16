@@ -46,24 +46,27 @@ class ApiClient(httpClientFactory: HttpClient.Factory) {
 }
 ```
 
-Like Dagger, the `@Assisted` parameters can take optional `value` keys to disambiguate matching types.
+Metro matches assisted parameters between the constructor and factory by their parameter names, so you can add multiple assisted parameters of the same type and Metro will match them.
 
 ```kotlin
 @AssistedInject
 class HttpClient(
-  @Assisted("connect") val connectTimeout: Duration,
-  @Assisted("request") val requestTimeout: Duration,
+  @Assisted val connectTimeout: Duration,
+  @Assisted val requestTimeout: Duration,
   val cache: Cache
 ) {
   @AssistedFactory
   fun interface Factory {
     fun create(
-      @Assisted("connect") connectTimeout: Duration,
-      @Assisted("request") requestTimeout: Duration,
+      connectTimeout: Duration,
+      requestTimeout: Duration,
     ): HttpClient
   }
 }
 ```
+
+!!! note "Difference from Dagger"
+    Unlike Dagger, Metro uses parameter names as implicit identifiers rather than requiring explicit `@Assisted("identifier")` values. This is because parameter names are a first-class citizen in Kotlin's API. Dagger's `@Assisted` annotations' identifiers _are_ supported for interop purposes.
 
 ### Automatic Assisted Factory Generation
 

@@ -333,6 +333,29 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.toInt() },
     )
   ),
+  USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS(
+    RawMetroOption.boolean(
+      name = "use-assisted-param-names-as-identifiers",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "When enabled, Metro's native @Assisted annotation uses the parameter name as the default identifier. When disabled, defaults to an empty string (legacy Dagger behavior). Only affects Metro's own @Assisted annotation, not custom/interop annotations.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  ASSISTED_IDENTIFIER_SEVERITY(
+    RawMetroOption(
+      name = "assisted-identifier-severity",
+      defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
+      valueDescription = "NONE|WARN|ERROR",
+      description =
+        "Control diagnostic severity when explicit @Assisted(\"value\") identifiers are used on Metro's native @Assisted annotation. Only meaningful when use-assisted-param-names-as-identifiers is true.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
+  ),
   CUSTOM_PROVIDER(
     RawMetroOption(
       name = "custom-provider",
@@ -899,6 +922,12 @@ public data class MetroOptions(
     MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
     },
+  public val useAssistedParamNamesAsIdentifiers: Boolean =
+    MetroOption.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS.raw.defaultValue.expectAs(),
+  public val assistedIdentifierSeverity: DiagnosticSeverity =
+    MetroOption.ASSISTED_IDENTIFIER_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
+    },
   public val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -1036,6 +1065,8 @@ public data class MetroOptions(
     public var nonPublicContributionSeverity: DiagnosticSeverity =
       base.nonPublicContributionSeverity
     public var optionalBindingBehavior: OptionalBindingBehavior = base.optionalBindingBehavior
+    public var useAssistedParamNamesAsIdentifiers: Boolean = base.useAssistedParamNamesAsIdentifiers
+    public var assistedIdentifierSeverity: DiagnosticSeverity = base.assistedIdentifierSeverity
     public var warnOnInjectAnnotationPlacement: Boolean = base.warnOnInjectAnnotationPlacement
     public var interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
       base.interopAnnotationsNamedArgSeverity
@@ -1237,6 +1268,8 @@ public data class MetroOptions(
         publicProviderSeverity = publicProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
+        useAssistedParamNamesAsIdentifiers = useAssistedParamNamesAsIdentifiers,
+        assistedIdentifierSeverity = assistedIdentifierSeverity,
         warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement,
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
         unusedGraphInputsSeverity = unusedGraphInputsSeverity,
@@ -1419,6 +1452,15 @@ public data class MetroOptions(
             enableGuiceRuntimeInterop = configuration.getAsBoolean(entry)
 
           MAX_IR_ERRORS_COUNT -> maxIrErrorsCount = configuration.getAsInt(entry)
+
+          USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS ->
+            useAssistedParamNamesAsIdentifiers = configuration.getAsBoolean(entry)
+
+          ASSISTED_IDENTIFIER_SEVERITY ->
+            assistedIdentifierSeverity =
+              configuration.getAsString(entry).let {
+                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
+              }
 
           // Intrinsics
           CUSTOM_PROVIDER -> customProviderTypes.addAll(configuration.getAsSet(entry))

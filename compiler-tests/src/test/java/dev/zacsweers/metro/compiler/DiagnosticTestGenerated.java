@@ -509,6 +509,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AssistedUnderscoreContextParamRequiresIdentifier.kt")
+    public void testAssistedUnderscoreContextParamRequiresIdentifier() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/AssistedUnderscoreContextParamRequiresIdentifier.kt");
+    }
+
+    @Test
     @TestMetadata("CannotBeScoped.kt")
     public void testCannotBeScoped() {
       runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotBeScoped.kt");
@@ -682,6 +688,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("AssistedIdentifierSeverityError.kt")
+      public void testAssistedIdentifierSeverityError() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/AssistedIdentifierSeverityError.kt");
+      }
+
+      @Test
       @TestMetadata("InjectingAssistedInjectClassesIsAnError.kt")
       public void testInjectingAssistedInjectClassesIsAnError() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/InjectingAssistedInjectClassesIsAnError.kt");
@@ -691,6 +703,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("LazyAssistedFactoryInjection.kt")
       public void testLazyAssistedFactoryInjection() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/LazyAssistedFactoryInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("RedundantAssistedNamesAreWarned.kt")
+      public void testRedundantAssistedNamesAreWarned() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/RedundantAssistedNamesAreWarned.kt");
       }
     }
 

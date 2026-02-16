@@ -1228,6 +1228,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/inject/InjectedTypeInheritsAnAnnotatedAbstractClass.kt");
     }
 
+    @Test
+    @TestMetadata("ReusedMultiInjectRespectsProviderCalls.kt")
+    public void testReusedMultiInjectRespectsProviderCalls() {
+      runTest("compiler-tests/src/test/data/box/inject/ReusedMultiInjectRespectsProviderCalls.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/inject/assisted")
     @TestDataPath("$PROJECT_ROOT")
@@ -1235,6 +1241,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @Test
       public void testAllFilesPresentInAssisted() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("AnotherCustomIdentifiersTest.kt")
+      public void testAnotherCustomIdentifiersTest() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AnotherCustomIdentifiersTest.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedAnnotationsUseParamNameByDefault.kt")
+      public void testAssistedAnnotationsUseParamNameByDefault() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedAnnotationsUseParamNameByDefault.kt");
       }
 
       @Test
@@ -1265,6 +1283,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("AssistedFactoryWithContributesAsInject.kt")
       public void testAssistedFactoryWithContributesAsInject() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedFactoryWithContributesAsInject.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedParamNamesDisabled.kt")
+      public void testAssistedParamNamesDisabled() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedParamNamesDisabled.kt");
       }
 
       @Test
@@ -1463,6 +1487,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("AnotherBindsOptionalPresentTest.kt")
       public void testAnotherBindsOptionalPresentTest() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/AnotherBindsOptionalPresentTest.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedDaggerAnnotationsAlwaysUseParamNames.kt")
+      public void testAssistedDaggerAnnotationsAlwaysUseParamNames() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/AssistedDaggerAnnotationsAlwaysUseParamNames.kt");
       }
 
       @Test

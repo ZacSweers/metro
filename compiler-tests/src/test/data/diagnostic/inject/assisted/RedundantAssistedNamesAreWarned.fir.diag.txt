@@ -1,0 +1,7 @@
+/RedundantAssistedNamesAreWarned.kt:(114,120): warning: Explicit @Assisted identifiers are deprecated. Use matching parameter names instead.
+
+/RedundantAssistedNamesAreWarned.kt:(149,163): warning: Explicit @Assisted identifiers are deprecated. Use matching parameter names instead.
+
+/RedundantAssistedNamesAreWarned.kt:(258,264): warning: Explicit @Assisted identifiers are deprecated. Use matching parameter names instead.
+
+/RedundantAssistedNamesAreWarned.kt:(287,301): warning: Explicit @Assisted identifiers are deprecated. Use matching parameter names instead.
