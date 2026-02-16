@@ -6,6 +6,59 @@ Changelog
 
 ### New
 
+#### [**[MEEP-1826]**](https://github.com/ZacSweers/metro/discussions/1826) `@Assisted` parameters now rely on matching parameter names.
+
+Historically, Dagger's `@Assisted` parameters allowed specifying a custom identifier via `@Assisted("some string")`, and Metro matched this behavior. However, this is a vestige of Java support, which did not include parameter names in bytecode until Java 8's `-parameters` flag.
+
+Since Metro is in an all-Kotlin world and parameter names are a first-class citizen in Kotlin APIs, Metro is now leveraging that and phasing out support for implicit type matching and custom identifiers.
+
+This means that `@Assisted` parameter names in assisted-inject constructors/top-level-functions _must_ match their analogous parameters in `@AssistedFactory` creators. No more matching by types, no more disambiguating with `@Assisted("customIdentifier")`.
+
+```kotlin
+// Before: Using type matching or custom identifiers
+@AssistedInject
+class Taco(
+  @Assisted("name") val name: String,
+  @Assisted("type") val type: String,
+  @Assisted val spiciness: Int,
+  val tortilla: Tortilla
+) {
+  @AssistedFactory
+  interface Factory {
+    fun create(
+      @Assisted("name") name: String,
+      @Assisted("type") type: String,
+      @Assisted("spiciness") spiciness: Int
+    ): TacoFactory
+  }
+}
+
+// After: Using parameter name matching
+@AssistedInject
+class Taco(
+  @Assisted val name: String,
+  @Assisted val type: String,
+  @Assisted val spiciness: Int,
+  val tortilla: Tortilla
+) {
+  @AssistedFactory
+  interface Factory {
+    // Parameter names must match the constructor exactly
+    fun create(name: String, type: String, spiciness: Int): TacoFactory
+  }
+}
+```
+
+To ease migration to this, this will be rolled out in phases.
+
+1. Starting with this release, `@Assisted.value` is soft-deprecated. This is controlled by the `assistedIdentifierSeverity` Gradle DSL option, which is set to `WARN` by default in this release. This control allows for easy disabling or promotion to error.
+2. In a future release, `assistedIdentifierSeverity` will be removed and `@Assisted.value` will be formally deprecated.
+3. In a future release after that, `@Assisted.value` will be fully deleted and legacy behavior will be unsupported with Metro's first-party annotation.
+
+Note that _interop_ annotations are not affected by this change, and any previous Dagger/etc interop `@Assisted` annotation's custom identifiers will still be respected.
+
+If you want to completely restore the legacy behavior, you can disable this new mode via `useAssistedParamNamesAsIdentifiers` Gradle DSL option. Note, however, that this option will eventually be removed.
+
 ### Enhancements
 
 - **[FIR]**: Disallow `_` assisted context parameter names in top-level function injection.

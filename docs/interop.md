@@ -138,6 +138,7 @@ This specifically enables three features.
 1. Interop with Dagger/Javax/Jakarta's `Provider` and `Lazy` runtime intrinsics.
 2. Interop with generated Dagger factories for constructor-injected classes, assisted-injected classes, member-injected classes, and Dagger modules. This means that Metro can _natively_ reuse an upstream class or module that was processed with the dagger compiler (or Anvil, if using its factory generation) and has a generated factory/injector class.
 3. Interop with Dagger's `@BindsOptionalOf` annotation.
+4. Interop with Dagger's `@Assisted.value` custom identifiers. While Metro's native `@Assisted` uses parameter names for matching, Dagger's explicit `value` identifiers are fully supported when using Dagger's annotations.
 
 Note the companion Gradle plugin automatically adds an extra `dev.zacsweers.metro:interop-dagger` runtime dependency to support this interop. If you only want annotation interop, just replace the annotations only.
 
