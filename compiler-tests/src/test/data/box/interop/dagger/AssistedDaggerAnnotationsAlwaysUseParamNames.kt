@@ -1,15 +1,12 @@
 // ENABLE_DAGGER_INTEROP
-// USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS: false
-// Even when useAssistedParamNamesAsIdentifiers is false, Dagger's @Assisted
-// should still use param names for matching (interop behavior).
+// Dagger's @Assisted always uses param names for matching (interop behavior).
 import dagger.assisted.Assisted
-import dagger.assisted.AssistedInject
 import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 
-class ExampleClass @AssistedInject constructor(
-  @Assisted val count: Int,
-  @Assisted val name: String,
-) {
+class ExampleClass
+@AssistedInject
+constructor(@Assisted val count: Int, @Assisted val name: String) {
   @AssistedFactory
   interface Factory {
     fun create(count: Int, name: String): ExampleClass
