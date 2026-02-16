@@ -28,7 +28,7 @@ class Taco(
     fun create(
       @Assisted("name") name: String,
       @Assisted("type") type: String,
-      @Assisted("spiciness") spiciness: Int
+      @Assisted spiciness: Int
     ): TacoFactory
   }
 }
