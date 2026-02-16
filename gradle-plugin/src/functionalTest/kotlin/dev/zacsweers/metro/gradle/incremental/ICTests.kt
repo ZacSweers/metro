@@ -8,6 +8,7 @@ import com.autonomousapps.kit.GradleBuilder.build
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.gradle.Dependency
+import com.autonomousapps.kit.gradle.Dependency.Companion.implementation
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.GradlePlugins
 import dev.zacsweers.metro.gradle.MetroProject
@@ -341,7 +342,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(appGraph, appGraph2)
-            dependencies(Dependency.implementation(":lib"))
+            dependencies(implementation(":lib"))
           }
           subproject("lib") { sources(dependency, dependencyProvider) }
         }
@@ -629,23 +630,23 @@ class ICTests : BaseIncrementalCompilationTest() {
           root {
             sources(exampleGraph)
             dependencies(
-              Dependency.implementation(":lib:impl"),
-              Dependency.implementation(":scopes"),
-              Dependency.implementation(":graphs"),
+              implementation(":lib:impl"),
+              implementation(":scopes"),
+              implementation(":graphs"),
             )
           }
           subproject("scopes") { sources(scopes) }
           subproject("graphs") {
             sources(graphs)
-            dependencies(Dependency.implementation(":scopes"))
+            dependencies(implementation(":scopes"))
           }
           subproject("lib") {
             sources(repo)
-            dependencies(Dependency.implementation(":scopes"))
+            dependencies(implementation(":scopes"))
           }
           subproject("lib:impl") {
             sources(repoImpl)
-            dependencies(Dependency.implementation(":scopes"), Dependency.api(":lib"))
+            dependencies(implementation(":scopes"), Dependency.api(":lib"))
           }
         }
 
@@ -727,7 +728,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         override fun buildGradleProject() = multiModuleProject {
           subproject("app") {
             sources(appGraph)
-            dependencies(Dependency.implementation(":lib:impl"))
+            dependencies(implementation(":lib:impl"))
           }
           subproject("lib") { sources(dummy) }
           subproject("lib:impl") {
@@ -1437,12 +1438,12 @@ class ICTests : BaseIncrementalCompilationTest() {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(appGraph, main)
-            dependencies(Dependency.implementation(":common"), Dependency.implementation(":lib"))
+            dependencies(implementation(":common"), implementation(":lib"))
           }
           subproject("common") { sources(bar) }
           subproject("lib") {
             sources(foo)
-            dependencies(Dependency.implementation(":common"))
+            dependencies(implementation(":common"))
           }
         }
 
@@ -1530,12 +1531,12 @@ class ICTests : BaseIncrementalCompilationTest() {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(appGraph, main)
-            dependencies(Dependency.implementation(":common"), Dependency.implementation(":lib"))
+            dependencies(implementation(":common"), implementation(":lib"))
           }
           subproject("common") { sources(bar) }
           subproject("lib") {
             sources(foo)
-            dependencies(Dependency.implementation(":common"))
+            dependencies(implementation(":common"))
           }
         }
 
@@ -1625,7 +1626,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(appGraph, target)
-            dependencies(Dependency.implementation(":lib"))
+            dependencies(implementation(":lib"))
           }
           subproject("lib") { sources(provider, unrelatedClass) }
         }
@@ -1772,12 +1773,12 @@ class ICTests : BaseIncrementalCompilationTest() {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(appGraph, fakeImpl, main)
-            dependencies(Dependency.implementation(":common"), Dependency.implementation(":lib"))
+            dependencies(implementation(":common"), implementation(":lib"))
           }
           subproject("common") { sources(fooBar) }
           subproject("lib") {
             sources(realImpl)
-            dependencies(Dependency.implementation(":common"))
+            dependencies(implementation(":common"))
           }
         }
 
@@ -1880,7 +1881,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(main)
-            dependencies(Dependency.implementation(":lib"))
+            dependencies(implementation(":lib"))
           }
           subproject("lib") { sources(appGraph, featureGraph) }
         }
@@ -2060,7 +2061,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(main, appGraph, stringProvider)
-            dependencies(Dependency.implementation(":lib"))
+            dependencies(implementation(":lib"))
           }
           subproject("lib") { sources(myActivity, myActivityInjector) }
         }
@@ -2563,7 +2564,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(graphAndMain)
-            dependencies(Dependency.implementation(":lib"))
+            dependencies(implementation(":lib"))
           }
           subproject("lib") { sources(assistedClass) }
         }
@@ -2651,11 +2652,11 @@ class ICTests : BaseIncrementalCompilationTest() {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(graphAndMain)
-            dependencies(Dependency.implementation(":factory"), Dependency.implementation(":lib"))
+            dependencies(implementation(":factory"), implementation(":lib"))
           }
           subproject("factory") {
             sources(assistedFactory)
-            dependencies(Dependency.implementation(":lib"))
+            dependencies(implementation(":lib"))
           }
           subproject("lib") { sources(assistedClass) }
         }
