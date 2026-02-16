@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.name.SpecialNames
 
 /**
  * Checker for injected functions.
@@ -62,6 +63,17 @@ internal object FunctionInjectionChecker : FirCallableDeclarationChecker(MppChec
           contextParam.source ?: source,
           FUNCTION_INJECT_ERROR,
           "Context parameters cannot be annotated @OptionalBinding.",
+        )
+      }
+
+      if (
+        contextParam.name == SpecialNames.UNDERSCORE_FOR_UNUSED_VAR &&
+          contextParam.isAnnotatedWithAny(session, classIds.assistedAnnotations)
+      ) {
+        reporter.reportOn(
+          contextParam.source ?: source,
+          FUNCTION_INJECT_ERROR,
+          "`_` is not allowed for `@Assisted` parameters because assisted factories require matching parameter names.",
         )
       }
     }
