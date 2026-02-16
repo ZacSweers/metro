@@ -230,7 +230,7 @@ constructor(
    * provider callables. See the kdoc on `Provides` for more details.
    */
   public val publicProviderSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+    objects.enumProperty<DiagnosticSeverity>("publicProviderSeverity", DiagnosticSeverity.NONE)
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
@@ -244,7 +244,10 @@ constructor(
    * Disabled by default.
    */
   public val nonPublicContributionSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+    objects.enumProperty<DiagnosticSeverity>(
+      "nonPublicContributionSeverity",
+      DiagnosticSeverity.NONE,
+    )
 
   /**
    * Enable/disable Kotlin version compatibility checks. Defaults to true or the value of the
@@ -267,7 +270,10 @@ constructor(
    * Disabled by default as this can be quite noisy in a codebase that uses a lot of interop.
    */
   public val interopAnnotationsNamedArgSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+    objects.enumProperty<DiagnosticSeverity>(
+      "interopAnnotationsNamedArgSeverity",
+      DiagnosticSeverity.NONE,
+    )
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters unused
@@ -277,7 +283,7 @@ constructor(
    * Disabled by default.
    */
   public val unusedGraphInputsSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+    objects.enumProperty<DiagnosticSeverity>("unusedGraphInputsSeverity", DiagnosticSeverity.NONE)
 
   /**
    * If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject`
@@ -540,6 +546,18 @@ constructor(
 
   private fun ObjectFactory.intProperty(name: String, defaultValue: Int): Property<Int> {
     return property(Int::class.java).propertyNameConventionImpl(name, defaultValue, String::toInt)
+  }
+
+  private inline fun <reified T : Enum<T>> ObjectFactory.enumProperty(
+    name: String,
+    defaultValue: T,
+  ): Property<T> {
+    return property(T::class.java).propertyNameConventionImpl(name, defaultValue) { value ->
+      enumValues<T>().find { it.name.equals(defaultValue.name, ignoreCase = true) }
+        ?: error(
+          "Value '$value' is not a valid input for metro.$name. Allowed values: ${enumValues<T>().joinToString { it.name }}"
+        )
+    }
   }
 
   private fun ObjectFactory.metroProperty(name: String, defaultValue: String): Property<String> {
