@@ -200,7 +200,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         ASSISTED_INJECTION_ERROR,
         buildString {
           appendLine(
-            "Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:"
+            "Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:"
           )
           if (missingFromFactory.isNotEmpty()) {
             append("  Missing from factory: ")
