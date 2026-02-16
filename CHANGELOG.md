@@ -8,7 +8,7 @@ Changelog
 
 #### [**[MEEP-1826]**](https://github.com/ZacSweers/metro/discussions/1826) `@Assisted` parameters now rely on matching parameter names.
 
-Historically, Dagger's `@Assisted` parameters allowed specifying a custom identifier via `@Assisted("some string")`, and Metro matched this behavior. However, this is a vestige of Java support, which did not include parameter names in bytecode until Java 8's `-parameters` flag.
+Historically, Dagger/Guice's `@Assisted` parameters allowed specifying a custom identifier via `@Assisted("some string")`, and Metro matched this behavior. However, this is a vestige of Java support, which did not include parameter names in bytecode until Java 8's `-parameters` flag.
 
 Since Metro is in an all-Kotlin world and parameter names are a first-class citizen in Kotlin APIs, Metro is now leveraging that and phasing out support for implicit type matching and custom identifiers.
 
@@ -55,7 +55,7 @@ To ease migration to this, this will be rolled out in phases.
 2. In a future release, `assistedIdentifierSeverity` will be removed and `@Assisted.value` will be formally deprecated.
 3. In a future release after that, `@Assisted.value` will be fully deleted and legacy behavior will be unsupported with Metro's first-party annotation.
 
-Note that _interop_ annotations are not affected by this change, and any previous Dagger/etc interop `@Assisted` annotation's custom identifiers will still be respected.
+Note that _interop_ annotations are not affected by this change, and any previous Dagger/Guice interop `@Assisted` annotation's custom identifiers will still be respected.
 
 If you want to completely restore the legacy behavior, you can disable this new mode via `useAssistedParamNamesAsIdentifiers` Gradle DSL option. Note, however, that this option will eventually be removed.
 
