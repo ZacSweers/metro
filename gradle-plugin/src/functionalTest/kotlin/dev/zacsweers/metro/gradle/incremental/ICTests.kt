@@ -2396,7 +2396,7 @@ class ICTests : BaseIncrementalCompilationTest() {
    * underlying target class has changed and regenerate the factory accordingly.
    */
   @Test
-  fun `adding non-assisted parame to an assisted inject class is detected in IC with the factory`() {
+  fun `adding non-assisted param to an assisted inject class is detected in IC with the factory`() {
     val fixture =
       object : MetroProject() {
         override fun sources() = listOf(assistedClass, graphAndMain)
@@ -2476,7 +2476,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   }
 
   @Test
-  fun `adding non-assisted parame to an assisted inject class is detected in IC with the factory in a separate file`() {
+  fun `adding non-assisted param to an assisted inject class is detected in IC with the factory in a separate file`() {
     val fixture =
       object : MetroProject() {
         override fun sources() = listOf(assistedClass, assistedFactory, graphAndMain)
@@ -2545,6 +2545,94 @@ class ICTests : BaseIncrementalCompilationTest() {
         val count: Int,
       ) {
         fun call(): String = message + id + count
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build should succeed and the factory should pick up the new parameter
+    val secondBuildResult = project.compileKotlin()
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world42")
+  }
+
+  @Test
+  fun `adding non-assisted param to an assisted inject class in a separate module is detected in IC`() {
+    val fixture =
+      object : MetroProject() {
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(graphAndMain)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(assistedClass) }
+        }
+
+        val assistedClass =
+          source(
+            """
+            @AssistedInject
+            class AssistedClass(
+              @Assisted val id: String,
+              val message: String,
+            ) {
+              fun call(): String = message + id
+
+              @AssistedFactory
+              fun interface Factory {
+                fun create(id: String): AssistedClass
+              }
+            }
+            """
+              .trimIndent()
+          )
+
+        val graphAndMain =
+          source(
+            """
+            @DependencyGraph
+            interface AppGraph {
+              val factory: AssistedClass.Factory
+
+              @Provides fun provideString(): String = "Hello, "
+              @Provides fun provideInt(): Int = 42
+            }
+
+            fun main(): String {
+              val graph = createGraph<AppGraph>()
+              return graph.factory.create("world").call()
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "Main",
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build should succeed and run correctly
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world")
+
+    // Add a new non-assisted parameter (count: Int) to the assisted class in the lib module
+    libProject.modify(
+      project.rootDir,
+      fixture.assistedClass,
+      """
+      @AssistedInject
+      class AssistedClass(
+        @Assisted val id: String,
+        val message: String,
+        val count: Int,
+      ) {
+        fun call(): String = message + id + count
+
+        @AssistedFactory
+        fun interface Factory {
+          fun create(id: String): AssistedClass
+        }
       }
       """
         .trimIndent(),
