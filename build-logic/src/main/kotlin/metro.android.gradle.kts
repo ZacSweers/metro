@@ -37,10 +37,6 @@ pluginManager.withPlugin("com.android.application") {
   extensions.configure<ApplicationExtension> {
     configureCommonAndroid()
     defaultConfig { targetSdk = 36 }
-    buildTypes {
-      maybeCreate("debug").apply {
-        matchingFallbacks += listOf("release")
-      }
-    }
+    buildTypes { maybeCreate("debug").apply { matchingFallbacks += listOf("release") } }
   }
 }
