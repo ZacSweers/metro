@@ -35,9 +35,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          lfs: true
-      
+
       - name: Generate matrix
         id: generate
         run: ./scripts/generate-ci-matrix.sh
@@ -56,8 +54,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          lfs: true
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
@@ -101,8 +97,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          lfs: true
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
@@ -153,8 +147,6 @@ jobs:
       - name: Checkout
         if: github.ref == 'refs/heads/main'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          lfs: true
 
       - name: Setup Gradle
         if: github.ref == 'refs/heads/main'
@@ -195,8 +187,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          lfs: true
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
@@ -246,8 +236,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          lfs: true
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
