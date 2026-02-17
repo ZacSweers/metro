@@ -7,6 +7,7 @@ import org.gradle.api.Action
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
@@ -53,12 +54,8 @@ constructor(
   public val generateAssistedFactories: Property<Boolean> =
     objects.booleanProperty("metro.generateAssistedFactories", false)
 
-  /**
-   * Enables whether the Metro compiler plugin will generate `@Throws` annotations on stubbed
-   * function bodies.
-   */
-  public val generateThrowsAnnotations: Property<Boolean> =
-    objects.booleanProperty("metro.generateThrowsAnnotations", false)
+  @Deprecated("This does not do anything anymore and will be removed")
+  public abstract val generateThrowsAnnotations: Property<Boolean>
 
   /**
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
@@ -69,6 +66,8 @@ constructor(
    *   jvm/android targets.
    * - Prior to Kotlin 2.3.20-Beta1, top-level function injection is not yet compatible with
    *   incremental compilation on any platform
+   * - Kotlin/JS does not support this with incremental compilation enabled. See
+   *   https://youtrack.jetbrains.com/issue/KT-82395
    */
   @DelicateMetroGradleApi(
     "Top-level function injection is experimental and does not work yet in all cases. See the kdoc."
@@ -78,7 +77,10 @@ constructor(
       .booleanProperty()
       .convention(
         compilerVersion.map {
-          // Kotlin 2.3.20-Beta1, top-level declaration gen is fully supported
+          // Kotlin 2.3.20-Beta1, top-level declaration gen is fully supported on all platforms are
+          // supported except JS
+          // https://youtrack.jetbrains.com/issue/KT-82395
+          // https://youtrack.jetbrains.com/issue/KT-82989
           KotlinVersions.supportsTopLevelFirGen(it)
         }
       )
@@ -101,6 +103,8 @@ constructor(
    *   targets.
    * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint gen is not yet compatible with
    *   incremental compilation on any platform
+   * - Kotlin/JS does not support this with incremental compilation enabled. See
+   *   https://youtrack.jetbrains.com/issue/KT-82395
    */
   @DelicateMetroGradleApi(
     "FIR contribution hint gen is experimental and does not work yet in all cases. See the kdoc."
@@ -110,7 +114,10 @@ constructor(
       .booleanProperty()
       .convention(
         compilerVersion.map {
-          // Kotlin 2.3.20-Beta1, FIR hint gen is fully supported
+          // Kotlin 2.3.20-Beta1, FIR hint gen is fully supported on all platforms.
+          // JS is further gated on incremental compilation being disabled in MetroGradleSubplugin.
+          // https://youtrack.jetbrains.com/issue/KT-82395
+          // https://youtrack.jetbrains.com/issue/KT-82989
           KotlinVersions.supportsTopLevelFirGen(it)
         }
       )
@@ -122,6 +129,9 @@ constructor(
    * **Warnings** Prior to Kotlin 2.3.20, contribution hint gen is
    * - ...only compatible with jvm/android targets.
    * - ...does not support incremental compilation on any targets.
+   *
+   * Kotlin/JS does not support this with incremental compilation enabled. See
+   * https://youtrack.jetbrains.com/issue/KT-82395
    */
   @DelicateMetroGradleApi(
     "Contribution hint gen does not work yet in all platforms on all Kotlin versions. See the kdoc."
@@ -130,10 +140,12 @@ constructor(
     objects
       .setProperty(KotlinPlatformType::class.javaObjectType)
       .convention(
-        compilerVersion.map {
-          if (KotlinVersions.supportsTopLevelFirGen(it)) {
-            // Kotlin 2.3.20, all platforms are supported
-            KotlinPlatformType.entries
+        compilerVersion.map { version ->
+          if (KotlinVersions.supportsTopLevelFirGen(version)) {
+            // Kotlin 2.3.20, all platforms are supported. JS is further gated on
+            // incremental compilation being disabled in MetroGradleSubplugin.
+            // https://youtrack.jetbrains.com/issue/KT-82395
+            KotlinPlatformType.entries.toSet()
           } else {
             // Only jvm/android work prior to Kotlin 2.3.20
             setOf(KotlinPlatformType.common, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm)
@@ -173,16 +185,14 @@ constructor(
   public val statementsPerInitFun: Property<Int> =
     objects.intProperty("metro.statementsPerInitFun", 25)
 
-  /** Enable/disable graph sharding of binding graphs. Disabled by default. */
-  @DelicateMetroGradleApi("Sharding is an experimental feature")
+  /** Enable/disable graph sharding of binding graphs. Enabled by default. */
   public val enableGraphSharding: Property<Boolean> =
-    objects.booleanProperty("metro.enableGraphSharding", false)
+    objects.booleanProperty("metro.enableGraphSharding", true)
 
   /**
    * Maximum number of binding keys per graph shard when sharding is enabled. Default is 2000, must
    * be > 0.
    */
-  @DelicateMetroGradleApi("Sharding is an experimental feature")
   public val keysPerGraphShard: Property<Int> = objects.intProperty("metro.keysPerGraphShard", 2000)
 
   /**
@@ -196,7 +206,6 @@ constructor(
    *
    * Disabled by default.
    */
-  @DelicateMetroGradleApi("Switching providers are an experimental feature")
   public val enableSwitchingProviders: Property<Boolean> =
     objects.booleanProperty("metro.enableSwitchingProviders", false)
 
@@ -221,7 +230,7 @@ constructor(
    * provider callables. See the kdoc on `Provides` for more details.
    */
   public val publicProviderSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+    objects.enumProperty<DiagnosticSeverity>("publicProviderSeverity", DiagnosticSeverity.NONE)
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
@@ -235,7 +244,10 @@ constructor(
    * Disabled by default.
    */
   public val nonPublicContributionSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+    objects.enumProperty<DiagnosticSeverity>(
+      "nonPublicContributionSeverity",
+      DiagnosticSeverity.NONE,
+    )
 
   /**
    * Enable/disable Kotlin version compatibility checks. Defaults to true or the value of the
@@ -258,7 +270,10 @@ constructor(
    * Disabled by default as this can be quite noisy in a codebase that uses a lot of interop.
    */
   public val interopAnnotationsNamedArgSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+    objects.enumProperty<DiagnosticSeverity>(
+      "interopAnnotationsNamedArgSeverity",
+      DiagnosticSeverity.NONE,
+    )
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters unused
@@ -268,7 +283,7 @@ constructor(
    * Disabled by default.
    */
   public val unusedGraphInputsSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+    objects.enumProperty<DiagnosticSeverity>("unusedGraphInputsSeverity", DiagnosticSeverity.NONE)
 
   /**
    * If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject`
@@ -278,6 +293,18 @@ constructor(
    */
   public val contributesAsInject: Property<Boolean> =
     objects.booleanProperty("metro.contributesAsInject", true)
+
+  /**
+   * Enable/disable deduplication of injected parameters with the same type key in generated
+   * factories. When enabled, if multiple injected parameters share the same type key, only one
+   * parameter is generated in the factory.
+   *
+   * Note that parameters with default values are always included.
+   *
+   * Enabled by default.
+   */
+  public val deduplicateInjectedParams: Property<Boolean> =
+    objects.booleanProperty("metro.deduplicateInjectedParams", true)
 
   /**
    * Enable/disable klib parameter qualifier checking.
@@ -327,10 +354,46 @@ constructor(
    *
    * Null by default (uses the detected runtime Kotlin version).
    */
-  public val compilerVersion: Property<String> =
-    objects
-      .metroProperty("metro.compilerVersion", "")
-      .convention(compilerVersion.map { it.toString() })
+  public val compilerVersion: Property<String> = objects.metroProperty("metro.compilerVersion", "")
+
+  /**
+   * When enabled, Metro's native `@Assisted` annotation uses the parameter name as the default
+   * assisted identifier. When disabled, defaults to an empty string (legacy/Dagger behavior).
+   *
+   * This only affects Metro's own `@Assisted` annotation, not custom/interop annotations which may
+   * use the legacy empty-string default.
+   *
+   * Enabled by default.
+   */
+  public val useAssistedParamNamesAsIdentifiers: Property<Boolean> =
+    objects.booleanProperty("metro.useAssistedParamNamesAsIdentifiers", true)
+
+  /**
+   * Controls the diagnostic severity when explicit `@Assisted("value")` identifiers are used on
+   * Metro's native `@Assisted` annotation _where the value differs from the parameter name_.
+   *
+   * This is an initial step toward deprecating explicit assisted identifiers in favor of parameter
+   * names. Only meaningful when [useAssistedParamNamesAsIdentifiers] is `true`.
+   *
+   * Set to [DiagnosticSeverity.WARN] by default. Eventually it will become a proper deprecation
+   * warning, then error, then removed.
+   */
+  public val assistedIdentifierSeverity: Property<DiagnosticSeverity> =
+    objects.enumProperty<DiagnosticSeverity>("assistedIdentifierSeverity", DiagnosticSeverity.WARN)
+
+  /**
+   * Compiler version aliases mapping fake IDE versions to their real compiler versions.
+   *
+   * This is useful for IDE builds (e.g., Android Studio canary) that report a fake Kotlin compiler
+   * version. When Metro detects a compiler version that matches an alias key, it will use the
+   * corresponding value as the real version.
+   *
+   * User-defined aliases take priority over built-in aliases.
+   *
+   * Empty by default.
+   */
+  public val compilerVersionAliases: MapProperty<String, String> =
+    objects.mapProperty(String::class.java, String::class.java).convention(emptyMap())
 
   /**
    * Number of threads to use for Metro's compiler.
@@ -517,6 +580,18 @@ constructor(
 
   private fun ObjectFactory.intProperty(name: String, defaultValue: Int): Property<Int> {
     return property(Int::class.java).propertyNameConventionImpl(name, defaultValue, String::toInt)
+  }
+
+  private inline fun <reified T : Enum<T>> ObjectFactory.enumProperty(
+    name: String,
+    defaultValue: T,
+  ): Property<T> {
+    return property(T::class.java).propertyNameConventionImpl(name, defaultValue) { value ->
+      enumValues<T>().find { it.name.equals(defaultValue.name, ignoreCase = true) }
+        ?: error(
+          "Value '$value' is not a valid input for metro.$name. Allowed values: ${enumValues<T>().joinToString { it.name }}"
+        )
+    }
   }
 
   private fun ObjectFactory.metroProperty(name: String, defaultValue: String): Property<String> {

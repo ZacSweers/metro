@@ -1,0 +1,149 @@
+name: IDE Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    paths:
+      - 'ide-integration-tests/**'
+  workflow_dispatch:
+    inputs:
+      ide:
+        description: 'IDE to test (e.g., "IU:2025.3.2") or "all"'
+        type: string
+        default: 'all'
+
+concurrency:
+  group: 'ide-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  generate-matrix:
+    name: Generate IDE matrix
+    runs-on: ubuntu-latest
+    outputs:
+      ide-matrix: ${{ steps.matrix.outputs.ide-matrix }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Generate IDE matrix
+        id: matrix
+        # language=bash
+        run: |
+          input_ide="${{ github.event.inputs.ide }}"
+          if [[ -n "$input_ide" ]] && [[ "$input_ide" != "all" ]]; then
+            json=$(echo "[\"$input_ide\"]" | jq -c .)
+          else
+            # Read non-comment, non-empty lines; strip trailing comments
+            json=$(grep -v '^#' ide-integration-tests/ide-versions.txt \
+              | grep -v '^[[:space:]]*$' \
+              | sed 's/ #.*//' \
+              | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          fi
+          echo "ide-matrix=$json" >> "$GITHUB_OUTPUT"
+
+  build-metro:
+    name: Build Metro artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          konan: true
+
+      - name: Publish Metro to functionalTestRepo
+        run: ./gradlew :installForFunctionalTest --quiet
+
+      - name: Upload Metro artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: metro-repo
+          path: build/functionalTestRepo
+          retention-days: 1
+
+  ide-tests:
+    needs:
+      - generate-matrix
+      - build-metro
+    name: "IDE / ${{ matrix.ide }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ide: ${{ fromJson(needs.generate-matrix.outputs.ide-matrix) }}
+    env:
+      METRO_PREBUILT: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Download Metro artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: metro-repo
+          path: build/functionalTestRepo
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Install aria2
+        run: sudo apt-get install -y aria2
+
+      - name: Filter IDE version for this matrix entry
+        run: |
+          echo "${{ matrix.ide }}" > ide-integration-tests/ide-versions.txt
+          echo "IDE_SLUG=${IDE//:/-}" >> "$GITHUB_ENV"
+        env:
+          IDE: ${{ matrix.ide }}
+
+      - name: Cache IDE download
+        uses: actions/cache@v5
+        with:
+          path: |
+            out/ide-tests/cache/android-studio
+            out/ide-tests/installers/IU
+          key: ide-download-${{ matrix.ide }}
+
+      - name: Download IDE
+        run: ide-integration-tests/download-ides.sh
+
+      - name: Run IDE tests
+        run: |
+          ./gradlew -p ide-integration-tests test --quiet
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ide-logs-${{ env.IDE_SLUG }}
+          path: |
+            ide-integration-tests/**/build/reports/**
+            out/ide-tests/tests/**/log/**
+            out/ide-tests/tests/**/reports/**
+
+  ide-integration:
+    if: always()
+    runs-on: ubuntu-latest
+    needs:
+      - ide-tests
+    steps:
+      - name: Check
+        run: |
+          results=$(tr -d '\n' <<< '${{ toJSON(needs.*.result) }}')
+          if ! grep -q -v -E '(failure|cancelled)' <<< "$results"; then
+            echo "One or more IDE integration tests failed"
+            exit 1
+          fi

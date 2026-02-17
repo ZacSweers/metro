@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import com.vanniktech.maven.publish.DeploymentValidation
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
+import kotlin.collections.addAll
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.jetbrains.dokka.gradle.DokkaExtension
@@ -9,66 +10,121 @@ import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
-import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
 val jdkVersion = catalog.findVersion("jdk").get().requiredVersion
 val jvmTargetVersion = catalog.findVersion("jvmTarget").get().requiredVersion
+val compilerJvmTargetVersion = catalog.findVersion("compilerJvmTarget").get().requiredVersion
+
+val metroExtension =
+  project.extensions.create<MetroProjectExtension>("metroProject").apply {
+    jvmTarget.convention(
+      if (isCompilerProject) {
+        compilerJvmTargetVersion
+      } else {
+        jvmTargetVersion
+      }
+    )
+  }
 
 // Java configuration
 pluginManager.withPlugin("java") {
   extensions.configure<JavaPluginExtension> {
-    toolchain { languageVersion.set(JavaLanguageVersion.of(jdkVersion)) }
+    toolchain { languageVersion.convention(JavaLanguageVersion.of(jdkVersion)) }
   }
-  tasks.withType<JavaCompile>().configureEach { options.release.set(jvmTargetVersion.toInt()) }
+  tasks.withType<JavaCompile>().configureEach {
+    options.release.convention(metroExtension.jvmTarget.map(String::toInt))
+  }
 }
 
 // Suppress native access warnings in forked JVMs (Java 22+)
-tasks.withType<Test>().configureEach { jvmArgs("--enable-native-access=ALL-UNNAMED") }
+tasks.withType<Test>().configureEach {
+  jvmArgs("--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow")
+}
 
-tasks.withType<JavaExec>().configureEach { jvmArgs("--enable-native-access=ALL-UNNAMED") }
+tasks.withType<JavaExec>().configureEach {
+  jvmArgs("--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow")
+}
 
 // Kotlin configuration
 plugins.withType<KotlinBasePlugin> {
-  // Skip explicitApi for samples and benchmark projects
-  val useExplicitApi =
-    "sample" !in project.path &&
-      rootProject.name != "metro-samples" &&
-      rootProject.name != "metro-benchmark"
-  if (useExplicitApi) {
-    configure<KotlinProjectExtension> { explicitApi() }
-  }
-
-  // TODO move this to a DSL
-  // Configuration required to produce unique META-INF/*.kotlin_module file names
-  val artifactId = project.findProperty("POM_ARTIFACT_ID")?.toString()
   tasks.withType<KotlinCompilationTask<*>>().configureEach {
     compilerOptions {
-      progressiveMode.convention(true)
+      progressiveMode.convention(metroExtension.progressiveMode)
+      languageVersion.convention(metroExtension.languageVersion)
+      apiVersion.convention(metroExtension.apiVersion)
       if (this is KotlinJvmCompilerOptions) {
-        jvmTarget.convention(JvmTarget.fromTarget(jvmTargetVersion))
+        jvmTarget.convention(metroExtension.jvmTarget.map(JvmTarget::fromTarget))
         jvmDefault.convention(JvmDefaultMode.NO_COMPATIBILITY)
         freeCompilerArgs.addAll("-Xassertions=jvm", "-Xannotation-default-target=param-property")
-        artifactId?.let(moduleName::convention)
+        if (isCompilerProject) {
+          freeCompilerArgs.addAll(
+            "-Xcontext-parameters",
+            "-Xreturn-value-checker=full",
+            "-Xcontext-sensitive-resolution",
+            "-Xdata-flow-based-exhaustiveness",
+            //  "-Xallow-contracts-on-more-functions",
+            //  "-Xallow-condition-implies-returns-contracts",
+            //  "-Xallow-holdsin-contract",
+            // TODO next minor release
+            //  "-Xwhen-expressions=indy",
+            // TODO Kotlin 2.3.0
+            //  "-Xexplicit-backing-fields",
+          )
+          if (project.name != "compiler-tests") {
+            optIn.addAll(
+              "kotlin.contracts.ExperimentalContracts",
+              "kotlin.contracts.ExperimentalExtendedContracts",
+              "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
+              "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
+            )
+          }
+        }
       }
     }
   }
 }
 
-// Maven publish configuration
-plugins.withId("com.vanniktech.maven.publish") {
-  // Apply dokka for non-compiler projects
-  if (project.path != ":compiler" && !project.path.startsWith(":compiler-compat")) {
-    apply(plugin = "org.jetbrains.dokka")
+pluginManager.withPlugin("metro.publish") {
+  val metroPublish = extensions.getByType<MetroPublishExtension>()
+  tasks.withType<KotlinCompilationTask<*>>().configureEach {
+    compilerOptions {
+      if (this is KotlinJvmCompilerOptions) {
+        // Configuration required to produce unique META-INF/*.kotlin_module file names
+        moduleName.set(metroPublish.artifactId)
+      }
+    }
   }
 
-  extensions.configure<MavenPublishBaseExtension> {
-    publishToMavenCentral(
-      automaticRelease = true,
-      validateDeployment = DeploymentValidation.VALIDATED,
-    )
+  val isNotCompiler = project.path != ":compiler" && !project.path.startsWith(":compiler-compat")
+
+  if (isNotCompiler) {
+    val metroRuntimeLanguageVersion =
+      catalog.findVersion("metro-runtime-languageVersion").get().requiredVersion
+    val runtimeKotlinVersion = KotlinVersion.fromVersion(metroRuntimeLanguageVersion)
+    metroExtension.languageVersion.convention(runtimeKotlinVersion)
+    metroExtension.apiVersion.convention(runtimeKotlinVersion)
+    if (runtimeKotlinVersion < KotlinVersion.DEFAULT) {
+      metroExtension.progressiveMode.set(false)
+    }
+  }
+
+  // Maven publish configuration
+  plugins.withId("com.vanniktech.maven.publish") {
+    // Apply dokka for non-compiler projects
+    if (isNotCompiler) {
+      apply(plugin = "org.jetbrains.dokka")
+    }
+
+    extensions.configure<MavenPublishBaseExtension> {
+      publishToMavenCentral(
+        automaticRelease = true,
+        validateDeployment = DeploymentValidation.VALIDATED,
+      )
+    }
   }
 }
 
@@ -98,5 +154,11 @@ pluginManager.withPlugin("org.jetbrains.dokka") {
         remoteLineSuffix.convention("#L")
       }
     }
+  }
+}
+
+plugins.withId("com.autonomousapps.testkit") {
+  rootProject.tasks.named("installForFunctionalTest") {
+    dependsOn(tasks.named("installForFunctionalTest"))
   }
 }

@@ -43,7 +43,7 @@ internal fun copyParameterDefaultValues(
 ) {
   if (sourceParameters.isEmpty()) return
   check(sourceParameters.size == targetParameters.size) {
-    "Source parameters (${sourceParameters.size}) and target parameters (${targetParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}"
+    "Source parameters (${sourceParameters.size}) and target parameters (${targetParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}\nSource: ${sourceParameters.map { "${it.name}: ${it.type}" }}\nTarget: ${targetParameters.map { "${it.name}: ${it.type}" }}"
   }
 
   /**

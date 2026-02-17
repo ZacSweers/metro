@@ -4,20 +4,28 @@ import com.android.build.gradle.internal.lint.AndroidLintAnalysisTask
 import com.android.build.gradle.internal.lint.LintModelWriterTask
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import java.util.Properties
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.kotlin.plugin.serialization)
   `java-gradle-plugin`
-  alias(libs.plugins.mavenPublish)
   alias(libs.plugins.buildConfig)
-  alias(libs.plugins.testkit)
   alias(libs.plugins.android.lint)
   alias(libs.plugins.shadow) apply false
+  id("metro.base")
+  id("metro.publish")
+}
+
+metroProject {
+  // Lower version for Gradle compat
+  // https://docs.gradle.org/current/userguide/compatibility.html#kotlin
+  // TODO for Gradle 9+
+  //  move to 2.2
+  //  move to JVM 17
+  @Suppress("DEPRECATION") languageVersion.set(KotlinVersion.KOTLIN_2_0)
+  @Suppress("DEPRECATION") apiVersion.set(KotlinVersion.KOTLIN_2_0)
 }
 
 tasks.withType<ValidatePlugins>().configureEach { enableStricterValidation = true }
@@ -30,7 +38,6 @@ buildConfig {
   }
   buildConfigField("String", "VERSION", providers.gradleProperty("VERSION_NAME").map { "\"$it\"" })
   buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
-  buildConfigField("String", "BASE_KOTLIN_VERSION", libs.versions.kotlin.map { "\"$it\"" })
 
   // Collect all supported Kotlin versions from compiler-compat modules
   val versionAliasesFile =
@@ -47,17 +54,6 @@ buildConfig {
     "SUPPORTED_KOTLIN_VERSIONS",
     "listOf(${supportedVersions.joinToString { "\"$it\"" }})",
   )
-}
-
-tasks.withType<KotlinCompile>().configureEach {
-  compilerOptions {
-    jvmTarget.set(libs.versions.jvmTarget.map(JvmTarget::fromTarget))
-
-    // Lower version for Gradle compat
-    progressiveMode.set(false)
-    @Suppress("DEPRECATION") languageVersion.set(KotlinVersion.KOTLIN_2_0)
-    @Suppress("DEPRECATION") apiVersion.set(KotlinVersion.KOTLIN_2_0)
-  }
 }
 
 gradlePlugin {

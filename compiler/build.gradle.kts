@@ -4,38 +4,11 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
-  alias(libs.plugins.mavenPublish)
   alias(libs.plugins.poko)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
   alias(libs.plugins.shadow) apply false
-  alias(libs.plugins.testkit)
-}
-
-kotlin {
-  compilerOptions {
-    // TODO next minor release
-    //  jvmTarget.set(JvmTarget.JVM_21)
-    freeCompilerArgs.addAll(
-      "-Xcontext-parameters",
-      "-Xreturn-value-checker=full",
-      "-Xcontext-sensitive-resolution",
-      "-Xdata-flow-based-exhaustiveness",
-      //  "-Xallow-contracts-on-more-functions",
-      //  "-Xallow-condition-implies-returns-contracts",
-      //  "-Xallow-holdsin-contract",
-      // TODO next minor release
-      //  "-Xwhen-expressions=indy",
-      // TODO Kotlin 2.3.0
-      //  "-Xexplicit-backing-fields",
-    )
-    optIn.addAll(
-      "kotlin.contracts.ExperimentalContracts",
-      "kotlin.contracts.ExperimentalExtendedContracts",
-      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
-      "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-    )
-  }
+  id("metro.publish")
 }
 
 buildConfig {

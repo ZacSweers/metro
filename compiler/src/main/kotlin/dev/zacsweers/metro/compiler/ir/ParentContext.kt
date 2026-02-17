@@ -12,7 +12,6 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.types.typeWith
 
 /**
  * Collects context keys used from a parent context during parallel validation. Each child graph
@@ -336,11 +335,24 @@ internal class ParentContext(private val metroContext: IrMetroContext) : ParentC
   }
 
   private fun createContextKey(key: IrTypeKey, isProvider: Boolean): IrContextualTypeKey {
+    // Build the base contextual key from the type itself.
+    // This correctly handles Map types (which use WrappedType.Map) rather than always using
+    // WrappedType.Canonical, ensuring the token's contextKey matches the property stored in
+    // BindingPropertyContext by addBoundInstanceProperty.
+    val baseKey =
+      with(metroContext) {
+        key.type.asContextualTypeKey(
+          qualifierAnnotation = key.qualifier,
+          hasDefault = false,
+          patchMutableCollections = false,
+          declaration = null,
+        )
+      }
+
     return if (isProvider) {
-      val providerType = metroContext.metroSymbols.metroProvider.typeWith(key.type)
-      IrContextualTypeKey.create(key, isWrappedInProvider = true, rawType = providerType)
+      with(metroContext) { baseKey.wrapInProvider() }
     } else {
-      IrContextualTypeKey.create(key)
+      baseKey
     }
   }
 

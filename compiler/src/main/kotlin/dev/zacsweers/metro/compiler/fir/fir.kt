@@ -50,7 +50,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isFinal
 import org.jetbrains.kotlin.fir.declarations.utils.isInner
-import org.jetbrains.kotlin.fir.declarations.utils.isLocal
+import org.jetbrains.kotlin.fir.declarations.utils.isLateInit
 import org.jetbrains.kotlin.fir.declarations.utils.isOpen
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
@@ -91,6 +91,7 @@ import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.resolve.toSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.processAllCallables
 import org.jetbrains.kotlin.fir.scopes.processAllClassifiers
@@ -109,6 +110,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.ConeClassLikeLookupTag
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
@@ -116,6 +118,7 @@ import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
+import org.jetbrains.kotlin.fir.types.abbreviatedType
 import org.jetbrains.kotlin.fir.types.builder.buildUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -529,12 +532,13 @@ internal data class FirInjectConstructor(
   val ctorCount: Int,
 )
 
+context(compatContext: CompatContext)
 internal fun FirClass.validateInjectedClass(
   context: CheckerContext,
   reporter: DiagnosticReporter,
   classInjectAnnotations: List<FirAnnotation>,
 ) {
-  if (isLocal) {
+  if (with(compatContext) { isLocalCompat }) {
     reporter.reportOn(source, MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
     return
   }
@@ -589,13 +593,13 @@ internal fun FirCallableSymbol<*>.allAnnotations(): Sequence<FirAnnotation> {
   }
 }
 
-context(context: CheckerContext, reporter: DiagnosticReporter)
+context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
 internal inline fun FirClass.validateApiDeclaration(
   type: String,
   checkConstructor: Boolean,
   onError: () -> Nothing,
 ) {
-  if (isLocal) {
+  if (with(compatContext) { isLocalCompat }) {
     reporter.reportOn(
       source,
       MetroDiagnostics.METRO_DECLARATION_ERROR,
@@ -1277,12 +1281,21 @@ internal fun FirClassLikeSymbol<*>.isBindingContainer(session: FirSession): Bool
   }
 }
 
-internal fun ConeKotlinType.render(short: Boolean): String {
-  return buildString { renderType(short, this@render) }
+internal fun ConeKotlinType.render(short: Boolean, includeAbbreviation: Boolean = !short): String {
+  return buildString { renderType(short, this@render, includeAbbreviation) }
 }
 
 // Custom renderer that excludes annotations
-internal fun StringBuilder.renderType(short: Boolean, type: ConeKotlinType) {
+internal fun StringBuilder.renderType(
+  short: Boolean,
+  type: ConeKotlinType,
+  includeAbbreviation: Boolean = !short,
+) {
+  val abbreviatedType = if (includeAbbreviation) type.abbreviatedType else null
+  if (abbreviatedType != null) {
+    renderType(short, abbreviatedType, includeAbbreviation = false)
+    append(" (typealias to ")
+  }
   val renderer =
     object :
       ConeTypeRendererForReadability(
@@ -1295,6 +1308,9 @@ internal fun StringBuilder.renderType(short: Boolean, type: ConeKotlinType) {
       }
     }
   renderer.render(type)
+  if (abbreviatedType != null) {
+    append(')')
+  }
 }
 
 // Original in kotlinc was removed
@@ -1434,6 +1450,17 @@ internal fun FirFieldSymbol.hasMetroDefault(session: FirSession): Boolean {
   )
 }
 
+internal fun FirPropertySymbol.hasMetroDefault(session: FirSession): Boolean {
+  if (isLateInit) return false
+  return computeMetroDefault(
+    behavior = session.metroFirBuiltIns.options.optionalBindingBehavior,
+    isAnnotatedOptionalDep = {
+      isAnnotatedWithAny(session, session.classIds.optionalBindingAnnotations)
+    },
+    hasDefaultValue = { hasInitializer },
+  )
+}
+
 @Suppress("NOTHING_TO_INLINE")
 internal inline fun FirSession.isCli(): Boolean {
   contract { returns(true) implies (this@isCli is FirCliSession) }
@@ -1443,7 +1470,7 @@ internal inline fun FirSession.isCli(): Boolean {
 @Suppress("NOTHING_TO_INLINE")
 internal inline fun FirSession.isIde(): Boolean {
   contract { returns(true) implies (this@isIde !is FirCliSession) }
-  return this is FirCliSession
+  return this !is FirCliSession
 }
 
 context(compatContext: CompatContext)
@@ -1469,6 +1496,7 @@ internal fun FirCallableSymbol<*>.isEffectivelyOpen(): Boolean =
  * If this returns null, it's a valid container type. If this returns non-null, the string is the
  * error message.
  */
+context(compatContext: CompatContext)
 internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
   session: FirSession,
   alreadyCheckedAnnotation: Boolean = false,
@@ -1477,7 +1505,7 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
     "Platform type '${classId.asFqNameString()}' is not a binding container."
   } else if (this is FirAnonymousObjectSymbol) {
     "Anonymous objects cannot be binding containers."
-  } else if (isLocal) {
+  } else if (with(compatContext) { isLocalCompat }) {
     "Local class '${classId.shortClassName}' cannot be a binding container."
   } else if (isInner) {
     "Inner class '${classId.shortClassName}' cannot be a binding container."
@@ -1488,4 +1516,20 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
   } else {
     null
   }
+}
+
+internal inline val FirClassSymbol<*>.isLocalClassOrAnonymousObject: Boolean
+  get() = classId.isLocal || this is FirAnonymousObjectSymbol
+
+// Compat to avoid the deprecation warning in new context-based overloads in 2.3+
+internal fun ConeClassLikeLookupTag.toClassSymbolCompat(s: FirSession): FirClassSymbol<*>? {
+  return toClassSymbol(s)
+}
+
+internal fun ConeKotlinType.toClassSymbolCompat(s: FirSession): FirClassSymbol<*>? {
+  return toClassSymbol(s)
+}
+
+internal fun ConeClassLikeLookupTag.toSymbolCompat(s: FirSession): FirClassLikeSymbol<*>? {
+  return toSymbol(s)
 }

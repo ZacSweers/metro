@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.KtRealSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -20,7 +21,6 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirNamedArgumentExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.abbreviatedTypeOrSelf
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneType
@@ -56,7 +56,7 @@ internal object InteropAnnotationChecker : FirAnnotationChecker(MppCheckerKind.C
 
     val annotationType = expression.annotationTypeRef.coneType.abbreviatedTypeOrSelf
     val classSymbol =
-      annotationType.classLikeLookupTagIfAny?.toClassSymbol(context.session) ?: return
+      annotationType.classLikeLookupTagIfAny?.toClassSymbolCompat(context.session) ?: return
     // Ignore Java annotations, kotlinc will enforce named args for us there
     if (classSymbol.origin is FirDeclarationOrigin.Java) return
 

@@ -6,24 +6,205 @@ Changelog
 
 ### New
 
-- Metro's compiler now embeds `androidx.tracing` and can produce perfetto traces of its IR transformations
+#### [**[MEEP-1826]**](https://github.com/ZacSweers/metro/discussions/1826) `@Assisted` parameters now rely on matching parameter names.
+
+Historically, Dagger/Guice's `@Assisted` parameters allowed specifying a custom identifier via `@Assisted("some string")`, and Metro matched this behavior. However, this is a vestige of Java support, which did not include parameter names in bytecode until Java 8's `-parameters` flag.
+
+Since Metro is in an all-Kotlin world and parameter names are a first-class citizen in Kotlin APIs, Metro is now leveraging that and phasing out support for implicit type matching and custom identifiers.
+
+This means that `@Assisted` parameter names in assisted-inject constructors/top-level-functions _must_ match their analogous parameters in `@AssistedFactory` creators. No more matching by types, no more disambiguating with `@Assisted("customIdentifier")`.
+
+```kotlin
+// Before: Using type matching or custom identifiers
+@AssistedInject
+class Taco(
+  @Assisted("name") val name: String,
+  @Assisted("type") val type: String,
+  @Assisted val spiciness: Int,
+  val tortilla: Tortilla
+) {
+  @AssistedFactory
+  interface Factory {
+    fun create(
+      @Assisted("name") name: String,
+      @Assisted("type") type: String,
+      @Assisted spiciness: Int
+    ): TacoFactory
+  }
+}
+
+// After: Using parameter name matching
+@AssistedInject
+class Taco(
+  @Assisted val name: String,
+  @Assisted val type: String,
+  @Assisted val spiciness: Int,
+  val tortilla: Tortilla
+) {
+  @AssistedFactory
+  interface Factory {
+    // Parameter names must match the constructor exactly
+    fun create(name: String, type: String, spiciness: Int): TacoFactory
+  }
+}
+```
+
+To ease migration to this, this will be rolled out in phases.
+
+1. Starting with this release, `@Assisted.value` is soft-deprecated. This is controlled by the `assistedIdentifierSeverity` Gradle DSL option, which is set to `WARN` by default in this release. This control allows for easy disabling or promotion to error.
+2. In a future release, `assistedIdentifierSeverity` will be removed and `@Assisted.value` will be formally deprecated.
+3. In a future release after that, `@Assisted.value` will be fully deleted and legacy behavior will be unsupported with Metro's first-party annotation.
+
+Note that _interop_ annotations are not affected by this change, and any previous Dagger/Guice interop `@Assisted` annotation's custom identifiers will still be respected.
+
+If you want to completely restore the legacy behavior, you can disable this new mode via `useAssistedParamNamesAsIdentifiers` Gradle DSL option. Note, however, that this option will eventually be removed.
 
 ### Enhancements
 
+- **[FIR]**: Disallow `_` assisted context parameter names in top-level function injection.
+- **[FIR/IR]**: When generating class and provider factories now, the compiler dedupes non-assisted, non-optional injections of the same type key (i.e. type ± qualifier). This shrinks generated code size in (uncommon) scenarios where you inject the same type multiple types.
+- **[Gradle]**: Allow `DiagnosticSeverity` metro extension properties to be configurable as `metro.*` gradle properties of the same name.
+
+### Fixes
+
+- **[FIR]**: Improve optional binding member injections detection.
+- **[IR]**: Fix propagation of `Map` graph inputs down to graph extensions.
+
+### Changes
+
+- `enableGraphSharding` is now enabled by default. Note this only kicks in (by default) for graphs with 2000+ bindings by default.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@inorichi](https://github.com/inorichi)
+
+0.10.4
+------
+
+_2026-02-13_
+
+### Enhancements
+
+- **[FIR]**: Add suspicious scope diagnostics for cases where a developer might accidentally try to contribute to a concrete `@Scope` class or graph-like class, as that's not usually what you want!
+- **[FIR]**: Add a diagnostic error for function member injection parameters with default values as they are not currently supported.
+- **[IR]**: Extend conflicting overrides diagnostic in synthetic graphs (graph extension impls, dynamic graphs) to also validate compatible annotations. This catches scenarios where you may accidentally contribute something like a `fun dependency(): Dependency` accessor _and_ `@Provides fun dependency(): Dependency` provider elsewhere, which previously resulted in undefined runtime behavior.
+- **[IR]**: When reporting conflicting override types in synthetic graphs, underline the type and include the source location (when possible) to better indicate the issue.
+- **[IR]**: Add a graph validation failure hint to report when a direct Map binding exists that cannot satisfy a Provider/Lazy map.
+    - For example, the below snippet
+      ```kotlin
+      @DependencyGraph
+      interface ExampleGraph {
+        val mapSize: Int
+
+        @Provides fun provideInt(map: Map<String, Provider<String>>): Int = map.size
+
+        @DependencyGraph.Factory
+        interface Factory {
+          fun create(@Provides map: Map<String, String>): ExampleGraph
+        }
+      }
+      ```
+
+      Now yields this error trace
+
+      ```
+      error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Map<kotlin.String, kotlin.String>
+
+          kotlin.collections.Map<kotlin.String, kotlin.String> is injected at
+              [ExampleGraph] ExampleGraph.provideInt(…, map)
+          kotlin.Int is requested at
+              [ExampleGraph] ExampleGraph.mapSize
+
+      (Hint)
+      A directly-provided 'Map<String, String>' binding exists, but direct Map bindings cannot satisfy 'Map<String, Provider<String>>' requests.
+
+          IncompatibleMapValueType.kt:15:16
+              @Provides map: kotlin.collections.Map<kotlin.String, kotlin.String>
+                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      Provider/Lazy-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map **multibinding** created with `@IntoMap` or `@Multibinds`.
+      ```
+
+### Fixes
+
+- **[IR]**: Gracefully handle skipping code gen for absent member-injected properties/single-arg setters.
+- **[IR]**: Decompose `Map` graph factory inputs correctly so they can properly satisfy map requests on the graph.
+- **[IR]**: Validate directly-provided map inputs from map-requesting injection sites.
+- **[IR/Native]**: Fix mirror parameter check for providers in `object` classes in non-jvm compilations.
+
+### Changes
+
+- Deprecate the `generateThrowsAnnotations` option and make it no-op. This was only in place when debugging a past kotlin/native issue.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@scana](https://github.com/scana)
+
+0.10.3
+------
+
+_2026-02-09_
+
+### New
+
+- Metro now has experimental support for Kotlin 2.4.0. At the time of writing, this is only really helpful if you are testing IDE support in IntelliJ 2026.1 EAPs.
+- Metro's compiler now embeds `androidx.tracing` and can produce perfetto traces of its IR transformations.
+- **[FIR]**: Metro now does early detection of whether or not it's running in the IDE or CLI. If it's in the IDE, Metro will disable any FIR generators that do not generate user-visible code.
+
+### Enhancements
+
+- **[FIR]**: When reporting diagnostics about types that are aliases, include the aliased type in the message. This is helpful for messages like below
+    ```kotlin
+    typealias UserId = String
+    interface Bindings {
+      // error: Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `UserId (typealias to kotlin.String)`.
+      @Binds fun String.bind(): UserId
+    }
+    ```
+- **[FIR]**: Add full integration tests for FIR-based IDE features.
+    - This is really only in the changelog because getting Android Studio to not show its blocking analytics consent dialog on CI might be the most difficult technical problem this project has faced so far and what's a changelog for if not the occasional itsfinallyover.gif bragging rights.
 - **[IR]**: Use `androidx.collection` primitive and scatter collections in a few more places to further help improve memory performance.
 - **[IR]**: Don't attempt to generate a graph impl if validation at any level in processing fails, as this could result in obscure extra errors getting reported after the relevant initial error.
 
 ### Fixes
 
+- **[IR]**: Avoid `IllegalStateException: No value parameter found` issues when reconstructing dependency cycle stacks to report cycle errors.
+- **[IR]**: Fix a scenario where bindings available in both graphs and their extensions didn't properly consolidate to one binding.
+- **[Gradle]**: Make the `metrox-android` artifact single-variant (release only).
+
 ### Changes
 
-- **[FIR]** Disable FIR IDE support by default on `255` patch versions that Android Studio canaries/nightlies report, as they report a fake Kotlin version that Metro can't resolve a proper compat layer for. Please star this issue: https://issuetracker.google.com/issues/474940910
+- **[FIR/IR]** Add aliases for a bunch of "known" mappings for Kotlin IDE plugin versions to Kotlin versions. This is still best-effort but should hopefully be more robust, especially in situations like Android Studio canaries (which do not report real Kotlin versions). Please star this issue: https://issuetracker.google.com/issues/474940910
+- **[FIR]**: One downside of the above is that it revealed that Android Studio Otter 3 is effectively running on Kotlin 2.2.0, which is just a bit too far back to still support. However, now that Studio is switching to monthly releases it should track upstream IJ changes much quicker and Studio Panda is in RC1 now.
+    - Previously, an incompatible version could cause the IDE file analysis to hang or error out if IDE support was enabled. Now, Metro's IDE support will gracefully degrade on incompatible IDE versions. This includes Android Studio Otter and IntelliJ `2025.2.x` as of this version. Android Studio Panda and IntelliJ 2025.3 are tested and working though!
+        ```
+        2026-02-08 01:14:27,225 [  56672]   INFO - STDERR - [METRO] Skipping enabling Metro extensions in IDE. Detected Kotlin version '2.2.255-dev-255' is not supported for IDE use (CLI_ONLY).
+        ```
 - **[IR]**: Rework assisted inject bindings to be encapsulated by their consuming assisted factory bindings in graph validation.
     - This ensures these classes can't accidentally participate in `SwitchingProvider`s or valid cycle breaking with `DelegateFactory`, as both of those require `Provider` types and assisted-inject types' factories don't implement `Provider`.
-- **[Gradle]**: If `kotlin.compilerVersion` is set, Metro will now defer to it for the detected compiler version (particularly for compatibility detection). If not set, it will default to the Kotlin Gradle plugin version.
+- **[Gradle]**: Avoid deprecated `KotlinCompilation.implementationConfigurationName` API.
+- `enableTopLevelFunctionInjection`, `generateContributionHintsInFir`, and `supportedHintContributionPlatforms` will error if enabled on Kotlin/JS with JS incremental compilation enabled as it turns out this does not yet support generating top-level declarations from compiler plugins with incremental compilation enabled.
+    - Please star https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989.
 - Fold `2.3.20-dev-7791` compat into `2.3.20-Beta2` compat, meaning the former is no longer tested on CI.
+- Fold `2.3.20-dev-5437` compat into `2.3.20-dev-5706` compat. This is to help Metro's main branch stay stable as the `5437` artifact came from a dev maven repo with ephemeral artifacts.
+- Test Kotlin `2.3.20-Beta2`.
+- Test Kotlin `2.3.10`.
+- Test Kotlin `2.4.0-dev-539`.
+- Drop testing of Kotlin `2.3.10-RC`.
+- Metro now _compiles_ against Kotlin `2.3.0`. This allows it to test `2.4.0` builds, but is still compatible down to Kotlin `2.2.20`. Metro's runtime artifacts also explicitly have their language version still set to `2.2` (and `2.0` for the Gradle plugin).
 
 ### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@DaniilPavlenko](https://github.com/DaniilPavlenko)
+- [@heorhiipopov](https://github.com/heorhiipopov)
+- [@C2H6O](https://github.com/C2H6O)
 
 0.10.2
 ------

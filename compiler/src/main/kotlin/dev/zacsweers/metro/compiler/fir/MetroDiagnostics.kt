@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PA
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_VARARG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
@@ -60,9 +61,11 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_OR_BINDS_SHOUL
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_GRAPH_ACCESSOR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_SET_INTO_SET
@@ -88,6 +91,7 @@ import org.jetbrains.kotlin.diagnostics.rendering.BaseDiagnosticRendererFactory
 import org.jetbrains.kotlin.diagnostics.rendering.CommonRenderers.STRING
 import org.jetbrains.kotlin.diagnostics.warning0
 import org.jetbrains.kotlin.diagnostics.warning1
+import org.jetbrains.kotlin.diagnostics.warningWithoutSource
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtElement
 
@@ -106,6 +110,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
 
   // DependencyGraph errors
   val DEPENDENCY_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val SCOPED_GRAPH_ACCESSOR by error0<KtElement>(NAME_IDENTIFIER)
   val SUSPICIOUS_MEMBER_INJECT_FUNCTION by warning1<KtElement, String>(NAME_IDENTIFIER)
   val UNUSED_GRAPH_INPUT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val UNUSED_GRAPH_INPUT_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -139,6 +144,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val PROVIDES_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val REDUNDANT_PROVIDES by warning1<KtElement, String>(NAME_IDENTIFIER)
   val CONFLICTING_PROVIDES_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val SUSPICIOUS_AGGREGATION_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
   val BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -173,15 +179,16 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
 
   // IR errors
   val GRAPH_DEPENDENCY_CYCLE by error1<KtElement, String>(NAME_IDENTIFIER)
+  val INCOMPATIBLE_OVERRIDES by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val KNOWN_KOTLINC_BUG_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val KNOWN_KOTLINC_BUG_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SOURCELESS_METRO_ERROR by errorWithoutSource()
-  val SOURCELESS_METRO_WARNING by errorWithoutSource()
+  val SOURCELESS_METRO_WARNING by warningWithoutSource()
 
   override fun getRendererFactory(): BaseDiagnosticRendererFactory {
-    return FirMetroErrorMessages
+    return MetroErrorMessages
   }
 }
 
@@ -189,7 +196,7 @@ internal fun AbstractKtDiagnosticFactory.asSourcelessFactory(): KtSourcelessDiag
   return KtSourcelessDiagnosticFactory(name, severity, rendererFactory)
 }
 
-private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
+private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
   override val MAP by
     KtDiagnosticFactoryToRendererMap("Metro") { map ->
       map.apply {
@@ -215,6 +222,10 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
 
         // DependencyGraph errors
         put(DEPENDENCY_GRAPH_ERROR, "{0}", STRING)
+        put(
+          SCOPED_GRAPH_ACCESSOR,
+          "Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?",
+        )
         put(SUSPICIOUS_MEMBER_INJECT_FUNCTION, "{0}", STRING)
         put(UNUSED_GRAPH_INPUT_ERROR, "{0}", STRING)
         put(UNUSED_GRAPH_INPUT_WARNING, "{0}", STRING)
@@ -262,6 +273,7 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(PROVIDES_WARNING, "{0}", STRING)
         put(REDUNDANT_PROVIDES, "{0}", STRING)
         put(CONFLICTING_PROVIDES_SCOPE, "{0}", STRING)
+        put(SUSPICIOUS_AGGREGATION_SCOPE, "{0}", STRING)
         put(AGGREGATION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_WARNING, "{0}", STRING)
@@ -310,6 +322,7 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(SOURCELESS_METRO_ERROR, "{0}")
         put(SOURCELESS_METRO_WARNING, "{0}")
         put(GRAPH_DEPENDENCY_CYCLE, "[Metro/GraphDependencyCycle] {0}", TO_STRING)
+        put(INCOMPATIBLE_OVERRIDES, "[Metro/IncompatibleOverrides] {0}", TO_STRING)
       }
     }
 }

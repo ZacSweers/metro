@@ -6,13 +6,16 @@ import java.util.ServiceLoader
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
@@ -108,10 +111,22 @@ public interface CompatContext {
         if (devMatch != null) {
           return devMatch
         }
-        // Fall back to non-DEV factories
+
+        // Fall back to non-DEV factories.
+        // Use the base version (strip dev classifier) for comparison, because
+        // 2.2.20-dev-5812 is a dev build OF 2.2.20 and should match the 2.2.20 factory,
+        // but KotlinToolingVersion ordering puts DEV < STABLE so the comparison would
+        // otherwise exclude it.
         val nonDevFactories =
           factoryDataList.filter { !KotlinToolingVersion(it.factory.minVersion).isDev }
-        return findHighestCompatibleFactory(currentVersion, nonDevFactories)
+        val baseVersion =
+          KotlinToolingVersion(
+            currentVersion.major,
+            currentVersion.minor,
+            currentVersion.patch,
+            null,
+          )
+        return findHighestCompatibleFactory(baseVersion, nonDevFactories)
       }
 
       // For non-DEV versions, only consider non-DEV factories
@@ -454,6 +469,40 @@ public interface CompatContext {
   ) {
     throw NotImplementedError("reportCompat is not implemented on this version of the compiler")
   }
+
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.COMPAT,
+    message = "2.3 moved APIs around here",
+  )
+  public val FirClassLikeSymbol<*>.isLocalCompat: Boolean
+
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.COMPAT,
+    message = "2.3 moved APIs around here",
+  )
+  public val FirClass.isLocalCompat: Boolean
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 moved APIs around here",
+  )
+  context(_: CompilerPluginRegistrar)
+  public fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
+    extension: FirExtensionRegistrar
+  )
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 moved APIs around here",
+  )
+  context(_: CompilerPluginRegistrar)
+  public fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
+    extension: IrGenerationExtension
+  )
 }
 
 private data class FactoryData(

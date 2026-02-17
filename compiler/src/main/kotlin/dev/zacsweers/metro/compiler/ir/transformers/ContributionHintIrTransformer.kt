@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.addThrowsAnnotation
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
@@ -28,10 +27,7 @@ internal class ContributionHintIrTransformer(
   // Implements the FIR-generated declarations with empty bodies
   fun visitFunction(declaration: IrSimpleFunction) {
     if (declaration.origin == Origins.ContributionHint) {
-      declaration.apply {
-        body = stubExpressionBody()
-        addThrowsAnnotation(addToMetadata = true)
-      }
+      declaration.apply { body = stubExpressionBody() }
     }
   }
 

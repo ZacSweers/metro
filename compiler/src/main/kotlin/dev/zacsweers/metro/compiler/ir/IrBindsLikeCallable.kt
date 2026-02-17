@@ -66,7 +66,7 @@ internal class BindsCallable(
     val (sourceDeclaration, isContributed) = resolveSourceDeclaration()
 
     val location =
-      sourceDeclaration.locationOrNull()?.render(short)
+      sourceDeclaration.renderSourceLocation(short = short)
         ?: "<unknown location, likely a separate compilation>"
 
     val description = buildString {

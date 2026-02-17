@@ -30,6 +30,8 @@ There are a few primary subprojects to consider.
 
 To include the `samples` project in IntelliJ, open the Gradle tab and just add it as another project. It depends on the regular artifacts as included build dependencies.
 
+Git hooks for code formatting are automatically configured on the first Gradle invocation via `config/git/.gitconfig`. The formatter binaries in `config/bin/` can be updated by running `scripts/update-binaries.sh`.
+
 There is a useful `./metrow` helper CLI that can perform a few common commands across the various subprojects. See its `--help` usage for more details.
 
 There are some standard IntelliJ run configurations checked in to `.run` that should be automatically picked up, covering a few common test scenarios.

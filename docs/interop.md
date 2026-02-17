@@ -9,6 +9,7 @@ Compile-only annotations are mostly supported. This includes the following:
 * `@AssistedFactory`
 * `@AssistedInject`
 * `@Assisted`
+  * Includes Dagger's `@Assisted.value` custom identifiers. While Metro's native `@Assisted` uses parameter names for matching, Dagger's explicit `value` identifiers are fully supported when using Dagger's annotations.
 * `@BindsInstance`
 * `@Binds`
 * `@ContributesBinding`
@@ -148,6 +149,7 @@ Enabling Guice interop enables annotation interop with the following Guice annot
 - `@Inject` (but not `@Inject.optional`)
 - `@Provides`
 - `@Assisted`
+  - Includes Guice's `@Assisted.value` custom identifiers. While Metro's native `@Assisted` uses parameter names for matching, Guice's explicit `value` identifiers are fully supported when using Guice's annotations.
 - `@AssistedInject`
 - `@BindingAnnotation`
 - `@ScopeAnnotation`

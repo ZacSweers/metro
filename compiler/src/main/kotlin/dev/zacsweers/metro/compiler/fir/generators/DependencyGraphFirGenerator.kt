@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
-import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.isOperator
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -196,7 +195,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
-    if (classSymbol.isLocal) return emptySet()
+    if (classSymbol.isLocalCompat) return emptySet()
     val names = mutableSetOf<Name>()
     if (classSymbol.isDependencyGraph(session)) {
       log("Found graph ${classSymbol.classId}")

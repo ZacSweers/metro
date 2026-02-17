@@ -2,6 +2,32 @@
 
 set -euo pipefail
 
+# Subprojects that can be targeted with -p flag
+ALL_SUBPROJECTS=("samples" "benchmark" "ide-integration-tests")
+
+# Run a gradle command across root and specified subprojects
+# Usage: run_gradle_all "command args" [subprojects...]
+# If no subprojects specified, runs on root + all subprojects
+run_gradle_all() {
+    local cmd="$1"
+    shift
+    local subprojects=("$@")
+
+    if [[ ${#subprojects[@]} -eq 0 ]]; then
+        subprojects=("${ALL_SUBPROJECTS[@]}")
+    fi
+
+    # Run on root project
+    # shellcheck disable=SC2086  # Word splitting is intentional
+    ./gradlew $cmd
+
+    # Run on each subproject
+    for project in "${subprojects[@]}"; do
+        # shellcheck disable=SC2086
+        ./gradlew -p "$project" $cmd
+    done
+}
+
 # Function to run checks with optional compiler version
 run_checks() {
     local compiler_version="$1"
@@ -15,6 +41,24 @@ run_checks() {
     fi
 
     ./gradlew check -x dokkaGeneratePublicationHtml $version_flag
+}
+
+# Function to run tests with optional compiler version
+run_tests() {
+    local compiler_version="$1"
+    local version_flag=""
+
+    if [[ -n "$compiler_version" ]]; then
+        version_flag="-Pmetro.testCompilerVersion=$compiler_version"
+        echo "Running tests with Kotlin version $compiler_version..."
+    else
+        echo "Running tests..."
+    fi
+
+    ./gradlew :compiler:test :compiler-tests:test :gradle-plugin:functionalTest :runtime:allTests $version_flag --quiet -x logLinkDokkaGeneratePublicationHtml -x dokkaGeneratePublicationHtml
+    # We have to regen package locks because the kotlin yarn/node/etc build tooling is brittle
+    ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet
+    ./gradlew -p samples :integration-tests:allTests --quiet
 }
 
 case "$1" in
@@ -101,16 +145,56 @@ case "$1" in
        ./gradlew -p samples check
        ;;
 
+   "test")
+       all=false
+       version=""
+
+       while [[ $# -gt 1 ]]; do
+           case "$2" in
+               --all)
+                   all=true
+                   shift
+                   ;;
+               --version)
+                   version="$3"
+                   shift 2
+                   ;;
+               *)
+                   echo "Unknown test argument: $2"
+                   exit 1
+                   ;;
+           esac
+       done
+
+       if [[ "$all" = true ]]; then
+           echo "Running tests against all compiler versions..."
+
+           if [[ ! -f "scripts/generate-ci-matrix.sh" ]]; then
+               echo "Error: scripts/generate-ci-matrix.sh not found"
+               exit 1
+           fi
+
+           versions=$(./scripts/generate-ci-matrix.sh --versions-only | tr '\n' ' ')
+
+           echo "Testing against versions: $versions"
+
+           for ver in $versions; do
+               echo "=== Testing with Kotlin $ver ==="
+               run_tests "$ver" || exit 1
+           done
+       else
+           run_tests "$version"
+       fi
+       ;;
+
    "clean")
        echo "Cleaning..."
-       ./gradlew clean
-       ./gradlew -p samples clean
+       run_gradle_all "clean --quiet"
+       rm -rf out .gradle .kotlin
        ;;
 
    "format")
-       echo "Applying formatting..."
-       ./gradlew spotlessApply --no-configuration-cache
-       ./gradlew -p samples spotlessApply --no-configuration-cache
+       ./scripts/format.sh --all
        ;;
 
    "regen")
@@ -118,14 +202,16 @@ case "$1" in
        # Annoyingly, the apiDump and package lock tasks have caching issues
        # https://youtrack.jetbrains.com/issue/KT-69684
        find . -type d -name "api" -exec find {} -name "*.api" -delete \;
-       rm -rf kotlin-js-store
-       rm -rf samples/kotlin-js-store
-       ./gradlew clean --quiet
-       ./gradlew spotlessApply apiDump kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet
-       cd samples
-       ./gradlew clean --quiet
-       ./gradlew spotlessApply kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --no-configuration-cache --quiet
-       cd ..
+       rm -rf kotlin-js-store samples/kotlin-js-store
+
+       run_gradle_all "clean --quiet"
+       ./scripts/format.sh --all
+
+       # apiDump only exists in root project
+       ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet
+
+       # Yarn locks only in root and samples
+       run_gradle_all "kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet" "samples"
        ;;
 
    "gen-compat")
@@ -137,13 +223,17 @@ case "$1" in
        ;;
 
    *)
-       echo "Usage: metrow (publish|check|clean|format|regen|gen-compat)"
+       echo "Usage: metrow (publish|check|test|clean|format|regen|gen-compat)"
        echo ""
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
        echo "  --local              Publish locally"
        echo ""
        echo "check options:"
+       echo "  --all                Test against all available compiler versions"
+       echo "  --version <version>  Test against specific compiler version"
+       echo ""
+       echo "test options:"
        echo "  --all                Test against all available compiler versions"
        echo "  --version <version>  Test against specific compiler version"
        exit 1

@@ -27,6 +27,7 @@ import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.render
+import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireMapKeyType
 import dev.zacsweers.metro.compiler.ir.requireMapValueType
@@ -451,6 +452,34 @@ internal class IrBindingGraph(
           "Binding '${key.render(short = false, includeQualifier = true)}' is an error type and appears to be missing from the compile classpath."
         )
         return@buildList
+      }
+
+      bindingLookup.skippedDirectMapRequests[key]?.let { requestedContextKey ->
+        bindingLookup.getAvailableBindings()[key]?.let { directBinding ->
+          // Use rawType to render with Provider/Lazy wrapping preserved, since
+          // IrContextualTypeKey.render() delegates to WrappedType.Map.render() which
+          // renders the canonical map type without value wrapping.
+          // Short render here since we already have the full render mentioned earlier in the trace
+          val requestedType =
+            requestedContextKey.rawType?.render(short = true)
+              ?: requestedContextKey.render(short = true, includeQualifier = false)
+          add(
+            buildString {
+              appendLine(
+                "A directly-provided '${key.render(short = true, includeQualifier = false)}' binding exists, but direct Map bindings cannot satisfy '$requestedType' requests."
+              )
+              appendLine()
+              val locationDiagnostic =
+                directBinding.renderLocationDiagnostic(underlineTypeKey = true)
+              appendLine("    ${locationDiagnostic.location}")
+              locationDiagnostic.description?.let { appendLine(it.prependIndent("        ")) }
+              appendLine()
+              append(
+                "Provider/Lazy-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map **multibinding** created with `@IntoMap` or `@Multibinds`."
+              )
+            }
+          )
+        }
       }
     }
   }
@@ -1004,7 +1033,7 @@ internal class IrBindingGraph(
           append(". Type: ")
           append(binding.javaClass.simpleName)
           append('.')
-          binding.reportableDeclaration?.locationOrNull()?.render(short)?.let {
+          binding.reportableDeclaration?.renderSourceLocation(short = short)?.let {
             append(" Source: ")
             append(it)
           }

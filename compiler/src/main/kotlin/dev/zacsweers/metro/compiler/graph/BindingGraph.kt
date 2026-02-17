@@ -278,31 +278,42 @@ internal open class MutableBindingGraph<
             }
           },
           onSortedCycle = onSortedCycle,
-          onCycle = { cycle ->
-            val fullCycle =
-              buildList {
-                  addAll(cycle)
-                  add(cycle.first())
-                }
-                // Reverse upfront so we can backward look at dependency requests
-                .reversed()
-            // Populate the BindingStack for a readable cycle trace
-            val entriesInCycle =
-              fullCycle.mapIndexed { i, key ->
-                val callingBinding =
-                  if (i == 0) {
-                    // This is the first index, back around to the back
-                    bindings.getValue(fullCycle[fullCycle.lastIndex - 1])
-                  } else {
-                    bindings.getValue(fullCycle[i - 1])
-                  }
-                stack.newBindingStackEntry(
-                  callingBinding.dependencies.firstOrNull { it.typeKey == key }
-                    ?: bindings.getValue(key).contextualTypeKey,
-                  callingBinding,
-                  roots,
+          onCycle = { sccVertices ->
+            val sccSet = sccVertices.toSet()
+            val isHardEdge: (TypeKey, TypeKey) -> Boolean = { from, to ->
+              val toBinding = bindings.getValue(to)
+              if (toBinding.isImplicitlyDeferrable) false
+              else bindings.getValue(from).dependencies.any { it.typeKey == to && !it.isDeferrable }
+            }
+
+            val cyclePath: List<TypeKey> =
+              sccVertices.firstNotNullOfOrNull { candidate ->
+                findSimpleCycle(
+                  startNode = candidate,
+                  sccNodes = sccSet,
+                  fullAdjacency = fullAdjacency,
+                  isEdgeAllowed = isHardEdge,
                 )
+              } ?: sccVertices
+
+            val entriesInCycle = buildList {
+              val size = cyclePath.size
+              for (i in 0..size) {
+                val currentDep = cyclePath[i % size]
+                val prevReq = if (i == 0) cyclePath.last() else cyclePath[i - 1]
+                val callingBinding = bindings.getValue(prevReq)
+                val contextKey =
+                  callingBinding.dependencies.firstOrNull {
+                    it.typeKey == currentDep && !it.isDeferrable
+                  }
+                    ?: reportCompilerBug(
+                      "Found a hard cycle, but no scalar dependency exists from " +
+                        "${prevReq.render(short = true)} to ${currentDep.render(short = true)}."
+                    )
+                add(stack.newBindingStackEntry(contextKey, callingBinding, roots))
               }
+            }
+
             reportCycle(entriesInCycle, stack)
           },
           isImplicitlyDeferrable = { key -> bindings.getValue(key).isImplicitlyDeferrable },
@@ -310,6 +321,40 @@ internal open class MutableBindingGraph<
       }
 
     return result
+  }
+
+  private fun <V : Comparable<V>> findSimpleCycle(
+    startNode: V,
+    sccNodes: Set<V>,
+    fullAdjacency: Map<V, Set<V>>,
+    isEdgeAllowed: (from: V, to: V) -> Boolean,
+  ): List<V>? {
+    val parents = mutableMapOf<V, V>()
+    val queue = ArrayDeque<V>().apply { add(startNode) }
+    val visited = mutableSetOf<V>()
+
+    while (queue.isNotEmpty()) {
+      val current = queue.removeFirst()
+      val neighbors = fullAdjacency[current].orEmpty()
+      for (neighbor in neighbors) {
+        if (neighbor !in sccNodes || !isEdgeAllowed(current, neighbor)) continue
+        if (neighbor == startNode) {
+          val cycle = mutableListOf<V>()
+          var curr: V? = current
+          while (curr != null) {
+            cycle.add(curr)
+            curr = parents[curr]
+          }
+          return cycle.reversed()
+        }
+        if (neighbor !in visited) {
+          visited.add(neighbor)
+          parents[neighbor] = current
+          queue.addLast(neighbor)
+        }
+      }
+    }
+    return null
   }
 
   private fun reportCycle(fullCycle: List<BindingStackEntry>, stack: BindingStack): Nothing {

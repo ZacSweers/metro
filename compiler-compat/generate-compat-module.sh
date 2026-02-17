@@ -128,6 +128,43 @@ if [ -z "$KOTLIN_VERSION" ]; then
     exit 1
 fi
 
+# Function to sort Kotlin versions with dev builds before their stable release
+# e.g., 2.2.20-dev-5774 comes before 2.2.20
+sort_kotlin_versions() {
+    # Read versions and create sortable keys
+    # Format: "BASE_VERSION SORT_KEY ORIGINAL_VERSION"
+    # where SORT_KEY ensures dev < Beta < RC < stable
+    while read -r version; do
+        [ -z "$version" ] && continue
+        # Extract base version (e.g., "2.2.20" from "2.2.20-dev-5774")
+        base=$(echo "$version" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
+
+        # Determine sort key based on suffix
+        # dev builds: 0 (earliest)
+        # Beta builds: 1
+        # RC builds: 2
+        # stable (no suffix): 3
+        # other suffixes: 4
+        if echo "$version" | grep -qE '\-dev\-'; then
+            # For dev builds, use the dev number for sub-sorting
+            dev_num=$(echo "$version" | grep -oE '\-dev\-[0-9]+' | grep -oE '[0-9]+')
+            sort_key="0-$(printf '%010d' "$dev_num")"
+        elif echo "$version" | grep -qE '\-Beta'; then
+            beta_num=$(echo "$version" | grep -oE 'Beta[0-9]*' | grep -oE '[0-9]+' || echo "0")
+            sort_key="1-$(printf '%010d' "${beta_num:-0}")"
+        elif echo "$version" | grep -qE '\-RC'; then
+            rc_num=$(echo "$version" | grep -oE 'RC[0-9]*' | grep -oE '[0-9]+' || echo "0")
+            sort_key="2-$(printf '%010d' "${rc_num:-0}")"
+        elif [ "$version" = "$base" ]; then
+            sort_key="3-0000000000"
+        else
+            sort_key="4-0000000000"
+        fi
+
+        echo "$base $sort_key $version"
+    done | sort -t' ' -k1,1V -k2,2 | awk '{print $3}'
+}
+
 # Function to add version to version-aliases.txt
 add_to_version_aliases() {
     local version="$1"
@@ -146,8 +183,8 @@ add_to_version_aliases() {
     local tmpfile=$(mktemp)
     # Extract header (all lines until first non-comment/non-blank line)
     awk '/^[^#]/ && NF {exit} {print}' "$aliases_file" > "$tmpfile"
-    # Extract and sort versions
-    grep -v '^#' "$aliases_file" | grep -v '^[[:space:]]*$' | sort >> "$tmpfile"
+    # Extract and sort versions using Kotlin-aware sorting
+    grep -v '^#' "$aliases_file" | grep -v '^[[:space:]]*$' | sort_kotlin_versions >> "$tmpfile"
     mv "$tmpfile" "$aliases_file"
 
     echo "✅ Added $version to $aliases_file"
@@ -231,16 +268,6 @@ if [ -n "$DELEGATES_TO" ]; then
 // SPDX-License-Identifier: Apache-2.0
 plugins { alias(libs.plugins.kotlin.jvm) }
 
-kotlin {
-  compilerOptions {
-    freeCompilerArgs.add("-Xcontext-parameters")
-    optIn.addAll(
-      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
-      "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-    )
-  }
-}
-
 dependencies {
   val kotlinVersion =
     providers.fileContents(layout.projectDirectory.file("version.txt")).asText.map { it.trim() }
@@ -256,16 +283,6 @@ else
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 plugins { alias(libs.plugins.kotlin.jvm) }
-
-kotlin {
-  compilerOptions {
-    freeCompilerArgs.add("-Xcontext-parameters")
-    optIn.addAll(
-      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
-      "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-    )
-  }
-}
 
 dependencies {
   val kotlinVersion = providers.fileContents(layout.projectDirectory.file("version.txt")).asText.map { it.trim() }

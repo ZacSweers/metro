@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           # Fetch all history and tags to allow checking out specific tags
           fetch-depth: 0
@@ -57,24 +57,11 @@ jobs:
           echo "Successfully checked out tag: $TAG_NAME"
           echo "Current HEAD: $(git rev-parse HEAD)"
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
-          # Read-only cache for manual deployments
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Limit the size of the cache entry.
-          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
-          gradle-home-cache-excludes: |
-            caches/jars-9
-            caches/transforms-3
 
       - name: Generate API docs
         # NOTE: The `dokkaPublications.html` task is pre-configured to generate HTML in `/docs/api`.

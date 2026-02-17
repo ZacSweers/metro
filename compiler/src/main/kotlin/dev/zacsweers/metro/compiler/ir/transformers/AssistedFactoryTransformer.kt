@@ -79,7 +79,7 @@ import org.jetbrains.kotlin.name.SpecialNames
 
 internal class AssistedFactoryTransformer(
   context: IrMetroContext,
-  private val injectConstructorTransformer: InjectConstructorTransformer,
+  private val injectedClassTransformer: InjectedClassTransformer,
 ) : IrMetroContext by context {
 
   private val implsCache = mutableMapOf<ClassId, AssistedFactoryImpl>()
@@ -336,7 +336,7 @@ internal class AssistedFactoryTransformer(
     val creatorFunction = samFunction.toAssistedFactoryFunction(implSamFunction, remapper)
 
     val generatedFactory =
-      injectConstructorTransformer.getOrGenerateFactory(
+      injectedClassTransformer.getOrGenerateFactory(
         targetType,
         injectConstructor,
         doNotErrorOnMissing = false,
@@ -450,7 +450,12 @@ internal class AssistedFactoryTransformer(
             originalDeclaration.regularParameters.mapIndexed { index, param ->
               val baseTypeKey = params.regularParameters[index].typeKey
               val substitutedTypeKey = remapper?.let { baseTypeKey.remapTypes(it) } ?: baseTypeKey
-              param.toAssistedParameterKey(context.metroSymbols, substitutedTypeKey)
+              param.toAssistedParameterKey(
+                symbols = context.metroSymbols,
+                typeKey = substitutedTypeKey,
+                useAssistedParamNamesAsIdentifiers =
+                  context.options.useAssistedParamNamesAsIdentifiers,
+              )
             },
         )
       }

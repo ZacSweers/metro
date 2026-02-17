@@ -88,7 +88,7 @@ public class ClassIds(
   internal val assistedInjectAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("AssistedInject")) +
       customAssistedInjectAnnotations
-  private val metroAssisted = Symbols.FqNames.metroRuntimePackage.classIdOf("Assisted")
+  internal val metroAssisted = Symbols.FqNames.metroRuntimePackage.classIdOf("Assisted")
   internal val assistedAnnotations = setOf(metroAssisted) + customAssistedAnnotations
   internal val metroAssistedFactory =
     Symbols.FqNames.metroRuntimePackage.classIdOf("AssistedFactory")

@@ -1,0 +1,39 @@
+name: Update IDE Mappings
+
+on:
+  schedule:
+    # Daily at noon UTC
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-mappings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Fetch IDE Kotlin versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd compiler-compat
+          python fetch-all-ide-kotlin-versions.py --channels stable,rc,eap,beta,canary
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: Update IDE version mappings
+          branch: auto/update-ide-mappings
+          title: Update IDE version mappings
+          body: Automated daily update of ide-mappings.txt with latest IDE Kotlin version aliases.
+          add-paths: compiler-compat/ide-mappings.txt
+          token: ${{ secrets.UPDATE_MAPPINGS_PAT }}

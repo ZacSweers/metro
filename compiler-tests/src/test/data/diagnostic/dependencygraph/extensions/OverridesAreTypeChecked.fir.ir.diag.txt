@@ -1,3 +1,17 @@
-/OverridesAreTypeChecked.kt:(739,747): error: 'fun fooFunction: kotlin.Int' defined in 'IntProvider' clashes with 'fun fooFunction: kotlin.String' defined in 'StringProvider': return types are incompatible.
+/OverridesAreTypeChecked.kt:(739,747): error: Incompatible return types: 'kotlin.Int' vs 'kotlin.String'
 
-/OverridesAreTypeChecked.kt:(739,747): error: 'val fooProperty: kotlin.Int' defined in 'IntProvider' clashes with 'val fooProperty: kotlin.String' defined in 'StringProvider': property types are incompatible.
+  OverridesAreTypeChecked.kt:28:1
+    fun fooFunction(): kotlin.Int (defined in 'IntProvider')
+                       ~~~~~~~~~~
+  OverridesAreTypeChecked.kt:19:1
+    fun fooFunction(): kotlin.String (defined in 'StringProvider')
+                       ~~~~~~~~~~~~~
+
+/OverridesAreTypeChecked.kt:(739,747): error: Incompatible return types: 'kotlin.Int' vs 'kotlin.String'
+
+  OverridesAreTypeChecked.kt:28:1
+    val fooProperty: kotlin.Int (defined in 'IntProvider')
+                     ~~~~~~~~~~
+  OverridesAreTypeChecked.kt:19:1
+    val fooProperty: kotlin.String (defined in 'StringProvider')
+                     ~~~~~~~~~~~~~

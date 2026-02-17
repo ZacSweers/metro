@@ -34,10 +34,42 @@ Examples of unacceptable behavior include:
 * Public or private harassment
 * Publishing others' private information, such as a physical or email
   address, without their explicit permission
-* Submitting AI-generated walls of text as your own comments. AI use is fine, but making others to interpret your AI output without asking isn't
 * Ignoring repo maintainers' requests to move comments/questions to more appropriate avenues
 * Other conduct which could reasonably be considered inappropriate in a
   professional setting
+
+## AI/LLM Policy
+
+Using AI as a helper tool is fine. The issue isn't whether you used AI, it's whether you
+did the work of reviewing, understanding, and refining the output before sharing it. We
+have a few expectations around AI use in project spaces (issues, pull requests,
+discussions, etc.).
+
+**Do not submit AI-generated walls of text as your own comments.** When you paste raw
+LLM output into an issue, PR description, or comment, you are offloading the work of
+interpreting and condensing that output onto maintainers and other contributors. 
+This is disrespectful of others' time. Maintainers may close or ignore 
+issues/PRs/comments that appear to be unreviewed AI output.
+
+**AI-assisted contributions to code are welcome, provided you've done your due diligence.**
+If you use AI to help write code in a PR, you must disclose this (see the
+[pull request template](pull_request_template.md)). You are still fully responsible for
+understanding, testing, and defending any code you submit. "the AI wrote it" is not an
+acceptable explanation for bugs or design decisions. Indicate what parts are AI-generated
+and de-fluff _before_ opening the PR.
+
+**What's fine:**
+* Using AI to help with boilerplate, mechanical refactors, or tedious repetition
+* Using AI to brainstorm or take on a narrowly-focused bugfix or change
+* Using AI to help you understand unfamiliar parts of the codebase
+* Using AI for translation assistance when writing in English as a non-native speaker
+
+**What's not fine:**
+* Pasting raw AI output as issue descriptions, comments, or PR descriptions without
+  reviewing, condensing, and rewriting it in your own words
+* Submitting AI-generated code without understanding what it does or why
+* Using AI to generate speculative feature requests or design proposals you haven't
+  thought through yourself
 
 ## Enforcement Responsibilities
 

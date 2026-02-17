@@ -76,9 +76,6 @@ abstract class MetroCompilerTest {
       kotlincArguments +=
         listOf("-jvm-default=no-compatibility", "-Xverify-ir=error", "-Xverify-ir-visibility")
 
-      // TODO test enabling IC?
-      //  kotlincArguments += "-Xenable-incremental-compilation"
-
       if (previousCompilationResult != null) {
         addPreviousResultToClasspath(previousCompilationResult)
       }
@@ -90,254 +87,261 @@ abstract class MetroCompilerTest {
         for (entry in MetroOption.entries) {
           val option =
             when (entry) {
-              MetroOption.DEBUG -> processor.option(entry.raw.cliOption, debug)
-              MetroOption.ENABLED -> processor.option(entry.raw.cliOption, enabled)
-              MetroOption.REPORTS_DESTINATION ->
+              DEBUG -> processor.option(entry.raw.cliOption, debug)
+              ENABLED -> processor.option(entry.raw.cliOption, enabled)
+              REPORTS_DESTINATION ->
                 processor.option(
                   entry.raw.cliOption,
                   reportsDir.value?.absolutePathString().orEmpty(),
                 )
-              MetroOption.TRACE_DESTINATION ->
+              TRACE_DESTINATION ->
                 processor.option(
                   entry.raw.cliOption,
                   traceDir.value?.absolutePathString().orEmpty(),
                 )
-              MetroOption.GENERATE_ASSISTED_FACTORIES ->
+              GENERATE_ASSISTED_FACTORIES ->
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
-              MetroOption.GENERATE_THROWS_ANNOTATIONS ->
-                processor.option(entry.raw.cliOption, generateThrowsAnnotations)
-              MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
+              ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
                 processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
-              MetroOption.GENERATE_CONTRIBUTION_HINTS ->
+              GENERATE_CONTRIBUTION_HINTS ->
                 processor.option(entry.raw.cliOption, generateContributionHints)
-              MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
+              GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
                 processor.option(
                   entry.raw.cliOption,
                   this@toPluginOptions.generateContributionHintsInFir,
                 )
-              MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
+              TRANSFORM_PROVIDERS_TO_PRIVATE ->
                 processor.option(entry.raw.cliOption, transformProvidersToPrivate)
-              MetroOption.SHRINK_UNUSED_BINDINGS ->
-                processor.option(entry.raw.cliOption, shrinkUnusedBindings)
-              MetroOption.CHUNK_FIELD_INITS ->
-                processor.option(entry.raw.cliOption, chunkFieldInits)
-              MetroOption.STATEMENTS_PER_INIT_FUN ->
-                processor.option(entry.raw.cliOption, statementsPerInitFun)
-              MetroOption.ENABLE_GRAPH_SHARDING ->
-                processor.option(entry.raw.cliOption, enableGraphSharding)
-              MetroOption.KEYS_PER_GRAPH_SHARD ->
-                processor.option(entry.raw.cliOption, keysPerGraphShard)
-              MetroOption.PUBLIC_PROVIDER_SEVERITY ->
+              SHRINK_UNUSED_BINDINGS -> processor.option(entry.raw.cliOption, shrinkUnusedBindings)
+              CHUNK_FIELD_INITS -> processor.option(entry.raw.cliOption, chunkFieldInits)
+              STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
+              ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)
+              KEYS_PER_GRAPH_SHARD -> processor.option(entry.raw.cliOption, keysPerGraphShard)
+              PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
-              MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY ->
+              NON_PUBLIC_CONTRIBUTION_SEVERITY ->
                 processor.option(entry.raw.cliOption, nonPublicContributionSeverity)
-              MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
+              USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS ->
+                processor.option(entry.raw.cliOption, useAssistedParamNamesAsIdentifiers)
+              ASSISTED_IDENTIFIER_SEVERITY ->
+                processor.option(entry.raw.cliOption, assistedIdentifierSeverity)
+              WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
-              MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
+              INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
                 processor.option(entry.raw.cliOption, interopAnnotationsNamedArgSeverity)
-              MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY ->
+              UNUSED_GRAPH_INPUTS_SEVERITY ->
                 processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
-              MetroOption.ENABLE_SWITCHING_PROVIDERS ->
+              ENABLE_SWITCHING_PROVIDERS ->
                 processor.option(entry.raw.cliOption, enableSwitchingProviders)
-              MetroOption.LOGGING -> {
+              LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
               }
-              MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP ->
+              ENABLE_DAGGER_RUNTIME_INTEROP ->
                 processor.option(entry.raw.cliOption, enableDaggerRuntimeInterop)
-              MetroOption.MAX_IR_ERRORS_COUNT ->
-                processor.option(entry.raw.cliOption, maxIrErrorsCount)
-              MetroOption.CUSTOM_PROVIDER -> {
+              MAX_IR_ERRORS_COUNT -> processor.option(entry.raw.cliOption, maxIrErrorsCount)
+              CUSTOM_PROVIDER -> {
                 if (customProviderTypes.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customProviderTypes.joinToString(":"))
               }
-              MetroOption.CUSTOM_LAZY -> {
+              CUSTOM_LAZY -> {
                 if (customLazyTypes.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customLazyTypes.joinToString(":"))
               }
-              MetroOption.CUSTOM_ASSISTED -> {
+              CUSTOM_ASSISTED -> {
                 if (customAssistedAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customAssistedAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_ASSISTED_FACTORY -> {
+              CUSTOM_ASSISTED_FACTORY -> {
                 if (customAssistedFactoryAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
                   customAssistedFactoryAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_ASSISTED_INJECT -> {
+              CUSTOM_ASSISTED_INJECT -> {
                 if (customAssistedInjectAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
                   customAssistedInjectAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_BINDS -> {
+              CUSTOM_BINDS -> {
                 if (customBindsAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customBindsAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_CONTRIBUTES_TO -> {
+              CUSTOM_CONTRIBUTES_TO -> {
                 if (customContributesToAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
                   customContributesToAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_CONTRIBUTES_BINDING -> {
+              CUSTOM_CONTRIBUTES_BINDING -> {
                 if (customContributesBindingAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
                   customContributesBindingAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_ELEMENTS_INTO_SET -> {
+              CUSTOM_ELEMENTS_INTO_SET -> {
                 if (customElementsIntoSetAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
                   customElementsIntoSetAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_DEPENDENCY_GRAPH -> {
+              CUSTOM_DEPENDENCY_GRAPH -> {
                 if (customGraphAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customGraphAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_DEPENDENCY_GRAPH_FACTORY -> {
+              CUSTOM_DEPENDENCY_GRAPH_FACTORY -> {
                 if (customGraphFactoryAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
                   customGraphFactoryAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_INJECT -> {
+              CUSTOM_INJECT -> {
                 if (customInjectAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customInjectAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_INTO_MAP -> {
+              CUSTOM_INTO_MAP -> {
                 if (customIntoMapAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customIntoMapAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_INTO_SET -> {
+              CUSTOM_INTO_SET -> {
                 if (customIntoSetAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customIntoSetAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_MAP_KEY -> {
+              CUSTOM_MAP_KEY -> {
                 if (customMapKeyAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customMapKeyAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_MULTIBINDS -> {
+              CUSTOM_MULTIBINDS -> {
                 if (customMultibindsAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customMultibindsAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_PROVIDES -> {
+              CUSTOM_PROVIDES -> {
                 if (customProvidesAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customProvidesAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_QUALIFIER -> {
+              CUSTOM_QUALIFIER -> {
                 if (customQualifierAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customQualifierAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_SCOPE -> {
+              CUSTOM_SCOPE -> {
                 if (customScopeAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customScopeAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_BINDING_CONTAINER -> {
+              CUSTOM_BINDING_CONTAINER -> {
                 if (customBindingContainerAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
                   customBindingContainerAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_CONTRIBUTES_INTO_SET -> {
+              CUSTOM_CONTRIBUTES_INTO_SET -> {
                 if (customContributesIntoSetAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
                   customContributesIntoSetAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_GRAPH_EXTENSION -> {
+              CUSTOM_GRAPH_EXTENSION -> {
                 if (customGraphExtensionAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
                   customGraphExtensionAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY -> {
+              CUSTOM_GRAPH_EXTENSION_FACTORY -> {
                 if (customGraphExtensionFactoryAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
                   customGraphExtensionFactoryAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_ORIGIN -> {
+              CUSTOM_ORIGIN -> {
                 if (customOriginAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customOriginAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_OPTIONAL_BINDING -> {
+              CUSTOM_OPTIONAL_BINDING -> {
                 if (customOptionalBindingAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
                   customOptionalBindingAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
+              ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
               }
-              MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
+              ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
                 processor.option(entry.raw.cliOption, enableFullBindingGraphValidation)
               }
-              MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
+              ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
                 processor.option(entry.raw.cliOption, enableGraphImplClassAsReturnType)
               }
-              MetroOption.OPTIONAL_BINDING_BEHAVIOR -> {
+              OPTIONAL_BINDING_BEHAVIOR -> {
                 processor.option(entry.raw.cliOption, optionalBindingBehavior)
               }
-              MetroOption.CONTRIBUTES_AS_INJECT -> {
+              CONTRIBUTES_AS_INJECT -> {
                 processor.option(entry.raw.cliOption, contributesAsInject)
               }
-              MetroOption.ENABLE_KLIB_PARAMS_CHECK -> {
+              DEDUPLICATE_INJECTED_PARAMS -> {
+                processor.option(entry.raw.cliOption, deduplicateInjectedParams)
+              }
+              ENABLE_KLIB_PARAMS_CHECK -> {
                 processor.option(entry.raw.cliOption, enableKlibParamsCheck)
               }
-              MetroOption.PATCH_KLIB_PARAMS -> {
+              PATCH_KLIB_PARAMS -> {
                 processor.option(entry.raw.cliOption, patchKlibParams)
               }
-              MetroOption.INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
+              INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }
-              MetroOption.INTEROP_INCLUDE_JAKARTA_ANNOTATIONS -> {
+              INTEROP_INCLUDE_JAKARTA_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }
-              MetroOption.INTEROP_INCLUDE_DAGGER_ANNOTATIONS -> {
+              INTEROP_INCLUDE_DAGGER_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }
-              MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS -> {
+              INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }
-              MetroOption.INTEROP_INCLUDE_ANVIL_ANNOTATIONS -> {
+              INTEROP_INCLUDE_ANVIL_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }
-              MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
+              INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }
-              MetroOption.ENABLE_GUICE_RUNTIME_INTEROP -> {
+              ENABLE_GUICE_RUNTIME_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableGuiceRuntimeInterop)
               }
-              MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
+              INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }
-              MetroOption.FORCE_ENABLE_FIR_IN_IDE -> {
+              FORCE_ENABLE_FIR_IN_IDE -> {
                 processor.option(entry.raw.cliOption, forceEnableFirInIde)
               }
-              MetroOption.PLUGIN_ORDER_SET -> {
+              PLUGIN_ORDER_SET -> {
                 processor.option(entry.raw.cliOption, pluginOrderSet?.toString().orEmpty())
               }
-              MetroOption.COMPILER_VERSION -> {
+              COMPILER_VERSION -> {
                 processor.option(
                   entry.raw.cliOption,
                   this@toPluginOptions.compilerVersion.orEmpty(),
                 )
               }
-              MetroOption.PARALLEL_METRO_THREADS -> {
+              COMPILER_VERSION_ALIASES -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.compilerVersionAliases
+                    .map { (k, v) -> "$k=$v" }
+                    .joinToString(":"),
+                )
+              }
+              PARALLEL_METRO_THREADS -> {
                 processor.option(entry.raw.cliOption, parallelMetroThreads)
               }
             }

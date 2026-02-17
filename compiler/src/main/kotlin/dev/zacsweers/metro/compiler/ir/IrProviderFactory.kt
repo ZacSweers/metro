@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.runIf
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -153,7 +154,11 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
           reportingFunction = callableMetadata.function,
           primaryConstructorParamOffset = 1,
         ) {
-          it.parameters().regularParameters.drop(1) // Drop the dispatch receiver
+          it
+            .parameters()
+            .regularParameters
+            // Drop the dispatch receiver if this original class is not an object class
+            .runIf(callableMetadata.function.parentClassOrNull?.isObject != true) { drop(1) }
         }
 
       if (hadUnpatchedMismatch) {

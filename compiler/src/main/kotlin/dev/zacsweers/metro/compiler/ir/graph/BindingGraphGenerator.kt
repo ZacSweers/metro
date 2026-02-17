@@ -28,7 +28,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
-import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.InjectedClassTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -50,7 +50,7 @@ internal class BindingGraphGenerator(
   traceScope: TraceScope,
   private val node: GraphNode.Local,
   // TODO preprocess these instead and just lookup via irAttribute
-  private val injectConstructorTransformer: InjectConstructorTransformer,
+  private val injectedClassTransformer: InjectedClassTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val contributionData: IrContributionData,
   private val parentContext: ParentContextReader?,
@@ -68,7 +68,7 @@ internal class BindingGraphGenerator(
         metroContext = metroContext,
         sourceGraph = node.sourceGraph,
         findClassFactory = { clazz ->
-          injectConstructorTransformer.getOrGenerateFactory(
+          injectedClassTransformer.getOrGenerateFactory(
             clazz,
             previouslyFoundConstructor = null,
             doNotErrorOnMissing = true,
@@ -146,7 +146,7 @@ internal class BindingGraphGenerator(
           )
 
         graph.addInjector(contextKey, entry)
-        if (contextKey.typeKey in graph) {
+        if (contextKey.typeKey in bindingLookup) {
           // Injectors may be requested multiple times, don't double-register
           continue
         }
@@ -183,7 +183,9 @@ internal class BindingGraphGenerator(
         }
 
         val isInherited = typeKey in inheritedProviderFactoryKeys
-        if (!providerFactory.annotations.isIntoMultibinding && typeKey in graph && isInherited) {
+        if (
+          !providerFactory.annotations.isIntoMultibinding && typeKey in bindingLookup && isInherited
+        ) {
           // If we already have a binding provisioned in this scenario, ignore the parent's version
           continue
         }
@@ -255,7 +257,7 @@ internal class BindingGraphGenerator(
         val isInherited = typeKey in inheritedBindsCallableKeys
         if (
           !bindsCallable.callableMetadata.annotations.isIntoMultibinding &&
-            typeKey in graph &&
+            typeKey in bindingLookup &&
             isInherited
         ) {
           // If we already have a binding provisioned in this scenario, ignore the parent's version

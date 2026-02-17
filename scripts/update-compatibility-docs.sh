@@ -6,9 +6,11 @@
 set -euo pipefail
 
 # Updates docs/compatibility.md with tested versions from compiler-compat/version-aliases.txt
+# and IDE tested versions from ide-integration-tests/ide-versions.txt.
 # Also updates the Kotlin version badge in README.md
 
 ALIASES_FILE="compiler-compat/version-aliases.txt"
+IDE_VERSIONS_FILE="ide-integration-tests/ide-versions.txt"
 DOCS_FILE="docs/compatibility.md"
 README_FILE="README.md"
 
@@ -69,6 +71,75 @@ tested_section="$tested_section
 !!! note
     Versions without dedicated compiler-compat modules will use the nearest available implementation _below_ that version. See [\`compiler-compat/version-aliases.txt\`](https://github.com/ZacSweers/metro/blob/main/compiler-compat/version-aliases.txt) for the full list.
 "
+
+# Add IDE tested versions if ide-versions.txt exists
+if [ -f "$IDE_VERSIONS_FILE" ]; then
+    echo "🔄 Adding IDE tested versions from $IDE_VERSIONS_FILE..."
+
+    # Parse IDE versions into separate IJ and AS lists
+    # For AS, trailing comment is the display name (e.g., "Panda 1 RC 1")
+    ij_entries=()
+    as_entries=()
+    while IFS= read -r line; do
+        display_name=""
+        if [[ "$line" == *"# "* ]]; then
+            display_name="${line##*# }"
+            line="${line%%#*}"
+            line="${line%% }"
+        fi
+        IFS=: read -r product version _prefix <<< "$line"
+        case "$product" in
+            IU) ij_entries+=("$version") ;;
+            AS)
+                if [ -n "$display_name" ]; then
+                    as_entries+=("$version ($display_name)")
+                else
+                    as_entries+=("$version")
+                fi
+                ;;
+        esac
+    done < <(grep -v '^#' "$IDE_VERSIONS_FILE" | grep -v '^[[:space:]]*$')
+
+    if [ ${#ij_entries[@]} -gt 0 ] || [ ${#as_entries[@]} -gt 0 ]; then
+        # Find column widths
+        ij_col=13  # length of "IntelliJ IDEA"
+        as_col=14  # length of "Android Studio"
+        for entry in "${ij_entries[@]}"; do
+            if [ ${#entry} -gt $ij_col ]; then ij_col=${#entry}; fi
+        done
+        for entry in "${as_entries[@]}"; do
+            if [ ${#entry} -gt $as_col ]; then as_col=${#entry}; fi
+        done
+
+        # Number of rows = max of both lists
+        row_count=${#ij_entries[@]}
+        if [ ${#as_entries[@]} -gt $row_count ]; then row_count=${#as_entries[@]}; fi
+
+        ij_header="IntelliJ IDEA"
+        as_header="Android Studio"
+        tested_section="$tested_section
+### IDE Tested Versions
+
+[![IDE Integration Tests](https://github.com/ZacSweers/metro/actions/workflows/ide-integration.yml/badge.svg)](https://github.com/ZacSweers/metro/actions/workflows/ide-integration.yml)
+
+The following IDE versions are tested via IDE integration tests:
+
+| ${ij_header}$(printf '%*s' $((ij_col - ${#ij_header})) '') | ${as_header}$(printf '%*s' $((as_col - ${#as_header})) '') |
+|$(printf '%*s' $((ij_col + 2)) '' | tr ' ' '-')|$(printf '%*s' $((as_col + 2)) '' | tr ' ' '-')|"
+
+        for ((i = 0; i < row_count; i++)); do
+            ij_val="${ij_entries[$i]:-}"
+            as_val="${as_entries[$i]:-}"
+            ij_pad=$((ij_col - ${#ij_val}))
+            as_pad=$((as_col - ${#as_val}))
+            tested_section="$tested_section
+| ${ij_val}$(printf '%*s' $ij_pad '') | ${as_val}$(printf '%*s' $as_pad '') |"
+        done
+
+        tested_section="$tested_section
+"
+    fi
+fi
 
 # Create temporary files
 tmpfile=$(mktemp)

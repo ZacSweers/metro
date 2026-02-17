@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -21,10 +24,12 @@ import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.kClassReference
+import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
+import dev.zacsweers.metro.compiler.ir.renderLocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeClassOrNull
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
@@ -43,6 +48,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
+import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -67,6 +73,7 @@ import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.properties
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 internal data class SyntheticGraphParameter(
@@ -313,85 +320,152 @@ internal class SyntheticGraphGenerator(
     val factoryImpl: IrClass?,
   )
 
-  /**
-   * Validates that fake overrides in this class don't have incompatible return types from different
-   * supertypes. This catches cases like:
-   * ```
-   * interface A { val foo: Int }
-   * interface B { val foo: String }
-   * class C : A, B // Error: 'val foo: Int' clashes with 'val foo: String'
-   * ```
-   *
-   * Adapted from the kotlinc impl in FirImplementationMismatchChecker.kt
-   */
+  /** Validates that fake overrides in this class are compatible across supertypes. */
   // https://github.com/ZacSweers/metro/issues/904
   private fun IrClass.validateOverrides() {
+    val sourceGraphName = superTypes.firstOrNull()?.rawTypeOrNull()?.kotlinFqName
+
     // Check all fake override properties
     for (property in properties) {
       if (!property.isFakeOverride) continue
-      property.checkOverrideTypeCompatibility()
+      property.checkOverrideCompatibility(sourceGraphName)
     }
 
     // Check all fake override functions
     for (function in functions) {
       if (!function.isFakeOverride) continue
-      function.checkOverrideTypeCompatibility()
+      function.checkOverrideCompatibility(sourceGraphName)
     }
   }
 
   /**
-   * Checks that all overridden symbols of this declaration have compatible return types. Two types
-   * are compatible if one is a subtype of the other.
+   * Checks that all overridden symbols of this declaration have compatible return types and binding
+   * annotations.
    *
-   * We check a single member's overridden symbol because this will manifest as incompatible
-   * ancestor overridden symbols.
+   * For types, two types are compatible if one is a subtype of the other. For annotations, all
+   * overridden declarations must agree on binding annotations (`@Provides`, `@Binds`,
+   * `@Multibinds`, `@BindsOptionalOf`, `@OptionalBinding`) and qualifiers. This catches cases like:
+   * ```
+   * // Type clash
+   * interface A { val foo: Int }
+   * interface B { val foo: String }
+   * class C : A, B // Error: incompatible return types
+   *
+   * // Annotation clash
+   * interface AppGraph { fun dependency(): Dependency }
+   * interface Bindings { @Provides fun dependency(): Dependency = ... }
+   * // Error: incompatible binding annotations
+   * ```
+   *
+   * Adapted from the kotlinc impl in FirImplementationMismatchChecker.kt
    */
-  private fun <S : IrSymbol> IrOverridableDeclaration<S>.checkOverrideTypeCompatibility() {
+  // https://github.com/ZacSweers/metro/issues/904
+  // https://github.com/ZacSweers/metro/pull/1810
+  private fun <S : IrSymbol> IrOverridableDeclaration<S>.checkOverrideCompatibility(
+    sourceGraphName: FqName?
+  ) {
     val overriddenSymbols = overriddenSymbols.toList()
     if (overriddenSymbols.size < 2) return
 
-    // Get return types for each overridden declaration
-    val overriddenWithTypes =
+    // Collect return type and annotations for each overridden declaration
+    data class OverriddenInfo(
+      val decl: IrOverridableDeclaration<*>,
+      val returnType: IrType,
+      val annotations: MetroAnnotations<IrAnnotation>,
+    )
+
+    val overriddenInfos =
       overriddenSymbols.mapNotNull { symbol ->
         val owner = symbol.owner
-        val returnType =
+        val (returnType, container) =
           when (owner) {
-            is IrSimpleFunction -> owner.returnType
-            is IrProperty -> owner.getter?.returnType ?: return@mapNotNull null
+            is IrSimpleFunction -> (owner.returnType) to (owner as IrAnnotationContainer)
+            is IrProperty ->
+              (owner.getter?.returnType ?: return@mapNotNull null) to
+                (owner as IrAnnotationContainer)
             else -> return@mapNotNull null
           }
-        owner to returnType
+        OverriddenInfo(owner, returnType, metroAnnotationsOf(container))
       }
 
-    if (overriddenWithTypes.size < 2) return
+    if (overriddenInfos.size < 2) return
 
-    // Check all pairs for compatibility - find if there's any type that is compatible with all
-    // others
+    // Check type compatibility - find if there's any type that is compatible with all others
     val hasCompatibleType =
-      overriddenWithTypes.any { (_, type1) ->
-        overriddenWithTypes.all { (_, type2) ->
+      overriddenInfos.any { (_, type1) ->
+        overriddenInfos.all { (_, type2) ->
           type1.isSubtypeOf(type2, irTypeSystemContext) ||
             type2.isSubtypeOf(type1, irTypeSystemContext)
         }
       }
 
-    if (hasCompatibleType) return
+    // Check all pairs for type and annotation compatibility
+    for (i in overriddenInfos.indices) {
+      for (j in i + 1 until overriddenInfos.size) {
+        val info1 = overriddenInfos[i]
+        val info2 = overriddenInfos[j]
 
-    // Find a concrete clash to report
-    for (i in overriddenWithTypes.indices) {
-      for (j in i + 1 until overriddenWithTypes.size) {
-        val (decl1, type1) = overriddenWithTypes[i]
-        val (decl2, type2) = overriddenWithTypes[j]
-
+        // Check type compatibility
         if (
-          !type1.isSubtypeOf(type2, irTypeSystemContext) &&
-            !type2.isSubtypeOf(type1, irTypeSystemContext)
+          !hasCompatibleType &&
+            !info1.returnType.isSubtypeOf(info2.returnType, irTypeSystemContext) &&
+            !info2.returnType.isSubtypeOf(info1.returnType, irTypeSystemContext)
         ) {
-          reportTypeClash(decl1, type1, decl2, type2)
+          reportTypeClash(info1.decl, info1.returnType, info2.decl, info2.returnType)
+          return // Report only the first clash
+        }
+
+        // Check annotation compatibility
+        val anno1 = info1.annotations
+        val anno2 = info2.annotations
+        if (
+          anno1.isProvides != anno2.isProvides ||
+            anno1.isBinds != anno2.isBinds ||
+            anno1.isMultibinds != anno2.isMultibinds ||
+            anno1.isBindsOptionalOf != anno2.isBindsOptionalOf ||
+            anno1.isOptionalBinding != anno2.isOptionalBinding ||
+            anno1.qualifier != anno2.qualifier
+        ) {
+          reportAnnotationClash(sourceGraphName, info1.decl, anno1, info2.decl, anno2)
           return // Report only the first clash
         }
       }
     }
+  }
+
+  private fun reportAnnotationClash(
+    sourceGraphName: FqName?,
+    decl1: IrOverridableDeclaration<*>,
+    anno1: MetroAnnotations<IrAnnotation>,
+    decl2: IrOverridableDeclaration<*>,
+    anno2: MetroAnnotations<IrAnnotation>,
+  ) {
+    val loc1 = decl1.renderLocationDiagnostic(annotations = anno1)
+    val loc2 = decl2.renderLocationDiagnostic(annotations = anno2)
+    val parent1 = decl1.parentAsClass.originIfContribution.kotlinFqName
+    val parent2 = decl2.parentAsClass.originIfContribution.kotlinFqName
+
+    val graphName = sourceGraphName ?: "graph"
+
+    val message = buildString {
+      appendLine(
+        "The following declarations clash with each other when merging supertypes into a generated `$graphName` graph impl class:"
+      )
+      appendLine()
+      appendLine("  ${loc1.location}")
+      loc1.description?.let { appendLine("    $it (defined in '$parent1')") }
+      appendLine("  ${loc2.location}")
+      loc2.description?.let { appendLine("    $it (defined in '$parent2')") }
+      appendLine()
+      append(
+        "Declarations with the same name and compatible return types must have compatible DI annotations too. " +
+          "Otherwise, these can lead to ambiguous/undefined behavior at runtime. To fix this, either align these " +
+          "annotations if they are meant to represent the same thing or rename one of the declarations to " +
+          "disambiguate them."
+      )
+    }
+
+    metroContext.reportCompat(originDeclaration, MetroDiagnostics.INCOMPATIBLE_OVERRIDES, message)
   }
 
   private fun reportTypeClash(
@@ -400,30 +474,31 @@ internal class SyntheticGraphGenerator(
     decl2: IrOverridableDeclaration<*>,
     type2: IrType,
   ) {
-    val isProperty =
-      decl1 is IrProperty ||
-        (decl1 is IrSimpleFunction && decl1.correspondingPropertySymbol != null)
-    val kind = if (isProperty) "val" else "fun"
-    val typeMismatchKind = if (isProperty) "property" else "return"
-
-    val name1 =
-      when (decl1) {
-        is IrProperty -> decl1.name.asString()
-        is IrSimpleFunction ->
-          decl1.correspondingPropertySymbol?.owner?.name?.asString() ?: decl1.name.asString()
-      }
-
-    val parent1 = decl1.parentAsClass.originIfContribution
-    val parent2 = decl2.parentAsClass.originIfContribution
-    val parent1Name = parent1.kotlinFqName
-    val parent2Name = parent2.kotlinFqName
+    val loc1 = decl1.renderLocationDiagnostic()
+    val loc2 = decl2.renderLocationDiagnostic()
+    val parent1 = decl1.parentAsClass.originIfContribution.kotlinFqName
+    val parent2 = decl2.parentAsClass.originIfContribution.kotlinFqName
+    val type1Str = type1.render(short = false)
+    val type2Str = type2.render(short = false)
 
     val message = buildString {
-      append("'$kind $name1: ${type1.render(short = false)}' defined in '$parent1Name' ")
-      append(
-        "clashes with '$kind $name1: ${type2.render(short = false)}' defined in '$parent2Name': "
-      )
-      append("$typeMismatchKind types are incompatible.")
+      appendLine("Incompatible return types: '$type1Str' vs '$type2Str'")
+      appendLine()
+      appendLine("  ${loc1.location}")
+      loc1.description?.let {
+        appendLineWithUnderlinedContent(
+          content = "    $it (defined in '$parent1')",
+          target = type1Str,
+        )
+      }
+      appendLine()
+      appendLine("  ${loc2.location}")
+      loc2.description?.let {
+        appendLineWithUnderlinedContent(
+          content = "    $it (defined in '$parent2')",
+          target = type2Str,
+        )
+      }
     }
 
     metroContext.reportCompat(originDeclaration, MetroDiagnostics.METRO_ERROR, message)

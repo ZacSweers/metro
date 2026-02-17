@@ -1,21 +1,15 @@
 /MixedCycleParams.kt:(501,511): error: [Metro/DependencyCycle] Found a dependency cycle while processing 'CycleGraph'.
 Cycle:
-    RealA
-    --> A
-    ~~> FakeA
-    --> B
-    --> RealA
+    B --> A ~~> FakeA --> B
 
 Trace:
-    RealA is injected at
-        [CycleGraph] B()
+    B is injected at
+        [CycleGraph] FakeA(…, b)
     A is injected at
-        [CycleGraph] RealA()
+        [CycleGraph] B(…, a)
     FakeA is injected at
         [CycleGraph] FakeA.MetroContributionToUnit.bindsAsA(…, instance)
     B is injected at
         [CycleGraph] FakeA(…, b)
-    RealA is injected at
-        [CycleGraph] B()
     ...
 

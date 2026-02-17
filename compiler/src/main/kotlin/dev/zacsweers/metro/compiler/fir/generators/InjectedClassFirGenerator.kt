@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.hasMetroDefault
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -303,6 +304,12 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                     symbol = setterParam,
                     name = parameterNameAllocator.newName(propertyName),
                     memberKey = memberKeyAllocator.newName(propertyName),
+                    // Resolve qualifier from the property so annotations like @Named
+                    // on the property are properly included in the type key.
+                    qualifierSource = injectedMember,
+                    // The setter's value parameter doesn't carry the property's default
+                    // info, so we pass it explicitly from the property symbol.
+                    hasDefault = injectedMember.hasMetroDefault(session),
                   )
                 } else if (fieldSymbol != null) {
                   MetroFirValueParameter(
@@ -628,7 +635,12 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         val injectedClass =
           injectFactoryClassIdsToInjectedClass[context.owner.classId] ?: return emptyList()
         injectedClass.populateAncestorMemberInjections(session)
-        buildFactoryConstructor(context, null, null, injectedClass.allParameters)
+        buildFactoryConstructor(
+          context = context,
+          instanceReceiver = null,
+          extensionReceiver = null,
+          valueParameters = injectedClass.allParameters.dedupeParameters(session),
+        )
       } else if (context.owner.hasOrigin(Keys.MembersInjectorClassDeclaration)) {
         val injectedClass =
           membersInjectorClassIdsToInjectedClass[context.owner.classId] ?: return emptyList()
@@ -772,7 +784,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               },
               null,
               null,
-              injectedClass.allParameters,
+              injectedClass.allParameters.dedupeParameters(session),
             )
           }
           Symbols.Names.newInstance -> {

@@ -16,7 +16,26 @@ plugins {
   alias(libs.plugins.binaryCompatibilityValidator)
   alias(libs.plugins.poko) apply false
   alias(libs.plugins.wire) apply false
+  alias(libs.plugins.testkit) apply false
   id("metro.yarnNode")
+}
+
+// Autoconfigure git to use project-specific config (hooks)
+if (file(".git").exists()) {
+  val expectedIncludePath = "../config/git/.gitconfig"
+  val includePath =
+    providers
+      .exec { commandLine("git", "config", "--local", "--default", "", "--get", "include.path") }
+      .standardOutput
+      .asText
+      .map { it.trim() }
+      .getOrElse("")
+  if (includePath != expectedIncludePath) {
+    providers
+      .exec { commandLine("git", "config", "--local", "include.path", expectedIncludePath) }
+      .result
+      .get()
+  }
 }
 
 apiValidation {
@@ -53,6 +72,10 @@ dokka {
 }
 
 allprojects { apply(plugin = "metro.spotless") }
+
+tasks.register("installForFunctionalTest") {
+  description = "Publishes all Metro artifacts to build/functionalTestRepo"
+}
 
 subprojects {
   apply(plugin = "metro.base")

@@ -243,7 +243,18 @@ fun Class<*>.invokeCreate(vararg args: Any): Any {
 
   return when (createFunctions.size) {
     0 -> error("No create functions found in $this")
-    1 -> createFunctions.single()(*args)
+    1 -> {
+      val function = createFunctions.single()
+      check(function.method.parameterCount == args.size) {
+        """
+          Mismatched number of parameters
+          Found: ${function.method.parameters.joinToString(", ") { it.name + it.parameterizedType }}
+          Expected: ${args.joinToString(", ") { it.javaClass.toString() }}
+        """
+          .trimIndent()
+      }
+      function(*args)
+    }
     else -> {
       error("Multiple create functions found in $this:\n${createFunctions.joinToString("\n")}")
     }

@@ -50,6 +50,21 @@ public class MetroIrGenerationExtension(
       } else {
         context.generateInner(moduleFragment, null)
       }
+      if (options.traceEnabled) {
+        // Find and print the trace file
+        options.traceDir.value?.let { traceDir ->
+          traceDir
+            .toFile()
+            .walkTopDown()
+            .find { it.extension == "perfetto-trace" }
+            ?.let {
+              context.log(
+                // Trailing space intentional for terminal linkifying
+                "Metro trace written to file://${it.absolutePath} "
+              )
+            }
+        }
+      }
     }
   }
 

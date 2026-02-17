@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
+import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -18,6 +19,8 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
+import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -35,12 +38,14 @@ import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isAny
 import org.jetbrains.kotlin.fir.types.isNothing
+import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
@@ -74,6 +79,30 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       val classId = annotation.toAnnotationClassId(session) ?: continue
       if (classId in classIds.allContributesAnnotations) {
         val scope = annotation.resolvedScopeClassId() ?: continue
+
+        // Check if the target looks suspicious
+        // - If it's a `@Scope` annotation class that's prolly not right
+        // - If it's a graph class
+        val scopeClass = scope.toLookupTag().toClassSymbolCompat(session) ?: continue
+        if (scopeClass.classKind == ClassKind.ANNOTATION_CLASS) {
+          scopeClass.annotationsIn(session, classIds.scopeAnnotations).firstOrNull()?.let {
+            reporter.reportOn(
+              annotation.scopeArgument()?.source ?: annotation.source,
+              MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
+              "Suspicious aggregation scope '${scope.asFqNameString()}' is a concrete `@Scope` annotation type, and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+            )
+          }
+        } else {
+          for (graphLikeAnno in scopeClass.annotationsIn(session, classIds.graphLikeAnnotations)) {
+            if (graphLikeAnno !is FirAnnotationCall) continue
+            reporter.reportOn(
+              annotation.scopeArgument()?.source ?: annotation.source,
+              MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
+              "Suspicious aggregation scope '${scope.asFqNameString()}' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+            )
+          }
+        }
+
         val replaces = emptySet<ClassId>() // TODO implement
         val checkIntoSet by memoize {
           checkBindingContribution(

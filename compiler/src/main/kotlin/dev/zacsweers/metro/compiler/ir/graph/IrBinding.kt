@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBinding
@@ -23,13 +24,13 @@ import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.computeMultibindingId
 import dev.zacsweers.metro.compiler.ir.createMapBindingId
 import dev.zacsweers.metro.compiler.ir.implements
-import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
+import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -81,7 +82,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // First check if we have the contributing file and line number
     val binding = this
     val locationString =
-      reportableDeclaration?.locationOrNull()?.render(shortLocation)
+      reportableDeclaration?.renderSourceLocation(short = shortLocation)
         // Or the fully-qualified contributing class name
         // TODO is this right
         ?: parameters.allParameters.firstOrNull()?.typeKey?.render(short = short)
@@ -436,6 +437,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val irElement: IrElement? = null,
     val token: ParentContext.Token? = null,
     val isGraphInput: Boolean = false,
+    override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey),
   ) : IrBinding {
     constructor(
       parameter: Parameter,
@@ -446,16 +448,67 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       nameHint = "${parameter.name.asString()}Instance",
       reportableDeclaration = reportableLocation,
       isGraphInput = isGraphInput,
+      contextualTypeKey = parameter.contextualTypeKey,
     )
 
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val scope: IrAnnotation? = null
     override val parameters: Parameters = Parameters.empty()
-    override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val isImplicitlyDeferrable: Boolean = true
 
+    override fun renderLocationDiagnostic(
+      short: Boolean,
+      shortLocation: Boolean,
+      underlineTypeKey: Boolean,
+    ): LocationDiagnostic {
+      return super.renderLocationDiagnostic(short, shortLocation, underlineTypeKey)
+    }
+
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {
-      return "BoundInstance(${typeKey.render(short = short, includeQualifier = true)})"
+      return buildString {
+        val renderedType = typeKey.render(short = short, includeQualifier = true)
+        when {
+          isGraphInput && reportableDeclaration is IrValueParameter -> {
+            // Factory/creator parameter, e.g. "@Provides bar: Map<String, String>"
+            val param = reportableDeclaration
+            append("@Provides ")
+            append(param.name.asString())
+            append(": ")
+            if (underlineTypeKey) {
+              appendLineWithUnderlinedContent(renderedType)
+            } else {
+              append(renderedType)
+            }
+          }
+          isGraphInput -> {
+            // Binding container input
+            if (underlineTypeKey) {
+              appendLineWithUnderlinedContent(renderedType)
+            } else {
+              append(renderedType)
+            }
+            append(" (graph input)")
+          }
+          token != null -> {
+            // Parent graph binding
+            if (underlineTypeKey) {
+              appendLineWithUnderlinedContent(renderedType)
+            } else {
+              append(renderedType)
+            }
+            append(" (bound from parent graph)")
+          }
+          else -> {
+            // Graph self-binding
+            if (underlineTypeKey) {
+              appendLineWithUnderlinedContent(renderedType)
+            } else {
+              append(renderedType)
+            }
+            append(" (graph instance)")
+          }
+        }
+      }
     }
 
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)

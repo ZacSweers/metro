@@ -22,7 +22,9 @@ import org.jetbrains.kotlin.fir.types.coneType
 @Poko
 internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnotation? = null) :
   Comparable<FirTypeKey> {
-  private val cachedToString by memoize { render(short = false, includeQualifier = true) }
+  private val cachedToString by memoize {
+    render(short = false, includeAbbreviation = true, includeQualifier = true)
+  }
 
   override fun toString(): String = cachedToString
 
@@ -31,14 +33,18 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
     return toString().compareTo(other.toString())
   }
 
-  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
+  fun render(
+    short: Boolean,
+    includeAbbreviation: Boolean = !short,
+    includeQualifier: Boolean = true,
+  ): String = buildString {
     if (includeQualifier) {
       qualifier?.let {
         append(it.simpleString())
         append(" ")
       }
     }
-    renderType(short, type)
+    renderType(short, type, includeAbbreviation)
   }
 
   companion object {
