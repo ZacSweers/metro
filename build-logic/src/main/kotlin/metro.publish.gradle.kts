@@ -12,9 +12,7 @@ project.extensions.create<MetroPublishExtension>("metroPublish").apply {
   artifactId.convention(project.name)
 }
 
-if (!isCompilerProject) {
-  plugins.withType<KotlinBasePlugin> { configure<KotlinProjectExtension> { explicitApi() } }
-}
+plugins.withType<KotlinBasePlugin> { configure<KotlinProjectExtension> { explicitApi() } }
 
 tasks
   .named { it == "publishTestKitSupportForJavaPublicationToFunctionalTestRepository" }
