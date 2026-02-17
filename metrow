@@ -194,8 +194,7 @@ case "$1" in
        ;;
 
    "format")
-       echo "Applying formatting..."
-       run_gradle_all "spotlessApply --no-configuration-cache --quiet"
+       ./scripts/format.sh --all
        ;;
 
    "regen")
@@ -206,7 +205,7 @@ case "$1" in
        rm -rf kotlin-js-store samples/kotlin-js-store
 
        run_gradle_all "clean --quiet"
-       run_gradle_all "spotlessApply --no-configuration-cache --quiet"
+       ./scripts/format.sh --all
 
        # apiDump only exists in root project
        ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet
