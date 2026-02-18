@@ -788,6 +788,42 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       public void testBindingContainerViaCreator() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/BindingContainerViaCreator.kt");
       }
+
+      @Test
+      @TestMetadata("GenericBindingContainer.kt")
+      public void testGenericBindingContainer() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/GenericBindingContainer.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericBindingContainerBackwardRef.kt")
+      public void testGenericBindingContainerBackwardRef() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/GenericBindingContainerBackwardRef.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericBindingContainerDynamic.kt")
+      public void testGenericBindingContainerDynamic() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/GenericBindingContainerDynamic.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericBindingContainerMultipleTypeParams.kt")
+      public void testGenericBindingContainerMultipleTypeParams() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/GenericBindingContainerMultipleTypeParams.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericBindingContainerTypeParamInParameter.kt")
+      public void testGenericBindingContainerTypeParamInParameter() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/GenericBindingContainerTypeParamInParameter.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericBindingContainerTypeSubstitution.kt")
+      public void testGenericBindingContainerTypeSubstitution() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/GenericBindingContainerTypeSubstitution.kt");
+      }
     }
 
     @Nested
