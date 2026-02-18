@@ -5,6 +5,9 @@ package dev.zacsweers.metro.compiler
 import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
@@ -175,10 +178,16 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         isIde = false,
         compatContext = compatContext,
         loadExternalDeclarationExtensions = { session, options ->
-          listOf(GenerateImplExtension.Factory().create(session, options))
+          listOf(
+            GenerateImplExtension.Factory().create(session, options),
+            GenerateProvidesContributionExtension.Factory().create(session, options),
+          )
         },
       ) { session, options ->
-        listOf(GenerateImplContributionExtension.Factory().create(session, options))
+        listOf(
+          GenerateImplContributionExtension.Factory().create(session, options),
+          GenerateProvidesContributionMetroExtension.Factory().create(session, options),
+        )
       }
     )
     IrGenerationExtension.registerExtension(
@@ -193,5 +202,6 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       )
     )
     IrGenerationExtension.registerExtension(GenerateImplIrExtension())
+    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
   }
 }

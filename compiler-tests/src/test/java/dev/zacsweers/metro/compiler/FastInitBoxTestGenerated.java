@@ -289,6 +289,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public void testMetroFirExtensionSample() {
       runTest("compiler-tests/src/test/data/box/api/MetroFirExtensionSample.kt");
     }
+
+    @Test
+    @TestMetadata("ProvidesInGeneratedContributesTo.kt")
+    public void testProvidesInGeneratedContributesTo() {
+      runTest("compiler-tests/src/test/data/box/api/ProvidesInGeneratedContributesTo.kt");
+    }
   }
 
   @Nested
