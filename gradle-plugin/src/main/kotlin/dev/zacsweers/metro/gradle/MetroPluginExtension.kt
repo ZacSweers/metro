@@ -401,7 +401,7 @@ constructor(
    * 0 (default) disables parallelism.
    */
   @DelicateMetroGradleApi("Parallel graph validation is an experimental feature")
-  public val parallelMetroThreads: Property<Int> =
+  internal val parallelMetroThreads: Property<Int> =
     objects.intProperty("metro.parallelMetroThreads", 0)
 
   /**

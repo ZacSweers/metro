@@ -72,10 +72,7 @@ internal class ParentContextSnapshot(
   val currentParentGraph: IrClass,
 ) {
   /** Ownership information for a key - which graph owns it and how to access it. */
-  data class KeyOwnership(
-    val ownerGraphKey: IrTypeKey,
-    val receiverParameter: IrValueParameter,
-  )
+  data class KeyOwnership(val ownerGraphKey: IrTypeKey, val receiverParameter: IrValueParameter)
 
   /** Information about a level for scope matching. */
   data class LevelInfo(val scopes: Set<IrAnnotation>, val ownership: KeyOwnership)
@@ -139,15 +136,16 @@ internal class ParentContextSnapshot(
   fun asReader(collector: UsedKeyCollector): ParentContextReader =
     object : ParentContextReader {
       override fun contains(key: IrTypeKey) = key in this@ParentContextSnapshot
-      override fun containsScope(scope: IrAnnotation) = this@ParentContextSnapshot.containsScope(scope)
+
+      override fun containsScope(scope: IrAnnotation) =
+        this@ParentContextSnapshot.containsScope(scope)
+
       override fun availableKeys() = this@ParentContextSnapshot.availableKeys()
+
       override val currentParentGraph = this@ParentContextSnapshot.currentParentGraph
 
-      override fun mark(
-        key: IrTypeKey,
-        scope: IrAnnotation?,
-        requiresProviderProperty: Boolean,
-      ) = this@ParentContextSnapshot.mark(key, scope, requiresProviderProperty, collector)
+      override fun mark(key: IrTypeKey, scope: IrAnnotation?, requiresProviderProperty: Boolean) =
+        this@ParentContextSnapshot.mark(key, scope, requiresProviderProperty, collector)
     }
 }
 
