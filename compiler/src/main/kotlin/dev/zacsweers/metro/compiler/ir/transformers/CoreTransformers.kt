@@ -95,11 +95,11 @@ internal class CoreTransformers(
   }
 
   override fun visitClassNew(declaration: IrClass): IrStatement {
-    visitInner(declaration)
+    visitClassInner(declaration)
     return super.visitClassNew(declaration)
   }
 
-  private fun visitInner(declaration: IrClass) {
+  private fun visitClassInner(declaration: IrClass) {
     val shouldNotProcess =
       declaration.isLocal ||
         declaration.kind == ClassKind.ENUM_CLASS ||
