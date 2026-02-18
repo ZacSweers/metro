@@ -72,7 +72,7 @@ import org.jetbrains.kotlin.name.ClassId
 internal class InjectedClassTransformer(
   context: IrMetroContext,
   private val membersInjectorTransformer: MembersInjectorTransformer,
-) : IrMetroContext by context {
+) : IrMetroContext by context, Lockable by Lockable() {
 
   // Thread-safe for concurrent access during parallel graph validation.
   private val generatedFactories = ConcurrentHashMap<ClassId, Optional<ClassFactory>>()
@@ -204,6 +204,8 @@ internal class InjectedClassTransformer(
       targetConstructor()
         // Not injectable if we reach here
         ?: return null
+
+    checkNotLocked()
 
     val factoryCls =
       declaration.nestedClasses.singleOrNull {

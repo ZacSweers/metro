@@ -82,7 +82,8 @@ import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
-internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroContext by context {
+internal class MembersInjectorTransformer(context: IrMetroContext) :
+  IrMetroContext by context, Lockable by Lockable() {
 
   data class MemberInjectClass(
     val sourceClass: IrClass,
@@ -258,6 +259,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     if (isExternal) {
       return memberInjectClass.also { generatedInjectors[injectedClassId] = Optional.of(it) }
     }
+
+    checkNotLocked()
 
     val ctor = injectorClass.primaryConstructor!!
 

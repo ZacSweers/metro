@@ -21,12 +21,13 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 internal class ContributionHintIrTransformer(
   context: IrMetroContext,
   private val hintGenerator: HintGenerator,
-) : IrMetroContext by context {
+) : IrMetroContext by context, Lockable by Lockable() {
 
   // Only executed if generateContributionHintsInFir is enabled
   // Implements the FIR-generated declarations with empty bodies
   fun visitFunction(declaration: IrSimpleFunction) {
     if (declaration.origin == Origins.ContributionHint) {
+      checkNotLocked()
       declaration.apply { body = stubExpressionBody() }
     }
   }
@@ -40,6 +41,8 @@ internal class ContributionHintIrTransformer(
     ) {
       return
     }
+
+    checkNotLocked()
 
     val contributions =
       declaration.annotationsIn(metroSymbols.classIds.allContributesAnnotations).toList()

@@ -6,9 +6,17 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.ContributionHintIrTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.ContributionTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.CoreTransformers
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.FirstPassData
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
+import dev.zacsweers.metro.compiler.ir.transformers.InjectedClassTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.concurrent.ExecutorService
@@ -79,21 +87,55 @@ public class MetroIrGenerationExtension(
           // Create contribution data container
           val contributionData = IrContributionData(metroContext)
 
-          // First - transform `MetroContribution` interfaces and collect contribution data in a
-          // single pass
-          trace("Transform contributions") {
-            moduleFragment.transform(ContributionTransformer(metroContext, this), contributionData)
+          val hintGenerator = HintGenerator(metroContext, moduleFragment)
+          val membersInjectorTransformer = MembersInjectorTransformer(metroContext)
+          val injectedClassTransformer =
+            InjectedClassTransformer(metroContext, membersInjectorTransformer)
+          val assistedFactoryTransformer =
+            AssistedFactoryTransformer(metroContext, injectedClassTransformer)
+          val bindingContainerTransformer = BindingContainerTransformer(metroContext)
+          val contributionHintIrTransformer: Lazy<ContributionHintIrTransformer> = memoize {
+            ContributionHintIrTransformer(metroContext, hintGenerator)
+          }
+
+          // Run non-graph transforms + aggregate contribution data in a single pass
+          trace("Core transformers") {
+            moduleFragment.transform(
+              CoreTransformers(
+                metroContext,
+                this,
+                ContributionTransformer(metroContext, this),
+                membersInjectorTransformer,
+                injectedClassTransformer,
+                assistedFactoryTransformer,
+                bindingContainerTransformer,
+                contributionHintIrTransformer,
+              ),
+              FirstPassData(contributionData),
+            )
+          }
+
+          membersInjectorTransformer.lock()
+          injectedClassTransformer.lock()
+          assistedFactoryTransformer.lock()
+          bindingContainerTransformer.lock()
+          if (contributionHintIrTransformer.isInitialized()) {
+            contributionHintIrTransformer.value.lock()
           }
 
           // Second - transform the dependency graphs
-          trace("Core transformers") {
+          trace("Graph transformers") {
             val dependencyGraphTransformer =
               DependencyGraphTransformer(
                 metroContext,
                 contributionData,
                 this,
-                HintGenerator(metroContext, moduleFragment),
                 executorService,
+                membersInjectorTransformer,
+                injectedClassTransformer,
+                assistedFactoryTransformer,
+                bindingContainerTransformer,
+                contributionHintIrTransformer,
               )
             moduleFragment.transform(dependencyGraphTransformer, null)
           }

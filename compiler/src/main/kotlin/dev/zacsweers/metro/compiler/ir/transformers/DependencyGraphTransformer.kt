@@ -36,7 +36,6 @@ import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
@@ -49,7 +48,6 @@ import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.mapToSet
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -69,7 +67,6 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -117,26 +114,23 @@ internal class DependencyGraphTransformer(
   context: IrMetroContext,
   private val contributionData: IrContributionData,
   traceScope: TraceScope,
-  hintGenerator: HintGenerator,
   private val executorService: ExecutorService?,
+  private val membersInjectorTransformer: MembersInjectorTransformer,
+  private val injectedClassTransformer: InjectedClassTransformer,
+  private val assistedFactoryTransformer: AssistedFactoryTransformer,
+  private val bindingContainerTransformer: BindingContainerTransformer,
+  private val contributionHintIrTransformer: Lazy<ContributionHintIrTransformer>,
 ) :
   IrElementTransformerVoidWithContext(),
   TransformerContextAccess,
   IrMetroContext by context,
   TraceScope by traceScope {
 
-  private val membersInjectorTransformer = MembersInjectorTransformer(context)
-  private val injectedClassTransformer =
-    InjectedClassTransformer(context, membersInjectorTransformer)
-  private val assistedFactoryTransformer =
-    AssistedFactoryTransformer(context, injectedClassTransformer)
-  private val bindingContainerTransformer = BindingContainerTransformer(context)
-  private val contributionHintIrTransformer by memoize {
-    ContributionHintIrTransformer(context, hintGenerator)
-  }
-  private val bindingContainerResolver = IrBindingContainerResolver(bindingContainerTransformer)
-  private val contributionMerger = IrContributionMerger(this, contributionData)
-  private val dynamicGraphGenerator =
+  private val contributionMerger: IrContributionMerger =
+    IrContributionMerger(this, contributionData)
+  private val bindingContainerResolver: IrBindingContainerResolver =
+    IrBindingContainerResolver(bindingContainerTransformer)
+  private val dynamicGraphGenerator: IrDynamicGraphGenerator =
     IrDynamicGraphGenerator(this, bindingContainerResolver, contributionMerger)
   private val createGraphTransformer = CreateGraphTransformer(this, dynamicGraphGenerator, this)
 
@@ -184,13 +178,6 @@ internal class DependencyGraphTransformer(
       ?: super.visitExpression(expression)
   }
 
-  override fun visitSimpleFunction(declaration: IrSimpleFunction): IrStatement {
-    if (options.generateContributionHintsInFir) {
-      contributionHintIrTransformer.visitFunction(declaration)
-    }
-    return super.visitSimpleFunction(declaration)
-  }
-
   override fun visitClassNew(declaration: IrClass): IrStatement {
     val shouldNotProcess =
       declaration.isLocal ||
@@ -201,23 +188,6 @@ internal class DependencyGraphTransformer(
     }
 
     log("Reading ${declaration.kotlinFqName}")
-
-    // TODO need to better divvy these
-    // TODO can we eagerly check for known metro types and skip?
-    // Native/WASM/JS compilation hint gen can't be done in IR
-    // https://youtrack.jetbrains.com/issue/KT-75865
-    val generateHints = options.generateContributionHints && !options.generateContributionHintsInFir
-    if (generateHints) {
-      contributionHintIrTransformer.visitClass(declaration)
-    }
-    membersInjectorTransformer.visitClass(declaration)
-    injectedClassTransformer.visitClass(declaration)
-    assistedFactoryTransformer.visitClass(declaration)
-
-    if (!declaration.isCompanionObject) {
-      // Companion objects are only processed in the context of their parent classes
-      @Suppress("RETURN_VALUE_NOT_USED") bindingContainerTransformer.findContainer(declaration)
-    }
 
     val dependencyGraphAnno =
       declaration.annotationsIn(metroSymbols.dependencyGraphAnnotations).singleOrNull()

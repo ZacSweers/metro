@@ -201,6 +201,12 @@ internal inline fun reportCompilerBug(message: String): Nothing {
   error("${message.suffixIfNot(".")} $REPORT_METRO_MESSAGE ")
 }
 
+internal inline fun metroCheck(condition: Boolean, body: () -> String) {
+  if (!condition) {
+    reportCompilerBug(body())
+  }
+}
+
 internal fun StringBuilder.appendLineWithUnderlinedContent(
   content: String,
   target: String = content,

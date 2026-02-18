@@ -113,7 +113,8 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroContext by context {
+internal class BindingContainerTransformer(context: IrMetroContext) :
+  IrMetroContext by context, Lockable by Lockable() {
 
   // Thread-safe for concurrent access during parallel graph validation.
   private val references = ConcurrentHashMap<CallableId, CallableReference>()
@@ -217,6 +218,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       bindingContainerAnnotation != null || isContributedGraph || !container.isEmpty()
 
     if (shouldGenerateMetadata) {
+      checkNotLocked()
       val metroMetadata = createMetroMetadata(dependency_graph = container.toProto())
       declaration.metroMetadata = metroMetadata
     }
@@ -271,6 +273,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     generatedFactories[reference.callableId]?.let {
       return it
     }
+
+    checkNotLocked()
 
     val sourceValueParameters = reference.parameters.regularParameters
 
