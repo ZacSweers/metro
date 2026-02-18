@@ -1455,6 +1455,7 @@
 <li>Metro graph classes may not directly extend other graph classes. You should use <a href="../dependency-graphs/#graph-extensions">graph extensions</a> instead in Metro.</li>
 <li>Dagger technically allows this, but only accessors and injectors cross these boundaries.</li>
 <li>Metro prohibits scopes on <code>@Binds</code> declarations. Either use <code>@Provides</code> or move the scope to the source class type.</li>
+<li>Metro does not require generic BindingContainers (i.e. Dagger Modules) to be abstract.</li>
 </ul>
 </div>
 <div class="tabbed-block">
