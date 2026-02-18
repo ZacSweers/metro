@@ -68,6 +68,7 @@ If you want to completely restore the legacy behavior, you can disable this new 
 ### Fixes
 
 - **[FIR]**: Improve optional binding member injections detection.
+- **[FIR/IR]**: Support generic `@BindingContainer` classes included via `@Includes` with concrete type arguments (e.g., `@Includes TypedBindings<Int>`). Type parameters are now properly propagated to generated factory classes and substituted during binding resolution.
 - **[IR]**: Fix propagation of `Map` graph inputs down to graph extensions.
 - **[IR]**: Guard against identity mappings (T -> T) to prevent infinite recursion when remapping generic types.
 

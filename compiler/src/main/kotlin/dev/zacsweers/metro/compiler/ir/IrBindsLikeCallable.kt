@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
@@ -61,6 +62,15 @@ internal class BindsCallable(
     }
   }
 
+  fun remapTypes(remapper: TypeRemapper): BindsCallable {
+    return BindsCallable(
+      callableMetadata = callableMetadata,
+      source = source.remapTypes(remapper),
+      typeKey = typeKey.remapTypes(remapper),
+      rawTarget = rawTarget.remapTypes(remapper),
+    )
+  }
+
   /** Renders a [LocationDiagnostic] for this callable. */
   fun renderLocationDiagnostic(short: Boolean, parameters: Parameters): LocationDiagnostic {
     val (sourceDeclaration, isContributed) = resolveSourceDeclaration()
@@ -94,13 +104,27 @@ internal class BindsCallable(
 internal class MultibindsCallable(
   override val callableMetadata: IrCallableMetadata,
   override val typeKey: IrTypeKey,
-) : BindsLikeCallable
+) : BindsLikeCallable {
+  fun remapTypes(remapper: TypeRemapper): MultibindsCallable {
+    return MultibindsCallable(
+      callableMetadata = callableMetadata,
+      typeKey = typeKey.remapTypes(remapper),
+    )
+  }
+}
 
 @Poko
 internal class BindsOptionalOfCallable(
   override val callableMetadata: IrCallableMetadata,
   override val typeKey: IrTypeKey,
-) : BindsLikeCallable
+) : BindsLikeCallable {
+  fun remapTypes(remapper: TypeRemapper): BindsOptionalOfCallable {
+    return BindsOptionalOfCallable(
+      callableMetadata = callableMetadata,
+      typeKey = typeKey.remapTypes(remapper),
+    )
+  }
+}
 
 context(context: IrMetroContext)
 internal fun MetroSimpleFunction.toBindsCallable(isInterop: Boolean): BindsCallable {
