@@ -63,6 +63,15 @@ If you want to completely restore the legacy behavior, you can disable this new 
 
 - **[FIR]**: Disallow `_` assisted context parameter names in top-level function injection.
 - **[FIR/IR]**: When generating class and provider factories now, the compiler dedupes non-assisted, non-optional injections of the same type key (i.e. type ± qualifier). This shrinks generated code size in (uncommon) scenarios where you inject the same type multiple types.
+- **[IR]**: Significantly rework the IR pipeline.
+
+Previously, Metro's IR would run in two passes:
+
+1. Collect contribution data and transform `MetroContribution` interfaces.
+2. Run all other transformations.
+
+Now, most of Metro's core transformations are run in the first pass and this pass collects any _seen_ dependency graphs along the way. Then, the second pass _just_ processes the seen graphs in its pass (rather than visit the whole IR tree).
+
 - **[Gradle]**: Allow `DiagnosticSeverity` metro extension properties to be configurable as `metro.*` gradle properties of the same name.
 
 ### Fixes

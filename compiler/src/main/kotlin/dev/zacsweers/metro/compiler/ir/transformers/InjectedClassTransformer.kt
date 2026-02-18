@@ -77,12 +77,14 @@ internal class InjectedClassTransformer(
   // Thread-safe for concurrent access during parallel graph validation.
   private val generatedFactories = ConcurrentHashMap<ClassId, Optional<ClassFactory>>()
 
-  fun visitClass(declaration: IrClass) {
+  fun visitClass(declaration: IrClass): Boolean {
     val injectableConstructor =
       declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
-    if (injectableConstructor != null) {
-      @Suppress("RETURN_VALUE_NOT_USED")
-      getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
+    return if (injectableConstructor != null) {
+      val _ = getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
+      true
+    } else {
+      false
     }
   }
 

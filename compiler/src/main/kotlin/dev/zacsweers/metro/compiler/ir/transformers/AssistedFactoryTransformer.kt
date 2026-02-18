@@ -84,11 +84,12 @@ internal class AssistedFactoryTransformer(
 
   private val implsCache = mutableMapOf<ClassId, AssistedFactoryImpl>()
 
-  fun visitClass(declaration: IrClass) {
+  fun visitClass(declaration: IrClass): Boolean {
     val isAssistedFactory = declaration.isAnnotatedWithAny(metroSymbols.assistedFactoryAnnotations)
     if (isAssistedFactory) {
       @Suppress("RETURN_VALUE_NOT_USED") getOrGenerateImplClass(declaration)
     }
+    return isAssistedFactory
   }
 
   internal fun getOrGenerateImplClass(declaration: IrClass): AssistedFactoryImpl {

@@ -121,15 +121,21 @@ internal class CoreTransformers(
     if (generateHints) {
       contributionHintIrTransformer.value.visitClass(declaration)
     }
-    membersInjectorTransformer.visitClass(declaration)
-    injectedClassTransformer.visitClass(declaration)
-    assistedFactoryTransformer.visitClass(declaration)
-
-    // TODO if any of the above handled it, return
+    val memberTransformed = membersInjectorTransformer.visitClass(declaration)
+    val injectTransformed = injectedClassTransformer.visitClass(declaration)
+    // Need to always run member and class inject both
+    if (memberTransformed || injectTransformed) {
+      return
+    }
+    if (assistedFactoryTransformer.visitClass(declaration)) return
 
     if (!declaration.isCompanionObject) {
       // Companion objects are only processed in the context of their parent classes
-      @Suppress("RETURN_VALUE_NOT_USED") bindingContainerTransformer.findContainer(declaration)
+      bindingContainerTransformer.findContainer(declaration)?.let {
+        if (!it.isGraph) {
+          return
+        }
+      }
     }
 
     val dependencyGraphAnno =

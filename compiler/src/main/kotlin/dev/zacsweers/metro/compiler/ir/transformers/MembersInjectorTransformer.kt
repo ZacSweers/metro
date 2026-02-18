@@ -121,8 +121,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext) :
   private val generatedInjectors = ConcurrentHashMap<ClassId, Optional<MemberInjectClass>>()
   private val injectorParamsByClass = ConcurrentHashMap<ClassId, List<Parameters>>()
 
-  fun visitClass(declaration: IrClass) {
-    @Suppress("RETURN_VALUE_NOT_USED") getOrGenerateInjector(declaration)
+  fun visitClass(declaration: IrClass): Boolean {
+    return getOrGenerateInjector(declaration) != null
   }
 
   private fun requireInjector(declaration: IrClass): MemberInjectClass {
