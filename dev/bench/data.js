@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771230312749,
+  "lastUpdate": 1771397312968,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -5880,6 +5880,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21610495958020565,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.48%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "be02509b~1",
+          "message": "[before] Fix generic binding containers (#1838)",
+          "timestamp": "2026-02-18T06:05:24Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/be02509b289f309bcb4fb554549bfe75641aa2cf"
+        },
+        "date": 1771397312968,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21069702444410918,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "be02509b289f309bcb4fb554549bfe75641aa2cf",
+          "message": "[after] Fix generic binding containers (#1838)",
+          "timestamp": "2026-02-18T06:05:24Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/be02509b289f309bcb4fb554549bfe75641aa2cf"
+        },
+        "date": 1771397312969,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2244671838587708,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +6.54%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
