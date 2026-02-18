@@ -69,6 +69,7 @@ If you want to completely restore the legacy behavior, you can disable this new 
 
 - **[FIR]**: Improve optional binding member injections detection.
 - **[IR]**: Fix propagation of `Map` graph inputs down to graph extensions.
+- **[IR]**: Guard against identity mappings (T -> T) to prevent infinite recursion when remapping generic types.
 
 ### Changes
 
