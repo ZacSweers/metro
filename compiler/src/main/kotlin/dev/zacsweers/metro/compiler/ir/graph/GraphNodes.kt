@@ -29,6 +29,7 @@ import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.excludedClasses
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
@@ -323,8 +324,26 @@ internal class GraphNodes(
           if (isContainer) {
             // Include the container itself and all its transitively included containers
             val allContainers = bindingContainerResolver.resolve(sourceGraph)
-            bindingContainers += allContainers
-            resolvedBindingContainers += allContainers
+
+            // If the parameter type is a generic binding container with concrete type arguments,
+            // substitute type parameters in the container's provider factories and binds callables.
+            val substitutedContainers =
+              if (klass.typeParameters.isNotEmpty()) {
+                val remapper = klass.deepRemapperFor(parameter.typeKey.type)
+                allContainers.map { container ->
+                  if (container.ir == klass) {
+                    container.withTypeSubstitution(remapper)
+                  } else {
+                    container
+                  }
+                }
+              } else {
+                allContainers
+              }
+
+            bindingContainers += substitutedContainers
+            resolvedBindingContainers += substitutedContainers
+
             // Track which transitively included containers be managed
             for (container in allContainers) {
               if (container.ir == klass) {

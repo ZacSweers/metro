@@ -289,7 +289,12 @@ private constructor(
 
           if (canBypassFactory) {
             val providerFunction = providerFactory.function
-            val targetParams = providerFactory.parameters
+
+            // Use binding.parameters instead of providerFactory.parameters because the binding
+            // may have type-substituted parameters (e.g., for generic binding containers included
+            // with concrete type args), while the providerFactory from the transformer cache
+            // still has unsubstituted type parameters.
+            val targetParams = binding.parameters
 
             // If we need a dispatch receiver but couldn't get one, fall back to factory
             if (providerFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
