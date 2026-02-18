@@ -1652,6 +1652,18 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("GenericDaggerModuleCanBeLoaded.kt")
+      public void testGenericDaggerModuleCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerModuleCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericDaggerModuleCanBeLoadedAnvil.kt")
+      public void testGenericDaggerModuleCanBeLoadedAnvil() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerModuleCanBeLoadedAnvil.kt");
+      }
+
+      @Test
       @TestMetadata("IncludesContainersCanTransitivelyIncludeOthers.kt")
       public void testIncludesContainersCanTransitivelyIncludeOthers() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/IncludesContainersCanTransitivelyIncludeOthers.kt");

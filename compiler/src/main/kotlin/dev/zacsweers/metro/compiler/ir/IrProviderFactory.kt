@@ -141,6 +141,22 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val realDeclaration: IrFunction,
   ) : ProviderFactory() {
     override val isDaggerFactory: Boolean = true
+
+    fun withRemappedTypes(remapper: TypeRemapper): Dagger {
+      return Dagger(
+        factoryClass = factoryClass,
+        typeKey = typeKey.remapTypes(remapper),
+        contextualTypeKey = contextualTypeKey.remapType(remapper),
+        rawTypeKey = rawTypeKey.remapTypes(remapper),
+        callableId = callableId,
+        annotations = annotations,
+        parameters = parameters.remapTypes(remapper),
+        function = function,
+        isPropertyAccessor = isPropertyAccessor,
+        newInstanceName = newInstanceName,
+        realDeclaration = realDeclaration,
+      )
+    }
   }
 
   companion object {

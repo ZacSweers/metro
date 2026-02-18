@@ -905,7 +905,7 @@ internal class BindingContainer(
       providerFactories.mapValues { (_, factory) ->
         when (factory) {
           is ProviderFactory.Metro -> factory.withRemappedTypes(remapper)
-          is ProviderFactory.Dagger -> factory // Dagger factories handle their own remapping
+          is ProviderFactory.Dagger -> factory.withRemappedTypes(remapper)
         }
       }
     val remappedBindsMirror =
