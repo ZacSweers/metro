@@ -6,16 +6,18 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.ir.graph.IrDynamicGraphGenerator
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.ContributionHintIrTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.ContributionTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.CoreTransformers
+import dev.zacsweers.metro.compiler.ir.transformers.CreateGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.FirstPassData
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.ir.transformers.InjectedClassTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.MutableMetroGraphData
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
@@ -26,7 +28,9 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LookupTracker
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
 public class MetroIrGenerationExtension(
   private val messageCollector: MessageCollector,
@@ -98,20 +102,37 @@ public class MetroIrGenerationExtension(
             ContributionHintIrTransformer(metroContext, hintGenerator)
           }
 
+          val contributionMerger = IrContributionMerger(metroContext, contributionData)
+          val bindingContainerResolver = IrBindingContainerResolver(bindingContainerTransformer)
+          val syntheticGraphs = mutableListOf<GraphToProcess>()
+          val dynamicGraphGenerator =
+            IrDynamicGraphGenerator(metroContext, bindingContainerResolver, contributionMerger) {
+              impl,
+              anno ->
+              syntheticGraphs += GraphToProcess(impl, anno, impl)
+            }
+          val createGraphTransformer =
+            CreateGraphTransformer(metroContext, dynamicGraphGenerator, this)
+
+          val graphs = mutableListOf<GraphToProcess>()
+          val data = MutableMetroGraphData(contributionData, graphs, syntheticGraphs)
+
           // Run non-graph transforms + aggregate contribution data in a single pass
           trace("Core transformers") {
             moduleFragment.transform(
               CoreTransformers(
                 metroContext,
                 this,
+                data,
                 ContributionTransformer(metroContext, this),
                 membersInjectorTransformer,
                 injectedClassTransformer,
                 assistedFactoryTransformer,
                 bindingContainerTransformer,
                 contributionHintIrTransformer,
+                createGraphTransformer,
               ),
-              FirstPassData(contributionData),
+              null,
             )
           }
 
@@ -120,20 +141,23 @@ public class MetroIrGenerationExtension(
           assistedFactoryTransformer.lock()
           bindingContainerTransformer.lock()
 
+          val dependencyGraphTransformer =
+            DependencyGraphTransformer(
+              metroContext,
+              contributionData,
+              this,
+              executorService,
+              membersInjectorTransformer,
+              injectedClassTransformer,
+              assistedFactoryTransformer,
+              bindingContainerTransformer,
+            )
+
           // Second - transform the dependency graphs
           trace("Graph transformers") {
-            val dependencyGraphTransformer =
-              DependencyGraphTransformer(
-                metroContext,
-                contributionData,
-                this,
-                executorService,
-                membersInjectorTransformer,
-                injectedClassTransformer,
-                assistedFactoryTransformer,
-                bindingContainerTransformer,
-              )
-            moduleFragment.transform(dependencyGraphTransformer, null)
+            for ((declaration, anno, impl) in data.allGraphs) {
+              dependencyGraphTransformer.processGraph(declaration, anno, impl)
+            }
           }
         }
       }
@@ -143,3 +167,9 @@ public class MetroIrGenerationExtension(
     }
   }
 }
+
+internal data class GraphToProcess(
+  val declaration: IrClass,
+  val dependencyGraphAnno: IrConstructorCall,
+  val graphImpl: IrClass,
+)
