@@ -23,6 +23,8 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -56,8 +58,22 @@ public class MetroIrGenerationExtension(
 
     context.traceDriver.use {
       if (options.parallelMetroThreads > 0) {
-        Executors.newFixedThreadPool(options.parallelMetroThreads).use { executorService ->
+        val threadCount = AtomicInteger(0)
+        val executorService =
+          Executors.newFixedThreadPool(options.parallelMetroThreads) { runnable ->
+            Thread(runnable).apply {
+              isDaemon = true
+              name = "metro-thread-${threadCount.incrementAndGet()}"
+            }
+          }
+        try {
           context.generateInner(moduleFragment, executorService)
+        } finally {
+          // TODO on JDK 19+ just use close()
+          executorService.shutdown()
+          if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+            executorService.shutdownNow()
+          }
         }
       } else {
         context.generateInner(moduleFragment, null)
