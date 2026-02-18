@@ -119,9 +119,6 @@ public class MetroIrGenerationExtension(
           injectedClassTransformer.lock()
           assistedFactoryTransformer.lock()
           bindingContainerTransformer.lock()
-          if (contributionHintIrTransformer.isInitialized()) {
-            contributionHintIrTransformer.value.lock()
-          }
 
           // Second - transform the dependency graphs
           trace("Graph transformers") {
@@ -135,7 +132,6 @@ public class MetroIrGenerationExtension(
                 injectedClassTransformer,
                 assistedFactoryTransformer,
                 bindingContainerTransformer,
-                contributionHintIrTransformer,
               )
             moduleFragment.transform(dependencyGraphTransformer, null)
           }

@@ -119,7 +119,6 @@ internal class DependencyGraphTransformer(
   private val injectedClassTransformer: InjectedClassTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val bindingContainerTransformer: BindingContainerTransformer,
-  private val contributionHintIrTransformer: Lazy<ContributionHintIrTransformer>,
 ) :
   IrElementTransformerVoidWithContext(),
   TransformerContextAccess,
