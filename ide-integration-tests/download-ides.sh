@@ -238,14 +238,14 @@ main() {
     case "$product" in
       AS)
         info=$(get_as_download_info "$version" "${filename_prefix:-}") || {
-          ((already_cached++))
+          already_cached=$((already_cached + 1))
           $QUIET || echo -e "  ${DIM}✓ Android Studio $version (cached)${RESET}"
           continue
         }
         ;;
       IU)
         info=$(get_iu_download_info "$version") || {
-          ((already_cached++))
+          already_cached=$((already_cached + 1))
           $QUIET || echo -e "  ${DIM}✓ IntelliJ IDEA $version (cached)${RESET}"
           continue
         }
