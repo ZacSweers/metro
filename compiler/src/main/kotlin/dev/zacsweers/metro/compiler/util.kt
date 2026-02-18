@@ -33,7 +33,7 @@ internal const val LOG_PREFIX = "[METRO]"
 internal const val REPORT_METRO_MESSAGE =
   "This is possibly a bug in the Metro compiler, please report it with details and/or a reproducer to https://github.com/zacsweers/metro."
 
-internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.NONE, initializer)
+internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.PUBLICATION, initializer)
 
 internal inline fun <reified T : Any> Any.expectAs(): T {
   contract { returns() implies (this@expectAs is T) }
