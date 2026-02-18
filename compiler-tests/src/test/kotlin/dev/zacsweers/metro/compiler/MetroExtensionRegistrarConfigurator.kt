@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.api.GenerateBindsContributionExtension
+import dev.zacsweers.metro.compiler.api.GenerateBindsContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
@@ -181,12 +183,14 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           listOf(
             GenerateImplExtension.Factory().create(session, options),
             GenerateProvidesContributionExtension.Factory().create(session, options),
+            GenerateBindsContributionExtension.Factory().create(session, options),
           )
         },
       ) { session, options ->
         listOf(
           GenerateImplContributionExtension.Factory().create(session, options),
           GenerateProvidesContributionMetroExtension.Factory().create(session, options),
+          GenerateBindsContributionMetroExtension.Factory().create(session, options),
         )
       }
     )
