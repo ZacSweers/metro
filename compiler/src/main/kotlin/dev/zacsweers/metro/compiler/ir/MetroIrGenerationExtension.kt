@@ -33,6 +33,7 @@ import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.name.ClassId
 
 public class MetroIrGenerationExtension(
   private val messageCollector: MessageCollector,
@@ -125,7 +126,7 @@ public class MetroIrGenerationExtension(
             IrDynamicGraphGenerator(metroContext, bindingContainerResolver, contributionMerger) {
               impl,
               anno ->
-              syntheticGraphs += GraphToProcess(impl, anno, impl)
+              syntheticGraphs += GraphToProcess(impl, anno, impl, anno.allScopes())
             }
           val createGraphTransformer =
             CreateGraphTransformer(metroContext, dynamicGraphGenerator, this)
@@ -156,6 +157,23 @@ public class MetroIrGenerationExtension(
           injectedClassTransformer.lock()
           assistedFactoryTransformer.lock()
           bindingContainerTransformer.lock()
+
+          // Eagerly populate contribution caches for all known graph scopes
+          // so that lookups are O(1) during (possibly parallel) graph validation.
+          // Extension scopes not known here are lazily populated via ConcurrentHashMap.
+          @Suppress("RETURN_VALUE_NOT_USED")
+          trace("Populate contribution caches") {
+            val seenScopes = mutableSetOf<ClassId>()
+            for (graph in data.allGraphs) {
+              for (scope in graph.scopes) {
+                if (seenScopes.add(scope)) {
+                  contributionData.getContributions(scope, graph.declaration)
+                  contributionData.getBindingContainerContributions(scope, graph.declaration)
+                }
+              }
+            }
+          }
+          contributionData.lock()
 
           val dependencyGraphTransformer =
             DependencyGraphTransformer(
@@ -188,4 +206,5 @@ internal data class GraphToProcess(
   val declaration: IrClass,
   val dependencyGraphAnno: IrConstructorCall,
   val graphImpl: IrClass,
+  val scopes: Set<ClassId>,
 )

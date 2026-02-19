@@ -9,7 +9,7 @@ import dev.zacsweers.metro.compiler.metroCheck
  * those transformers just report their aggregated data in some way and hide the ability for graph
  * transformation to actually try to run their transformation code.
  */
-internal sealed interface Lockable {
+internal interface Lockable {
   fun lock()
 
   fun checkNotLocked()

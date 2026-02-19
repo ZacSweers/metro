@@ -7,12 +7,14 @@ import androidx.collection.MutableScatterSet
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.ir.transformers.Lockable
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -29,24 +31,29 @@ import org.jetbrains.kotlin.name.ClassId
 
 private typealias Scope = ClassId
 
-internal class IrContributionData(private val metroContext: IrMetroContext) {
+internal class IrContributionData(private val metroContext: IrMetroContext) :
+  Lockable by Lockable() {
 
   private val contributions = MutableScatterMap<Scope, MutableScatterSet<IrType>>()
-  private val externalContributions = MutableScatterMap<Scope, Set<IrType>>()
-  private val scopeHintCache = MutableScatterMap<Scope, CallableId>()
+  // Lazily populated caches use ConcurrentHashMap for thread-safe access during parallel
+  // graph extension validation. These are not structural mutations (just caching lookups),
+  // so they remain writable after lock().
+  private val externalContributions = ConcurrentHashMap<Scope, Set<IrType>>()
+  private val scopeHintCache = ConcurrentHashMap<Scope, CallableId>()
 
   private fun scopeHintFor(scope: Scope): CallableId =
     scopeHintCache.getOrPut(scope) { Symbols.CallableIds.scopeHint(scope) }
 
   private val bindingContainerContributions = MutableScatterMap<Scope, MutableScatterSet<IrClass>>()
-  private val externalBindingContainerContributions = MutableScatterMap<Scope, Set<IrClass>>()
+  private val externalBindingContainerContributions = ConcurrentHashMap<Scope, Set<IrClass>>()
 
-  // Cache for findVisibleContributionClassesForScopeInHints results
+  // Cache for findVisibleContributionClassesForScopeInHints results.
   // This avoids redundant lookups when both findExternalContributions and
-  // findExternalBindingContainerContributions are called for the same scope
-  private val visibleContributionClassesCache = MutableScatterMap<Scope, Set<IrClass>>()
+  // findExternalBindingContainerContributions are called for the same scope.
+  private val visibleContributionClassesCache = ConcurrentHashMap<Scope, Set<IrClass>>()
 
   fun addContribution(scope: Scope, contribution: IrType) {
+    checkNotLocked()
     contributions.getAndAdd(scope, contribution)
   }
 
@@ -57,6 +64,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   }
 
   fun addBindingContainerContribution(scope: Scope, contribution: IrClass) {
+    checkNotLocked()
     bindingContainerContributions.getAndAdd(scope, contribution)
   }
 

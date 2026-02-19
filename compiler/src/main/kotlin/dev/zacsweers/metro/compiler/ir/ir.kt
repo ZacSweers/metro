@@ -870,6 +870,11 @@ internal fun IrConstructorCall.scopeClassOrNull(): IrClass? {
     ?.rawTypeOrNull()
 }
 
+internal fun IrConstructorCall.allScopes(): Set<ClassId> = buildSet {
+  scopeOrNull()?.let { add(it) }
+  addAll(additionalScopes().mapToClassIds())
+}
+
 context(context: IrMetroContext)
 internal fun IrClass.originClassId(): ClassId? {
   return annotationsIn(context.metroSymbols.classIds.originAnnotations)

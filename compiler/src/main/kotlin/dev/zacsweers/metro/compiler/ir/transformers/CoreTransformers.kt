@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.GraphToProcess
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.allScopes
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
@@ -153,7 +154,8 @@ internal class CoreTransformers(
           )
       }
 
-    data.graphs += GraphToProcess(declaration, dependencyGraphAnno, graphImpl)
+    data.graphs +=
+      GraphToProcess(declaration, dependencyGraphAnno, graphImpl, dependencyGraphAnno.allScopes())
 
     return
   }
