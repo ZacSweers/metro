@@ -11,13 +11,15 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
+private const val POOL_SIZE = 4
+
 class ParallelMapTest {
 
   private lateinit var executor: ExecutorService
 
   @Before
   fun setUp() {
-    executor = Executors.newFixedThreadPool(4)
+    executor = Executors.newFixedThreadPool(POOL_SIZE)
   }
 
   @After
@@ -27,28 +29,28 @@ class ParallelMapTest {
 
   @Test
   fun `empty list returns empty`() {
-    val result = emptyList<Int>().parallelMap(executor) { it * 2 }
+    val result = emptyList<Int>().parallelMap(executor, POOL_SIZE) { it * 2 }
     assertEquals(emptyList(), result)
   }
 
   @Test
   fun `single element list does not use executor`() {
     // Single element should short-circuit to regular map
-    val result = listOf(42).parallelMap(executor) { it * 2 }
+    val result = listOf(42).parallelMap(executor, POOL_SIZE) { it * 2 }
     assertEquals(listOf(84), result)
   }
 
   @Test
   fun `preserves order`() {
     val input = (1..100).toList()
-    val result = input.parallelMap(executor) { it * 2 }
+    val result = input.parallelMap(executor, POOL_SIZE) { it * 2 }
     assertEquals(input.map { it * 2 }, result)
   }
 
   @Test
   fun `all items are transformed`() {
     val input = (1..50).toList()
-    val result = input.parallelMap(executor) { it.toString() }
+    val result = input.parallelMap(executor, POOL_SIZE) { it.toString() }
     assertEquals(50, result.size)
     assertEquals(input.map { it.toString() }, result)
   }
@@ -59,7 +61,7 @@ class ParallelMapTest {
     val threadsUsed = ConcurrentHashMap.newKeySet<Thread>()
     val input = (1..20).toList()
 
-    input.parallelMap(executor) {
+    input.parallelMap(executor, POOL_SIZE) {
       threadsUsed.add(Thread.currentThread())
       Thread.sleep(10)
       it
@@ -73,7 +75,7 @@ class ParallelMapTest {
     val threadsUsed = ConcurrentHashMap.newKeySet<Thread>()
     val input = (1..20).toList()
 
-    input.parallelMap(executor) {
+    input.parallelMap(executor, POOL_SIZE) {
       threadsUsed.add(Thread.currentThread())
       Thread.sleep(50)
       it
@@ -87,7 +89,7 @@ class ParallelMapTest {
     val smallExecutor = Executors.newFixedThreadPool(2)
     try {
       val input = (1..100).toList()
-      val result = input.parallelMap(smallExecutor) { it * 3 }
+      val result = input.parallelMap(smallExecutor, POOL_SIZE) { it * 3 }
       assertEquals(input.map { it * 3 }, result)
     } finally {
       smallExecutor.shutdown()
@@ -98,7 +100,7 @@ class ParallelMapTest {
   fun `transform exceptions propagate`() {
     val input = listOf(1, 2, 3, 4, 5)
     try {
-      input.parallelMap(executor) {
+      input.parallelMap(executor, POOL_SIZE) {
         if (it == 3) throw IllegalStateException("boom")
         it
       }
@@ -117,7 +119,7 @@ class ParallelMapTest {
     val input = listOf(1, 2)
 
     val result =
-      input.parallelMap(executor) {
+      input.parallelMap(executor, POOL_SIZE) {
         threadsUsed.add(Thread.currentThread())
         Thread.sleep(50)
         it * 10
@@ -133,7 +135,7 @@ class ParallelMapTest {
     val processedBy = ConcurrentHashMap<Int, String>()
     val input = (1..40).toList()
 
-    input.parallelMap(executor) {
+    input.parallelMap(executor, POOL_SIZE) {
       processedBy[it] = Thread.currentThread().name
       Thread.sleep(5)
       it
