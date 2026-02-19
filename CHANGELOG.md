@@ -76,6 +76,7 @@ If you want to completely restore the legacy behavior, you can disable this new 
 ### Changes
 
 - `enableGraphSharding` is now enabled by default. Note this only kicks in (by default) for graphs with 2000+ bindings by default.
+- Mentioned in enhancements, but worth reiterating that the underlying concurrency primitives have changed in the runtime but should be an improvement as they now use more modern reentrant locks.
 
 ### Contributors
 
