@@ -116,12 +116,17 @@ internal inline fun <K, V> MutableScatterMap<K, MutableScatterSet<V>>.getAndAdd(
  * threads + caller) grab items from a shared index until none remain, so the caller participates in
  * the work throughout rather than blocking idle after a single item. Results are returned in the
  * same order as the input.
+ *
+ * @param parallelism caps the number of worker tasks submitted to the executor. Without this, we'd
+ *   submit `size - 1` tasks even if the pool only has a few threads — most would just exit
+ *   immediately but the queueing overhead adds up for large lists.
  */
 internal fun <T, R> List<T>.parallelMap(
   executorService: ExecutorService,
+  parallelism: Int,
   transform: (T) -> R,
 ): List<R> {
-  if (size <= 1) return map(transform)
+  if (size <= 1 || parallelism <= 1) return map(transform)
 
   val items = this
   val results = arrayOfNulls<Any?>(items.size)
@@ -136,9 +141,9 @@ internal fun <T, R> List<T>.parallelMap(
     }
   }
 
-  // Submit workers to the pool — pool size limits actual concurrency,
-  // extra submissions just exit immediately when they find no remaining work
-  val futures = (1 until items.size).map { executorService.submit(::processWork) }
+  // Cap worker submissions: one per pool thread (minus the caller), or one per remaining item
+  val workers = minOf(parallelism - 1, items.size - 1)
+  val futures = (0 until workers).map { executorService.submit(::processWork) }
 
   // Caller also participates as a worker
   processWork()

@@ -104,6 +104,7 @@ internal class DependencyGraphTransformer(
   private val contributionData: IrContributionData,
   traceScope: TraceScope,
   private val executorService: ExecutorService?,
+  private val parallelism: Int,
   private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
 ) : IrMetroContext by context, TraceScope by traceScope {
@@ -357,7 +358,7 @@ internal class DependencyGraphTransformer(
         if (executorService != null && node.graphExtensions.size > 1) {
           // Parallel mode: create snapshot and validate children concurrently
           val snapshot = localParentContext.snapshot()
-          node.graphExtensions.entries.toList().parallelMap(executorService) {
+          node.graphExtensions.entries.toList().parallelMap(executorService, parallelism) {
             (contributedGraphKey, accessors) ->
             val collector = UsedKeyCollector()
             validateExtension(
