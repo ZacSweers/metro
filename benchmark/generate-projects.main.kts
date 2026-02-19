@@ -70,6 +70,15 @@ class GenerateProjectsCommand : CliktCommand() {
       )
       .flag(default = false)
 
+  private val parallelThreads by
+    option(
+        "--parallel-threads",
+        help =
+          "Number of threads for parallel graph validation (Metro mode only). 0 (default) disables parallelism.",
+      )
+      .int()
+      .default(0)
+
   override fun run() {
     if (multiplatform && buildMode != BuildMode.METRO) {
       echo("Error: --multiplatform flag is only supported with Metro mode", err = true)
@@ -302,6 +311,9 @@ class GenerateProjectsCommand : CliktCommand() {
       echo("Graph sharding: ${if (enableSharding) "enabled" else "disabled"}")
       if (enableSwitchingProviders) {
         echo("Switching providers: enabled (deferred class loading)")
+      }
+      if (parallelThreads > 0) {
+        echo("Parallel threads: $parallelThreads")
       }
     }
 
@@ -1155,6 +1167,7 @@ class PlainDataProcessor {
       mutableListOf<String>().apply {
         if (enableSharding) add("  enableGraphSharding.set(true)")
         if (enableSwitchingProviders) add("  enableSwitchingProviders.set(true)")
+        if (parallelThreads > 0) add("  parallelThreads.set($parallelThreads)")
         if (enableReports)
           add("  reportsDestination.set(layout.buildDirectory.dir(\"metro-reports\"))")
       }

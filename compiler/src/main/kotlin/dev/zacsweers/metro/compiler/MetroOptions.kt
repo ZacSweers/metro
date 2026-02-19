@@ -850,11 +850,11 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   ),
   PARALLEL_METRO_THREADS(
     RawMetroOption(
-      name = "parallel-metro-threads",
+      name = "parallel-threads",
       defaultValue = 0,
       valueDescription = "<count>",
       description =
-        "Number of threads to use for parallel graph extension validation. 0 (default) disables parallelism.",
+        "Number of threads to use for parallel graph validation. 0 (default) disables parallelism.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.toInt() },
