@@ -501,6 +501,56 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#build-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build Systems
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Build Systems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gradle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bazel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bazel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#amper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Amper
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ide-support" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1462,6 +1512,56 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#build-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build Systems
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Build Systems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gradle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bazel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bazel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#amper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Amper
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ide-support" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1517,14 +1617,17 @@
 
 
 <h1 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h1>
-<p>Metro is primarily applied via its companion Gradle plugin.</p>
+<h2 id="build-systems">Build Systems<a class="headerlink" href="#build-systems" title="Permanent link">&para;</a></h2>
+<p>Metro is primarily applied via its companion <strong>Gradle</strong> plugin.</p>
+<p>If applying in other build systems, apply it however that build system conventionally applies Kotlin compiler plugins.</p>
+<h3 id="gradle">Gradle<a class="headerlink" href="#gradle" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="n">plugins</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">kotlin</span><span class="p">(</span><span class="s">&quot;multiplatform&quot;</span><span class="p">)</span><span class="w"> </span><span class="c1">// or jvm, android, etc</span>
 <span class="w">  </span><span class="n">id</span><span class="p">(</span><span class="s">&quot;dev.zacsweers.metro&quot;</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>…and that’s it! This will add metro’s runtime dependencies and do all the necessary compiler plugin wiring.</p>
-<p>If applying in other build systems, apply it however that build system conventionally applies Kotlin compiler plugins. For example with <a href="https://github.com/bazelbuild/rules_kotlin?tab=readme-ov-file#kotlin-compiler-plugins">Bazel</a>:</p>
+<h3 id="bazel"><a href="https://github.com/bazelbuild/rules_kotlin?tab=readme-ov-file#kotlin-compiler-plugins">Bazel</a><a class="headerlink" href="#bazel" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="n">load</span><span class="p">(</span><span class="s2">&quot;@rules_kotlin//kotlin:core.bzl&quot;</span><span class="p">,</span> <span class="s2">&quot;kt_compiler_plugin&quot;</span><span class="p">)</span>
 <span class="n">load</span><span class="p">(</span><span class="s2">&quot;@rules_kotlin//kotlin:jvm.bzl&quot;</span><span class="p">,</span> <span class="s2">&quot;kt_jvm_library&quot;</span><span class="p">)</span>
 
@@ -1535,6 +1638,7 @@
     <span class="n">options</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
         <span class="s2">&quot;debug&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span><span class="p">,</span>
+        <span class="c1"># ...</span>
     <span class="p">},</span>
     <span class="n">deps</span> <span class="o">=</span> <span class="p">[</span>
         <span class="s2">&quot;@maven//:dev_zacsweers_metro_compiler&quot;</span><span class="p">,</span>
@@ -1552,6 +1656,19 @@
         <span class="s2">&quot;@maven//:dev_zacsweers_metro_runtime_jvm&quot;</span><span class="p">,</span>
     <span class="p">],</span>
 <span class="p">)</span>
+</code></pre></div>
+<h3 id="amper">Amper<a class="headerlink" href="#amper" title="Permanent link">&para;</a></h3>
+<p>Using the compiler plugin options support in <a href="https://youtrack.jetbrains.com/issue/AMPER-5095">AMPER-5095</a>.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">compilerPlugins</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dev.zacsweers.metro.compiler</span>
+<span class="w">    </span><span class="nt">dependency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$libs.metro.compiler</span>
+<span class="w">    </span><span class="nt">options</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">debug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">      </span><span class="c1"># ...</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Version Catalog</span>
+<span class="n">metro-compiler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">module</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;dev.zacsweers.metro:compiler&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">version</span><span class="p">.</span><span class="n">ref</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;metro&quot;</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div>
 <h2 id="ide-support">IDE Support<a class="headerlink" href="#ide-support" title="Permanent link">&para;</a></h2>
 <p>The K2 Kotlin IntelliJ plugin supports running third party FIR plugins in the IDE, but this feature is hidden behind a flag. Some Metro features can take advantage of this, namely diagnostic reporting directly in the IDE and some opt-in features to see generated declarations. </p>
