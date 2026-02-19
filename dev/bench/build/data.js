@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771397313110,
+  "lastUpdate": 1771485365239,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -5936,6 +5936,62 @@ window.BENCHMARK_DATA = {
             "value": 31850.841999999997,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.13%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f240ce65~1",
+          "message": "[before] Remove atomicfu from runtime (#1847)",
+          "timestamp": "2026-02-19T01:29:46-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f240ce65702273800e2fedc759a3b60640efd05a"
+        },
+        "date": 1771485365239,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31634.329999999998,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f240ce65702273800e2fedc759a3b60640efd05a",
+          "message": "[after] Remove atomicfu from runtime (#1847)",
+          "timestamp": "2026-02-19T01:29:46-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f240ce65702273800e2fedc759a3b60640efd05a"
+        },
+        "date": 1771485365240,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 30469.764000000003,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.68%"
           }
         ]
       }
