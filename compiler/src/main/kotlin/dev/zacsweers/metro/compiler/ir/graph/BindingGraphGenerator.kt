@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
@@ -27,8 +28,6 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
-import dev.zacsweers.metro.compiler.ir.transformers.InjectedClassTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
@@ -48,9 +47,7 @@ internal class BindingGraphGenerator(
   metroContext: IrMetroContext,
   traceScope: TraceScope,
   private val node: GraphNode.Local,
-  // TODO preprocess these instead and just lookup via irAttribute
-  private val injectedClassTransformer: InjectedClassTransformer,
-  private val membersInjectorTransformer: MembersInjectorTransformer,
+  private val metroDeclarations: MetroDeclarations,
   private val contributionData: IrContributionData,
   private val parentContext: ParentContextReader?,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
@@ -67,13 +64,13 @@ internal class BindingGraphGenerator(
         metroContext = metroContext,
         sourceGraph = node.sourceGraph,
         findClassFactory = { clazz ->
-          injectedClassTransformer.getOrGenerateFactory(
+          metroDeclarations.findClassFactory(
             clazz,
             previouslyFoundConstructor = null,
             doNotErrorOnMissing = true,
           )
         },
-        findMemberInjectors = membersInjectorTransformer::getOrGenerateAllInjectorsFor,
+        findMemberInjectors = metroDeclarations::findAllInjectorsFor,
         parentContext = parentContext,
       )
 

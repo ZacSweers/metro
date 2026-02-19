@@ -175,16 +175,21 @@ public class MetroIrGenerationExtension(
           }
           contributionData.lock()
 
+          val metroDeclarations =
+            DefaultMetroDeclarations(
+              bindingContainerTransformer,
+              injectedClassTransformer,
+              membersInjectorTransformer,
+              assistedFactoryTransformer,
+            )
+
           val dependencyGraphTransformer =
             DependencyGraphTransformer(
               metroContext,
               contributionData,
               this,
               executorService,
-              membersInjectorTransformer,
-              injectedClassTransformer,
-              assistedFactoryTransformer,
-              bindingContainerTransformer,
+              metroDeclarations,
               bindingContainerResolver,
             )
 

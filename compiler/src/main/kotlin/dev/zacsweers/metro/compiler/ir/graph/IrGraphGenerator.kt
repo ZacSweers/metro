@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -46,9 +47,6 @@ import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
-import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
@@ -116,10 +114,7 @@ internal class IrGraphGenerator(
   private val graphClass: IrClass,
   private val bindingGraph: IrBindingGraph,
   private val sealResult: IrBindingGraph.BindingGraphResult,
-  // TODO move these accesses to irAttributes
-  private val bindingContainerTransformer: BindingContainerTransformer,
-  private val membersInjectorTransformer: MembersInjectorTransformer,
-  private val assistedFactoryTransformer: AssistedFactoryTransformer,
+  private val metroDeclarations: MetroDeclarations,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   /** Parent graph's binding property context for hierarchical lookup. Null for root graphs. */
   parentBindingContext: BindingPropertyContext?,
@@ -240,9 +235,7 @@ internal class IrGraphGenerator(
           bindingPropertyContext = bindingPropertyContext,
           ancestorGraphProperties = ancestorGraphProperties,
           bindingGraph = bindingGraph,
-          bindingContainerTransformer = bindingContainerTransformer,
-          membersInjectorTransformer = membersInjectorTransformer,
-          assistedFactoryTransformer = assistedFactoryTransformer,
+          metroDeclarations = metroDeclarations,
           graphExtensionGenerator = graphExtensionGenerator,
         )
 
@@ -1466,7 +1459,7 @@ internal class IrGraphGenerator(
             // TODO reuse, consolidate calling code with how we implement this in
             //  constructor inject code gen
             // val injectors =
-            // membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
+            // metroDeclarations.findAllInjectorsFor(declaration)
             // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten()
             // }
 
@@ -1490,8 +1483,7 @@ internal class IrGraphGenerator(
               targetClass.allSupertypesSequence(excludeSelf = false, excludeAny = true)) {
 
               val clazz = type.rawType()
-              val generatedInjector =
-                membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
+              val generatedInjector = metroDeclarations.findInjector(clazz) ?: continue
               for ((function, unmappedParams) in generatedInjector.declaredInjectFunctions) {
                 val parameters =
                   if (remapper != null) {

@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
@@ -103,10 +104,7 @@ internal class DependencyGraphTransformer(
   private val contributionData: IrContributionData,
   traceScope: TraceScope,
   private val executorService: ExecutorService?,
-  private val membersInjectorTransformer: MembersInjectorTransformer,
-  private val injectedClassTransformer: InjectedClassTransformer,
-  private val assistedFactoryTransformer: AssistedFactoryTransformer,
-  private val bindingContainerTransformer: BindingContainerTransformer,
+  private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
 ) : IrMetroContext by context, TraceScope by traceScope {
 
@@ -114,7 +112,7 @@ internal class DependencyGraphTransformer(
     IrContributionMerger(this, contributionData)
 
   private val graphNodes =
-    GraphNodes(this, bindingContainerTransformer, bindingContainerResolver, contributionMerger)
+    GraphNodes(this, metroDeclarations, bindingContainerResolver, contributionMerger)
 
   internal fun processGraph(
     dependencyGraphDeclaration: IrClass,
@@ -230,8 +228,7 @@ internal class DependencyGraphTransformer(
             metroContext,
             this,
             node,
-            injectedClassTransformer,
-            membersInjectorTransformer,
+            metroDeclarations,
             contributionData,
             parentContextReader,
           )
@@ -576,9 +573,7 @@ internal class DependencyGraphTransformer(
               graphClass = metroGraph,
               bindingGraph = validationResult.bindingGraph,
               sealResult = validationResult.sealResult,
-              bindingContainerTransformer = bindingContainerTransformer,
-              membersInjectorTransformer = membersInjectorTransformer,
-              assistedFactoryTransformer = assistedFactoryTransformer,
+              metroDeclarations = metroDeclarations,
               graphExtensionGenerator = validationResult.graphExtensionGenerator,
               parentBindingContext = parentBindingContext,
             )
