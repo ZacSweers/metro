@@ -1,31 +1,21 @@
-// Similar to https://github.com/ZacSweers/metro/issues/1303
-/**
- * Covers the case where debug report file names exceed the file name limit when we have a deeply nested graph, e.g.
- * Caused by: java.nio.file.FileSystemException: /private/var/folders/wv/bkgjhyrj3l5f8pwkh_kfds000000gn/T/dev.zacsweers.metro.compiler.ReportsTestGeneratedtestDeeplyNestedGraphsHandledWhenWritingDebugReports/metro/reports/keys-populated/ProductDevAppDependencyGraph_Impl_ProductDevLoggedInComponentImpl_ProductDevMainActivityComponentImpl_EditEstimateConfigureItemScopeComponentImpl_ConfigureItemComponentImpl_ProductConfigureItemDetailScreenComponentImpl_ConfigureItemConfirmationScreenComponentImpl.txt: File name too long
- * 	< ... java internals stacktrace ... >
- * 	at dev.zacsweers.metro.compiler.ir.IrMetroContextKt.writeDiagnostic(IrMetroContext.kt:293)
- *
- * 	In this example, the nested class name is already 264 characters before factoring in any unique diagnostic report key or package name:
- * 	ProductDevAppDependencyGraph_Impl_ProductDevLoggedInComponentImpl_ProductDevMainActivityComponentImpl_EditEstimateConfigureItemScopeComponentImpl_ConfigureItemComponentImpl_ProductConfigureItemDetailScreenComponentImpl_ConfigureItemConfirmationScreenComponentImpl
- */
+// This test is complementary to the [DeeplyNestedGraphsAreHandledWhenGeneratingReports] box test,
+// which verifies a sufficiently nested graph structure does not run into 'file name too long'
+// exceptions for the report files. We are not able to test the same behavior here because defining
+// a sufficiently nested graph in a dump test results in a 'file name too long' exception for an
+// equivalent '.class' file reference in the generated Java [ReportsTestGenerated] file.
+
 // CHECK_REPORTS: keys-populated/ProductDevAppDependencyGraph/Impl
 // CHECK_REPORTS: keys-populated/ProductDevAppDependencyGraph/Impl/ProductDevLoggedInComponentImpl
 // CHECK_REPORTS: keys-populated/ProductDevAppDependencyGraph/Impl/ProductDevLoggedInComponentImpl/ProductDevMainActivityComponentImpl
 // CHECK_REPORTS: keys-populated/ProductDevAppDependencyGraph/Impl/ProductDevLoggedInComponentImpl/ProductDevMainActivityComponentImpl/EditEstimateConfigureItemScopeComponentImpl
 // CHECK_REPORTS: keys-populated/ProductDevAppDependencyGraph/Impl/ProductDevLoggedInComponentImpl/ProductDevMainActivityComponentImpl/EditEstimateConfigureItemScopeComponentImpl/ConfigureItemComponentImpl
 // CHECK_REPORTS: keys-populated/ProductDevAppDependencyGraph/Impl/ProductDevLoggedInComponentImpl/ProductDevMainActivityComponentImpl/EditEstimateConfigureItemScopeComponentImpl/ConfigureItemComponentImpl/ProductConfigureItemDetailScreenComponentImpl
-// CHECK_REPORTS: keys-populated/ProductDevAppDependencyGraph/Impl/ProductDevLoggedInComponentImpl/ProductDevMainActivityComponentImpl/EditEstimateConfigureItemScopeComponentImpl/ConfigureItemComponentImpl/ProductConfigureItemDetailScreenComponentImpl/ConfigureItemConfirmationScreenComponentImpl
 
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.SingleIn
 
 @GraphExtension
-interface ConfigureItemConfirmationScreenComponent
-
-@GraphExtension
-interface ProductConfigureItemDetailScreenComponent {
-  val child: ConfigureItemConfirmationScreenComponent
-}
+interface ProductConfigureItemDetailScreenComponent
 
 @GraphExtension
 interface ConfigureItemComponent {
