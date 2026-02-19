@@ -15,6 +15,7 @@
 **/IntoMap.kt
 **/IntoSet.kt
 **/KotlinToolingVersion.kt
+**/Lock.kt
 **/LongKey.kt
 **/MapFactory.kt
 **/MapKey.kt

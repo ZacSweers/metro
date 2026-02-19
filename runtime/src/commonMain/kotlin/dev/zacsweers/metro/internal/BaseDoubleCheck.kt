@@ -17,23 +17,19 @@ package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
 import kotlin.concurrent.Volatile
-import kotlinx.atomicfu.locks.SynchronizedObject
-import kotlinx.atomicfu.locks.synchronized
 
-private val UNINITIALIZED = Any()
+internal val UNINITIALIZED = Any()
 
 /**
- * A [Lazy] and [Provider] implementation that memoizes the value returned from a [provider]. The
- * [provider] instance is released after it's called.
+ * A [Lazy] and [Provider] implementation that memoizes the value returned from a delegate
+ * [Provider]. The provider instance is released after it's called.
  *
- * Modification notes:
- * - Some semantics from the kotlin stdlib's synchronized [Lazy] impl are ported to here.
- * - Uses AtomicFu's [synchronized] + [SynchronizedObject] APIs for KMP support.
- * - The [_value] will eagerly return if initialized
- * - [_value] is [@Volatile][Volatile]
+ * Platform-specific synchronization is provided by the [Lock] superclass (`ReentrantLock` on JVM,
+ * reentrant spinlock on native, no-op on JS/Wasm).
+ *
+ * Ported from Dagger's `DoubleCheck` with modifications for KMP support.
  */
-public abstract class BaseDoubleCheck<T>(provider: Provider<T>) :
-  SynchronizedObject(), Provider<T>, Lazy<T> {
+public abstract class BaseDoubleCheck<T>(provider: Provider<T>) : Lock(), Provider<T>, Lazy<T> {
   private var provider: Provider<T>? = provider
   @Volatile private var _value: Any? = UNINITIALIZED
 
@@ -45,7 +41,7 @@ public abstract class BaseDoubleCheck<T>(provider: Provider<T>) :
         return result1 as T
       }
 
-      return synchronized(this) {
+      return locked(this) {
         val result2 = _value
         if (result2 !== UNINITIALIZED) {
           @Suppress("UNCHECKED_CAST") (result2 as T)
@@ -63,19 +59,18 @@ public abstract class BaseDoubleCheck<T>(provider: Provider<T>) :
   override fun isInitialized(): Boolean = _value !== UNINITIALIZED
 
   override fun invoke(): T = value
+}
 
-  private companion object {
-    /**
-     * Checks to see if creating the new instance has resulted in a recursive call. If it has, and
-     * the new instance is the same as the current instance, return the instance. However, if the
-     * new instance differs from the current instance, an [IllegalStateException] is thrown.
-     */
-    private fun reentrantCheck(currentInstance: Any?, newInstance: Any?): Any? {
-      val isReentrant = currentInstance != UNINITIALIZED
-      check(!isReentrant || currentInstance == newInstance) {
-        "Scoped provider was invoked recursively returning different results: $currentInstance & $newInstance. This is likely due to a circular dependency."
-      }
-      return newInstance
-    }
+/**
+ * Checks to see if creating the new instance has resulted in a recursive call. If it has, and the
+ * new instance is the same as the current instance, return the instance. However, if the new
+ * instance differs from the current instance, an [IllegalStateException] is thrown.
+ */
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun reentrantCheck(currentInstance: Any?, newInstance: Any?): Any? {
+  val isReentrant = currentInstance !== UNINITIALIZED
+  check(!isReentrant || currentInstance == newInstance) {
+    "Scoped provider was invoked recursively returning different results: $currentInstance & $newInstance. This is likely due to a circular dependency."
   }
+  return newInstance
 }

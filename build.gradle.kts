@@ -11,7 +11,6 @@ plugins {
   alias(libs.plugins.dokka)
   alias(libs.plugins.ksp) apply false
   alias(libs.plugins.mavenPublish) apply false
-  alias(libs.plugins.atomicfu) apply false
   alias(libs.plugins.spotless)
   alias(libs.plugins.binaryCompatibilityValidator)
   alias(libs.plugins.poko) apply false
