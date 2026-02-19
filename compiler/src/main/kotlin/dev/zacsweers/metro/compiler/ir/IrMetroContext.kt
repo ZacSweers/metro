@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import dev.zacsweers.metro.compiler.ir.cache.IrCachesFactory
@@ -24,7 +25,6 @@ import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
-import kotlin.text.replace
 import okio.blackholeSink
 import okio.buffer
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -276,7 +276,7 @@ internal fun writeDiagnostic(diagnosticKey: String, fileName: String, text: () -
 context(context: IrMetroContext)
 internal fun writeDiagnostic(diagnosticKey: String, fileName: () -> String, text: () -> String) {
   context.reportsDir
-    ?.resolve("$diagnosticKey/${fileName().replace(Regex("[-_]"), "/")}")
+    ?.resolve(createDiagnosticReportPath(diagnosticKey, fileName()))
     ?.apply {
       // Ensure that the path leading up to the file has been created
       createParentDirectories()

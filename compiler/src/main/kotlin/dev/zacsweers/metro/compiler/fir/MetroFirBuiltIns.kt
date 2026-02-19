@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.nio.file.Path
@@ -184,7 +185,7 @@ internal class MetroFirBuiltIns(
     text: String,
   ) {
     reportsDir
-      .resolve("$diagnosticKey/${fileName.replace(Regex("[-_]"), "/")}")
+      .resolve(createDiagnosticReportPath(diagnosticKey, fileName))
       .apply {
         // Ensure that the path leading up to the file has been created
         createParentDirectories()
