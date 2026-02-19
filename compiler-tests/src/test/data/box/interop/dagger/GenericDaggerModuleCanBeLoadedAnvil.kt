@@ -1,5 +1,3 @@
-// Ignored but left as a toe-hold. anvil-ksp doesn't support generic modules
-// METRO_IGNORE
 // MODULE: lib
 // ENABLE_ANVIL_KSP
 // DISABLE_METRO
