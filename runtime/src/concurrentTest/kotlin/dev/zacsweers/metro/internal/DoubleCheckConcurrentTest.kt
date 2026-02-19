@@ -3,9 +3,11 @@
 package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -14,6 +16,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /** These tests are only possible to run in jvm and native. */
+@OptIn(ExperimentalAtomicApi::class)
 class DoubleCheckConcurrentTest {
   // Use runBlocking and not runTest because we actually want multithreading in this test
   @Test
@@ -30,19 +33,19 @@ class DoubleCheckConcurrentTest {
     mutex.unlock()
     val values = results.awaitAll().toSet()
 
-    assertEquals(1, provider.provisions.value)
+    assertEquals(1, provider.provisions.load())
     assertEquals(1, values.size)
   }
 
   class CoroutineLatchedProvider(private val mutex: Mutex) : Provider<Any> {
-    val provisions = atomic(0)
+    val provisions = AtomicInt(0)
 
     override fun invoke(): Any {
       runBlocking {
         // Wait until mutex is unlocked
         mutex.withLock {}
       }
-      provisions.incrementAndGet()
+      provisions.incrementAndFetch()
       return Any()
     }
   }

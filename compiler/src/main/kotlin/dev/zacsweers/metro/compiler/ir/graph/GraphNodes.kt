@@ -1098,7 +1098,7 @@ internal class GraphNodes(
         }
       }
 
-      writeDiagnostic("bindingContainers-${diagnosticTag}.txt") {
+      writeDiagnostic("bindingContainers", "${diagnosticTag}.txt") {
         allMergedContainers.joinToString("\n") { it.ir.classId.toString() }
       }
 

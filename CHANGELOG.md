@@ -64,6 +64,7 @@ If you want to completely restore the legacy behavior, you can disable this new 
 - **[FIR]**: Disallow `_` assisted context parameter names in top-level function injection.
 - **[FIR/IR]**: When generating class and provider factories now, the compiler dedupes non-assisted, non-optional injections of the same type key (i.e. type ± qualifier). This shrinks generated code size in (uncommon) scenarios where you inject the same type multiple types.
 - **[Gradle]**: Allow `DiagnosticSeverity` metro extension properties to be configurable as `metro.*` gradle properties of the same name.
+- **[Runtime]**: Remove atomicfu dependency from Metro's core runtime artifact. The base concurrency primitives are now built on `ReentrantLock` (JVM), a port of the stdlib's Lazy spinlock on (Native), and no-op on web targets.
 
 ### Fixes
 
@@ -71,10 +72,13 @@ If you want to completely restore the legacy behavior, you can disable this new 
 - **[FIR/IR]**: Support generic `@BindingContainer` classes included via `@Includes` with concrete type arguments (e.g., `@Includes TypedBindings<Int>`). Type parameters are now properly propagated to generated factory classes and substituted during binding resolution.
 - **[IR]**: Fix propagation of `Map` graph inputs down to graph extensions.
 - **[IR]**: Guard against identity mappings (T -> T) to prevent infinite recursion when remapping generic types.
+- **[FIR/IR/Reports]**: Restructure reports to use hierarchical nesting instead of top-level concatenated names. This fixes 'file name too long' exceptions when generating reports for deeply nested graphs. For example, the report file `reports/keys-populated-test_Graph_ChildGraph.txt` will now be generated as `reports/keys-populated/test/Graph/ChildGraph.txt`
 
 ### Changes
 
 - `enableGraphSharding` is now enabled by default. Note this only kicks in (by default) for graphs with 2000+ bindings by default.
+- Mentioned in enhancements, but worth reiterating that the underlying concurrency primitives have changed in the runtime but should be an improvement as they now use more modern reentrant locks.
+- Add Amper setup to installation docs (requires [AMPER-5095](https://youtrack.jetbrains.com/issue/AMPER-5095)).
 
 ### Contributors
 

@@ -476,9 +476,10 @@ internal class DependencyGraphTransformer(
           )
         }
 
-        writeDiagnostic({
-          "parent-keys-used-${node.sourceGraph.name}-by-${contributedGraph.name}.txt"
-        }) {
+        writeDiagnostic(
+          "parent-keys-used",
+          { "${node.sourceGraph.name}-by-${contributedGraph.name}.txt" },
+        ) {
           usedContextKeys.sortedBy { it.typeKey }.joinToString(separator = "\n")
         }
 
@@ -496,7 +497,7 @@ internal class DependencyGraphTransformer(
 
       // Write diagnostic for parent keys used in child graphs
       if (usedParentContextKeys.isNotEmpty()) {
-        writeDiagnostic({ "parent-keys-used-all-${node.sourceGraph.name}.txt" }) {
+        writeDiagnostic("parent-keys-used-all", { "${node.sourceGraph.name}.txt" }) {
           usedParentContextKeys.sortedBy { it.typeKey }.joinToString(separator = "\n")
         }
       }
@@ -549,9 +550,10 @@ internal class DependencyGraphTransformer(
       }
     }
 
-    writeDiagnostic({
-      "graph-dump-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.txt"
-    }) {
+    writeDiagnostic(
+      "graph-dump",
+      { "${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.txt" },
+    ) {
       bindingGraph.dumpGraph(node.sourceGraph.kotlinFqName.asString(), short = false)
     }
 
@@ -714,9 +716,10 @@ internal class DependencyGraphTransformer(
 
     metroGraph.dumpToMetroLog()
 
-    writeDiagnostic({
-      "graph-dumpKotlin-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt"
-    }) {
+    writeDiagnostic(
+      "graph-dumpKotlin",
+      { "${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt" },
+    ) {
       metroGraph.dumpKotlinLike()
     }
   }

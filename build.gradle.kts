@@ -11,7 +11,6 @@ plugins {
   alias(libs.plugins.dokka)
   alias(libs.plugins.ksp) apply false
   alias(libs.plugins.mavenPublish) apply false
-  alias(libs.plugins.atomicfu) apply false
   alias(libs.plugins.spotless)
   alias(libs.plugins.binaryCompatibilityValidator)
   alias(libs.plugins.poko) apply false
@@ -54,6 +53,7 @@ apiValidation {
       "dev.zacsweers.metro.internal",
       "dev.zacsweers.metro.compiler.compat",
       "dev.zacsweers.metro.interop.dagger.internal",
+      "dev.zacsweers.metro.interop.guice.internal",
     )
   @OptIn(ExperimentalBCVApi::class)
   klib {
