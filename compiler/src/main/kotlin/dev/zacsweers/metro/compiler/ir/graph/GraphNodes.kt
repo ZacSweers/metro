@@ -475,8 +475,7 @@ internal class GraphNodes(
       }
 
       trace("Process declarations") {
-        // Defensive copy of declarations in case graph processing is adding new ones concurrently
-        for (declaration in nonNullMetroGraph.declarations.toList()) {
+        for (declaration in nonNullMetroGraph.declarations) {
           // Functions and properties only
           if (declaration !is IrOverridableDeclaration<*>) continue
           if (!declaration.isFakeOverride) continue

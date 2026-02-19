@@ -306,22 +306,28 @@ internal class DependencyGraphTransformer(
       // Push the parent graph for all contributed graph processing
       localParentContext.pushParentGraph(node)
 
+      // Pre-build all extension graph impl classes sequentially before parallel validation.
+      // This adds nested classes to the parent graph's declarations list, which must not
+      // happen concurrently with iteration over that list during graph node construction.
+      val prebuiltExtensionGraphs =
+        node.graphExtensions.entries.associate { (contributedGraphKey, accessors) ->
+          contributedGraphKey to
+            graphExtensionGenerator.getOrBuildGraphExtensionImpl(
+              contributedGraphKey,
+              node.sourceGraph,
+              accessors.first().accessor,
+            )
+        }
+
       // Second pass on graph extensions to actually process them and create GraphExtension bindings
       // Can run in parallel if executor is available
       fun validateExtension(
         contributedGraphKey: IrTypeKey,
+        contributedGraph: IrClass,
         accessor: MetroSimpleFunction,
         reader: ParentContextReader,
         usedKeysProvider: () -> Set<IrContextualTypeKey>,
       ): ExtensionValidationTask {
-
-        // Generate the contributed graph class (thread-safe cache)
-        val contributedGraph =
-          graphExtensionGenerator.getOrBuildGraphExtensionImpl(
-            contributedGraphKey,
-            node.sourceGraph,
-            accessor,
-          )
 
         // Validate the child graph
         val childTag = contributedGraph.kotlinFqName.shortName().asString()
@@ -356,6 +362,7 @@ internal class DependencyGraphTransformer(
             val collector = UsedKeyCollector()
             validateExtension(
               contributedGraphKey,
+              prebuiltExtensionGraphs.getValue(contributedGraphKey),
               accessors.first().accessor,
               snapshot.asReader(collector),
               collector::keys,
@@ -366,6 +373,7 @@ internal class DependencyGraphTransformer(
           node.graphExtensions.map { (contributedGraphKey, accessors) ->
             validateExtension(
               contributedGraphKey,
+              prebuiltExtensionGraphs.getValue(contributedGraphKey),
               accessors.first().accessor,
               localParentContext,
               localParentContext::usedContextKeys,
