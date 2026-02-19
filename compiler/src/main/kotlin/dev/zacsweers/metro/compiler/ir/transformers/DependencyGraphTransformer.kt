@@ -107,12 +107,11 @@ internal class DependencyGraphTransformer(
   private val injectedClassTransformer: InjectedClassTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val bindingContainerTransformer: BindingContainerTransformer,
+  private val bindingContainerResolver: IrBindingContainerResolver,
 ) : IrMetroContext by context, TraceScope by traceScope {
 
   private val contributionMerger: IrContributionMerger =
     IrContributionMerger(this, contributionData)
-  private val bindingContainerResolver: IrBindingContainerResolver =
-    IrBindingContainerResolver(bindingContainerTransformer)
 
   private val graphNodes =
     GraphNodes(this, bindingContainerTransformer, bindingContainerResolver, contributionMerger)

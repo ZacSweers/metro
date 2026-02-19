@@ -185,6 +185,7 @@ public class MetroIrGenerationExtension(
               injectedClassTransformer,
               assistedFactoryTransformer,
               bindingContainerTransformer,
+              bindingContainerResolver,
             )
 
           // Second - transform the dependency graphs
