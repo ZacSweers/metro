@@ -413,7 +413,7 @@ internal class DependencyGraphTransformer(
 
         writeDiagnostic(
           "parent-keys-used",
-          { "${node.sourceGraph.name}-by-${contributedGraph.name}.txt" },
+          { "${node.sourceGraph.name}-by-${task.contributedGraph.name}.txt" },
         ) {
           task.usedContextKeys.sortedBy { it.typeKey }.joinToString(separator = "\n")
         }
