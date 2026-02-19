@@ -46,11 +46,11 @@ import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.parallelMap
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.diagnosticTag
 import dev.zacsweers.metro.compiler.tracing.trace
-import java.util.concurrent.Callable
 import java.util.concurrent.ExecutorService
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -355,21 +355,16 @@ internal class DependencyGraphTransformer(
         if (executorService != null && node.graphExtensions.size > 1) {
           // Parallel mode: create snapshot and validate children concurrently
           val snapshot = localParentContext.snapshot()
-          node.graphExtensions
-            .map { (contributedGraphKey, accessors) ->
-              executorService.submit(
-                Callable {
-                  val collector = UsedKeyCollector()
-                  validateExtension(
-                    contributedGraphKey,
-                    accessors.first().accessor,
-                    snapshot.asReader(collector),
-                    collector::keys,
-                  )
-                }
-              )
-            }
-            .map { it.get() }
+          node.graphExtensions.entries.toList().parallelMap(executorService) {
+            (contributedGraphKey, accessors) ->
+            val collector = UsedKeyCollector()
+            validateExtension(
+              contributedGraphKey,
+              accessors.first().accessor,
+              snapshot.asReader(collector),
+              collector::keys,
+            )
+          }
         } else {
           // Sequential mode: use shared parent context directly
           node.graphExtensions.map { (contributedGraphKey, accessors) ->

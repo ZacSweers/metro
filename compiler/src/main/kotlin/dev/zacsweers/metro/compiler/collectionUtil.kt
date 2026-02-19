@@ -18,6 +18,8 @@ package dev.zacsweers.metro.compiler
 import androidx.collection.MutableScatterMap
 import androidx.collection.MutableScatterSet
 import androidx.collection.ScatterMap
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.atomic.AtomicInteger
 
 internal fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
   return filterTo(mutableSetOf(), predicate)
@@ -107,4 +109,44 @@ internal inline fun <K, V> MutableScatterMap<K, MutableScatterSet<V>>.getAndAdd(
   value: V,
 ): MutableScatterSet<V> {
   return getOrPut(key, ::MutableScatterSet).also { it.add(value) }
+}
+
+/**
+ * Maps items in parallel using the [executorService] and the caller's thread. All workers (pool
+ * threads + caller) grab items from a shared index until none remain, so the caller participates in
+ * the work throughout rather than blocking idle after a single item. Results are returned in the
+ * same order as the input.
+ */
+internal fun <T, R> List<T>.parallelMap(
+  executorService: ExecutorService,
+  transform: (T) -> R,
+): List<R> {
+  if (size <= 1) return map(transform)
+
+  val items = this
+  val results = ArrayList<R>(items.size)
+  val nextIndex = AtomicInteger(0)
+
+  // Each worker loops, grabbing items by index until none remain
+  fun processWork() {
+    while (true) {
+      val i = nextIndex.getAndIncrement()
+      if (i >= items.size) break
+      results[i] = transform(items[i])
+    }
+  }
+
+  // Submit workers to the pool — pool size limits actual concurrency,
+  // extra submissions just exit immediately when they find no remaining work
+  val futures = (1 until items.size).map { executorService.submit(::processWork) }
+
+  // Caller also participates as a worker
+  processWork()
+
+  // Wait for pool workers to finish
+  for (future in futures) {
+    future.get()
+  }
+
+  return results.toList()
 }
