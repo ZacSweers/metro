@@ -9,6 +9,7 @@ public final class dev/zacsweers/metro/interop/guice/internal/GuiceInteropDouble
 	public static final field Companion Ldev/zacsweers/metro/interop/guice/internal/GuiceInteropDoubleCheck$Companion;
 	public fun <init> (Ldev/zacsweers/metro/Provider;)V
 	public fun get ()Ljava/lang/Object;
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class dev/zacsweers/metro/interop/guice/internal/GuiceInteropDoubleCheck$Companion {
