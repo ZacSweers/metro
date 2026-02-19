@@ -191,6 +191,9 @@ internal fun generateMetadataVisibleMirrorFunction(
           }
           copyTypeParametersFrom(sourceClass)
         } else {
+          // Copy type parameters from the factory class (e.g., generic binding containers)
+          copyTypeParametersFrom(factoryClass)
+
           // If it's a regular (provides) function or backing field, just always copy its
           // annotations
           this.annotations =

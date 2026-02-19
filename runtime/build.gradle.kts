@@ -7,7 +7,6 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
-  alias(libs.plugins.atomicfu)
   id("metro.publish")
 }
 
@@ -72,6 +71,11 @@ kotlin {
   @Suppress("OPT_IN_USAGE")
   applyDefaultHierarchyTemplate {
     common {
+      group("nonConcurrent") {
+        withJs()
+        withWasmJs()
+        withWasmWasi()
+      }
       group("concurrentTest") {
         withJvm()
         withNative()
@@ -91,6 +95,8 @@ kotlin {
     jvmTest { dependsOn(concurrentTest) }
     nativeTest { dependsOn(concurrentTest) }
   }
+
+  compilerOptions { freeCompilerArgs.add("-Xexpect-actual-classes") }
 
   targets
     .matching {

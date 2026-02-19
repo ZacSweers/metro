@@ -14,6 +14,8 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     get() = listOf(MetroDirectives)
 
   override fun shouldSkipTest(): Boolean {
+    if (MetroDirectives.METRO_IGNORE in testServices.moduleStructure.allDirectives) return true
+
     val enabled =
       testServices.moduleStructure.allDirectives[MetroDirectives.ENABLE_IF_PROPERTY_SET]
         .firstOrNull()

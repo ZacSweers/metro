@@ -90,7 +90,16 @@ private class DeepTypeSubstitutor(private val substitutionMap: Map<IrTypeParamet
         is IrSimpleType -> {
           val classifier = type.classifier
           if (classifier is IrTypeParameterSymbol) {
-            substitutionMap[classifier]?.let { remapType(it) } ?: type
+            substitutionMap[classifier]?.let { substituted ->
+              // Guard against identity mappings (T -> T) to prevent infinite recursion.
+              // This can happen for dynamic containers where the generated parameter type
+              // still has unresolved type parameters.
+              if (substituted is IrSimpleType && substituted.classifier == classifier) {
+                type
+              } else {
+                remapType(substituted)
+              }
+            } ?: type
           } else {
             val newArgs =
               type.arguments.map { arg ->

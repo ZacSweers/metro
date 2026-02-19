@@ -91,6 +91,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -901,6 +902,38 @@ internal class BindingContainer(
 
   fun isEmpty() =
     includes.isEmpty() && providerFactories.isEmpty() && (bindsMirror?.isEmpty() ?: true)
+
+  /**
+   * Creates a copy of this container with type-substituted provider factories. Used when a generic
+   * binding container is included with concrete type arguments (e.g., `@Includes
+   * TypedBindings<String>`).
+   */
+  fun withTypeSubstitution(remapper: TypeRemapper): BindingContainer {
+    val remappedFactories =
+      providerFactories.mapValues { (_, factory) ->
+        when (factory) {
+          is ProviderFactory.Metro -> factory.withRemappedTypes(remapper)
+          is ProviderFactory.Dagger -> factory.withRemappedTypes(remapper)
+        }
+      }
+    val remappedBindsMirror =
+      bindsMirror?.let { mirror ->
+        BindsMirror(
+          ir = mirror.ir,
+          bindsCallables = mirror.bindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
+          multibindsCallables =
+            mirror.multibindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
+          optionalKeys = mirror.optionalKeys.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
+        )
+      }
+    return BindingContainer(
+      isGraph = isGraph,
+      ir = ir,
+      includes = includes,
+      providerFactories = remappedFactories,
+      bindsMirror = remappedBindsMirror,
+    )
+  }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

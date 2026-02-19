@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isCli
@@ -247,7 +248,9 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
           name.capitalizeUS(),
           Keys.ProviderFactoryClassDeclaration,
           classKind = classKind,
-        )
+        ) {
+          copyTypeParametersFrom(owner, session)
+        }
         .apply {
           markAsDeprecatedHidden(session)
           // Add the source callable info

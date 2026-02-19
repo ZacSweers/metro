@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.runIf
@@ -14,6 +15,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
@@ -111,6 +113,18 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val parameters by parametersLazy
 
     override val isDaggerFactory: Boolean = false
+
+    fun withRemappedTypes(remapper: TypeRemapper): Metro {
+      return Metro(
+        factoryClass = factoryClass,
+        typeKey = typeKey.remapTypes(remapper),
+        rawTypeKey = rawTypeKey.remapTypes(remapper),
+        contextualTypeKey = contextualTypeKey.remapType(remapper),
+        realDeclaration = realDeclaration,
+        callableMetadata = callableMetadata,
+        parametersLazy = lazy { parameters.remapTypes(remapper) },
+      )
+    }
   }
 
   class Dagger(
@@ -127,6 +141,22 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val realDeclaration: IrFunction,
   ) : ProviderFactory() {
     override val isDaggerFactory: Boolean = true
+
+    fun withRemappedTypes(remapper: TypeRemapper): Dagger {
+      return Dagger(
+        factoryClass = factoryClass,
+        typeKey = typeKey.remapTypes(remapper),
+        contextualTypeKey = contextualTypeKey.remapType(remapper),
+        rawTypeKey = rawTypeKey.remapTypes(remapper),
+        callableId = callableId,
+        annotations = annotations,
+        parameters = parameters.remapTypes(remapper),
+        function = function,
+        isPropertyAccessor = isPropertyAccessor,
+        newInstanceName = newInstanceName,
+        realDeclaration = realDeclaration,
+      )
+    }
   }
 
   companion object {

@@ -73,15 +73,19 @@ Previously, Metro's IR would run in two passes:
 Now, most of Metro's core transformations are run in the first pass and this pass collects any _seen_ dependency graphs along the way. Then, the second pass _just_ processes the seen graphs in its pass (rather than visit the whole IR tree).
 
 - **[Gradle]**: Allow `DiagnosticSeverity` metro extension properties to be configurable as `metro.*` gradle properties of the same name.
+- **[Runtime]**: Remove atomicfu dependency from Metro's core runtime artifact. The base concurrency primitives are now built on `ReentrantLock` (JVM), a port of the stdlib's Lazy spinlock on (Native), and no-op on web targets.
 
 ### Fixes
 
 - **[FIR]**: Improve optional binding member injections detection.
+- **[FIR/IR]**: Support generic `@BindingContainer` classes included via `@Includes` with concrete type arguments (e.g., `@Includes TypedBindings<Int>`). Type parameters are now properly propagated to generated factory classes and substituted during binding resolution.
 - **[IR]**: Fix propagation of `Map` graph inputs down to graph extensions.
+- **[IR]**: Guard against identity mappings (T -> T) to prevent infinite recursion when remapping generic types.
 
 ### Changes
 
 - `enableGraphSharding` is now enabled by default. Note this only kicks in (by default) for graphs with 2000+ bindings by default.
+- Mentioned in enhancements, but worth reiterating that the underlying concurrency primitives have changed in the runtime but should be an improvement as they now use more modern reentrant locks.
 
 ### Contributors
 
