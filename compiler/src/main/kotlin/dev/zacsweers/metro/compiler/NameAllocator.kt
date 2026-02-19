@@ -240,28 +240,23 @@ private constructor(
    */
   private fun newNameImpl(suggestion: String, tag: Any, generateNewIfExisting: Boolean): String {
     val cleanedSuggestion = toSafeIdentifier(suggestion)
-    val result = buildString {
-      append(cleanedSuggestion)
-      var count = 1
-      while (allocatedNames.putIfAbsent(toString(), Unit) != null) {
-        if (!generateNewIfExisting) break
-        when (mode) {
-          UNDERSCORE -> append('_')
-          COUNT -> {
-            deleteRange(cleanedSuggestion.length, length)
-            append(++count)
+    return tagToName.compute(tag) { _, existing ->
+      require(existing == null) { "tag $tag cannot be used for both '$existing' and '$suggestion'" }
+      buildString {
+        append(cleanedSuggestion)
+        var count = 1
+        while (allocatedNames.putIfAbsent(toString(), Unit) != null) {
+          if (!generateNewIfExisting) break
+          when (mode) {
+            UNDERSCORE -> append('_')
+            COUNT -> {
+              deleteRange(cleanedSuggestion.length, length)
+              append(++count)
+            }
           }
         }
       }
-    }
-
-    val replaced = tagToName.putIfAbsent(tag, result)
-    if (replaced != null) {
-      tagToName[tag] = replaced // Put things back as they were!
-      throw IllegalArgumentException("tag $tag cannot be used for both '$replaced' and '$result'")
-    }
-
-    return result
+    }!!
   }
 
   /** Retrieve a name created with [NameAllocator.newName]. */
