@@ -134,7 +134,7 @@ internal class IrGraphShardGenerator(
       }
 
     if (useNestedShards) {
-      writeDiagnostic("sharding-plan-${diagnosticTag}.txt") {
+      writeDiagnostic("sharding-plan", "${diagnosticTag}.txt") {
         ShardingDiagnostics.generateShardingPlanReport(
           graphClass = graphClass,
           shards = shards,

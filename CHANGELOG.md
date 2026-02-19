@@ -81,11 +81,13 @@ Now, most of Metro's core transformations are run in the first pass and this pas
 - **[FIR/IR]**: Support generic `@BindingContainer` classes included via `@Includes` with concrete type arguments (e.g., `@Includes TypedBindings<Int>`). Type parameters are now properly propagated to generated factory classes and substituted during binding resolution.
 - **[IR]**: Fix propagation of `Map` graph inputs down to graph extensions.
 - **[IR]**: Guard against identity mappings (T -> T) to prevent infinite recursion when remapping generic types.
+- **[FIR/IR/Reports]**: Restructure reports to use hierarchical nesting instead of top-level concatenated names. This fixes 'file name too long' exceptions when generating reports for deeply nested graphs. For example, the report file `reports/keys-populated-test_Graph_ChildGraph.txt` will now be generated as `reports/keys-populated/test/Graph/ChildGraph.txt`
 
 ### Changes
 
 - `enableGraphSharding` is now enabled by default. Note this only kicks in (by default) for graphs with 2000+ bindings by default.
 - Mentioned in enhancements, but worth reiterating that the underlying concurrency primitives have changed in the runtime but should be an improvement as they now use more modern reentrant locks.
+- Add Amper setup to installation docs (requires [AMPER-5095](https://youtrack.jetbrains.com/issue/AMPER-5095)).
 
 ### Contributors
 

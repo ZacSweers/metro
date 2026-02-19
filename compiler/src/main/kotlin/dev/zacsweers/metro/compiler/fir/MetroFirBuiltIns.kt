@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.nio.file.Path
@@ -162,15 +163,29 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
-  internal inline fun writeDiagnostic(fileName: () -> String, text: () -> String) {
+  /**
+   * @param diagnosticKey A string identifier for the category of diagnostic being generated. This
+   *   will be treated as a prefix path segment. E.g. a key of "keys-populated" will result in
+   *   <reports-folder>/keys-populated/<fileName>
+   */
+  internal inline fun writeDiagnostic(
+    diagnosticKey: String,
+    fileName: () -> String,
+    text: () -> String,
+  ) {
     if (session.isCli() && options.reportsEnabled) {
-      options.reportsDir.value?.let { writeDiagnostic(it, fileName(), text()) }
+      options.reportsDir.value?.let { writeDiagnostic(it, diagnosticKey, fileName(), text()) }
     }
   }
 
-  private fun writeDiagnostic(reportsDir: Path, fileName: String, text: String) {
+  private fun writeDiagnostic(
+    reportsDir: Path,
+    diagnosticKey: String,
+    fileName: String,
+    text: String,
+  ) {
     reportsDir
-      .resolve(fileName)
+      .resolve(createDiagnosticReportPath(diagnosticKey, fileName))
       .apply {
         // Ensure that the path leading up to the file has been created
         createParentDirectories()

@@ -153,9 +153,10 @@ internal class ContributedInterfaceSupertypeGenerator(
             .toRegularClassSymbol(session)
         }
 
-      session.metroFirBuiltIns.writeDiagnostic({
-        "discovered-hints-fir-${scopeClassId.safePathString}.txt"
-      }) {
+      session.metroFirBuiltIns.writeDiagnostic(
+        "discovered-hints-fir",
+        { "${scopeClassId.safePathString}.txt" },
+      ) {
         val allFunctions =
           functionsInPackage
             .map { @OptIn(SymbolInternals::class) it.fir.render() }
@@ -445,9 +446,10 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
     if (unmatchedExclusions.isNotEmpty()) {
-      session.metroFirBuiltIns.writeDiagnostic({
-        "merging-unmatched-exclusions-fir-${classLikeDeclaration.classId.safePathString}.txt"
-      }) {
+      session.metroFirBuiltIns.writeDiagnostic(
+        "merging-unmatched-exclusions-fir",
+        { "${classLikeDeclaration.classId.safePathString}.txt" },
+      ) {
         unmatchedExclusions.map { it.safePathString }.sorted().joinToString("\n")
       }
     }
@@ -494,9 +496,10 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
     if (unmatchedReplacements.isNotEmpty()) {
-      session.metroFirBuiltIns.writeDiagnostic({
-        "merging-unmatched-replacements-fir-${classLikeDeclaration.classId.safePathString}.txt"
-      }) {
+      session.metroFirBuiltIns.writeDiagnostic(
+        "merging-unmatched-replacements-fir",
+        { "${classLikeDeclaration.classId.safePathString}.txt" },
+      ) {
         unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
       }
     }
@@ -511,9 +514,10 @@ internal class ContributedInterfaceSupertypeGenerator(
       }
 
       if (unmatchedRankReplacements.isNotEmpty()) {
-        session.metroFirBuiltIns.writeDiagnostic({
-          "merging-unmatched-rank-replacements-fir-${classLikeDeclaration.classId.safePathString}.txt"
-        }) {
+        session.metroFirBuiltIns.writeDiagnostic(
+          "merging-unmatched-rank-replacements-fir",
+          { "${classLikeDeclaration.classId.safePathString}.txt" },
+        ) {
           unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
         }
       }
