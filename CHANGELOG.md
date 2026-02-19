@@ -64,6 +64,7 @@ If you want to completely restore the legacy behavior, you can disable this new 
 - **[FIR]**: Disallow `_` assisted context parameter names in top-level function injection.
 - **[FIR/IR]**: When generating class and provider factories now, the compiler dedupes non-assisted, non-optional injections of the same type key (i.e. type ± qualifier). This shrinks generated code size in (uncommon) scenarios where you inject the same type multiple types.
 - **[Gradle]**: Allow `DiagnosticSeverity` metro extension properties to be configurable as `metro.*` gradle properties of the same name.
+- **[Runtime]**: Remove atomicfu dependency from Metro's core runtime artifact. The base concurrency primitives are now built on `ReentrantLock` (JVM), a port of the stdlib's Lazy spinlock on (Native), and no-op on web targets.
 
 ### Fixes
 
@@ -75,6 +76,7 @@ If you want to completely restore the legacy behavior, you can disable this new 
 ### Changes
 
 - `enableGraphSharding` is now enabled by default. Note this only kicks in (by default) for graphs with 2000+ bindings by default.
+- Mentioned in enhancements, but worth reiterating that the underlying concurrency primitives have changed in the runtime but should be an improvement as they now use more modern reentrant locks.
 
 ### Contributors
 
