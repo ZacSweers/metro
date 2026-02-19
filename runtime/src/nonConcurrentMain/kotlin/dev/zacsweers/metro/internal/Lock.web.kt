@@ -3,8 +3,8 @@
 package dev.zacsweers.metro.internal
 
 // Web doesn't do multithreading
-public actual open class Lock {
-  public actual fun lock() {}
+internal actual class Lock {
+  actual fun lock() {}
 
-  public actual fun unlock() {}
+  actual fun unlock() {}
 }

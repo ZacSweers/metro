@@ -29,9 +29,10 @@ internal val UNINITIALIZED = Any()
  *
  * Ported from Dagger's `DoubleCheck` with modifications for KMP support.
  */
-public abstract class BaseDoubleCheck<T>(provider: Provider<T>) : Lock(), Provider<T>, Lazy<T> {
+public abstract class BaseDoubleCheck<T>(provider: Provider<T>) : Provider<T>, Lazy<T> {
   private var provider: Provider<T>? = provider
   @Volatile private var _value: Any? = UNINITIALIZED
+  private val lock = Lock()
 
   override val value: T
     get() {
@@ -41,7 +42,7 @@ public abstract class BaseDoubleCheck<T>(provider: Provider<T>) : Lock(), Provid
         return result1 as T
       }
 
-      return locked(this) {
+      return locked(lock) {
         val result2 = _value
         if (result2 !== UNINITIALIZED) {
           @Suppress("UNCHECKED_CAST") (result2 as T)

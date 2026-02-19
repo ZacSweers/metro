@@ -15,12 +15,12 @@ private object CurrentThread {
 }
 
 @OptIn(ExperimentalNativeApi::class, ExperimentalAtomicApi::class)
-public actual open class Lock {
+internal actual class Lock {
   private val locker_ = AtomicInt(0)
   private val reenterCount_ = AtomicInt(0)
 
   // TODO: make it properly reschedule instead of spinning.
-  public actual fun lock() {
+  actual fun lock() {
     val lockData = CurrentThread.id.hashCode()
     loop@ do {
       val old = locker_.compareAndExchange(0, lockData)
@@ -40,7 +40,7 @@ public actual open class Lock {
   }
 
   @OptIn(ExperimentalStdlibApi::class)
-  public actual fun unlock() {
+  actual fun unlock() {
     if (reenterCount_.load() > 0) {
       /* val _ = */ reenterCount_.decrementAndFetch()
     } else {

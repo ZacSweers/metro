@@ -4,4 +4,4 @@ package dev.zacsweers.metro.internal
 
 import java.util.concurrent.locks.ReentrantLock
 
-public actual typealias Lock = ReentrantLock
+internal actual typealias Lock = ReentrantLock
