@@ -72,6 +72,7 @@ If you want to completely restore the legacy behavior, you can disable this new 
 - **[FIR/IR]**: Support generic `@BindingContainer` classes included via `@Includes` with concrete type arguments (e.g., `@Includes TypedBindings<Int>`). Type parameters are now properly propagated to generated factory classes and substituted during binding resolution.
 - **[IR]**: Fix propagation of `Map` graph inputs down to graph extensions.
 - **[IR]**: Guard against identity mappings (T -> T) to prevent infinite recursion when remapping generic types.
+- **[FIR/IR/Reports]**: Restructure reports to use hierarchical nesting instead of top-level concatenated names. This fixes 'file name too long' exceptions when generating reports for deeply nested graphs. For example, the report file `reports/keys-populated-test_Graph_ChildGraph.txt` will now be generated as `reports/keys-populated/test/Graph/ChildGraph.txt`
 
 ### Changes
 
