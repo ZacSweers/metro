@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771485365239,
+  "lastUpdate": 1771531002764,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -5992,6 +5992,62 @@ window.BENCHMARK_DATA = {
             "value": 30469.764000000003,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.68%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3f002d2e~1",
+          "message": "[before] Restructure reports to use hierarchical nesting in",
+          "timestamp": "2026-02-19T14:17:17-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3f002d2ec9f1d377ec43c74d27d90f99ef86af10"
+        },
+        "date": 1771531002764,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22252.552,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3f002d2ec9f1d377ec43c74d27d90f99ef86af10",
+          "message": "[after] Restructure reports to use hierarchical nesting in",
+          "timestamp": "2026-02-19T14:17:17-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3f002d2ec9f1d377ec43c74d27d90f99ef86af10"
+        },
+        "date": 1771531002765,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 23417.94,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +5.24%"
           }
         ]
       }
