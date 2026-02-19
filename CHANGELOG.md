@@ -70,7 +70,7 @@ Previously, Metro's IR would run in two passes:
 1. Collect contribution data and transform `MetroContribution` interfaces.
 2. Run all other transformations.
 
-Now, most of Metro's core transformations are run in the first pass and this pass collects any _seen_ dependency graphs along the way. Then, the second pass _just_ processes the seen graphs in its pass (rather than visit the whole IR tree).
+Now, Metro runs in a single pass. Most of Metro's core transformations are run in the first full pass, collects any _seen_ dependency graphs along the way, then they are processed at the end (rather than visit the whole IR tree a second time).
 
 - **[Gradle]**: Allow `DiagnosticSeverity` metro extension properties to be configurable as `metro.*` gradle properties of the same name.
 - **[Runtime]**: Remove atomicfu dependency from Metro's core runtime artifact. The base concurrency primitives are now built on `ReentrantLock` (JVM), a port of the stdlib's Lazy spinlock on (Native), and no-op on web targets.
