@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771531002764,
+  "lastUpdate": 1771531059638,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -6048,6 +6048,62 @@ window.BENCHMARK_DATA = {
             "value": 23417.94,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +5.24%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "364c257c~1",
+          "message": "[before] Add a compiler test for generating `@Provides` and",
+          "timestamp": "2026-02-19T14:18:21-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/364c257cd3683d997c35daf41cda6f75fc006037"
+        },
+        "date": 1771531059638,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 30562.138,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "364c257cd3683d997c35daf41cda6f75fc006037",
+          "message": "[after] Add a compiler test for generating `@Provides` and",
+          "timestamp": "2026-02-19T14:18:21-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/364c257cd3683d997c35daf41cda6f75fc006037"
+        },
+        "date": 1771531059639,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 28808.422,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -5.74%"
           }
         ]
       }
