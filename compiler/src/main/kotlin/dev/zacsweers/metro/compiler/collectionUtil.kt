@@ -124,7 +124,7 @@ internal fun <T, R> List<T>.parallelMap(
   if (size <= 1) return map(transform)
 
   val items = this
-  val results = ArrayList<R>(items.size)
+  val results = arrayOfNulls<Any?>(items.size)
   val nextIndex = AtomicInteger(0)
 
   // Each worker loops, grabbing items by index until none remain
@@ -148,5 +148,7 @@ internal fun <T, R> List<T>.parallelMap(
     future.get()
   }
 
-  return results.toList()
+  // All slots are guaranteed filled after join
+  @Suppress("UNCHECKED_CAST")
+  return (results as Array<R>).asList()
 }
