@@ -11,7 +11,6 @@ import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.assertions
 import org.jetbrains.kotlin.test.services.moduleStructure
 import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
-import org.jetbrains.kotlin.test.utils.withExtension
 import org.opentest4j.AssertionFailedError
 
 /**
@@ -22,19 +21,19 @@ import org.opentest4j.AssertionFailedError
  * 1. Find the specified report files in the reports destination
  * 2. Compare each report file against an expected file alongside the test data
  *
- * Expected files should be named: `<testFile>.<reportName>.txt`
+ * Expected files should be named: `<testFile>/<diagnosticKey>/<path>/<reportName>.txt`
  *
  * Example usage:
  * ```
  * // REPORTS_DESTINATION: metro/reports
- * // CHECK_REPORTS: merging-unmatched-exclusions-fir-test.AppGraph
- * // CHECK_REPORTS: merging-unmatched-replacements-ir-test.AppGraph
+ * // CHECK_REPORTS: merging-unmatched-exclusions-fir/test/AppGraph
+ * // CHECK_REPORTS: merging-unmatched-replacements-ir/test/AppGraph
  * ```
  *
- * This will look for report files named `merging-unmatched-exclusions-fir-test.AppGraph.txt` and
- * `merging-unmatched-replacements-ir-test.AppGraph.txt` in the reports directory, and compare them
- * against `<testFile>.merging-unmatched-exclusions-fir-test.AppGraph.txt` and
- * `<testFile>.merging-unmatched-replacements-ir-test.AppGraph.txt` respectively.
+ * This will look for report files named `merging-unmatched-exclusions-fir/test/AppGraph.txt` and
+ * `merging-unmatched-replacements-ir/test/AppGraph.txt` in the reports directory, and compare them
+ * against `<testFile>/merging-unmatched-exclusions-fir/test/AppGraph.txt` and
+ * `<testFile>/merging-unmatched-replacements-ir/test/AppGraph.txt` respectively.
  */
 class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(testServices) {
   companion object {
@@ -65,8 +64,9 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
     var generatedMissingFiles = false
     var lastError: AssertionFailedError? = null
     for (reportName in reportNamesToCheck) {
-      val reportFile = File(reportsDir, "$reportName.txt")
-      val expectedFile = testDataFile.withExtension("$reportName.txt")
+      val baseFileName = "$reportName.txt"
+      val reportFile = File(reportsDir, baseFileName)
+      val expectedFile = File(testDataFile.withoutExtension(), baseFileName)
 
       if (!reportFile.exists()) {
         testServices.assertions.fail {
@@ -92,5 +92,9 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
     if (generatedMissingFiles) {
       throw lastError!!
     }
+  }
+
+  private fun File.withoutExtension(): File {
+    return parentFile.resolve(nameWithoutExtension)
   }
 }

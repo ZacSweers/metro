@@ -36,7 +36,7 @@ abstract class BaseIncrementalCompilationTest {
     get() = reports("main")
 
   protected val MetroGradleProject.appGraphReports: GraphReports
-    get() = mainReports.forGraph("test_AppGraph_Impl")
+    get() = mainReports.forGraph("test/AppGraph/Impl")
 
   class Reports(val dir: File) {
     val expectActualReports
@@ -52,23 +52,23 @@ abstract class BaseIncrementalCompilationTest {
       get() = dir.resolveSafe("trace").listFiles().single()
 
     fun irHintsForScope(scopeFqName: String): String {
-      return dir.resolveSafe("discovered-hints-ir-$scopeFqName.txt").readText()
+      return dir.resolveSafe("discovered-hints-ir/$scopeFqName.txt").readText()
     }
 
     fun firHintsForScope(scopeFqName: String): String {
-      return dir.resolveSafe("discovered-hints-fir-$scopeFqName.txt").readText()
+      return dir.resolveSafe("discovered-hints-fir/$scopeFqName.txt").readText()
     }
 
     fun unmatchedExclusionsIr(scopeFqName: String): String {
-      return dir.resolveSafe("merging-unmatched-exclusions-ir-$scopeFqName.txt").readText()
+      return dir.resolveSafe("merging-unmatched-exclusions-ir/$scopeFqName.txt").readText()
     }
 
     fun unmatchedReplacementsIr(scopeFqName: String): String {
-      return dir.resolveSafe("merging-unmatched-replacements-ir-$scopeFqName.txt").readText()
+      return dir.resolveSafe("merging-unmatched-replacements-ir/$scopeFqName.txt").readText()
     }
 
     fun unmatchedRankReplacementsIr(scopeFqName: String): String {
-      return dir.resolveSafe("merging-unmatched-rank-replacements-ir-$scopeFqName.txt").readText()
+      return dir.resolveSafe("merging-unmatched-rank-replacements-ir/$scopeFqName.txt").readText()
     }
 
     fun forGraph(implFqName: String): GraphReports {
@@ -87,40 +87,40 @@ abstract class BaseIncrementalCompilationTest {
     }
 
     val keysPopulated
-      get() = readFileLines("keys-populated-$implFqName")
+      get() = readFileLines("keys-populated/$implFqName")
 
     val providerPropertyKeys
-      get() = readFileLines("keys-providerProperties-$implFqName")
+      get() = readFileLines("keys-providerProperties/$implFqName")
 
     val scopedProviderPropertyKeys
-      get() = readFileLines("keys-scopedProviderProperties-$implFqName")
+      get() = readFileLines("keys-scopedProviderProperties/$implFqName")
 
     val deferred
-      get() = readFileLines("keys-deferred-$implFqName")
+      get() = readFileLines("keys-deferred/$implFqName")
 
     val dumpKotlinLike
-      get() = readFile("graph-dumpKotlin-$implFqName.kt")
+      get() = readFile("graph-dumpKotlin/$implFqName.kt")
 
     val dump
-      get() = readFileLines("graph-dump-$implFqName")
+      get() = readFileLines("graph-dump/$implFqName")
 
     val bindingContainers
-      get() = readFileLines("graph-dump-$implFqName")
+      get() = readFileLines("graph-dump/$implFqName")
 
     val keysValidated
-      get() = readFileLines("keys-validated-$implFqName")
+      get() = readFileLines("keys-validated/$implFqName")
 
     val keysUnused
-      get() = readFileLines("keys-unused-$implFqName")
+      get() = readFileLines("keys-unused/$implFqName")
 
     val metadata
-      get() = readFile("graph-metadata-$implFqName.kt")
+      get() = readFile("graph-metadata/$implFqName.kt")
 
     val parentUsedKeysAll
-      get() = readFile("parent-keys-used-all-$implFqName")
+      get() = readFile("parent-keys-used-all/$implFqName")
 
     fun parentKeysUsedBy(extension: String) =
-      readFileLines("parent-keys-used-$implFqName-by-$extension.txt")
+      readFileLines("parent-keys-used/$implFqName-by-$extension.txt")
 
     fun graphMetadata() {
       // /graph-metadata/graph-test-AppGraph.json"
@@ -129,18 +129,18 @@ abstract class BaseIncrementalCompilationTest {
     }
 
     fun unmatchedExclusionsFir(graphFqName: String): String {
-      return reportsDir.resolveSafe("merging-unmatched-exclusions-fir-$graphFqName.txt").readText()
+      return reportsDir.resolveSafe("merging-unmatched-exclusions-fir/$graphFqName.txt").readText()
     }
 
     fun unmatchedReplacementsFir(graphFqName: String): String {
       return reportsDir
-        .resolveSafe("merging-unmatched-replacements-fir-$graphFqName.txt")
+        .resolveSafe("merging-unmatched-replacements-fir/$graphFqName.txt")
         .readText()
     }
 
     fun unmatchedRankReplacementsFir(graphFqName: String): String {
       return reportsDir
-        .resolveSafe("merging-unmatched-rank-replacements-fir-$graphFqName.txt")
+        .resolveSafe("merging-unmatched-rank-replacements-fir/$graphFqName.txt")
         .readText()
     }
   }
