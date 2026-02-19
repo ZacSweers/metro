@@ -59,6 +59,13 @@ public abstract class BaseDoubleCheck<T>(provider: Provider<T>) : Lock(), Provid
   override fun isInitialized(): Boolean = _value !== UNINITIALIZED
 
   override fun invoke(): T = value
+
+  override fun toString(): String =
+    if (isInitialized()) {
+      "DoubleCheck(value=$_value)"
+    } else {
+      "DoubleCheck(value=<not initialized>)"
+    }
 }
 
 /**
