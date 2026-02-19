@@ -24,6 +24,7 @@ import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
+import kotlin.text.replace
 import okio.blackholeSink
 import okio.buffer
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -261,15 +262,21 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   }
 }
 
+/** See the other [writeDiagnostic] */
 context(context: IrMetroContext)
-internal fun writeDiagnostic(fileName: String, text: () -> String) {
-  writeDiagnostic({ fileName }, text)
+internal fun writeDiagnostic(diagnosticKey: String, fileName: String, text: () -> String) {
+  writeDiagnostic(diagnosticKey, { fileName }, text)
 }
 
+/**
+ * @param diagnosticKey A string identifier for the category of diagnostic being generated. This
+ *   will be treated as a prefix path segment. E.g. a key of "keys-populated" will result in
+ *   <reports-folder>/keys-populated/<fileName>
+ */
 context(context: IrMetroContext)
-internal fun writeDiagnostic(fileName: () -> String, text: () -> String) {
+internal fun writeDiagnostic(diagnosticKey: String, fileName: () -> String, text: () -> String) {
   context.reportsDir
-    ?.resolve(fileName())
+    ?.resolve("$diagnosticKey/${fileName().replace(Regex("[-_]"), "/")}")
     ?.apply {
       // Ensure that the path leading up to the file has been created
       createParentDirectories()
