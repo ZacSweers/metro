@@ -256,6 +256,15 @@ internal class GenerateBindsContributionExtension(session: FirSession) :
     return buildResolvedTypeRef { coneType = this@toFirResolvedTypeRef }
   }
 
+  override fun getContributionHints(): List<ContributionHint> {
+    return annotatedClasses.map { classSymbol ->
+      ContributionHint(
+        contributingClassId = classSymbol.classId.createNestedClassId(NESTED_INTERFACE_NAME),
+        scope = APP_SCOPE_CLASS_ID,
+      )
+    }
+  }
+
   class Factory : MetroFirDeclarationGenerationExtension.Factory {
     override fun create(
       session: FirSession,

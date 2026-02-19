@@ -56,6 +56,7 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrReturnImpl
+import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
@@ -222,6 +223,15 @@ internal class GenerateProvidesContributionExtension(session: FirSession) :
     return buildResolvedTypeRef { coneType = this@toFirResolvedTypeRef }
   }
 
+  override fun getContributionHints(): List<ContributionHint> {
+    return annotatedClasses.map { classSymbol ->
+      ContributionHint(
+        contributingClassId = classSymbol.classId.createNestedClassId(NESTED_INTERFACE_NAME),
+        scope = APP_SCOPE_CLASS_ID,
+      )
+    }
+  }
+
   class Factory : MetroFirDeclarationGenerationExtension.Factory {
     override fun create(
       session: FirSession,
@@ -287,6 +297,7 @@ class GenerateProvidesContributionIrExtension : IrGenerationExtension {
     val ORIGIN = IrDeclarationOrigin.GeneratedByPlugin(GenerateProvidesContributionExtension.Key)
   }
 
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
     moduleFragment.transformChildrenVoid(
       object : IrElementTransformerVoid() {
