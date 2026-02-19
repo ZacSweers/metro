@@ -254,7 +254,10 @@ internal fun IrType.hasErrorTypes(): Boolean {
 
     // recurse
     if (current is IrSimpleType) {
-      for (arg in current.arguments) {
+      // Defensive copy: IrSimpleType.arguments can be an ArrayList that is mutated
+      // by compactIfPossible() (via trimToSize()) when another thread creates a derived
+      // type through toBuilder().buildSimpleType()
+      for (arg in current.arguments.toList()) {
         if (arg is IrTypeProjection) {
           stack.add(arg.type)
         }
