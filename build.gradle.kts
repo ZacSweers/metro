@@ -55,6 +55,7 @@ apiValidation {
       "dev.zacsweers.metro.interop.dagger.internal",
       "dev.zacsweers.metro.interop.guice.internal",
     )
+  nonPublicMarkers += listOf("dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi")
   @OptIn(ExperimentalBCVApi::class)
   klib {
     // This is only really possible to run on macOS

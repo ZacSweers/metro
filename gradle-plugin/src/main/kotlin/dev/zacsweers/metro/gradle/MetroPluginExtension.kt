@@ -51,6 +51,7 @@ constructor(
    * injected constructors with assisted parameters. See the kdoc on `AssistedFactory` for more
    * details.
    */
+  @RequiresIdeSupport
   public val generateAssistedFactories: Property<Boolean> =
     objects.booleanProperty("metro.generateAssistedFactories", false)
 
@@ -69,6 +70,7 @@ constructor(
    * - Kotlin/JS does not support this with incremental compilation enabled. See
    *   https://youtrack.jetbrains.com/issue/KT-82395
    */
+  @RequiresIdeSupport
   @DelicateMetroGradleApi(
     "Top-level function injection is experimental and does not work yet in all cases. See the kdoc."
   )
@@ -106,6 +108,7 @@ constructor(
    * - Kotlin/JS does not support this with incremental compilation enabled. See
    *   https://youtrack.jetbrains.com/issue/KT-82395
    */
+  @ExperimentalMetroGradleApi // Will eventually be the default and removed
   @DelicateMetroGradleApi(
     "FIR contribution hint gen is experimental and does not work yet in all cases. See the kdoc."
   )
@@ -133,6 +136,7 @@ constructor(
    * Kotlin/JS does not support this with incremental compilation enabled. See
    * https://youtrack.jetbrains.com/issue/KT-82395
    */
+  @ExperimentalMetroGradleApi // This may eventually be removed
   @DelicateMetroGradleApi(
     "Contribution hint gen does not work yet in all platforms on all Kotlin versions. See the kdoc."
   )
@@ -160,6 +164,7 @@ constructor(
    * This is equivalent to Dagger's `-Adagger.fullBindingGraphValidation` option, though there are
    * no controls for diagnostic severity.
    */
+  @DelicateMetroGradleApi("This may slow down your build since it may perform extra work!")
   public val enableFullBindingGraphValidation: Property<Boolean> =
     objects.booleanProperty("metro.enableFullBindingGraphValidation", false)
 
@@ -171,10 +176,12 @@ constructor(
     objects.booleanProperty("metro.enableGraphImplClassAsReturnType", false)
 
   /** Enable/disable shrinking of unused bindings. Enabled by default. */
+  @DelicateMetroGradleApi("This may slow down your build since it may perform extra work!")
   public val shrinkUnusedBindings: Property<Boolean> =
     objects.booleanProperty("metro.shrinkUnusedBindings", true)
 
   /** Enable/disable chunking of field initializers. Enabled by default. */
+  @Deprecated("This is the default and the option will be removed", level = DeprecationLevel.ERROR)
   public val chunkFieldInits: Property<Boolean> =
     objects.booleanProperty("metro.chunkFieldInits", true)
 
@@ -220,7 +227,8 @@ constructor(
 
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
   @Deprecated(
-    "Transforming providers to private is deprecated as it results in less efficient code generation"
+    "Transforming providers to private is deprecated as it results in less efficient code generation",
+    level = DeprecationLevel.ERROR,
   )
   public val transformProvidersToPrivate: Property<Boolean> =
     objects.booleanProperty("metro.transformProvidersToPrivate", false)
@@ -303,6 +311,7 @@ constructor(
    *
    * Enabled by default.
    */
+  @ExperimentalMetroGradleApi // Will Eventually become the default
   public val deduplicateInjectedParams: Property<Boolean> =
     objects.booleanProperty("metro.deduplicateInjectedParams", true)
 
@@ -314,6 +323,7 @@ constructor(
    *
    * See https://github.com/ZacSweers/metro/issues/1556 for more information.
    */
+  @ExperimentalMetroGradleApi // Will eventually be removed after 2.3.20
   public val enableKlibParamsCheck: Property<Boolean> =
     objects
       .booleanProperty()
@@ -332,6 +342,7 @@ constructor(
    *
    * See https://github.com/ZacSweers/metro/issues/1556 for more information.
    */
+  @ExperimentalMetroGradleApi // Will eventually be removed after 2.3.20
   public val patchKlibParams: Property<Boolean> =
     objects.booleanProperty("metro.patchKlibParams", true)
 
@@ -343,6 +354,7 @@ constructor(
    *
    * Disabled by default.
    */
+  @DangerousMetroGradleApi("This could break analysis in your IDE if you force-enable!")
   public val forceEnableFirInIde: Property<Boolean> =
     objects.booleanProperty("metro.forceEnableFirInIde", false)
 
@@ -354,6 +366,7 @@ constructor(
    *
    * Null by default (uses the detected runtime Kotlin version).
    */
+  @DangerousMetroGradleApi("This could break Metro's compatibility layer!")
   public val compilerVersion: Property<String> = objects.metroProperty("metro.compilerVersion", "")
 
   /**
@@ -400,10 +413,11 @@ constructor(
    *
    * 0 (default) disables parallelism.
    */
-  @DelicateMetroGradleApi(
+  @ExperimentalMetroGradleApi
+  @DangerousMetroGradleApi(
     "Parallelization in Metro is _extremely_ experimental and may break your build"
   )
-  internal val parallelThreads: Property<Int> = objects.intProperty("metro.parallelThreads", 0)
+  public val parallelThreads: Property<Int> = objects.intProperty("metro.parallelThreads", 0)
 
   /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency

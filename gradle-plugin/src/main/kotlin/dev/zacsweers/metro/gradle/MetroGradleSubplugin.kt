@@ -182,6 +182,11 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
     return true
   }
 
+  @OptIn(
+    DangerousMetroGradleApi::class,
+    ExperimentalMetroGradleApi::class,
+    RequiresIdeSupport::class,
+  )
   override fun applyToCompilation(
     kotlinCompilation: KotlinCompilation<*>
   ): Provider<List<SubpluginOption>> {
@@ -318,9 +323,10 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.enableGraphImplClassAsReturnType.orElse(false),
             )
           )
-          @Suppress("DEPRECATION")
+          @Suppress("DEPRECATION_ERROR")
           add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
           add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
+          @Suppress("DEPRECATION_ERROR")
           add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
           add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
           add(lazyOption("enable-graph-sharding", extension.enableGraphSharding))
