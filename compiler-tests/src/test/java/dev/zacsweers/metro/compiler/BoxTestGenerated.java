@@ -1182,6 +1182,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerSubcomponentScopeInheritanceWithParallelThreads.kt")
+      public void testDaggerSubcomponentScopeInheritanceWithParallelThreads() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/parallel/DaggerSubcomponentScopeInheritanceWithParallelThreads.kt");
+      }
+
+      @Test
       @TestMetadata("DeepHierarchyWithParallelValidationStressTest.kt")
       public void testDeepHierarchyWithParallelValidationStressTest() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/parallel/DeepHierarchyWithParallelValidationStressTest.kt");
