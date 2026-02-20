@@ -109,7 +109,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     val functionsInPackage = metroContext.referenceFunctions(scopeHintFor(scope))
 
     context(metroContext) {
-      writeDiagnostic("discovered-hints-ir", "${scope.asFqNameString()}.txt") {
+      writeDiagnostic("discovered-hints-ir-${scope.asFqNameString()}.txt") {
         functionsInPackage.map { it.owner.dumpKotlinLike() }.sorted().joinToString("\n") +
           "\n----\nCalled by:\n${callingDeclaration.expectAsOrNull<IrDeclarationWithName>()?.name}"
       }
