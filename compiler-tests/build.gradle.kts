@@ -10,10 +10,15 @@ plugins {
   java
 }
 
+kotlin {
+  compilerOptions { optIn.add("org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI") }
+}
+
 sourceSets {
   register("generator220")
   register("generator230")
   register("generator2320")
+  register("generator2320RC")
 }
 
 val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVersion")
@@ -67,7 +72,11 @@ var generatorConfigToUse: String
 if (testKotlinVersion >= KotlinToolingVersion(KotlinVersion(2, 3))) {
   generatorConfigToUse =
     if (testKotlinVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)) {
-      "generator2320"
+      if (testKotlinVersion < KotlinToolingVersion(2, 3, 20, "RC")) {
+        "generator2320"
+      } else {
+        "generator2320RC"
+      }
     } else {
       "generator230"
     }
@@ -92,6 +101,9 @@ dependencies {
   )
   "generator2320CompileOnly"(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20-dev-5437"
+  )
+  "generator2320RCCompileOnly"(
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20-RC"
   )
 
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })

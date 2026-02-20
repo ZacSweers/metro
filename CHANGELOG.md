@@ -87,6 +87,7 @@ Now, Metro runs in a single pass. Most of Metro's core transformations are run i
 - `enableGraphSharding` is now enabled by default. Note this only kicks in (by default) for graphs with 2000+ bindings by default.
 - Mentioned in enhancements, but worth reiterating that the underlying concurrency primitives have changed in the runtime but should be an improvement as they now use more modern reentrant locks.
 - Add Amper setup to installation docs (requires [AMPER-5095](https://youtrack.jetbrains.com/issue/AMPER-5095)).
+- Test Kotlin `2.3.20-RC`.
 
 ### Contributors
 
