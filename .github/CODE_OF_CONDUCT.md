@@ -53,7 +53,7 @@ issues/PRs/comments that appear to be unreviewed AI output.
 
 **AI-assisted contributions to code are welcome, provided you've done your due diligence.**
 If you use AI to help write code in a PR, you must disclose this (see the
-[pull request template](pull_request_template.md)). You are still fully responsible for
+[pull request template](https://github.com/ZacSweers/metro/blob/main/.github/pull_request_template.md)). You are still fully responsible for
 understanding, testing, and defending any code you submit. "the AI wrote it" is not an
 acceptable explanation for bugs or design decisions. Indicate what parts are AI-generated
 and de-fluff _before_ opening the PR.
