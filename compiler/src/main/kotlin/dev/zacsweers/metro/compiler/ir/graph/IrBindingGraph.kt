@@ -244,8 +244,7 @@ internal class IrBindingGraph(
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
           onPopulated = {
             writeDiagnostic(
-              "keys-populated",
-              "${node.metroGraphOrFail.classIdOrFail.safePathString}.txt",
+              "keys-populated-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt"
             ) {
               val keys = mutableListOf<IrTypeKey>()
               realGraph.bindings.forEachKey(keys::add)
@@ -254,8 +253,7 @@ internal class IrBindingGraph(
           },
           onSortedCycle = { elementsInCycle ->
             writeDiagnostic(
-              "cycle",
-              "${node.metroGraphOrFail.classIdOrFail.safePathString}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt",
+              "cycle-${node.metroGraphOrFail.classIdOrFail.safePathString}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
             ) {
               elementsInCycle.plus(elementsInCycle[0]).joinToString("\n")
             }
@@ -274,11 +272,11 @@ internal class IrBindingGraph(
       return BindingGraphResult.ERROR
     }
 
-    writeDiagnostic("keys-validated", "${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
+    writeDiagnostic("keys-validated-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
       sortedKeys.joinToString(separator = "\n")
     }
 
-    writeDiagnostic("keys-deferred", "${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
+    writeDiagnostic("keys-deferred-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
       deferredTypes.joinToString(separator = "\n")
     }
 
@@ -286,7 +284,7 @@ internal class IrBindingGraph(
     val declaredKeys = bindingLookup.getDeclaredKeys()
     val unused = declaredKeys - reachableKeys
     if (unused.isNotEmpty()) {
-      writeDiagnostic("keys-unused", "${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
+      writeDiagnostic("keys-unused-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
         unused.sorted().joinToString(separator = "\n")
       }
     }

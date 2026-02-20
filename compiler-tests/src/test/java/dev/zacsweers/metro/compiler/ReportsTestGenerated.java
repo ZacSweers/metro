@@ -27,12 +27,6 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Test
-  @TestMetadata("DeeplyNestedGraphsKeysPopulatedReport.kt")
-  public void testDeeplyNestedGraphsKeysPopulatedReport() {
-    runTest("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport.kt");
-  }
-
-  @Test
   @TestMetadata("UnmatchedReplacement.kt")
   public void testUnmatchedReplacement() {
     runTest("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement.kt");
