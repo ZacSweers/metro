@@ -56,69 +56,74 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   a: A,
   extraContext: StringBuilder.() -> Unit = {},
 ) {
-  val sourceElement = irDeclaration?.sourceElement()
-  if (irDeclaration?.fileOrNull == null || sourceElement == null) {
-    // Report through message collector for now
-    // If we have a source element, report the diagnostic directly
-    if (sourceElement != null) {
-      // TODO https://youtrack.jetbrains.com/issue/KT-83491
-      // val sourcelessFactory = factory.asSourcelessFactory()
-      val sourcelessFactory = MetroDiagnostics.SOURCELESS_METRO_ERROR
-      if (supportsSourcelessIrDiagnostics) {
-        diagnosticReporter.reportCompat(sourcelessFactory, a as String)
-      } else {
-        val diagnostic =
-          sourcelessFactory.createCompat(
-            a as String,
+  // Synchronize on the diagnosticReporter to prevent ConcurrentModificationException when
+  // multiple threads report diagnostics simultaneously during parallel graph validation.
+  // The Kotlin compiler's PendingDiagnosticsCollectorWithSuppress uses a non-thread-safe ArrayList.
+  synchronized(diagnosticReporter) {
+    val sourceElement = irDeclaration?.sourceElement()
+    if (irDeclaration?.fileOrNull == null || sourceElement == null) {
+      // Report through message collector for now
+      // If we have a source element, report the diagnostic directly
+      if (sourceElement != null) {
+        // TODO https://youtrack.jetbrains.com/issue/KT-83491
+        // val sourcelessFactory = factory.asSourcelessFactory()
+        val sourcelessFactory = MetroDiagnostics.SOURCELESS_METRO_ERROR
+        if (supportsSourcelessIrDiagnostics) {
+          diagnosticReporter.reportCompat(sourcelessFactory, a as String)
+        } else {
+          val diagnostic =
+            sourcelessFactory.createCompat(
+              a as String,
+              irDeclaration.locationOrNull(),
+              languageVersionSettings,
+            )
+          @Suppress("DEPRECATION")
+          reportDiagnosticToMessageCollector(
+            diagnostic!!,
             irDeclaration.locationOrNull(),
-            languageVersionSettings,
+            messageCollector,
+            false,
           )
-        @Suppress("DEPRECATION")
-        reportDiagnosticToMessageCollector(
-          diagnostic!!,
-          irDeclaration.locationOrNull(),
-          messageCollector,
-          false,
-        )
-      }
-      return
-    }
-    val severity = convertSeverity(factory.severity)
-    val location = irDeclaration?.locationOrNull()
-    val message =
-      if (
-        location == null &&
-          irDeclaration != null &&
-          // Java stubs have nothing useful for us here
-          irDeclaration.origin != Origins.FirstParty.IR_EXTERNAL_JAVA_DECLARATION_STUB
-      ) {
-        buildString {
-          appendLine(a)
-          appendLine()
-          appendLine("(context)")
-          append("Encountered while processing declaration '")
-          val (fullPath, metadata) = irDeclaration.humanReadableDiagnosticMetadata()
-          append(fullPath)
-          append("'")
-          appendLine(" (no source location available)")
-          if (metadata.isNotEmpty()) {
-            for (line in metadata) {
-              appendLine("- $line")
-            }
-          }
-          extraContext()
         }
-      } else {
-        a.toString()
+        return
       }
-    @Suppress("DEPRECATION") messageCollector.report(severity, message, location)
-  } else {
-    diagnosticReporter.at(irDeclaration).report(factory, a)
-  }
+      val severity = convertSeverity(factory.severity)
+      val location = irDeclaration?.locationOrNull()
+      val message =
+        if (
+          location == null &&
+            irDeclaration != null &&
+            // Java stubs have nothing useful for us here
+            irDeclaration.origin != Origins.FirstParty.IR_EXTERNAL_JAVA_DECLARATION_STUB
+        ) {
+          buildString {
+            appendLine(a)
+            appendLine()
+            appendLine("(context)")
+            append("Encountered while processing declaration '")
+            val (fullPath, metadata) = irDeclaration.humanReadableDiagnosticMetadata()
+            append(fullPath)
+            append("'")
+            appendLine(" (no source location available)")
+            if (metadata.isNotEmpty()) {
+              for (line in metadata) {
+                appendLine("- $line")
+              }
+            }
+            extraContext()
+          }
+        } else {
+          a.toString()
+        }
+      @Suppress("DEPRECATION") messageCollector.report(severity, message, location)
+    } else {
+      diagnosticReporter.at(irDeclaration).report(factory, a)
+    }
 
-  if (factory.severity == Severity.ERROR) {
-    // Log an error to MetroContext
-    onErrorReported()
+    if (factory.severity == Severity.ERROR) {
+      // Log an error to MetroContext
+      onErrorReported()
+    }
   }
 }
 

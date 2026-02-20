@@ -260,9 +260,13 @@ internal class DependencyGraphTransformer(
       // @Binds not checked because they cannot be scoped!
       // If parent is a real ParentContext, reuse it (sequential mode - shares context stack).
       // If parent is a snapshot-backed reader (parallel mode), create fresh and inherit keys.
+      // Pass the snapshot reader as ancestorReader so that scope checks and mark() calls can
+      // delegate to ancestor levels that aren't represented in the local level stack.
       val localParentContext =
         (parentContextReader as? ParentContext)
-          ?: ParentContext(metroContext).apply { parentContextReader?.let { inheritFrom(it) } }
+          ?: ParentContext(metroContext, ancestorReader = parentContextReader).apply {
+            parentContextReader?.let { inheritFrom(it) }
+          }
 
       // This instance
       localParentContext.add(node.typeKey)

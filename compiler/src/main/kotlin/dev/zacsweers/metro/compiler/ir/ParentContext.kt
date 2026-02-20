@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyCollector
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -19,7 +20,8 @@ import org.jetbrains.kotlin.ir.types.typeWith
  * validation gets its own collector to track which parent keys it uses.
  */
 internal class UsedKeyCollector {
-  private val usedKeys = mutableSetOf<IrContextualTypeKey>()
+  private val usedKeys: MutableSet<IrContextualTypeKey> =
+    ConcurrentHashMap.newKeySet<IrContextualTypeKey>()
 
   fun record(contextKey: IrContextualTypeKey) {
     usedKeys.add(contextKey)
@@ -71,6 +73,12 @@ internal class ParentContextSnapshot(
   private val levelScopes: List<LevelInfo>,
   /** The current (topmost) parent graph. */
   val currentParentGraph: IrClass,
+  /**
+   * Optional ancestor reader for delegating scope checks and mark() calls when the scope is not
+   * found in the local levels. This is used when a [ParentContext] created from a snapshot (in
+   * parallel mode) needs to propagate ancestor scope information through its own snapshots.
+   */
+  private val ancestorReader: ParentContextReader? = null,
 ) {
   /** Ownership information for a key - which graph owns it and how to access it. */
   data class KeyOwnership(val ownerGraphKey: IrTypeKey, val receiverParameter: IrValueParameter)
@@ -80,7 +88,8 @@ internal class ParentContextSnapshot(
 
   operator fun contains(key: IrTypeKey): Boolean = key in keyOwnership
 
-  fun containsScope(scope: IrAnnotation): Boolean = levelScopes.any { scope in it.scopes }
+  fun containsScope(scope: IrAnnotation): Boolean =
+    levelScopes.any { scope in it.scopes } || ancestorReader?.containsScope(scope) == true
 
   fun availableKeys(): Set<IrTypeKey> = keyOwnership.keys
 
@@ -119,6 +128,15 @@ internal class ParentContextSnapshot(
           )
         }
       }
+
+      // Scope not found locally, delegate to ancestor reader
+      if (ancestorReader != null) {
+        val ancestorToken = ancestorReader.mark(key, scope, requiresProviderProperty)
+        if (ancestorToken != null) {
+          collector.record(contextKey)
+          return ancestorToken
+        }
+      }
     }
 
     return null
@@ -150,7 +168,15 @@ internal class ParentContextSnapshot(
     }
 }
 
-internal class ParentContext(private val metroContext: IrMetroContext) : ParentContextReader {
+internal class ParentContext(
+  private val metroContext: IrMetroContext,
+  /**
+   * Optional ancestor reader for delegating scope checks and mark() calls. In parallel mode, when a
+   * new [ParentContext] is created from a snapshot, the ancestor reader preserves scope information
+   * from all ancestor levels that are not represented in the local level stack.
+   */
+  private val ancestorReader: ParentContextReader? = null,
+) : ParentContextReader {
 
   /**
    * Token returned by [mark] during validation phase. Contains enough information to resolve the
@@ -328,6 +354,18 @@ internal class ParentContext(private val metroContext: IrMetroContext) : ParentC
           )
         }
       }
+
+      // Scope not found in local levels, delegate to ancestor reader
+      if (ancestorReader != null) {
+        val ancestorToken = ancestorReader.mark(key, scope, requiresProviderProperty)
+        if (ancestorToken != null) {
+          // Track this context key at the current level so it gets reported upward
+          if (levels.isNotEmpty()) {
+            levels.last().usedContextKeys.add(contextKey)
+          }
+          return ancestorToken
+        }
+      }
     }
     // Else: no-op (unknown key without scope)
     return null
@@ -403,7 +441,8 @@ internal class ParentContext(private val metroContext: IrMetroContext) : ParentC
           "No parent graph on stack - this should only be accessed when processing extensions"
         )
 
-  override fun containsScope(scope: IrAnnotation): Boolean = scope in parentScopes
+  override fun containsScope(scope: IrAnnotation): Boolean =
+    scope in parentScopes || ancestorReader?.containsScope(scope) == true
 
   override operator fun contains(key: IrTypeKey): Boolean {
     return key in pending || key in available
@@ -473,6 +512,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) : ParentC
       keyOwnership = keyOwnership,
       levelScopes = levelScopes,
       currentParentGraph = currentParentGraph,
+      ancestorReader = ancestorReader,
     )
   }
 
