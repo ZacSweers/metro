@@ -108,6 +108,14 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
+    if (options.parallelThreads < 0) {
+      messageCollector.report(
+        CompilerMessageSeverity.ERROR,
+        "parallelMetroThreads must be non-negative but was ${options.parallelThreads}",
+      )
+      return
+    }
+
     with(compatContext) {
       registerFirExtensionCompat(
         MetroFirExtensionRegistrar(classIds, options, isIde, compatContext)

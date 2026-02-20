@@ -13,7 +13,6 @@ import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
-import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.TransformerContextAccess
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.md5base64
@@ -23,6 +22,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
@@ -32,10 +32,11 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 internal class IrDynamicGraphGenerator(
-  private val dependencyGraphTransformer: DependencyGraphTransformer,
+  metroContext: IrMetroContext,
   private val bindingContainerResolver: IrBindingContainerResolver,
   private val contributionMerger: IrContributionMerger,
-) : IrMetroContext by dependencyGraphTransformer {
+  private val onGraphGenerated: (graphImpl: IrClass, graphAnno: IrConstructorCall) -> Unit,
+) : IrMetroContext by metroContext {
 
   private val generatedClassesCache = mutableMapOf<CacheKey, IrClass>()
 
@@ -153,8 +154,7 @@ internal class IrDynamicGraphGenerator(
       GeneratedDynamicGraphData(factoryImpl = factoryImpl, sourceExpression = sourceExpression)
 
     // Process the new graph
-    @Suppress("RETURN_VALUE_NOT_USED")
-    dependencyGraphTransformer.processDependencyGraph(graphImpl, newGraphAnno, graphImpl, null)
+    onGraphGenerated(graphImpl, newGraphAnno)
 
     return graphImpl
   }

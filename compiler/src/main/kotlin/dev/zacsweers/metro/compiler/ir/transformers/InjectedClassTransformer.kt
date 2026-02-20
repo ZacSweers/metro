@@ -37,6 +37,7 @@ import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.builders.irBlockBody
@@ -71,16 +72,19 @@ import org.jetbrains.kotlin.name.ClassId
 internal class InjectedClassTransformer(
   context: IrMetroContext,
   private val membersInjectorTransformer: MembersInjectorTransformer,
-) : IrMetroContext by context {
+) : IrMetroContext by context, Lockable by Lockable() {
 
-  private val generatedFactories = mutableMapOf<ClassId, Optional<ClassFactory>>()
+  // Thread-safe for concurrent access during parallel graph validation.
+  private val generatedFactories = ConcurrentHashMap<ClassId, Optional<ClassFactory>>()
 
-  fun visitClass(declaration: IrClass) {
+  fun visitClass(declaration: IrClass): Boolean {
     val injectableConstructor =
       declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
-    if (injectableConstructor != null) {
-      @Suppress("RETURN_VALUE_NOT_USED")
-      getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
+    return if (injectableConstructor != null) {
+      val _ = getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
+      true
+    } else {
+      false
     }
   }
 
@@ -202,6 +206,8 @@ internal class InjectedClassTransformer(
       targetConstructor()
         // Not injectable if we reach here
         ?: return null
+
+    checkNotLocked()
 
     val factoryCls =
       declaration.nestedClasses.singleOrNull {

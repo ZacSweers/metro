@@ -40,7 +40,8 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
  * Transforms binding mirror classes generated in FIR by adding mirror functions for `@Binds` and
  * `@Multibinds` declarations.
  */
-internal class BindsMirrorClassTransformer(context: IrMetroContext) : IrMetroContext by context {
+internal class BindsMirrorClassTransformer(context: IrMetroContext) :
+  IrMetroContext by context, Lockable by Lockable() {
   private val cache = mutableMapOf<ClassId, Optional<BindsMirror>>()
 
   // When we generate binds/providers we need to genreate a mirror class too
@@ -55,6 +56,9 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) : IrMetroCon
             //  metadata?
             return@getOrPut Optional.empty()
           } else {
+            if (!declaration.isExternalParent) {
+              checkNotLocked()
+            }
             transformBindingMirrorClass(declaration, mirrorClass)
           }
         Optional.ofNullable(mirror)

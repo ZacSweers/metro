@@ -45,14 +45,6 @@ class GenerateProjectsCommand : CliktCommand() {
       )
       .flag(default = false)
 
-  private val transformProvidersToPrivate by
-    option(
-        "--transform-providers-to-private",
-        help =
-          "Transform @Provides functions to private (Metro mode only). Disabled by default for better R8 optimization.",
-      )
-      .flag("--no-transform-providers-to-private", default = false)
-
   private val enableReports by
     option("--enable-reports", help = "Enable Metro graph reports for debugging (Metro mode only).")
       .flag(default = false)
@@ -77,6 +69,15 @@ class GenerateProjectsCommand : CliktCommand() {
           "Enable switching providers for deferred class loading (Metro mode only). Reduces graph initialization time by deferring bindings' class init until requested.",
       )
       .flag(default = false)
+
+  private val parallelThreads by
+    option(
+        "--parallel-threads",
+        help =
+          "Number of threads for parallel graph validation (Metro mode only). 0 (default) disables parallelism.",
+      )
+      .int()
+      .default(0)
 
   override fun run() {
     if (multiplatform && buildMode != BuildMode.METRO) {
@@ -310,6 +311,9 @@ class GenerateProjectsCommand : CliktCommand() {
       echo("Graph sharding: ${if (enableSharding) "enabled" else "disabled"}")
       if (enableSwitchingProviders) {
         echo("Switching providers: enabled (deferred class loading)")
+      }
+      if (parallelThreads > 0) {
+        echo("Parallel threads: $parallelThreads")
       }
     }
 
@@ -1161,9 +1165,9 @@ class PlainDataProcessor {
   fun metroDsl(): String {
     val options =
       mutableListOf<String>().apply {
-        if (!transformProvidersToPrivate) add("  transformProvidersToPrivate.set(false)")
         if (enableSharding) add("  enableGraphSharding.set(true)")
         if (enableSwitchingProviders) add("  enableSwitchingProviders.set(true)")
+        if (parallelThreads > 0) add("  parallelThreads.set($parallelThreads)")
         if (enableReports)
           add("  reportsDestination.set(layout.buildDirectory.dir(\"metro-reports\"))")
       }

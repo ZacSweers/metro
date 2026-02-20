@@ -133,6 +133,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         module.directives.singleOrZeroValue(MetroDirectives.ASSISTED_IDENTIFIER_SEVERITY)?.let {
           assistedIdentifierSeverity = it
         }
+        module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
+          parallelThreads = it
+        }
         contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
 
         // Configure interop annotations using builder helper methods
