@@ -1161,6 +1161,34 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/parallel")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Parallel {
+      @Test
+      public void testAllFilesPresentInParallel() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/parallel"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("DeepHierarchyWithParallelValidation.kt")
+      public void testDeepHierarchyWithParallelValidation() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/parallel/DeepHierarchyWithParallelValidation.kt");
+      }
+
+      @Test
+      @TestMetadata("MultipleContributedExtensionsWithBindings.kt")
+      public void testMultipleContributedExtensionsWithBindings() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/parallel/MultipleContributedExtensionsWithBindings.kt");
+      }
+
+      @Test
+      @TestMetadata("ParallelExtensionValidationIsDeterministic.kt")
+      public void testParallelExtensionValidationIsDeterministic() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/parallel/ParallelExtensionValidationIsDeterministic.kt");
+      }
+    }
+
+    @Nested
     @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/sharding")
     @TestDataPath("$PROJECT_ROOT")
     public class Sharding {
