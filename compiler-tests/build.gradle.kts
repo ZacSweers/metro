@@ -157,19 +157,19 @@ val generateTests =
     jvmArgs("-Xss1m")
   }
 
-val enableShardTest = providers.gradleProperty("metro.enableShardTest").isPresent
+val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
 
   // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
   minHeapSize = "512m"
-  maxHeapSize = if (enableShardTest) "4g" else "2g"
+  maxHeapSize = if (largeTestMode) "4g" else "2g"
   jvmArgs(
     "-ea",
     "-XX:+UseCodeCacheFlushing",
     "-XX:ReservedCodeCacheSize=256m",
-    "-XX:MaxMetaspaceSize=${if (enableShardTest) "512m" else "1g"}",
+    "-XX:MaxMetaspaceSize=${if (largeTestMode) "512m" else "1g"}",
     "-XX:CICompilerCount=2",
     "-Djna.nosys=true",
   )
@@ -222,9 +222,8 @@ tasks.withType<Test> {
   setLibraryProperty("kotlin.script.runtime.path", "kotlin-script-runtime")
   setLibraryProperty("kotlin.annotations.path", "kotlin-annotations-jvm")
 
-  if (enableShardTest) {
-    systemProperty("metro.enableShardTest", true)
-    systemProperty("metro.singleTestName", "testLargeGraphStressTest")
+  if (largeTestMode) {
+    systemProperty("metro.enableLargeTests", true)
   }
 
   systemProperty("metro.shortLocations", "true")

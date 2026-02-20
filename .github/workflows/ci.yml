@@ -71,7 +71,7 @@ jobs:
           echo "Running checks..."
           ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
           echo "Running sharding tests..."
-          ./gradlew :compiler-tests:test --tests '*Sharding.testLargeGraphStressTest' --quiet '-Pmetro.enableShardTest' '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          ./gradlew :compiler-tests:test --tests '*StressTest' --quiet '-Pmetro.enableShardTest' '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()

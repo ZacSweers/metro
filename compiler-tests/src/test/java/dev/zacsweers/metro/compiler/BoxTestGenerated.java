@@ -1170,9 +1170,9 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
-      @TestMetadata("DeepHierarchyWithParallelValidation.kt")
+      @TestMetadata("DeepHierarchyWithParallelValidationStressTest.kt")
       public void testDeepHierarchyWithParallelValidation() {
-        runTest("compiler-tests/src/test/data/box/dependencygraph/parallel/DeepHierarchyWithParallelValidation.kt");
+        runTest("compiler-tests/src/test/data/box/dependencygraph/parallel/DeepHierarchyWithParallelValidationStressTest.kt");
       }
 
       @Test

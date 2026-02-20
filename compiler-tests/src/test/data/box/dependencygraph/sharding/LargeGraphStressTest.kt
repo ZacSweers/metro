@@ -1,5 +1,5 @@
 // ENABLE_GRAPH_SHARDING: true
-// ENABLE_IF_PROPERTY_SET: metro.enableShardTest
+// ENABLE_IF_PROPERTY_SET: metro.enableLargeTests
 
 /*
  * Stress test for graph sharding with a very large number of bindings.
