@@ -288,10 +288,10 @@ constructor(
    * graph inputs (graph factory parameters or directly included binding containers that are not
    * used by the graph).
    *
-   * Disabled by default.
+   * WARN by default.
    */
   public val unusedGraphInputsSeverity: Property<DiagnosticSeverity> =
-    objects.enumProperty<DiagnosticSeverity>("unusedGraphInputsSeverity", DiagnosticSeverity.NONE)
+    objects.enumProperty<DiagnosticSeverity>("unusedGraphInputsSeverity", DiagnosticSeverity.WARN)
 
   /**
    * If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject`
