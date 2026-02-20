@@ -1976,6 +1976,13 @@
 <p>We already had incremental compilation in the single-digit seconds range, but I’m still blown away by how much faster it is now that the entire codebase is fully on Metro. 🤯</p>
 </blockquote>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Vinted</p>
+<p>Vinted adopted metro and reaped significant build time and developer experience improvements: <a href="https://vinted.engineering/2026/02/12/from-dagger-to-metro/">From Dagger to Metro</a></p>
+<blockquote>
+<p>Metro consolidated all the best practices from other popular frameworks, while leaving out the not-so-best practices on the side, allowed us to enable K2 and immediately experience significant build time improvements, while also unlocking incremental compilation, which means that the builds will be getting even faster</p>
+</blockquote>
+</div>
 <h2 id="tracing">Tracing<a class="headerlink" href="#tracing" title="Permanent link">&para;</a></h2>
 <p>If you want to investigate the performance of Metro&rsquo;s compiler pipeline, you can enable tracing in the Gradle DSL.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
