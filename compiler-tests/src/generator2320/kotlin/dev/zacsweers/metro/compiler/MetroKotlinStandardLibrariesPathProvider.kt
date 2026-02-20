@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import java.io.File
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
 // KotlinStandardLibrariesPathProvider was changed to an interface in 2.3.20
-abstract class MetroKotlinStandardLibrariesPathProvider : KotlinStandardLibrariesPathProvider
+abstract class MetroKotlinStandardLibrariesPathProvider : KotlinStandardLibrariesPathProvider {
+  abstract fun webStdlibForTests(): File
+}
