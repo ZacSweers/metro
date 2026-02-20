@@ -59,6 +59,12 @@ internal interface ParentContextReader {
     scope: IrAnnotation? = null,
     requiresProviderProperty: Boolean = scope != null,
   ): ParentContext.Token?
+
+  /**
+   * Returns ownership information for a key without side effects. Used during [inheritFrom] to
+   * capture the original ownership of inherited keys so that snapshots preserve correct ancestry.
+   */
+  fun ownershipOf(key: IrTypeKey): ParentContextSnapshot.KeyOwnership? = null
 }
 
 /**
@@ -92,6 +98,8 @@ internal class ParentContextSnapshot(
     levelScopes.any { scope in it.scopes } || ancestorReader?.containsScope(scope) == true
 
   fun availableKeys(): Set<IrTypeKey> = keyOwnership.keys
+
+  fun ownershipOf(key: IrTypeKey): KeyOwnership? = keyOwnership[key]
 
   /**
    * Marks a key as used and returns a token for later property resolution. Unlike
@@ -165,6 +173,8 @@ internal class ParentContextSnapshot(
 
       override fun mark(key: IrTypeKey, scope: IrAnnotation?, requiresProviderProperty: Boolean) =
         this@ParentContextSnapshot.mark(key, scope, requiresProviderProperty, collector)
+
+      override fun ownershipOf(key: IrTypeKey) = this@ParentContextSnapshot.ownershipOf(key)
     }
 }
 
@@ -281,17 +291,35 @@ internal class ParentContext(
   // Keys collected before the next push
   private val pending = mutableSetOf<IrTypeKey>()
 
+  // Original ownership info for keys inherited from the ancestor reader via inheritFrom().
+  // When a snapshot is taken, inherited keys use this ownership instead of the local level's,
+  // preserving the correct ancestor graph attribution across parallel context boundaries.
+  private val inheritedKeyOwnership = mutableMapOf<IrTypeKey, ParentContextSnapshot.KeyOwnership>()
+
   fun add(key: IrTypeKey) {
     pending.add(key)
+    // Local provision overrides inherited ownership
+    inheritedKeyOwnership.remove(key)
   }
 
   fun addAll(keys: Collection<IrTypeKey>) {
-    if (keys.isNotEmpty()) pending.addAll(keys)
+    if (keys.isNotEmpty()) {
+      pending.addAll(keys)
+      // Local provision overrides inherited ownership
+      for (key in keys) {
+        inheritedKeyOwnership.remove(key)
+      }
+    }
   }
 
   /** Copies all available keys from the given reader into this context's pending set. */
   fun inheritFrom(reader: ParentContextReader) {
-    pending.addAll(reader.availableKeys())
+    val keys = reader.availableKeys()
+    pending.addAll(keys)
+    // Capture original ownership so snapshots can preserve correct ancestor attribution
+    for (key in keys) {
+      reader.ownershipOf(key)?.let { inheritedKeyOwnership[key] = it }
+    }
   }
 
   /**
@@ -319,6 +347,19 @@ internal class ParentContext(
     // Prefer the nearest provider (deepest level that introduced this key)
     keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
       val providerLevel = levels[providerIdx]
+
+      // For inherited keys, use the original ancestor ownership so that the token
+      // points to the actual owner graph, not the local level where the key was
+      // re-introduced via inheritFrom().
+      val inherited = inheritedKeyOwnership[key]
+      if (inherited != null) {
+        providerLevel.usedContextKeys.add(contextKey)
+        return Token(
+          contextKey = contextKey,
+          ownerGraphKey = inherited.ownerGraphKey,
+          receiverParameter = inherited.receiverParameter,
+        )
+      }
 
       // Track this context key as used at the matched provider level
       providerLevel.usedContextKeys.add(contextKey)
@@ -444,6 +485,21 @@ internal class ParentContext(
   override fun containsScope(scope: IrAnnotation): Boolean =
     scope in parentScopes || ancestorReader?.containsScope(scope) == true
 
+  override fun ownershipOf(key: IrTypeKey): ParentContextSnapshot.KeyOwnership? {
+    // For inherited keys, return the original ancestor ownership
+    inheritedKeyOwnership[key]?.let {
+      return it
+    }
+    // For locally-provided keys, return the local level's ownership
+    val introStack = keyIntroStack[key] ?: return null
+    val levelIdx = introStack.lastOrNull() ?: return null
+    val level = levels.getOrNull(levelIdx) ?: return null
+    return ParentContextSnapshot.KeyOwnership(
+      ownerGraphKey = level.node.typeKey,
+      receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
+    )
+  }
+
   override operator fun contains(key: IrTypeKey): Boolean {
     return key in pending || key in available
   }
@@ -472,6 +528,12 @@ internal class ParentContext(
 
     // Capture ownership for all available keys
     for ((key, introStack) in keyIntroStack) {
+      // For inherited keys, preserve the original ancestor ownership rather than
+      // attributing them to the local level where they were re-introduced.
+      inheritedKeyOwnership[key]?.let {
+        keyOwnership[key] = it
+        continue
+      }
       val levelIdx = introStack.lastOrNull() ?: continue
       val level = levels.getOrNull(levelIdx) ?: continue
       keyOwnership[key] =
@@ -490,7 +552,8 @@ internal class ParentContext(
           receiverParameter = currentLevel.node.metroGraphOrFail.thisReceiverOrFail,
         )
       for (key in pending) {
-        keyOwnership[key] = currentOwnership
+        // Use inherited ownership if available, otherwise attribute to current level
+        keyOwnership[key] = inheritedKeyOwnership[key] ?: currentOwnership
       }
     }
 
