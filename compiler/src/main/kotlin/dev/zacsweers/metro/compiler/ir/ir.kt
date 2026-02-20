@@ -1044,7 +1044,8 @@ internal fun IrType.canonicalize(
         // Canonicalize the args too
         it.classifier
           .typeWithArguments(
-            it.arguments.map { arg ->
+            // Defensive copy since kotlinc trims these without copies
+            it.arguments.toList().map { arg ->
               when (arg) {
                 is IrStarProjection -> arg
                 is IrTypeProjection -> {
