@@ -57,12 +57,6 @@ internal sealed interface MetroFirTypeResolver {
 
   private class ExternalMetroFirTypeResolver(private val session: FirSession) :
     MetroFirTypeResolver {
-    private val configuration =
-      TypeResolutionConfiguration(
-        scopes = emptyList(),
-        containingClassDeclarations = emptyList(),
-        useSiteFile = null,
-      )
 
     override fun resolveType(typeRef: FirTypeRef): ConeKotlinType {
       check(typeRef is FirUserTypeRef)
@@ -75,7 +69,7 @@ internal sealed interface MetroFirTypeResolver {
       return session.typeResolver
         .resolveType(
           typeRef = typeRef,
-          configuration = configuration,
+          configuration = EMPTY_CONFIGURATION,
           areBareTypesAllowed = true,
           isOperandOfIsOperator = false,
           resolveDeprecations = false,
@@ -108,6 +102,13 @@ internal sealed interface MetroFirTypeResolver {
   companion object {
     // For cases where we use this in IR, types are already resolved so just read coneType
     fun forIrUse(): MetroFirTypeResolver = IrMetroFirTypeResolver
+
+    private val EMPTY_CONFIGURATION =
+      TypeResolutionConfiguration(
+        scopes = emptyList(),
+        containingClassDeclarations = emptyList(),
+        useSiteFile = null,
+      )
   }
 
   private object IrMetroFirTypeResolver : MetroFirTypeResolver {
