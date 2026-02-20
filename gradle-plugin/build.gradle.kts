@@ -28,6 +28,15 @@ metroProject {
   @Suppress("DEPRECATION") apiVersion.set(KotlinVersion.KOTLIN_2_0)
 }
 
+// Gradle continues to have the most obvious APIs
+listOf("runtimeElements", "apiElements").forEach { configurationName ->
+  configurations.named(configurationName).configure {
+    attributes {
+      attribute(GradlePluginApiVersion.GRADLE_PLUGIN_API_VERSION_ATTRIBUTE, objects.named("8.8"))
+    }
+  }
+}
+
 tasks.withType<ValidatePlugins>().configureEach { enableStricterValidation = true }
 
 buildConfig {
