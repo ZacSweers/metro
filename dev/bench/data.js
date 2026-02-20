@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771627307679,
+  "lastUpdate": 1771628682451,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -6440,6 +6440,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2255869480214961,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -2.76%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "0392b089~1",
+          "message": "[before] Restructure reports to use hierarchical nesting in",
+          "timestamp": "2026-02-20T22:26:10Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/0392b089c263f696a001fa300d5679df9b2c969c"
+        },
+        "date": 1771628682451,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2263736522674714,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "0392b089c263f696a001fa300d5679df9b2c969c",
+          "message": "[after] Restructure reports to use hierarchical nesting in",
+          "timestamp": "2026-02-20T22:26:10Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/0392b089c263f696a001fa300d5679df9b2c969c"
+        },
+        "date": 1771628682452,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2243437405590961,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.90%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
