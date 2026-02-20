@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771564390805,
+  "lastUpdate": 1771565711188,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -6160,6 +6160,62 @@ window.BENCHMARK_DATA = {
             "value": 21391.442,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.89%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "582344bb~1",
+          "message": "[before] Restructure IR pipeline + introduce concurrency co",
+          "timestamp": "2026-02-20T04:53:21Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/582344bbaa9ec793a717aa6e2631a6bac42057d1"
+        },
+        "date": 1771565711188,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22616.951999999997,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "582344bbaa9ec793a717aa6e2631a6bac42057d1",
+          "message": "[after] Restructure IR pipeline + introduce concurrency co",
+          "timestamp": "2026-02-20T04:53:21Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/582344bbaa9ec793a717aa6e2631a6bac42057d1"
+        },
+        "date": 1771565711189,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22529.878,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.38%"
           }
         ]
       }
