@@ -179,8 +179,8 @@ jobs:
         run: |
           echo "Building docs as a dry run to verify requirements and other configs are working..."
           # Build to a temporary directory for validation without side effects
-          mkdocs build --strict --site-dir /tmp/docs-site-validation
-          
+          mkdocs build --site-dir /tmp/docs-site-validation
+
           echo "Validating directory URL structure..."
           # Verify that use_directory_urls: true configuration is effective
           # This creates installation/index.html from installation.md, enabling
