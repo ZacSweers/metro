@@ -53,7 +53,7 @@ interface MessageGraph {
   val message: String
   companion object {
     @Provides
-    private fun provideMessage(): String = "Hello, world!"
+    fun provideMessage(): String = "Hello, world!"
   }
 }
 ```
