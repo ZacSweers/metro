@@ -2,11 +2,11 @@
 // PARALLEL_THREADS: 4
 // 5-level Dagger @Component/@Subcomponent hierarchy (App -> LoggedIn -> Activity -> Feature -> Screen).
 // Screen-level subcomponents depend on bindings scoped to every ancestor level, exercising
-// cross-scope resolution under parallel validation. Previously produced false
-// IncompatiblyScopedBindings errors when parallelThreads > 0.
+// cross-scope resolution under parallel validation. Also exercises qualified bindings provided
+// at the root scope and consumed by deeply nested subcomponents, which previously caused
+// "Cannot resolve property access token - property not found" during code generation.
 
 import dagger.Binds
-import dagger.Component
 import dagger.Module
 import dagger.Subcomponent
 
@@ -44,6 +44,12 @@ abstract class ScreenC2Scope private constructor()
 abstract class ScreenC3Scope private constructor()
 
 abstract class ScreenC4Scope private constructor()
+
+// --- Qualifier for a root-scoped binding consumed by deeply nested subcomponents ---
+@Qualifier
+annotation class SpecialClient
+
+interface ClientApi
 
 // --- Interfaces ---
 interface Analytics
@@ -118,6 +124,14 @@ constructor(
   val analytics: Analytics,
 ) : FeatureFlags
 
+// --- LoggedInScope consumer of the qualified root-scoped binding ---
+interface CdpLogger
+
+@SingleIn(LoggedInScope::class)
+class RealCdpLogger
+@Inject
+constructor(@SpecialClient val client: ClientApi, val analytics: Analytics) : CdpLogger
+
 // --- FeatureScope implementations ---
 @SingleIn(FeatureAScope::class)
 class RealFeatureAService
@@ -153,6 +167,8 @@ constructor(
   val s: SessionStore,
   val p: PermissionsManager,
   val l: Set<@JvmSuppressWildcards Listener>,
+  val cdp: CdpLogger,
+  @SpecialClient val client: ClientApi,
 )
 
 @SingleIn(ScreenA2Scope::class)
@@ -201,6 +217,8 @@ constructor(
   val s: SessionStore,
   val e: EventTracker,
   val p: PermissionsManager,
+  val cdp: CdpLogger,
+  @SpecialClient val client: ClientApi,
 )
 
 @SingleIn(ScreenB3Scope::class)
@@ -254,6 +272,8 @@ constructor(
   val c: ConfigProvider,
   val a: Analytics,
   val l: Set<@JvmSuppressWildcards Listener>,
+  val cdp: CdpLogger,
+  @SpecialClient val client: ClientApi,
 )
 
 @SingleIn(ScreenC4Scope::class)
@@ -269,6 +289,14 @@ constructor(
 // =============================================================================
 // Modules (Dagger @Binds + @IntoSet)
 // =============================================================================
+@Module
+object SpecialClientModule {
+  @Provides
+  @SingleIn(AppScope::class)
+  @SpecialClient
+  fun provideSpecialClient(): ClientApi = object : ClientApi {}
+}
+
 @Module
 interface AppModule {
   @Binds fun a(impl: RealAnalytics): Analytics
@@ -286,6 +314,7 @@ interface LoggedInModule {
   @Binds fun b(impl: RealUserSettings): UserSettings
   @Binds fun c(impl: RealPermissionsManager): PermissionsManager
   @Binds fun d(impl: RealFeatureFlags): FeatureFlags
+  @Binds fun e(impl: RealCdpLogger): CdpLogger
 }
 
 @Module interface FeatureAModule { @Binds fun a(impl: RealFeatureAService): FeatureAService }
@@ -372,24 +401,21 @@ interface LoggedInComponent {
 }
 
 // =============================================================================
-// Root component
+// Root graph (Metro @DependencyGraph with Dagger @Subcomponent children)
 // =============================================================================
-@SingleIn(AppScope::class)
-@Component(modules = [AppModule::class])
-interface AppComponent {
+@DependencyGraph(
+  scope = AppScope::class,
+  bindingContainers = [AppModule::class, SpecialClientModule::class],
+)
+interface AppGraph {
   fun loggedInComponent(): LoggedInComponent
-
-  @Component.Factory
-  interface Factory {
-    fun create(): AppComponent
-  }
 }
 
 // =============================================================================
 // box() — walks the full 5-level hierarchy and validates all bindings resolve
 // =============================================================================
 fun box(): String {
-  val app = createGraphFactory<AppComponent.Factory>().create()
+  val app = createGraph<AppGraph>()
   val loggedIn = app.loggedInComponent()
   val activity = loggedIn.activityComponent()
 
