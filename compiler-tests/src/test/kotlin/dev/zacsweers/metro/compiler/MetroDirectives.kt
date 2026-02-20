@@ -141,8 +141,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val CHECK_REPORTS by
     stringDirective(
       "Specifies report file names to verify against expected files. Can be specified multiple times. " +
-        "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir-test.AppGraph'. " +
-        "Expected files should be named '<testFile>.<reportName>.txt'."
+        "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir/test/AppGraph'. " +
+        "Expected files should be named '<testFile>/<diagnosticKey>/<path>/<reportName>.txt'."
     )
 
   fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
