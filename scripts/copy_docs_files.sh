@@ -9,7 +9,8 @@ set -e
 echo "Copying documentation files to mkdocs site..."
 
 # Copy in special files that GitHub wants in the project root.
-cp CHANGELOG.md docs/changelog.md
+# Prepend front matter to hide the navigation sidebar on single-page tabs
+{ echo '---'; echo 'hide:'; echo '  - navigation'; echo '---'; echo; cat CHANGELOG.md; } > docs/changelog.md
 cp .github/CONTRIBUTING.md docs/contributing.md
 cp samples/README.md docs/samples.md
 cp .github/CODE_OF_CONDUCT.md docs/code-of-conduct.md

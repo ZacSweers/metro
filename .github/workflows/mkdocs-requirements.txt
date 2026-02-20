@@ -15,6 +15,7 @@ mkdocs-callouts==1.16.0
 Pygments==2.19.2
 pymdown-extensions==10.21
 python-dateutil==2.9.0.post0
+mkdocs-git-revision-date-localized-plugin==1.4.5
 PyYAML==6.0.3
 repackage==0.7.3
 six==1.17.0

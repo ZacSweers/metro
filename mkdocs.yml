@@ -24,6 +24,10 @@ theme:
   favicon: site-assets/img/favicon.ico
   logo: site-assets/img/metro-icon.svg
   palette:
+    - media: '(prefers-color-scheme)'
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
     - media: '(prefers-color-scheme: light)'
       scheme: default
       primary: 'white'
@@ -37,7 +41,7 @@ theme:
       accent: 'green'
       toggle:
         icon: material/brightness-4
-        name: Switch to light mode
+        name: Switch to system preference
   font:
     text: 'Inter'
     code: 'Fira Code'
@@ -47,6 +51,11 @@ theme:
     - content.action.edit
     - content.action.view
     - content.tabs.link
+    - navigation.tabs
+    - navigation.footer
+    - navigation.top
+    - search.highlight
+    - search.suggest
   # Custom dir for theme overrides (eg. custom 404 page)
   # - https://squidfunk.github.io/mkdocs-material/customization/
   custom_dir: 'docs/site-assets/overrides'
@@ -61,6 +70,10 @@ plugins:
   - mike
   # https://github.com/sondregronas/mkdocs-callouts
   - callouts
+  # Last update date in the footer of each page
+  # https://github.com/timvink/mkdocs-git-revision-date-localized-plugin
+  - git-revision-date-localized:
+      enabled: !ENV [CI, false]
 
 #extra_css:
 #  - 'css/app.css'
@@ -106,13 +119,13 @@ markdown_extensions:
   - nl2br
 
 nav:
-  - 'Introduction': index.md
-  - 'Quick Start': quickstart.md
-  - 'Overview':
-    - 'Features': features.md
-    - 'Differences': differences.md
-  - 'Installation': installation.md
-  - 'Usage':
+  - 'Home': index.md
+  - 'Getting Started':
+      - 'Quick Start': quickstart.md
+      - 'Installation': installation.md
+      - 'Features': features.md
+      - 'Differences': differences.md
+  - 'Docs':
       - 'Dependency Graphs': dependency-graphs.md
       - 'Provides': provides.md
       - 'Injection Types': injection-types.md
@@ -124,22 +137,25 @@ nav:
       - 'Validation & Error Reporting': validation-and-error-reporting.md
       - 'Interop': interop.md
       - 'Generating Custom Metro Code': generating-metro-code.md
-  - 'Performance': performance.md
-  - 'Debugging': debugging.md
-  - 'Graph Analysis': graph-analysis.md
-  - 'Compatibility': compatibility.md
-  - 'Stability': stability.md
-  - 'FAQ': faq.md
-  - 'Adoption Strategies': adoption.md
-  - 'Samples': samples.md
   - 'MetroX':
       - 'Android': metrox-android.md
       - 'ViewModel': metrox-viewmodel.md
       - 'ViewModel Compose': metrox-viewmodel-compose.md
-  - 'API': api/index.html
-  - 'Design Doc': designdoc.html
-  - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions
+  - 'Guides & Samples':
+      - 'Performance': performance.md
+      - 'Debugging': debugging.md
+      - 'Graph Analysis': graph-analysis.md
+      - 'Adoption Strategies': adoption.md
+      - 'Samples': samples.md
+  - 'Reference':
+      - 'Compatibility': compatibility.md
+      - 'Stability': stability.md
+      - 'FAQ': faq.md
+      - 'Design Doc': designdoc.html
+  - 'Contributing':
+      - 'Contributing': contributing.md
+      - 'CoC': code-of-conduct.md
+      - 'Discussions ↗': https://github.com/ZacSweers/metro/discussions
   - 'Change Log': changelog.md
-  - 'Contributing': contributing.md
   - 'Sponsoring': sponsoring.md
-  - 'CoC': code-of-conduct.md
+  - 'API ↗': api/index.html
