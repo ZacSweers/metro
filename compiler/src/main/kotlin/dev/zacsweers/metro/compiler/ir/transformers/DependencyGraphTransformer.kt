@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
+import dev.zacsweers.metro.compiler.ir.graph.BindingLookupCache
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.ir.graph.GraphNodes
@@ -107,6 +108,8 @@ internal class DependencyGraphTransformer(
   private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
 ) : IrMetroContext by context, TraceScope by traceScope {
+
+  private val bindingLookupCache = BindingLookupCache()
 
   private val contributionMerger: IrContributionMerger =
     IrContributionMerger(this, contributionData)
@@ -231,6 +234,7 @@ internal class DependencyGraphTransformer(
             metroDeclarations,
             contributionData,
             parentContextReader,
+            bindingLookupCache,
           )
           .generate()
       }

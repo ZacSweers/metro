@@ -403,7 +403,7 @@ constructor(
   @DelicateMetroGradleApi(
     "Parallelization in Metro is _extremely_ experimental and may break your build"
   )
-  internal val parallelThreads: Property<Int> = objects.intProperty("metro.parallelThreads", 0)
+  public val parallelThreads: Property<Int> = objects.intProperty("metro.parallelThreads", 0)
 
   /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency

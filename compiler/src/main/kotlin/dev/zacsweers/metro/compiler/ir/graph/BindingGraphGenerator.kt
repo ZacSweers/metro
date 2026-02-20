@@ -50,6 +50,7 @@ internal class BindingGraphGenerator(
   private val metroDeclarations: MetroDeclarations,
   private val contributionData: IrContributionData,
   private val parentContext: ParentContextReader?,
+  private val bindingLookupCache: BindingLookupCache,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
 
   private val ProviderFactory.isDynamic: Boolean
@@ -72,6 +73,7 @@ internal class BindingGraphGenerator(
         },
         findMemberInjectors = metroDeclarations::findAllInjectorsFor,
         parentContext = parentContext,
+        bindingLookupCache = bindingLookupCache,
       )
 
     val graph =

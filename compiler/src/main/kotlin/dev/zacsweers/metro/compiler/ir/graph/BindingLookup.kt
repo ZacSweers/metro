@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import androidx.collection.ScatterMap
-import dev.zacsweers.metro.compiler.alsoIf
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
@@ -41,9 +40,9 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
@@ -63,6 +62,7 @@ internal class BindingLookup(
   private val findClassFactory: (IrClass) -> ClassFactory?,
   private val findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
   private val parentContext: ParentContextReader?,
+  private val bindingLookupCache: BindingLookupCache,
 ) {
 
   // Single cache for all bindings, storing lists to track duplicates naturally
@@ -806,21 +806,18 @@ internal class BindingLookup(
         }
 
         val binding =
-          irClass.cachedConstructorInjectedBinding.takeIf {
-            // Allow use of cached instances if no generics
-            remapper == NOOP_TYPE_REMAPPER
+          bindingLookupCache.getOrPutConstructorInjected(
+            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER }
+          ) {
+            IrBinding.ConstructorInjected(
+              type = irClass,
+              classFactory = mappedFactory,
+              annotations = classAnnotations,
+              typeKey = key,
+              injectedMembers =
+                membersInjectBindings.value.mapToSet { binding -> binding.contextualTypeKey },
+            )
           }
-            ?: IrBinding.ConstructorInjected(
-                type = irClass,
-                classFactory = mappedFactory,
-                annotations = classAnnotations,
-                typeKey = key,
-                injectedMembers =
-                  membersInjectBindings.value.mapToSet { binding -> binding.contextualTypeKey },
-              )
-              .alsoIf(remapper == NOOP_TYPE_REMAPPER) {
-                irClass.cachedConstructorInjectedBinding = it
-              }
 
         bindings += binding
 
@@ -851,39 +848,36 @@ internal class BindingLookup(
 
         // Create the target's ConstructorInjected binding (NOT added to graph)
         val targetBinding =
-          targetClass.cachedConstructorInjectedBinding.takeIf {
-            targetRemapper == NOOP_TYPE_REMAPPER
+          bindingLookupCache.getOrPutConstructorInjected(
+            targetClass.takeIf { targetRemapper == NOOP_TYPE_REMAPPER }
+          ) {
+            IrBinding.ConstructorInjected(
+              type = targetClass,
+              classFactory = targetClassFactory.remapTypes(targetRemapper),
+              annotations = targetAnnotations,
+              typeKey = targetKey,
+              // Assisted-inject classes don't have member injections in this context
+              injectedMembers = emptySet(),
+            )
           }
-            ?: IrBinding.ConstructorInjected(
-                type = targetClass,
-                classFactory = targetClassFactory.remapTypes(targetRemapper),
-                annotations = targetAnnotations,
-                typeKey = targetKey,
-                // Assisted-inject classes don't have member injections in this context
-                injectedMembers = emptySet(),
-              )
-              .alsoIf(targetRemapper == NOOP_TYPE_REMAPPER) {
-                targetClass.cachedConstructorInjectedBinding = it
-              }
 
         // Wrap target's dependencies in Provider for proper cycle detection
         val wrappedDependencies = targetBinding.dependencies.map { dep -> dep.wrapInProvider() }
 
         bindings +=
-          irClass.cacheAssistedFactoryBinding.takeIf {
-            // Allow use of cached instances if no generics
-            remapper == NOOP_TYPE_REMAPPER
+          bindingLookupCache.getOrPutAssistedFactory(
+            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER }
+          ) {
+            IrBinding.AssistedFactory(
+              type = irClass,
+              targetBinding = targetBinding,
+              function = function,
+              annotations = classAnnotations,
+              typeKey = key,
+              parameters = function.parameters(),
+              dependencies = wrappedDependencies,
+            )
           }
-            ?: IrBinding.AssistedFactory(
-                type = irClass,
-                targetBinding = targetBinding,
-                function = function,
-                annotations = classAnnotations,
-                typeKey = key,
-                parameters = function.parameters(),
-                dependencies = wrappedDependencies,
-              )
-              .alsoIf(remapper == NOOP_TYPE_REMAPPER) { irClass.cacheAssistedFactoryBinding = it }
       } else if (contextKey.hasDefault) {
         bindings += IrBinding.Absent(key)
       } else {
@@ -896,10 +890,29 @@ internal class BindingLookup(
   }
 }
 
-/** Cached [IrBinding.ConstructorInjected] binding for this class factory. */
-internal var IrClass.cachedConstructorInjectedBinding: IrBinding.ConstructorInjected? by
-  irAttribute(copyByDefault = false)
+/**
+ * Thread-safe cache for [IrBinding.ConstructorInjected] and [IrBinding.AssistedFactory] bindings
+ * keyed by [IrClass]. This replaces the previous `irAttribute`-based caching which is not safe for
+ * concurrent access during parallel graph extension validation.
+ */
+internal class BindingLookupCache {
+  private val constructorInjectedBindings =
+    ConcurrentHashMap<IrClass, IrBinding.ConstructorInjected>()
+  private val assistedFactoryBindings = ConcurrentHashMap<IrClass, IrBinding.AssistedFactory>()
 
-/** Cached [IrBinding.AssistedFactory] binding for this class factory. */
-internal var IrClass.cacheAssistedFactoryBinding: IrBinding.AssistedFactory? by
-  irAttribute(copyByDefault = false)
+  /** Returns a cached binding or computes and caches it. If [irClass] is null, just computes. */
+  fun getOrPutConstructorInjected(
+    irClass: IrClass?,
+    compute: () -> IrBinding.ConstructorInjected,
+  ): IrBinding.ConstructorInjected =
+    if (irClass != null) constructorInjectedBindings.computeIfAbsent(irClass) { compute() }
+    else compute()
+
+  /** Returns a cached binding or computes and caches it. If [irClass] is null, just computes. */
+  fun getOrPutAssistedFactory(
+    irClass: IrClass?,
+    compute: () -> IrBinding.AssistedFactory,
+  ): IrBinding.AssistedFactory =
+    if (irClass != null) assistedFactoryBindings.computeIfAbsent(irClass) { compute() }
+    else compute()
+}
