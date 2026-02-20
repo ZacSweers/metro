@@ -870,6 +870,11 @@ internal fun IrConstructorCall.scopeClassOrNull(): IrClass? {
     ?.rawTypeOrNull()
 }
 
+internal fun IrConstructorCall.allScopes(): Set<ClassId> = buildSet {
+  scopeOrNull()?.let { add(it) }
+  addAll(additionalScopes().mapToClassIds())
+}
+
 context(context: IrMetroContext)
 internal fun IrClass.originClassId(): ClassId? {
   return annotationsIn(context.metroSymbols.classIds.originAnnotations)
@@ -1039,7 +1044,8 @@ internal fun IrType.canonicalize(
         // Canonicalize the args too
         it.classifier
           .typeWithArguments(
-            it.arguments.map { arg ->
+            // Defensive copy since kotlinc trims these without copies
+            it.arguments.toList().map { arg ->
               when (arg) {
                 is IrStarProjection -> arg
                 is IrTypeProjection -> {

@@ -6,17 +6,32 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.ir.graph.IrDynamicGraphGenerator
+import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.ContributionHintIrTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.ContributionTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.CoreTransformers
+import dev.zacsweers.metro.compiler.ir.transformers.CreateGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
+import dev.zacsweers.metro.compiler.ir.transformers.InjectedClassTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.MutableMetroGraphData
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
+import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.TimeUnit
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LookupTracker
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.name.ClassId
 
 public class MetroIrGenerationExtension(
   private val messageCollector: MessageCollector,
@@ -41,7 +56,19 @@ public class MetroIrGenerationExtension(
       )
 
     context.traceDriver.use {
-      context.generateInner(moduleFragment)
+      if (options.parallelThreads > 0) {
+        val forkJoinPool = ForkJoinPool(options.parallelThreads)
+        try {
+          context.generateInner(moduleFragment, forkJoinPool)
+        } finally {
+          forkJoinPool.shutdown()
+          if (!forkJoinPool.awaitTermination(5, TimeUnit.SECONDS)) {
+            forkJoinPool.shutdownNow()
+          }
+        }
+      } else {
+        context.generateInner(moduleFragment, null)
+      }
       if (options.traceEnabled) {
         // Find and print the trace file
         options.traceDir.value?.let { traceDir ->
@@ -60,7 +87,10 @@ public class MetroIrGenerationExtension(
     }
   }
 
-  private fun IrMetroContext.generateInner(moduleFragment: IrModuleFragment) {
+  private fun IrMetroContext.generateInner(
+    moduleFragment: IrModuleFragment,
+    forkJoinPool: ForkJoinPool?,
+  ) {
     log("Starting IR processing of ${moduleFragment.name.asString()}")
     try {
       traceWithScope(moduleFragment.name.asString().removePrefix("<").removeSuffix(">")) {
@@ -68,22 +98,96 @@ public class MetroIrGenerationExtension(
           // Create contribution data container
           val contributionData = IrContributionData(metroContext)
 
-          // First - transform `MetroContribution` interfaces and collect contribution data in a
-          // single pass
-          trace("Transform contributions") {
-            moduleFragment.transform(ContributionTransformer(metroContext, this), contributionData)
+          val hintGenerator = HintGenerator(metroContext, moduleFragment)
+          val membersInjectorTransformer = MembersInjectorTransformer(metroContext)
+          val injectedClassTransformer =
+            InjectedClassTransformer(metroContext, membersInjectorTransformer)
+          val assistedFactoryTransformer =
+            AssistedFactoryTransformer(metroContext, injectedClassTransformer)
+          val bindingContainerTransformer = BindingContainerTransformer(metroContext)
+          val contributionHintIrTransformer: Lazy<ContributionHintIrTransformer> = memoize {
+            ContributionHintIrTransformer(metroContext, hintGenerator)
           }
 
-          // Second - transform the dependency graphs
+          val contributionMerger = IrContributionMerger(metroContext, contributionData)
+          val bindingContainerResolver = IrBindingContainerResolver(bindingContainerTransformer)
+          val syntheticGraphs = mutableListOf<GraphToProcess>()
+          val dynamicGraphGenerator =
+            IrDynamicGraphGenerator(metroContext, bindingContainerResolver, contributionMerger) {
+              impl,
+              anno ->
+              syntheticGraphs += GraphToProcess(impl, anno, impl, anno.allScopes())
+            }
+          val createGraphTransformer =
+            CreateGraphTransformer(metroContext, dynamicGraphGenerator, this)
+
+          val graphs = mutableListOf<GraphToProcess>()
+          val data = MutableMetroGraphData(contributionData, graphs, syntheticGraphs)
+
+          // Run non-graph transforms + aggregate contribution data in a single pass
           trace("Core transformers") {
-            val dependencyGraphTransformer =
-              DependencyGraphTransformer(
+            moduleFragment.transform(
+              CoreTransformers(
                 metroContext,
-                contributionData,
                 this,
-                HintGenerator(metroContext, moduleFragment),
-              )
-            moduleFragment.transform(dependencyGraphTransformer, null)
+                data,
+                ContributionTransformer(metroContext, this),
+                membersInjectorTransformer,
+                injectedClassTransformer,
+                assistedFactoryTransformer,
+                bindingContainerTransformer,
+                contributionHintIrTransformer,
+                createGraphTransformer,
+              ),
+              null,
+            )
+          }
+
+          membersInjectorTransformer.lock()
+          injectedClassTransformer.lock()
+          assistedFactoryTransformer.lock()
+          bindingContainerTransformer.lock()
+
+          // Eagerly populate contribution caches for all known graph scopes
+          // so that lookups are O(1) during (possibly parallel) graph validation.
+          // Extension scopes not known here are lazily populated via ConcurrentHashMap.
+          @Suppress("RETURN_VALUE_NOT_USED")
+          trace("Populate contribution caches") {
+            val seenScopes = mutableSetOf<ClassId>()
+            for (graph in data.allGraphs) {
+              for (scope in graph.scopes) {
+                if (seenScopes.add(scope)) {
+                  contributionData.getContributions(scope, graph.declaration)
+                  contributionData.getBindingContainerContributions(scope, graph.declaration)
+                }
+              }
+            }
+          }
+          contributionData.lock()
+
+          val metroDeclarations =
+            DefaultMetroDeclarations(
+              bindingContainerTransformer,
+              injectedClassTransformer,
+              membersInjectorTransformer,
+              assistedFactoryTransformer,
+            )
+
+          val dependencyGraphTransformer =
+            DependencyGraphTransformer(
+              metroContext,
+              contributionData,
+              this,
+              forkJoinPool,
+              metroDeclarations,
+              bindingContainerResolver,
+            )
+
+          // Second - transform the dependency graphs
+          trace("Graph transformers") {
+            for ((declaration, anno, impl) in data.allGraphs) {
+              dependencyGraphTransformer.processGraph(declaration, anno, impl)
+            }
           }
         }
       }
@@ -93,3 +197,10 @@ public class MetroIrGenerationExtension(
     }
   }
 }
+
+internal data class GraphToProcess(
+  val declaration: IrClass,
+  val dependencyGraphAnno: IrConstructorCall,
+  val graphImpl: IrClass,
+  val scopes: Set<ClassId>,
+)

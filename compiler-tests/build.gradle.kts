@@ -10,10 +10,15 @@ plugins {
   java
 }
 
+kotlin {
+  compilerOptions { optIn.add("org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI") }
+}
+
 sourceSets {
   register("generator220")
   register("generator230")
   register("generator2320")
+  register("generator2320RC")
 }
 
 val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVersion")
@@ -67,7 +72,11 @@ var generatorConfigToUse: String
 if (testKotlinVersion >= KotlinToolingVersion(KotlinVersion(2, 3))) {
   generatorConfigToUse =
     if (testKotlinVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)) {
-      "generator2320"
+      if (testKotlinVersion < KotlinToolingVersion(2, 3, 20, "RC")) {
+        "generator2320"
+      } else {
+        "generator2320RC"
+      }
     } else {
       "generator230"
     }
@@ -92,6 +101,9 @@ dependencies {
   )
   "generator2320CompileOnly"(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20-dev-5437"
+  )
+  "generator2320RCCompileOnly"(
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20-RC"
   )
 
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
@@ -157,19 +169,19 @@ val generateTests =
     jvmArgs("-Xss1m")
   }
 
-val enableShardTest = providers.gradleProperty("metro.enableShardTest").isPresent
+val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
 
   // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
   minHeapSize = "512m"
-  maxHeapSize = if (enableShardTest) "4g" else "2g"
+  maxHeapSize = if (largeTestMode) "4g" else "2g"
   jvmArgs(
     "-ea",
     "-XX:+UseCodeCacheFlushing",
     "-XX:ReservedCodeCacheSize=256m",
-    "-XX:MaxMetaspaceSize=${if (enableShardTest) "512m" else "1g"}",
+    "-XX:MaxMetaspaceSize=${if (largeTestMode) "512m" else "1g"}",
     "-XX:CICompilerCount=2",
     "-Djna.nosys=true",
   )
@@ -215,17 +227,18 @@ tasks.withType<Test> {
 
   useJUnitPlatform()
 
+  if (largeTestMode) {
+    filter { includeTestsMatching("*StressTest*") }
+  } else {
+    filter { excludeTestsMatching("*StressTest*") }
+  }
+
   setLibraryProperty("kotlin.minimal.stdlib.path", "kotlin-stdlib")
   setLibraryProperty("kotlin.full.stdlib.path", "kotlin-stdlib-jdk8")
   setLibraryProperty("kotlin.reflect.jar.path", "kotlin-reflect")
   setLibraryProperty("kotlin.test.jar.path", "kotlin-test")
   setLibraryProperty("kotlin.script.runtime.path", "kotlin-script-runtime")
   setLibraryProperty("kotlin.annotations.path", "kotlin-annotations-jvm")
-
-  if (enableShardTest) {
-    systemProperty("metro.enableShardTest", true)
-    systemProperty("metro.singleTestName", "testLargeGraphStressTest")
-  }
 
   systemProperty("metro.shortLocations", "true")
 

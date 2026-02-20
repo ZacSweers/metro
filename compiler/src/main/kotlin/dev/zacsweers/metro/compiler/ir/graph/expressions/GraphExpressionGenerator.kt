@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
@@ -23,9 +24,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.memoize
@@ -60,9 +58,7 @@ private constructor(
   override val thisReceiver: IrValueParameter,
   private val bindingPropertyContext: BindingPropertyContext,
   override val bindingGraph: IrBindingGraph,
-  private val bindingContainerTransformer: BindingContainerTransformer,
-  private val membersInjectorTransformer: MembersInjectorTransformer,
-  private val assistedFactoryTransformer: AssistedFactoryTransformer,
+  private val metroDeclarations: MetroDeclarations,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   /**
    * For extension graphs, maps ancestor graph type key -> list of properties to chain through. Used
@@ -79,9 +75,7 @@ private constructor(
     private val node: GraphNode.Local,
     private val bindingPropertyContext: BindingPropertyContext,
     private val bindingGraph: IrBindingGraph,
-    private val bindingContainerTransformer: BindingContainerTransformer,
-    private val membersInjectorTransformer: MembersInjectorTransformer,
-    private val assistedFactoryTransformer: AssistedFactoryTransformer,
+    private val metroDeclarations: MetroDeclarations,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
     /**
      * For extension graphs, maps ancestor graph type key -> list of properties to chain through.
@@ -99,9 +93,7 @@ private constructor(
         thisReceiver = thisReceiver,
         bindingPropertyContext = bindingPropertyContext,
         bindingGraph = bindingGraph,
-        bindingContainerTransformer = bindingContainerTransformer,
-        membersInjectorTransformer = membersInjectorTransformer,
-        assistedFactoryTransformer = assistedFactoryTransformer,
+        metroDeclarations = metroDeclarations,
         graphExtensionGenerator = graphExtensionGenerator,
         traceScope = traceScope,
         ancestorGraphProperties = ancestorGraphProperties,
@@ -274,7 +266,7 @@ private constructor(
 
         is Provided -> {
           val providerFactory =
-            bindingContainerTransformer.getOrLookupProviderFactory(binding)
+            metroDeclarations.lookupProviderFactory(binding)
               ?: reportCompilerBug(
                 "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
               )
@@ -343,7 +335,7 @@ private constructor(
 
         is AssistedFactory -> {
           // Example9_Factory_Impl.create(example9Provider);
-          val factoryImpl = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
+          val factoryImpl = metroDeclarations.findAssistedFactoryImpl(binding.type)
 
           // The target binding is stored directly on the Assisted binding (not in the graph)
           val targetBinding = binding.targetBinding
@@ -386,7 +378,7 @@ private constructor(
                 clazz.superClass?.takeIf { it.hasAnnotation(Symbols.ClassIds.HasMemberInjections) }
               }
               .firstNotNullOfOrNull { clazz ->
-                membersInjectorTransformer.getOrGenerateInjector(clazz)?.injectorClass
+                metroDeclarations.findInjector(clazz)?.injectorClass
               }
 
           if (injectorClass == null) {

@@ -67,6 +67,7 @@ import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.EnumSet
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getJvmNameFromAnnotation
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -113,16 +114,20 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroContext by context {
+internal class BindingContainerTransformer(context: IrMetroContext) :
+  IrMetroContext by context, Lockable by Lockable() {
 
-  private val references = mutableMapOf<CallableId, CallableReference>()
-  private val generatedFactories = mutableMapOf<CallableId, ProviderFactory>()
+  // Thread-safe for concurrent access during parallel graph validation.
+  private val references = ConcurrentHashMap<CallableId, CallableReference>()
+  private val generatedFactories = ConcurrentHashMap<CallableId, ProviderFactory>()
 
   /**
    * A cache of binding container fqnames to a [BindingContainer] representation of them. If the key
    * is present but the value is an empty optional, it means this is just not a binding container.
+   *
+   * Thread-safe for concurrent access during parallel graph validation.
    */
-  private val cache = mutableMapOf<FqName, Optional<BindingContainer>>()
+  private val cache = ConcurrentHashMap<FqName, Optional<BindingContainer>>()
 
   private val bindsMirrorClassTransformer = BindsMirrorClassTransformer(context)
 
@@ -214,6 +219,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       bindingContainerAnnotation != null || isContributedGraph || !container.isEmpty()
 
     if (shouldGenerateMetadata) {
+      checkNotLocked()
       val metroMetadata = createMetroMetadata(dependency_graph = container.toProto())
       declaration.metroMetadata = metroMetadata
     }
@@ -268,6 +274,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     generatedFactories[reference.callableId]?.let {
       return it
     }
+
+    checkNotLocked()
 
     val sourceValueParameters = reference.parameters.regularParameters
 
@@ -424,7 +432,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     parent: IrClass,
     annotations: MetroAnnotations<IrAnnotation>,
   ): CallableReference {
-    return references.getOrPut(function.callableId) {
+    return references.computeIfAbsent(function.callableId) {
       val typeKey = IrContextualTypeKey.from(function).typeKey
       val isPropertyAccessor = function.isPropertyAccessor
       val callableId =
@@ -453,7 +461,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     annotations: MetroAnnotations<IrAnnotation> = metroAnnotationsOf(property),
   ): CallableReference {
     val callableId = property.callableId
-    return references.getOrPut(callableId) {
+    return references.computeIfAbsent(callableId) {
       val parent = property.parentAsClass
 
       // Check if property has @JvmField - if so, we use backing field instead of getter
@@ -484,7 +492,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
           IrTypeKey(backingField!!.type)
         }
 
-      return CallableReference(
+      CallableReference(
         callableId = callableId,
         name = property.name,
         isPropertyAccessor = true,

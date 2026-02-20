@@ -33,7 +33,7 @@ internal const val LOG_PREFIX = "[METRO]"
 internal const val REPORT_METRO_MESSAGE =
   "This is possibly a bug in the Metro compiler, please report it with details and/or a reproducer to https://github.com/zacsweers/metro."
 
-internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.NONE, initializer)
+internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.PUBLICATION, initializer)
 
 internal inline fun <reified T : Any> Any.expectAs(): T {
   contract { returns() implies (this@expectAs is T) }
@@ -199,6 +199,12 @@ internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClas
 @Suppress("NOTHING_TO_INLINE")
 internal inline fun reportCompilerBug(message: String): Nothing {
   error("${message.suffixIfNot(".")} $REPORT_METRO_MESSAGE ")
+}
+
+internal inline fun metroCheck(condition: Boolean, body: () -> String) {
+  if (!condition) {
+    reportCompilerBug(body())
+  }
 }
 
 internal fun StringBuilder.appendLineWithUnderlinedContent(

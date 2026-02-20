@@ -80,15 +80,16 @@ import org.jetbrains.kotlin.name.SpecialNames
 internal class AssistedFactoryTransformer(
   context: IrMetroContext,
   private val injectedClassTransformer: InjectedClassTransformer,
-) : IrMetroContext by context {
+) : IrMetroContext by context, Lockable by Lockable() {
 
   private val implsCache = mutableMapOf<ClassId, AssistedFactoryImpl>()
 
-  fun visitClass(declaration: IrClass) {
+  fun visitClass(declaration: IrClass): Boolean {
     val isAssistedFactory = declaration.isAnnotatedWithAny(metroSymbols.assistedFactoryAnnotations)
     if (isAssistedFactory) {
       @Suppress("RETURN_VALUE_NOT_USED") getOrGenerateImplClass(declaration)
     }
+    return isAssistedFactory
   }
 
   internal fun getOrGenerateImplClass(declaration: IrClass): AssistedFactoryImpl {
@@ -150,6 +151,8 @@ internal class AssistedFactoryTransformer(
       }
       reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
     }
+
+    checkNotLocked()
 
     // Find the SAM function - for external use metadata as hint, for in-compilation get directly
     val samFunction = declaration.singleAbstractFunction()

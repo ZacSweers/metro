@@ -396,6 +396,16 @@ constructor(
     objects.mapProperty(String::class.java, String::class.java).convention(emptyMap())
 
   /**
+   * Number of threads to use for Metro's compiler.
+   *
+   * 0 (default) disables parallelism.
+   */
+  @DelicateMetroGradleApi(
+    "Parallelization in Metro is _extremely_ experimental and may break your build"
+  )
+  internal val parallelThreads: Property<Int> = objects.intProperty("metro.parallelThreads", 0)
+
+  /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
    * graphs to the given destination. Outputs are per-compilation granularity (i.e.
    * `build/metro/main/...`).

@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
@@ -56,7 +57,6 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.mapNotNullToSet
@@ -66,6 +66,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.EnumSet
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -104,13 +105,14 @@ import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class GraphNodes(
   metroContext: IrMetroContext,
-  private val bindingContainerTransformer: BindingContainerTransformer,
+  private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
   private val contributionMerger: IrContributionMerger,
 ) : IrMetroContext by metroContext {
 
-  // Keyed by the source declaration
-  private val graphNodesByClass = mutableMapOf<ClassId, GraphNode>()
+  // Keyed by the source declaration. Thread-safe for concurrent access during parallel graph
+  // validation.
+  private val graphNodesByClass = ConcurrentHashMap<ClassId, GraphNode>()
 
   operator fun get(classId: ClassId) = graphNodesByClass[classId]
 
@@ -164,7 +166,7 @@ internal class GraphNodes(
         (dependencyGraphAnno?.annotationClass?.classId in
           metroContext.metroSymbols.classIds.dependencyGraphAnnotations)
     if (isRegularDependencyGraph) {
-      graphNodesByClass[graphClassId] = node
+      graphNodesByClass.putIfAbsent(graphClassId, node)
     }
 
     return node
@@ -180,8 +182,7 @@ internal class GraphNodes(
     cachedDependencyGraphAnno: IrConstructorCall? = null,
   ) : IrMetroContext by nodeCache, TraceScope by traceScope {
     private val metroGraph = metroGraph ?: graphDeclaration.metroGraphOrNull
-    private val bindingContainerTransformer: BindingContainerTransformer =
-      nodeCache.bindingContainerTransformer
+    private val metroDeclarations: MetroDeclarations = nodeCache.metroDeclarations
     private val accessors = mutableListOf<GraphAccessor>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsCallables = mutableMapOf<IrTypeKey, MutableList<BindsCallable>>()
@@ -474,7 +475,7 @@ internal class GraphNodes(
             }
           }
 
-          bindingContainerTransformer.findContainer(clazz)?.let(bindingContainers::add)
+          metroDeclarations.findBindingContainer(clazz)?.let(bindingContainers::add)
         }
       }
 
@@ -1017,7 +1018,7 @@ internal class GraphNodes(
             // Add binding containers from merged contributions (already filtered)
             bindingContainers +=
               containers
-                .mapNotNull { bindingContainerTransformer.findContainer(it) }
+                .mapNotNull { metroDeclarations.findBindingContainer(it) }
                 .onEach { container ->
                   linkDeclarationsInCompilation(graphDeclaration, container.ir)
                   // Annotation-included containers may need to be managed directly
@@ -1214,7 +1215,7 @@ internal class GraphNodes(
           val declaration = type.classOrNull?.owner ?: continue
           // Skip the metrograph, it won't have custom nested factories
           if (declaration == metroGraph) continue
-          bindingContainerTransformer.findContainer(declaration)?.let { bindingContainer ->
+          metroDeclarations.findBindingContainer(declaration)?.let { bindingContainer ->
             for ((_, factory) in bindingContainer.providerFactories) {
               providerFactories.getAndAdd(factory.typeKey, factory)
             }
@@ -1231,7 +1232,7 @@ internal class GraphNodes(
           }
         }
       } else {
-        bindingContainerTransformer.factoryClassesFor(metroGraph ?: graphDeclaration).forEach {
+        metroDeclarations.providerFactoriesFor(metroGraph ?: graphDeclaration).forEach {
           (typeKey, factory) ->
           providerFactories.getAndAdd(typeKey, factory)
         }
