@@ -93,13 +93,13 @@ To run large tests locally:
 
 Create a `.kt` file under `test/src/data/dump/reports`. These tests verify Metro's diagnostic report outputs (like unmatched exclusions/replacements during contribution merging). Use the `CHECK_REPORTS` directive to specify which report files to verify. The test runs through the full compilation pipeline (FIR + IR) and compares generated reports against golden files. Example:
    ```kotlin
-   // CHECK_REPORTS: merging-unmatched-replacements-fir/dev/zacsweers/metro/AppScope
+   // CHECK_REPORTS: merging-unmatched-replacements-fir-dev_zacsweers_metro_AppScope
 
    @DependencyGraph(AppScope::class)
    interface AppGraph
    ```
 
-Expected files are named `<testFile>/<diagnosticKey>/<path>/<reportName>.txt` (e.g., `MyTest/merging-unmatched-replacements-fir/AppGraph.txt`).
+Expected files are named `<testFile>.<reportName>.txt` (e.g., `MyTest.merging-unmatched-replacements-fir-AppGraph.txt`).
 
 ## Debugging/FAQ
 

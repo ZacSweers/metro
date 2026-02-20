@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import dev.zacsweers.metro.compiler.ir.cache.IrCachesFactory
@@ -262,21 +261,15 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   }
 }
 
-/** See the other [writeDiagnostic] */
 context(context: IrMetroContext)
-internal fun writeDiagnostic(diagnosticKey: String, fileName: String, text: () -> String) {
-  writeDiagnostic(diagnosticKey, { fileName }, text)
+internal fun writeDiagnostic(fileName: String, text: () -> String) {
+  writeDiagnostic({ fileName }, text)
 }
 
-/**
- * @param diagnosticKey A string identifier for the category of diagnostic being generated. This
- *   will be treated as a prefix path segment. E.g. a key of "keys-populated" will result in
- *   <reports-folder>/keys-populated/<fileName>
- */
 context(context: IrMetroContext)
-internal fun writeDiagnostic(diagnosticKey: String, fileName: () -> String, text: () -> String) {
+internal fun writeDiagnostic(fileName: () -> String, text: () -> String) {
   context.reportsDir
-    ?.resolve(createDiagnosticReportPath(diagnosticKey, fileName()))
+    ?.resolve(fileName())
     ?.apply {
       // Ensure that the path leading up to the file has been created
       createParentDirectories()

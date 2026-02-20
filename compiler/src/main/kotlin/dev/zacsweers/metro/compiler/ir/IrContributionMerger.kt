@@ -240,10 +240,9 @@ internal class IrContributionMerger(
           }
 
           if (unmatchedExclusions.isNotEmpty()) {
-            writeDiagnostic(
-              "merging-unmatched-exclusions-ir",
-              { "${primaryScope.safePathString}.txt" },
-            ) {
+            writeDiagnostic({
+              "merging-unmatched-exclusions-ir-${primaryScope.safePathString}.txt"
+            }) {
               unmatchedExclusions.map { it.safePathString }.sorted().joinToString("\n")
             }
           }
@@ -307,10 +306,9 @@ internal class IrContributionMerger(
           }
 
           if (unmatchedReplacements.isNotEmpty()) {
-            writeDiagnostic(
-              "merging-unmatched-replacements-ir",
-              { "${primaryScope.safePathString}.txt" },
-            ) {
+            writeDiagnostic({
+              "merging-unmatched-replacements-ir-${primaryScope.safePathString}.txt"
+            }) {
               unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
             }
           }
@@ -329,10 +327,9 @@ internal class IrContributionMerger(
           }
 
           if (unmatchedRankReplacements.isNotEmpty()) {
-            writeDiagnostic(
-              "merging-unmatched-rank-replacements-ir",
-              { "${primaryScope.safePathString}.txt" },
-            ) {
+            writeDiagnostic({
+              "merging-unmatched-rank-replacements-ir-${primaryScope.safePathString}.txt"
+            }) {
               unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
             }
           }

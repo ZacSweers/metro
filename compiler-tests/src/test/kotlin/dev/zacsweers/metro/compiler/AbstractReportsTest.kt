@@ -19,15 +19,14 @@ import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
  *
  * Usage:
  * ```kotlin
- * // CHECK_REPORTS: merging-unmatched-exclusions-fir/test/AppGraph
- * // CHECK_REPORTS: merging-unmatched-replacements-ir/test/AppGraph
+ * // CHECK_REPORTS: merging-unmatched-exclusions-fir-test_AppGraph
+ * // CHECK_REPORTS: merging-unmatched-replacements-ir-test_AppGraph
  *
  * @DependencyGraph
  * interface AppGraph { ... }
  * ```
  *
- * Expected files should be named `<testFile>/<diagnosticKey>/<path>/<reportName>.txt` alongside the
- * test data.
+ * Expected files should be named `<testFile>.<reportName>.txt` alongside the test data.
  */
 open class AbstractReportsTest : AbstractFirLightTreeDiagnosticsTestWithJvmIrBackend() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {

@@ -315,10 +315,9 @@ internal class IrGraphGenerator(
           graphMetadataReporter.write(node, bindingGraph)
           val metroMetadata = createMetroMetadata(dependency_graph = graphProto)
 
-          writeDiagnostic(
-            "graph-metadata",
-            { "${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt" },
-          ) {
+          writeDiagnostic({
+            "graph-metadata-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt"
+          }) {
             metroMetadata.toString()
           }
 
@@ -743,10 +742,10 @@ internal class IrGraphGenerator(
       }
       .toList()
       .also { propertyBindings ->
-        writeDiagnostic("keys-providerProperties", "${diagnosticTag}.txt") {
+        writeDiagnostic("keys-providerProperties-${diagnosticTag}.txt") {
           propertyBindings.joinToString("\n") { it.binding.typeKey.toString() }
         }
-        writeDiagnostic("keys-scopedProviderProperties", "${diagnosticTag}.txt") {
+        writeDiagnostic("keys-scopedProviderProperties-${diagnosticTag}.txt") {
           propertyBindings
             .filter { it.binding.isScoped() }
             .joinToString("\n") { it.binding.typeKey.toString() }

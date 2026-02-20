@@ -1,9 +1,9 @@
 // FIR reports (from @ContributesTo)
-// CHECK_REPORTS: merging-unmatched-replacements-fir/AppGraph
-// CHECK_REPORTS: merging-unmatched-exclusions-fir/ExcludingSupertypeGraph
+// CHECK_REPORTS: merging-unmatched-replacements-fir-AppGraph
+// CHECK_REPORTS: merging-unmatched-exclusions-fir-ExcludingSupertypeGraph
 // IR reports (from graph extensions)
-// CHECK_REPORTS: merging-unmatched-replacements-ir/kotlin/Unit
-// CHECK_REPORTS: merging-unmatched-exclusions-ir/kotlin/Unit
+// CHECK_REPORTS: merging-unmatched-replacements-ir-kotlin_Unit
+// CHECK_REPORTS: merging-unmatched-exclusions-ir-kotlin_Unit
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
@@ -22,11 +22,13 @@ interface ExcludingSupertypeGraph
 
 // Placeholders - these exist but are NOT contributors
 abstract class NonExistentModule
-
 abstract class NonExistentExcludedModule
 
 // Child graph that extends AppGraph with IR-level exclusions/replacements
-@GraphExtension(scope = Unit::class, excludes = [NonExistentIrExclusion::class])
+@GraphExtension(
+  scope = Unit::class,
+  excludes = [NonExistentIrExclusion::class],
+)
 interface ChildGraph {
   val childString: String
 }
@@ -38,5 +40,4 @@ interface ReplacingChildSupertype {
 
 // Placeholders for IR-level exclusions/replacements
 abstract class NonExistentIrReplacement
-
 abstract class NonExistentIrExclusion

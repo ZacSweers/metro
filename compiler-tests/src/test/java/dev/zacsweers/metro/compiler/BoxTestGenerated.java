@@ -2137,12 +2137,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("DeeplyNestedGraphsAreHandledWhenGeneratingReports.kt")
-    public void testDeeplyNestedGraphsAreHandledWhenGeneratingReports() {
-      runTest("compiler-tests/src/test/data/box/reports/DeeplyNestedGraphsAreHandledWhenGeneratingReports.kt");
-    }
-
-    @Test
     @TestMetadata("ReallyLongPackageNameHandledWhenWritingDebugReports.kt")
     public void testReallyLongPackageNameHandledWhenWritingDebugReports() {
       runTest("compiler-tests/src/test/data/box/reports/ReallyLongPackageNameHandledWhenWritingDebugReports.kt");
