@@ -530,16 +530,20 @@ internal class ContributedInterfaceSupertypeGenerator(
         .map { it.supertype }
         .toSet()
 
-    return contributions.values.filter { metroContribution ->
-      // External contributions pass through directly
-      if (metroContribution in externalSupertypes) {
-        return@filter true
+    return contributions.values
+      .filter { metroContribution ->
+        // External contributions pass through directly
+        if (metroContribution in externalSupertypes) {
+          return@filter true
+        }
+        // Filter out binding containers at the end, they participate in replacements but not in
+        // supertypes
+        metroContribution.classId?.parentClassId?.parentClassId != declarationClassId &&
+          contributionMappingsByClassId[metroContribution.classId] != true
       }
-      // Filter out binding containers at the end, they participate in replacements but not in
-      // supertypes
-      metroContribution.classId?.parentClassId?.parentClassId != declarationClassId &&
-        contributionMappingsByClassId[metroContribution.classId] != true
-    }
+      // Deduplicate by classId. The same contribution type can appear under different keys when
+      // discovered via both hint-based and external extension paths.
+      .distinctBy { it.classId }
   }
 
   /**
