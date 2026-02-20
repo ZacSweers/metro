@@ -117,8 +117,8 @@ abstract class MetroCompilerTest {
               STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
               ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)
               KEYS_PER_GRAPH_SHARD -> processor.option(entry.raw.cliOption, keysPerGraphShard)
-              PUBLIC_PROVIDER_SEVERITY ->
-                processor.option(entry.raw.cliOption, publicProviderSeverity)
+              PUBLIC_SCOPED_PROVIDER_SEVERITY ->
+                processor.option(entry.raw.cliOption, publicScopedProviderSeverity)
               NON_PUBLIC_CONTRIBUTION_SEVERITY ->
                 processor.option(entry.raw.cliOption, nonPublicContributionSeverity)
               USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS ->

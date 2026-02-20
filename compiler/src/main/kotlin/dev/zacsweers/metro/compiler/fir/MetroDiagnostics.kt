@@ -56,12 +56,12 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDER_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_COULD_BE_BINDS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_ERROR
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_GRAPH_ACCESSOR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
@@ -133,9 +133,8 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val ASSISTED_INJECTION_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
   // Provides errors
-  val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
-  val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING by
-    warning1<KtElement, String>(VISIBILITY_MODIFIER)
+  val SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
+  val SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING by warning1<KtElement, String>(VISIBILITY_MODIFIER)
   val PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE by error1<KtElement, String>(VISIBILITY_MODIFIER)
   // TODO make this severity configurable
   val PROVIDES_COULD_BE_BINDS by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -295,8 +294,8 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(MAP_KEY_ERROR, "{0}", STRING)
         put(MAP_KEY_TYPE_PARAM_ERROR, "{0}", STRING)
         put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)
-        put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR, "{0}", STRING)
-        put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING, "{0}", STRING)
+        put(SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR, "{0}", STRING)
+        put(SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING, "{0}", STRING)
         put(PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE, "{0}", STRING)
         put(FUNCTION_INJECT_ERROR, "{0}", STRING)
         put(FUNCTION_INJECT_TYPE_PARAMETERS_ERROR, "{0}", STRING)

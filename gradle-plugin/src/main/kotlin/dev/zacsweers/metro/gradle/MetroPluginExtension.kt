@@ -233,12 +233,22 @@ constructor(
   public val transformProvidersToPrivate: Property<Boolean> =
     objects.booleanProperty("metro.transformProvidersToPrivate", false)
 
+  @Deprecated(
+    "This is just a proxy to publicScopedProviderSeverity now",
+    replaceWith = ReplaceWith("publicScopedProviderSeverity"),
+  )
+  public val publicProviderSeverity: Property<DiagnosticSeverity>
+    get() = publicScopedProviderSeverity
+
   /**
-   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters `public`
-   * provider callables. See the kdoc on `Provides` for more details.
+   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
+   * **scoped** `public` provider callables. See the kdoc on `Provides` for more details.
    */
-  public val publicProviderSeverity: Property<DiagnosticSeverity> =
-    objects.enumProperty<DiagnosticSeverity>("publicProviderSeverity", DiagnosticSeverity.NONE)
+  public val publicScopedProviderSeverity: Property<DiagnosticSeverity> =
+    objects.enumProperty<DiagnosticSeverity>(
+      "publicScopedProviderSeverity",
+      DiagnosticSeverity.NONE,
+    )
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
