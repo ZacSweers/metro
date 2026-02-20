@@ -929,18 +929,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("BindsWithBodiesShouldBePrivate_InAbstractClass.kt")
-    public void testBindsWithBodiesShouldBePrivate_InAbstractClass() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/BindsWithBodiesShouldBePrivate_InAbstractClass.kt");
-    }
-
-    @Test
-    @TestMetadata("BindsWithBodiesShouldBePrivate_InInterface.kt")
-    public void testBindsWithBodiesShouldBePrivate_InInterface() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/BindsWithBodiesShouldBePrivate_InInterface.kt");
-    }
-
-    @Test
     @TestMetadata("Binds_Interface_OkCase.kt")
     public void testBinds_Interface_OkCase() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/Binds_Interface_OkCase.kt");
@@ -956,12 +944,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("Binds_interface_SameTypesCannotHaveSameQualifiers.kt")
     public void testBinds_interface_SameTypesCannotHaveSameQualifiers() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/Binds_interface_SameTypesCannotHaveSameQualifiers.kt");
-    }
-
-    @Test
-    @TestMetadata("Binds_interface_ShouldNotHaveBodies.kt")
-    public void testBinds_interface_ShouldNotHaveBodies() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/Binds_interface_ShouldNotHaveBodies.kt");
     }
 
     @Test

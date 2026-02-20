@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.FirContextualTypeKey
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -233,21 +232,22 @@ internal object BindingContainerCallableChecker :
     }
 
     val isPrivate = declaration.visibility == Visibilities.Private
-    if (!isPrivate && !annotations.isMultibinds && declaration !is FirProperty) {
-      if (
-        session.metroFirBuiltIns.options.publicProviderSeverity !=
-          MetroOptions.DiagnosticSeverity.NONE
-      ) {
-        val kind = if (annotations.isBinds) "Binds" else "Provides"
-        val message = "`@$kind` declarations should be private."
-        val diagnosticFactory =
-          when (session.metroFirBuiltIns.options.publicProviderSeverity) {
-            NONE -> reportCompilerBug("Not possible")
-            WARN -> MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
-            ERROR -> MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
-          }
-        reporter.reportOn(source, diagnosticFactory, message)
-      }
+    val shouldReportForPublic =
+      !isPrivate &&
+        annotations.isScoped &&
+        !annotations.isMultibinds &&
+        declaration !is FirProperty &&
+        session.metroFirBuiltIns.options.publicScopedProviderSeverity.isEnabled
+
+    if (shouldReportForPublic) {
+      val message = "Scoped @Provides declarations should be private."
+      val diagnosticFactory =
+        when (session.metroFirBuiltIns.options.publicScopedProviderSeverity) {
+          NONE -> reportCompilerBug("Not possible")
+          WARN -> MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING
+          ERROR -> MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR
+        }
+      reporter.reportOn(source, diagnosticFactory, message)
     }
 
     val bodyExpression =

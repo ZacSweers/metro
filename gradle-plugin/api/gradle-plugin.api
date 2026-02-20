@@ -60,6 +60,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getNonPublicContributionSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getOptionalBindingBehavior ()Lorg/gradle/api/provider/Property;
 	public final fun getPublicProviderSeverity ()Lorg/gradle/api/provider/Property;
+	public final fun getPublicScopedProviderSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getReportsDestination ()Lorg/gradle/api/file/DirectoryProperty;
 	public final fun getShrinkUnusedBindings ()Lorg/gradle/api/provider/Property;
 	public final fun getStatementsPerInitFun ()Lorg/gradle/api/provider/Property;

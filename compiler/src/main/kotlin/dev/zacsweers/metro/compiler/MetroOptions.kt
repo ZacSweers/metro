@@ -251,13 +251,13 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  PUBLIC_PROVIDER_SEVERITY(
+  PUBLIC_SCOPED_PROVIDER_SEVERITY(
     RawMetroOption(
-      name = "public-provider-severity",
+      name = "public-scoped-provider-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
       valueDescription = "NONE|WARN|ERROR",
       description =
-        "Control diagnostic severity reporting of public providers. Only applies if `transform-providers-to-private` is false.",
+        "Control diagnostic severity reporting of public scoped providers. Only applies if `transform-providers-to-private` is false.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -899,11 +899,11 @@ public data class MetroOptions(
   public val keysPerGraphShard: Int = MetroOption.KEYS_PER_GRAPH_SHARD.raw.defaultValue.expectAs(),
   public val enableSwitchingProviders: Boolean =
     MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
-  public val publicProviderSeverity: DiagnosticSeverity =
+  public val publicScopedProviderSeverity: DiagnosticSeverity =
     if (transformProvidersToPrivate) {
       DiagnosticSeverity.NONE
     } else {
-      MetroOption.PUBLIC_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
         DiagnosticSeverity.valueOf(it)
       }
     },
@@ -1074,7 +1074,7 @@ public data class MetroOptions(
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
     public var enableFastInit: Boolean = base.enableSwitchingProviders
-    public var publicProviderSeverity: DiagnosticSeverity = base.publicProviderSeverity
+    public var publicScopedProviderSeverity: DiagnosticSeverity = base.publicScopedProviderSeverity
     public var nonPublicContributionSeverity: DiagnosticSeverity =
       base.nonPublicContributionSeverity
     public var optionalBindingBehavior: OptionalBindingBehavior = base.optionalBindingBehavior
@@ -1279,7 +1279,7 @@ public data class MetroOptions(
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
         enableSwitchingProviders = enableFastInit,
-        publicProviderSeverity = publicProviderSeverity,
+        publicScopedProviderSeverity = publicScopedProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
         useAssistedParamNamesAsIdentifiers = useAssistedParamNamesAsIdentifiers,
@@ -1428,8 +1428,8 @@ public data class MetroOptions(
 
           ENABLE_SWITCHING_PROVIDERS -> enableFastInit = configuration.getAsBoolean(entry)
 
-          PUBLIC_PROVIDER_SEVERITY ->
-            publicProviderSeverity =
+          PUBLIC_SCOPED_PROVIDER_SEVERITY ->
+            publicScopedProviderSeverity =
               configuration.getAsString(entry).let {
                 DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
               }

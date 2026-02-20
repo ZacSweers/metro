@@ -94,11 +94,11 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         generateContributionHintsInFir =
           MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
         if (transformProvidersToPrivate) {
-          publicProviderSeverity = MetroOptions.DiagnosticSeverity.NONE
+          publicScopedProviderSeverity = MetroOptions.DiagnosticSeverity.NONE
         } else {
-          module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_PROVIDER_SEVERITY)?.let {
-            publicProviderSeverity = it
-          }
+          module.directives
+            .singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)
+            ?.let { publicScopedProviderSeverity = it }
         }
         module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)?.let {
           optionalBindingBehavior = it

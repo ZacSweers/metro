@@ -333,7 +333,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           add(lazyOption("keys-per-graph-shard", extension.keysPerGraphShard))
           add(lazyOption("enable-switching-providers", extension.enableSwitchingProviders))
           add(lazyOption("optional-binding-behavior", extension.optionalBindingBehavior))
-          add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
+          add(lazyOption("public-scoped-provider-severity", extension.publicScopedProviderSeverity))
           add(
             lazyOption("non-public-contribution-severity", extension.nonPublicContributionSeverity)
           )

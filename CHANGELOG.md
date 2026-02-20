@@ -62,6 +62,7 @@ If you want to completely restore the legacy behavior, you can disable this new 
 - **[Gradle]**: Add new `@RequiresIdeSupport` experimental annotation to better indicate which APIs require IDE support.
 - **[Gradle]**: Add new `@ExperimentalMetroGradleApi` experimental annotation to better indicate which APIs are experimental and likely to change.
 - **[Gradle]**: Add new `@DangerousMetroGradleApi` experimental annotation with `ERROR` severity to better propagate severity of certain APIs.
+- **[FIR/Gradle]**: Add new `publicScopedProviderSeverity` property with a more narrow focus. The previous `publicProviderSeverity` is now deprecated and just calls through to this.
 
 ### Enhancements
 
@@ -100,6 +101,7 @@ Now, Metro runs in a single pass. Most of Metro's core transformations are run i
 - **[Gradle]**: Annotate `generateContributionHintsInFir`, `supportedHintContributionPlatforms`, `enableKlibParamsCheck`, `patchKlibParams`, with `@ExperimentalMetroGradleApi`.
 - **[Gradle]**: Annotate `enableFullBindingGraphValidation`, `shrinkUnusedBindings`, with `@DelicateMetroGradleApi`.
 - **[Gradle]**: Deprecate `chunkFieldInits`, this will always be enabled in the future.
+- **[Gradle]**: Deprecate `publicProviderSeverity`, this now just calls through to `publicScopedProviderSeverity`.
 - **[Gradle]**: Promote `transformProvidersToPrivate` deprecation level to `ERROR`.
 
 ### Contributors

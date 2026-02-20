@@ -1,8 +1,8 @@
 // RENDER_DIAGNOSTICS_FULL_TEXT
-// PUBLIC_PROVIDER_SEVERITY: WARN
+// PUBLIC_SCOPED_PROVIDER_SEVERITY: WARN
 
 abstract class ExampleGraph {
-  @Provides val provideInt: Int = 0
-  @Provides val provideCharSequence: String get() = "Hello"
-  @Provides fun <!PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING!>provideString<!>(): String = "Hello"
+  @Provides @SingleIn(AppScope::class) val provideInt: Int = 0
+  @Provides @SingleIn(AppScope::class) val provideCharSequence: String get() = "Hello"
+  @Provides @SingleIn(AppScope::class) fun <!SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING!>provideString<!>(): String = "Hello"
 }
