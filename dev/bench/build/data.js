@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771531059638,
+  "lastUpdate": 1771564390805,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -6104,6 +6104,62 @@ window.BENCHMARK_DATA = {
             "value": 28808.422,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -5.74%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d0528ce6~1",
+          "message": "[before] Revert \"Restructure reports to use hierarchical ne",
+          "timestamp": "2026-02-19T23:32:06-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d0528ce64172e07587aa9dbcb8aeafcc8de8385f"
+        },
+        "date": 1771564390805,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22027.332000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d0528ce64172e07587aa9dbcb8aeafcc8de8385f",
+          "message": "[after] Revert \"Restructure reports to use hierarchical ne",
+          "timestamp": "2026-02-19T23:32:06-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d0528ce64172e07587aa9dbcb8aeafcc8de8385f"
+        },
+        "date": 1771564390806,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21391.442,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.89%"
           }
         ]
       }

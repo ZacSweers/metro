@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771531059506,
+  "lastUpdate": 1771564390680,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -6104,6 +6104,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22761436806149185,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +1.96%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d0528ce6~1",
+          "message": "[before] Revert \"Restructure reports to use hierarchical ne",
+          "timestamp": "2026-02-19T23:32:06-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d0528ce64172e07587aa9dbcb8aeafcc8de8385f"
+        },
+        "date": 1771564390680,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22138615585265567,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d0528ce64172e07587aa9dbcb8aeafcc8de8385f",
+          "message": "[after] Revert \"Restructure reports to use hierarchical ne",
+          "timestamp": "2026-02-19T23:32:06-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d0528ce64172e07587aa9dbcb8aeafcc8de8385f"
+        },
+        "date": 1771564390681,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22311275678071318,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.78%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
