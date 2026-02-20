@@ -1294,7 +1294,10 @@ class PlainDataProcessor {
       ""
     } else {
       options.add(0, "metro {")
-      options.add(0, "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class)")
+      options.add(
+        0,
+        "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class, dev.zacsweers.metro.gradle.DangerousMetroGradleApi::class)",
+      )
       options.add("}")
       options.joinToString("\n")
     }
