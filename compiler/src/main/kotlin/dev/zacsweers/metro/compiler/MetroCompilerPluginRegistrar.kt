@@ -108,10 +108,10 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
-    if (options.parallelMetroThreads < 0) {
+    if (options.parallelThreads < 0) {
       messageCollector.report(
         CompilerMessageSeverity.ERROR,
-        "parallelMetroThreads must be non-negative but was ${options.parallelMetroThreads}",
+        "parallelMetroThreads must be non-negative but was ${options.parallelThreads}",
       )
       return
     }

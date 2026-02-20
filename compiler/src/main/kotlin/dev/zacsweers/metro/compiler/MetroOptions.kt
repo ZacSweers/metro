@@ -848,7 +848,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       },
     )
   ),
-  PARALLEL_METRO_THREADS(
+  PARALLEL_THREADS(
     RawMetroOption(
       name = "parallel-threads",
       defaultValue = 0,
@@ -1027,8 +1027,7 @@ public data class MetroOptions(
     MetroOption.COMPILER_VERSION.raw.defaultValue.expectAs<String>().takeUnless(String::isBlank),
   public val compilerVersionAliases: Map<String, String> =
     MetroOption.COMPILER_VERSION_ALIASES.raw.defaultValue.expectAs(),
-  public val parallelMetroThreads: Int =
-    MetroOption.PARALLEL_METRO_THREADS.raw.defaultValue.expectAs(),
+  public val parallelThreads: Int = MetroOption.PARALLEL_THREADS.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1148,7 +1147,7 @@ public data class MetroOptions(
     public var pluginOrderSet: Boolean? = base.pluginOrderSet
     public var compilerVersion: String? = base.compilerVersion
     public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
-    public var parallelMetroThreads: Int = base.parallelMetroThreads
+    public var parallelThreads: Int = base.parallelThreads
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1328,7 +1327,7 @@ public data class MetroOptions(
         pluginOrderSet = pluginOrderSet,
         compilerVersion = compilerVersion,
         compilerVersionAliases = compilerVersionAliases,
-        parallelMetroThreads = parallelMetroThreads,
+        parallelThreads = parallelThreads,
       )
     }
 
@@ -1574,7 +1573,7 @@ public data class MetroOptions(
           COMPILER_VERSION_ALIASES -> {
             compilerVersionAliases = configuration.getAsMap(entry)
           }
-          PARALLEL_METRO_THREADS -> parallelMetroThreads = configuration.getAsInt(entry)
+          PARALLEL_THREADS -> parallelThreads = configuration.getAsInt(entry)
         }
       }
     }

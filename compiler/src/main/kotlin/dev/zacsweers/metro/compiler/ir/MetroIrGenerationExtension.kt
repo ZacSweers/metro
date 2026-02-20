@@ -58,10 +58,10 @@ public class MetroIrGenerationExtension(
       )
 
     context.traceDriver.use {
-      if (options.parallelMetroThreads > 0) {
+      if (options.parallelThreads > 0) {
         val threadCount = AtomicInteger(0)
         val executorService =
-          Executors.newFixedThreadPool(options.parallelMetroThreads) { runnable ->
+          Executors.newFixedThreadPool(options.parallelThreads) { runnable ->
             Thread(runnable).apply {
               isDaemon = true
               name = "metro-thread-${threadCount.incrementAndGet()}"
@@ -189,6 +189,7 @@ public class MetroIrGenerationExtension(
               contributionData,
               this,
               executorService,
+              options.parallelThreads,
               metroDeclarations,
               bindingContainerResolver,
             )
