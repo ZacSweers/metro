@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771565711057,
+  "lastUpdate": 1771571478679,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -6216,6 +6216,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2255183682405874,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.90%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "88858cef~1",
+          "message": "[before] Fix Kotlin 2.3.20 compatibility for external contr",
+          "timestamp": "2026-02-20T06:30:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/88858cef27bb4c30fe5dddb53d7f603f7a615936"
+        },
+        "date": 1771571478679,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2350041722465009,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "88858cef27bb4c30fe5dddb53d7f603f7a615936",
+          "message": "[after] Fix Kotlin 2.3.20 compatibility for external contr",
+          "timestamp": "2026-02-20T06:30:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/88858cef27bb4c30fe5dddb53d7f603f7a615936"
+        },
+        "date": 1771571478680,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2338835269935462,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.48%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

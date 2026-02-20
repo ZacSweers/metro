@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771565711188,
+  "lastUpdate": 1771571478810,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -6216,6 +6216,62 @@ window.BENCHMARK_DATA = {
             "value": 22529.878,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.38%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "88858cef~1",
+          "message": "[before] Fix Kotlin 2.3.20 compatibility for external contr",
+          "timestamp": "2026-02-20T06:30:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/88858cef27bb4c30fe5dddb53d7f603f7a615936"
+        },
+        "date": 1771571478810,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22181.614,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "88858cef27bb4c30fe5dddb53d7f603f7a615936",
+          "message": "[after] Fix Kotlin 2.3.20 compatibility for external contr",
+          "timestamp": "2026-02-20T06:30:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/88858cef27bb4c30fe5dddb53d7f603f7a615936"
+        },
+        "date": 1771571478811,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22115.078,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.30%"
           }
         ]
       }
