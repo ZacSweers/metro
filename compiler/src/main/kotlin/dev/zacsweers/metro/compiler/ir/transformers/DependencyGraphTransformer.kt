@@ -52,7 +52,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.diagnosticTag
 import dev.zacsweers.metro.compiler.tracing.trace
-import java.util.concurrent.ExecutorService
+import java.util.concurrent.ForkJoinPool
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -103,8 +103,7 @@ internal class DependencyGraphTransformer(
   context: IrMetroContext,
   private val contributionData: IrContributionData,
   traceScope: TraceScope,
-  private val executorService: ExecutorService?,
-  private val parallelism: Int,
+  private val forkJoinPool: ForkJoinPool?,
   private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
 ) : IrMetroContext by context, TraceScope by traceScope {
@@ -355,10 +354,10 @@ internal class DependencyGraphTransformer(
       }
 
       val extensionTasks: List<ExtensionValidationTask> =
-        if (executorService != null && node.graphExtensions.size > 1) {
+        if (forkJoinPool != null && node.graphExtensions.size > 1) {
           // Parallel mode: create snapshot and validate children concurrently
           val snapshot = localParentContext.snapshot()
-          node.graphExtensions.entries.toList().parallelMap(executorService, parallelism) {
+          node.graphExtensions.entries.toList().parallelMap(forkJoinPool) {
             (contributedGraphKey, accessors) ->
             val collector = UsedKeyCollector()
             validateExtension(

@@ -21,10 +21,8 @@ import dev.zacsweers.metro.compiler.ir.transformers.MutableMetroGraphData
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -59,21 +57,13 @@ public class MetroIrGenerationExtension(
 
     context.traceDriver.use {
       if (options.parallelThreads > 0) {
-        val threadCount = AtomicInteger(0)
-        val executorService =
-          Executors.newFixedThreadPool(options.parallelThreads) { runnable ->
-            Thread(runnable).apply {
-              isDaemon = true
-              name = "metro-thread-${threadCount.incrementAndGet()}"
-            }
-          }
+        val forkJoinPool = ForkJoinPool(options.parallelThreads)
         try {
-          context.generateInner(moduleFragment, executorService)
+          context.generateInner(moduleFragment, forkJoinPool)
         } finally {
-          // TODO on JDK 19+ just use close()
-          executorService.shutdown()
-          if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-            executorService.shutdownNow()
+          forkJoinPool.shutdown()
+          if (!forkJoinPool.awaitTermination(5, TimeUnit.SECONDS)) {
+            forkJoinPool.shutdownNow()
           }
         }
       } else {
@@ -99,7 +89,7 @@ public class MetroIrGenerationExtension(
 
   private fun IrMetroContext.generateInner(
     moduleFragment: IrModuleFragment,
-    executorService: ExecutorService?,
+    forkJoinPool: ForkJoinPool?,
   ) {
     log("Starting IR processing of ${moduleFragment.name.asString()}")
     try {
@@ -188,8 +178,7 @@ public class MetroIrGenerationExtension(
               metroContext,
               contributionData,
               this,
-              executorService,
-              options.parallelThreads,
+              forkJoinPool,
               metroDeclarations,
               bindingContainerResolver,
             )

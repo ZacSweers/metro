@@ -18,8 +18,8 @@ package dev.zacsweers.metro.compiler
 import androidx.collection.MutableScatterMap
 import androidx.collection.MutableScatterSet
 import androidx.collection.ScatterMap
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.ForkJoinTask
 
 internal fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
   return filterTo(mutableSetOf(), predicate)
@@ -112,48 +112,30 @@ internal inline fun <K, V> MutableScatterMap<K, MutableScatterSet<V>>.getAndAdd(
 }
 
 /**
- * Maps items in parallel using the [executorService] and the caller's thread. All workers (pool
- * threads + caller) grab items from a shared index until none remain, so the caller participates in
- * the work throughout rather than blocking idle after a single item. Results are returned in the
- * same order as the input.
+ * Maps items in parallel using a [ForkJoinPool]. Each item is forked as a [ForkJoinTask], and the
+ * caller thread participates via [ForkJoinTask.join] which uses work-stealing rather than blocking.
+ * This means nested `parallelMap` calls (e.g. recursive graph extension validation) work correctly
+ * without thread starvation — a joining thread will execute other queued tasks while waiting,
+ * keeping the thread count bounded to the pool's parallelism.
  *
- * @param parallelism caps the number of worker tasks submitted to the executor. Without this, we'd
- *   submit `size - 1` tasks even if the pool only has a few threads — most would just exit
- *   immediately but the queueing overhead adds up for large lists.
+ * Results are returned in the same order as the input.
  */
 internal fun <T, R> List<T>.parallelMap(
-  executorService: ExecutorService,
-  parallelism: Int,
+  forkJoinPool: ForkJoinPool,
   transform: (T) -> R,
 ): List<R> {
-  if (size <= 1 || parallelism <= 1) return map(transform)
+  if (size <= 1) return map(transform)
 
-  val items = this
-  val results = arrayOfNulls<Any?>(items.size)
-  val nextIndex = AtomicInteger(0)
-
-  // Each worker loops, grabbing items by index until none remain
-  fun processWork() {
-    while (true) {
-      val i = nextIndex.getAndIncrement()
-      if (i >= items.size) break
-      results[i] = transform(items[i])
+  // Submit all items as ForkJoinTasks to our pool.
+  // If we're already on a ForkJoinPool worker thread (nested call), fork() submits to the
+  // current pool automatically via work-stealing. Otherwise, use pool.submit() explicitly.
+  val onPoolThread = ForkJoinTask.inForkJoinPool()
+  val tasks =
+    map { item ->
+      val task = ForkJoinTask.adapt<R> { transform(item) }
+      if (onPoolThread) task.fork() else forkJoinPool.submit(task)
     }
-  }
 
-  // Cap worker submissions: one per pool thread (minus the caller), or one per remaining item
-  val workers = minOf(parallelism - 1, items.size - 1)
-  val futures = (0 until workers).map { executorService.submit(::processWork) }
-
-  // Caller also participates as a worker
-  processWork()
-
-  // Wait for pool workers to finish
-  for (future in futures) {
-    future.get()
-  }
-
-  // All slots are guaranteed filled after join
-  @Suppress("UNCHECKED_CAST")
-  return (results as Array<R>).asList()
+  // Join all tasks — work-stealing keeps the thread active while waiting
+  return tasks.map { it.join() }
 }
