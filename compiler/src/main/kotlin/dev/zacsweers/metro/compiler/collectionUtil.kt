@@ -126,20 +126,16 @@ internal fun <T, R> List<T>.parallelMap(
 ): List<R> {
   if (size <= 1) return map(transform)
 
-  if (ForkJoinTask.inForkJoinPool()) {
-    // Already on a pool worker thread (nested call) — fork child tasks directly.
-    // Work-stealing keeps this thread active while join() waits.
-    val tasks = map { item -> ForkJoinTask.adapt<R> { transform(item) }.fork() }
-    return tasks.map { it.join() }
-  }
+  // Submit all items as ForkJoinTasks to our pool.
+  // If we're already on a ForkJoinPool worker thread (nested call), fork() submits to the
+  // current pool automatically via work-stealing. Otherwise, use pool.submit() explicitly.
+  val onPoolThread = ForkJoinTask.inForkJoinPool()
+  val tasks =
+    map { item ->
+      val task = ForkJoinTask.adapt<R> { transform(item) }
+      if (onPoolThread) task.fork() else forkJoinPool.submit(task)
+    }
 
-  // Not on a pool thread — submit the entire operation so the calling thread
-  // enters the pool's work-stealing loop via join(), participating in work
-  // rather than blocking idle.
-  return forkJoinPool
-    .submit(ForkJoinTask.adapt<List<R>> {
-      val tasks = map { item -> ForkJoinTask.adapt<R> { transform(item) }.fork() }
-      tasks.map { it.join() }
-    })
-    .join()
+  // Join all tasks — work-stealing keeps the thread active while waiting
+  return tasks.map { it.join() }
 }
