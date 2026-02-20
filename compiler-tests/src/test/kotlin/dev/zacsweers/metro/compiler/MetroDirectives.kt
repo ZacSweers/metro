@@ -89,6 +89,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity when explicit @Assisted(\"value\") identifiers are used."
     )
+  val PARALLEL_THREADS by
+    valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

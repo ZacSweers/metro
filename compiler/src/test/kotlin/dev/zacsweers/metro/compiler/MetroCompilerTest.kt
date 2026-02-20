@@ -341,8 +341,8 @@ abstract class MetroCompilerTest {
                     .joinToString(":"),
                 )
               }
-              PARALLEL_METRO_THREADS -> {
-                processor.option(entry.raw.cliOption, parallelMetroThreads)
+              PARALLEL_THREADS -> {
+                processor.option(entry.raw.cliOption, this@toPluginOptions.parallelThreads)
               }
             }
           yield(option)
