@@ -59,6 +59,10 @@ Note that _interop_ annotations are not affected by this change, and any previou
 
 If you want to completely restore the legacy behavior, you can disable this new mode via `useAssistedParamNamesAsIdentifiers` Gradle DSL option. Note, however, that this option will eventually be removed.
 
+- **[Gradle]**: Add new `@RequiresIdeSupport` experimental annotation to better indicate which APIs require IDE support.
+- **[Gradle]**: Add new `@ExperimentalMetroGradleApi` experimental annotation to better indicate which APIs are experimental and likely to change.
+- **[Gradle]**: Add new `@DangerousMetroGradleApi` experimental annotation with `ERROR` severity to better propagate severity of certain APIs.
+
 ### Enhancements
 
 - **[FIR]**: Disallow `_` assisted context parameter names in top-level function injection.
@@ -90,6 +94,12 @@ Now, Metro runs in a single pass. Most of Metro's core transformations are run i
 - Test Kotlin `2.3.20-RC`.
 - Set minimum Gradle version to `8.8` via Gradle's not-so-obvious `GRADLE_PLUGIN_API_VERSION_ATTRIBUTE` API.
 - Freshen up the doc site navigation to better organize with tabs.
+- **[Gradle]**: Annotate `forceEnableFirInIde` and `compilerVersion` with `@DangerousMetroGradleApi`.
+- **[Gradle]**: Annotate `generateAssistedFactories`, `enableTopLevelFunctionInjection` with `@RequiresIdeSupport`.
+- **[Gradle]**: Annotate `generateContributionHintsInFir`, `supportedHintContributionPlatforms`, `enableKlibParamsCheck`, `patchKlibParams`, with `@ExperimentalMetroGradleApi`.
+- **[Gradle]**: Annotate `enableFullBindingGraphValidation`, `shrinkUnusedBindings`, with `@DelicateMetroGradleApi`.
+- **[Gradle]**: Deprecate `chunkFieldInits`, this will always be enabled in the future.
+- **[Gradle]**: Promote `transformProvidersToPrivate` deprecation level to `ERROR`.
 
 ### Contributors
 
