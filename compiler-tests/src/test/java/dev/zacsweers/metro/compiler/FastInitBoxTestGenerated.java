@@ -291,6 +291,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("BindsInGeneratedContributesTo_SeparateCompilation.kt")
+    public void testBindsInGeneratedContributesTo_SeparateCompilation() {
+      runTest("compiler-tests/src/test/data/box/api/BindsInGeneratedContributesTo_SeparateCompilation.kt");
+    }
+
+    @Test
     @TestMetadata("MetroFirExtensionSample.kt")
     public void testMetroFirExtensionSample() {
       runTest("compiler-tests/src/test/data/box/api/MetroFirExtensionSample.kt");
@@ -300,6 +306,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("ProvidesInGeneratedContributesTo.kt")
     public void testProvidesInGeneratedContributesTo() {
       runTest("compiler-tests/src/test/data/box/api/ProvidesInGeneratedContributesTo.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesInGeneratedContributesTo_SeparateCompilation.kt")
+    public void testProvidesInGeneratedContributesTo_SeparateCompilation() {
+      runTest("compiler-tests/src/test/data/box/api/ProvidesInGeneratedContributesTo_SeparateCompilation.kt");
     }
   }
 

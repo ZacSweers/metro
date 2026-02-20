@@ -72,6 +72,27 @@ Use this extension to generate FIR declarations (classes, functions, properties)
 
 This API is similar to `FirDeclarationGenerationExtension`, but has a `ServiceLoader` API to be loaded by Metro at compile-time and handles all its callbacks.
 
+#### `getContributionHints()`
+
+If your extension generates classes with contributing annotations (like `@ContributesTo`), Metro's `ContributionHintFirGenerator` needs to know about them to
+produce hint marker functions for cross-module discovery.
+
+Override `getContributionHints()` to declare these generated contributions:
+
+```kotlin
+override fun getContributionHints(): List<ContributionHint> {
+  return generatedClasses.map { classSymbol ->
+    ContributionHint(
+      contributingClassId = classSymbol.classId.createNestedClassId(NESTED_NAME),
+      scope = APP_SCOPE_CLASS_ID,
+    )
+  }
+}
+```
+
+This is only called when hint generation runs in FIR (default with Kotlin 2.3.20+). For earlier Kotlin versions where hints are generated in IR, this method is
+not called and not needed for classes generated in FIR.
+
 ### MetroContributionExtension
 
 Use this extension to provide contribution metadata directly to Metro's graph merging infrastructure. This is necessary because Metro's predicate-based provider only sees source declarations, not generated ones.

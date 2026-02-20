@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
@@ -26,6 +27,7 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
+import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.classId
@@ -37,8 +39,11 @@ import org.jetbrains.kotlin.name.FqName
  * Generates hint marker functions for during FIR. This handles both scoped `@Inject` classes and
  * classes with contributing annotations.
  */
-internal class ContributionHintFirGenerator(session: FirSession, compatContext: CompatContext) :
-  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
+internal class ContributionHintFirGenerator(
+  session: FirSession,
+  compatContext: CompatContext,
+  private val externalExtensions: List<MetroFirDeclarationGenerationExtension>,
+) : FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   private fun contributedClassSymbols(): List<FirClassSymbol<*>> {
     val injectedClasses =
@@ -87,6 +92,21 @@ internal class ContributionHintFirGenerator(session: FirSession, compatContext: 
           )
         }
       }
+
+      // Collect hints from external extensions
+      externalExtensions
+        .flatMap { it.getContributionHints() }
+        .forEach { hint ->
+          val classSymbol =
+            session.symbolProvider.getClassLikeSymbolByClassId(hint.contributingClassId)
+              as? FirClassSymbol<*> ?: return@forEach
+          val hintName = hint.scope.scopeHintFunctionName()
+
+          callableIds.getAndAdd(
+            CallableId(Symbols.FqNames.metroHintsPackage, hintName),
+            classSymbol,
+          )
+        }
 
       callableIds
     }

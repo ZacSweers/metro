@@ -134,11 +134,9 @@ public class MetroFirExtensionRegistrar(
 
           if (options.generateContributionHints && options.generateContributionHintsInFir) {
             add(
-              wrapNativeGenerator(
-                "FirGen - ContributionHints",
-                true,
-                ::ContributionHintFirGenerator,
-              )(session)
+              wrapNativeGenerator("FirGen - ContributionHints", true) { session, compatContext ->
+                ContributionHintFirGenerator(session, compatContext, externalExtensions)
+              }(session)
             )
           }
         }
