@@ -34,12 +34,15 @@ When `reportsDestination` is configured, Metro will report any unmatched exclusi
 
 Reports are written to files like:
 
-- `merging-unmatched-exclusions-fir-<graph>.txt`
-- `merging-unmatched-replacements-fir-<graph>.txt`
-- `merging-unmatched-rank-replacements-fir-<graph>.txt`
-- `merging-unmatched-exclusions-ir-<scope>.txt`
-- `merging-unmatched-replacements-ir-<scope>.txt`
-- `merging-unmatched-rank-replacements-ir-<scope>.txt`
+- `merging-unmatched-exclusions-fir/<graph>.txt`
+- `merging-unmatched-replacements-fir/<graph>.txt`
+- `merging-unmatched-rank-replacements-fir/<graph>.txt`
+- `merging-unmatched-exclusions-ir/<scope>.txt`
+- `merging-unmatched-replacements-ir/<scope>.txt`
+- `merging-unmatched-rank-replacements-ir/<scope>.txt`
+
+`<graph>` and `<scope>` here may be a path like `<graph1>/<graph2>/<graph3>.txt` when graph
+extensions or embedded classes are used.
 
 ## Graph Analysis & Visualization
 

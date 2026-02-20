@@ -421,7 +421,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
       } ?: factoryCls.kotlinFqName.asString()
 
     // Relative path example: provider-factories/dev/zac/feature/Outer.Inner$$Factory.kt
-    writeDiagnostic("provider-factories/$factoryPath.kt") { factoryCls.dumpKotlinLike() }
+    writeDiagnostic("provider-factories", "$factoryPath.kt") { factoryCls.dumpKotlinLike() }
 
     generatedFactories[reference.callableId] = providerFactory
     return providerFactory
