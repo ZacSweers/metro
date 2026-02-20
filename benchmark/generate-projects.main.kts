@@ -49,6 +49,10 @@ class GenerateProjectsCommand : CliktCommand() {
     option("--enable-reports", help = "Enable Metro graph reports for debugging (Metro mode only).")
       .flag(default = false)
 
+  private val enableTracing by
+    option("--enable-tracing", help = "Enable Metro compiler tracing (Metro mode only).")
+      .flag(default = false)
+
   private val enableGraphShardingFlag by
     option(
         "--enable-graph-sharding",
@@ -78,6 +82,12 @@ class GenerateProjectsCommand : CliktCommand() {
       )
       .int()
       .default(0)
+
+  private val l2ChildrenPerL1: Int
+    get() = ((totalModules - 500).coerceAtLeast(0) / 300).coerceAtMost(5)
+
+  private val l3ChildrenPerL2: Int
+    get() = ((totalModules - 1000).coerceAtLeast(0) / 333).coerceAtMost(3)
 
   override fun run() {
     if (multiplatform && buildMode != BuildMode.METRO) {
@@ -333,7 +343,18 @@ class GenerateProjectsCommand : CliktCommand() {
 
     echo("Total contributions: ${allModules.sumOf { it.contributionsCount }}")
 
-    echo("Subcomponents: ${allModules.count { it.hasSubcomponent }}")
+    val l1Count = allModules.count { it.hasSubcomponent }
+    val totalSubcomponents = l1Count * (1 + l2ChildrenPerL1 * (1 + l3ChildrenPerL2))
+    echo("Graph extensions: $l1Count L1")
+    if (l2ChildrenPerL1 > 0) {
+      echo("  - L2 children per L1: $l2ChildrenPerL1 (${l1Count * l2ChildrenPerL1} total)")
+    }
+    if (l3ChildrenPerL2 > 0) {
+      echo(
+        "  - L3 children per L2: $l3ChildrenPerL2 (${l1Count * l2ChildrenPerL1 * l3ChildrenPerL2} total)"
+      )
+    }
+    echo("  - Total: $totalSubcomponents")
   }
 
   enum class BuildMode {
@@ -371,6 +392,14 @@ class GenerateProjectsCommand : CliktCommand() {
     FEATURES("features"),
     APP("app"),
   }
+
+  data class SubcomponentLevel(
+    val name: String,
+    val scopeName: String,
+    val parentScopeRef: String,
+    val serviceCount: Int,
+    val parentServiceNames: List<String>,
+  )
 
   fun String.toCamelCase(): String {
     return split("-", "_").joinToString("") { word ->
@@ -730,24 +759,7 @@ class ${className}InitializerImpl$i : ${className}Initializer$i {
       // Generate subcomponent equivalent for vanilla/metro-noop (plain classes)
       val subcomponentCode =
         if (module.hasSubcomponent) {
-          """
-// Subcomponent-equivalent local services (no DI)
-${(1..3).joinToString("\n\n") { i ->
-          """interface ${className}LocalService$i
-
-class ${className}LocalServiceImpl$i : ${className}LocalService$i"""
-        }}
-
-// Subcomponent-equivalent interface (no DI)
-interface ${className}Subcomponent {
-${(1..3).joinToString("\n") { i -> "  fun get${className}LocalService$i(): ${className}LocalService$i" }}
-
-  interface Factory {
-    fun create${className}Subcomponent(): ${className}Subcomponent
-  }
-}
-
-object ${className}Scope"""
+          generateVanillaSubcomponentHierarchy(className)
         } else ""
 
       return """
@@ -942,133 +954,239 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}InitializerImpl$index
     val availableDependencies =
       module.dependencies
         .mapNotNull { dep ->
-          // Extract module name from dependency path like ":features:auth-feature-11" ->
-          // "AuthFeature11Api"
           val moduleName = dep.split(":").lastOrNull()?.toCamelCase()
           if (moduleName != null) "${moduleName}Api" else null
         }
-        .take(2) // Limit to 2 to avoid too many dependencies
+        .take(2)
 
-    val parentAccessors = availableDependencies.joinToString("\n") { "  fun get$it(): $it" }
-
-    // Generate some subcomponent-scoped bindings
-    val subcomponentAccessors =
-      (1..3).joinToString("\n") {
-        "  fun get${className}LocalService$it(): ${className}LocalService$it"
+    val topLevelParentScopeRef =
+      when (buildMode) {
+        BuildMode.METRO -> "AppScope::class"
+        BuildMode.DAGGER -> "Unit::class"
+        BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
+        else -> ""
       }
+
+    // Build hierarchy of subcomponent levels
+    val levels = mutableListOf<SubcomponentLevel>()
+
+    // L1
+    levels.add(
+      SubcomponentLevel(
+        name = className,
+        scopeName = "${className}Scope",
+        parentScopeRef = topLevelParentScopeRef,
+        serviceCount = 3,
+        parentServiceNames = availableDependencies,
+      )
+    )
+
+    // L2
+    if (l2ChildrenPerL1 > 0) {
+      val l1Services = (1..3).map { "${className}LocalService$it" }
+      for (i in 1..l2ChildrenPerL1) {
+        val l2Name = "${className}Child$i"
+        levels.add(
+          SubcomponentLevel(
+            name = l2Name,
+            scopeName = "${l2Name}Scope",
+            parentScopeRef = "${className}Scope::class",
+            serviceCount = 2,
+            parentServiceNames = l1Services.take(2),
+          )
+        )
+
+        // L3
+        if (l3ChildrenPerL2 > 0) {
+          val l2Services = (1..2).map { "${l2Name}LocalService$it" }
+          for (j in 1..l3ChildrenPerL2) {
+            val l3Name = "${l2Name}Sub$j"
+            levels.add(
+              SubcomponentLevel(
+                name = l3Name,
+                scopeName = "${l3Name}Scope",
+                parentScopeRef = "${l2Name}Scope::class",
+                serviceCount = 1,
+                parentServiceNames = l2Services.take(1),
+              )
+            )
+          }
+        }
+      }
+    }
+
+    return levels.joinToString("\n\n") { level ->
+      generateSubcomponentLevel(level, availableDependencies, buildMode)
+    }
+  }
+
+  fun generateSubcomponentLevel(
+    level: SubcomponentLevel,
+    topLevelParentDeps: List<String>,
+    buildMode: BuildMode,
+  ): String {
+    val (name, scopeName, parentScopeRef, serviceCount, parentServiceNames) = level
+
+    val injectOnClass = buildMode != BuildMode.DAGGER
+
+    val scopeOnClass =
+      when (buildMode) {
+        BuildMode.METRO -> "@SingleIn($scopeName::class)"
+        BuildMode.DAGGER -> "@$scopeName"
+        BuildMode.KOTLIN_INJECT_ANVIL -> "@$scopeName"
+        else -> ""
+      }
+
+    // Generate services with parent dependencies injected
+    val services =
+      (1..serviceCount).joinToString("\n\n") { i ->
+        val dependencyParams =
+          if (parentServiceNames.isNotEmpty()) {
+            parentServiceNames.joinToString(",\n  ") { "private val $it: $it" }
+          } else ""
+
+        """interface ${name}LocalService$i
+
+$scopeOnClass
+@ContributesBinding($scopeName::class)
+${if (injectOnClass) "@Inject\n" else ""}class ${name}LocalServiceImpl$i${if (!injectOnClass) " @Inject constructor" else ""}(${if (dependencyParams.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${name}LocalService$i"""
+      }
+
+    // Accessors for this level's services
+    val accessors =
+      (1..serviceCount).joinToString("\n") { i ->
+        "  fun get${name}LocalService$i(): ${name}LocalService$i"
+      }
+
+    // Only show parent scope accessors for L1 (where parents are *Api types from other modules)
+    val isTopLevel = parentServiceNames.any { it.endsWith("Api") }
+    val parentAccessorsSection =
+      if (isTopLevel && topLevelParentDeps.isNotEmpty()) {
+        val parentAccessors = topLevelParentDeps.joinToString("\n") { "  fun get$it(): $it" }
+        "  // Access parent scope bindings\n$parentAccessors\n\n  // Access subcomponent scope bindings\n"
+      } else ""
 
     return when (buildMode) {
       BuildMode.METRO ->
         """
-// Subcomponent-scoped services that depend on parent scope
-${(1..3).joinToString("\n") { i ->
-          val dependencyParams = if (availableDependencies.isNotEmpty()) {
-            availableDependencies.joinToString(",\n  ") { "private val $it: $it" }
-          } else {
-            "// No parent dependencies available"
-          }
+// $name subcomponent-scoped services
+$services
 
-          """interface ${className}LocalService$i
+@SingleIn($scopeName::class)
+@GraphExtension($scopeName::class)
+interface ${name}Subcomponent {
+$parentAccessorsSection$accessors
 
-@SingleIn(${className}Scope::class)
-@ContributesBinding(${className}Scope::class)
-@Inject
-class ${className}LocalServiceImpl$i(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
-        }}
-
-@SingleIn(${className}Scope::class)
-@GraphExtension(${className}Scope::class)
-interface ${className}Subcomponent {
-  ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
-$subcomponentAccessors
-
-  @ContributesTo(AppScope::class)
+  @ContributesTo($parentScopeRef)
   @GraphExtension.Factory
   interface Factory {
-    fun create${className}Subcomponent(): ${className}Subcomponent
+    fun create${name}Subcomponent(): ${name}Subcomponent
   }
 }
 
-object ${className}Scope
+object $scopeName
 """
+          .trimIndent()
 
       BuildMode.KOTLIN_INJECT_ANVIL ->
         """
-// Subcomponent-scoped services that depend on parent scope
-${(1..3).joinToString("\n") { i ->
-          val dependencyParams = if (availableDependencies.isNotEmpty()) {
-            availableDependencies.joinToString(",\n  ") { "private val $it: $it" }
-          } else {
-            "// No parent dependencies available"
-          }
+// $name subcomponent-scoped services
+$services
 
-          """interface ${className}LocalService$i
-
-@${className}Scope
-@ContributesBinding(${className}Scope::class)
-@Inject
-class ${className}LocalServiceImpl$i(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
-        }}
-
-@${className}Scope
+@$scopeName
 @ContributesSubcomponent(
-  scope = ${className}Scope::class
+  scope = $scopeName::class
 )
-interface ${className}Subcomponent {
-  ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
-$subcomponentAccessors
+interface ${name}Subcomponent {
+$parentAccessorsSection$accessors
 
-  @ContributesSubcomponent.Factory(AppScope::class)
+  @ContributesSubcomponent.Factory($parentScopeRef)
   interface Factory {
-    fun create${className}Subcomponent(): ${className}Subcomponent
+    fun create${name}Subcomponent(): ${name}Subcomponent
   }
 }
 
 @Scope
 @Retention(AnnotationRetention.RUNTIME)
-annotation class ${className}Scope
+annotation class $scopeName
 """
+          .trimIndent()
 
       BuildMode.DAGGER ->
         """
-// Subcomponent-scoped services that depend on parent scope
-${(1..3).joinToString("\n") { i ->
-          val dependencyParams = if (availableDependencies.isNotEmpty()) {
-            availableDependencies.joinToString(",\n  ") { "private val $it: $it" }
-          } else {
-            "// No parent dependencies available"
-          }
+// $name subcomponent-scoped services
+$services
 
-          """interface ${className}LocalService$i
-
-@${className}Scope
-@ContributesBinding(${className}Scope::class)
-class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
-        }}
-
-@${className}Scope
+@$scopeName
 @ContributesSubcomponent(
-  scope = ${className}Scope::class,
-  parentScope = Unit::class
+  scope = $scopeName::class,
+  parentScope = $parentScopeRef
 )
-interface ${className}Subcomponent {
-  ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
-$subcomponentAccessors
+interface ${name}Subcomponent {
+$parentAccessorsSection$accessors
 
-  @ContributesTo(Unit::class)
+  @ContributesTo($parentScopeRef)
   interface Factory {
-    fun create${className}Subcomponent(): ${className}Subcomponent
+    fun create${name}Subcomponent(): ${name}Subcomponent
   }
 }
 
 @Scope
 @Retention(AnnotationRetention.RUNTIME)
-annotation class ${className}Scope
+annotation class $scopeName
 """
+          .trimIndent()
 
-      BuildMode.METRO_NOOP,
-      BuildMode.VANILLA -> error("Should have returned early for $buildMode")
-    }.trimIndent()
+      else -> error("Unsupported build mode for subcomponents: $buildMode")
+    }
+  }
+
+  fun generateVanillaSubcomponentHierarchy(className: String): String {
+    val parts = mutableListOf<String>()
+
+    // L1
+    parts.add(generateVanillaSingleLevel(className, 3))
+
+    // L2
+    for (i in 1..l2ChildrenPerL1) {
+      val l2Name = "${className}Child$i"
+      parts.add(generateVanillaSingleLevel(l2Name, 2))
+
+      // L3
+      for (j in 1..l3ChildrenPerL2) {
+        val l3Name = "${l2Name}Sub$j"
+        parts.add(generateVanillaSingleLevel(l3Name, 1))
+      }
+    }
+
+    return parts.joinToString("\n\n")
+  }
+
+  fun generateVanillaSingleLevel(name: String, serviceCount: Int): String {
+    val services =
+      (1..serviceCount).joinToString("\n\n") { i ->
+        """interface ${name}LocalService$i
+
+class ${name}LocalServiceImpl$i : ${name}LocalService$i"""
+      }
+
+    val accessors =
+      (1..serviceCount).joinToString("\n") { i ->
+        "  fun get${name}LocalService$i(): ${name}LocalService$i"
+      }
+
+    return """// $name subcomponent-equivalent (no DI)
+$services
+
+interface ${name}Subcomponent {
+$accessors
+
+  interface Factory {
+    fun create${name}Subcomponent(): ${name}Subcomponent
+  }
+}
+
+object ${name}Scope"""
   }
 
   fun generateFoundationModule(multiplatform: Boolean) {
@@ -1170,6 +1288,7 @@ class PlainDataProcessor {
         if (parallelThreads > 0) add("  parallelThreads.set($parallelThreads)")
         if (enableReports)
           add("  reportsDestination.set(layout.buildDirectory.dir(\"metro-reports\"))")
+        if (enableTracing) add("  traceDestination.set(layout.buildDirectory.dir(\"metro-trace\"))")
       }
     return if (options.isEmpty()) {
       ""
