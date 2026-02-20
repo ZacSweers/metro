@@ -3948,6 +3948,15 @@
 <ul>
 <li><strong>[FIR]</strong>: Disallow <code>_</code> assisted context parameter names in top-level function injection.</li>
 <li><strong>[FIR/IR]</strong>: When generating class and provider factories now, the compiler dedupes non-assisted, non-optional injections of the same type key (i.e. type ± qualifier). This shrinks generated code size in (uncommon) scenarios where you inject the same type multiple types.</li>
+<li><strong>[IR]</strong>: Significantly rework the IR pipeline.</li>
+</ul>
+<p>Previously, Metro&rsquo;s IR would run in two passes:</p>
+<ol>
+<li>Collect contribution data and transform <code>MetroContribution</code> interfaces.</li>
+<li>Run all other transformations.</li>
+</ol>
+<p>Now, Metro runs in a single pass. Most of Metro&rsquo;s core transformations are run in the first full pass, collects any <em>seen</em> dependency graphs along the way, then they are processed at the end (rather than visit the whole IR tree a second time).</p>
+<ul>
 <li><strong>[Gradle]</strong>: Allow <code>DiagnosticSeverity</code> metro extension properties to be configurable as <code>metro.*</code> gradle properties of the same name.</li>
 <li><strong>[Runtime]</strong>: Remove atomicfu dependency from Metro&rsquo;s core runtime artifact. The base concurrency primitives are now built on <code>ReentrantLock</code> (JVM), a port of the stdlib&rsquo;s Lazy spinlock on (Native), and no-op on web targets.</li>
 </ul>
@@ -3963,6 +3972,7 @@
 <li><code>enableGraphSharding</code> is now enabled by default. Note this only kicks in (by default) for graphs with 2000+ bindings by default.</li>
 <li>Mentioned in enhancements, but worth reiterating that the underlying concurrency primitives have changed in the runtime but should be an improvement as they now use more modern reentrant locks.</li>
 <li>Add Amper setup to installation docs (requires <a href="https://youtrack.jetbrains.com/issue/AMPER-5095">AMPER-5095</a>).</li>
+<li>Test Kotlin <code>2.3.20-RC</code>.</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
 <p>Special thanks to the following contributors for contributing to this release!</p>
