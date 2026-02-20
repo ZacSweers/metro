@@ -1598,15 +1598,13 @@
 <p>When <code>reportsDestination</code> is configured, Metro will report any unmatched exclusions or replacements during contribution merging. This can help identify cases where a graph excludes or replaces a class that isn&rsquo;t actually present in the merged contributions.</p>
 <p>Reports are written to files like:</p>
 <ul>
-<li><code>merging-unmatched-exclusions-fir/&lt;graph&gt;.txt</code></li>
-<li><code>merging-unmatched-replacements-fir/&lt;graph&gt;.txt</code></li>
-<li><code>merging-unmatched-rank-replacements-fir/&lt;graph&gt;.txt</code></li>
-<li><code>merging-unmatched-exclusions-ir/&lt;scope&gt;.txt</code></li>
-<li><code>merging-unmatched-replacements-ir/&lt;scope&gt;.txt</code></li>
-<li><code>merging-unmatched-rank-replacements-ir/&lt;scope&gt;.txt</code></li>
+<li><code>merging-unmatched-exclusions-fir-&lt;graph&gt;.txt</code></li>
+<li><code>merging-unmatched-replacements-fir-&lt;graph&gt;.txt</code></li>
+<li><code>merging-unmatched-rank-replacements-fir-&lt;graph&gt;.txt</code></li>
+<li><code>merging-unmatched-exclusions-ir-&lt;scope&gt;.txt</code></li>
+<li><code>merging-unmatched-replacements-ir-&lt;scope&gt;.txt</code></li>
+<li><code>merging-unmatched-rank-replacements-ir-&lt;scope&gt;.txt</code></li>
 </ul>
-<p><code>&lt;graph&gt;</code> and <code>&lt;scope&gt;</code> here may be a path like <code>&lt;graph1&gt;/&lt;graph2&gt;/&lt;graph3&gt;.txt</code> when graph<br />
-extensions or embedded classes are used.</p>
 <h2 id="graph-analysis-visualization">Graph Analysis &amp; Visualization<a class="headerlink" href="#graph-analysis-visualization" title="Permanent link">&para;</a></h2>
 <p>Metro provides Gradle tasks for generating interactive HTML visualizations of your dependency graphs. See <a href="../graph-analysis/">Graph Analysis</a> for full documentation on:</p>
 <ul>
