@@ -215,16 +215,18 @@ tasks.withType<Test> {
 
   useJUnitPlatform()
 
+  if (largeTestMode) {
+    filter { includeTestsMatching("*StressTest*") }
+  } else {
+    filter { excludeTestsMatching("*StressTest*") }
+  }
+
   setLibraryProperty("kotlin.minimal.stdlib.path", "kotlin-stdlib")
   setLibraryProperty("kotlin.full.stdlib.path", "kotlin-stdlib-jdk8")
   setLibraryProperty("kotlin.reflect.jar.path", "kotlin-reflect")
   setLibraryProperty("kotlin.test.jar.path", "kotlin-test")
   setLibraryProperty("kotlin.script.runtime.path", "kotlin-script-runtime")
   setLibraryProperty("kotlin.annotations.path", "kotlin-annotations-jvm")
-
-  if (largeTestMode) {
-    systemProperty("metro.enableLargeTests", true)
-  }
 
   systemProperty("metro.shortLocations", "true")
 

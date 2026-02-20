@@ -1,6 +1,4 @@
 // PARALLEL_THREADS: 4
-// ENABLE_IF_PROPERTY_SET: metro.enableLargeTests
-
 // Four levels of graph extensions (root -> L1 -> L2 -> L3) with multiple graphs per level.
 // Root has 3 children, each child has 2 grandchildren, each grandchild has 2 great-grandchildren.
 // All levels share scoped singletons from ancestors, exercising parallel validation across

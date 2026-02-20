@@ -1171,7 +1171,7 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
 
       @Test
       @TestMetadata("DeepHierarchyWithParallelValidationStressTest.kt")
-      public void testDeepHierarchyWithParallelValidation() {
+      public void testDeepHierarchyWithParallelValidationStressTest() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/parallel/DeepHierarchyWithParallelValidationStressTest.kt");
       }
 

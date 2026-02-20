@@ -10,8 +10,6 @@ import org.jetbrains.kotlin.test.directives.model.SimpleDirectivesContainer
 
 object MetroDirectives : SimpleDirectivesContainer() {
   val METRO_IGNORE by directive("Ignores this test unless a given property is set to true")
-  val ENABLE_IF_PROPERTY_SET by
-    stringDirective("Ignores this test unless a given property is set to true")
   val DISABLE_METRO by directive("Disables metro entirely on this module compilation if present.")
   val COMPILER_VERSION by stringDirective("Target kotlin compiler version, if any")
   // TODO eventually support multiple outputs

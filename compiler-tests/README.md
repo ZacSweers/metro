@@ -80,6 +80,15 @@ fun box(): String {
 
 Note that `FastInitBoxTest` runs all the same box tests with switching providers enabled (`ENABLE_SWITCHING_PROVIDERS`), so every box test automatically gets coverage for both normal and switching provider code paths.
 
+#### Large/stress tests
+
+Tests that are expensive (large graphs, stress tests, etc.) should use the `StressTest` suffix in their file name (e.g., `LargeGraphStressTest.kt`). These tests are automatically **excluded** from normal test runs and **only** run when the `metro.enableLargeTests` Gradle property is set (and vice versa). This keeps normal CI fast while still exercising expensive scenarios in a dedicated step.
+
+To run large tests locally:
+```bash
+./gradlew :compiler-tests:test -Pmetro.enableLargeTests
+```
+
 ### Reports
 
 Create a `.kt` file under `test/src/data/dump/reports`. These tests verify Metro's diagnostic report outputs (like unmatched exclusions/replacements during contribution merging). Use the `CHECK_REPORTS` directive to specify which report files to verify. The test runs through the full compilation pipeline (FIR + IR) and compares generated reports against golden files. Example:
