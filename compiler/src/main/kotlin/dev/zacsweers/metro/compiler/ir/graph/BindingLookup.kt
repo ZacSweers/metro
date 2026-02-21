@@ -842,6 +842,9 @@ internal class BindingLookup(
               return@getOrPut emptySet()
             }
 
+        // Record a lookup of the target's factory function in case its constructor params change
+        trackFunctionCall(sourceGraph, targetClassFactory.function)
+
         val targetKey = IrTypeKey(targetType)
         val targetAnnotations = targetClass.metroAnnotations(context.metroSymbols.classIds)
         val targetRemapper = targetClass.deepRemapperFor(targetType)
