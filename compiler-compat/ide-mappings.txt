@@ -19,6 +19,7 @@
 2.2.255-dev-255=CLI_ONLY
 # IntelliJ IDEA 2025.3.3 (rc)
 # IntelliJ IDEA 2025.3.3 (eap)
+# IntelliJ IDEA 2025.3.3 (stable)
 2.3.20-ij253-105=2.3.0-dev-9992
 # IntelliJ IDEA 2025.3.2 (stable)
 2.3.20-ij253-87=2.3.0-dev-9992
