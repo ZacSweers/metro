@@ -441,6 +441,7 @@ constructor(
    *
    * Disabled by default.
    */
+  @ExperimentalMetroGradleApi
   public val enableFunctionProviders: Property<Boolean> =
     objects.booleanProperty("metro.enableFunctionProviders", false)
 
