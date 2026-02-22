@@ -40,6 +40,9 @@ internal interface ParentContextReader {
   /** Checks if a scope matches any level in the parent context. */
   fun containsScope(scope: IrAnnotation): Boolean
 
+  /** Returns all scopes across all levels in the parent context. */
+  fun scopes(): Set<IrAnnotation>
+
   /** Returns all available keys in the parent context. */
   fun availableKeys(): Set<IrTypeKey>
 
@@ -85,11 +88,19 @@ internal class ParentContextSnapshot(
   /** Information about a level for scope matching. */
   data class LevelInfo(val scopes: Set<IrAnnotation>, val ownership: KeyOwnership)
 
+  private val allScopes: Set<IrAnnotation> = buildSet {
+    for (level in levelScopes) {
+      addAll(level.scopes)
+    }
+    ancestorReader?.scopes()?.let(::addAll)
+  }
+
   operator fun contains(key: IrTypeKey): Boolean =
     key in keyOwnership || ancestorReader?.let { key in it } == true
 
-  fun containsScope(scope: IrAnnotation): Boolean =
-    levelScopes.any { scope in it.scopes } || ancestorReader?.containsScope(scope) == true
+  fun containsScope(scope: IrAnnotation): Boolean = scope in allScopes
+
+  fun scopes(): Set<IrAnnotation> = allScopes
 
   fun availableKeys(): Set<IrTypeKey> {
     val ancestorKeys = ancestorReader?.availableKeys()
@@ -164,6 +175,8 @@ internal class ParentContextSnapshot(
 
       override fun containsScope(scope: IrAnnotation) =
         this@ParentContextSnapshot.containsScope(scope)
+
+      override fun scopes() = this@ParentContextSnapshot.scopes()
 
       override fun availableKeys() = this@ParentContextSnapshot.availableKeys()
 
@@ -281,8 +294,8 @@ internal class ParentContext(
   // For each key, the stack of level indices where it was introduced (nearest provider = last)
   private val keyIntroStack = mutableMapOf<IrTypeKey, ArrayDeque<Int>>()
 
-  // All active scopes (union of level.node.scopes)
-  private val parentScopes = mutableSetOf<IrAnnotation>()
+  // All active scopes (union of level.node.scopes + ancestor scopes)
+  private val parentScopes = mutableSetOf<IrAnnotation>().apply { parent?.scopes()?.let(::addAll) }
 
   // Keys collected before the next push
   private val pending = mutableSetOf<IrTypeKey>()
@@ -441,8 +454,9 @@ internal class ParentContext(
           "No parent graph on stack - this should only be accessed when processing extensions"
         )
 
-  override fun containsScope(scope: IrAnnotation): Boolean =
-    scope in parentScopes || parent?.containsScope(scope) == true
+  override fun containsScope(scope: IrAnnotation): Boolean = scope in parentScopes
+
+  override fun scopes(): Set<IrAnnotation> = parentScopes
 
   override operator fun contains(key: IrTypeKey): Boolean {
     return key in pending || key in available || parent?.let { key in it } == true
