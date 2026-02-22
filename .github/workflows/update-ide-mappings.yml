@@ -29,6 +29,7 @@ jobs:
           python fetch-all-ide-kotlin-versions.py --channels stable,rc,eap,beta,canary
 
       - name: Create PR
+        id: create-pr
         uses: peter-evans/create-pull-request@v8
         with:
           commit-message: Update IDE version mappings
@@ -37,3 +38,9 @@ jobs:
           body: Automated daily update of ide-mappings.txt with latest IDE Kotlin version aliases.
           add-paths: compiler-compat/ide-mappings.txt
           token: ${{ secrets.UPDATE_MAPPINGS_PAT }}
+
+      - name: Enable auto-merge
+        if: steps.create-pr.outputs.pull-request-operation == 'created' || steps.create-pr.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ secrets.UPDATE_MAPPINGS_PAT }}
+        run: gh pr merge --auto --squash "${{ steps.create-pr.outputs.pull-request-number }}"
