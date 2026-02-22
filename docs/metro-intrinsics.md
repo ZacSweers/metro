@@ -34,6 +34,36 @@ Note that `Lazy` is different from *scoping* in that it is confined to the scope
 !!! note "Why doesn’t `Provider` just use a property like `Lazy`?"
     A property is appropriate for `Lazy` because it fits the definition of being a *computed* value that is idempotent for repeat calls. Metro opts to make its `Provider` use an `invoke()` function because it does not abide by that contract.
 
+## `() -> T` (Function Providers)
+
+When the `enableFunctionProviders` option is enabled, Metro also supports using Kotlin's `() -> T` function type as a provider. This behaves identically to `Provider<T>`: each invocation returns a new instance (or the cached instance if the binding is scoped).
+
+```kotlin
+@Inject
+class HttpClient(val cacheProvider: () -> Cache) {
+  fun createCache() {
+    val cache = cacheProvider()
+  }
+}
+```
+
+This also works for graph accessors:
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val cacheProvider: () -> Cache
+}
+```
+
+Function providers can be freely mixed with `Provider<T>` and `Lazy<T>`, and also work with multibindings (e.g., `() -> Set<T>`, `Map<K, () -> V>`) and nested intrinsics like `() -> Lazy<T>`.
+
+!!! warning "Caveat"
+    Enabling this feature effectively prevents using bare function types as regular bindings in your graph. If you rely on injecting `() -> T` as a _value_ rather than a provider, you may need to migrate those bindings to a more strongly typed wrapper.
+
+!!! note "Kotlin/JS"
+    On Kotlin/JS, `Provider` does not implement `() -> T` due to JS runtime limitations. Metro handles this transparently by wrapping/unwrapping at the call site, similar to other provider interop scenarios.
+
 ## Providers of Lazy
 
 Metro supports combining `Provider` and `Lazy` to inject `Provider<Lazy<T>>`. On unscoped bindings this means the provider will return a new deferrable computable value (i.e. a new Lazy). Meanwhile `Lazy<Provider<T>>` is meaningless and not supported.

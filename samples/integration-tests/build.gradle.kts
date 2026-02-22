@@ -16,7 +16,7 @@ android {
   buildFeatures { viewBinding = true }
 }
 
-metro {}
+metro { enableFunctionProviders.set(true) }
 
 @OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
 kotlin {

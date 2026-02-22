@@ -1,5 +1,6 @@
 // Klib ABI Dump
 // Targets: [androidNativeArm32, androidNativeArm64, androidNativeX64, androidNativeX86, iosArm64, iosSimulatorArm64, iosX64, js, linuxArm64, linuxX64, macosArm64, macosX64, mingwX64, tvosArm64, tvosSimulatorArm64, tvosX64, wasmJs, wasmWasi, watchosArm32, watchosArm64, watchosDeviceArm64, watchosSimulatorArm64, watchosX64]
+// Alias: native => [androidNativeArm32, androidNativeArm64, androidNativeX64, androidNativeX86, iosArm64, iosSimulatorArm64, iosX64, linuxArm64, linuxX64, macosArm64, macosX64, mingwX64, tvosArm64, tvosSimulatorArm64, tvosX64, watchosArm32, watchosArm64, watchosDeviceArm64, watchosSimulatorArm64, watchosX64]
 // Rendering settings:
 // - Signature version: 2
 // - Show manifest properties: true
@@ -219,11 +220,16 @@ abstract fun interface <#A: kotlin/Any> dev.zacsweers.metro/MembersInjector { //
     abstract fun injectMembers(#A) // dev.zacsweers.metro/MembersInjector.injectMembers|injectMembers(1:0){}[0]
 }
 
-abstract fun interface <#A: kotlin/Any?> dev.zacsweers.metro/Provider { // dev.zacsweers.metro/Provider|null[0]
-    abstract fun invoke(): #A // dev.zacsweers.metro/Provider.invoke|invoke(){}[0]
-}
-
 abstract class dev.zacsweers.metro/AppScope // dev.zacsweers.metro/AppScope|null[0]
+
+final value class <#A: kotlin/Any?> dev.zacsweers.metro/LambdaProvider : dev.zacsweers.metro/Provider<#A> { // dev.zacsweers.metro/LambdaProvider|null[0]
+    constructor <init>(kotlin/Function0<#A>) // dev.zacsweers.metro/LambdaProvider.<init>|<init>(kotlin.Function0<1:0>){}[0]
+
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.zacsweers.metro/LambdaProvider.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.zacsweers.metro/LambdaProvider.hashCode|hashCode(){}[0]
+    final fun invoke(): #A // dev.zacsweers.metro/LambdaProvider.invoke|invoke(){}[0]
+    final fun toString(): kotlin/String // dev.zacsweers.metro/LambdaProvider.toString|toString(){}[0]
+}
 
 final fun <#A: kotlin/Any?> (dev.zacsweers.metro/Provider<#A>).dev.zacsweers.metro/memoize(): dev.zacsweers.metro/Provider<#A> // dev.zacsweers.metro/memoize|memoize@dev.zacsweers.metro.Provider<0:0>(){0§<kotlin.Any?>}[0]
 final fun <#A: kotlin/Any?> (dev.zacsweers.metro/Provider<#A>).dev.zacsweers.metro/memoizeAsLazy(): kotlin/Lazy<#A> // dev.zacsweers.metro/memoizeAsLazy|memoizeAsLazy@dev.zacsweers.metro.Provider<0:0>(){0§<kotlin.Any?>}[0]
@@ -231,9 +237,19 @@ final fun <#A: kotlin/Any?> dev.zacsweers.metro/providerOf(#A): dev.zacsweers.me
 final inline fun <#A: kotlin/Any?, #B: kotlin/Any?, #C: kotlin/Any?> (dev.zacsweers.metro/Provider<#A>).dev.zacsweers.metro/zip(dev.zacsweers.metro/Provider<#B>, crossinline kotlin/Function2<#A, #B, #C>): dev.zacsweers.metro/Provider<#C> // dev.zacsweers.metro/zip|zip@dev.zacsweers.metro.Provider<0:0>(dev.zacsweers.metro.Provider<0:1>;kotlin.Function2<0:0,0:1,0:2>){0§<kotlin.Any?>;1§<kotlin.Any?>;2§<kotlin.Any?>}[0]
 final inline fun <#A: kotlin/Any?, #B: kotlin/Any?> (dev.zacsweers.metro/Provider<#A>).dev.zacsweers.metro/flatMap(crossinline kotlin/Function1<#A, dev.zacsweers.metro/Provider<#B>>): dev.zacsweers.metro/Provider<#B> // dev.zacsweers.metro/flatMap|flatMap@dev.zacsweers.metro.Provider<0:0>(kotlin.Function1<0:0,dev.zacsweers.metro.Provider<0:1>>){0§<kotlin.Any?>;1§<kotlin.Any?>}[0]
 final inline fun <#A: kotlin/Any?, #B: kotlin/Any?> (dev.zacsweers.metro/Provider<#A>).dev.zacsweers.metro/map(crossinline kotlin/Function1<#A, #B>): dev.zacsweers.metro/Provider<#B> // dev.zacsweers.metro/map|map@dev.zacsweers.metro.Provider<0:0>(kotlin.Function1<0:0,0:1>){0§<kotlin.Any?>;1§<kotlin.Any?>}[0]
-final inline fun <#A: kotlin/Any?> dev.zacsweers.metro/provider(crossinline kotlin/Function0<#A>): dev.zacsweers.metro/Provider<#A> // dev.zacsweers.metro/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any?>}[0]
+final inline fun <#A: kotlin/Any?> dev.zacsweers.metro/provider(noinline kotlin/Function0<#A>): dev.zacsweers.metro/Provider<#A> // dev.zacsweers.metro/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any?>}[0]
 final inline fun <#A: reified kotlin/Any> (kotlin/Any).dev.zacsweers.metro/asContribution(): #A // dev.zacsweers.metro/asContribution|asContribution@kotlin.Any(){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createDynamicGraph(kotlin/Array<out kotlin/Any>...): #A // dev.zacsweers.metro/createDynamicGraph|createDynamicGraph(kotlin.Array<out|kotlin.Any>...){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createDynamicGraphFactory(kotlin/Array<out kotlin/Any>...): #A // dev.zacsweers.metro/createDynamicGraphFactory|createDynamicGraphFactory(kotlin.Array<out|kotlin.Any>...){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createGraph(): #A // dev.zacsweers.metro/createGraph|createGraph(){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createGraphFactory(): #A // dev.zacsweers.metro/createGraphFactory|createGraphFactory(){0§<kotlin.Any>}[0]
+
+// Targets: [native, wasmJs, wasmWasi]
+abstract fun interface <#A: kotlin/Any?> dev.zacsweers.metro/Provider : kotlin/Function0<#A> { // dev.zacsweers.metro/Provider|null[0]
+    abstract fun invoke(): #A // dev.zacsweers.metro/Provider.invoke|invoke(){}[0]
+}
+
+// Targets: [js]
+abstract fun interface <#A: kotlin/Any?> dev.zacsweers.metro/Provider { // dev.zacsweers.metro/Provider|null[0]
+    abstract fun invoke(): #A // dev.zacsweers.metro/Provider.invoke|invoke(){}[0]
+}
