@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyCollector
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -19,7 +20,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
  * validation gets its own collector to track which parent keys it uses.
  */
 internal class UsedKeyCollector {
-  private val usedKeys = mutableSetOf<IrContextualTypeKey>()
+  private val usedKeys: MutableSet<IrContextualTypeKey> = ConcurrentHashMap.newKeySet()
 
   fun record(contextKey: IrContextualTypeKey) {
     usedKeys.add(contextKey)
@@ -71,6 +72,12 @@ internal class ParentContextSnapshot(
   private val levelScopes: List<LevelInfo>,
   /** The current (topmost) parent graph. */
   val currentParentGraph: IrClass,
+  /**
+   * Optional ancestor reader for delegating lookups when a key or scope is not found locally. In
+   * parallel mode, when a [ParentContext] created from a snapshot has its own sub-children, the
+   * snapshots it produces need to delegate back to ancestor levels not represented locally.
+   */
+  private val ancestorReader: ParentContextReader? = null,
 ) {
   /** Ownership information for a key - which graph owns it and how to access it. */
   data class KeyOwnership(val ownerGraphKey: IrTypeKey, val receiverParameter: IrValueParameter)
@@ -78,11 +85,20 @@ internal class ParentContextSnapshot(
   /** Information about a level for scope matching. */
   data class LevelInfo(val scopes: Set<IrAnnotation>, val ownership: KeyOwnership)
 
-  operator fun contains(key: IrTypeKey): Boolean = key in keyOwnership
+  operator fun contains(key: IrTypeKey): Boolean =
+    key in keyOwnership || ancestorReader?.let { key in it } == true
 
-  fun containsScope(scope: IrAnnotation): Boolean = levelScopes.any { scope in it.scopes }
+  fun containsScope(scope: IrAnnotation): Boolean =
+    levelScopes.any { scope in it.scopes } || ancestorReader?.containsScope(scope) == true
 
-  fun availableKeys(): Set<IrTypeKey> = keyOwnership.keys
+  fun availableKeys(): Set<IrTypeKey> {
+    val ancestorKeys = ancestorReader?.availableKeys()
+    return if (ancestorKeys.isNullOrEmpty()) {
+      keyOwnership.keys
+    } else {
+      keyOwnership.keys + ancestorKeys
+    }
+  }
 
   /**
    * Marks a key as used and returns a token for later property resolution. Unlike
@@ -121,6 +137,14 @@ internal class ParentContextSnapshot(
       }
     }
 
+    // Key not found locally, delegate to ancestor reader
+    ancestorReader?.let { reader ->
+      reader.mark(key, scope, requiresProviderProperty)?.let { token ->
+        collector.record(contextKey)
+        return token
+      }
+    }
+
     return null
   }
 
@@ -150,7 +174,15 @@ internal class ParentContextSnapshot(
     }
 }
 
-internal class ParentContext(private val metroContext: IrMetroContext) : ParentContextReader {
+internal class ParentContext(
+  private val metroContext: IrMetroContext,
+  /**
+   * Optional parent reader for delegating lookups when a key or scope is not found in the local
+   * level stack. In parallel mode, when a new [ParentContext] is created from a snapshot, this
+   * preserves access to ancestor levels not represented locally.
+   */
+  private val parent: ParentContextReader? = null,
+) : ParentContextReader {
 
   /**
    * Token returned by [mark] during validation phase. Contains enough information to resolve the
@@ -263,11 +295,6 @@ internal class ParentContext(private val metroContext: IrMetroContext) : ParentC
     if (keys.isNotEmpty()) pending.addAll(keys)
   }
 
-  /** Copies all available keys from the given reader into this context's pending set. */
-  fun inheritFrom(reader: ParentContextReader) {
-    pending.addAll(reader.availableKeys())
-  }
-
   /**
    * Marks a key as used and returns a token for later property resolution.
    *
@@ -329,7 +356,18 @@ internal class ParentContext(private val metroContext: IrMetroContext) : ParentC
         }
       }
     }
-    // Else: no-op (unknown key without scope)
+
+    // Key not found locally, delegate to ancestor reader
+    parent?.let { parent ->
+      parent.mark(key, scope, requiresProviderProperty)?.let { token ->
+        // Track this context key at the current level so it gets reported upward
+        if (levels.isNotEmpty()) {
+          levels.last().usedContextKeys.add(contextKey)
+        }
+        return token
+      }
+    }
+
     return null
   }
 
@@ -403,18 +441,20 @@ internal class ParentContext(private val metroContext: IrMetroContext) : ParentC
           "No parent graph on stack - this should only be accessed when processing extensions"
         )
 
-  override fun containsScope(scope: IrAnnotation): Boolean = scope in parentScopes
+  override fun containsScope(scope: IrAnnotation): Boolean =
+    scope in parentScopes || parent?.containsScope(scope) == true
 
   override operator fun contains(key: IrTypeKey): Boolean {
-    return key in pending || key in available
+    return key in pending || key in available || parent?.let { key in it } == true
   }
 
   override fun availableKeys(): Set<IrTypeKey> {
-    // Pending + all currently available
-    if (pending.isEmpty()) return available.toSet()
-    return buildSet(available.size + pending.size) {
+    val ancestorKeys = parent?.availableKeys()
+    // Pending + all currently available + ancestor keys
+    return buildSet {
       addAll(available)
       addAll(pending)
+      if (!ancestorKeys.isNullOrEmpty()) addAll(ancestorKeys)
     }
   }
 
@@ -473,6 +513,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) : ParentC
       keyOwnership = keyOwnership,
       levelScopes = levelScopes,
       currentParentGraph = currentParentGraph,
+      ancestorReader = parent,
     )
   }
 
