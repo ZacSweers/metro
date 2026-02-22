@@ -107,7 +107,7 @@ internal fun validateInjectionSiteType(
   if (contextKey.isWrappedInLazy) {
     checkLazyAssistedFactory(session, contextKey, typeRef, source)
   } else if (contextKey.isLazyWrappedInProvider) {
-    checkProviderOfLazy(contextKey, typeRef, source, isAccessor)
+    checkProviderOfLazy(session, contextKey, typeRef, source)
   }
 
   // Check if we're directly injecting a qualifier type
@@ -238,18 +238,21 @@ private fun checkLazyAssistedFactory(
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
 private fun checkProviderOfLazy(
+  session: FirSession,
   contextKey: FirContextualTypeKey,
   typeRef: FirTypeRef,
   source: KtSourceElement?,
-  isAccessor: Boolean,
 ) {
   // Check if this is a non-metro provider + kotlin lazy. We only support either all dagger or all
   // metro
   val providerType = contextKey.wrappedType as WrappedType.Provider
   val lazyType = providerType.innerType as WrappedType.Lazy
-  val providerIsMetro = providerType.providerType == Symbols.ClassIds.metroProvider
+  val providerIsMetroOrFunction =
+    providerType.providerType == Symbols.ClassIds.metroProvider ||
+      (session.metroFirBuiltIns.options.enableFunctionProviders &&
+        providerType.providerType == Symbols.ClassIds.function0)
   val lazyIsStdLib = lazyType.lazyType == Symbols.ClassIds.Lazy
-  if (!providerIsMetro || !lazyIsStdLib) {
+  if (!providerIsMetroOrFunction || !lazyIsStdLib) {
     reporter.reportOn(
       typeRef.source ?: source,
       MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY,

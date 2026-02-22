@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.name.ClassId
 
 /**
  * Framework-agnostic API for converting between different `Provider` and `Lazy` types across
@@ -41,24 +42,29 @@ internal class ProviderTypeConverter(
     providerType: IrType = type,
   ): IrExpression {
     val provider = this
-    val sourceFramework = frameworkFor(providerType)
-    val targetFramework = frameworkFor(targetKey.rawType)
+    val sourceClassId = providerType.classOrNull?.owner?.classId
+    val targetClassId = targetKey.rawType?.classOrNull?.owner?.classId
+    val sourceFramework = frameworkFor(sourceClassId)
+    val targetFramework = frameworkFor(targetClassId)
 
     // Fast path: same framework, no conversion needed
     if (sourceFramework == targetFramework) {
-      return with(sourceFramework) { provider.handleSameFramework(targetKey) }
+      return with(sourceFramework) {
+        provider.handleSameFramework(targetKey, sourceClassId, targetClassId)
+      }
     }
 
     // Convert through Metro as canonical representation
     // Source -> Metro -> Target
-    val metroProvider = with(sourceFramework) { provider.toMetroProvider(providerType) }
+    val metroProvider =
+      with(sourceFramework) { provider.toMetroProvider(providerType, sourceClassId) }
 
-    return with(targetFramework) { fromMetroProvider(metroProvider, targetKey) }
+    return with(targetFramework) { fromMetroProvider(metroProvider, targetKey, targetClassId) }
   }
 
   // TODO this currently only checks raw class IDs and not supertypes
-  private fun frameworkFor(type: IrType?): ProviderFramework {
-    type?.classOrNull?.owner?.classId?.let { classId ->
+  private fun frameworkFor(classId: ClassId?): ProviderFramework {
+    classId?.let {
       return frameworks.firstOrNull { it.isApplicable(classId) }
         ?: metroFramework // Default to Metro
     }

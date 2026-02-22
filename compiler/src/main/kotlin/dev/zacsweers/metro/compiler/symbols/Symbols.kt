@@ -173,6 +173,8 @@ internal class Symbols(
     val metroInstanceFactory =
       ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
 
+    val function0 = StandardClassIds.FunctionN(0)
+
     val commonMetroProviders by lazy { setOf(metroProvider, metroFactory, metroInstanceFactory) }
   }
 
@@ -256,7 +258,8 @@ internal class Symbols(
 
   init {
     val frameworks = mutableListOf<ProviderFramework>()
-    val metroProviderFramework = MetroProviderFramework(metroFrameworkSymbols)
+    val metroProviderFramework =
+      MetroProviderFramework(metroFrameworkSymbols, options.enableFunctionProviders)
     // Metro is always first (canonical representation)
     frameworks.add(metroProviderFramework)
 

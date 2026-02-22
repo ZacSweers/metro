@@ -34,6 +34,7 @@ public class ClassIds(
   customOriginAnnotations: Set<ClassId> = emptySet(),
   customOptionalBindingAnnotations: Set<ClassId> = emptySet(),
   private val contributesAsInject: Boolean = false,
+  private val enableFunctionProviders: Boolean = false,
 ) {
   public companion object {
     public fun fromOptions(options: MetroOptions): ClassIds =
@@ -64,6 +65,7 @@ public class ClassIds(
         customOriginAnnotations = options.customOriginAnnotations,
         customOptionalBindingAnnotations = options.customOptionalBindingAnnotations,
         contributesAsInject = options.contributesAsInject,
+        enableFunctionProviders = options.enableFunctionProviders,
       )
   }
 
@@ -214,7 +216,13 @@ public class ClassIds(
       injectAnnotations + assistedInjectAnnotations
     }
 
-  internal val providerTypes = setOf(Symbols.ClassIds.metroProvider) + customProviderClasses
+  internal val providerTypes = buildSet {
+    add(Symbols.ClassIds.metroProvider)
+    addAll(customProviderClasses)
+    if (enableFunctionProviders) {
+      add(Symbols.ClassIds.function0)
+    }
+  }
   internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses
 
   internal val includes = setOf(Symbols.ClassIds.metroIncludes)

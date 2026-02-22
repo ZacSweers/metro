@@ -1698,6 +1698,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("FunctionProviderWithDaggerInterop.kt")
+      public void testFunctionProviderWithDaggerInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/FunctionProviderWithDaggerInterop.kt");
+      }
+
+      @Test
       @TestMetadata("GenericDaggerFactoryClassCanBeLoaded.kt")
       public void testGenericDaggerFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerFactoryClassCanBeLoaded.kt");
@@ -2094,6 +2100,66 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ExplicitlyPrivateProviderAnnotationsArePropagated.kt")
     public void testExplicitlyPrivateProviderAnnotationsArePropagated() {
       runTest("compiler-tests/src/test/data/box/provides/ExplicitlyPrivateProviderAnnotationsArePropagated.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderAsAccessor.kt")
+    public void testFunctionProviderAsAccessor() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderAsAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderAsInjectedParam.kt")
+    public void testFunctionProviderAsInjectedParam() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderAsInjectedParam.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderOfLazy.kt")
+    public void testFunctionProviderOfLazy() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderOfLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithGenerics.kt")
+    public void testFunctionProviderWithGenerics() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithGenerics.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithLazy.kt")
+    public void testFunctionProviderWithLazy() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithMultiboundMap.kt")
+    public void testFunctionProviderWithMultiboundMap() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithMultiboundMap.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithMultiboundMapOfFunctions.kt")
+    public void testFunctionProviderWithMultiboundMapOfFunctions() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithMultiboundMapOfFunctions.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithMultiboundSet.kt")
+    public void testFunctionProviderWithMultiboundSet() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithMultiboundSet.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithProviderMix.kt")
+    public void testFunctionProviderWithProviderMix() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithProviderMix.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithScopedBinding.kt")
+    public void testFunctionProviderWithScopedBinding() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithScopedBinding.kt");
     }
 
     @Test

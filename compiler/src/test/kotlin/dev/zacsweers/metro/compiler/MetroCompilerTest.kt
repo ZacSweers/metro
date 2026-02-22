@@ -344,6 +344,9 @@ abstract class MetroCompilerTest {
               PARALLEL_THREADS -> {
                 processor.option(entry.raw.cliOption, this@toPluginOptions.parallelThreads)
               }
+              ENABLE_FUNCTION_PROVIDERS -> {
+                processor.option(entry.raw.cliOption, enableFunctionProviders)
+              }
             }
           yield(option)
         }

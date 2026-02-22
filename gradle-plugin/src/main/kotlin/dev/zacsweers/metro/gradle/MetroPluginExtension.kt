@@ -430,6 +430,22 @@ constructor(
   public val parallelThreads: Property<Int> = objects.intProperty("metro.parallelThreads", 0)
 
   /**
+   * Enable/disable treating `() -> T` (i.e., `Function0<T>`) as a provider type.
+   *
+   * When enabled, `() -> T` can be used as an alternative to `Provider<T>` for injecting provider
+   * dependencies. This works because `Provider<T>` implements `() -> T` on JVM, Native, and WASM
+   * platforms.
+   *
+   * Note: On JS, `Provider<T>` does not implement `() -> T`, so an ad-hoc wrapping lambda is
+   * generated.
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val enableFunctionProviders: Property<Boolean> =
+    objects.booleanProperty("metro.enableFunctionProviders", false)
+
+  /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
    * graphs to the given destination. Outputs are per-compilation granularity (i.e.
    * `build/metro/main/...`).

@@ -71,6 +71,10 @@ kotlin {
   @Suppress("OPT_IN_USAGE")
   applyDefaultHierarchyTemplate {
     common {
+      group("wasm") {
+        withWasmJs()
+        withWasmWasi()
+      }
       group("nonConcurrent") {
         withJs()
         withWasmJs()
