@@ -859,6 +859,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
       valueMapper = { it.toInt() },
     )
+  ),
+  ENABLE_FUNCTION_PROVIDERS(
+    RawMetroOption.boolean(
+      name = "enable-function-providers",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable/disable treating () -> T as a provider type.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -1028,6 +1038,8 @@ public data class MetroOptions(
   public val compilerVersionAliases: Map<String, String> =
     MetroOption.COMPILER_VERSION_ALIASES.raw.defaultValue.expectAs(),
   public val parallelThreads: Int = MetroOption.PARALLEL_THREADS.raw.defaultValue.expectAs(),
+  public val enableFunctionProviders: Boolean =
+    MetroOption.ENABLE_FUNCTION_PROVIDERS.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1148,6 +1160,7 @@ public data class MetroOptions(
     public var compilerVersion: String? = base.compilerVersion
     public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
     public var parallelThreads: Int = base.parallelThreads
+    public var enableFunctionProviders: Boolean = base.enableFunctionProviders
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1328,6 +1341,7 @@ public data class MetroOptions(
         compilerVersion = compilerVersion,
         compilerVersionAliases = compilerVersionAliases,
         parallelThreads = parallelThreads,
+        enableFunctionProviders = enableFunctionProviders,
       )
     }
 
@@ -1574,6 +1588,7 @@ public data class MetroOptions(
             compilerVersionAliases = configuration.getAsMap(entry)
           }
           PARALLEL_THREADS -> parallelThreads = configuration.getAsInt(entry)
+          ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = configuration.getAsBoolean(entry)
         }
       }
     }
