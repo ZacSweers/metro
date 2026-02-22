@@ -74,7 +74,7 @@ This now allows you to write code like this.
 @DependencyGraph
 interface AppGraph {
   val stringProvider: () -> String
-  
+
   @Provides fun provideString(): String = "Hello, world!"
 }
 
