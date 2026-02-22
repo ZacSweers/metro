@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -16,6 +17,8 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -25,6 +28,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.platform.isJs
 
 /**
  * Represents a provider/lazy framework that can convert to/from Metro's canonical types.
@@ -73,17 +77,20 @@ internal sealed interface ProviderFramework {
  * All conversions route through Metro Provider, so this framework has the simplest implementation -
  * mostly no-ops for conversions.
  */
-internal class MetroProviderFramework(private val metroFrameworkSymbols: MetroFrameworkSymbols) :
-  ProviderFramework {
+internal class MetroProviderFramework(
+  private val metroFrameworkSymbols: MetroFrameworkSymbols,
+  private val enableFunctionProviders: Boolean,
+) : ProviderFramework {
 
   private val kotlinLazyClassId = ClassId(FqName("kotlin"), "Lazy".asName())
 
   override fun isApplicable(classId: ClassId): Boolean {
     return classId == metroFrameworkSymbols.canonicalProviderType.owner.classId ||
-      classId == kotlinLazyClassId
+      classId == kotlinLazyClassId ||
+      (enableFunctionProviders && classId == Symbols.ClassIds.function0)
   }
 
-  context(_: IrMetroContext, _: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.handleSameFramework(targetKey: IrContextualTypeKey): IrExpression {
     val provider = this@handleSameFramework
     val targetClassId = targetKey.rawType?.classOrNull?.owner?.classId
@@ -93,11 +100,31 @@ internal class MetroProviderFramework(private val metroFrameworkSymbols: MetroFr
       return provider.toLazy(targetKey)
     }
 
-    // Otherwise, no conversion needed (Provider -> Provider)
+    val sourceClassId = provider.type.classOrNull?.owner?.classId
+
+    // Provider -> Function0 (but not Function0 -> Function0, which is a no-op)
+    if (
+      enableFunctionProviders &&
+        targetClassId == Symbols.ClassIds.function0 &&
+        sourceClassId != Symbols.ClassIds.function0
+    ) {
+      return provider.toFunctionType(targetKey)
+    }
+
+    // Function0 -> Provider
+    if (
+      enableFunctionProviders &&
+        sourceClassId == Symbols.ClassIds.function0 &&
+        targetClassId != Symbols.ClassIds.function0
+    ) {
+      return provider.toMetroProvider(providerType = provider.type)
+    }
+
+    // Otherwise, no conversion needed (Provider -> Provider, or Function0 -> Function0)
     return provider
   }
 
-  context(_: IrMetroContext, _: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
@@ -109,14 +136,69 @@ internal class MetroProviderFramework(private val metroFrameworkSymbols: MetroFr
       return provider.toLazy(targetKey)
     }
 
+    // Metro Provider -> Function0
+    if (enableFunctionProviders && targetClassId == Symbols.ClassIds.function0) {
+      return provider.toFunctionType(targetKey)
+    }
+
     // Metro Provider -> Metro Provider (no conversion)
     return provider
   }
 
-  context(_: IrMetroContext, _: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.toMetroProvider(providerType: IrType): IrExpression {
+    val sourceClassId = providerType.classOrNull?.owner?.classId
+
+    // Function0 -> Metro Provider: wrap with provider(fn)
+    if (sourceClassId == Symbols.ClassIds.function0) {
+      val fn = this
+      val valueType =
+        (providerType as IrSimpleType).arguments[0].typeOrNull
+          ?: reportCompilerBug(
+            "Function0 type missing type argument: ${providerType.dumpKotlinLike()}"
+          )
+
+      return with(scope) {
+        irInvoke(
+          dispatchReceiver = null,
+          callee = context.metroSymbols.metroProviderFunction,
+          typeHint = valueType.wrapInProvider(context.metroSymbols.metroProvider),
+          typeArgs = listOf(valueType),
+          args = listOf(fn),
+        )
+      }
+    }
+
     // Already a Metro provider - no conversion needed
     return this
+  }
+
+  /**
+   * Converts a Metro Provider to Function0.
+   *
+   * On non-JS platforms, Provider implements () -> T, so no conversion is needed. On JS, Provider
+   * does not implement () -> T, so we wrap it in a lambda: `{ provider.invoke() }`.
+   */
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
+  private fun IrExpression.toFunctionType(targetKey: IrContextualTypeKey): IrExpression {
+    val provider = this
+    return if (context.platform.isJs()) {
+      // JS: Provider does not implement () -> T, wrap in a lambda
+      val valueType = targetKey.typeKey.type
+      irLambda(
+        parent = scope.parent,
+        receiverParameter = null,
+        valueParameters = emptyList(),
+        returnType = valueType,
+      ) {
+        +irReturn(
+          irInvoke(provider, callee = context.metroSymbols.providerInvoke, typeHint = valueType)
+        )
+      }
+    } else {
+      // Non-JS: Provider implements () -> T, no conversion needed
+      provider
+    }
   }
 
   context(_: IrMetroContext, scope: IrBuilderWithScope)
