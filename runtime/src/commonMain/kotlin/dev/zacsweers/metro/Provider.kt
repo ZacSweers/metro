@@ -4,6 +4,7 @@ package dev.zacsweers.metro
 
 import dev.zacsweers.metro.internal.DoubleCheck
 import dev.zacsweers.metro.internal.InstanceFactory
+import kotlin.jvm.JvmInline
 
 /** A simple class that produces instances of [T]. */
 public expect fun interface Provider<T> {
@@ -11,7 +12,14 @@ public expect fun interface Provider<T> {
 }
 
 /** A helper function to create a new [Provider] wrapper around a given [provider] lambda. */
-public inline fun <T> provider(crossinline provider: () -> T): Provider<T> = Provider { provider() }
+@Suppress("NOTHING_TO_INLINE")
+public inline fun <T> provider(noinline provider: () -> T): Provider<T> = LambdaProvider(provider)
+
+@PublishedApi
+@JvmInline
+internal value class LambdaProvider<T>(private val lambda: () -> T) : Provider<T> {
+  override fun invoke(): T = lambda()
+}
 
 /** Returns a [Provider] wrapper around the given [value]. */
 public fun <T> providerOf(value: T): Provider<T> = InstanceFactory(value)
