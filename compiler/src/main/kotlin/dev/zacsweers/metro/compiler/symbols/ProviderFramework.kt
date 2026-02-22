@@ -123,10 +123,13 @@ internal class MetroProviderFramework(
     }
 
     // Provider -> Function0 (but not Function0 -> Function0, which is a no-op)
+    // Skip if isLazyWrappedInProvider — that case is handled by typeAsProviderArgument
+    // which wraps the raw Provider before the Function0 conversion.
     if (
       enableFunctionProviders &&
         targetClassId == Symbols.ClassIds.function0 &&
-        sourceClassId != Symbols.ClassIds.function0
+        sourceClassId != Symbols.ClassIds.function0 &&
+        !targetKey.isLazyWrappedInProvider
     ) {
       return provider.toFunctionType(targetKey)
     }
@@ -156,7 +159,12 @@ internal class MetroProviderFramework(
     }
 
     // Metro Provider -> Function0
-    if (enableFunctionProviders && targetClassId == Symbols.ClassIds.function0) {
+    // Skip if isLazyWrappedInProvider — handled by typeAsProviderArgument
+    if (
+      enableFunctionProviders &&
+        targetClassId == Symbols.ClassIds.function0 &&
+        !targetKey.isLazyWrappedInProvider
+    ) {
       return provider.toFunctionType(targetKey)
     }
 
@@ -204,7 +212,12 @@ internal class MetroProviderFramework(
     val provider = this
     return if (context.platform.isJs()) {
       // JS: Provider does not implement () -> T, wrap in a lambda
-      val valueType = targetKey.typeKey.type
+      // Use the provider's type argument (what invoke() actually returns) rather than
+      // targetKey.typeKey.type which is the fully unwrapped inner type.
+      // For Provider<Lazy<Int>>, invoke() returns Lazy<Int>, not Int.
+      val valueType =
+        (provider.type as? IrSimpleType)?.arguments?.firstOrNull()?.typeOrNull
+          ?: targetKey.typeKey.type
       irLambda(
         parent = scope.parent,
         receiverParameter = null,

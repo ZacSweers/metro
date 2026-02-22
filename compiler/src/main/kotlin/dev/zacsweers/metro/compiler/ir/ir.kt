@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -70,6 +71,7 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.irVararg
+import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.DelicateIrParameterIndexSetter
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -637,18 +639,43 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   val providerTypeConverter = symbols.providerTypeConverter
 
   // Get the provider expression, handling the special ProviderOfLazy case
+  // TODO move this into ProviderFramework
   val metroProviderExpression =
     when {
-      // ProviderOfLazy.create(provider)
+      // Provider<T> -> Provider<Lazy<T>> or () -> Lazy<T>
       contextKey.isLazyWrappedInProvider -> {
-        irInvoke(
-          dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
-          callee = symbols.providerOfLazyCreate,
-          typeArgs = listOf(contextKey.typeKey.type),
-          args = listOf(bindingCode),
-          typeHint =
-            contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
-        )
+        val isFunctionTarget =
+          (contextKey.wrappedType as? WrappedType.Provider)?.providerType ==
+            Symbols.ClassIds.function0
+        if (isFunctionTarget && context.platform.isJs()) {
+          // JS: ProviderOfLazy doesn't implement () -> T, so emit { <lazy conversion> }
+          val lazyType = contextKey.typeKey.type.wrapInLazy(symbols)
+          val lazyContextKey =
+            IrContextualTypeKey.create(
+              typeKey = contextKey.typeKey,
+              isWrappedInLazy = true,
+              rawType = lazyType,
+            )
+          irLambda(
+            parent = this@typeAsProviderArgument.parent,
+            receiverParameter = null,
+            valueParameters = emptyList(),
+            returnType = lazyType,
+          ) {
+            +irReturn(with(providerTypeConverter) { bindingCode.convertTo(lazyContextKey) })
+          }
+        } else {
+          // ProviderOfLazy.create(provider) returns Provider<Lazy<T>>
+          // On non-JS, Provider<Lazy<T>> IS () -> Lazy<T>
+          irInvoke(
+            dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
+            callee = symbols.providerOfLazyCreate,
+            typeArgs = listOf(contextKey.typeKey.type),
+            args = listOf(bindingCode),
+            typeHint =
+              contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
+          )
+        }
       }
 
       else -> with(providerTypeConverter) { bindingCode.convertTo(contextKey) }
