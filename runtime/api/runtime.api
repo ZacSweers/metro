@@ -52,6 +52,10 @@ public abstract interface annotation class dev/zacsweers/metro/ContributesIntoSe
 	public abstract fun value ()[Ldev/zacsweers/metro/ContributesIntoSet;
 }
 
+public abstract interface annotation class dev/zacsweers/metro/ContributesTemplate : java/lang/annotation/Annotation {
+	public abstract fun scope ()Ljava/lang/Class;
+}
+
 public abstract interface annotation class dev/zacsweers/metro/ContributesTo : java/lang/annotation/Annotation {
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
@@ -163,6 +167,9 @@ public abstract interface annotation class dev/zacsweers/metro/SingleIn$Containe
 
 public abstract interface annotation class dev/zacsweers/metro/StringKey : java/lang/annotation/Annotation {
 	public abstract fun value ()Ljava/lang/String;
+}
+
+public abstract class dev/zacsweers/metro/TemplateScope {
 }
 
 public abstract interface annotation class dev/zacsweers/metro/binding : java/lang/annotation/Annotation {

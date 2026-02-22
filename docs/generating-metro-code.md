@@ -55,3 +55,58 @@ metro {
   }
 }
 ```
+
+## @ContributesTemplate
+
+`@ContributesTemplate` is a meta-annotation for defining custom annotations that automatically generate bindings for every annotated class. The annotation's companion object contains template `@Provides` functions, each with a single type parameter `T` that is substituted with the target class.
+
+```kotlin
+@ContributesTemplate
+annotation class ContributesFeature(val scope: KClass<*>) {
+  companion object {
+    @Provides @IntoSet fun <T : Feature> intoSet(target: T): Feature = target
+  }
+}
+
+@ContributesFeature(AppScope::class)
+@Inject
+class UserScreen : Feature
+
+@ContributesFeature(AppScope::class)
+object SettingsScreen : Feature
+```
+
+`@Inject` classes, `object`s, and `interface`s are all supported as targets. Upper bounds on `T` are validated at compile time.
+
+### Reified type access
+
+Template functions can be declared `inline reified` to access the target class at runtime.
+
+```kotlin
+@ContributesTemplate
+annotation class ContributesClassToSet(val scope: KClass<*>) {
+  companion object {
+    @Provides @IntoSet inline fun <reified T> name(): KClass<*> = T::class
+  }
+}
+```
+
+### TemplateScope
+
+`TemplateScope` can be used as a placeholder in scoping annotations. Metro substitutes it with the resolved scope — either the `scope` parameter from the custom annotation or the `scope` specified on `@ContributesTemplate`. When `@ContributesTemplate` specifies a `scope`, the custom annotation must not have its own `scope` parameter. These are mutually exclusive.
+
+```kotlin
+@Provides @SingleIn(TemplateScope::class) @IntoSet fun <T : Feature> intoSet(target: T): Feature = target
+```
+
+### Replacing generated containers
+
+Generated containers can be replaced via `replaces`, targeting the annotated class itself:
+
+```kotlin
+@ContributesTo(AppScope::class, replaces = [UserScreen::class])
+@BindingContainer
+object ReplacementBinding {
+  @Provides @IntoSet fun replacement(): Feature = FakeUserScreen()
+}
+```

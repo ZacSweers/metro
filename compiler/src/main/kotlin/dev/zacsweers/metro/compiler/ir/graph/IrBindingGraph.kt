@@ -61,6 +61,7 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.sourceElement
 
 internal class IrBindingGraph(
   metroContext: IrMetroContext,
@@ -689,8 +690,11 @@ internal class IrBindingGraph(
 
   private fun onError(message: String, stack: IrBindingStack) {
     val declaration =
-      stack.lastEntryOrGraph?.originalDeclarationIfOverride()
-        ?: node.reportableSourceGraphDeclaration
+      stack.lastEntryOrGraph
+        ?.originalDeclarationIfOverride()
+        // Generated declarations may have a file but no source element (e.g., from
+        // @ContributesTemplate), so fall back to the graph if the source is missing.
+        ?.takeIf { it.sourceElement() != null } ?: node.reportableSourceGraphDeclaration
     onError(message, declaration)
   }
 

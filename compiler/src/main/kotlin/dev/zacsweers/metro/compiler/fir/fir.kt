@@ -129,6 +129,7 @@ import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.ConstantValueKind
 
@@ -227,6 +228,37 @@ internal fun List<FirAnnotation>.isAnnotatedWithAny(
   names: Set<ClassId>,
 ): Boolean {
   return annotationsIn(session, names).any()
+}
+
+/**
+ * Returns `true` if this callable (function or property) has a `@Provides` annotation. For
+ * properties, also checks the getter for `@Provides`.
+ */
+internal fun FirCallableSymbol<*>.isProvidesAnnotated(
+  session: FirSession,
+  providesAnnotations: Set<ClassId>,
+): Boolean {
+  return isAnnotatedWithAny(session, providesAnnotations) ||
+    (this as? FirPropertySymbol)?.getterSymbol?.isAnnotatedWithAny(session, providesAnnotations) ==
+      true
+}
+
+/**
+ * Finds the companion object's `@Provides`-annotated functions for this annotation class symbol.
+ * Returns `null` if no companion object exists, or a list of `@Provides` functions (possibly
+ * empty).
+ */
+@OptIn(DirectDeclarationsAccess::class)
+internal fun FirRegularClassSymbol.companionProvidesFunctions(
+  session: FirSession
+): List<FirNamedFunctionSymbol>? {
+  val companionSymbol =
+    declarationSymbols.filterIsInstance<FirRegularClassSymbol>().firstOrNull {
+      it.name == SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT
+    } ?: return null
+  return companionSymbol.declarationSymbols.filterIsInstance<FirNamedFunctionSymbol>().filter {
+    it.isProvidesAnnotated(session, session.classIds.providesAnnotations)
+  }
 }
 
 internal inline fun FirMemberDeclaration.checkVisibility(
@@ -1072,7 +1104,14 @@ internal fun FirGetClassCall.resolveClassId(typeResolver: MetroFirTypeResolver):
   return typeResolver.resolveType(reference).classId
 }
 
-internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classId
+internal fun FirGetClassCall.resolvedClassId(): ClassId? {
+  return when (val arg = argument) {
+    is FirResolvedQualifier -> arg.classId
+    // Deserialized annotations from binary dependencies use FirClassReferenceExpression
+    is FirClassReferenceExpression -> arg.classTypeRef.coneTypeOrNull?.classId
+    else -> null
+  }
+}
 
 internal fun FirGetClassCall.resolvedArgumentConeKotlinType(
   typeResolver: TypeResolveService

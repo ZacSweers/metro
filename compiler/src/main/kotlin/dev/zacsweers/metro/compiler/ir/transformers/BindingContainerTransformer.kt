@@ -72,6 +72,7 @@ import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getJvmNameFromAnnotation
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -157,6 +158,14 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         declaration.isAnnotatedWithAny(metroSymbols.classIds.contributesToAnnotations)
     val isGraph = graphAnnotation != null
 
+    // Skip @Provides functions in companion objects of @ContributesTemplate annotations.
+    // These companion functions are templates that get delegated to by generated binding
+    // containers,
+    // not direct providers to register.
+    val skipDirectProvides =
+      declaration.isCompanionObject &&
+        declaration.parentAsClass.hasAnnotation(metroSymbols.classIds.contributesTemplateAnnotation)
+
     declaration.declarations
       .asSequence()
       // Skip (fake) overrides, we care only about the original declaration because those have
@@ -166,6 +175,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
       .forEach { nestedDeclaration ->
         when (nestedDeclaration) {
           is IrProperty -> {
+            if (skipDirectProvides) return@forEach
             val getter = nestedDeclaration.getter ?: return@forEach
             val metroFunction = metroFunctionOf(getter)
             if (metroFunction.annotations.isProvides) {
@@ -174,6 +184,14 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
             }
           }
           is IrSimpleFunction -> {
+            if (skipDirectProvides) return@forEach
+            // Generate body for binding container delegate functions (calls annotation companion)
+            if (
+              nestedDeclaration.origin == Origins.BindingContainerGeneratedFunction &&
+                nestedDeclaration.body == null
+            ) {
+              generateImplFunctionBody(nestedDeclaration)
+            }
             val metroFunction = metroFunctionOf(nestedDeclaration)
             if (metroFunction.annotations.isProvides) {
               providerFactories[nestedDeclaration.callableId] =
@@ -194,6 +212,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
 
     val bindingContainerAnnotation =
       declaration.annotationsIn(metroSymbols.classIds.bindingContainerAnnotations).singleOrNull()
+
     val includes =
       bindingContainerAnnotation?.includedClasses()?.mapNotNullToSet {
         it.classType.rawTypeOrNull()?.classIdOrFail
@@ -250,6 +269,56 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
     return getOrLookupProviderFactory(
       getOrPutCallableReference(declaration, declaration.parentAsClass, metroFunction.annotations)
     )
+  }
+
+  /**
+   * Generates a body for a binding container delegate function that calls the annotation class's
+   * companion object method. The generated body is: `return
+   * AnnotationClass.Companion.method<TargetType>(args)`
+   */
+  private fun generateImplFunctionBody(function: IrSimpleFunction) {
+    val bindingContainerClass = function.parentAsClass
+    val targetClass = bindingContainerClass.parent as IrClass
+
+    // Find the annotation class whose companion has the method we're delegating to.
+    // The binding container name is "MetroBindingContainerFor{AnnotationName}"
+    val annotationClassName =
+      bindingContainerClass.name.identifier.removePrefix(
+        Symbols.StringNames.METRO_BINDING_CONTAINER_FOR_PREFIX
+      )
+
+    // Search for the annotation class on the target
+    val annotationClass =
+      targetClass.annotations
+        .map { it.symbol.owner.parentAsClass }
+        .firstOrNull { it.name.identifier == annotationClassName } ?: return
+
+    val companion = annotationClass.companionObject() ?: return
+
+    // Find the matching companion function
+    val companionFunction =
+      companion.declarations.filterIsInstance<IrSimpleFunction>().firstOrNull {
+        it.name == function.name
+      } ?: return
+
+    function.body =
+      pluginContext.createIrBuilder(function.symbol).run {
+        irExprBodySafe(
+          irCall(companionFunction.symbol, type = function.returnType).apply {
+            // Set dispatch receiver to the companion object
+            arguments[0] = irGetObject(companion.symbol)
+            // Set type argument T -> TargetClass
+            if (companionFunction.typeParameters.isNotEmpty()) {
+              typeArguments[0] = targetClass.defaultType
+            }
+            // Map all value parameters directly
+            val delegateParams = function.regularParameters
+            for ((i, param) in delegateParams.withIndex()) {
+              arguments[i + 1] = irGet(param)
+            }
+          }
+        )
+      }
   }
 
   fun getOrLookupProviderFactory(binding: IrBinding.Provided): ProviderFactory? {
@@ -612,7 +681,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
 
     private val simpleName by lazy {
       buildString {
-        append(name.capitalizeUS())
+        append(name.identifier.capitalizeUS())
         append(Symbols.Names.MetroFactory.asString())
       }
     }
