@@ -1698,6 +1698,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("FunctionProviderWithDaggerInterop.kt")
+      public void testFunctionProviderWithDaggerInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/FunctionProviderWithDaggerInterop.kt");
+      }
+
+      @Test
       @TestMetadata("GenericDaggerFactoryClassCanBeLoaded.kt")
       public void testGenericDaggerFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerFactoryClassCanBeLoaded.kt");
@@ -2094,6 +2100,36 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ExplicitlyPrivateProviderAnnotationsArePropagated.kt")
     public void testExplicitlyPrivateProviderAnnotationsArePropagated() {
       runTest("compiler-tests/src/test/data/box/provides/ExplicitlyPrivateProviderAnnotationsArePropagated.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderAsAccessor.kt")
+    public void testFunctionProviderAsAccessor() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderAsAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderAsInjectedParam.kt")
+    public void testFunctionProviderAsInjectedParam() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderAsInjectedParam.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithLazy.kt")
+    public void testFunctionProviderWithLazy() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithProviderMix.kt")
+    public void testFunctionProviderWithProviderMix() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithProviderMix.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithScopedBinding.kt")
+    public void testFunctionProviderWithScopedBinding() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithScopedBinding.kt");
     }
 
     @Test
