@@ -2737,4 +2737,149 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.invokeMain<String>()).isEqualTo("Hello, world42")
   }
+
+  /**
+   * Tests that removing a non-assisted parameter from an @AssistedInject class' constructor is
+   * correctly detected during incremental compilation when the factory is contributed into a set
+   * via a @BindingContainer.
+   *
+   * The three-module layout is critical:
+   * - `lib` owns AssistedClass (@AssistedInject with multiple non-assisted params).
+   * - `middle` owns BaseFactory and the @BindingContainer that @Provides @IntoSet the factory; its
+   *   ABI does NOT change when AssistedClass loses a constructor param because
+   *   AssistedClass.Factory (the interface) is unchanged.
+   * - `root` depends only on `middle` (directly), so Metro reads AssistedClass metadata during
+   *   root's recompilation from a stale cache and regenerates AppGraph$Impl with the old Provider
+   *   arity, producing a NoSuchMethodError at runtime.
+   */
+  @Test
+  fun `removing non-assisted param from an assisted inject class is detected in IC`() {
+    val fixture =
+      object : MetroProject() {
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(graphAndMain)
+            dependencies(implementation(":middle"))
+          }
+          subproject("middle") {
+            sources(baseFactory, assistedModule)
+            // api so that AssistedClass is on root's compile classpath (Metro needs it to resolve
+            // the AssistedFactory binding). Root's Kotlin *source* never references AssistedClass
+            // directly, so Kotlin IC won't recompile root when AssistedClass's ABI changes —
+            // only Metro's own IC tracking can detect and propagate the change.
+            dependencies(Dependency.api(":lib"))
+          }
+          subproject("lib") { sources(assistedClass) }
+        }
+
+        val assistedClass =
+          source(
+            """
+            @AssistedInject
+            class AssistedClass(
+              @Assisted val id: String,
+              val message: String,
+              val count: Int,
+            ) {
+              @AssistedFactory
+              fun interface Factory {
+                fun create(id: String): AssistedClass
+              }
+            }
+            """
+              .trimIndent()
+          )
+
+        // BaseFactory lives in :middle so that root's sources never reference :lib at all.
+        val baseFactory =
+          source(
+            """
+            interface BaseFactory {
+              fun create(id: String): Any
+            }
+            """
+              .trimIndent()
+          )
+
+        val assistedModule =
+          source(
+            """
+            @BindingContainer
+            @ContributesTo(AppScope::class)
+            interface AssistedModule {
+              companion object {
+                @Provides
+                @IntoSet
+                fun bindFactory(impl: AssistedClass.Factory): BaseFactory {
+                  return object : BaseFactory {
+                    override fun create(id: String) = impl.create(id)
+                  }
+                }
+              }
+
+              @Multibinds(allowEmpty = true)
+              fun bindFactories(): Set<BaseFactory>
+            }
+            """
+              .trimIndent()
+          )
+
+        val graphAndMain =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val factories: Set<BaseFactory>
+
+              @Provides fun provideString(): String = "Hello, "
+              @Provides fun provideInt(): Int = 42
+            }
+
+            fun main(): Int {
+              val graph = createGraph<AppGraph>()
+              return graph.factories.size
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "Main",
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build should succeed: 1 factory contributed into the set
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<Int>()).isEqualTo(1)
+
+    // Remove the non-assisted parameter (count: Int) from AssistedClass in lib.
+    // This changes AssistedClass.MetroFactory.Companion.create() from a 2-Provider overload
+    // to a 1-Provider overload. Kotlin IC does recompile root (via the api dep chain), but
+    // Metro re-generates AppGraph$Impl using stale cached metadata for AssistedClass and
+    // still emits a call to the old 2-Provider create() → NoSuchMethodError at runtime.
+    libProject.modify(
+      project.rootDir,
+      fixture.assistedClass,
+      """
+      @AssistedInject
+      class AssistedClass(
+        @Assisted val id: String,
+        val message: String,
+      ) {
+        @AssistedFactory
+        fun interface Factory {
+          fun create(id: String): AssistedClass
+        }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build compiles successfully but Metro uses stale metadata for AssistedClass and
+    // generates the wrong create() arity. invokeMain throws NoSuchMethodError until the fix.
+    val secondBuildResult = project.compileKotlin()
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<Int>()).isEqualTo(1)
+  }
 }
