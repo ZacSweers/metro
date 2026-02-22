@@ -50,17 +50,36 @@ internal sealed interface ProviderFramework {
    * Handles conversion within the same framework (e.g., Provider -> Lazy in the same framework).
    *
    * This is a fast path optimization when source and target are from the same framework.
+   *
+   * @param sourceClassId the ClassId of the source expression's type
+   * @param targetClassId the ClassId of the target type
    */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  fun IrExpression.handleSameFramework(targetKey: IrContextualTypeKey): IrExpression
+  fun IrExpression.handleSameFramework(
+    targetKey: IrContextualTypeKey,
+    sourceClassId: ClassId?,
+    targetClassId: ClassId?,
+  ): IrExpression
 
-  /** Converts a Metro provider to this framework's equivalent type. */
+  /**
+   * Converts a Metro provider to this framework's equivalent type.
+   *
+   * @param targetClassId the ClassId of the target type
+   */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  fun fromMetroProvider(provider: IrExpression, targetKey: IrContextualTypeKey): IrExpression
+  fun fromMetroProvider(
+    provider: IrExpression,
+    targetKey: IrContextualTypeKey,
+    targetClassId: ClassId?,
+  ): IrExpression
 
-  /** Converts this framework's provider to a Metro provider. */
+  /**
+   * Converts this framework's provider to a Metro provider.
+   *
+   * @param sourceClassId the ClassId of the source expression's type
+   */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  fun IrExpression.toMetroProvider(providerType: IrType): IrExpression
+  fun IrExpression.toMetroProvider(providerType: IrType, sourceClassId: ClassId?): IrExpression
 
   /**
    * Creates a `Lazy` from a provider expression in this framework.
@@ -91,16 +110,17 @@ internal class MetroProviderFramework(
   }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  override fun IrExpression.handleSameFramework(targetKey: IrContextualTypeKey): IrExpression {
+  override fun IrExpression.handleSameFramework(
+    targetKey: IrContextualTypeKey,
+    sourceClassId: ClassId?,
+    targetClassId: ClassId?,
+  ): IrExpression {
     val provider = this@handleSameFramework
-    val targetClassId = targetKey.rawType?.classOrNull?.owner?.classId
 
     // Metro Provider -> Kotlin Lazy
     if (targetClassId == kotlinLazyClassId) {
       return provider.toLazy(targetKey)
     }
-
-    val sourceClassId = provider.type.classOrNull?.owner?.classId
 
     // Provider -> Function0 (but not Function0 -> Function0, which is a no-op)
     if (
@@ -117,7 +137,7 @@ internal class MetroProviderFramework(
         sourceClassId == Symbols.ClassIds.function0 &&
         targetClassId != Symbols.ClassIds.function0
     ) {
-      return provider.toMetroProvider(providerType = provider.type)
+      return provider.toMetroProvider(providerType = provider.type, sourceClassId = sourceClassId)
     }
 
     // Otherwise, no conversion needed (Provider -> Provider, or Function0 -> Function0)
@@ -128,9 +148,8 @@ internal class MetroProviderFramework(
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
+    targetClassId: ClassId?,
   ): IrExpression {
-    val targetClassId = targetKey.rawType?.classOrNull?.owner?.classId
-
     // Metro Provider -> Kotlin Lazy
     if (targetClassId == kotlinLazyClassId) {
       return provider.toLazy(targetKey)
@@ -146,9 +165,10 @@ internal class MetroProviderFramework(
   }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  override fun IrExpression.toMetroProvider(providerType: IrType): IrExpression {
-    val sourceClassId = providerType.classOrNull?.owner?.classId
-
+  override fun IrExpression.toMetroProvider(
+    providerType: IrType,
+    sourceClassId: ClassId?,
+  ): IrExpression {
     // Function0 -> Metro Provider: wrap with provider(fn)
     if (sourceClassId == Symbols.ClassIds.function0) {
       val fn = this
@@ -223,7 +243,11 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
   }
 
   context(_: IrMetroContext, _: IrBuilderWithScope)
-  override fun IrExpression.handleSameFramework(targetKey: IrContextualTypeKey): IrExpression {
+  override fun IrExpression.handleSameFramework(
+    targetKey: IrContextualTypeKey,
+    sourceClassId: ClassId?,
+    targetClassId: ClassId?,
+  ): IrExpression {
     // Same type, no conversion needed
     return this
   }
@@ -232,6 +256,7 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
+    targetClassId: ClassId?,
   ): IrExpression =
     with(scope) {
       return irInvoke(
@@ -242,7 +267,10 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
     }
 
   context(_: IrMetroContext, scope: IrBuilderWithScope)
-  override fun IrExpression.toMetroProvider(providerType: IrType): IrExpression =
+  override fun IrExpression.toMetroProvider(
+    providerType: IrType,
+    sourceClassId: ClassId?,
+  ): IrExpression =
     with(scope) {
       val provider = this@toMetroProvider
       // Extract the value type from the provider type
@@ -277,7 +305,11 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
   }
 
   context(_: IrMetroContext, _: IrBuilderWithScope)
-  override fun IrExpression.handleSameFramework(targetKey: IrContextualTypeKey): IrExpression {
+  override fun IrExpression.handleSameFramework(
+    targetKey: IrContextualTypeKey,
+    sourceClassId: ClassId?,
+    targetClassId: ClassId?,
+  ): IrExpression {
     // Same type, no conversion needed
     return this
   }
@@ -286,6 +318,7 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
+    targetClassId: ClassId?,
   ): IrExpression =
     with(scope) {
       return irInvoke(
@@ -296,7 +329,10 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
     }
 
   context(_: IrMetroContext, scope: IrBuilderWithScope)
-  override fun IrExpression.toMetroProvider(providerType: IrType): IrExpression =
+  override fun IrExpression.toMetroProvider(
+    providerType: IrType,
+    sourceClassId: ClassId?,
+  ): IrExpression =
     with(scope) {
       val provider = this@toMetroProvider
       // Extract the value type from the provider type
@@ -348,7 +384,11 @@ internal class GuiceProviderFramework(
   }
 
   context(_: IrMetroContext, _: IrBuilderWithScope)
-  override fun IrExpression.handleSameFramework(targetKey: IrContextualTypeKey): IrExpression {
+  override fun IrExpression.handleSameFramework(
+    targetKey: IrContextualTypeKey,
+    sourceClassId: ClassId?,
+    targetClassId: ClassId?,
+  ): IrExpression {
     // Same type, no conversion needed
     return this
   }
@@ -357,10 +397,9 @@ internal class GuiceProviderFramework(
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
+    targetClassId: ClassId?,
   ): IrExpression =
     with(scope) {
-      val targetClassId = targetKey.rawType?.classOrNull?.owner?.classId
-
       // Handle Guice's own provider type
       if (targetClassId == GuiceSymbols.ClassIds.provider) {
         return irInvoke(
@@ -371,11 +410,14 @@ internal class GuiceProviderFramework(
       }
 
       // Delegate to base class for javax/jakarta
-      return super.fromMetroProvider(provider, targetKey)
+      return super.fromMetroProvider(provider, targetKey, targetClassId)
     }
 
   context(_: IrMetroContext, scope: IrBuilderWithScope)
-  override fun IrExpression.toMetroProvider(providerType: IrType): IrExpression =
+  override fun IrExpression.toMetroProvider(
+    providerType: IrType,
+    sourceClassId: ClassId?,
+  ): IrExpression =
     with(scope) {
       val provider = this@toMetroProvider
       // Extract the value type from the provider type
@@ -442,19 +484,19 @@ internal abstract class BaseDelegatingProviderFramework(
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
+    targetClassId: ClassId?,
   ): IrExpression =
     with(scope) {
-      val targetClassId =
-        targetKey.rawType?.classOrNull?.owner?.classId
-          ?: reportCompilerBug("Missing target class ID for $targetKey")
+      val resolvedTargetClassId =
+        targetClassId ?: reportCompilerBug("Missing target class ID for $targetKey")
 
       delegates
-        .find { it.isApplicable(targetClassId) }
+        .find { it.isApplicable(resolvedTargetClassId) }
         ?.let { delegate ->
-          return with(delegate) { fromMetroProvider(provider, targetKey) }
+          return with(delegate) { fromMetroProvider(provider, targetKey, targetClassId) }
         }
 
-      reportCompilerBug("No delegate found for target type $targetClassId")
+      reportCompilerBug("No delegate found for target type $resolvedTargetClassId")
     }
 }
 
@@ -493,10 +535,12 @@ internal class DaggerProviderFramework(
   }
 
   context(_: IrMetroContext, _: IrBuilderWithScope)
-  override fun IrExpression.handleSameFramework(targetKey: IrContextualTypeKey): IrExpression {
+  override fun IrExpression.handleSameFramework(
+    targetKey: IrContextualTypeKey,
+    sourceClassId: ClassId?,
+    targetClassId: ClassId?,
+  ): IrExpression {
     val provider = this@handleSameFramework
-    val sourceClassId = provider.type.classOrNull?.owner?.classId
-    val targetClassId = targetKey.rawType?.classOrNull?.owner?.classId
 
     // Same type, no conversion
     if (sourceClassId == targetClassId) {
@@ -518,12 +562,9 @@ internal class DaggerProviderFramework(
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
+    targetClassId: ClassId?,
   ): IrExpression =
     with(scope) {
-      val targetClass = targetKey.rawType?.classOrNull?.owner
-      val targetClassId =
-        targetClass?.classId ?: reportCompilerBug("Unexpected non-dagger provider type $targetKey")
-
       // Handle Dagger's Lazy type specially
       if (targetClassId == DaggerSymbols.ClassIds.DAGGER_LAZY_CLASS_ID) {
         return provider.toLazy(targetKey)
@@ -539,11 +580,14 @@ internal class DaggerProviderFramework(
       }
 
       // Delegate to base class for javax/jakarta
-      return super.fromMetroProvider(provider, targetKey)
+      return super.fromMetroProvider(provider, targetKey, targetClassId)
     }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  override fun IrExpression.toMetroProvider(providerType: IrType): IrExpression =
+  override fun IrExpression.toMetroProvider(
+    providerType: IrType,
+    sourceClassId: ClassId?,
+  ): IrExpression =
     with(scope) {
       val provider = this@toMetroProvider
       // Extract the value type from the provider type
