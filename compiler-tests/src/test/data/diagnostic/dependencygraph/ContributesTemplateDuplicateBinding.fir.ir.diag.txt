@@ -1,0 +1,10 @@
+/ContributesTemplateDuplicateBinding.kt:(493,502): error: [Metro/DuplicateBinding] Multiple bindings found for Base
+
+  ContributesTemplateDuplicateBinding.kt:18:1 (via @DuplicateContainer)
+    @Provides fun contribute(target: Bar)
+    : Base
+      ~~~~
+  ContributesTemplateDuplicateBinding.kt:16:1 (via @DuplicateContainer)
+    @Provides fun contribute(target: Foo)
+    : Base
+      ~~~~

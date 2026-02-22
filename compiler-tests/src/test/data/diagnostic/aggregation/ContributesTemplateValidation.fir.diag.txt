@@ -1,0 +1,13 @@
+/ContributesTemplateValidation.kt:(430,446): error: Annotation class annotated with `@ContributesTemplate` must have a companion object with `@Provides` functions.
+
+/ContributesTemplateValidation.kt:(555,574): error: Companion object of `@ContributesTemplate` annotation must have at least one `@Provides` function.
+
+/ContributesTemplateValidation.kt:(753,774): error: `@Provides` function 'provideInt' in companion object must have exactly one type parameter, but has 0.
+
+/ContributesTemplateValidation.kt:(959,982): error: `@Provides` function 'provide' in companion object must have exactly one type parameter, but has 2.
+
+/ContributesTemplateValidation.kt:(1206,1223): error: Annotation class annotated with `@ContributesTemplate` must have a `scope: KClass<*>` parameter or specify a `scope` in `@ContributesTemplate`.
+
+/ContributesTemplateValidation.kt:(1694,1712): error: Annotation class annotated with `@ContributesTemplate` must not have a `scope` parameter when `@ContributesTemplate` already specifies a `scope`.
+
+/ContributesTemplateValidation.kt:(2188,2222): error: Target class `InvalidTarget` does not satisfy type parameter bound `Marker` of `@Provides` function 'contribute' in `@BoundedContainer`.

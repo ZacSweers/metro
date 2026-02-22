@@ -113,6 +113,14 @@ internal object Keys {
     override fun toString() = "ContributionHint"
   }
 
+  data object BindingContainerObjectDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "BindingContainerObjectDeclaration"
+  }
+
+  data object BindingContainerGeneratedFunction : GeneratedDeclarationKey() {
+    override fun toString() = "BindingContainerGeneratedFunction"
+  }
+
   data object BindingMirrorClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "BindingMirrorClassDeclaration"
   }

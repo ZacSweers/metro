@@ -65,4 +65,14 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val bindsOptionalOfAnnotationPredicate =
     annotated(DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF.asSingleFqName())
+
+  // Matches classes annotated with annotations that are themselves annotated with
+  // @ContributesTemplate
+  internal val contributesTemplatePredicate =
+    DeclarationPredicate.create {
+      metaAnnotated(
+        setOf(classIds.contributesTemplateAnnotation.asSingleFqName()),
+        includeItself = false,
+      )
+    }
 }

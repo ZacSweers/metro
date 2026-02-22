@@ -168,19 +168,31 @@ internal object BindingContainerCallableChecker :
     }
 
     if (declaration.typeParameters.isNotEmpty()) {
-      val type =
-        if (annotations.isProvides) {
-          "Provides"
-        } else if (annotations.isMultibinds) {
-          "Multibinds"
-        } else {
-          "Binds"
-        }
-      reporter.reportOn(
-        source,
-        MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
-        "`@$type` declarations may not have type parameters.",
-      )
+      // Allow type parameters on @Provides functions in companion objects of
+      // @ContributesTemplate annotations - they use type parameter T as the target type
+      val isInBindingContainerCompanion = run {
+        val containingClass = containingClassSymbol ?: return@run false
+        if (!containingClass.isCompanion) return@run false
+        val parentClass =
+          with(session.compatContext) { containingClass.getContainingClassSymbol() }
+            ?: return@run false
+        parentClass.isAnnotatedWithAny(session, setOf(classIds.contributesTemplateAnnotation))
+      }
+      if (!isInBindingContainerCompanion) {
+        val type =
+          if (annotations.isProvides) {
+            "Provides"
+          } else if (annotations.isMultibinds) {
+            "Multibinds"
+          } else {
+            "Binds"
+          }
+        reporter.reportOn(
+          source,
+          MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
+          "`@$type` declarations may not have type parameters.",
+        )
+      }
     }
 
     // Ensure declarations are within a class/companion object/interface
