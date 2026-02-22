@@ -168,19 +168,30 @@ internal object BindingContainerCallableChecker :
     }
 
     if (declaration.typeParameters.isNotEmpty()) {
-      val type =
-        if (annotations.isProvides) {
-          "Provides"
-        } else if (annotations.isMultibinds) {
-          "Multibinds"
-        } else {
-          "Binds"
-        }
-      reporter.reportOn(
-        source,
-        MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
-        "`@$type` declarations may not have type parameters.",
-      )
+      // Allow type parameters on @Provides/@Binds functions in @ContributesTemplate.Template
+      // classes
+      // - they use type parameter T as the target type placeholder
+      val isInTemplateClass =
+        containingClassSymbol?.isAnnotatedWithAny(
+          session,
+          setOf(Symbols.ClassIds.contributesTemplateTemplate),
+        ) ?: false
+
+      if (!isInTemplateClass) {
+        val type =
+          if (annotations.isProvides) {
+            "Provides"
+          } else if (annotations.isMultibinds) {
+            "Multibinds"
+          } else {
+            "Binds"
+          }
+        reporter.reportOn(
+          source,
+          MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
+          "`@$type` declarations may not have type parameters.",
+        )
+      }
     }
 
     // Ensure declarations are within a class/companion object/interface
@@ -197,7 +208,17 @@ internal object BindingContainerCallableChecker :
     if (annotations.isProvides) {
       containingClassSymbol?.let { containingClass ->
         if (!containingClass.isBindingContainer(session)) {
-          if (containingClass.classKind?.isObject == true && !containingClass.isCompanion) {
+          // Skip template classes - their @Provides are template functions, not direct providers
+          val isTemplateClass =
+            containingClass.isAnnotatedWithAny(
+              session,
+              setOf(Symbols.ClassIds.contributesTemplateTemplate),
+            )
+          if (
+            !isTemplateClass &&
+              containingClass.classKind?.isObject == true &&
+              !containingClass.isCompanion
+          ) {
             // @Provides declarations can't live in non-@BindingContainer objects, this is a common
             // case hit when migrating from Dagger/Anvil and you have a non-contributed @Module,
             // e.g. `@Module object MyModule { /* provides */ }`

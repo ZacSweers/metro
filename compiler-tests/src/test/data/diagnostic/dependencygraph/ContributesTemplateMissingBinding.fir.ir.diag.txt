@@ -1,0 +1,4 @@
+/ContributesTemplateMissingBinding.kt:(560,569): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: MissingHelper
+
+    MissingHelper is injected at
+        [TestGraph] SomeTarget.MetroBindingContainerForMissingDepContainer.contribute(…, helper)

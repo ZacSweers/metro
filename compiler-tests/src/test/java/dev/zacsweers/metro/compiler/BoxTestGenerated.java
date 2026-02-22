@@ -97,6 +97,66 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributesTemplateBasic.kt")
+    public void testContributesTemplateBasic() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesTemplateBasic.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesTemplateCrossModule.kt")
+    public void testContributesTemplateCrossModule() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesTemplateCrossModule.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesTemplateDefaultScope.kt")
+    public void testContributesTemplateDefaultScope() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesTemplateDefaultScope.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesTemplateInterface.kt")
+    public void testContributesTemplateInterface() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesTemplateInterface.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesTemplateObjectIntoSet.kt")
+    public void testContributesTemplateObjectIntoSet() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesTemplateObjectIntoSet.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesTemplateRepeatedAnnotationsDifferentScopes.kt")
+    public void testContributesTemplateRepeatedAnnotationsDifferentScopes() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesTemplateRepeatedAnnotationsDifferentScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesTemplateReplaces.kt")
+    public void testContributesTemplateReplaces() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesTemplateReplaces.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesTemplateTemplateScope.kt")
+    public void testContributesTemplateTemplateScope() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesTemplateTemplateScope.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesTemplateWithAnvilContributesBindingThreeModules.kt")
+    public void testContributesTemplateWithAnvilContributesBindingThreeModules() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesTemplateWithAnvilContributesBindingThreeModules.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesTemplateWithContributesBinding.kt")
+    public void testContributesTemplateWithContributesBinding() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesTemplateWithContributesBinding.kt");
+    }
+
+    @Test
     @TestMetadata("ContributingMultibileNullableBindings.kt")
     public void testContributingMultibileNullableBindings() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributingMultibileNullableBindings.kt");

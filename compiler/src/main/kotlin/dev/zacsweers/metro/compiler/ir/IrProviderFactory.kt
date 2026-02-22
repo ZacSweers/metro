@@ -207,7 +207,22 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
               callableMetadata.isPropertyAccessor,
               callableMetadata.function,
             ),
-        parametersLazy = memoize { callableMetadata.function.parameters() },
+        parametersLazy =
+          memoize {
+            callableMetadata.function.parameters().let { params ->
+              // For fake overrides from interface supertypes in object classes, the dispatch
+              // receiver type references the interface (not an object), so IrFunction.parameters()
+              // does not exclude it. Explicitly exclude when the parent class is an object.
+              if (
+                params.dispatchReceiverParameter != null &&
+                  callableMetadata.function.parentClassOrNull?.isObject == true
+              ) {
+                params.copy(dispatchReceiverParameter = null)
+              } else {
+                params
+              }
+            }
+          },
       )
     }
 

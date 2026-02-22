@@ -76,6 +76,23 @@ open annotation class dev.zacsweers.metro/ContributesIntoSet : kotlin/Annotation
         final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesIntoSet.scope.<get-scope>|<get-scope>(){}[0]
 }
 
+open annotation class dev.zacsweers.metro/ContributesTemplate : kotlin/Annotation { // dev.zacsweers.metro/ContributesTemplate|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>, kotlin.reflect/KClass<*> = ...) // dev.zacsweers.metro/ContributesTemplate.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.reflect.KClass<*>){}[0]
+
+    final val scope // dev.zacsweers.metro/ContributesTemplate.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesTemplate.scope.<get-scope>|<get-scope>(){}[0]
+    final val template // dev.zacsweers.metro/ContributesTemplate.template|{}template[0]
+        final fun <get-template>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesTemplate.template.<get-template>|<get-template>(){}[0]
+
+    open annotation class Template : kotlin/Annotation { // dev.zacsweers.metro/ContributesTemplate.Template|null[0]
+        constructor <init>() // dev.zacsweers.metro/ContributesTemplate.Template.<init>|<init>(){}[0]
+    }
+
+    abstract class TemplateScope // dev.zacsweers.metro/ContributesTemplate.TemplateScope|null[0]
+
+    abstract class TemplateTarget // dev.zacsweers.metro/ContributesTemplate.TemplateTarget|null[0]
+}
+
 open annotation class dev.zacsweers.metro/ContributesTo : kotlin/Annotation { // dev.zacsweers.metro/ContributesTo|null[0]
     constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/ContributesTo.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 

@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
 import dev.zacsweers.metro.compiler.fir.scopeArgument
@@ -107,6 +108,17 @@ internal class ContributionHintFirGenerator(
             classSymbol,
           )
         }
+
+      // Collect hints from generated binding containers (from @ContributesTemplate)
+      for ((bindingContainerClassId, scopeClassId) in
+        session.metroFirBuiltIns.bindingContainerHints) {
+        val classSymbol =
+          session.symbolProvider.getClassLikeSymbolByClassId(bindingContainerClassId)
+            as? FirClassSymbol<*> ?: continue
+        val hintName = scopeClassId.scopeHintFunctionName()
+
+        callableIds.getAndAdd(CallableId(Symbols.FqNames.metroHintsPackage, hintName), classSymbol)
+      }
 
       callableIds
     }
