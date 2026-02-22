@@ -59,6 +59,35 @@ Note that _interop_ annotations are not affected by this change, and any previou
 
 If you want to completely restore the legacy behavior, you can disable this new mode via `useAssistedParamNamesAsIdentifiers` Gradle DSL option. Note, however, that this option will eventually be removed.
 
+#### [**[MEEP-1770]**](https://github.com/ZacSweers/metro/discussions/1770) Allow use of `() -> T` as `Provider` types.
+
+Metro's primary provider type remains `Provider`, but as of this release there are a couple of important changes in this space to allow more idiomatic use.
+
+1. `Provider` now implements `() -> T` on supported platfroms (all but Kotlin/JS).
+2. There is a new `enableFunctionProviders` option to allow use of Kotlin's `() -> T` higher order functions. This is disabled by default, but will possibly be promoted to the default behavior in the future. Please share feedback in the linked MEEP.
+    - This is inspired by kotlin-inject's support of the same feature, albeit with adjustments to work within Metro's existing `Provider` system.
+    - On Kotlin/JS, the underlying `Function0` type will be wrapped/unwrapped like other `Provider` interop scenarios do. This limitation is because JS does not allow extending function types.
+
+This now allows you to write code like this.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val stringProvider: () -> String
+  
+  @Provides fun provideString(): String = "Hello, world!"
+}
+
+fun main() {
+  val provider = createGraph<AppGraph>().stringProvider
+  println(provider())
+}
+```
+
+The primary caveat of this new feature is that, if enabled, it essentially prohibits using function types as regular bindings in your graph. If you rely on this behavior, you may need to migrate to something more strongly typed.
+
+#### Misc new stuff
+
 - **[Runtime]**: Make `Provider` implement `() -> T` on applicable platforms (everything but Kotlin/JS).
 - **[Gradle]**: Add new `@RequiresIdeSupport` experimental annotation to better indicate which APIs require IDE support.
 - **[Gradle]**: Add new `@ExperimentalMetroGradleApi` experimental annotation to better indicate which APIs are experimental and likely to change.
