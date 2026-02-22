@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771790159704,
+  "lastUpdate": 1771800503622,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -6552,6 +6552,62 @@ window.BENCHMARK_DATA = {
             "value": 22377.4,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.75%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Egor Andreevich",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Egor Andreevich",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "53c82c03~1",
+          "message": "[before] Fix IC issue with non-assisted param removed from ",
+          "timestamp": "2026-02-22T17:10:33-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/53c82c0347449fb575bb46a43af6abd5c3d72877"
+        },
+        "date": 1771800503622,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22614.56,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Egor Andreevich",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Egor Andreevich",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "53c82c0347449fb575bb46a43af6abd5c3d72877",
+          "message": "[after] Fix IC issue with non-assisted param removed from ",
+          "timestamp": "2026-02-22T17:10:33-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/53c82c0347449fb575bb46a43af6abd5c3d72877"
+        },
+        "date": 1771800503623,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21824.81,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.49%"
           }
         ]
       }

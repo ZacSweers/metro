@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771790159579,
+  "lastUpdate": 1771800503495,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -6552,6 +6552,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22716088280561939,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -1.45%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Egor Andreevich",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Egor Andreevich",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "53c82c03~1",
+          "message": "[before] Fix IC issue with non-assisted param removed from ",
+          "timestamp": "2026-02-22T17:10:33-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/53c82c0347449fb575bb46a43af6abd5c3d72877"
+        },
+        "date": 1771800503495,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2726025945101356,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Egor Andreevich",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Egor Andreevich",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "53c82c0347449fb575bb46a43af6abd5c3d72877",
+          "message": "[after] Fix IC issue with non-assisted param removed from ",
+          "timestamp": "2026-02-22T17:10:33-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/53c82c0347449fb575bb46a43af6abd5c3d72877"
+        },
+        "date": 1771800503496,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2759736829510822,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.24%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
