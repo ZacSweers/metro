@@ -42,7 +42,7 @@ public abstract class BaseDoubleCheck<T>(provider: Provider<T>) : Provider<T>, L
         return result1 as T
       }
 
-      return locked(lock) {
+      return lock.withLock {
         val result2 = _value
         if (result2 !== UNINITIALIZED) {
           @Suppress("UNCHECKED_CAST") (result2 as T)
