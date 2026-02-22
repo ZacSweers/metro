@@ -941,6 +941,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#-t-function-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        () -&gt; T (Function Providers)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#providers-of-lazy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1913,6 +1924,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#-t-function-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        () -&gt; T (Function Providers)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#providers-of-lazy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1982,6 +2004,30 @@
 <p class="admonition-title">Why doesn’t <code>Provider</code> just use a property like <code>Lazy</code>?</p>
 <p>A property is appropriate for <code>Lazy</code> because it fits the definition of being a <em>computed</em> value that is idempotent for repeat calls. Metro opts to make its <code>Provider</code> use an <code>invoke()</code> function because it does not abide by that contract.</p>
 </div>
+<h2 id="-t-function-providers"><code>() -&gt; T</code> (Function Providers)<a class="headerlink" href="#-t-function-providers" title="Permanent link">&para;</a></h2>
+<p>When the <code>enableFunctionProviders</code> option is enabled, Metro also supports using Kotlin&rsquo;s <code>() -&gt; T</code> function type as a provider. This behaves identically to <code>Provider&lt;T&gt;</code>: each invocation returns a new instance (or the cached instance if the binding is scoped).</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">HttpClient</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">cacheProvider</span><span class="p">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Cache</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">createCache</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cacheProvider</span><span class="p">()</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>This also works for graph accessors:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">cacheProvider</span><span class="p">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Cache</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Function providers can be freely mixed with <code>Provider&lt;T&gt;</code> and <code>Lazy&lt;T&gt;</code>, and also work with multibindings (e.g., <code>() -&gt; Set&lt;T&gt;</code>, <code>Map&lt;K, () -&gt; V&gt;</code>) and nested intrinsics like <code>() -&gt; Lazy&lt;T&gt;</code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Caveat</p>
+<p>Enabling this feature effectively prevents using bare function types as regular bindings in your graph. If you rely on injecting <code>() -&gt; T</code> as a <em>value</em> rather than a provider, you may need to migrate those bindings to a more strongly typed wrapper.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Kotlin/JS</p>
+<p>On Kotlin/JS, <code>Provider</code> does not implement <code>() -&gt; T</code> due to JS runtime limitations. Metro handles this transparently by wrapping/unwrapping at the call site, similar to other provider interop scenarios.</p>
+</div>
 <h2 id="providers-of-lazy">Providers of Lazy<a class="headerlink" href="#providers-of-lazy" title="Permanent link">&para;</a></h2>
 <p>Metro supports combining <code>Provider</code> and <code>Lazy</code> to inject <code>Provider&lt;Lazy&lt;T&gt;&gt;</code>. On unscoped bindings this means the provider will return a new deferrable computable value (i.e. a new Lazy). Meanwhile <code>Lazy&lt;Provider&lt;T&gt;&gt;</code> is meaningless and not supported.</p>
 
@@ -2004,7 +2050,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="February 1, 2025 05:01:23 UTC">February 1, 2025</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="February 22, 2026 19:13:54 UTC">February 22, 2026</span>
   </span>
 
     

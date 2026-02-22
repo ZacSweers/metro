@@ -44,6 +44,10 @@
         <div class="navigation-controls">
         <ul class="filter-section filter-section_loading" id="filter-section" aria-label="Target filter">
                 <button class="platform-tag platform-selector common-like" data-active="" aria-pressed="true" data-filter=":runtime/commonMain">common</button>
+                <button class="platform-tag platform-selector js-like" data-active="" aria-pressed="true" data-filter=":runtime/jsMain">js</button>
+                <button class="platform-tag platform-selector jvm-like" data-active="" aria-pressed="true" data-filter=":runtime/jvmMain">jvm</button>
+                <button class="platform-tag platform-selector common-like" data-active="" aria-pressed="true" data-filter=":runtime/nativeMain">native</button>
+                <button class="platform-tag platform-selector wasm-like" data-active="" aria-pressed="true" data-filter=":runtime/wasmMain">wasm</button>
             <div class="dropdown filter-section--dropdown" data-role="dropdown" id="filter-section-dropdown">
                 <button class="button button_dropdown filter-section--dropdown-toggle" role="combobox" data-role="dropdown-toggle" aria-controls="platform-tags-listbox" aria-haspopup="listbox" aria-expanded="false" aria-label="Toggle source sets"></button>
                 <ul role="listbox" id="platform-tags-listbox" class="dropdown--list" data-role="dropdown-listbox" aria-label="Target filter">
@@ -57,6 +61,34 @@
                                 <input type="checkbox" class="checkbox--input" id=":runtime/commonMain" data-filter=":runtime/commonMain">
                                 <span class="checkbox--icon"></span>
                                 common
+                            </label>
+                        </li>
+                        <li role="option" class="dropdown--option platform-selector-option js-like" tabindex="0">
+                            <label class="checkbox">
+                                <input type="checkbox" class="checkbox--input" id=":runtime/jsMain" data-filter=":runtime/jsMain">
+                                <span class="checkbox--icon"></span>
+                                js
+                            </label>
+                        </li>
+                        <li role="option" class="dropdown--option platform-selector-option jvm-like" tabindex="0">
+                            <label class="checkbox">
+                                <input type="checkbox" class="checkbox--input" id=":runtime/jvmMain" data-filter=":runtime/jvmMain">
+                                <span class="checkbox--icon"></span>
+                                jvm
+                            </label>
+                        </li>
+                        <li role="option" class="dropdown--option platform-selector-option common-like" tabindex="0">
+                            <label class="checkbox">
+                                <input type="checkbox" class="checkbox--input" id=":runtime/nativeMain" data-filter=":runtime/nativeMain">
+                                <span class="checkbox--icon"></span>
+                                native
+                            </label>
+                        </li>
+                        <li role="option" class="dropdown--option platform-selector-option wasm-like" tabindex="0">
+                            <label class="checkbox">
+                                <input type="checkbox" class="checkbox--input" id=":runtime/wasmMain" data-filter=":runtime/wasmMain">
+                                <span class="checkbox--icon"></span>
+                                wasm
                             </label>
                         </li>
                 </ul>
@@ -90,7 +122,7 @@
         </nav>
         <div id="resizer" class="resizer" data-item-type="BAR"></div>
         <div id="main" data-item-type="SECTION" role="main">
-<div class="main-content" data-page-type="package" id="content" pageids="runtime::dev.zacsweers.metro////PointingToDeclaration//673331665">
+<div class="main-content" data-page-type="package" id="content" pageids="runtime::dev.zacsweers.metro////PointingToDeclaration//1854457966">
   <div class="breadcrumbs"><a href="../index.html">runtime</a><span class="delimiter">/</span><span class="current">dev.zacsweers.metro</span></div>
   <div class="cover ">
     <h1 class="cover"><span><span>Package-level</span></span> <span><span>declarations</span></span></h1>
@@ -520,17 +552,19 @@
               </div>
             </div>
           </div>
-<a data-name="202029988%2FClasslikes%2F673331665" anchor-label="Provider" id="202029988%2FClasslikes%2F673331665" data-filterable-set=":runtime/commonMain"></a>
-          <div class="table-row table-row_content" data-filterable-current=":runtime/commonMain" data-filterable-set=":runtime/commonMain">
+<a data-name="202029988%2FClasslikes%2F1854457966" anchor-label="Provider" id="202029988%2FClasslikes%2F1854457966" data-filterable-set=":runtime/commonMain,:runtime/jsMain,:runtime/jvmMain,:runtime/nativeMain,:runtime/wasmMain"></a>
+          <div class="table-row table-row_content" data-filterable-current=":runtime/commonMain,:runtime/jsMain,:runtime/jvmMain,:runtime/nativeMain,:runtime/wasmMain" data-filterable-set=":runtime/commonMain,:runtime/jsMain,:runtime/jvmMain,:runtime/nativeMain,:runtime/wasmMain">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="-provider/index.html"><span><span>Provider</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="202029988%2FClasslikes%2F673331665"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="202029988%2FClasslikes%2F1854457966"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":runtime/commonMain"><div class="symbol monospace"><span class="token keyword">fun </span><span class="token keyword">interface </span><a href="-provider/index.html">Provider</a><span class="token operator">&lt;</span><a href="-provider/index.html">T</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">A simple class that produces instances of <a href="-provider/index.html">T</a>.</p></div></div></div>
+                  <div class="platform-hinted  with-platform-tabs" data-platform-hinted="data-platform-hinted">
+                    <div class="platform-bookmarks-row" data-toggle-list="data-toggle-list"><button class="platform-bookmark" data-filterable-current=":runtime/commonMain" data-filterable-set=":runtime/commonMain" data-active="" data-toggle=":runtime/commonMain">common</button><button class="platform-bookmark" data-filterable-current=":runtime/jsMain" data-filterable-set=":runtime/jsMain" data-toggle=":runtime/jsMain">js</button><button class="platform-bookmark" data-filterable-current=":runtime/jvmMain" data-filterable-set=":runtime/jvmMain" data-toggle=":runtime/jvmMain">jvm</button><button class="platform-bookmark" data-filterable-current=":runtime/nativeMain" data-filterable-set=":runtime/nativeMain" data-toggle=":runtime/nativeMain">native</button><button class="platform-bookmark" data-filterable-current=":runtime/wasmMain" data-filterable-set=":runtime/wasmMain" data-toggle=":runtime/wasmMain">wasm</button></div>
+<div class="content sourceset-dependent-content" data-active="" data-togglable=":runtime/commonMain"><div class="symbol monospace"><span class="token keyword">expect </span><span class="token keyword">fun </span><span class="token keyword">interface </span><a href="-provider/index.html">Provider</a><span class="token operator">&lt;</span><a href="-provider/index.html">T</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">A simple class that produces instances of <a href="-provider/index.html">T</a>.</p></div></div><div class="content sourceset-dependent-content" data-togglable=":runtime/jsMain"><div class="symbol monospace"><span class="token keyword">actual </span><span class="token keyword">fun </span><span class="token keyword">interface </span><a href="-provider/index.html">Provider</a><span class="token operator">&lt;</span><a href="-provider/index.html">T</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">A simple class that produces instances of <a href="-provider/index.html">T</a>.</p></div></div><div class="content sourceset-dependent-content" data-togglable=":runtime/jvmMain"><div class="symbol monospace"><span class="token keyword">actual </span><span class="token keyword">fun </span><span class="token keyword">interface </span><a href="-provider/index.html">Provider</a><span class="token operator">&lt;</span><a href="-provider/index.html">T</a><span class="token operator">&gt;</span> : <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-function0/index.html">Function0</a><span class="token operator">&lt;</span><a href="-provider/index.html">T</a><span class="token operator">&gt; </span></div><div class="brief "><p class="paragraph">A simple class that produces instances of <a href="-provider/index.html">T</a>.</p></div></div><div class="content sourceset-dependent-content" data-togglable=":runtime/nativeMain"><div class="symbol monospace"><span class="token keyword">actual </span><span class="token keyword">fun </span><span class="token keyword">interface </span><a href="-provider/index.html">Provider</a><span class="token operator">&lt;</span><a href="-provider/index.html">T</a><span class="token operator">&gt;</span> : <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-function0/index.html">Function0</a><span class="token operator">&lt;</span><a href="-provider/index.html">T</a><span class="token operator">&gt; </span></div><div class="brief "><p class="paragraph">A simple class that produces instances of <a href="-provider/index.html">T</a>.</p></div></div><div class="content sourceset-dependent-content" data-togglable=":runtime/wasmMain"><div class="symbol monospace"><span class="token keyword">actual </span><span class="token keyword">fun </span><span class="token keyword">interface </span><a href="-provider/index.html">Provider</a><span class="token operator">&lt;</span><a href="-provider/index.html">T</a><span class="token operator">&gt;</span> : <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-function0/index.html">Function0</a><span class="token operator">&lt;</span><a href="-provider/index.html">T</a><span class="token operator">&gt; </span></div><div class="brief "><p class="paragraph">A simple class that produces instances of <a href="-provider/index.html">T</a>.</p></div></div>                  </div>
                 </div>
               </div>
             </div>
@@ -759,7 +793,7 @@
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":runtime/commonMain"><div class="symbol monospace"><span class="token keyword">inline </span><span class="token keyword">fun </span><span class="token operator">&lt;</span><a href="provider.html">T</a><span class="token operator">&gt; </span><a href="provider.html"><span class="token function">provider</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">crossinline </span>provider<span class="token operator">: </span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator"> -&gt; </span><a href="provider.html">T</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="-provider/index.html">Provider</a><span class="token operator">&lt;</span><a href="provider.html">T</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">A helper function to create a new <a href="-provider/index.html">Provider</a> wrapper around a given <a href="provider.html">provider</a> lambda.</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":runtime/commonMain"><div class="symbol monospace"><span class="token keyword">inline </span><span class="token keyword">fun </span><span class="token operator">&lt;</span><a href="provider.html">T</a><span class="token operator">&gt; </span><a href="provider.html"><span class="token function">provider</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">noinline </span>provider<span class="token operator">: </span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator"> -&gt; </span><a href="provider.html">T</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="-provider/index.html">Provider</a><span class="token operator">&lt;</span><a href="provider.html">T</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">A helper function to create a new <a href="-provider/index.html">Provider</a> wrapper around a given <a href="provider.html">provider</a> lambda.</p></div></div></div>
                 </div>
               </div>
             </div>

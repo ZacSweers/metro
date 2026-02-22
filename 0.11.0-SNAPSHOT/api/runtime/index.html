@@ -44,6 +44,10 @@
         <div class="navigation-controls">
         <ul class="filter-section filter-section_loading" id="filter-section" aria-label="Target filter">
                 <button class="platform-tag platform-selector common-like" data-active="" aria-pressed="true" data-filter=":runtime/commonMain">common</button>
+                <button class="platform-tag platform-selector js-like" data-active="" aria-pressed="true" data-filter=":runtime/jsMain">js</button>
+                <button class="platform-tag platform-selector jvm-like" data-active="" aria-pressed="true" data-filter=":runtime/jvmMain">jvm</button>
+                <button class="platform-tag platform-selector common-like" data-active="" aria-pressed="true" data-filter=":runtime/nativeMain">native</button>
+                <button class="platform-tag platform-selector wasm-like" data-active="" aria-pressed="true" data-filter=":runtime/wasmMain">wasm</button>
             <div class="dropdown filter-section--dropdown" data-role="dropdown" id="filter-section-dropdown">
                 <button class="button button_dropdown filter-section--dropdown-toggle" role="combobox" data-role="dropdown-toggle" aria-controls="platform-tags-listbox" aria-haspopup="listbox" aria-expanded="false" aria-label="Toggle source sets"></button>
                 <ul role="listbox" id="platform-tags-listbox" class="dropdown--list" data-role="dropdown-listbox" aria-label="Target filter">
@@ -57,6 +61,34 @@
                                 <input type="checkbox" class="checkbox--input" id=":runtime/commonMain" data-filter=":runtime/commonMain">
                                 <span class="checkbox--icon"></span>
                                 common
+                            </label>
+                        </li>
+                        <li role="option" class="dropdown--option platform-selector-option js-like" tabindex="0">
+                            <label class="checkbox">
+                                <input type="checkbox" class="checkbox--input" id=":runtime/jsMain" data-filter=":runtime/jsMain">
+                                <span class="checkbox--icon"></span>
+                                js
+                            </label>
+                        </li>
+                        <li role="option" class="dropdown--option platform-selector-option jvm-like" tabindex="0">
+                            <label class="checkbox">
+                                <input type="checkbox" class="checkbox--input" id=":runtime/jvmMain" data-filter=":runtime/jvmMain">
+                                <span class="checkbox--icon"></span>
+                                jvm
+                            </label>
+                        </li>
+                        <li role="option" class="dropdown--option platform-selector-option common-like" tabindex="0">
+                            <label class="checkbox">
+                                <input type="checkbox" class="checkbox--input" id=":runtime/nativeMain" data-filter=":runtime/nativeMain">
+                                <span class="checkbox--icon"></span>
+                                native
+                            </label>
+                        </li>
+                        <li role="option" class="dropdown--option platform-selector-option wasm-like" tabindex="0">
+                            <label class="checkbox">
+                                <input type="checkbox" class="checkbox--input" id=":runtime/wasmMain" data-filter=":runtime/wasmMain">
+                                <span class="checkbox--icon"></span>
+                                wasm
                             </label>
                         </li>
                 </ul>
@@ -90,24 +122,28 @@
         </nav>
         <div id="resizer" class="resizer" data-item-type="BAR"></div>
         <div id="main" data-item-type="SECTION" role="main">
-<div class="main-content" id="content" pageids="runtime::////PointingToDeclaration//673331665">
+<div class="main-content" id="content" pageids="runtime::////PointingToDeclaration//1854457966">
   <div class="breadcrumbs"></div>
   <div class="cover ">
     <h1 class="cover"><span><span>runtime</span></span></h1>
   </div>
   <h2 class="">Packages</h2>
-  <div class="table"><a data-name="406979733%2FPackages%2F673331665" anchor-label="dev.zacsweers.metro" id="406979733%2FPackages%2F673331665" data-filterable-set=":runtime/commonMain"></a>
-    <div class="table-row table-row_platform-tagged" data-filterable-current=":runtime/commonMain" data-filterable-set=":runtime/commonMain">
+  <div class="table"><a data-name="406979733%2FPackages%2F1854457966" anchor-label="dev.zacsweers.metro" id="406979733%2FPackages%2F1854457966" data-filterable-set=":runtime/commonMain,:runtime/jsMain,:runtime/jvmMain,:runtime/nativeMain,:runtime/wasmMain"></a>
+    <div class="table-row table-row_platform-tagged" data-filterable-current=":runtime/commonMain,:runtime/jsMain,:runtime/jvmMain,:runtime/nativeMain,:runtime/wasmMain" data-filterable-set=":runtime/commonMain,:runtime/jsMain,:runtime/jvmMain,:runtime/nativeMain,:runtime/wasmMain">
       <div>
         <div class="main-subrow ">
           <div class=""><span class="inline-flex">
               <div><a href="dev.zacsweers.metro/index.html">dev.zacsweers.metro</a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="406979733%2FPackages%2F673331665"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="406979733%2FPackages%2F1854457966"></span>
                 <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
               </span></span></div>
           <div class="pull-right platform-tags--wrapper">
             <div class="platform-tags no-gutters">
               <div class="platform-tag common-like">common</div>
+              <div class="platform-tag js-like">js</div>
+              <div class="platform-tag jvm-like">jvm</div>
+              <div class="platform-tag common-like">native</div>
+              <div class="platform-tag wasm-like">wasm</div>
             </div>
           </div>
         </div>
