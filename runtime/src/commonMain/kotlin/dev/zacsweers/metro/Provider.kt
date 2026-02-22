@@ -6,7 +6,7 @@ import dev.zacsweers.metro.internal.DoubleCheck
 import dev.zacsweers.metro.internal.InstanceFactory
 
 /** A simple class that produces instances of [T]. */
-public fun interface Provider<T> {
+public expect fun interface Provider<T> {
   public operator fun invoke(): T
 }
 

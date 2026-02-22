@@ -59,6 +59,7 @@ Note that _interop_ annotations are not affected by this change, and any previou
 
 If you want to completely restore the legacy behavior, you can disable this new mode via `useAssistedParamNamesAsIdentifiers` Gradle DSL option. Note, however, that this option will eventually be removed.
 
+- **[Runtime]**: Make `Provider` implement `() -> T` on applicable platforms (everything but Kotlin/JS).
 - **[Gradle]**: Add new `@RequiresIdeSupport` experimental annotation to better indicate which APIs require IDE support.
 - **[Gradle]**: Add new `@ExperimentalMetroGradleApi` experimental annotation to better indicate which APIs are experimental and likely to change.
 - **[Gradle]**: Add new `@DangerousMetroGradleApi` experimental annotation with `ERROR` severity to better propagate severity of certain APIs.
