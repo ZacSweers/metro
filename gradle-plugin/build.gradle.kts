@@ -4,6 +4,7 @@ import com.android.build.gradle.internal.lint.AndroidLintAnalysisTask
 import com.android.build.gradle.internal.lint.LintModelWriterTask
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
@@ -76,6 +77,11 @@ gradlePlugin {
 
 kotlin.compilerOptions.optIn.add("dev.zacsweers.metro.gradle.DelicateMetroGradleApi")
 
+compileFunctionalTestKotlin.configure {
+  // TODO really only here for extensions tests
+  compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
+}
+
 /**
  * We shade guava and graph-support to avoid conflicts with other Gradle plugins that may use
  * different versions.
@@ -144,6 +150,7 @@ dependencies {
   functionalTestImplementation(libs.kotlin.test)
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)
+  // TODO really only here for extensions tests
   functionalTestRuntimeOnly(project(":compiler"))
   functionalTestRuntimeOnly(project(":runtime"))
   functionalTestRuntimeOnly(project(":interop-dagger"))
