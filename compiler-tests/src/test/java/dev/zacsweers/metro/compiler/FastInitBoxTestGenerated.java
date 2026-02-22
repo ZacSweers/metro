@@ -297,6 +297,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("GeneratedDependencyGraph.kt")
+    public void testGeneratedDependencyGraph() {
+      runTest("compiler-tests/src/test/data/box/api/GeneratedDependencyGraph.kt");
+    }
+
+    @Test
     @TestMetadata("MetroFirExtensionSample.kt")
     public void testMetroFirExtensionSample() {
       runTest("compiler-tests/src/test/data/box/api/MetroFirExtensionSample.kt");
