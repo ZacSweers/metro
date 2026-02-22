@@ -5,6 +5,8 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.ERROR
@@ -24,6 +26,8 @@ import org.jetbrains.kotlin.ir.util.sourceElement
 /*
 Compat reporting functions until IrDiagnosticReporter supports source-less declarations
 */
+
+private val REPORT_LOCK = ReentrantLock()
 
 @OptIn(InternalDiagnosticFactoryMethod::class)
 internal fun <A : Any> IrMetroContext.reportCompat(
@@ -55,6 +59,19 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   factory: KtDiagnosticFactory1<A>,
   a: A,
   extraContext: StringBuilder.() -> Unit = {},
+) {
+  if (options.parallelThreads > 0) {
+    REPORT_LOCK.withLock { reportCompatImpl(irDeclaration, factory, a, extraContext) }
+  } else {
+    reportCompatImpl(irDeclaration, factory, a, extraContext)
+  }
+}
+
+private fun <A : Any> IrMetroContext.reportCompatImpl(
+  irDeclaration: IrDeclaration?,
+  factory: KtDiagnosticFactory1<A>,
+  a: A,
+  extraContext: StringBuilder.() -> Unit,
 ) {
   val sourceElement = irDeclaration?.sourceElement()
   if (irDeclaration?.fileOrNull == null || sourceElement == null) {
