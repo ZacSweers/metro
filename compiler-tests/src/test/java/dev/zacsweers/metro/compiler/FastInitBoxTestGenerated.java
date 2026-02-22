@@ -2115,9 +2115,39 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("FunctionProviderOfLazy.kt")
+    public void testFunctionProviderOfLazy() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderOfLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithGenerics.kt")
+    public void testFunctionProviderWithGenerics() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithGenerics.kt");
+    }
+
+    @Test
     @TestMetadata("FunctionProviderWithLazy.kt")
     public void testFunctionProviderWithLazy() {
       runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithMultiboundMap.kt")
+    public void testFunctionProviderWithMultiboundMap() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithMultiboundMap.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithMultiboundMapOfFunctions.kt")
+    public void testFunctionProviderWithMultiboundMapOfFunctions() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithMultiboundMapOfFunctions.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProviderWithMultiboundSet.kt")
+    public void testFunctionProviderWithMultiboundSet() {
+      runTest("compiler-tests/src/test/data/box/provides/FunctionProviderWithMultiboundSet.kt");
     }
 
     @Test
