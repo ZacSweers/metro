@@ -40,5 +40,10 @@ package dev.zacsweers.metro
  * }
  * ```
  */
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY)
+@Target(
+  AnnotationTarget.FUNCTION,
+  AnnotationTarget.PROPERTY_GETTER,
+  AnnotationTarget.PROPERTY,
+  AnnotationTarget.VALUE_PARAMETER,
+)
 public annotation class GraphPrivate
