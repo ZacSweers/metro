@@ -691,10 +691,11 @@ internal class BindingGraphGenerator(
 
     for ((typeKey, extendedNode) in node.allParentGraphs) {
       // Collect provider factories (non-scoped, not already in current node)
+      // Skip @GraphPrivate factories — private contributions should not leak to child graphs.
       for ((key, factories) in extendedNode.providerFactories) {
         if (key !in node.providerFactories) {
           for (factory in factories) {
-            if (!factory.annotations.isScoped) {
+            if (!factory.annotations.isScoped && key !in extendedNode.graphPrivateKeys) {
               providerFactories.add(key to factory)
               providerFactoryKeys.add(key)
             }
