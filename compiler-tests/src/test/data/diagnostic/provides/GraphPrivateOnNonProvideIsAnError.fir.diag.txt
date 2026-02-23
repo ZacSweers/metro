@@ -1,0 +1,1 @@
+/GraphPrivateOnNonProvideIsAnError.kt:(123,135): error: @GraphPrivate can only be applied to @Provides, @Binds, or @Multibinds declarations.

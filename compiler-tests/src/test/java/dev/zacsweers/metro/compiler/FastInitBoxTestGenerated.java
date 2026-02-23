@@ -607,6 +607,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphPrivateIntraGraphUsageWorks.kt")
+    public void testGraphPrivateIntraGraphUsageWorks() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/GraphPrivateIntraGraphUsageWorks.kt");
+    }
+
+    @Test
     @TestMetadata("GraphsCanHaveExistingImplClases.kt")
     public void testGraphsCanHaveExistingImplClases() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/GraphsCanHaveExistingImplClases.kt");
@@ -993,6 +999,18 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("GraphExtensionIgnoresOwnTypeBinding.kt")
       public void testGraphExtensionIgnoresOwnTypeBinding() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphExtensionIgnoresOwnTypeBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateBindsAliasVisibleToChild.kt")
+      public void testGraphPrivateBindsAliasVisibleToChild() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivateBindsAliasVisibleToChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateDoesNotBlockNonPrivateBindings.kt")
+      public void testGraphPrivateDoesNotBlockNonPrivateBindings() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivateDoesNotBlockNonPrivateBindings.kt");
       }
 
       @Test

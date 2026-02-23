@@ -281,6 +281,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphPrivateAccessorIsAnError.kt")
+    public void testGraphPrivateAccessorIsAnError() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphPrivateAccessorIsAnError.kt");
+    }
+
+    @Test
     @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
     public void testGraphsCannotDirectlyExtendOtherGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
@@ -387,6 +393,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("ExtensionsWithFactoriesMustUseThem.kt")
       public void testExtensionsWithFactoriesMustUseThem() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/ExtensionsWithFactoriesMustUseThem.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateBindingNotVisibleToChild.kt")
+      public void testGraphPrivateBindingNotVisibleToChild() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/GraphPrivateBindingNotVisibleToChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateSourceNotLeakedViaBindsAlias.kt")
+      public void testGraphPrivateSourceNotLeakedViaBindsAlias() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/GraphPrivateSourceNotLeakedViaBindsAlias.kt");
       }
 
       @Test
@@ -950,6 +968,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("DaggerReusable_IsUnsupported.kt")
     public void testDaggerReusable_IsUnsupported() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/DaggerReusable_IsUnsupported.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphPrivateOnNonProvideIsAnError.kt")
+    public void testGraphPrivateOnNonProvideIsAnError() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/GraphPrivateOnNonProvideIsAnError.kt");
     }
 
     @Test
