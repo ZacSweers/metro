@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771876194753,
+  "lastUpdate": 1771882945926,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -6888,6 +6888,62 @@ window.BENCHMARK_DATA = {
             "value": 20786.176,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.55%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1366aede~1",
+          "message": "[before] Fix evaluation of top-level constants used in anno",
+          "timestamp": "2026-02-23T21:03:44Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1366aede7e447a533af0c27d84a5b3bf99db4e63"
+        },
+        "date": 1771882945926,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 23801.954,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1366aede7e447a533af0c27d84a5b3bf99db4e63",
+          "message": "[after] Fix evaluation of top-level constants used in anno",
+          "timestamp": "2026-02-23T21:03:44Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1366aede7e447a533af0c27d84a5b3bf99db4e63"
+        },
+        "date": 1771882945927,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22230.21,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -6.60%"
           }
         ]
       }
