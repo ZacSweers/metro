@@ -10,9 +10,11 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
+import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.types.renderReadable
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.resolvedType
@@ -79,6 +81,11 @@ private fun StringBuilder.renderAsAnnotationArgument(argument: FirExpression, si
         (argument.argument as? FirResolvedQualifier)?.symbol?.classId?.asSingleFqName() ?: "<Error>"
       append(id)
       append("::class")
+    }
+    is FirPropertyAccessExpression -> {
+      // Enum entry or const val reference
+      val symbol = argument.calleeReference.toResolvedPropertySymbol()
+      append(symbol?.callableId ?: "...")
     }
     // TODO
     //      is IrVararg -> {
