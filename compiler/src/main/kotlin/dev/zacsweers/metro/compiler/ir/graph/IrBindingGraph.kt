@@ -456,6 +456,13 @@ internal class IrBindingGraph(
         return@buildList
       }
 
+      if (key in bindingLookup.getParentGraphPrivateKeys()) {
+        add(
+          "A binding for '${key.render(short = true)}' exists in a parent graph but is marked " +
+            "@GraphPrivate and cannot be accessed from this graph."
+        )
+      }
+
       bindingLookup.skippedDirectMapRequests[key]?.let { requestedContextKey ->
         bindingLookup.getAvailableBindings()[key]?.let { directBinding ->
           // Use rawType to render with Provider/Lazy wrapping preserved, since
