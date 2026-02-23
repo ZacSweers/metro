@@ -1,0 +1,45 @@
+FILE: Composable.kt
+    package androidx.compose.runtime
+
+    public final annotation class Composable : R|kotlin/Annotation| {
+        public constructor(): R|androidx/compose/runtime/Composable| {
+            super<R|kotlin/Any|>()
+        }
+
+    }
+    public final annotation class Stable : R|kotlin/Annotation| {
+        public constructor(): R|androidx/compose/runtime/Stable| {
+            super<R|kotlin/Any|>()
+        }
+
+    }
+FILE: main.kt
+    @R|androidx/compose/runtime/Composable|() @R|dev/zacsweers/metro/Inject|() public final fun App(message: R|kotlin/String|): R|kotlin/Unit| {
+    }
+FILE: /App.kt
+    @R|dev/zacsweers/metro/Inject|() @R|dev/zacsweers/metro/internal/InjectedFunctionClass|(callableName = String(App)) @R|androidx/compose/runtime/Stable|() @R|kotlin/native/HiddenFromObjC|() public final class App : R|kotlin/Any| {
+        @R|androidx/compose/runtime/Composable|() @R|androidx/compose/runtime/Stable|() public final operator fun invoke(): R|kotlin/Unit|
+
+        private constructor(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|App| {
+            super<R|kotlin/Any|>()
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class MetroFactory : R|dev/zacsweers/metro/internal/Factory<App>| {
+            private constructor(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|App.MetroFactory| {
+                super<R|kotlin/Any|>()
+            }
+
+            public final companion object Companion : R|kotlin/Any| {
+                public final fun create(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|dev/zacsweers/metro/internal/Factory<App>|
+
+                public final fun newInstance(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|App|
+
+                private constructor(): R|App.MetroFactory.Companion| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+    }

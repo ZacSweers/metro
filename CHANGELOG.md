@@ -113,6 +113,7 @@ Now, Metro runs in a single pass. Most of Metro's core transformations are run i
 ### Fixes
 
 - **[FIR]**: Improve optional binding member injections detection.
+- **[FIR]**: Add `@HiddenFromObjC` to generated top-level composable classes for native compilations.
 - **[FIR/IR]**: Support generic `@BindingContainer` classes included via `@Includes` with concrete type arguments (e.g., `@Includes TypedBindings<Int>`). Type parameters are now properly propagated to generated factory classes and substituted during binding resolution.
 - **[IR]**: Fix propagation of `Map` graph inputs down to graph extensions.
 - **[IR]**: Guard against identity mappings (T -> T) to prevent infinite recursion when remapping generic types.

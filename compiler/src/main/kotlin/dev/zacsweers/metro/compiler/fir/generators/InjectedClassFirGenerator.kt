@@ -149,6 +149,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             annotations.qualifier?.fir?.let(::add)
             if (annotations.isComposable) {
               add(buildStableAnnotation())
+              add(buildHiddenFromObjCAnnotation())
             }
           }
         )
@@ -907,6 +908,10 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
 
   private fun buildStableAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.metroFirBuiltIns.stableClassSymbol }
+  }
+
+  private fun buildHiddenFromObjCAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.metroFirBuiltIns.hiddenFromObjCClassSymbol }
   }
 
   private fun buildNonRestartableAnnotation(): FirAnnotation {
