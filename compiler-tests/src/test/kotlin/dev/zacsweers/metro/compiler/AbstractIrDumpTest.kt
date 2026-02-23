@@ -32,6 +32,7 @@ open class AbstractIrDumpTest : AbstractFirLightTreeJvmIrTextTest() {
         JVM_TARGET.with(JvmTarget.JVM_11)
         +FULL_JDK
         +WITH_STDLIB
+        commonMetroTestDirectives()
 
         +IGNORE_DEXING // Avoids loading R8 from the classpath.
         +DISABLE_GENERATED_FIR_TAGS

@@ -54,6 +54,7 @@ open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
         JVM_TARGET.with(JvmTarget.JVM_11)
         +FULL_JDK
         +WITH_STDLIB
+        commonMetroTestDirectives()
 
         +IGNORE_DEXING // Avoids loading R8 from the classpath.
       }
