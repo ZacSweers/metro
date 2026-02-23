@@ -240,6 +240,62 @@ interface AppGraph {
 }
 ```
 
+### Graph-private Bindings
+
+By default, all bindings in a graph are implicitly available to its graph extensions. `@GraphPrivate` allows marking `@Provides`, `@Binds`, or `@Multibinds` declarations as _private_ to the graph they are provided in. This means:
+
+- The binding **may not** be exposed directly via an accessor.
+- The binding **will not** be visible to extensions of this graph.
+
+Private bindings _may_ be depended on by other bindings within the same graph as an implementation detail.
+
+This is useful for a few situations:
+
+- Confining certain bindings to a given graph, such as a base `HttpClient` that shouldn't leak to child graphs.
+- Omitting certain contributions to multibindings from leaking to extensions.
+- Avoiding accidental leaking of same-typed scoped instances across graph boundaries. For example, both a parent and child graph may provide a scoped `CoroutineScope` — by marking each as private, you can trust that each graph uses its own instance without needing qualifier annotations like `@ForScope` to disambiguate.
+
+```kotlin
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  @GraphPrivate
+  @Provides
+  @SingleIn(AppScope::class)
+  fun provideCoroutineScope(): CoroutineScope = ...
+
+  // Error — cannot expose a @GraphPrivate binding as an accessor
+  val coroutineScope: CoroutineScope
+
+  val loggedInGraph: LoggedInGraph
+}
+
+@GraphExtension
+interface LoggedInGraph {
+  // Error — CoroutineScope is @GraphPrivate in the parent and not visible here
+  val coroutineScope: CoroutineScope
+}
+```
+
+??? note "Binds Implementation Notes"
+
+    A non-private `@Binds` declaration _may_ depend on a `@GraphPrivate` binding. In this case, the result type is visible to child graphs even though the source type is not. The child accesses the aliased type as a parent-resolved dependency rather than re-resolving the alias.
+
+    ```kotlin
+    @DependencyGraph(AppScope::class)
+    interface AppGraph {
+      @GraphPrivate @SingleIn(AppScope::class) @Provides fun provideString(): String = "hello"
+      @Binds fun bindCharSequence(value: String): CharSequence
+    
+      fun createChild(): ChildGraph
+    }
+    
+    @GraphExtension
+    interface ChildGraph {
+      val text: CharSequence // OK — CharSequence is visible via the public @Binds alias
+      val string: String     // Error — String is @GraphPrivate in the parent
+    }
+    ```
+
 ### Creators
 
 See [DependencyGraph](#inputs)'s section on creators.
