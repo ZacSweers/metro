@@ -1,0 +1,73 @@
+FILE: Composable.kt
+    package androidx.compose.runtime
+
+    public final annotation class Composable : R|kotlin/Annotation| {
+        public constructor(): R|androidx/compose/runtime/Composable| {
+            super<R|kotlin/Any|>()
+        }
+
+    }
+    public final annotation class Stable : R|kotlin/Annotation| {
+        public constructor(): R|androidx/compose/runtime/Stable| {
+            super<R|kotlin/Any|>()
+        }
+
+    }
+FILE: main.kt
+    @R|androidx/compose/runtime/Composable|() @R|dev/zacsweers/metro/Inject|() public final fun ComposableApp(message: R|kotlin/String|): R|kotlin/Unit| {
+    }
+    @R|dev/zacsweers/metro/Inject|() public final fun NonComposableApp(message: R|kotlin/String|): R|kotlin/Unit| {
+    }
+FILE: __GENERATED DECLARATIONS__.kt
+    @R|dev/zacsweers/metro/Inject|() @R|dev/zacsweers/metro/internal/InjectedFunctionClass|(callableName = String(ComposableApp)) @R|kotlin/native/HiddenFromObjC|() @R|androidx/compose/runtime/Stable|() public final class ComposableApp : R|kotlin/Any| {
+        @R|androidx/compose/runtime/Composable|() @R|androidx/compose/runtime/Stable|() public final operator fun invoke(): R|kotlin/Unit|
+
+        private constructor(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|ComposableApp| {
+            super<R|kotlin/Any|>()
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class MetroFactory : R|dev/zacsweers/metro/internal/Factory<ComposableApp>| {
+            private constructor(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|ComposableApp.MetroFactory| {
+                super<R|kotlin/Any|>()
+            }
+
+            public final companion object Companion : R|kotlin/Any| {
+                public final fun create(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|dev/zacsweers/metro/internal/Factory<ComposableApp>|
+
+                public final fun newInstance(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|ComposableApp|
+
+                private constructor(): R|ComposableApp.MetroFactory.Companion| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+    }
+    @R|dev/zacsweers/metro/Inject|() @R|dev/zacsweers/metro/internal/InjectedFunctionClass|(callableName = String(NonComposableApp)) @R|kotlin/native/HiddenFromObjC|() public final class NonComposableApp : R|kotlin/Any| {
+        public final operator fun invoke(): R|kotlin/Unit|
+
+        private constructor(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|NonComposableApp| {
+            super<R|kotlin/Any|>()
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class MetroFactory : R|dev/zacsweers/metro/internal/Factory<NonComposableApp>| {
+            private constructor(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|NonComposableApp.MetroFactory| {
+                super<R|kotlin/Any|>()
+            }
+
+            public final companion object Companion : R|kotlin/Any| {
+                public final fun create(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|dev/zacsweers/metro/internal/Factory<NonComposableApp>|
+
+                public final fun newInstance(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|NonComposableApp|
+
+                private constructor(): R|NonComposableApp.MetroFactory.Companion| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+    }

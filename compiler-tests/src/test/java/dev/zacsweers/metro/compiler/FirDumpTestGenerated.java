@@ -34,9 +34,15 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
   }
 
   @Test
-  @TestMetadata("TopLevelComposableHiddenFromObjC.kt")
-  public void testTopLevelComposableHiddenFromObjC() {
-    runTest("compiler-tests/src/test/data/dump/fir/TopLevelComposableHiddenFromObjC.kt");
+  @TestMetadata("TopLevelComposableHiddenFromObjC_k22x.kt")
+  public void testTopLevelComposableHiddenFromObjC_k22x() {
+    runTest("compiler-tests/src/test/data/dump/fir/TopLevelComposableHiddenFromObjC_k22x.kt");
+  }
+
+  @Test
+  @TestMetadata("TopLevelComposableHiddenFromObjC_k23x.kt")
+  public void testTopLevelComposableHiddenFromObjC_k23x() {
+    runTest("compiler-tests/src/test/data/dump/fir/TopLevelComposableHiddenFromObjC_k23x.kt");
   }
 
   @Nested
