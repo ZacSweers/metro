@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771830751905,
+  "lastUpdate": 1771832560563,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -6776,6 +6776,62 @@ window.BENCHMARK_DATA = {
             "value": 20538.102,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.01%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6f86d6cc~1",
+          "message": "[before] Support external FIR extensions generating `@Depen",
+          "timestamp": "2026-02-23T07:05:38Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6f86d6cc5d953646d10a2d9150fc1e184e5f3559"
+        },
+        "date": 1771832560563,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21130.6,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6f86d6cc5d953646d10a2d9150fc1e184e5f3559",
+          "message": "[after] Support external FIR extensions generating `@Depen",
+          "timestamp": "2026-02-23T07:05:38Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6f86d6cc5d953646d10a2d9150fc1e184e5f3559"
+        },
+        "date": 1771832560564,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21190.084,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.28%"
           }
         ]
       }
