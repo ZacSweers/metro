@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771832560563,
+  "lastUpdate": 1771876194753,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -6832,6 +6832,62 @@ window.BENCHMARK_DATA = {
             "value": 21190.084,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.28%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c4647b50~1",
+          "message": "[before] Fix direct-provided scoped maps (#1880)",
+          "timestamp": "2026-02-23T19:14:05Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c4647b504e0cb0b27cc8620fb3facfacf0ae0ca1"
+        },
+        "date": 1771876194753,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20900.384,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c4647b504e0cb0b27cc8620fb3facfacf0ae0ca1",
+          "message": "[after] Fix direct-provided scoped maps (#1880)",
+          "timestamp": "2026-02-23T19:14:05Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c4647b504e0cb0b27cc8620fb3facfacf0ae0ca1"
+        },
+        "date": 1771876194754,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20786.176,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.55%"
           }
         ]
       }
