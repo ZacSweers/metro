@@ -43,6 +43,7 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -59,6 +60,7 @@ import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -272,15 +274,26 @@ internal class DependencyGraphTransformer(
       // @Provides
       node.providerFactories.values.flatten().forEach { providerFactory ->
         if (providerFactory.annotations.isScoped) {
-          localParentContext.add(providerFactory.typeKey)
+          // skip @GraphPrivate bindings
+          if (providerFactory.typeKey !in node.graphPrivateKeys) {
+            localParentContext.add(providerFactory.typeKey)
+          }
         }
       }
 
       // Instance bindings
       node.creator?.parameters?.regularParameters?.forEach { parameter ->
-        // Make both provides and includes available
-        localParentContext.add(parameter.typeKey)
+        // skip @GraphPrivate bindings
+        if (parameter.typeKey !in node.graphPrivateKeys) {
+          // Make both provides and includes available
+          localParentContext.add(parameter.typeKey)
+        }
       }
+
+      // Published @Binds keys: non-private @Binds whose source is @GraphPrivate are exposed to
+      // child graphs as parent-resolved dependencies (the child can't inherit the @Binds alias
+      // since it can't resolve the private source type).
+      localParentContext.addAll(node.publishedBindsKeys)
 
       // Included graph dependencies. Only include the current level, transitively included ones
       // will already be in the parent context
@@ -437,6 +450,27 @@ internal class DependencyGraphTransformer(
       if (usedParentContextKeys.isNotEmpty()) {
         writeDiagnostic("parent-keys-used-all", { "${node.sourceGraph.name}.txt" }) {
           usedParentContextKeys.sortedBy { it.typeKey }.joinToString(separator = "\n")
+        }
+      }
+    }
+
+    // Validate that no accessor exposes a @GraphPrivate binding
+    if (node.graphPrivateKeys.isNotEmpty()) {
+      for (accessor in node.accessors) {
+        if (accessor.contextKey.typeKey in node.graphPrivateKeys) {
+          // Resolve to the source declaration (the user-authored property/function in the
+          // interface, not the fake override in the generated impl class)
+          val accessorIr = accessor.metroFunction.ir
+          val sourceDeclaration: IrDeclaration =
+            accessorIr.correspondingPropertySymbol?.owner?.resolveOverriddenTypeIfAny()
+              ?: accessorIr.resolveOverriddenTypeIfAny()
+          reportCompat(
+            irDeclarations = sequenceOf(sourceDeclaration, dependencyGraphDeclaration),
+            factory = MetroDiagnostics.PRIVATE_BINDING_ERROR,
+            a =
+              "Cannot expose @GraphPrivate binding '${accessor.contextKey.typeKey.render(short = false)}' as a graph accessor. @GraphPrivate bindings are confined to the graph they are provided in.",
+          )
+          hasErrors = true
         }
       }
     }

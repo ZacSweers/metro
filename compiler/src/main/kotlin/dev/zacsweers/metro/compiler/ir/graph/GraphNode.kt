@@ -53,6 +53,14 @@ internal sealed class GraphNode {
   abstract val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>
   abstract val parentGraph: GraphNode?
   abstract val typeKey: IrTypeKey
+  abstract val graphPrivateKeys: Set<IrTypeKey>
+
+  /**
+   * Non-private `@Binds` result type keys whose source is `@GraphPrivate`. These are "published" to
+   * child graphs as parent-resolved dependencies, since the child can't inherit and re-resolve the
+   * `@Binds` (the private original binding wouldn't be available).
+   */
+  abstract val publishedBindsKeys: Set<IrTypeKey>
 
   val publicAccessors: Set<IrTypeKey> by memoize { accessors.mapToSet { it.contextKey.typeKey } }
 
@@ -142,6 +150,8 @@ internal sealed class GraphNode {
     override val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
     override val parentGraph: GraphNode?,
     override val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
+    override val graphPrivateKeys: Set<IrTypeKey> = emptySet(),
+    override val publishedBindsKeys: Set<IrTypeKey> = emptySet(),
   ) : GraphNode()
 
   /** A graph node for a graph being compiled in the current compilation unit. */
@@ -176,6 +186,8 @@ internal sealed class GraphNode {
     val originalCreator: Creator.Factory? = null,
     override val parentGraph: GraphNode?,
     override val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
+    override val graphPrivateKeys: Set<IrTypeKey> = emptySet(),
+    override val publishedBindsKeys: Set<IrTypeKey> = emptySet(),
     var proto: DependencyGraphProto? = null,
   ) : GraphNode() {
     val hasExtensions = graphExtensions.isNotEmpty()

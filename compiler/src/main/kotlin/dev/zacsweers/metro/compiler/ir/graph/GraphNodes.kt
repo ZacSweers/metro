@@ -77,10 +77,12 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
+import org.jetbrains.kotlin.ir.interpreter.hasAnnotation
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrFail
@@ -93,6 +95,7 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.getValueArgument
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -203,6 +206,7 @@ internal class GraphNodes(
     private val annotationDeclaredBindingContainers = mutableMapOf<IrTypeKey, IrElement>()
     private val dynamicBindingContainers = mutableSetOf<IrClass>()
     private val dynamicTypeKeys = mutableMapOf<IrTypeKey, MutableSet<IrBindingContainerCallable>>()
+    private val graphPrivateKeys = mutableSetOf<IrTypeKey>()
 
     private val dependencyGraphAnno =
       cachedDependencyGraphAnno
@@ -305,7 +309,18 @@ internal class GraphNodes(
             continue
           }
 
-          if (parameter.isBindsInstance) continue
+          if (parameter.isBindsInstance) {
+            // Record if it's @GraphPrivate
+            val irParam = parameter.ir
+            if (irParam is IrValueParameter) {
+              val isGraphPrivate =
+                irParam.hasAnnotation(metroSymbols.classIds.graphPrivateAnnotation)
+              if (isGraphPrivate) {
+                graphPrivateKeys += parameter.typeKey
+              }
+            }
+            continue
+          }
 
           // It's an `@Includes` parameter
           val klass = parameter.typeKey.type.rawType()
@@ -1043,6 +1058,9 @@ internal class GraphNodes(
         for (container in allMergedContainers) {
           val isDynamicContainer = container.ir in dynamicBindingContainers
           for ((_, factory) in container.providerFactories) {
+            if (factory.annotations.isGraphPrivate) {
+              graphPrivateKeys += factory.typeKey
+            }
             val typeKey = factory.typeKey
             // Dynamic containers should override non-dynamic ones with the same typeKey
             val existingIsDynamic = typeKey in dynamicTypeKeys
@@ -1063,6 +1081,9 @@ internal class GraphNodes(
 
           container.bindsMirror?.let { bindsMirror ->
             for (callable in bindsMirror.bindsCallables) {
+              if (callable.callableMetadata.annotations.isGraphPrivate) {
+                graphPrivateKeys += callable.typeKey
+              }
               val typeKey = callable.typeKey
               // Dynamic containers should override non-dynamic ones with the same typeKey
               val existingIsDynamic = typeKey in dynamicTypeKeys
@@ -1081,12 +1102,18 @@ internal class GraphNodes(
               }
             }
             for (callable in bindsMirror.multibindsCallables) {
+              if (callable.callableMetadata.annotations.isGraphPrivate) {
+                graphPrivateKeys += callable.typeKey
+              }
               multibindsCallables += callable
               if (isDynamicContainer) {
                 dynamicTypeKeys.getAndAdd(callable.typeKey, callable)
               }
             }
             for (callable in bindsMirror.optionalKeys) {
+              if (callable.callableMetadata.annotations.isGraphPrivate) {
+                graphPrivateKeys += callable.typeKey
+              }
               optionalKeys.getAndAdd(callable.typeKey, callable)
               if (isDynamicContainer) {
                 dynamicTypeKeys.getAndAdd(callable.typeKey, callable)
@@ -1125,6 +1152,8 @@ internal class GraphNodes(
           annotationDeclaredBindingContainers = annotationDeclaredBindingContainers,
           dynamicTypeKeys = dynamicTypeKeys,
           typeKey = graphTypeKey,
+          graphPrivateKeys = graphPrivateKeys,
+          publishedBindsKeys = computePublishedBindsKeys(graphPrivateKeys, bindsCallables),
         )
 
       // Check after creating a node for access to recursive allDependencies
@@ -1238,6 +1267,28 @@ internal class GraphNodes(
         }
       }
 
+      // Collect graph-private keys from provider factories and binds callables
+      val externalGraphPrivateKeys = mutableSetOf<IrTypeKey>()
+      for ((_, factories) in providerFactories) {
+        for (factory in factories) {
+          if (factory.annotations.isGraphPrivate) {
+            externalGraphPrivateKeys += factory.typeKey
+          }
+        }
+      }
+      for ((_, callables) in bindsCallables) {
+        for (callable in callables) {
+          if (callable.callableMetadata.annotations.isGraphPrivate) {
+            externalGraphPrivateKeys += callable.typeKey
+          }
+        }
+      }
+      for (callable in multibindsCallables) {
+        if (callable.callableMetadata.annotations.isGraphPrivate) {
+          externalGraphPrivateKeys += callable.typeKey
+        }
+      }
+
       val dependentNode =
         GraphNode.External(
           sourceGraph = graphDeclaration,
@@ -1251,9 +1302,33 @@ internal class GraphNodes(
           multibindsCallables = multibindsCallables,
           optionalKeys = optionalKeys,
           parentGraph = parentGraph,
+          graphPrivateKeys = externalGraphPrivateKeys,
+          publishedBindsKeys = computePublishedBindsKeys(externalGraphPrivateKeys, bindsCallables),
         )
 
       return dependentNode
+    }
+  }
+}
+
+/**
+ * Computes published binds keys: non-private `@Binds` whose source is `@GraphPrivate`. These are
+ * exposed to child graphs as parent-resolved dependencies, since the child can't inherit and
+ * re-resolve the `@Binds` (the private original binding wouldn't be available).
+ */
+private fun computePublishedBindsKeys(
+  graphPrivateKeys: Set<IrTypeKey>,
+  bindsCallables: Map<IrTypeKey, List<BindsCallable>>,
+): Set<IrTypeKey> {
+  if (graphPrivateKeys.isEmpty()) return emptySet()
+  return buildSet {
+    for ((_, callables) in bindsCallables) {
+      val callable = callables.firstOrNull() ?: continue
+      if (
+        !callable.callableMetadata.annotations.isGraphPrivate && callable.source in graphPrivateKeys
+      ) {
+        add(callable.typeKey)
+      }
     }
   }
 }

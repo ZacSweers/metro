@@ -691,10 +691,11 @@ internal class BindingGraphGenerator(
 
     for ((typeKey, extendedNode) in node.allParentGraphs) {
       // Collect provider factories (non-scoped, not already in current node)
+      // Skip @GraphPrivate factories — private contributions should not leak to child graphs.
       for ((key, factories) in extendedNode.providerFactories) {
         if (key !in node.providerFactories) {
           for (factory in factories) {
-            if (!factory.annotations.isScoped) {
+            if (!factory.annotations.isScoped && key !in extendedNode.graphPrivateKeys) {
               providerFactories.add(key to factory)
               providerFactoryKeys.add(key)
             }
@@ -703,10 +704,14 @@ internal class BindingGraphGenerator(
       }
 
       // Collect binds callables (not already in current node)
+      // Skip binds whose source type is graph-private in the parent — the child can't resolve
+      // the private source. The binds result type is promoted to the parent context instead,
+      // so the child resolves it as a GraphDependency.
       for ((key, callables) in extendedNode.bindsCallables) {
         if (key !in node.bindsCallables) {
-          bindsCallableKeys.add(key)
           for (callable in callables) {
+            if (callable.source in extendedNode.graphPrivateKeys) continue
+            bindsCallableKeys.add(key)
             bindsCallables.add(key to callable)
           }
         }

@@ -52,6 +52,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJ
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PRIVATE_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDER_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_COULD_BE_BINDS
@@ -168,6 +169,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val FUNCTION_INJECT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val FUNCTION_INJECT_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
   val BINDING_CONTAINER_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val PRIVATE_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
 
   val OPTIONAL_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val OPTIONAL_BINDING_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -300,6 +302,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(FUNCTION_INJECT_ERROR, "{0}", STRING)
         put(FUNCTION_INJECT_TYPE_PARAMETERS_ERROR, "{0}", STRING)
         put(BINDING_CONTAINER_ERROR, "{0}", STRING)
+        put(PRIVATE_BINDING_ERROR, "{0}", STRING)
         put(OPTIONAL_BINDING_WARNING, "{0}", STRING)
         put(OPTIONAL_BINDING_ERROR, "{0}", STRING)
         put(INTEROP_ANNOTATION_ARGS_ERROR, "{0}", STRING)

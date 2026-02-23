@@ -163,6 +163,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
       var isIncludes = false
       var isProvides = false
+      var isGraphPrivate = false
 
       for (annotation in param.resolvedCompilerAnnotationsWithClassIds) {
         if (!annotation.isResolved) continue
@@ -175,7 +176,16 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           in classIds.providesAnnotations -> {
             isProvides = true
           }
+
+          classIds.graphPrivateAnnotation -> {
+            isGraphPrivate = true
+          }
         }
+      }
+
+      // @GraphPrivate on a factory parameter requires @Provides
+      if (isGraphPrivate) {
+        reportInvalidGraphPrivate(param.source, hasValidBindingAnnotation = isProvides)
       }
 
       val reportAnnotationCountError = {

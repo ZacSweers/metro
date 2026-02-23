@@ -46,6 +46,9 @@ internal interface ParentContextReader {
   /** Returns all available keys in the parent context. */
   fun availableKeys(): Set<IrTypeKey>
 
+  /** Returns graph-private keys from parent graphs (for hinting in missing binding messages). */
+  fun graphPrivateKeys(): Set<IrTypeKey> = emptySet()
+
   /** The current (topmost) parent graph. */
   val currentParentGraph: IrClass
 
@@ -81,6 +84,8 @@ internal class ParentContextSnapshot(
    * snapshots it produces need to delegate back to ancestor levels not represented locally.
    */
   private val ancestorReader: ParentContextReader? = null,
+  /** Graph-private keys from parent graphs (for hinting in missing binding messages). */
+  private val graphPrivateKeys: Set<IrTypeKey> = emptySet(),
 ) {
   /** Ownership information for a key - which graph owns it and how to access it. */
   data class KeyOwnership(val ownerGraphKey: IrTypeKey, val receiverParameter: IrValueParameter)
@@ -168,6 +173,8 @@ internal class ParentContextSnapshot(
     }
   }
 
+  fun graphPrivateKeys(): Set<IrTypeKey> = graphPrivateKeys
+
   /** Creates a [ParentContextReader] backed by this snapshot and the given collector. */
   fun asReader(collector: UsedKeyCollector): ParentContextReader =
     object : ParentContextReader {
@@ -179,6 +186,8 @@ internal class ParentContextSnapshot(
       override fun scopes() = this@ParentContextSnapshot.scopes()
 
       override fun availableKeys() = this@ParentContextSnapshot.availableKeys()
+
+      override fun graphPrivateKeys() = this@ParentContextSnapshot.graphPrivateKeys()
 
       override val currentParentGraph = this@ParentContextSnapshot.currentParentGraph
 
@@ -300,6 +309,15 @@ internal class ParentContext(
   // Keys collected before the next push
   private val pending = mutableSetOf<IrTypeKey>()
 
+  // Graph-private keys from parent graphs (for hinting in missing binding messages)
+  private val _graphPrivateKeys = mutableSetOf<IrTypeKey>()
+
+  fun addGraphPrivateKeys(keys: Set<IrTypeKey>) {
+    _graphPrivateKeys.addAll(keys)
+  }
+
+  override fun graphPrivateKeys(): Set<IrTypeKey> = _graphPrivateKeys
+
   fun add(key: IrTypeKey) {
     pending.add(key)
   }
@@ -411,6 +429,7 @@ internal class ParentContext(
     val level = Level(node)
     levels.addLast(level)
     parentScopes.addAll(node.scopes)
+    _graphPrivateKeys.addAll(node.graphPrivateKeys)
 
     if (pending.isNotEmpty()) {
       // Introduce each pending key *at this level only*
@@ -428,6 +447,7 @@ internal class ParentContext(
 
     // Remove scope union
     parentScopes.removeAll(removed.node.scopes)
+    _graphPrivateKeys.removeAll(removed.node.graphPrivateKeys)
 
     // Roll back introductions made at this level
     for (k in removed.deltaProvided) {
@@ -528,6 +548,7 @@ internal class ParentContext(
       levelScopes = levelScopes,
       currentParentGraph = currentParentGraph,
       ancestorReader = parent,
+      graphPrivateKeys = _graphPrivateKeys.toSet(),
     )
   }
 

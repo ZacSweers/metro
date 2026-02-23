@@ -607,6 +607,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphPrivateIntraGraphUsageWorks.kt")
+    public void testGraphPrivateIntraGraphUsageWorks() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/GraphPrivateIntraGraphUsageWorks.kt");
+    }
+
+    @Test
     @TestMetadata("GraphsCanHaveExistingImplClases.kt")
     public void testGraphsCanHaveExistingImplClases() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/GraphsCanHaveExistingImplClases.kt");
@@ -993,6 +999,42 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("GraphExtensionIgnoresOwnTypeBinding.kt")
       public void testGraphExtensionIgnoresOwnTypeBinding() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphExtensionIgnoresOwnTypeBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateBindsAliasVisibleToChild.kt")
+      public void testGraphPrivateBindsAliasVisibleToChild() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivateBindsAliasVisibleToChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateDoesNotBlockNonPrivateBindings.kt")
+      public void testGraphPrivateDoesNotBlockNonPrivateBindings() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivateDoesNotBlockNonPrivateBindings.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateMultiLevelInheritanceWithBindsAndMultibindings.kt")
+      public void testGraphPrivateMultiLevelInheritanceWithBindsAndMultibindings() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivateMultiLevelInheritanceWithBindsAndMultibindings.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateMultibindingMapNotExposedToChild.kt")
+      public void testGraphPrivateMultibindingMapNotExposedToChild() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivateMultibindingMapNotExposedToChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateMultibindingSetNotExposedToChild.kt")
+      public void testGraphPrivateMultibindingSetNotExposedToChild() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivateMultibindingSetNotExposedToChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivatePreventsLeakingParentScopedInstance.kt")
+      public void testGraphPrivatePreventsLeakingParentScopedInstance() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivatePreventsLeakingParentScopedInstance.kt");
       }
 
       @Test

@@ -107,6 +107,10 @@ open annotation class dev.zacsweers.metro/ElementsIntoSet : kotlin/Annotation { 
     constructor <init>() // dev.zacsweers.metro/ElementsIntoSet.<init>|<init>(){}[0]
 }
 
+open annotation class dev.zacsweers.metro/ExperimentalMetroApi : kotlin/Annotation { // dev.zacsweers.metro/ExperimentalMetroApi|null[0]
+    constructor <init>() // dev.zacsweers.metro/ExperimentalMetroApi.<init>|<init>(){}[0]
+}
+
 open annotation class dev.zacsweers.metro/ForScope : kotlin/Annotation { // dev.zacsweers.metro/ForScope|null[0]
     constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/ForScope.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
 
