@@ -5,5 +5,5 @@
 interface ExampleGraph {
   val <!PRIVATE_BINDING_ERROR!>text<!>: String
 
-  @GraphPrivate @Provides fun provideString(): String = "hello"
+  @<!OPT_IN_USAGE!>GraphPrivate<!> @Provides fun provideString(): String = "hello"
 }
