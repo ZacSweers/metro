@@ -88,6 +88,9 @@ public abstract interface annotation class dev/zacsweers/metro/GraphExtension : 
 public abstract interface annotation class dev/zacsweers/metro/GraphExtension$Factory : java/lang/annotation/Annotation {
 }
 
+public abstract interface annotation class dev/zacsweers/metro/GraphPrivate : java/lang/annotation/Annotation {
+}
+
 public abstract interface annotation class dev/zacsweers/metro/HasMemberInjections : java/lang/annotation/Annotation {
 }
 
