@@ -2235,6 +2235,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ScopedMapProvider.kt")
+    public void testScopedMapProvider() {
+      runTest("compiler-tests/src/test/data/box/provides/ScopedMapProvider.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleFunctionProvider.kt")
     public void testSimpleFunctionProvider() {
       runTest("compiler-tests/src/test/data/box/provides/SimpleFunctionProvider.kt");
