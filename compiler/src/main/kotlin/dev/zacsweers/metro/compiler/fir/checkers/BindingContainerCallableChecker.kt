@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.KtFakeSourceElementKind
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -117,6 +118,16 @@ internal object BindingContainerCallableChecker :
     val annotations = declaration.symbol.metroAnnotations(session)
 
     declaration.symbol.validateBindingSource(annotations)
+
+    // @GraphPrivate can only be applied to @Provides, @Binds, or @Multibinds declarations
+    if (annotations.isGraphPrivate) {
+      val hasValidBindingAnnotation =
+        annotations.isProvides ||
+          annotations.isBinds ||
+          annotations.isMultibinds ||
+          annotations.isBindsOptionalOf // Not noted in the message as it's just for interop
+      reportInvalidGraphPrivate(source, hasValidBindingAnnotation)
+    }
 
     if (
       session.metroFirBuiltIns.options.enableDaggerRuntimeInterop && annotations.isBindsOptionalOf
@@ -469,5 +480,23 @@ internal object BindingContainerCallableChecker :
       }
     }
     return false
+  }
+}
+
+/**
+ * Reports [MetroDiagnostics.PRIVATE_BINDING_ERROR] if `@GraphPrivate` is used without a valid
+ * binding annotation (`@Provides`, `@Binds`, or `@Multibinds`).
+ */
+context(context: CheckerContext, reporter: DiagnosticReporter)
+internal fun reportInvalidGraphPrivate(
+  source: KtSourceElement?,
+  hasValidBindingAnnotation: Boolean,
+) {
+  if (!hasValidBindingAnnotation) {
+    reporter.reportOn(
+      source,
+      MetroDiagnostics.PRIVATE_BINDING_ERROR,
+      "@GraphPrivate can only be applied to @Provides, @Binds, or @Multibinds declarations.",
+    )
   }
 }
