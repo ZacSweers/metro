@@ -2235,6 +2235,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ScopedMapProvider.kt")
+    public void testScopedMapProvider() {
+      runTest("compiler-tests/src/test/data/box/provides/ScopedMapProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedMapProviderLazyValues.kt")
+    public void testScopedMapProviderLazyValues() {
+      runTest("compiler-tests/src/test/data/box/provides/ScopedMapProviderLazyValues.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedMapProviderValues.kt")
+    public void testScopedMapProviderValues() {
+      runTest("compiler-tests/src/test/data/box/provides/ScopedMapProviderValues.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleFunctionProvider.kt")
     public void testSimpleFunctionProvider() {
       runTest("compiler-tests/src/test/data/box/provides/SimpleFunctionProvider.kt");

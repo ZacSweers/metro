@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
@@ -157,24 +158,25 @@ internal class IrContextualTypeKey(
       rawType: IrType? = null,
     ): IrContextualTypeKey {
       val rawClassId = rawType?.rawTypeOrNull()?.classId
+      val baseType = baseWrappedType(typeKey.type)
       val wrappedType =
         when {
           isLazyWrappedInProvider -> {
             val lazyType =
               rawType!!.requireSimpleType().arguments.single().typeOrFail.rawType().classIdOrFail
-            Provider(WrappedType.Lazy(Canonical(typeKey.type), lazyType), rawClassId!!)
+            Provider(WrappedType.Lazy(baseType, lazyType), rawClassId!!)
           }
 
           isWrappedInProvider -> {
-            Provider(Canonical(typeKey.type), rawClassId!!)
+            Provider(baseType, rawClassId!!)
           }
 
           isWrappedInLazy -> {
-            WrappedType.Lazy(Canonical(typeKey.type), rawClassId!!)
+            WrappedType.Lazy(baseType, rawClassId!!)
           }
 
           else -> {
-            Canonical(typeKey.type)
+            baseType
           }
         }
 
@@ -184,6 +186,25 @@ internal class IrContextualTypeKey(
         hasDefault = hasDefault,
         rawType = rawType,
       )
+    }
+
+    /**
+     * Creates the appropriate base [WrappedType] for the given type. For Map types, creates
+     * [WrappedType.Map] to ensure consistent representation with parameter analysis in
+     * [asContextualTypeKey]/[asWrappedType].
+     */
+    private fun baseWrappedType(type: IrType): WrappedType<IrType> {
+      if (type is IrSimpleType && type.arguments.size == 2) {
+        if (type.classOrNull?.owner?.classId == StandardClassIds.Map) {
+          return WrappedType.Map(
+            type.arguments[0].typeOrFail,
+            Canonical(type.arguments[1].typeOrFail),
+          ) {
+            type
+          }
+        }
+      }
+      return Canonical(type)
     }
 
     /** Left for backward compat */
