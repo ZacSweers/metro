@@ -391,9 +391,9 @@ private fun renderAnnotationArgument(
           }
         }
     }
-    // Enum entry reference
+    // Enum entry reference or const val reference
     is FirPropertyAccessExpression -> {
-      arg.calleeReference.toResolvedPropertySymbol()?.resolvedReceiverTypeRef?.coneType?.classId
+      arg.calleeReference.toResolvedPropertySymbol()?.callableId
     }
 
     is FirFunctionCall -> {

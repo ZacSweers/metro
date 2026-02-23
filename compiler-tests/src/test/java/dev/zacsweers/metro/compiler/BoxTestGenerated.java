@@ -1428,6 +1428,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedInjectWithConstValQualifiers.kt")
+      public void testAssistedInjectWithConstValQualifiers() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedInjectWithConstValQualifiers.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedParamNamesDisabled.kt")
       public void testAssistedParamNamesDisabled() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedParamNamesDisabled.kt");
