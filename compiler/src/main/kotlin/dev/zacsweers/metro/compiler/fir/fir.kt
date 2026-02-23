@@ -37,6 +37,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.evaluateAs
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
@@ -1326,12 +1327,18 @@ private class ConeIdRendererForDiagnostics : ConeIdRenderer() {
 }
 
 context(context: CheckerContext)
-internal fun FirClassSymbol<*>.nestedClasses(): List<FirRegularClassSymbol> =
-  nestedClasses(context.session)
+internal fun FirClassSymbol<*>.nestedClasses(
+  memberRequiredPhase: FirResolvePhase = FirResolvePhase.STATUS
+): List<FirRegularClassSymbol> =
+  nestedClasses(context.session, memberRequiredPhase = memberRequiredPhase)
 
-internal fun FirClassSymbol<*>.nestedClasses(session: FirSession): List<FirRegularClassSymbol> {
+internal fun FirClassSymbol<*>.nestedClasses(
+  session: FirSession,
+  memberRequiredPhase: FirResolvePhase = FirResolvePhase.STATUS,
+): List<FirRegularClassSymbol> {
   val collected = mutableListOf<FirRegularClassSymbol>()
-  declaredMemberScope(session, memberRequiredPhase = null).processAllClassifiers { symbol ->
+  declaredMemberScope(session, memberRequiredPhase = memberRequiredPhase).processAllClassifiers {
+    symbol ->
     if (symbol is FirRegularClassSymbol) {
       collected += symbol
     }
