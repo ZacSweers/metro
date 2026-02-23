@@ -1813,6 +1813,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#meep-1769-introduce-graphprivate-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [MEEP-1769] Introduce @GraphPrivate API.
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#misc-new-stuff" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3137,6 +3148,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#meep-1769-introduce-graphprivate-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [MEEP-1769] Introduce @GraphPrivate API.
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#misc-new-stuff" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4362,6 +4384,7 @@
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
+<p>Metro now has an informal proposal system inspired by Kotlin KEEPs called MEEPs! Notably, the <code>P</code> in MEEP stands for <em>proposal</em>, not <em>process</em>. It&rsquo;s an informal system still, but seeking to broaden community input on newer, splashier features and changes to Metro going forward.</p>
 <h4 id="meep-1826-assisted-parameters-now-rely-on-matching-parameter-names"><a href="https://github.com/ZacSweers/metro/discussions/1826"><strong>[MEEP-1826]</strong></a> <code>@Assisted</code> parameters now rely on matching parameter names.<a class="headerlink" href="#meep-1826-assisted-parameters-now-rely-on-matching-parameter-names" title="Permanent link">&para;</a></h4>
 <p>Historically, Dagger/Guice&rsquo;s <code>@Assisted</code> parameters allowed specifying a custom identifier via <code>@Assisted("some string")</code>, and Metro matched this behavior. However, this is a vestige of Java support, which did not include parameter names in bytecode until Java 8&rsquo;s <code>-parameters</code> flag.</p>
 <p>Since Metro is in an all-Kotlin world and parameter names are a first-class citizen in Kotlin APIs, Metro is now leveraging that and phasing out support for implicit type matching and custom identifiers.</p>
@@ -4431,9 +4454,40 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>The primary caveat of this new feature is that, if enabled, it essentially prohibits using function types as regular bindings in your graph. If you rely on this behavior, you may need to migrate to something more strongly typed.</p>
+<h4 id="meep-1769-introduce-graphprivate-api"><a href="https://github.com/ZacSweers/metro/discussions/1769"><strong>[MEEP-1769]</strong></a> Introduce <code>@GraphPrivate</code> API.<a class="headerlink" href="#meep-1769-introduce-graphprivate-api" title="Permanent link">&para;</a></h4>
+<p>Up to now, all bindings in graphs are implicitly available to all graph extensions.</p>
+<p>Indicates this <code>@Provides</code> or <code>@Binds</code> declaration shall be <em>private</em> to the graph it&rsquo;s provided in. This means the following:<br />
+- This binding <strong>may not</strong> be exposed directly via accessor.<br />
+- This binding <strong>will not</strong> be exposed directly to extensions of this graph.</p>
+<p>This is a mechanism to enforce that annotated bindings cannot be directly leaked. It <em>may</em> be depended on by any bindings <em>within</em> this graph as an implementation detail or encapsulation.</p>
+<p>This is useful for a few situations.<br />
+- Users may want certain bindings to stay confined to a given graph, such as a base <code>HttpClient</code>.<br />
+- Users may want to omit certain contributions to multibindings from leaking to extensions.<br />
+- Sometimes the same type may exist in multiple graph scopes, requiring use of qualifiers like <code>@ForScope</code> to disambiguate which one you need. By marking each provision in a graph as private, you can trust that parent graph instances are not being accidentally leaked to your extension&rsquo;s scope.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@GraphPrivate</span>
+<span class="w">  </span><span class="nd">@Provides</span>
+<span class="w">  </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideCoroutineScope</span><span class="p">():</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">...</span>
+
+<span class="w">  </span><span class="c1">// Error</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">coroutineScope</span><span class="p">:</span><span class="w"> </span><span class="n">CoroutineScope</span>
+
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">loggedInGraph</span><span class="p">:</span><span class="w"> </span><span class="n">LoggedInGraph</span>
+<span class="p">}</span>
+
+<span class="nd">@GraphExtension</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">LoggedInGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// Error, no longer implicitly visible</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">coroutineScope</span><span class="p">:</span><span class="w"> </span><span class="n">CoroutineScope</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>This feature is <strong>experimental</strong>, please share any feedback on the original MEEP.</p>
 <h4 id="misc-new-stuff">Misc new stuff<a class="headerlink" href="#misc-new-stuff" title="Permanent link">&para;</a></h4>
 <ul>
 <li><strong>[Runtime]</strong>: Make <code>Provider</code> implement <code>() -&gt; T</code> on applicable platforms (everything but Kotlin/JS).</li>
+<li><strong>[Runtime]</strong>: Add new <code>@ExperimentalMetroApi</code> experimental annotation to better indicate which APIs are experimental and likely to change.</li>
 <li><strong>[Gradle]</strong>: Add new <code>@RequiresIdeSupport</code> experimental annotation to better indicate which APIs require IDE support.</li>
 <li><strong>[Gradle]</strong>: Add new <code>@ExperimentalMetroGradleApi</code> experimental annotation to better indicate which APIs are experimental and likely to change.</li>
 <li><strong>[Gradle]</strong>: Add new <code>@DangerousMetroGradleApi</code> experimental annotation with <code>ERROR</code> severity to better propagate severity of certain APIs.</li>
@@ -5809,7 +5863,7 @@ Possible fixes:
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="February 23, 2026 01:41:56 UTC">February 23, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="February 23, 2026 06:40:24 UTC">February 23, 2026</span>
   </span>
 
     
