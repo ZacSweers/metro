@@ -98,6 +98,11 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
+  val hiddenFromObjCClassSymbol by memoize {
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.HiddenFromObjC)
+      as FirRegularClassSymbol
+  }
+
   val stableClassSymbol by memoize {
     session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.Stable)
       as FirRegularClassSymbol
