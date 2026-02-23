@@ -1014,6 +1014,30 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("GraphPrivateMultiLevelInheritanceWithBindsAndMultibindings.kt")
+      public void testGraphPrivateMultiLevelInheritanceWithBindsAndMultibindings() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivateMultiLevelInheritanceWithBindsAndMultibindings.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateMultibindingMapNotExposedToChild.kt")
+      public void testGraphPrivateMultibindingMapNotExposedToChild() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivateMultibindingMapNotExposedToChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateMultibindingSetNotExposedToChild.kt")
+      public void testGraphPrivateMultibindingSetNotExposedToChild() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivateMultibindingSetNotExposedToChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivatePreventsLeakingParentScopedInstance.kt")
+      public void testGraphPrivatePreventsLeakingParentScopedInstance() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/GraphPrivatePreventsLeakingParentScopedInstance.kt");
+      }
+
+      @Test
       @TestMetadata("IncludesAcrossIntermediateUnpacking.kt")
       public void testIncludesAcrossIntermediateUnpacking() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/IncludesAcrossIntermediateUnpacking.kt");
