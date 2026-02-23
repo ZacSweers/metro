@@ -143,6 +143,8 @@ Special thanks to the following contributors for contributing to this release!
 - [@inorichi](https://github.com/inorichi)
 - [@Egorand](https://github.com/Egorand)
 - [@JoelWilcox](https://github.com/JoelWilcox)
+- [@japplin](https://github.com/japplin)
+- [@vRallev](https://github.com/vRallev)
 
 0.10.4
 ------
