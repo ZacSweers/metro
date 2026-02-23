@@ -6,6 +6,8 @@ Changelog
 
 ### New
 
+Metro now has an informal proposal system inspired by Kotlin KEEPs called MEEPs! Notably, the `P` in MEEP stands for _proposal_, not _process_. It's an informal system still, but seeking to broaden community input on newer, splashier features and changes to Metro going forward.
+
 #### [**[MEEP-1826]**](https://github.com/ZacSweers/metro/discussions/1826) `@Assisted` parameters now rely on matching parameter names.
 
 Historically, Dagger/Guice's `@Assisted` parameters allowed specifying a custom identifier via `@Assisted("some string")`, and Metro matched this behavior. However, this is a vestige of Java support, which did not include parameter names in bytecode until Java 8's `-parameters` flag.
@@ -86,9 +88,48 @@ fun main() {
 
 The primary caveat of this new feature is that, if enabled, it essentially prohibits using function types as regular bindings in your graph. If you rely on this behavior, you may need to migrate to something more strongly typed.
 
+#### [**[MEEP-1769]**](https://github.com/ZacSweers/metro/discussions/1769) Introduce `@GraphPrivate` API.
+
+Up to now, all bindings in graphs are implicitly available to all graph extensions.
+
+Indicates this `@Provides` or `@Binds` declaration shall be _private_ to the graph it's provided in. This means the following:
+- This binding **may not** be exposed directly via accessor.
+- This binding **will not** be exposed directly to extensions of this graph.
+
+This is a mechanism to enforce that annotated bindings cannot be directly leaked. It _may_ be depended on by any bindings _within_ this graph as an implementation detail or encapsulation.
+
+This is useful for a few situations.
+- Users may want certain bindings to stay confined to a given graph, such as a base `HttpClient`.
+- Users may want to omit certain contributions to multibindings from leaking to extensions.
+- Sometimes the same type may exist in multiple graph scopes, requiring use of qualifiers like `@ForScope` to disambiguate which one you need. By marking each provision in a graph as private, you can trust that parent graph instances are not being accidentally leaked to your extension's scope.
+
+```kotlin
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  @GraphPrivate
+  @Provides
+  @SingleIn(AppScope::class)
+  fun provideCoroutineScope(): CoroutineScope = ...
+
+  // Error
+  val coroutineScope: CoroutineScope
+
+  val loggedInGraph: LoggedInGraph
+}
+
+@GraphExtension
+interface LoggedInGraph {
+  // Error, no longer implicitly visible
+  val coroutineScope: CoroutineScope
+}
+```
+
+This feature is **experimental**, please share any feedback on the original MEEP.
+
 #### Misc new stuff
 
 - **[Runtime]**: Make `Provider` implement `() -> T` on applicable platforms (everything but Kotlin/JS).
+- **[Runtime]**: Add new `@ExperimentalMetroApi` experimental annotation to better indicate which APIs are experimental and likely to change.
 - **[Gradle]**: Add new `@RequiresIdeSupport` experimental annotation to better indicate which APIs require IDE support.
 - **[Gradle]**: Add new `@ExperimentalMetroGradleApi` experimental annotation to better indicate which APIs are experimental and likely to change.
 - **[Gradle]**: Add new `@DangerousMetroGradleApi` experimental annotation with `ERROR` severity to better propagate severity of certain APIs.
