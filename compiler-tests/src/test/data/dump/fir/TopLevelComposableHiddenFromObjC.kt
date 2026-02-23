@@ -12,5 +12,9 @@ import androidx.compose.runtime.Composable
 
 @Composable
 @Inject
-fun App(message: String) {
+fun ComposableApp(message: String) {
+}
+
+@Inject
+fun NonComposableApp(message: String) {
 }
