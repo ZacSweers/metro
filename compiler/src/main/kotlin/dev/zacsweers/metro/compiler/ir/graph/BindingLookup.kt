@@ -244,6 +244,9 @@ internal class BindingLookup(
   /** Keys explicitly declared in this graph (used for unused key reporting). */
   fun getDeclaredKeys(): Set<IrTypeKey> = locallyDeclaredKeys
 
+  /** Returns the set of graph-private keys from parent graphs, for missing binding hints. */
+  fun getParentGraphPrivateKeys(): Set<IrTypeKey> = parentContext?.graphPrivateKeys() ?: emptySet()
+
   /** Tracks a key as locally declared without adding a binding to the cache. */
   fun trackDeclaredKey(typeKey: IrTypeKey) {
     locallyDeclaredKeys += typeKey
