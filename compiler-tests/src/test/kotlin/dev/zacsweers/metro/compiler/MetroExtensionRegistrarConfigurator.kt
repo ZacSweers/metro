@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionMetroExtension
+import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
@@ -188,6 +189,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             GenerateImplExtension.Factory().create(session, options),
             GenerateProvidesContributionExtension.Factory().create(session, options),
             GenerateBindsContributionExtension.Factory().create(session, options),
+            GenerateDependencyGraphExtension.Factory().create(session, options),
           )
         },
       ) { session, options ->

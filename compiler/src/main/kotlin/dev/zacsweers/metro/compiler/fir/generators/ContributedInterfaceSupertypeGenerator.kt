@@ -41,11 +41,13 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.extensions.ExperimentalSupertypesGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
@@ -85,13 +87,6 @@ internal class ContributedInterfaceSupertypeGenerator(
   private val externalContributionExtensions: List<MetroContributionExtension> by lazy {
     val options = session.metroFirBuiltIns.options
     loadExternalContributionExtensions(session, options)
-  }
-
-  private val dependencyGraphs by lazy {
-    session.predicateBasedProvider
-      .getSymbolsByPredicate(session.predicates.dependencyGraphPredicate)
-      .filterIsInstance<FirRegularClassSymbol>()
-      .toSet()
   }
 
   private val allSessions = session.memoizedAllSessionsSequence
@@ -239,9 +234,9 @@ internal class ContributedInterfaceSupertypeGenerator(
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
-    if (declaration.symbol !in dependencyGraphs) {
-      return false
-    }
+    // Note: we check the annotation directly rather than using the predicate-based provider
+    // because generated @DependencyGraph classes (from external FIR extensions) are not
+    // visible to the predicate-based provider.
     val graphAnnotation = declaration.graphAnnotation() ?: return false
 
     // Can't check the scope class ID here but we'll check in computeAdditionalSupertypes
@@ -265,12 +260,29 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
   }
 
+  @ExperimentalSupertypesGenerationApi
+  override fun computeAdditionalSupertypesForGeneratedNestedClass(
+    klass: FirRegularClass,
+    typeResolver: TypeResolveService,
+  ): List<ConeKotlinType> {
+    // For generated @DependencyGraph classes (from external FIR extensions), FIR calls this
+    // method instead of computeAdditionalSupertypes. Delegate to the shared implementation.
+    return computeContributionSupertypes(klass, typeResolver)
+  }
+
   override fun computeAdditionalSupertypes(
     classLikeDeclaration: FirClassLikeDeclaration,
     resolvedSupertypes: List<FirResolvedTypeRef>,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    val graphAnnotation = classLikeDeclaration.graphAnnotation()!!
+    return computeContributionSupertypes(classLikeDeclaration, typeResolver)
+  }
+
+  private fun computeContributionSupertypes(
+    classLikeDeclaration: FirClassLikeDeclaration,
+    typeResolver: TypeResolveService,
+  ): List<ConeKotlinType> {
+    val graphAnnotation = classLikeDeclaration.graphAnnotation() ?: return emptyList()
 
     val scopes =
       buildSet {

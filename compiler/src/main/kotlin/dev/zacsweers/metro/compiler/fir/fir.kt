@@ -37,6 +37,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.evaluateAs
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
@@ -92,6 +93,7 @@ import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toSymbol
+import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.processAllCallables
 import org.jetbrains.kotlin.fir.scopes.processAllClassifiers
@@ -1325,9 +1327,18 @@ private class ConeIdRendererForDiagnostics : ConeIdRenderer() {
 }
 
 context(context: CheckerContext)
-internal fun FirClassSymbol<*>.nestedClasses(): List<FirRegularClassSymbol> {
+internal fun FirClassSymbol<*>.nestedClasses(
+  memberRequiredPhase: FirResolvePhase = FirResolvePhase.STATUS
+): List<FirRegularClassSymbol> =
+  nestedClasses(context.session, memberRequiredPhase = memberRequiredPhase)
+
+internal fun FirClassSymbol<*>.nestedClasses(
+  session: FirSession,
+  memberRequiredPhase: FirResolvePhase = FirResolvePhase.STATUS,
+): List<FirRegularClassSymbol> {
   val collected = mutableListOf<FirRegularClassSymbol>()
-  declaredMemberScope().processAllClassifiers { symbol ->
+  declaredMemberScope(session, memberRequiredPhase = memberRequiredPhase).processAllClassifiers {
+    symbol ->
     if (symbol is FirRegularClassSymbol) {
       collected += symbol
     }
