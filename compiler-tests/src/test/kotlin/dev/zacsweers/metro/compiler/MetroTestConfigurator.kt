@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
+import org.jetbrains.kotlin.test.builders.RegisteredDirectivesBuilder
+import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.OPT_IN
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.services.MetaTestConfigurator
 import org.jetbrains.kotlin.test.services.TestServices
@@ -23,6 +25,10 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     val (targetVersion, requiresFullMatch) = targetKotlinVersion(testServices) ?: return false
     return !versionMatches(targetVersion, requiresFullMatch, COMPILER_VERSION)
   }
+}
+
+fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
+  OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroApi")
 }
 
 /**

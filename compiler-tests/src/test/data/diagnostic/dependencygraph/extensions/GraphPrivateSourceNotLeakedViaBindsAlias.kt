@@ -7,7 +7,7 @@
 @SingleIn(AppScope::class)
 @DependencyGraph
 interface ParentGraph {
-  @SingleIn(AppScope::class) @<!OPT_IN_USAGE!>GraphPrivate<!> @Provides fun provideString(): String = "hello"
+  @SingleIn(AppScope::class) @GraphPrivate @Provides fun provideString(): String = "hello"
   @Binds fun bind(value: String): CharSequence
 
   fun createChild(): ChildGraph
