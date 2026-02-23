@@ -682,7 +682,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
     }
 
   // Determine whether we need to invoke the provider to get the value.
-  // We should NOT invoke (i.e., return the provider directly) when:
+  // We should not call invoke() when:
   // - Provider-wrapped types
   // - Lazy-wrapped types (Normally Dagger changes Lazy<Type> parameters to a Provider<Type>,
   //   usually the container is a joined type, therefore we use DoubleCheck.lazy(..) to convert
