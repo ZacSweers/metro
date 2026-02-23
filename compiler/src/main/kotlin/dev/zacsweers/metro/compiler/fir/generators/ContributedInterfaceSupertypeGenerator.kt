@@ -265,20 +265,9 @@ internal class ContributedInterfaceSupertypeGenerator(
     klass: FirRegularClass,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    // For generated @DependencyGraph classes (from external FIR extensions), delegate to the
-    // same contribution merging logic used for source declarations.
-    val graphAnnotation = klass.graphAnnotation() ?: return emptyList()
-
-    // If there is no scope argument, then nothing needs to be merged.
-    if (graphAnnotation.scopeArgument() == null) {
-      return emptyList()
-    }
-
-    return computeAdditionalSupertypes(
-      klass,
-      klass.superTypeRefs.filterIsInstance<FirResolvedTypeRef>(),
-      typeResolver,
-    )
+    // For generated @DependencyGraph classes (from external FIR extensions), FIR calls this
+    // method instead of computeAdditionalSupertypes. Delegate to the shared implementation.
+    return computeContributionSupertypes(klass, typeResolver)
   }
 
   override fun computeAdditionalSupertypes(
@@ -286,7 +275,14 @@ internal class ContributedInterfaceSupertypeGenerator(
     resolvedSupertypes: List<FirResolvedTypeRef>,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    val graphAnnotation = classLikeDeclaration.graphAnnotation()!!
+    return computeContributionSupertypes(classLikeDeclaration, typeResolver)
+  }
+
+  private fun computeContributionSupertypes(
+    classLikeDeclaration: FirClassLikeDeclaration,
+    typeResolver: TypeResolveService,
+  ): List<ConeKotlinType> {
+    val graphAnnotation = classLikeDeclaration.graphAnnotation() ?: return emptyList()
 
     val scopes =
       buildSet {

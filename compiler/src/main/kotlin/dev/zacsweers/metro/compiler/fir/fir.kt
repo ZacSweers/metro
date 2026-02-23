@@ -92,6 +92,7 @@ import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toSymbol
+import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.processAllCallables
 import org.jetbrains.kotlin.fir.scopes.processAllClassifiers
@@ -1325,9 +1326,12 @@ private class ConeIdRendererForDiagnostics : ConeIdRenderer() {
 }
 
 context(context: CheckerContext)
-internal fun FirClassSymbol<*>.nestedClasses(): List<FirRegularClassSymbol> {
+internal fun FirClassSymbol<*>.nestedClasses(): List<FirRegularClassSymbol> =
+  nestedClasses(context.session)
+
+internal fun FirClassSymbol<*>.nestedClasses(session: FirSession): List<FirRegularClassSymbol> {
   val collected = mutableListOf<FirRegularClassSymbol>()
-  declaredMemberScope().processAllClassifiers { symbol ->
+  declaredMemberScope(session, memberRequiredPhase = null).processAllClassifiers { symbol ->
     if (symbol is FirRegularClassSymbol) {
       collected += symbol
     }
