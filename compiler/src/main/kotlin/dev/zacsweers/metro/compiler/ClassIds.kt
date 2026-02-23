@@ -112,6 +112,9 @@ public class ClassIds(
 
   internal val originAnnotations = setOf(Symbols.ClassIds.metroOrigin) + customOriginAnnotations
 
+  internal val graphPrivateAnnotation =
+    Symbols.FqNames.metroRuntimePackage.classIdOf("GraphPrivate")
+
   internal val optionalBindingAnnotations =
     setOf(
       Symbols.FqNames.metroRuntimePackage.classIdOf("OptionalBinding"),
