@@ -884,6 +884,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("DynamicGraphWithMultiLevelGraphExtensions.kt")
+      public void testDynamicGraphWithMultiLevelGraphExtensions() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphWithMultiLevelGraphExtensions.kt");
+      }
+
+      @Test
       @TestMetadata("DynamicKeysReplaceContributedKeys.kt")
       public void testDynamicKeysReplaceContributedKeys() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicKeysReplaceContributedKeys.kt");
