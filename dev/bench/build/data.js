@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771882945926,
+  "lastUpdate": 1771973152823,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -6944,6 +6944,62 @@ window.BENCHMARK_DATA = {
             "value": 22230.21,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -6.60%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f1690d91~1",
+          "message": "[before]  Fix graph extensions not being able to replace `@",
+          "timestamp": "2026-02-24T22:03:51Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f1690d9127b0e800bd0c42759dac11dc00f29225"
+        },
+        "date": 1771973152823,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21739.466,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f1690d9127b0e800bd0c42759dac11dc00f29225",
+          "message": "[after]  Fix graph extensions not being able to replace `@",
+          "timestamp": "2026-02-24T22:03:51Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f1690d9127b0e800bd0c42759dac11dc00f29225"
+        },
+        "date": 1771973152824,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22645.053999999996,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +4.17%"
           }
         ]
       }
