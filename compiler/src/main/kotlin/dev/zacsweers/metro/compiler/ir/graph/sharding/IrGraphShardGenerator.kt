@@ -359,8 +359,10 @@ internal class IrGraphShardGenerator(
     for (shard in shards) {
       val currentShardIndex = shard.index
 
-      for (contextKey in shard.properties.keys) {
-        val binding = bindingGraph.findBinding(contextKey.typeKey) ?: continue
+      for ((contextKey, shardProperty) in shard.properties) {
+        // If the binding isn't found on the graph, it's likely an assisted inject target
+        val binding =
+          bindingGraph.findBinding(contextKey.typeKey) ?: shardProperty.shardBinding.binding
         val dependencies = binding.dependencies
 
         for (dep in dependencies) {

@@ -1330,6 +1330,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("ShardingWithAssistedInjectMultipleFactories.kt")
+      public void testShardingWithAssistedInjectMultipleFactories() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ShardingWithAssistedInjectMultipleFactories.kt");
+      }
+
+      @Test
       @TestMetadata("ShardingWithBinds.kt")
       public void testShardingWithBinds() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ShardingWithBinds.kt");
