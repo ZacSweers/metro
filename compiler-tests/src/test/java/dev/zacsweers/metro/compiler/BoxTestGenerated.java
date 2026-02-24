@@ -872,6 +872,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DynamicGraphReplacesExtensionBindingFromClass.kt")
+      public void testDynamicGraphReplacesExtensionBindingFromClass() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphReplacesExtensionBindingFromClass.kt");
+      }
+
+      @Test
+      @TestMetadata("DynamicGraphReplacesExtensionBindingFromObject.kt")
+      public void testDynamicGraphReplacesExtensionBindingFromObject() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphReplacesExtensionBindingFromObject.kt");
+      }
+
+      @Test
       @TestMetadata("DynamicGraphWithFactory.kt")
       public void testDynamicGraphWithFactory() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphWithFactory.kt");
