@@ -1,3 +1,4 @@
+// https://github.com/ZacSweers/metro/pull/1889
 // MODULE: app
 @DependencyGraph(AppScope::class)
 interface AppGraph {
