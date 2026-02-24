@@ -936,6 +936,24 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("ChildBindsSupersedeSameTypedParentProvides.kt")
+      public void testChildBindsSupersedeSameTypedParentProvides() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChildBindsSupersedeSameTypedParentProvides.kt");
+      }
+
+      @Test
+      @TestMetadata("ChildFactoryParamSupersedesSameTypedParentProvides.kt")
+      public void testChildFactoryParamSupersedesSameTypedParentProvides() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChildFactoryParamSupersedesSameTypedParentProvides.kt");
+      }
+
+      @Test
+      @TestMetadata("ChildProvidesSupersedeSameTypedParentBinds.kt")
+      public void testChildProvidesSupersedeSameTypedParentBinds() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChildProvidesSupersedeSameTypedParentBinds.kt");
+      }
+
+      @Test
       @TestMetadata("ChildProvidesSupersedeSameTypedParentProvides.kt")
       public void testChildProvidesSupersedeSameTypedParentProvides() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChildProvidesSupersedeSameTypedParentProvides.kt");

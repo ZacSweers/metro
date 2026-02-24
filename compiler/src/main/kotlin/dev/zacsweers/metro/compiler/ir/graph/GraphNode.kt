@@ -62,6 +62,19 @@ internal sealed class GraphNode {
    */
   abstract val publishedBindsKeys: Set<IrTypeKey>
 
+  /**
+   * Set of all type keys directly provided by this node's own declarations (not inherited). Used to
+   * determine whether an inherited binding should be skipped because the child already has its own
+   * binding for the same key. Includes keys from `@Provides` (provider factories) and `@Binds`
+   * (binds callables).
+   */
+  open val directlyProvidedKeys: Set<IrTypeKey> by memoize {
+    buildSet {
+      addAll(providerFactories.keys)
+      addAll(bindsCallables.keys)
+    }
+  }
+
   val publicAccessors: Set<IrTypeKey> by memoize { accessors.mapToSet { it.contextKey.typeKey } }
 
   val contextKey: IrContextualTypeKey by memoize { IrContextualTypeKey(typeKey) }
@@ -191,6 +204,18 @@ internal sealed class GraphNode {
     var proto: DependencyGraphProto? = null,
   ) : GraphNode() {
     val hasExtensions = graphExtensions.isNotEmpty()
+
+    override val directlyProvidedKeys: Set<IrTypeKey> by memoize {
+      buildSet {
+        addAll(providerFactories.keys)
+        addAll(bindsCallables.keys)
+        creator?.parameters?.regularParameters?.forEach { param ->
+          if (param.isBindsInstance) {
+            add(param.typeKey)
+          }
+        }
+      }
+    }
   }
 
   sealed class Creator {
