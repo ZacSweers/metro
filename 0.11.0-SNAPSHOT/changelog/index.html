@@ -4519,6 +4519,7 @@
 <li><strong>[IR]</strong>: Guard against identity mappings (T -&gt; T) to prevent infinite recursion when remapping generic types.</li>
 <li><strong>[IR]</strong>: Fix directly providing a scoped <code>Map</code> instance not getting reused at injection sites.</li>
 <li><strong>[IR]</strong>: Fix graph extensions not being able to replace <code>@Binds</code>-provided bindings from parent graphs.</li>
+<li><strong>[IR]</strong>: Fix dynamic binding containers not being propagated to graph extensions in some cases.</li>
 <li><strong>[IC]</strong>: Fix an IC edge cases where generated assisted factory impl classes sometimes missed changes to injected constructor parameters in the target class.</li>
 <li><strong>[FIR/IR/Reports]</strong>: Restructure reports to use hierarchical nesting instead of top-level concatenated names. This fixes &lsquo;file name too long&rsquo; exceptions when generating reports for deeply nested graphs. For example, the report file <code>reports/keys-populated-test_Graph_ChildGraph.txt</code> will now be generated as <code>reports/keys-populated/test/Graph/ChildGraph.txt</code></li>
 </ul>
@@ -4542,10 +4543,11 @@
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
 <p>Special thanks to the following contributors for contributing to this release!</p>
 <ul>
-<li><a href="https://github.com/inorichi">@inorichi</a></li>
 <li><a href="https://github.com/Egorand">@Egorand</a></li>
 <li><a href="https://github.com/JoelWilcox">@JoelWilcox</a></li>
+<li><a href="https://github.com/inorichi">@inorichi</a></li>
 <li><a href="https://github.com/japplin">@japplin</a></li>
+<li><a href="https://github.com/jonapoul">@jonapoul</a></li>
 <li><a href="https://github.com/vRallev">@vRallev</a></li>
 </ul>
 <h2 id="0104">0.10.4<a class="headerlink" href="#0104" title="Permanent link">&para;</a></h2>
@@ -5866,7 +5868,7 @@ Possible fixes:
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="February 24, 2026 22:09:06 UTC">February 24, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="February 24, 2026 23:28:13 UTC">February 24, 2026</span>
   </span>
 
     
