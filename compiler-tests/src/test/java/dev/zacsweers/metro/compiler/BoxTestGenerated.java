@@ -884,6 +884,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DynamicGraphWithMultiLevelGraphExtensions.kt")
+      public void testDynamicGraphWithMultiLevelGraphExtensions() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphWithMultiLevelGraphExtensions.kt");
+      }
+
+      @Test
       @TestMetadata("DynamicKeysReplaceContributedKeys.kt")
       public void testDynamicKeysReplaceContributedKeys() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicKeysReplaceContributedKeys.kt");
@@ -933,6 +939,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("ChildBindsSupersedeSameTypedParentBinds.kt")
       public void testChildBindsSupersedeSameTypedParentBinds() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChildBindsSupersedeSameTypedParentBinds.kt");
+      }
+
+      @Test
+      @TestMetadata("ChildBindsSupersedeSameTypedParentProvides.kt")
+      public void testChildBindsSupersedeSameTypedParentProvides() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChildBindsSupersedeSameTypedParentProvides.kt");
+      }
+
+      @Test
+      @TestMetadata("ChildFactoryParamSupersedesSameTypedParentProvides.kt")
+      public void testChildFactoryParamSupersedesSameTypedParentProvides() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChildFactoryParamSupersedesSameTypedParentProvides.kt");
+      }
+
+      @Test
+      @TestMetadata("ChildProvidesSupersedeSameTypedParentBinds.kt")
+      public void testChildProvidesSupersedeSameTypedParentBinds() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChildProvidesSupersedeSameTypedParentBinds.kt");
       }
 
       @Test
