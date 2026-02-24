@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771973152699,
+  "lastUpdate": 1771977442603,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -7000,6 +7000,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2283122160940873,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.45%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Poulton",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Poulton",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "01c22182~1",
+          "message": "[before] Added failing test for `createDynamicGraph` (#1889",
+          "timestamp": "2026-02-24T23:19:51Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/01c221821c0156bcac97877627a489506d1d5f15"
+        },
+        "date": 1771977442603,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23032836299726975,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Poulton",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Poulton",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "01c221821c0156bcac97877627a489506d1d5f15",
+          "message": "[after] Added failing test for `createDynamicGraph` (#1889",
+          "timestamp": "2026-02-24T23:19:51Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/01c221821c0156bcac97877627a489506d1d5f15"
+        },
+        "date": 1771977442604,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23019105666819967,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.06%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

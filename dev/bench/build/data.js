@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771973152823,
+  "lastUpdate": 1771977442736,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -7000,6 +7000,62 @@ window.BENCHMARK_DATA = {
             "value": 22645.053999999996,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +4.17%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Poulton",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Poulton",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "01c22182~1",
+          "message": "[before] Added failing test for `createDynamicGraph` (#1889",
+          "timestamp": "2026-02-24T23:19:51Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/01c221821c0156bcac97877627a489506d1d5f15"
+        },
+        "date": 1771977442736,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21807.64,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Poulton",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Poulton",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "01c221821c0156bcac97877627a489506d1d5f15",
+          "message": "[after] Added failing test for `createDynamicGraph` (#1889",
+          "timestamp": "2026-02-24T23:19:51Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/01c221821c0156bcac97877627a489506d1d5f15"
+        },
+        "date": 1771977442737,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22113.72,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.40%"
           }
         ]
       }
