@@ -22,13 +22,8 @@ object FakeTrackerBindings {
 class FakeTracker : Tracker {
 
   var increments = 0
-  var decrements = 0
 
   override fun trackIncrements() {
     increments++
-  }
-
-  override fun trackDecrements() {
-    decrements++
   }
 }

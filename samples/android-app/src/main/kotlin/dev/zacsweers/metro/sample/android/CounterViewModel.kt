@@ -25,6 +25,5 @@ class CounterViewModel(private val tracker: Tracker) : ViewModel() {
 
   fun decrement() {
     _count.value = (_count.value ?: 0) - 1
-    tracker.trackDecrements()
   }
 }

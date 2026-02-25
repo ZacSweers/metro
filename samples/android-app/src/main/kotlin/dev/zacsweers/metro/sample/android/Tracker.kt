@@ -8,14 +8,10 @@ import dev.zacsweers.metro.Inject
 
 interface Tracker {
   fun trackIncrements()
-
-  fun trackDecrements()
 }
 
 @ContributesBinding(AppScope::class)
 @Inject
 class TrackerImpl : Tracker {
   override fun trackIncrements() {}
-
-  override fun trackDecrements() {}
 }
