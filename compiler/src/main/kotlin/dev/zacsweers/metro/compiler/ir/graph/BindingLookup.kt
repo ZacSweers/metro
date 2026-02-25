@@ -612,8 +612,11 @@ internal class BindingLookup(
         // requests since the Provider wrapping is explicit in the return type.
         if ((contextKey.isMapProvider || contextKey.isMapLazy) && key in _directMapTypeKeys) {
           val originallyWrapped =
-            binding is Provided &&
-              binding.providerFactory.contextualTypeKey.let { it.isMapProvider || it.isMapLazy }
+            when (binding) {
+              is Provided -> binding.providerFactory.contextualTypeKey.isDeferrable
+              is IrBinding.GraphDependency -> binding.contextualTypeKey.isDeferrable
+              else -> false
+            }
           if (!originallyWrapped) {
             _skippedDirectMapRequests[key] = contextKey
             return@let // Fall through to missing binding

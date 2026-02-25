@@ -595,6 +595,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("DirectMapBindingFromGraphDep.kt")
+    public void testDirectMapBindingFromGraphDep() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/DirectMapBindingFromGraphDep.kt");
+    }
+
+    @Test
     @TestMetadata("EvaluatableConstantsAreEvaluatedInFir.kt")
     public void testEvaluatableConstantsAreEvaluatedInFir() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/EvaluatableConstantsAreEvaluatedInFir.kt");

@@ -574,6 +574,7 @@ internal class BindingGraphGenerator(
               graph = depNode.sourceGraph,
               getter = getterToUse,
               typeKey = contextualTypeKey.typeKey,
+              contextualTypeKey = contextualTypeKey,
             )
           putBinding(binding.typeKey, isLocallyDeclared = true, binding)
           // Record a lookup for IC
