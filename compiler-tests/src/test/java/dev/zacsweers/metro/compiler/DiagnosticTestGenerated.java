@@ -287,6 +287,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphPrivateDependencyGraphFactoryParam.kt")
+    public void testGraphPrivateDependencyGraphFactoryParam() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphPrivateDependencyGraphFactoryParam.kt");
+    }
+
+    @Test
     @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
     public void testGraphsCannotDirectlyExtendOtherGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
@@ -399,6 +405,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("GraphPrivateBindingNotVisibleToChild.kt")
       public void testGraphPrivateBindingNotVisibleToChild() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/GraphPrivateBindingNotVisibleToChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateGraphExtensionFactoryParam.kt")
+      public void testGraphPrivateGraphExtensionFactoryParam() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/GraphPrivateGraphExtensionFactoryParam.kt");
       }
 
       @Test

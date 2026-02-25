@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
@@ -62,12 +63,14 @@ import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.type
 
-// TODO
-//  What about future Kotlin versions where you can have different get signatures
 internal object BindingContainerCallableChecker :
   FirCallableDeclarationChecker(MppCheckerKind.Common) {
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirCallableDeclaration) {
+    // Skip value params we only really care about member callables here
+    // tbh not sure why these come through here
+    if (declaration is FirValueParameter) return
+
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
