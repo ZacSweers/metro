@@ -157,6 +157,12 @@ internal class AssistedFactoryTransformer(
     // Find the SAM function - for external use metadata as hint, for in-compilation get directly
     val samFunction = declaration.singleAbstractFunction()
 
+    if (samFunction.origin == Origins.GeneratedAssistedFactoryCreateFunction) {
+      // Workaround kotlinc not exposing this to metadata and ending up missing in future rounds
+      // TODO https://youtrack.jetbrains.com/issue/KT-84578
+      metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(samFunction)
+    }
+
     // Generate impl class header (same for both external and in-compilation)
     val implClass = generateImplClassHeader(declaration, name = Symbols.Names.Impl, isExternal)
 

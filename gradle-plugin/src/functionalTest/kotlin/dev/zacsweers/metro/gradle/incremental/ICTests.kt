@@ -2746,7 +2746,7 @@ class ICTests : BaseIncrementalCompilationTest() {
    * The three-module layout is critical:
    * - `lib` owns AssistedClass (@AssistedInject with multiple non-assisted params).
    * - `middle` owns BaseFactory and the @BindingContainer that @Provides @IntoSet the factory; its
-   *   ABI does NOT change when AssistedClass loses a constructor param because
+   *   ABI does not change when AssistedClass loses a constructor param because
    *   AssistedClass.Factory (the interface) is unchanged.
    * - `root` depends only on `middle` (directly), so Metro reads AssistedClass metadata during
    *   root's recompilation from a stale cache and regenerates AppGraph$Impl with the old Provider
@@ -2923,7 +2923,7 @@ class ICTests : BaseIncrementalCompilationTest() {
               .trimIndent()
           )
 
-        // main() is in a separate file so it is NOT dirty when only the graph changes.
+        // main() is in a separate file so it is not dirty when only the graph changes.
         // This avoids FIR re-resolution of .create() in the dirty file; the IC bug
         // manifests at the IR level (singleAbstractFunction) when processing the graph.
         val mainFile =
@@ -2962,7 +2962,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.invokeMain<String>()).isEqualTo("Hello, world")
 
-    // Modify only the graph file — the @AssistedInject class file is NOT dirty.
+    // Modify only the graph file — the @AssistedInject class file is not dirty.
     // Under IC, the auto-generated Factory is loaded from cache.
     project.modify(
       fixture.graphFile,

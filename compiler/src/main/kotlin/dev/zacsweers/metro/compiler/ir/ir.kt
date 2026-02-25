@@ -785,18 +785,6 @@ internal fun IrExpression.doubleCheck(symbols: Symbols, typeKey: IrTypeKey): IrE
 context(context: IrMetroContext)
 internal fun IrClass.singleAbstractFunction(): IrSimpleFunction {
   val functions = abstractFunctions().toList()
-  if (functions.size == 1) return functions.single()
-
-  // IC fallback: for auto-generated assisted factories loaded from cache,
-  // the FIR plugin callbacks aren't called for non-dirty files, so the
-  // plugin-generated create() function is missing from the IrClass.
-  // Reconstruct it from the parent class's @AssistedInject constructor.
-  if (functions.isEmpty()) {
-    repairAssistedFactoryAbstractFunction()?.let {
-      return it
-    }
-  }
-
   return functions.singleOrError {
     buildString {
       append("Required a single abstract function for ")
@@ -816,42 +804,6 @@ internal fun IrClass.singleAbstractFunction(): IrSimpleFunction {
       }
     }
   }
-}
-
-/**
- * Under incremental compilation, auto-generated assisted factory interfaces loaded from cache may
- * be missing their `create()` function because the FIR plugin callbacks aren't re-invoked for
- * non-dirty files. This function reconstructs the missing abstract function from the parent class's
- * `@AssistedInject` constructor parameters.
- */
-context(context: IrMetroContext)
-private fun IrClass.repairAssistedFactoryAbstractFunction(): IrSimpleFunction? {
-  if (!isAnnotatedWithAny(context.metroSymbols.assistedFactoryAnnotations)) return null
-  val parentClassId = classId?.outerClassId ?: return null
-  val parentClass = context.referenceClass(parentClassId)?.owner ?: return null
-  val constructor =
-    parentClass.findInjectableConstructor(onlyUsePrimaryConstructor = false) ?: return null
-  val assistedParams =
-    constructor.regularParameters.filter {
-      it.isAnnotatedWithAny(context.metroSymbols.assistedAnnotations)
-    }
-  val createFunction =
-    context.irFactory
-      .buildFun {
-        name = Symbols.Names.create
-        returnType = parentClass.defaultType
-        modality = Modality.ABSTRACT
-        visibility = DescriptorVisibilities.PUBLIC
-      }
-      .apply {
-        parent = this@repairAssistedFactoryAbstractFunction
-        setDispatchReceiver(this@repairAssistedFactoryAbstractFunction.thisReceiver?.copyTo(this))
-        for (param in assistedParams) {
-          addValueParameter(param.name, param.type).apply { annotations = param.annotations }
-        }
-      }
-  declarations.add(createFunction)
-  return createFunction
 }
 
 internal fun IrSimpleFunction.isAbstractAndVisible(): Boolean {

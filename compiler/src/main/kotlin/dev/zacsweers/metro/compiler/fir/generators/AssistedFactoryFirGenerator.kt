@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
@@ -112,6 +113,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
       returnTypeRef = targetClass.constructType().toFirResolvedTypeRef(),
       modality = Modality.ABSTRACT,
       callableId = callableId,
+      origin = Keys.GeneratedAssistedFactoryCreateFunction.origin,
     ) {
       copyParameters(
         functionBuilder = this,
