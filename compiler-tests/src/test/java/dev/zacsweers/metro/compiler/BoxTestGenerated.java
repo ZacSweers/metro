@@ -1395,6 +1395,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("InjectWithEnumQualifiers.kt")
+    public void testInjectWithEnumQualifiers() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectWithEnumQualifiers.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedConstructorParametersWithGenericsWork.kt")
     public void testInjectedConstructorParametersWithGenericsWork() {
       runTest("compiler-tests/src/test/data/box/inject/InjectedConstructorParametersWithGenericsWork.kt");
