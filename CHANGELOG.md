@@ -11,6 +11,7 @@ Changelog
 ### Fixes
 
 - **[IR]**: Fix root graph accessors with `@OptionalBinding` accidentally reporting missing bindings.
+- **[IC]**: Workaround a kotlinc IC issue when `generateAssistedFactories` is enabled.
 
 ### Changes
 
@@ -19,6 +20,7 @@ Changelog
 Special thanks to the following contributors for contributing to this release!
 
 - [@JonasAtAmo](https://github.com/JonasAtAmo)
+- [@hrach](https://github.com/hrach)
 
 0.11.0
 ------

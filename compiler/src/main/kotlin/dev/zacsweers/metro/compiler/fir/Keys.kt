@@ -128,4 +128,8 @@ internal object Keys {
   data object ParentGraphParam : GeneratedDeclarationKey() {
     override fun toString() = "ParentGraphParam"
   }
+
+  data object GeneratedAssistedFactoryCreateFunction : GeneratedDeclarationKey() {
+    override fun toString() = "GeneratedAssistedFactoryCreateFunction"
+  }
 }

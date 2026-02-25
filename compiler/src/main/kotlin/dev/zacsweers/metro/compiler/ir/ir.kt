@@ -784,16 +784,17 @@ internal fun IrExpression.doubleCheck(symbols: Symbols, typeKey: IrTypeKey): IrE
 
 context(context: IrMetroContext)
 internal fun IrClass.singleAbstractFunction(): IrSimpleFunction {
-  return abstractFunctions().toList().singleOrError {
+  val functions = abstractFunctions().toList()
+  return functions.singleOrError {
     buildString {
       append("Required a single abstract function for ")
       append(kotlinFqName)
-      if (isEmpty()) {
+      if (this@singleOrError.isEmpty()) {
         appendLine(" but found none.")
       } else {
         appendLine(" but found multiple:")
         append(
-          joinTo(this, "\n") { function ->
+          this@singleOrError.joinTo(this, "\n") { function ->
             "- " +
               function.kotlinFqName.asString() +
               "\n  - " +
