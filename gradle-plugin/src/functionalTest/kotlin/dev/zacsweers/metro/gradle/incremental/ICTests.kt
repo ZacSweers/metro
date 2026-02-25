@@ -2882,4 +2882,105 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.invokeMain<Int>()).isEqualTo(1)
   }
+
+  /**
+   * Tests that auto-generated assisted factories (via `generateAssistedFactories.set(true)`) work
+   * correctly under incremental compilation when only the graph file changes.
+   *
+   * The auto-generated Factory interface and its `create()` function are produced by
+   * `AssistedFactoryFirGenerator` during FIR. Under IC, if the file containing the
+   * `@AssistedInject` class is not dirty, the Factory is loaded from the IC cache. The IR phase
+   * must still be able to find the abstract `create()` function on the cached Factory class.
+   *
+   * Regression test for https://github.com/ZacSweers/metro/issues/1887
+   */
+  @Test
+  fun `auto-generated assisted factory works under IC when only graph file changes`() {
+    val fixture =
+      object : MetroProject() {
+        override fun StringBuilder.onBuildScript() {
+          appendLine(
+            """
+            metro {
+              generateAssistedFactories.set(true)
+            }
+            """
+              .trimIndent()
+          )
+        }
+
+        val assistedClass =
+          source(
+            """
+            @AssistedInject
+            class AssistedClass(
+              @Assisted val id: String,
+              val message: String,
+            ) {
+              fun call(): String = message + id
+            }
+            """
+              .trimIndent()
+          )
+
+        // main() is in a separate file so it is NOT dirty when only the graph changes.
+        // This avoids FIR re-resolution of .create() in the dirty file; the IC bug
+        // manifests at the IR level (singleAbstractFunction) when processing the graph.
+        val mainFile =
+          source(
+            """
+            fun main(): String {
+              val graph = createGraph<AppGraph>()
+              return graph.factory.create("world").call()
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "Main",
+          )
+
+        val graphFile =
+          source(
+            """
+            @DependencyGraph
+            interface AppGraph {
+              val factory: AssistedClass.Factory
+
+              @Provides fun provideString(): String = "Hello, "
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "AppGraph",
+          )
+
+        override fun sources() = listOf(assistedClass, graphFile, mainFile)
+      }
+
+    val project = fixture.gradleProject
+
+    // First build (clean) should succeed
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world")
+
+    // Modify only the graph file — the @AssistedInject class file is NOT dirty.
+    // Under IC, the auto-generated Factory is loaded from cache.
+    project.modify(
+      fixture.graphFile,
+      """
+      @DependencyGraph
+      interface AppGraph {
+        val factory: AssistedClass.Factory
+
+        @Provides fun provideString(): String = "Hi, "
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build (incremental) should succeed — the IC-cached Factory must still
+    // have its abstract create() function visible to the IR phase.
+    val secondBuildResult = project.compileKotlin()
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>()).isEqualTo("Hi, world")
+  }
 }
