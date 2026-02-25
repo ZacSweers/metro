@@ -174,6 +174,7 @@ Now, Metro runs in a single pass. Most of Metro's core transformations are run i
 - Mentioned in enhancements, but worth reiterating that the underlying concurrency primitives have changed in the runtime but should be an improvement as they now use more modern reentrant locks.
 - Add Amper setup to installation docs (requires [AMPER-5095](https://youtrack.jetbrains.com/issue/AMPER-5095)).
 - Test Kotlin `2.3.20-RC`.
+- Test `Android Studio 2025.3.1.8 Panda 1 Patch 1`.
 - Set minimum Gradle version to `8.8` via Gradle's not-so-obvious `GRADLE_PLUGIN_API_VERSION_ATTRIBUTE` API.
 - Freshen up the doc site navigation to better organize with tabs.
 - **[Gradle]**: Annotate `forceEnableFirInIde` and `compilerVersion` with `@DangerousMetroGradleApi`.

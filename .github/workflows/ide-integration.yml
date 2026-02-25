@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - 'ide-integration-tests/**'
+      - 'compiler/src/main/kotlin/dev/zacsweers/metro/compiler/fir/**'
   workflow_dispatch:
     inputs:
       ide:

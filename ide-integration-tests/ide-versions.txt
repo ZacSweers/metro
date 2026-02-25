@@ -12,4 +12,4 @@
 #   or use: curl -s 'https://jb.gg/android-studio-releases-list.xml' | grep -A5 'version="2025.3.1.6"'
 #
 IU:2025.3.2
-AS:2025.3.1.6:android-studio-panda1-rc1 # Panda 1 RC 1
+AS:2025.3.1.8:android-studio-panda1-patch1 # Panda 1 Patch 1
