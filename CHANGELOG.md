@@ -195,6 +195,7 @@ Now, Metro runs in a single pass. Most of Metro's core transformations are run i
 Special thanks to the following contributors for contributing to this release!
 
 - [@Egorand](https://github.com/Egorand)
+- [@heorhiipopov](https://github.com/heorhiipopov)
 - [@JoelWilcox](https://github.com/JoelWilcox)
 - [@inorichi](https://github.com/inorichi)
 - [@japplin](https://github.com/japplin)
