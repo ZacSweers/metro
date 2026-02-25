@@ -788,7 +788,7 @@ internal fun IrClass.singleAbstractFunction(): IrSimpleFunction {
     buildString {
       append("Required a single abstract function for ")
       append(kotlinFqName)
-      if (isEmpty()) {
+      if (this@singleOrError.isEmpty()) {
         appendLine(" but found none.")
       } else {
         appendLine(" but found multiple:")
