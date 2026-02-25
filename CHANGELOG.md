@@ -4,9 +4,14 @@ Changelog
 **Unreleased**
 --------------
 
+0.11.0
+------
+
+_2026-02-25_
+
 ### New
 
-Metro now has an informal proposal system inspired by Kotlin KEEPs called MEEPs! Notably, the `P` in MEEP stands for _proposal_, not _process_. It's an informal system still, but seeking to broaden community input on newer, splashier features and changes to Metro going forward.
+Metro now has an informal proposal system inspired by Kotlin KEEPs called [MEEPs](https://github.com/ZacSweers/metro/discussions/categories/meeps)! Importantly, the `P` in MEEP stands for _proposal_, not _process_. It's an informal system for myself and future maintainers to seek broader community input on newer, splashier features and changes to Metro going forward.
 
 #### [**[MEEP-1826]**](https://github.com/ZacSweers/metro/discussions/1826) `@Assisted` parameters now rely on matching parameter names.
 
@@ -162,7 +167,7 @@ Now, Metro runs in a single pass. Most of Metro's core transformations are run i
 - **[IR]**: Fix directly providing a scoped `Map` instance not getting reused at injection sites.
 - **[IR]**: Fix graph extensions not being able to replace `@Binds`-provided bindings from parent graphs.
 - **[IR]**: Fix dynamic binding containers not being propagated to graph extensions in some cases.
-- **[IC]**: Fix an IC edge cases where generated assisted factory impl classes sometimes missed changes to injected constructor parameters in the target class.
+- **[IC]**: Fix an IC edge case where generated assisted factory impl classes sometimes missed changes to injected constructor parameters in the target class.
 - **[FIR/IR/Reports]**: Restructure reports to use hierarchical nesting instead of top-level concatenated names. This fixes 'file name too long' exceptions when generating reports for deeply nested graphs. For example, the report file `reports/keys-populated-test_Graph_ChildGraph.txt` will now be generated as `reports/keys-populated/test/Graph/ChildGraph.txt`
 - **[IR/Sharding]**: Fix an issue where assisted inject classes are skipped while computing shard dependencies, which causes a failure while generating graph property accessors.
 - **[IR/Sharding/Reports]**: Fix an edge case where assisted inject classes are not on the graph but are still included in list of bindings to be validated for sharding diagnostics.
