@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772054763870,
+  "lastUpdate": 1772055817652,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -7280,6 +7280,62 @@ window.BENCHMARK_DATA = {
             "value": 30643.532,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.62%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8b303233~1",
+          "message": "[before] Fix greedy callabledeclaration checkers (#1908)",
+          "timestamp": "2026-02-25T20:58:10Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8b3032331b838ae7c3332382363adc2ba0677c80"
+        },
+        "date": 1772055817652,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31259.142,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8b3032331b838ae7c3332382363adc2ba0677c80",
+          "message": "[after] Fix greedy callabledeclaration checkers (#1908)",
+          "timestamp": "2026-02-25T20:58:10Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8b3032331b838ae7c3332382363adc2ba0677c80"
+        },
+        "date": 1772055817653,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 29469.494,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -5.73%"
           }
         ]
       }
