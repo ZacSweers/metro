@@ -1300,6 +1300,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedFactoriesAcrossShardsAndSwitchingProviders.kt")
+      public void testAssistedFactoriesAcrossShardsAndSwitchingProviders() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/AssistedFactoriesAcrossShardsAndSwitchingProviders.kt");
+      }
+
+      @Test
       @TestMetadata("CrossShardDependencies.kt")
       public void testCrossShardDependencies() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/CrossShardDependencies.kt");
