@@ -11,6 +11,7 @@ android {
 
   defaultConfig {
     applicationId = "dev.zacsweers.metro.sample.android"
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     versionCode = 1
     versionName = "1.0"
   }
@@ -34,4 +35,9 @@ dependencies {
   testImplementation(libs.truth)
   testImplementation(libs.robolectric)
   testImplementation(libs.androidx.test)
+  androidTestImplementation(libs.junit)
+  androidTestImplementation(libs.truth)
+  androidTestImplementation(libs.androidx.test)
+  androidTestImplementation(libs.androidx.test.espresso)
+  androidTestImplementation(libs.androidx.test.runner)
 }

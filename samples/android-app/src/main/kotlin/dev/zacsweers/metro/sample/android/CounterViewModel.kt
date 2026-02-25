@@ -14,15 +14,17 @@ import dev.zacsweers.metrox.viewmodel.ViewModelKey
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey(CounterViewModel::class)
 @Inject
-class CounterViewModel : ViewModel() {
+class CounterViewModel(private val tracker: Tracker) : ViewModel() {
   private val _count = MutableLiveData(0)
   val count: LiveData<Int> = _count
 
   fun increment() {
     _count.value = (_count.value ?: 0) + 1
+    tracker.trackIncrements()
   }
 
   fun decrement() {
     _count.value = (_count.value ?: 0) - 1
+    tracker.trackDecrements()
   }
 }

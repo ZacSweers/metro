@@ -33,6 +33,8 @@ interface AppGraph : MetroAppComponentProviders, ViewModelGraph {
 
   val workerFactory: MetroWorkerFactory
 
+  val tracker: Tracker
+
   @DependencyGraph.Factory
   fun interface Factory {
     fun create(@Provides application: Application): AppGraph
