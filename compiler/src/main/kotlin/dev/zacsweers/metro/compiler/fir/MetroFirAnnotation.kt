@@ -14,7 +14,7 @@ import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
-import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
+import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.types.renderReadable
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.resolvedType
@@ -38,7 +38,9 @@ internal class MetroFirAnnotation(
 
     other as MetroFirAnnotation
 
-    return cachedHashKey == other.cachedHashKey
+    // Fast fail with hash, authoritative check with rendered string
+    if (cachedHashKey != other.cachedHashKey) return false
+    return cachedToString == other.cachedToString
   }
 
   override fun hashCode(): Int = cachedHashKey
@@ -83,8 +85,10 @@ private fun StringBuilder.renderAsAnnotationArgument(argument: FirExpression, si
       append("::class")
     }
     is FirPropertyAccessExpression -> {
-      // Enum entry or const val reference
-      val symbol = argument.calleeReference.toResolvedPropertySymbol()
+      // Enum entry or const val reference.
+      // Use toResolvedCallableSymbol() (not toResolvedPropertySymbol()) because
+      // enum entries are FirEnumEntrySymbol, not FirPropertySymbol.
+      val symbol = argument.calleeReference.toResolvedCallableSymbol()
       append(symbol?.callableId ?: "...")
     }
     // TODO

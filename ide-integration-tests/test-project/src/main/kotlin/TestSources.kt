@@ -36,6 +36,25 @@ fun useGeneratedApp(app: MyApp) {
   app(value = "app")
 }
 
+// Enum-based qualifier should not collapse parameters with different enum args
+@Qualifier annotation class By(val key: ByKey)
+
+enum class ByKey {
+  One,
+  Two,
+}
+
+@Inject class Holder(@By(ByKey.One) private val one: Int, @By(ByKey.Two) private val two: Int)
+
+@DependencyGraph(AppScope::class)
+interface EnumQualifierGraph {
+  val holder: Holder
+
+  @Provides @By(ByKey.One) fun provideOne(): Int = 1
+
+  @Provides @By(ByKey.Two) fun provideTwo(): Int = 2
+}
+
 // Viewing generated supertypes
 @ContributesTo(AppScope::class)
 interface Base {
