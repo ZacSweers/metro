@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -34,6 +35,7 @@ import org.jetbrains.kotlin.name.Name
 
 internal data class DiagnosticMetadata(val fullPath: String, val metadata: List<String>)
 
+context(context: IrMetroContext)
 internal fun IrDeclaration.humanReadableDiagnosticMetadata(): DiagnosticMetadata {
   val fullPath =
     when (val declaration = this) {
@@ -60,6 +62,16 @@ internal fun IrDeclaration.humanReadableDiagnosticMetadata(): DiagnosticMetadata
 
   // Add more metadata to the error if it's generated metro code
   parentClassOrNull?.let { parentClass ->
+    if (parentClass.parent !is IrClass) {
+      context.reportCompat(
+        this,
+        MetroDiagnostics.METRO_ERROR,
+        "Could not read parent of '${parentClass.kotlinFqName}'. " +
+          "This may be a sign that it is used but not in the compile classpath.",
+      )
+
+      return@let
+    }
     if (hasAnnotation(Symbols.ClassIds.CallableMetadata)) {
       // It's a Binds callable. ParentClass is a BindsMirror
       // Get the original binding container, which may be a generated metro contribution
