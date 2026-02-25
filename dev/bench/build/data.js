@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771988504937,
+  "lastUpdate": 1771995320424,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -7168,6 +7168,62 @@ window.BENCHMARK_DATA = {
             "value": 20827.048,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.42%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3ffd2621~1",
+          "message": "[before] Properly map GraphDep context keys (#1896)",
+          "timestamp": "2026-02-25T04:14:16Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3ffd2621bc98b416832657d723c2f5a787cacc96"
+        },
+        "date": 1771995320424,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22014.4,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3ffd2621bc98b416832657d723c2f5a787cacc96",
+          "message": "[after] Properly map GraphDep context keys (#1896)",
+          "timestamp": "2026-02-25T04:14:16Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3ffd2621bc98b416832657d723c2f5a787cacc96"
+        },
+        "date": 1771995320425,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22052.072,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.17%"
           }
         ]
       }
