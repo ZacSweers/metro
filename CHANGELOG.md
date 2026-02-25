@@ -4,6 +4,22 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+### Enhancements
+
+### Fixes
+
+- **[IR]**: Fix root graph accessors with `@OptionalBinding` accidentally reporting missing bindings.
+
+### Changes
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@JonasAtAmo](https://github.com/JonasAtAmo)
+
 0.11.0
 ------
 
