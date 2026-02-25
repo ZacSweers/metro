@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.GraphPropertyData
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.ensureInitialized
 import dev.zacsweers.metro.compiler.ir.graph.graphPropertyData
@@ -314,6 +315,15 @@ internal class IrGraphShardGenerator(
       val properties = mutableMapOf<IrContextualTypeKey, ShardProperty>()
 
       for (shardBinding in bindings) {
+        // Assisted-inject target properties are unused in nested shards because factories
+        // generate their targets inline (to avoid cross-shard circular init dependencies and
+        // same-shard uninitialized field access). Skip creating dead properties.
+        if (
+          shardBinding.binding is IrBinding.ConstructorInjected && shardBinding.binding.isAssisted
+        ) {
+          continue
+        }
+
         shardLookup.assignToShard(shardBinding.typeKey, index)
 
         val property =
