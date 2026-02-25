@@ -1,0 +1,1 @@
+/GraphPrivateGraphExtensionFactoryParam.kt:(200,204): error: Cannot expose @GraphPrivate binding 'kotlin.String' as a graph accessor. @GraphPrivate bindings are confined to the graph they are provided in.
