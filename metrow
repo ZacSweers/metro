@@ -222,8 +222,34 @@ case "$1" in
        ./compiler-compat/generate-compat-module.sh "$2"
        ;;
 
+   "update-gradle")
+       if [[ $# -lt 2 ]]; then
+           echo "Usage: metrow update-gradle <gradle-version>"
+           exit 1
+       fi
+       gradle_version="$2"
+       echo "Updating Gradle wrappers to version $gradle_version..."
+
+       # Update root wrapper first
+       echo "=== Updating . ==="
+       ./gradlew wrapper --gradle-version="$gradle_version"
+       # Run twice
+       ./gradlew wrapper --gradle-version="$gradle_version"
+
+       # Copy updated wrapper files to all other wrapper locations
+       while IFS= read -r wrapper; do
+           dir="$(dirname "$wrapper")"
+           if [[ "$dir" == "." ]]; then
+               continue
+           fi
+           echo "=== Updating $dir ==="
+           cp gradlew gradlew.bat "$dir/"
+           cp gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties "$dir/gradle/wrapper/"
+       done < <(find . -name gradlew -not -path './.gradle/*' | sort)
+       ;;
+
    *)
-       echo "Usage: metrow (publish|check|test|clean|format|regen|gen-compat)"
+       echo "Usage: metrow (publish|check|test|clean|format|regen|gen-compat|update-gradle)"
        echo ""
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
@@ -236,6 +262,9 @@ case "$1" in
        echo "test options:"
        echo "  --all                Test against all available compiler versions"
        echo "  --version <version>  Test against specific compiler version"
+       echo ""
+       echo "update-gradle options:"
+       echo "  <gradle-version>     Gradle version to update all wrappers to"
        exit 1
        ;;
 esac
