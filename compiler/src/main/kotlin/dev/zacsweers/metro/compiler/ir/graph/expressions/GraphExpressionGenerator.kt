@@ -340,13 +340,27 @@ private constructor(
           // The target binding is stored directly on the Assisted binding (not in the graph)
           val targetBinding = binding.targetBinding
 
-          // Assisted-inject factories don't implement Provider
+          // Assisted-inject factories don't implement Provider.
+          // The target binding is not an independent graph binding — it's an implementation
+          // detail of the factory. In shard contexts, all properties are FIELD-backed and
+          // eagerly initialized, but the shared target property is always appended at the
+          // end of the init order. Accessing it from a factory's field init would hit an
+          // uninitialized property (same-shard) or require cross-shard graph access (which
+          // creates circular shard init dependencies). Generate inline in shard contexts.
+          // In non-shard contexts, factory properties are getter-backed (lazily evaluated),
+          // so the shared target property is safely initialized by access time.
+          val effectiveFieldInitKey =
+            if (shardContext != null) {
+              targetBinding.typeKey
+            } else {
+              fieldInitKey
+            }
           val delegateFactory =
             generateBindingCode(
               targetBinding,
               contextualTypeKey = targetBinding.contextualTypeKey,
               accessType = AccessType.INSTANCE,
-              fieldInitKey = fieldInitKey,
+              fieldInitKey = effectiveFieldInitKey,
             )
 
           val factoryProvider = with(factoryImpl) { invokeCreate(delegateFactory) }

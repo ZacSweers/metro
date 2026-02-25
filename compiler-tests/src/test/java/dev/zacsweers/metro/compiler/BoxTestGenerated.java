@@ -1300,6 +1300,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedFactoriesAcrossShardsAndSwitchingProviders.kt")
+      public void testAssistedFactoriesAcrossShardsAndSwitchingProviders() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/AssistedFactoriesAcrossShardsAndSwitchingProviders.kt");
+      }
+
+      @Test
       @TestMetadata("CrossShardDependencies.kt")
       public void testCrossShardDependencies() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/CrossShardDependencies.kt");
@@ -1327,6 +1333,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("ShardedGraphWithMultipleExtensions.kt")
       public void testShardedGraphWithMultipleExtensions() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ShardedGraphWithMultipleExtensions.kt");
+      }
+
+      @Test
+      @TestMetadata("ShardingWithAssistedInjectMultipleFactories.kt")
+      public void testShardingWithAssistedInjectMultipleFactories() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ShardingWithAssistedInjectMultipleFactories.kt");
       }
 
       @Test
