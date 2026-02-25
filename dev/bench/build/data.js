@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771977442736,
+  "lastUpdate": 1771988354077,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -7056,6 +7056,62 @@ window.BENCHMARK_DATA = {
             "value": 22113.72,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.40%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c5c92554~1",
+          "message": "[before] Fix a couple issues with graph sharding + Assisted",
+          "timestamp": "2026-02-25T02:19:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c5c925548fcfc8fe3ca81426557f0ee9a2d4237d"
+        },
+        "date": 1771988354077,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21350.811999999998,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c5c925548fcfc8fe3ca81426557f0ee9a2d4237d",
+          "message": "[after] Fix a couple issues with graph sharding + Assisted",
+          "timestamp": "2026-02-25T02:19:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c5c925548fcfc8fe3ca81426557f0ee9a2d4237d"
+        },
+        "date": 1771988354078,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22101.118,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +3.51%"
           }
         ]
       }

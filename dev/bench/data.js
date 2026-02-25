@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771977442603,
+  "lastUpdate": 1771988353951,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -7056,6 +7056,62 @@ window.BENCHMARK_DATA = {
             "value": 0.23019105666819967,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.06%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c5c92554~1",
+          "message": "[before] Fix a couple issues with graph sharding + Assisted",
+          "timestamp": "2026-02-25T02:19:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c5c925548fcfc8fe3ca81426557f0ee9a2d4237d"
+        },
+        "date": 1771988353951,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.27229328085226645,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Joel Wilcox",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c5c925548fcfc8fe3ca81426557f0ee9a2d4237d",
+          "message": "[after] Fix a couple issues with graph sharding + Assisted",
+          "timestamp": "2026-02-25T02:19:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c5c925548fcfc8fe3ca81426557f0ee9a2d4237d"
+        },
+        "date": 1771988353952,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.280050654738489,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +2.85%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
