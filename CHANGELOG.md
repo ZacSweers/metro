@@ -10,6 +10,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR]**: Don't run `BindingContainerCallableChecker` and `MultibindsChecker` diagnostics on value parameters.
 - **[IR]**: Fix root graph accessors with `@OptionalBinding` accidentally reporting missing bindings.
 
 ### Changes

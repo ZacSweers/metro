@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
@@ -39,6 +40,9 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirCallableDeclaration) {
     if (declaration is FirPropertyAccessor) return // Handled by FirProperty checks
+    // Skip value params we only really care about member callables here
+    // tbh not sure why these come through here
+    if (declaration is FirValueParameter) return
     val source = declaration.source ?: return
     val session = context.session
 
