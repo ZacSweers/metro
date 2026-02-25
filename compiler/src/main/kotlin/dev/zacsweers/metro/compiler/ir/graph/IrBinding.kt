@@ -545,6 +545,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      * an actual property during generation via the parent's [BindingPropertyContext].
      */
     @Poko.Skip val token: ParentContext.Token? = null,
+    @Poko.Skip override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey),
   ) : IrBinding {
     // callableId is only used when getter is present (local graph dependency)
     // For parent property access (propertyAccessToken), the callableId is determined during
@@ -570,7 +571,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       }
     }
     override val parameters: Parameters = Parameters.empty()
-    override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
     override val reportableDeclaration: IrDeclarationWithName?
       get() = getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
