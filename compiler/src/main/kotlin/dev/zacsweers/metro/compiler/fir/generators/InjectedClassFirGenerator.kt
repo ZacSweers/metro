@@ -146,7 +146,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           buildList {
             add(buildInjectAnnotation())
             add(buildInjectedFunctionClassAnnotation(function.callableId))
-            add(buildHiddenFromObjCAnnotation())
+            buildHiddenFromObjCAnnotation()?.let(::add)
             annotations.qualifier?.fir?.let(::add)
             if (annotations.isComposable) {
               add(buildStableAnnotation())
@@ -910,8 +910,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     return buildSimpleAnnotation { session.metroFirBuiltIns.stableClassSymbol }
   }
 
-  private fun buildHiddenFromObjCAnnotation(): FirAnnotation {
-    return buildSimpleAnnotation { session.metroFirBuiltIns.hiddenFromObjCClassSymbol }
+  private fun buildHiddenFromObjCAnnotation(): FirAnnotation? {
+    return session.metroFirBuiltIns.hiddenFromObjCClassSymbol?.let { buildSimpleAnnotation { it } }
   }
 
   private fun buildNonRestartableAnnotation(): FirAnnotation {
