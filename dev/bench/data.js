@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771995320297,
+  "lastUpdate": 1772054763737,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -7224,6 +7224,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22930494769040996,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +3.12%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jonas Pedersen",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jonas Pedersen",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "44db691d~1",
+          "message": "[before] Fix optional root graph accessors (#1905)",
+          "timestamp": "2026-02-25T20:10:03Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/44db691d01be2640d060a47f9871072b23361074"
+        },
+        "date": 1772054763737,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23888520431901852,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jonas Pedersen",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jonas Pedersen",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "44db691d01be2640d060a47f9871072b23361074",
+          "message": "[after] Fix optional root graph accessors (#1905)",
+          "timestamp": "2026-02-25T20:10:03Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/44db691d01be2640d060a47f9871072b23361074"
+        },
+        "date": 1772054763738,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22618988868602025,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -5.31%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771995320424,
+  "lastUpdate": 1772054763870,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -7224,6 +7224,62 @@ window.BENCHMARK_DATA = {
             "value": 22052.072,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.17%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jonas Pedersen",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jonas Pedersen",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "44db691d~1",
+          "message": "[before] Fix optional root graph accessors (#1905)",
+          "timestamp": "2026-02-25T20:10:03Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/44db691d01be2640d060a47f9871072b23361074"
+        },
+        "date": 1772054763870,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31147.196000000004,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jonas Pedersen",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jonas Pedersen",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "44db691d01be2640d060a47f9871072b23361074",
+          "message": "[after] Fix optional root graph accessors (#1905)",
+          "timestamp": "2026-02-25T20:10:03Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/44db691d01be2640d060a47f9871072b23361074"
+        },
+        "date": 1772054763871,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 30643.532,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.62%"
           }
         ]
       }
