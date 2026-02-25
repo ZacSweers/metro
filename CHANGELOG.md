@@ -161,6 +161,7 @@ Now, Metro runs in a single pass. Most of Metro's core transformations are run i
 - **[IR]**: Guard against identity mappings (T -> T) to prevent infinite recursion when remapping generic types.
 - **[IR]**: Fix directly providing a scoped `Map` instance not getting reused at injection sites.
 - **[IR]**: Fix graph extensions not being able to replace `@Binds`-provided bindings from parent graphs.
+- **[IR]**: Fix dynamic binding containers not being propagated to graph extensions in some cases.
 - **[IC]**: Fix an IC edge cases where generated assisted factory impl classes sometimes missed changes to injected constructor parameters in the target class.
 - **[FIR/IR/Reports]**: Restructure reports to use hierarchical nesting instead of top-level concatenated names. This fixes 'file name too long' exceptions when generating reports for deeply nested graphs. For example, the report file `reports/keys-populated-test_Graph_ChildGraph.txt` will now be generated as `reports/keys-populated/test/Graph/ChildGraph.txt`
 
@@ -185,10 +186,11 @@ Now, Metro runs in a single pass. Most of Metro's core transformations are run i
 
 Special thanks to the following contributors for contributing to this release!
 
-- [@inorichi](https://github.com/inorichi)
 - [@Egorand](https://github.com/Egorand)
 - [@JoelWilcox](https://github.com/JoelWilcox)
+- [@inorichi](https://github.com/inorichi)
 - [@japplin](https://github.com/japplin)
+- [@jonapoul](https://github.com/jonapoul)
 - [@vRallev](https://github.com/vRallev)
 
 0.10.4

@@ -971,9 +971,16 @@ internal class GraphNodes(
 
         // Propagate dynamic type keys from parent graph to this graph extension
         // This ensures dynamic bindings from createDynamicGraph are available to child extensions
+        // Only propagate entries with actual callables (non-empty sets), not container type markers
+        // (empty sets). Container type keys are added as markers at construction time but shouldn't
+        // be propagated to child extensions, as doing so would cause the child to skip the parent
+        // context binding for the container type (needed as a dispatch receiver for class-based
+        // binding containers).
         if (node is GraphNode.Local) {
           for ((key, callables) in node.dynamicTypeKeys) {
-            dynamicTypeKeys.getOrInit(key).addAll(callables)
+            if (callables.isNotEmpty()) {
+              dynamicTypeKeys.getOrInit(key).addAll(callables)
+            }
           }
         }
       }
