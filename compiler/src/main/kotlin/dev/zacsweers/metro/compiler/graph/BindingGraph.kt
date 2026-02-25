@@ -207,7 +207,7 @@ internal open class MutableBindingGraph<
           for (binding in bindings) {
             tryPut(binding, stack, binding.typeKey)
           }
-        } else {
+        } else if (!contextKey.hasDefault) {
           stack.withEntry(entry) { missingBindings[contextKey.typeKey] = stack.copy() }
         }
       }
