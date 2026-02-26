@@ -4,7 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
-### New
+0.11.1
+------
+
+_2026-02-25_
 
 ### Enhancements
 
@@ -18,8 +21,6 @@ Changelog
 - **[FIR]**: Fix parsing of enum arguments in qualifier annotations. We made a previous change for `0.11.0` to better handle top-level constants but this solution accidentally regressed enum constants support.
 - **[IR]**: Fix root graph accessors with `@OptionalBinding` accidentally reporting missing bindings.
 - **[IC]**: Workaround a kotlinc IC issue when `generateAssistedFactories` is enabled.
-
-### Changes
 
 ### Contributors
 
