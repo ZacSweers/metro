@@ -468,7 +468,7 @@ internal class DependencyGraphTransformer(
             irDeclarations = sequenceOf(sourceDeclaration, dependencyGraphDeclaration),
             factory = MetroDiagnostics.PRIVATE_BINDING_ERROR,
             a =
-              "Cannot expose @GraphPrivate binding '${accessor.contextKey.typeKey.render(short = false)}' as a graph accessor. @GraphPrivate bindings are confined to the graph they are provided in.",
+              "Cannot expose @GraphPrivate binding '${accessor.contextKey.typeKey.renderForDiagnostic(short = false)}' as a graph accessor. @GraphPrivate bindings are confined to the graph they are provided in.",
           )
           hasErrors = true
         }
