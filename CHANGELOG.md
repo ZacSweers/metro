@@ -8,6 +8,8 @@ Changelog
 
 ### Enhancements
 
+- **[IR]**: Improve context hint for unreadable IR declarations when reporting errors.
+
 ### Fixes
 
 - **[FIR]**: Don't run `BindingContainerCallableChecker` and `MultibindsChecker` diagnostics on value parameters.
