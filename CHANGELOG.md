@@ -8,8 +8,11 @@ Changelog
 
 ### Enhancements
 
+- **[Runtime]**: Give unique `outputModuleName` names to all JS/wasm artifacts.
+
 ### Fixes
 
+- **[Runtime]**: Only propagate the minimum supported stdlib version (`2.2.20`) in runtime artifacts for JVM and native. Web artifacts unfortunately must target `2.3.0` since that's what Metro compiles against (star [KT-84582](https://youtrack.jetbrains.com/issue/KT-84582/coreLibrariesVersion-isnt-really-compatible-with-JS-or-WASM)).
 - **[FIR]**: Don't run `BindingContainerCallableChecker` and `MultibindsChecker` diagnostics on value parameters.
 - **[FIR]**: Fix parsing of enum arguments in qualifier annotations. We made a previous change for `0.11.0` to better handle top-level constants but this solution accidentally regressed enum constants support.
 - **[IR]**: Fix root graph accessors with `@OptionalBinding` accidentally reporting missing bindings.

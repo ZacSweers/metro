@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import com.vanniktech.maven.publish.DeploymentValidation
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
-import kotlin.collections.addAll
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.jetbrains.dokka.gradle.DokkaExtension
