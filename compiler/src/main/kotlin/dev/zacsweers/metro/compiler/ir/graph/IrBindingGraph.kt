@@ -310,7 +310,10 @@ internal class IrBindingGraph(
             // Report the first few bindings
             val message = buildString {
               appendLine(
-                "[Metro/SuspiciousUnusedMultibinding] Synthetic multibinding ${key.renderForDiagnostic(short = false)} is unused but has ${binding.sourceBindings.size} source key(s). Did you possibly bind them to the wrong type?"
+                "[Metro/SuspiciousUnusedMultibinding] Synthetic multibinding " +
+                  "${key.renderForDiagnostic(short = false)} is unused but has " +
+                  "${binding.sourceBindings.size} source binding(s). " +
+                  "Did you possibly bind them to the wrong type?"
               )
               appendLine()
               for (source in unusedSources.take(MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT)) {

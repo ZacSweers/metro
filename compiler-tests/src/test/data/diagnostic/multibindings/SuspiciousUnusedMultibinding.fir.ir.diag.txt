@@ -1,4 +1,4 @@
-/SuspiciousUnusedMultibinding.kt:(227,235): warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding kotlin.collections.Map<kotlin.reflect.KClass<*>, BaseViewModel> is unused but has 4 source key(s). Did you possibly bind them to the wrong type?
+/SuspiciousUnusedMultibinding.kt:(227,235): warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding kotlin.collections.Map<kotlin.reflect.KClass<*>, BaseViewModel> is unused but has 4 source binding(s). Did you possibly bind them to the wrong type?
 
   SuspiciousUnusedMultibinding.kt:36:1
     Impl5 contributes a binding of BaseViewModel
