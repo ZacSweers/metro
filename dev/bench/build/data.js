@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772059066028,
+  "lastUpdate": 1772073834384,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -7392,6 +7392,62 @@ window.BENCHMARK_DATA = {
             "value": 30442.636,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.47%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1a4fbbbc~1",
+          "message": "[before] Clean up runtime artifact names and propagated dep",
+          "timestamp": "2026-02-26T02:02:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1a4fbbbcf0ffa0f43d4d9623841231e276be0cd6"
+        },
+        "date": 1772073834384,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 32250.476000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1a4fbbbcf0ffa0f43d4d9623841231e276be0cd6",
+          "message": "[after] Clean up runtime artifact names and propagated dep",
+          "timestamp": "2026-02-26T02:02:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1a4fbbbcf0ffa0f43d4d9623841231e276be0cd6"
+        },
+        "date": 1772073834385,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31564.46,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.13%"
           }
         ]
       }
