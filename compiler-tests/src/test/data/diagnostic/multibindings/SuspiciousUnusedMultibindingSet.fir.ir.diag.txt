@@ -1,4 +1,4 @@
-/SuspiciousUnusedMultibindingSet.kt:(226,234): warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding kotlin.collections.Set<BaseViewModel> is unused but has 4 source binding(s). Did you possibly bind them to the wrong type?
+/SuspiciousUnusedMultibindingSet.kt:(227,235): warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding kotlin.collections.Set<BaseViewModel> is unused but has 4 source binding(s). Did you possibly bind them to the wrong type?
 
   SuspiciousUnusedMultibindingSet.kt:32:1
     Impl5 contributes a binding of BaseViewModel
@@ -10,3 +10,4 @@
     Impl2 contributes a binding of BaseViewModel
                                    ~~~~~~~~~~~~~
   ...and 1 more
+
