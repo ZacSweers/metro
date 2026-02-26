@@ -1,0 +1,122 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" charset="UTF-8">
+    <title>Inject</title>
+<link href="../../../images/logo-icon.svg" rel="icon" type="image/svg"><script>var pathToRoot = "../../../";</script>
+    <script>document.documentElement.classList.replace("no-js", "js");</script>
+    <script>const storage = localStorage.getItem("dokka-dark-mode")
+      if (storage == null) {
+        const osDarkSchemePreferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        if (osDarkSchemePreferred === true) {
+          document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+      } else {
+        const savedDarkMode = JSON.parse(storage)
+        if (savedDarkMode === true) {
+          document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+      }
+    </script>
+<script type="text/javascript" src="https://unpkg.com/kotlin-playground@1/dist/playground.min.js" async></script>
+<script type="text/javascript" src="../../../scripts/sourceset_dependencies.js" async></script>
+<link href="../../../styles/style.css" rel="Stylesheet">
+<link href="../../../styles/main.css" rel="Stylesheet">
+<link href="../../../styles/prism.css" rel="Stylesheet">
+<link href="../../../styles/logo-styles.css" rel="Stylesheet">
+<link href="../../../ui-kit/ui-kit.min.css" rel="Stylesheet">
+<script type="text/javascript" src="../../../scripts/safe-local-storage_blocking.js"></script>
+<script type="text/javascript" src="../../../scripts/navigation-loader.js" async></script>
+<script type="text/javascript" src="../../../scripts/platform-content-handler.js" async></script>
+<script type="text/javascript" src="../../../scripts/main.js" defer></script>
+<script type="text/javascript" src="../../../scripts/prism.js" async></script>
+<script type="text/javascript" src="../../../ui-kit/ui-kit.min.js" defer></script></head>
+<body>
+<div class="root">
+    <header class="navigation theme-dark" id="navigation-wrapper" role="banner">
+<a class="library-name--link" href="../../../index.html" tabindex="1">
+                    metro
+            </a>        <button class="navigation-controls--btn navigation-controls--btn_toc ui-kit_mobile-only" id="toc-toggle" type="button">Toggle table of contents
+        </button>
+        <div class="navigation-controls--break ui-kit_mobile-only"></div>
+        <div class="library-version" id="library-version">
+        </div>
+        <div class="navigation-controls">
+        <ul class="filter-section filter-section_loading" id="filter-section" aria-label="Target filter">
+                <button class="platform-tag platform-selector common-like" data-active="" aria-pressed="true" data-filter=":runtime/commonMain">common</button>
+            <div class="dropdown filter-section--dropdown" data-role="dropdown" id="filter-section-dropdown">
+                <button class="button button_dropdown filter-section--dropdown-toggle" role="combobox" data-role="dropdown-toggle" aria-controls="platform-tags-listbox" aria-haspopup="listbox" aria-expanded="false" aria-label="Toggle source sets"></button>
+                <ul role="listbox" id="platform-tags-listbox" class="dropdown--list" data-role="dropdown-listbox" aria-label="Target filter">
+                    <div class="dropdown--header"><span>Target filter</span>
+                        <button class="button" data-role="dropdown-toggle" aria-label="Close target filter">
+                            <i class="ui-kit-icon ui-kit-icon_cross"></i>
+                        </button>
+                    </div>
+                        <li role="option" class="dropdown--option platform-selector-option common-like" tabindex="0">
+                            <label class="checkbox">
+                                <input type="checkbox" class="checkbox--input" id=":runtime/commonMain" data-filter=":runtime/commonMain">
+                                <span class="checkbox--icon"></span>
+                                common
+                            </label>
+                        </li>
+                </ul>
+                <div class="dropdown--overlay"></div>
+            </div>
+        </ul>
+            <button class="navigation-controls--btn navigation-controls--btn_theme" id="theme-toggle-button" type="button">Switch theme
+            </button>
+            <div class="navigation-controls--btn navigation-controls--btn_search" id="searchBar" role="button">Search in
+                API
+            </div>
+        </div>
+    </header>
+    <div id="container">
+        <nav id="leftColumn" class="sidebar" data-item-type="SECTION" data-item-config="{&quot;defaultSize&quot;: 280, &quot;minSize&quot;: 200, &quot;maxSize&quot;: 400}">
+            <a class="toc--skip-link" href="#main">Skip to content</a>
+            <div class="dropdown theme-dark_mobile" data-role="dropdown" id="toc-dropdown">
+                <ul role="listbox" id="toc-listbox" class="dropdown--list dropdown--list_toc-list" data-role="dropdown-listbox" aria-label="Table of contents">
+                    <div class="dropdown--header">
+                            <span>
+                                    metro
+                            </span>
+                        <button class="button" data-role="dropdown-toggle" aria-label="Close table of contents">
+                            <i class="ui-kit-icon ui-kit-icon_cross"></i>
+                        </button>
+                    </div>
+                    <div class="sidebar--inner" id="sideMenu"></div>
+                </ul>
+                <div class="dropdown--overlay"></div>
+            </div>
+        </nav>
+        <div id="resizer" class="resizer" data-item-type="BAR"></div>
+        <div id="main" data-item-type="SECTION" role="main">
+<div class="main-content" data-page-type="classlike" id="content" pageids="runtime::dev.zacsweers.metro/Inject///PointingToDeclaration//673331665">
+  <div class="breadcrumbs"><a href="../../index.html">runtime</a><span class="delimiter">/</span><a href="../index.html">dev.zacsweers.metro</a><span class="delimiter">/</span><span class="current">Inject</span></div>
+  <div class="cover ">
+    <h1 class="cover"><span><span>Inject</span></span></h1>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":runtime/commonMain"><div class="symbol monospace"><div class="block"><div class="block"><span class="token annotation builtin">@</span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.annotation/-target/index.html"><span class="token annotation builtin">Target</span></a><span class="token punctuation">(</span><span>allowedTargets<span class="token operator"> = </span><span class="token punctuation">[</span><span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.annotation/-annotation-target/-c-l-a-s-s/index.html">AnnotationTarget.CLASS</a><span class="token punctuation">, </span></span><wbr><span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.annotation/-annotation-target/-c-o-n-s-t-r-u-c-t-o-r/index.html">AnnotationTarget.CONSTRUCTOR</a><span class="token punctuation">, </span></span><wbr><span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.annotation/-annotation-target/-p-r-o-p-e-r-t-y_-s-e-t-t-e-r/index.html">AnnotationTarget.PROPERTY_SETTER</a><span class="token punctuation">, </span></span><wbr><span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.annotation/-annotation-target/-f-u-n-c-t-i-o-n/index.html">AnnotationTarget.FUNCTION</a><span class="token punctuation">, </span></span><wbr><span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.annotation/-annotation-target/-f-i-e-l-d/index.html">AnnotationTarget.FIELD</a></span><wbr><span class="token punctuation">]</span></span><wbr><span class="token punctuation">)</span></div></div><span class="token keyword">annotation class </span><a href="index.html">Inject</a><span class="source-link-wrapper"><span class="source-link" data-element-type="source-link">(<a href="https://github.com/ZacSweers/metro//tree/main/runtime/src/src/commonMain/kotlin/dev/zacsweers/metro/Inject.kt#L230">source</a>)</span></span></div><p class="paragraph">This annotation is used to indicate that the annotated declaration expects to have its dependencies injected. This is applicable to multiple targets, the primary form being <strong>constructor injection</strong>.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">class HttpClient @Inject constructor(cache: Cache)</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><p class="paragraph">For simple cases with single primary constructor, you may also just annotate the class declaration directly.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">@Inject<br>class HttpClient(cache: Cache)</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><p class="paragraph">In this scenario, Metro will manage instantiation of an <code class="lang-kotlin">HttpClient</code> instance and fulfill its dependencies, which are denoted as parameters to the injected declaration. In this case - <code class="lang-kotlin">cache: Cache</code> is a dependency that must be provided elsewhere in the <a href="../-dependency-graph/index.html">DependencyGraph</a> that this class is ultimately used in.</p><p class="paragraph">Constructor injection should be the default injection mechanism where possible, as it affords the most flexibility and allows Metro to manage the lifecycle of the created class.</p><h3 class=""><a href="../-provider/index.html">Provider</a> and <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-lazy/index.html">Lazy</a></h3><p class="paragraph">Injected dependency parameter types may be wrapped in <a href="../-provider/index.html">Provider</a> or <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-lazy/index.html">Lazy</a> and Metro will enforce these contracts in its generated code.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">@Inject<br>class HttpClient(<br>  // A Cache instance will be lazily provided each time Provider.invoke() is called<br>  providedCache: Provider&lt;Cache&gt;,<br>  // A lazily-computed Cache instance will be created whenever Lazy.value is called<br>  lazyCache: Lazy&lt;Cache&gt;,<br>)</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><p class="paragraph"><strong>Note:</strong> The contract of <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-lazy/index.html">Lazy</a> is that it will <i>only</i> be lazy to the scope of the class. To make a dependency a singleton within a given graph, you must use a <a href="../-scope/index.html">Scope</a> like <a href="../-single-in/index.html">SingleIn</a>.</p><h3 class="">Compiler-generated Factories</h3><p class="paragraph">To fully support reuse and code de-duplication in modularized codebases or libraries, you <i>must</i> run the Metro compiler over any injected class during its compilation.</p><h2 class="">Assisted Injection</h2><p class="paragraph">See <a href="../-assisted-inject/index.html">@AssistedInject</a>.</p><h2 class="">Member Injection</h2><p class="paragraph">If for some reason you cannot constructor-inject a class, you can also use <i>member injection</i> to inject properties and functions. An example use case for this is a class instantiated by a framework that you don't control, such as an Android <code class="lang-kotlin">Activity</code> on older versions of Android.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">class HomeActivity {<br>  @Inject lateinit var httpClient: HttpClient<br><br>  @Inject fun setHttpClient(httpClient: HttpClient)<br>}</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><p class="paragraph">To perform injection on these classes, you must define an <i>injector</i> function on the dependency graph that injects them. The structure of this function is it must have exactly one parameter whose type is the class with injected members or a subclass of it (more on that lower down).</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">@DependencyGraph<br>interface AppGraph {<br>  fun inject(activity: HomeActivity)<br>}</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><p class="paragraph">Metro will generate code to inject these members when this function is called.</p><p class="paragraph">Alternatively, a <a href="../-members-injector/index.html">MembersInjector</a> instance typed to the injected class can be requested from the DI graph and called ad-hoc.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">@DependencyGraph<br>interface AppGraph {<br>  val homeActivityInjector: MembersInjector&lt;HomeActivity&gt;<br>}</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><p class="paragraph"><strong>Notes</strong></p><ul><li><p class="paragraph">Only <i>classes</i> may have member injections. Interfaces, objects, enums, and annotations may not.</p></li><li><p class="paragraph">The same behaviors apply regarding use of <a href="../-provider/index.html">Provider</a>, <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-lazy/index.html">Lazy</a>, and <a href="../-qualifier/index.html">qualifiers</a>.</p></li><li><p class="paragraph">Injected members may (and likely should!) also be <code class="lang-kotlin">private</code>.</p></li></ul><p class="paragraph">In non-final classes, subclasses with member injections will automatically also perform member injection on superclass members (in order of oldest -&gt; newest class hierarchy order).</p><p class="paragraph">Member injection <i>may</i> be used in combination with constructor injection. In this scenario, Metro will instantiate the class via its injected constructor and then immediately perform member injection post-construction.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">@Inject<br>class HttpClient(cache: Cache) {<br>  @Inject fun setSocketFactory(factory: SocketFactory)<br>}</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><p class="paragraph"><strong>Note:</strong>: This is primarily for superclass and function injection though, Metro will emit a compiler warning on injected declared properties to nudge you toward moving them to the injected constructor.</p><h2 class="">Top-Level Function Injection</h2><p class="paragraph">Metro supports top-level function injection behind an opt-in compiler option. This is particularly useful for applications that run from a <code class="lang-kotlin">main</code> function or Composable functions.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">@Inject<br>fun App(settings: Settings) {<br>  // Run app with injected Settings<br>}</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><p class="paragraph">Metro will generate a wrapper class with the name <code class="lang-kotlin">{function name}Class</code> that you can access from a dependency graph and invoke.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">@DependencyGraph<br>interface AppGraph {<br>  // Available accessor<br>  val app: AppClass<br>}<br><br>fun main() {<br>  val app = createGraph&lt;AppGraph&gt;().app<br>  app()<br>}<br><br>// Generated by Metro at compile-time<br>class AppClass @Inject constructor(private val settings: Settings) {<br>  operator fun invoke() = App(settings)<br>}</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><p class="paragraph">If you have any assisted parameters, simply annotate them with <a href="../-assisted/index.html">@Assisted</a> and Metro will add these to the generated <code class="lang-kotlin">invoke</code> function.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">@Inject<br>fun App(settings: Settings, @Assisted theme: Theme) {<br>  // Run app with injected settings and theme<br>}<br><br>fun main() {<br>  val app = createGraph&lt;AppGraph&gt;().app<br>  app(Theme.Dark)<br>}</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><h3 class=""><code class="lang-kotlin">suspend</code></h3><p class="paragraph">If your function is a <code class="lang-kotlin">suspend</code> function, that modifier will be mirrored in the generated <code class="lang-kotlin">invoke</code> function.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">@Inject<br>suspend fun App(settings: Settings) {<br>  // Run app with injected settings and theme<br>}<br><br>suspend fun main() {<br>  val app = createGraph&lt;AppGraph&gt;().app<br>  app() // &lt;-- ⚡︎ suspend call ⚡︎<br>}</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><h3 class="">Compose</h3><p class="paragraph">If your function is annotated with <code class="lang-kotlin">@Composable</code> from Jetpack Compose, that annotation will be mirrored in the generated <code class="lang-kotlin">invoke</code> function.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">@Inject<br>@Composable<br>fun App(settings: Settings) {<br>  // Run compose app with injected settings and theme<br>}<br><br>suspend fun main() {<br>  val app = createGraph&lt;AppGraph&gt;().app<br>  app() // &lt;-- composable call<br>}</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><p class="paragraph">In this case, the generated <code class="lang-kotlin">AppClass</code> will also be annotated with <code class="lang-kotlin">@Stable</code> for stability.</p><h3 class="">Why opt-in?</h3><p class="paragraph">There are three reasons this is behind an opt-in option at the moment.</p><ol><li><p class="paragraph">Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not     currently compatible with incremental compilation on the JVM.</p></li><li><p class="paragraph">Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not     currently compatible with non-JVM targets.</p></li><li><p class="paragraph">IDE support is rudimentary at best and currently requires enabling a custom registry flag.</p></li></ol><p class="paragraph">Because of this, it's likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.</p><div class="sample-container"><pre><code class="block lang-kotlin" theme="idea">metro {<br>  enableTopLevelFunctionInjection.set(true)<br>}</code></pre><span class="copy-tooltip"><div class="copy-popup-wrapper popup-to-left"><span class="copy-popup-icon"></span><span>Content copied to clipboard</span></div><span class="copy-icon"></span></span></div><h4 class="tableheader">See also</h4><div class="table"><div class="table-row table-row_content" data-filterable-current=":runtime/commonMain" data-filterable-set=":runtime/commonMain"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div></div></span></div><div><div class="title"><p class="paragraph"><a href="https://zacsweers.github.io/metro/latest/installation/#ide-support">Docs for how to enable IDE support</a></p></div></div></div></div></div></div></div>
+  </div>
+  <div class="tabbedcontent">
+    <div class="tabs-section" tabs-section="tabs-section"></div>
+    <div class="tabs-section-body"></div>
+  </div>
+</div>
+    <div class="footer">
+        <div class="footer--container">
+            <a href="#content" id="go-to-top-link" class="footer--button footer--button_go-to-top"></a>
+            <div class="footer--content">
+                <div>
+                    <span>Generated by </span>
+                    <a class="footer--link footer--link_external" href="https://github.com/Kotlin/dokka">
+                        Dokka
+                    </a>
+                    <div>© 2026 Copyright</div>
+                </div>
+            </div>
+        </div>
+    </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
