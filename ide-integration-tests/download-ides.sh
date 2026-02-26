@@ -113,6 +113,9 @@ get_as_download_info() {
   local target_path="$AS_CACHE_DIR/$filename"
 
   if [[ -f "$target_path" ]] && ! $FORCE_DOWNLOAD; then
+    # Touch to refresh mtime — IDE Starter's HttpClient.downloadIfMissing considers
+    # files older than 24h stale and re-downloads (with a URL that 404s for preview builds).
+    touch "$target_path"
     return 1
   fi
 
@@ -152,6 +155,8 @@ get_iu_download_info() {
   local target_path="$IU_CACHE_DIR/$filename"
 
   if [[ -f "$target_path" ]] && ! $FORCE_DOWNLOAD; then
+    # Touch to refresh mtime — IDE Starter considers files older than 24h stale.
+    touch "$target_path"
     return 1
   fi
 
