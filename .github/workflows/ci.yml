@@ -75,7 +75,7 @@ jobs:
 
       - name: (Fail-only) Upload reports
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: reports-core-${{ matrix.kotlin-compiler }}
           path: |
@@ -113,7 +113,7 @@ jobs:
 
       - name: (Fail-only) Upload reports
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: reports-samples
           path: |
@@ -166,7 +166,7 @@ jobs:
 
       - name: (Fail-only) Upload reports
         if: failure() && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: reports-multiplatform-${{ matrix.os }}
           path: |
@@ -202,7 +202,7 @@ jobs:
 
       - name: (Fail-only) Upload reports
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: reports-benchmarks
           path: |
