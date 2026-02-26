@@ -321,7 +321,7 @@ jobs:
             })
 
       - name: Upload results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: startup-benchmark-results
           path: |
@@ -541,7 +541,7 @@ jobs:
             })
 
       - name: Upload results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: build-benchmark-results
           path: |
@@ -575,13 +575,13 @@ jobs:
           fetch-depth: 1
 
       - name: Download startup benchmark results
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: startup-benchmark-results
           path: /tmp/startup-results
 
       - name: Download build benchmark results
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: build-benchmark-results
           path: /tmp/build-results

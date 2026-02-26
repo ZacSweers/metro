@@ -65,7 +65,7 @@ jobs:
         run: ./gradlew :installForFunctionalTest --quiet
 
       - name: Upload Metro artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: metro-repo
           path: build/functionalTestRepo
@@ -89,7 +89,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Download Metro artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: metro-repo
           path: build/functionalTestRepo
@@ -127,7 +127,7 @@ jobs:
 
       - name: Upload logs
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ide-logs-${{ env.IDE_SLUG }}
           path: |
