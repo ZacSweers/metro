@@ -25,8 +25,8 @@ Changelog
 
 Special thanks to the following contributors for contributing to this release!
 
-- [@JonasAtAmo](https://github.com/JonasAtAmo)
 - [@hrach](https://github.com/hrach)
+- [@JonasAtAmo](https://github.com/JonasAtAmo)
 - [@segunfamisa](https://github.com/segunfamisa)
 
 0.11.0
