@@ -1,0 +1,5 @@
+/AdhocGraphExtensionFactoriesAreNotSupported.kt:(587,601): error: Ad-hoc graph extension factories are not supported in Metro. Use `@GraphExtension.Factory` instead.
+
+/AdhocGraphExtensionFactoriesAreNotSupported.kt:(775,781): error: Ad-hoc graph extension factories are not supported in Metro. Use `@GraphExtension.Factory` instead.
+
+/AdhocGraphExtensionFactoriesAreNotSupported.kt:(850,859): error: Ad-hoc graph extension factories are not supported in Metro. Use `@GraphExtension.Factory` instead.

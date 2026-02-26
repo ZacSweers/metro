@@ -85,6 +85,7 @@ import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.renderer.ConeIdRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
+import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
@@ -97,6 +98,7 @@ import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.processAllCallables
 import org.jetbrains.kotlin.fir.scopes.processAllClassifiers
+import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousObjectSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
@@ -1356,6 +1358,20 @@ internal fun NestedClassGenerationContext.nestedClasses(): List<FirRegularClassS
       collected += symbol
     }
   }
+  return collected
+}
+
+context(context: CheckerContext)
+internal fun FirClassSymbol<*>.callableSymbols(): List<FirCallableSymbol<*>> {
+  val collected = mutableListOf<FirCallableSymbol<*>>()
+  val scope =
+    unsubstitutedScope(
+      context.session,
+      ScopeSession(),
+      withForcedTypeCalculator = false,
+      memberRequiredPhase = null,
+    )
+  scope.processAllCallables { collected += it }
   return collected
 }
 

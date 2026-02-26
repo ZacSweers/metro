@@ -385,6 +385,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestDataPath("$PROJECT_ROOT")
     public class Extensions {
       @Test
+      @TestMetadata("AdhocGraphExtensionFactoriesAreNotSupported.kt")
+      public void testAdhocGraphExtensionFactoriesAreNotSupported() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/AdhocGraphExtensionFactoriesAreNotSupported.kt");
+      }
+
+      @Test
       public void testAllFilesPresentInExtensions() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
