@@ -155,5 +155,4 @@ fun KotlinMultiplatformExtension.configureOrCreateNativePlatforms() {
 
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
-  jvmArgs("-Xss1m") // Because the JVM is really sensitive to use of ReentrantLock
 }

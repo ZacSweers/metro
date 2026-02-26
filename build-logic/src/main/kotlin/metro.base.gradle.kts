@@ -4,6 +4,7 @@ import com.vanniktech.maven.publish.DeploymentValidation
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.gradle.kotlin.dsl.withType
 import org.jetbrains.dokka.gradle.DokkaExtension
 import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
@@ -11,6 +12,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
+import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
@@ -39,13 +41,21 @@ pluginManager.withPlugin("java") {
   }
 }
 
-// Suppress native access warnings in forked JVMs (Java 22+)
+// Suppress native access warnings and ReservedStackAccess warnings in forked JVMs
 tasks.withType<Test>().configureEach {
-  jvmArgs("--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow")
+  jvmArgs(
+    "--enable-native-access=ALL-UNNAMED",
+    "--sun-misc-unsafe-memory-access=allow",
+    "-XX:StackReservedPages=0",
+  )
 }
 
 tasks.withType<JavaExec>().configureEach {
-  jvmArgs("--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow")
+  jvmArgs(
+    "--enable-native-access=ALL-UNNAMED",
+    "--sun-misc-unsafe-memory-access=allow",
+    "-XX:StackReservedPages=0",
+  )
 }
 
 // Kotlin configuration
@@ -83,6 +93,15 @@ plugins.withType<KotlinBasePlugin> {
           }
         }
       }
+    }
+  }
+}
+
+pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
+  // Suppress "WASI is an experimental feature" Node.js warnings
+  tasks.withType<KotlinJsTest>().configureEach {
+    if (name.contains("wasmWasi", ignoreCase = true)) {
+      nodeJsArgs += "--no-warnings"
     }
   }
 }
