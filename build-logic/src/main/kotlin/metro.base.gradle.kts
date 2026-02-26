@@ -46,7 +46,7 @@ tasks.withType<Test>().configureEach {
   jvmArgs(
     "--enable-native-access=ALL-UNNAMED",
     "--sun-misc-unsafe-memory-access=allow",
-    "-XX:-StackReservedPages",
+    "-XX:StackReservedPages=0",
   )
 }
 
@@ -54,7 +54,7 @@ tasks.withType<JavaExec>().configureEach {
   jvmArgs(
     "--enable-native-access=ALL-UNNAMED",
     "--sun-misc-unsafe-memory-access=allow",
-    "-XX:-StackReservedPages",
+    "-XX:StackReservedPages=0",
   )
 }
 
