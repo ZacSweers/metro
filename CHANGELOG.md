@@ -9,6 +9,7 @@ Changelog
 ### Enhancements
 
 - **[FIR]**: Report adhoc graph extension factories as these are unsupported in Metro (but apparently supported in Dagger!)
+- **[IR]**: Report warning diagnostics for unused synthetic multibindings, as it's often a sign that the user accidentally bound them to the wrong supertype.
 
 ### Fixes
 
