@@ -4,6 +4,22 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+### Enhancements
+
+- **[FIR]**: Report adhoc graph extension factories as these are unsupported in Metro (but apparently supported in Dagger!)
+
+### Fixes
+
+### Changes
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@jonapoul](https://github.com/jonapoul)
+
 0.11.1
 ------
 
