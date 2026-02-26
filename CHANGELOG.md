@@ -4,9 +4,40 @@ Changelog
 **Unreleased**
 --------------
 
+0.11.1
+------
+
+_2026-02-25_
+
+### Enhancements
+
+- **[Runtime]**: Give unique `outputModuleName` names to all JS/wasm artifacts.
+- **[IR]**: Improve context hint for unreadable IR declarations when reporting errors.
+
+### Fixes
+
+- **[Runtime]**: Only propagate the minimum supported stdlib version (`2.2.20`) in runtime artifacts for JVM and native. Web artifacts unfortunately must target `2.3.0` since that's what Metro compiles against (star [KT-84582](https://youtrack.jetbrains.com/issue/KT-84582/coreLibrariesVersion-isnt-really-compatible-with-JS-or-WASM)).
+- **[FIR]**: Don't run `BindingContainerCallableChecker` and `MultibindsChecker` diagnostics on value parameters.
+- **[FIR]**: Fix parsing of enum arguments in qualifier annotations. We made a previous change for `0.11.0` to better handle top-level constants but this solution accidentally regressed enum constants support.
+- **[IR]**: Fix root graph accessors with `@OptionalBinding` accidentally reporting missing bindings.
+- **[IC]**: Workaround a kotlinc IC issue when `generateAssistedFactories` is enabled.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@hrach](https://github.com/hrach)
+- [@JonasAtAmo](https://github.com/JonasAtAmo)
+- [@segunfamisa](https://github.com/segunfamisa)
+
+0.11.0
+------
+
+_2026-02-25_
+
 ### New
 
-Metro now has an informal proposal system inspired by Kotlin KEEPs called MEEPs! Notably, the `P` in MEEP stands for _proposal_, not _process_. It's an informal system still, but seeking to broaden community input on newer, splashier features and changes to Metro going forward.
+Metro now has an informal proposal system inspired by Kotlin KEEPs called [MEEPs](https://github.com/ZacSweers/metro/discussions/categories/meeps)! Importantly, the `P` in MEEP stands for _proposal_, not _process_. It's an informal system for myself and future maintainers to seek broader community input on newer, splashier features and changes to Metro going forward.
 
 #### [**[MEEP-1826]**](https://github.com/ZacSweers/metro/discussions/1826) `@Assisted` parameters now rely on matching parameter names.
 
@@ -162,7 +193,7 @@ Now, Metro runs in a single pass. Most of Metro's core transformations are run i
 - **[IR]**: Fix directly providing a scoped `Map` instance not getting reused at injection sites.
 - **[IR]**: Fix graph extensions not being able to replace `@Binds`-provided bindings from parent graphs.
 - **[IR]**: Fix dynamic binding containers not being propagated to graph extensions in some cases.
-- **[IC]**: Fix an IC edge cases where generated assisted factory impl classes sometimes missed changes to injected constructor parameters in the target class.
+- **[IC]**: Fix an IC edge case where generated assisted factory impl classes sometimes missed changes to injected constructor parameters in the target class.
 - **[FIR/IR/Reports]**: Restructure reports to use hierarchical nesting instead of top-level concatenated names. This fixes 'file name too long' exceptions when generating reports for deeply nested graphs. For example, the report file `reports/keys-populated-test_Graph_ChildGraph.txt` will now be generated as `reports/keys-populated/test/Graph/ChildGraph.txt`
 - **[IR/Sharding]**: Fix an issue where assisted inject classes are skipped while computing shard dependencies, which causes a failure while generating graph property accessors.
 - **[IR/Sharding/Reports]**: Fix an edge case where assisted inject classes are not on the graph but are still included in list of bindings to be validated for sharding diagnostics.
@@ -190,6 +221,7 @@ Now, Metro runs in a single pass. Most of Metro's core transformations are run i
 Special thanks to the following contributors for contributing to this release!
 
 - [@Egorand](https://github.com/Egorand)
+- [@heorhiipopov](https://github.com/heorhiipopov)
 - [@JoelWilcox](https://github.com/JoelWilcox)
 - [@inorichi](https://github.com/inorichi)
 - [@japplin](https://github.com/japplin)

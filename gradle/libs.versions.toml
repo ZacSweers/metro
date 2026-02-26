@@ -31,8 +31,9 @@ jvmTarget = "11"
 compilerJvmTarget = "11"
 kct = "0.12.1"
 kotlin = "2.3.0"
+kotlinPublished = "2.2.20"
 kotlinInject = "0.9.0"
-metro = "0.10.4"
+metro = "0.11.1"
 metro-runtime-languageVersion = "2.2"
 kotlinInject-anvil = "0.1.7"
 kotlinx-benchmark = "0.4.16"
@@ -100,7 +101,7 @@ androidx-test-uiautomator = "androidx.test.uiautomator:uiautomator:2.3.0"
 androidx-benchmark-macro = "androidx.benchmark:benchmark-macro-junit4:1.4.1"
 androidx-benchmark-micro = "androidx.benchmark:benchmark-junit4:1.4.1"
 androidx-profileinstaller = "androidx.profileinstaller:profileinstaller:1.4.1"
-androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha01"
+androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha02"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
@@ -154,6 +155,7 @@ kotlin-gradlePlugin-api = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin-
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 kotlin-scriptRuntime = { module = "org.jetbrains.kotlin:kotlin-script-runtime", version.ref = "kotlin" }
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlin-stdlib-published = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlinPublished" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin" }
 

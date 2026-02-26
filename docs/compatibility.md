@@ -58,6 +58,7 @@ The following Kotlin versions are tested via CI:
 |-----------------|
 | 2.4.0-dev-539   |
 | 2.3.20-dev-5706 |
+| 2.3.20-RC       |
 | 2.3.20-Beta2    |
 | 2.3.20-Beta1    |
 | 2.3.10          |
@@ -74,9 +75,9 @@ The following Kotlin versions are tested via CI:
 
 The following IDE versions are tested via IDE integration tests:
 
-| IntelliJ IDEA | Android Studio            |
-|---------------|---------------------------|
-| 2025.3.2      | 2025.3.1.6 (Panda 1 RC 1) |
+| IntelliJ IDEA | Android Studio               |
+|---------------|------------------------------|
+| 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1) |
 
 ## Runtime Compatibility
 

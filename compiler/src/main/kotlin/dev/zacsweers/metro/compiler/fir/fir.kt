@@ -80,7 +80,7 @@ import org.jetbrains.kotlin.fir.extensions.QualifierPartBuilder
 import org.jetbrains.kotlin.fir.java.FirCliSession
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
-import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
+import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.renderer.ConeIdRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
@@ -393,9 +393,12 @@ private fun renderAnnotationArgument(
           }
         }
     }
-    // Enum entry reference or const val reference
+
+    // Enum entry reference or const val reference.
+    // Use toResolvedCallableSymbol() (not toResolvedPropertySymbol()) because
+    // enum entries are FirEnumEntrySymbol, not FirPropertySymbol.
     is FirPropertyAccessExpression -> {
-      arg.calleeReference.toResolvedPropertySymbol()?.callableId
+      arg.calleeReference.toResolvedCallableSymbol()?.callableId
     }
 
     is FirFunctionCall -> {

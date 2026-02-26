@@ -12,6 +12,10 @@ import dev.zacsweers.metro.gradle.resolveSafe
 import java.io.File
 import org.intellij.lang.annotations.Language
 
+private const val GRADLE_DEBUG_ARGS = "-Dorg.gradle.debug=true"
+private const val KOTLIN_DEBUG_ARGS =
+  """-Dkotlin.daemon.jvm.options="-agentlib:jdwp=transport=dt_socket\,server=n\,suspend=y\,address=5005""""
+
 abstract class BaseIncrementalCompilationTest {
 
   protected val GradleProject.asMetroProject: MetroGradleProject
@@ -185,21 +189,49 @@ abstract class BaseIncrementalCompilationTest {
     rootDir.resolve(filePath).writeText(content)
   }
 
-  protected fun GradleProject.compileKotlin(task: String = "compileKotlin") =
-    compileKotlin(rootDir, task)
+  protected fun GradleProject.compileKotlin(
+    task: String = "compileKotlin",
+    debug: Boolean = false,
+    vararg args: String,
+  ) = compileKotlin(rootDir, task, debug, *args)
 
-  protected fun GradleProject.compileKotlinAndFail(task: String = "compileKotlin") =
-    compileKotlinAndFail(rootDir, task)
+  protected fun GradleProject.compileKotlinAndFail(
+    task: String = "compileKotlin",
+    debug: Boolean = false,
+    vararg args: String,
+  ) = compileKotlinAndFail(rootDir, task, debug, *args)
 
   protected fun compileKotlin(
     projectDir: File,
     task: String = "compileKotlin",
+    enableDebugger: Boolean = false,
     vararg args: String,
-  ) = build(projectDir, *listOf(task, "--quiet", *args).toTypedArray())
+  ) = build(projectDir, *buildArgs(task, enableDebugger, quiet = true, *args))
 
   protected fun compileKotlinAndFail(
     projectDir: File,
     task: String = "compileKotlin",
+    enableDebugger: Boolean = false,
     vararg args: String,
-  ) = buildAndFail(projectDir, *listOf(task, "--quiet", *args).toTypedArray())
+  ) = buildAndFail(projectDir, *buildArgs(task, enableDebugger, quiet = true, *args))
+
+  private fun buildArgs(
+    task: String,
+    enableDebugger: Boolean,
+    quiet: Boolean,
+    vararg args: String,
+  ): Array<String> {
+    return buildList {
+        add(task)
+        if (enableDebugger) {
+          add(GRADLE_DEBUG_ARGS)
+          add(KOTLIN_DEBUG_ARGS)
+        }
+        if (quiet) {
+          add("--quiet")
+        }
+        addAll(args)
+      }
+      .toTypedArray()
+  }
 }

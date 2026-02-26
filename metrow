@@ -91,7 +91,7 @@ case "$1" in
            fi
 
            echo "Publishing version $version locally..."
-           ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" --rerun-tasks
+           ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" -PRELEASE_SIGNING_ENABLED=false --rerun-tasks
        else
            echo "Publishing version $version..."
            ./gradlew publish -x dokkaGeneratePublicationHtml

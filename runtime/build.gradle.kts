@@ -1,5 +1,6 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JsModuleKind.MODULE_UMD
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -41,6 +42,7 @@ plugins {
 kotlin {
   jvm()
   js(IR) {
+    outputModuleName = "metro-runtime-js"
     compilations.configureEach {
       compileTaskProvider.configure {
         compilerOptions {
@@ -56,6 +58,7 @@ kotlin {
 
   @OptIn(ExperimentalWasmDsl::class)
   wasmJs {
+    outputModuleName = "metro-runtime-wasmjs"
     binaries.executable()
     browser {}
   }
@@ -68,19 +71,19 @@ kotlin {
 
   configureOrCreateNativePlatforms()
 
-  @Suppress("OPT_IN_USAGE")
+  @OptIn(ExperimentalKotlinGradlePluginApi::class)
   applyDefaultHierarchyTemplate {
     common {
       group("wasm") {
         withWasmJs()
         withWasmWasi()
       }
-      group("nonConcurrent") {
+      group("web") {
         withJs()
         withWasmJs()
         withWasmWasi()
       }
-      group("concurrentTest") {
+      group("nonWeb") {
         withJvm()
         withNative()
       }
@@ -88,6 +91,13 @@ kotlin {
   }
 
   sourceSets {
+    commonMain { dependencies { api(libs.kotlin.stdlib.published) } }
+    webMain {
+      dependencies {
+        // https://youtrack.jetbrains.com/issue/KT-84582
+        api(libs.kotlin.stdlib)
+      }
+    }
     commonTest {
       dependencies {
         implementation(libs.kotlin.test)
@@ -95,9 +105,6 @@ kotlin {
         implementation(libs.coroutines.test)
       }
     }
-    val concurrentTest by creating { dependsOn(commonTest.get()) }
-    jvmTest { dependsOn(concurrentTest) }
-    nativeTest { dependsOn(concurrentTest) }
   }
 
   compilerOptions { freeCompilerArgs.add("-Xexpect-actual-classes") }

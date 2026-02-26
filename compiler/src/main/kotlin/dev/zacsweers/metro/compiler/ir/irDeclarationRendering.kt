@@ -60,10 +60,20 @@ internal fun IrDeclaration.humanReadableDiagnosticMetadata(): DiagnosticMetadata
 
   // Add more metadata to the error if it's generated metro code
   parentClassOrNull?.let { parentClass ->
+    val parent = parentClass.parent
+
+    if (parent !is IrClass) {
+      metadata +=
+        "Parent declaration of '${parent.kotlinFqName}' is not readable. " +
+          "This may be a sign that it is used but not in the compile classpath." +
+          "\n\nKotlin-like dump:\n${dumpKotlinLike()}"
+      return@let
+    }
+
     if (hasAnnotation(Symbols.ClassIds.CallableMetadata)) {
       // It's a Binds callable. ParentClass is a BindsMirror
       // Get the original binding container, which may be a generated metro contribution
-      val originalContainer = parentClass.parentAsClass
+      val originalContainer = parent
       if (originalContainer.hasAnnotation(Symbols.ClassIds.metroContribution)) {
         // If it's a `@MetroContribution`, get the original contributing class
         val origin = originalContainer.parentAsClass
@@ -76,12 +86,12 @@ internal fun IrDeclaration.humanReadableDiagnosticMetadata(): DiagnosticMetadata
       }
     } else if (parentClass.hasAnnotation(Symbols.ClassIds.metroContribution)) {
       // If this is just a generic contribution (i.e. `@ContributesTo`)
-      val origin = parentClass.parentAsClass
+      val origin = parent
       metadata +=
         "This is Metro-generated code that contributes '${origin.kotlinFqName}' (where the problem is) to ${parentClass.getAnnotation(Symbols.ClassIds.metroContribution.asSingleFqName())!!.scopeOrNull()!!.shortClassName}."
     } else if (parentClass.hasAnnotation(Symbols.ClassIds.CallableMetadata)) {
       // It's a provider factory. ParentClass is a provider mirror
-      addCallableMetadata(parentClass, parentClass.parentAsClass)
+      addCallableMetadata(parentClass, parent)
     }
   }
 
