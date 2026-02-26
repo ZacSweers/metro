@@ -42,6 +42,10 @@ This allows some dynamism with keys but has some downsides. A few different reas
 
 No.
 
+### **I'm seeing a `ReservedStackAccess` stack overflow warning from the JVM at runtime?**
+
+This is a spurious JVM warning related to `ReentrantLock` (used internally by Metro's `DoubleCheck` for scoped bindings). It is not an actual stack overflow and can be safely ignored. You can suppress it by increasing the thread stack size with (i.e., `-Xss1m`) in your JVM args.
+
 ## Dagger/Hilt FAQ
 
 ### **In Dagger I could make declarations `internal` and it worked, why doesn't that work in Metro?**

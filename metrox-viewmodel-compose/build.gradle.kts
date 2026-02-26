@@ -1,5 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JsModuleKind.MODULE_UMD
 
@@ -13,6 +14,7 @@ plugins {
 kotlin {
   jvm()
   js(IR) {
+    outputModuleName = "metrox-viewmodel-compose-js"
     compilations.configureEach {
       compileTaskProvider.configure {
         compilerOptions {
@@ -28,6 +30,7 @@ kotlin {
 
   @OptIn(ExperimentalWasmDsl::class)
   wasmJs {
+    outputModuleName = "metrox-viewmodel-compose-wasmjs"
     binaries.executable()
     browser {}
   }
@@ -39,11 +42,33 @@ kotlin {
   macosArm64()
   macosX64()
 
+  @OptIn(ExperimentalKotlinGradlePluginApi::class)
+  applyDefaultHierarchyTemplate {
+    common {
+      group("web") {
+        withJs()
+        withWasmJs()
+        withWasmWasi()
+      }
+      group("nonWeb") {
+        withJvm()
+        withNative()
+      }
+    }
+  }
+
   sourceSets {
     commonMain {
       dependencies {
         api(project(":metrox-viewmodel"))
+        api(libs.kotlin.stdlib.published)
         api(libs.jetbrains.lifecycle.viewmodel.compose)
+      }
+    }
+    webMain {
+      dependencies {
+        // https://youtrack.jetbrains.com/issue/KT-84582
+        api(libs.kotlin.stdlib)
       }
     }
     commonTest { dependencies { api(libs.compose.ui.test) } }

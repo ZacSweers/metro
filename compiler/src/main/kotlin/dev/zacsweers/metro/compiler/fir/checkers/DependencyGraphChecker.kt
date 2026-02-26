@@ -11,9 +11,9 @@ import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
 import dev.zacsweers.metro.compiler.fir.allAnnotations
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.callableSymbols
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
-import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
@@ -31,8 +31,10 @@ import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
+import org.jetbrains.kotlin.fir.FirExpectActualMatchingContext
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -45,12 +47,14 @@ import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
 import org.jetbrains.kotlin.fir.dispatchReceiverClassTypeOrNull
+import org.jetbrains.kotlin.fir.expectActualMatchingContextFactory
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
@@ -169,8 +173,14 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     val implementedGraphExtensionCreators =
       graphExtensionFactorySupertypes.values.mapToSet { it.classId }
 
-    // Note this doesn't check inherited supertypes. Maybe we should, but where do we report errors?
-    for (callable in declaration.symbol.directCallableSymbols()) {
+    val matchingContext =
+      context.session.expectActualMatchingContextFactory.create(
+        context.session,
+        context.scopeSession,
+        allowedWritingMemberExpectForActualMapping = true,
+      )
+
+    for (callable in declaration.symbol.callableSymbols()) {
       val annotations =
         callable.metroAnnotations(
           session,
@@ -189,6 +199,11 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       val isBindsOrProvides = annotations.isBinds || annotations.isProvides
       if (isBindsOrProvides) continue
 
+      val isInherited =
+        declaration.symbol.let {
+          it is FirRegularClassSymbol && callable.isFakeOverride(it, matchingContext)
+        }
+
       // Check graph extensions
       val returnType = callable.resolvedReturnTypeRef.coneType
 
@@ -199,6 +214,49 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           session,
           classIds.graphExtensionFactoryAnnotations,
         ) == true
+
+      // Check for ad-hoc graph extension factories (functions with parameters returning a
+      // graph extension that are not overrides from @GraphExtension.Factory classes).
+      // This check applies to both directly declared and inherited callables.
+      val isGraphExtension =
+        returnTypeClassSymbol?.isAnnotatedWithAny(session, classIds.graphExtensionAnnotations) ==
+          true
+
+      if (
+        isGraphExtension &&
+          callable is FirNamedFunctionSymbol &&
+          callable.valueParameterSymbols.isNotEmpty() &&
+          callable.rawStatus.modality == Modality.ABSTRACT
+      ) {
+        // Check that it's not from a @GraphExtension.Factory-annotated class.
+        val isFromFactory =
+          if (isInherited) {
+            // For fake overrides, the symbol points to the original declaration,
+            // so we can check the callable's containing class directly.
+            callable
+              .dispatchReceiverClassTypeOrNull()
+              ?.toClassSymbolCompat(session)
+              ?.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations) == true
+          } else {
+            callable.isOverride &&
+              callable.directOverriddenSymbolsSafe().any { overriddenSymbol ->
+                overriddenSymbol
+                  .dispatchReceiverClassTypeOrNull()
+                  ?.toClassSymbolCompat(session)
+                  ?.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations) == true
+              }
+          }
+        if (!isFromFactory) {
+          reporter.reportOn(
+            if (isInherited) declaration.source else callable.source,
+            MetroDiagnostics.ADHOC_GRAPH_EXTENSION_FACTORY,
+          )
+        }
+        continue
+      }
+
+      // For all other checks, only process directly declared callables
+      if (isInherited) continue
 
       if (isGraphExtensionCreator) {
         val graphExtensionClass =
@@ -252,13 +310,11 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         }
       }
 
-      val isGraphExtension =
-        returnTypeClassSymbol?.isAnnotatedWithAny(session, classIds.graphExtensionAnnotations) ==
-          true
       when {
         isGraphExtension -> {
-          // Check if that extension has a creator. If so, we either must implement that creator or
-          // it's an error because they need to use it
+          // Functions with parameters are already handled above as ad-hoc factories.
+          // Check if that extension has a creator. If so, we either must implement that creator
+          // or it's an error because they need to use it.
           val creator =
             returnTypeClassSymbol.nestedClasses().firstOrNull { nestedClass ->
               nestedClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
@@ -297,16 +353,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
                 MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
                 "Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.",
               )
-            }
-
-            callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty() -> {
-              callable.valueParameterSymbols.forEach { parameter ->
-                reporter.reportOn(
-                  parameter.source,
-                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-                  "Graph extension accessors may not have parameters. Use `@GraphExtension.Factory` instead.",
-                )
-              }
             }
           }
         }
@@ -502,5 +548,12 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         "@OptionalBinding accessors must have a default body.",
       )
     }
+  }
+
+  private fun FirCallableSymbol<*>.isFakeOverride(
+    containingClass: FirRegularClassSymbol,
+    matchingContext: FirExpectActualMatchingContext,
+  ): Boolean {
+    return with(matchingContext) { this@isFakeOverride.isFakeOverride(containingClass) }
   }
 }

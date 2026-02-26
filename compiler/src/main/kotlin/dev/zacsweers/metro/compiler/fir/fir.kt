@@ -80,11 +80,12 @@ import org.jetbrains.kotlin.fir.extensions.QualifierPartBuilder
 import org.jetbrains.kotlin.fir.java.FirCliSession
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
-import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
+import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.renderer.ConeIdRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
+import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
@@ -97,6 +98,7 @@ import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.processAllCallables
 import org.jetbrains.kotlin.fir.scopes.processAllClassifiers
+import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousObjectSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
@@ -391,9 +393,12 @@ private fun renderAnnotationArgument(
           }
         }
     }
-    // Enum entry reference or const val reference
+
+    // Enum entry reference or const val reference.
+    // Use toResolvedCallableSymbol() (not toResolvedPropertySymbol()) because
+    // enum entries are FirEnumEntrySymbol, not FirPropertySymbol.
     is FirPropertyAccessExpression -> {
-      arg.calleeReference.toResolvedPropertySymbol()?.callableId
+      arg.calleeReference.toResolvedCallableSymbol()?.callableId
     }
 
     is FirFunctionCall -> {
@@ -1353,6 +1358,20 @@ internal fun NestedClassGenerationContext.nestedClasses(): List<FirRegularClassS
       collected += symbol
     }
   }
+  return collected
+}
+
+context(context: CheckerContext)
+internal fun FirClassSymbol<*>.callableSymbols(): List<FirCallableSymbol<*>> {
+  val collected = mutableListOf<FirCallableSymbol<*>>()
+  val scope =
+    unsubstitutedScope(
+      context.session,
+      ScopeSession(),
+      withForcedTypeCalculator = false,
+      memberRequiredPhase = null,
+    )
+  scope.processAllCallables { collected += it }
   return collected
 }
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ADHOC_GRAPH_EXTENSION_FACTORY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AGGREGATION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
@@ -113,6 +114,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   // DependencyGraph errors
   val DEPENDENCY_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val SCOPED_GRAPH_ACCESSOR by error0<KtElement>(NAME_IDENTIFIER)
+  val ADHOC_GRAPH_EXTENSION_FACTORY by error0<KtElement>(NAME_IDENTIFIER)
   val SUSPICIOUS_MEMBER_INJECT_FUNCTION by warning1<KtElement, String>(NAME_IDENTIFIER)
   val UNUSED_GRAPH_INPUT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val UNUSED_GRAPH_INPUT_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -228,6 +230,10 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(
           SCOPED_GRAPH_ACCESSOR,
           "Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?",
+        )
+        put(
+          ADHOC_GRAPH_EXTENSION_FACTORY,
+          "Ad-hoc graph extension factories are not supported in Metro. Use `@GraphExtension.Factory` instead.",
         )
         put(SUSPICIOUS_MEMBER_INJECT_FUNCTION, "{0}", STRING)
         put(UNUSED_GRAPH_INPUT_ERROR, "{0}", STRING)
