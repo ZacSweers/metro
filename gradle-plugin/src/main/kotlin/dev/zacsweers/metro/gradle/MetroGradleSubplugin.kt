@@ -402,6 +402,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
                 extension.interop.enableDaggerRuntimeInterop.getOrElse(false).toString(),
               )
             )
+            add(lazyOption("enable-kclass-to-class-interop", extension.enableKClassToClassInterop))
           }
 
           with(extension.interop) {
