@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772152795161,
+  "lastUpdate": 1772228221506,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -7672,6 +7672,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22382212823576197,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -1.60%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d438b2f8~1",
+          "message": "[before] Fix FIR factory gen using wrong owner (#1924)",
+          "timestamp": "2026-02-27T20:55:31Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d438b2f8535d002afc330d6c19830c70dd60545a"
+        },
+        "date": 1772228221506,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23207996282068208,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d438b2f8535d002afc330d6c19830c70dd60545a",
+          "message": "[after] Fix FIR factory gen using wrong owner (#1924)",
+          "timestamp": "2026-02-27T20:55:31Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d438b2f8535d002afc330d6c19830c70dd60545a"
+        },
+        "date": 1772228221507,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22677486852737966,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -2.29%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

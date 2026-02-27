@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772152795296,
+  "lastUpdate": 1772228221642,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -7672,6 +7672,62 @@ window.BENCHMARK_DATA = {
             "value": 30784.332000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.45%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d438b2f8~1",
+          "message": "[before] Fix FIR factory gen using wrong owner (#1924)",
+          "timestamp": "2026-02-27T20:55:31Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d438b2f8535d002afc330d6c19830c70dd60545a"
+        },
+        "date": 1772228221642,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31241.836,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d438b2f8535d002afc330d6c19830c70dd60545a",
+          "message": "[after] Fix FIR factory gen using wrong owner (#1924)",
+          "timestamp": "2026-02-27T20:55:31Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d438b2f8535d002afc330d6c19830c70dd60545a"
+        },
+        "date": 1772228221643,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 28916.048,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -7.44%"
           }
         ]
       }
