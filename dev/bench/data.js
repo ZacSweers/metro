@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772228221506,
+  "lastUpdate": 1772228559552,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -7728,6 +7728,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22677486852737966,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -2.29%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "ba653c1f~1",
+          "message": "[before] Update Gradle to v9.4.0-rc-2 (#1922)",
+          "timestamp": "2026-02-27T20:55:13Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/ba653c1f716a6e90bfcbc8dd77b3f3a3173aaa4f"
+        },
+        "date": 1772228559552,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2429666860949387,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "ba653c1f716a6e90bfcbc8dd77b3f3a3173aaa4f",
+          "message": "[after] Update Gradle to v9.4.0-rc-2 (#1922)",
+          "timestamp": "2026-02-27T20:55:13Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/ba653c1f716a6e90bfcbc8dd77b3f3a3173aaa4f"
+        },
+        "date": 1772228559553,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.24166088839461902,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.54%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
