@@ -45,6 +45,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getEnableFullBindingGraphValidation ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableGraphImplClassAsReturnType ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableGraphSharding ()Lorg/gradle/api/provider/Property;
+	public final fun getEnableKClassToClassMapKeyInterop ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableKotlinVersionCompatibilityChecks ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableSwitchingProviders ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableTopLevelFunctionInjection ()Lorg/gradle/api/provider/Property;

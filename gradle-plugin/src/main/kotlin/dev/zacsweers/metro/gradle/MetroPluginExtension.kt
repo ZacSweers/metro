@@ -448,14 +448,17 @@ constructor(
   /**
    * Enable/disable [kotlin.reflect.KClass]/[Class] interop for multibinding map keys. When enabled,
    * `java.lang.Class` and `kotlin.reflect.KClass` are treated as interchangeable in map key types,
-   * matching Kotlin's own annotation compilation behavior.
+   * matching Kotlin's own annotation compilation behavior. This only applies to map keys because
+   * these are the only scenario where annotation arguments are materialized into non-annotation
+   * code (i.e. `@ClassKey(Foo::class) -> Map<Class<*>, V>`).
    *
    * Disabled by default because this is purely for annotations interop and potentially comes at
-   * some runtime overhead cost to interop since KClass types are still used under the hood and must
-   * be mapped in some cases.
+   * some runtime overhead cost to interop since `KClass` types are still used under the hood and
+   * must be mapped in some cases. It's recommended to migrate these to `KClass` and call `.java`
+   * where necessary if possible.
    */
-  public val enableKClassToClassInterop: Property<Boolean> =
-    objects.booleanProperty("metro.enableKClassToClassInterop", false)
+  public val enableKClassToClassMapKeyInterop: Property<Boolean> =
+    objects.booleanProperty("metro.enableKClassToClassMapKeyInterop", false)
 
   /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
