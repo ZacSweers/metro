@@ -123,4 +123,5 @@ internal fun mapKeyType(mapKey: IrAnnotation): IrType {
       mapKey.ir.type
     }
     .removeAnnotations()
+    .normalizeToKClassIfJavaClass()
 }

@@ -253,6 +253,10 @@ internal class Symbols(
       ?.symbol
   }
 
+  val mapEntryClassSymbol: IrClassSymbol by lazy {
+    pluginContext.referenceClass(StandardClassIds.MapEntry)!!
+  }
+
   /** `kotlin.collections.mapKeys` extension function for Map. */
   val mapKeysFunction: IrSimpleFunctionSymbol by lazy {
     pluginContext
