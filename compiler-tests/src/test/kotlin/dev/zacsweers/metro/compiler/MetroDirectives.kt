@@ -90,6 +90,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val PARALLEL_THREADS by
     valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
   val ENABLE_FUNCTION_PROVIDERS by directive("Enable () -> T as a provider type.")
+  val ENABLE_KCLASS_TO_CLASS_INTEROP by
+    directive("Enable KClass/Class interop for multibinding map keys.")
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

@@ -139,6 +139,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         }
         contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
         enableFunctionProviders = MetroDirectives.ENABLE_FUNCTION_PROVIDERS in module.directives
+        enableKClassToClassInterop =
+          MetroDirectives.ENABLE_KCLASS_TO_CLASS_INTEROP in module.directives
 
         // Configure interop annotations using builder helper methods
         if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
