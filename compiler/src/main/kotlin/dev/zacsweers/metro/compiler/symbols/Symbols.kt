@@ -137,6 +137,7 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
     val HasMemberInjections = ClassId(FqNames.metroRuntimePackage, "HasMemberInjections".asName())
     val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
+    val JavaLangClass = ClassId(FqName("java.lang"), "Class".asName())
     val JvmField = ClassId(FqName("kotlin.jvm"), "JvmField".asName())
     val Lazy = StandardClassIds.byName("Lazy")
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
