@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772228559674,
+  "lastUpdate": 1772231353198,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -7784,6 +7784,62 @@ window.BENCHMARK_DATA = {
             "value": 30617.003999999997,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -4.20%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e85c9157~1",
+          "message": "[before] Add KClass/Class interop for map keys (#1926)",
+          "timestamp": "2026-02-27T16:48:50-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e85c915783e9e5eaa9e405194c1f4878a16853a9"
+        },
+        "date": 1772231353198,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 33387.45,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e85c915783e9e5eaa9e405194c1f4878a16853a9",
+          "message": "[after] Add KClass/Class interop for map keys (#1926)",
+          "timestamp": "2026-02-27T16:48:50-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e85c915783e9e5eaa9e405194c1f4878a16853a9"
+        },
+        "date": 1772231353199,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31940.03,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -4.34%"
           }
         ]
       }
