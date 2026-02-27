@@ -347,6 +347,12 @@ abstract class MetroCompilerTest {
               ENABLE_FUNCTION_PROVIDERS -> {
                 processor.option(entry.raw.cliOption, enableFunctionProviders)
               }
+              ENABLE_KCLASS_TO_CLASS_INTEROP -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.enableKClassToClassInterop,
+                )
+              }
             }
           yield(option)
         }

@@ -131,10 +131,14 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
             } else {
               // Keys can only be const-able or annotation classes
               keyTypeArg.type?.let { keyType ->
+                val isJavaClassType =
+                  session.metroFirBuiltIns.options.enableKClassToClassInterop &&
+                    keyType.classLikeLookupTagIfAny?.classId == Symbols.ClassIds.JavaLangClass
                 if (
                   keyType.isPrimitive ||
                     keyType.isString ||
                     keyType.isKClassType() ||
+                    isJavaClassType ||
                     keyType.toClassSymbolCompat(session)?.isEnumClass == true
                 ) {
                   // ok

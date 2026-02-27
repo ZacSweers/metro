@@ -137,6 +137,7 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
     val HasMemberInjections = ClassId(FqNames.metroRuntimePackage, "HasMemberInjections".asName())
     val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
+    val JavaLangClass = ClassId(FqName("java.lang"), "Class".asName())
     val JvmField = ClassId(FqName("kotlin.jvm"), "JvmField".asName())
     val Lazy = StandardClassIds.byName("Lazy")
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
@@ -240,6 +241,38 @@ internal class Symbols(
   }
   private val stdlibCollections: IrPackageFragment by lazy {
     moduleFragment.createPackage(kotlinCollectionsPackageFqn.asString())
+  }
+
+  /** Getter for the `kotlin.jvm.java` extension property on `KClass<T>` -> `Class<T>`. */
+  val kClassJavaPropertyGetter: IrSimpleFunctionSymbol? by lazy {
+    pluginContext
+      .referenceProperties(CallableId(FqName("kotlin.jvm"), "java".asName()))
+      .firstOrNull()
+      ?.owner
+      ?.getter
+      ?.symbol
+  }
+
+  val mapEntryClassSymbol: IrClassSymbol by lazy {
+    pluginContext.referenceClass(StandardClassIds.MapEntry)!!
+  }
+
+  /** `kotlin.collections.mapKeys` extension function for Map. */
+  val mapKeysFunction: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(kotlinCollectionsPackageFqn, "mapKeys".asName()))
+      .first()
+  }
+
+  /** Getter for the `key` property on `Map.Entry`. */
+  val mapEntryKeyGetter: IrSimpleFunctionSymbol by lazy {
+    val mapEntryClassId = StandardClassIds.Map.createNestedClassId("Entry".asName())
+    pluginContext
+      .referenceProperties(CallableId(mapEntryClassId, "key".asName()))
+      .first()
+      .owner
+      .getter!!
+      .symbol
   }
 
   val metroFrameworkSymbols = MetroFrameworkSymbols(metroRuntimeInternal, pluginContext)

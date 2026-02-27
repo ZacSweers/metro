@@ -869,6 +869,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  ENABLE_KCLASS_TO_CLASS_INTEROP(
+    RawMetroOption.boolean(
+      name = "enable-kclass-to-class-interop",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable KClass/Class interop for multibinding map keys. When enabled, java.lang.Class and kotlin.reflect.KClass are treated as interchangeable in map key types.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -1040,6 +1051,8 @@ public data class MetroOptions(
   public val parallelThreads: Int = MetroOption.PARALLEL_THREADS.raw.defaultValue.expectAs(),
   public val enableFunctionProviders: Boolean =
     MetroOption.ENABLE_FUNCTION_PROVIDERS.raw.defaultValue.expectAs(),
+  public val enableKClassToClassInterop: Boolean =
+    MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1161,6 +1174,7 @@ public data class MetroOptions(
     public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
     public var parallelThreads: Int = base.parallelThreads
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
+    public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1342,6 +1356,7 @@ public data class MetroOptions(
         compilerVersionAliases = compilerVersionAliases,
         parallelThreads = parallelThreads,
         enableFunctionProviders = enableFunctionProviders,
+        enableKClassToClassInterop = enableKClassToClassInterop,
       )
     }
 
@@ -1589,6 +1604,8 @@ public data class MetroOptions(
           }
           PARALLEL_THREADS -> parallelThreads = configuration.getAsInt(entry)
           ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = configuration.getAsBoolean(entry)
+          ENABLE_KCLASS_TO_CLASS_INTEROP ->
+            enableKClassToClassInterop = configuration.getAsBoolean(entry)
         }
       }
     }

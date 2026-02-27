@@ -2035,6 +2035,40 @@ public class BoxTestGenerated extends AbstractBoxTest {
         runTest("compiler-tests/src/test/data/box/interop/guice/InjectedKotlinLazyFromGuiceProviderWorks.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/kclass")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Kclass {
+      @Test
+      public void testAllFilesPresentInKclass() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/kclass"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("ClassMapKeyInterop.kt")
+      public void testClassMapKeyInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/kclass/ClassMapKeyInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("ClassMapKeyProviderInterop.kt")
+      public void testClassMapKeyProviderInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/kclass/ClassMapKeyProviderInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("KClassMapKeyInterop.kt")
+      public void testKClassMapKeyInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/kclass/KClassMapKeyInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("MixedClassKClassMapKeyInterop.kt")
+      public void testMixedClassKClassMapKeyInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/kclass/MixedClassKClassMapKeyInterop.kt");
+      }
+    }
   }
 
   @Nested

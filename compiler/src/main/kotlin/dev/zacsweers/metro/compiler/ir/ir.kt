@@ -136,6 +136,7 @@ import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.mergeNullability
 import org.jetbrains.kotlin.ir.types.removeAnnotations
+import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
@@ -630,10 +631,16 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   isGraphInstance: Boolean,
 ): IrExpression {
   val symbols = context.metroSymbols
-  val irType = bindingCode.type
+
+  // If KClass/Class interop is enabled and the consumer declared Map<Class<*>, V>,
+  // convert the canonical Map<KClass<*>, V> to Map<Class<*>, V> via `mapKeys { it.key.java }`
+  val convertedBindingCode = maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
+
+  val irType = convertedBindingCode.type
+
   if (!irType.implementsLazyType() && !irType.implementsProviderType()) {
     // Not a provider, nothing else to do here!
-    return bindingCode
+    return convertedBindingCode
   }
 
   val providerTypeConverter = symbols.providerTypeConverter
@@ -662,7 +669,9 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
             valueParameters = emptyList(),
             returnType = lazyType,
           ) {
-            +irReturn(with(providerTypeConverter) { bindingCode.convertTo(lazyContextKey) })
+            +irReturn(
+              with(providerTypeConverter) { convertedBindingCode.convertTo(lazyContextKey) }
+            )
           }
         } else {
           // ProviderOfLazy.create(provider) returns Provider<Lazy<T>>
@@ -671,14 +680,14 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
             dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
             callee = symbols.providerOfLazyCreate,
             typeArgs = listOf(contextKey.typeKey.type),
-            args = listOf(bindingCode),
+            args = listOf(convertedBindingCode),
             typeHint =
               contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
           )
         }
       }
 
-      else -> with(providerTypeConverter) { bindingCode.convertTo(contextKey) }
+      else -> with(providerTypeConverter) { convertedBindingCode.convertTo(contextKey) }
     }
 
   // Determine whether we need to invoke the provider to get the value.
@@ -704,6 +713,114 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
     )
   } else {
     metroProviderExpression
+  }
+}
+
+/**
+ * If KClass/Class interop is enabled and the consumer declared `Map<Class<*>, V>`, converts a
+ * `Map<KClass<*>, V>` expression to `Map<Class<*>, V>` via `mapKeys { it.key.java }`.
+ */
+context(context: IrMetroContext, scope: IrBuilderWithScope)
+private fun maybeConvertMapKeysToJavaClass(
+  bindingCode: IrExpression,
+  contextKey: IrContextualTypeKey,
+): IrExpression {
+  if (!context.options.enableKClassToClassInterop) return bindingCode
+
+  // Check if the consumer's raw type is a Map with Class<*> keys
+  val rawType = contextKey.rawType ?: return bindingCode
+  val rawTypeClassId = rawType.rawTypeOrNull()?.classId ?: return bindingCode
+  if (rawTypeClassId != StandardClassIds.Map) return bindingCode
+  if (rawType !is IrSimpleType) {
+    reportCompilerBug("Map type unexpectedly not an IrSimpleType: ${rawType.dumpKotlinLike()}")
+  }
+  if (rawType.arguments.size != 2) {
+    reportCompilerBug(
+      "Map type unexpectedly doesn't have two type args: ${rawType.dumpKotlinLike()}"
+    )
+  }
+
+  val keyType = rawType.arguments[0].typeOrFail
+  val rawKeyClassId = keyType.rawType().classId
+  if (rawKeyClassId != Symbols.ClassIds.JavaLangClass) return bindingCode
+
+  // The consumer declared Map<Class<*>, V>, convert map keys from KClass to Class
+  return convertClassMapToKClassMap(keyType, bindingCode)
+}
+
+context(context: IrMetroContext, scope: IrBuilderWithScope)
+private fun convertClassMapToKClassMap(keyType: IrType, bindingCode: IrExpression): IrExpression {
+  val mapKeysFunction = context.metroSymbols.mapKeysFunction
+  val mapEntryKeyGetter = context.metroSymbols.mapEntryKeyGetter
+  val kClassJavaGetter =
+    context.metroSymbols.kClassJavaPropertyGetter
+      ?: reportCompilerBug(
+        "KClass.java property getter not found but enableKClassClassInterop is enabled"
+      )
+
+  // Extract types from the binding's canonical map type: Map<KClass<*>, V>
+  val mapType = bindingCode.type.requireSimpleType()
+  val kclassKeyType = mapType.arguments[0]
+  val valueType = mapType.arguments[1]
+
+  // Build Map.Entry<KClass<*>, V> type for the lambda parameter
+  val entryType =
+    context.metroSymbols.mapEntryClassSymbol.typeWithArguments(listOf(kclassKeyType, valueType))
+
+  // Lambda: { entry -> entry.key.java }
+  val lambda =
+    irLambda(
+      parent = scope.parent,
+      receiverParameter = null,
+      valueParameters = listOf(entryType),
+      returnType = keyType,
+    ) { function ->
+      // entry.key.java
+      +irReturn(
+        irInvoke(
+          extensionReceiver =
+            // entry.key
+            irInvoke(
+              // entry
+              dispatchReceiver = irGet(function.regularParameters[0]),
+              callee = mapEntryKeyGetter,
+              typeHint = kclassKeyType.typeOrNullableAny,
+            ),
+          // key.java
+          callee = kClassJavaGetter,
+          typeHint = keyType,
+          typeArgs =
+            listOf(kclassKeyType.typeOrFail.requireSimpleType().arguments[0].typeOrNullableAny),
+        )
+      )
+    }
+
+  // map.mapKeys(lambda) —> mapKeys<K, V, R>(transform)
+  val resultType = context.irBuiltIns.mapClass.typeWithArguments(listOf(keyType, valueType))
+  return scope.irInvoke(
+    extensionReceiver = bindingCode,
+    callee = mapKeysFunction,
+    typeArgs = listOf(kclassKeyType.typeOrNullableAny, valueType.typeOrNullableAny, keyType),
+    args = listOf(lambda),
+    typeHint = resultType,
+  )
+}
+
+/**
+ * Normalizes `java.lang.Class<T>` -> `kotlin.reflect.KClass<T>` in a map key type. This ensures
+ * that `@ClassKey` annotations compiled from Kotlin (which use `KClass` in source but `Class` in
+ * bytecode) produce the same binding IDs regardless of whether the consumer sees `Class` or
+ * `KClass`.
+ */
+context(context: IrMetroContext)
+internal fun IrType.normalizeToKClassIfJavaClass(): IrType {
+  if (!context.options.enableKClassToClassInterop) return this
+  val simpleType = this as? IrSimpleType ?: return this
+  val classSymbol = simpleType.classifierOrNull as? IrClassSymbol ?: return this
+  return if (classSymbol.owner.classId == Symbols.ClassIds.JavaLangClass) {
+    context.irBuiltIns.kClassClass.typeWithArguments(simpleType.arguments).mergeNullability(this)
+  } else {
+    this
   }
 }
 
