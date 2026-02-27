@@ -81,6 +81,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
     callableId: CallableId,
     context: MemberGenerationContext?,
   ): List<FirNamedFunctionSymbol> {
+    val owner = context?.owner ?: return emptyList()
     createIdsToFactories[callableId]?.let { factoryClass ->
       assistedFactoriesToClasses[factoryClass]?.let { targetClass ->
         assistedInjectClasses[targetClass]?.let { constructor ->
@@ -95,7 +96,8 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
               }
               MetroFirValueParameter(session, param)
             }
-          val createFunction = generateCreateFunction(assistedParams, targetClass, callableId)
+          val createFunction =
+            generateCreateFunction(owner, assistedParams, targetClass, callableId)
           return listOf(createFunction.symbol as FirNamedFunctionSymbol)
         }
       }
@@ -104,12 +106,13 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
   }
 
   private fun FirDeclarationGenerationExtension.generateCreateFunction(
+    owner: FirClassLikeSymbol<*>,
     assistedParams: List<MetroFirValueParameter>,
     targetClass: FirClassLikeSymbol<*>,
     callableId: CallableId,
   ): FirFunction {
     return generateMemberFunction(
-      owner = targetClass,
+      owner = owner,
       returnTypeRef = targetClass.constructType().toFirResolvedTypeRef(),
       modality = Modality.ABSTRACT,
       callableId = callableId,
