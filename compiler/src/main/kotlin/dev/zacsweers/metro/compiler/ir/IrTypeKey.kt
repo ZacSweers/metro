@@ -68,9 +68,22 @@ private constructor(
     multibindingKeyData: MultibindingKeyData? = this.multibindingKeyData,
   ): IrTypeKey = IrTypeKey(type, qualifier, multibindingKeyData)
 
-  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
+  override fun render(short: Boolean, includeQualifier: Boolean): String =
+    renderForDiagnostic(short, includeQualifier, false)
+
+  fun renderForDiagnostic(
+    short: Boolean,
+    includeQualifier: Boolean = true,
+    useOriginalQualifier: Boolean = includeQualifier,
+  ): String = buildString {
     if (includeQualifier) {
-      qualifier?.let {
+      var qualifierToRender = qualifier
+      if (useOriginalQualifier) {
+        // When rendering qualifiers, render the original qualifier rather than the synthetic
+        // MultibindingElement qualifier if one is present
+        multibindingKeyData?.multibindingTypeKey?.let { qualifierToRender = it.qualifier }
+      }
+      qualifierToRender?.let {
         append(it.render(short))
         append(" ")
       }

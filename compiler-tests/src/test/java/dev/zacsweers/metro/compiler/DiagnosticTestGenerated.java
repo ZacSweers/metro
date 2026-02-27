@@ -929,6 +929,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testMapKeyDiagnostics() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/MapKeyDiagnostics.kt");
     }
+
+    @Test
+    @TestMetadata("SuspiciousUnusedMultibinding.kt")
+    public void testSuspiciousUnusedMultibinding() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/SuspiciousUnusedMultibinding.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspiciousUnusedMultibindingSet.kt")
+    public void testSuspiciousUnusedMultibindingSet() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/SuspiciousUnusedMultibindingSet.kt");
+    }
   }
 
   @Nested

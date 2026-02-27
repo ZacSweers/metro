@@ -206,7 +206,13 @@ private fun StringBuilder.renderForDiagnosticImpl(
 
     if (parameters.contextParameters.isNotEmpty()) {
       parameters.contextParameters.joinTo(this, ", ", prefix = "context(", postfix = ")\n") {
-        it.name.asString() + ": " + it.typeKey.render(short = short)
+        it.name.asString() +
+          ": " +
+          it.typeKey.renderForDiagnostic(
+            short = short,
+            includeQualifier = true,
+            useOriginalQualifier = true,
+          )
       }
     }
   }
@@ -231,7 +237,13 @@ private fun StringBuilder.renderForDiagnosticImpl(
       append(qualifier.render(short = short, "receiver"))
       append(' ')
     }
-    append(it.typeKey.render(short = short))
+    append(
+      it.typeKey.renderForDiagnostic(
+        short = short,
+        includeQualifier = true,
+        useOriginalQualifier = true,
+      )
+    )
     if (format.isCall) {
       // Put the receiver in parens for context
       append(')')
@@ -254,7 +266,13 @@ private fun StringBuilder.renderForDiagnosticImpl(
     }
   if (paramsToDisplay.isNotEmpty()) {
     paramsToDisplay.joinTo(this, ", ", prefix = "(", postfix = ")\n") {
-      it.name.asString() + ": " + it.typeKey.render(short = short, includeQualifier = true)
+      it.name.asString() +
+        ": " +
+        it.typeKey.renderForDiagnostic(
+          short = short,
+          includeQualifier = true,
+          useOriginalQualifier = true,
+        )
     }
   } else if (!isProperty) {
     append("()")
@@ -262,7 +280,12 @@ private fun StringBuilder.renderForDiagnosticImpl(
 
   if (typeKey != null && !(declaration is IrFunction && type.isUnit())) {
     append(": ")
-    val returnTypeString = typeKey.render(short = short, includeQualifier = false)
+    val returnTypeString =
+      typeKey.renderForDiagnostic(
+        short = short,
+        includeQualifier = false,
+        useOriginalQualifier = true,
+      )
     if (underlineTypeKey) {
       appendLineWithUnderlinedContent(returnTypeString)
     } else {
