@@ -45,7 +45,7 @@ ktor = "3.4.0"
 okhttp = "5.3.2"
 okio = "3.16.4"
 pluginId = "dev.zacsweers.metro.compiler"
-poko = "0.21.1"
+poko = "0.21.2"
 wire = "5.5.0"
 
 [plugins]
@@ -74,7 +74,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
-shadow = { id = "com.gradleup.shadow", version = "9.2.2" }
+shadow = { id = "com.gradleup.shadow", version = "9.3.1" }
 spotless = { id = "com.diffplug.spotless", version = "8.2.1" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.17" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }

@@ -33,4 +33,5 @@
 # Android Studio Panda 1 | 2025.3.1 Canary 5 (canary)
 # Android Studio Panda 2 | 2025.3.2 RC 1 (beta)
 # Android Studio Panda 3 | 2025.3.3 Canary 1 (canary)
+# Android Studio Panda 3 | 2025.3.3 Canary 2 (canary)
 2.3.255-dev-255=2.3.0-dev-9992
