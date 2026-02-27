@@ -449,6 +449,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributesSingletonGraphIntoGraphExtension.kt")
+    public void testContributesSingletonGraphIntoGraphExtension() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributesSingletonGraphIntoGraphExtension.kt");
+    }
+
+    @Test
     @TestMetadata("ContributingMultipleGraphsToSameParent.kt")
     public void testContributingMultipleGraphsToSameParent() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributingMultipleGraphsToSameParent.kt");

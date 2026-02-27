@@ -16,6 +16,7 @@ This is disabled by default (even if other framework interops like `includeDagge
 
 - **[FIR]**: Report adhoc graph extension factories as these are unsupported in Metro (but apparently supported in Dagger!)
 - **[IR]**: Report warning diagnostics for unused synthetic multibindings, as it's often a sign that the user accidentally bound them to the wrong supertype.
+- **[IR]**: Fix a code gen bug where `@Provides` graph parameters wouldn't correctly be used by scoped bindings directly held in that graph.
 
 ### Fixes
 
@@ -25,6 +26,7 @@ This is disabled by default (even if other framework interops like `includeDagge
 
 Special thanks to the following contributors for contributing to this release!
 
+- [@inorichi](https://github.com/inorichi)
 - [@jonapoul](https://github.com/jonapoul)
 
 0.11.1
