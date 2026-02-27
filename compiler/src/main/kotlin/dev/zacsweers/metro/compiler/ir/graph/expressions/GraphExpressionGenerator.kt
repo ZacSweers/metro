@@ -448,8 +448,15 @@ private constructor(
                 propertyAccess.accessProperty(irGet(thisReceiver))
               }
             } else {
-              // Self-binding - graph provides itself
-              irGet(thisReceiver)
+              // Check if the property is in the local context (e.g., @Includes graph input
+              // parameters that are stored as fields)
+              val localProperty = bindingPropertyContext.get(binding.contextualTypeKey)
+              if (localProperty != null) {
+                irGetProperty(irGet(thisReceiver), localProperty.property)
+              } else {
+                // Self-binding - graph provides itself
+                irGet(thisReceiver)
+              }
             }
           when (accessType) {
             INSTANCE -> instanceExpr
