@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772231353067,
+  "lastUpdate": 1772232412836,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -7840,6 +7840,62 @@ window.BENCHMARK_DATA = {
             "value": 0.24425211842243613,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.57%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7ca9bb39~1",
+          "message": "[before] Add test to reproduce ClassCastException when usin",
+          "timestamp": "2026-02-27T22:09:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7ca9bb394a3f15a13996d7d7cbb2ebdf1e49246c"
+        },
+        "date": 1772232412836,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2321027381302944,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "inorichi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7ca9bb394a3f15a13996d7d7cbb2ebdf1e49246c",
+          "message": "[after] Add test to reproduce ClassCastException when usin",
+          "timestamp": "2026-02-27T22:09:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7ca9bb394a3f15a13996d7d7cbb2ebdf1e49246c"
+        },
+        "date": 1772232412837,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23097816203978766,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.48%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
