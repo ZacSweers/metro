@@ -15,6 +15,7 @@ This is disabled by default (even if other framework interops like `includeDagge
 ### Enhancements
 
 - **[FIR]**: Report adhoc graph extension factories as these are unsupported in Metro (but apparently supported in Dagger!)
+- **[FIR]**: Report a diagnostic error for usage of Dagger's `@LazyClassKey` as this is unsupported in Metro.
 - **[IR]**: Report warning diagnostics for unused synthetic multibindings, as it's often a sign that the user accidentally bound them to the wrong supertype.
 - **[IR]**: Fix a code gen bug where `@Provides` graph parameters wouldn't correctly be used by scoped bindings directly held in that graph.
 

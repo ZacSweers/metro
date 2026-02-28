@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
@@ -119,6 +120,14 @@ internal object BindingContainerCallableChecker :
     }
 
     val annotations = declaration.symbol.metroAnnotations(session)
+
+    // Dagger's @LazyClassKey isn't supported
+    if (declaration !is FirPropertyAccessor) {
+      annotations.lazyClassKey?.let {
+        reporter.reportOn(it.fir.source ?: source, MetroDiagnostics.DAGGER_LAZY_CLASS_KEY_ERROR)
+        return
+      }
+    }
 
     declaration.symbol.validateBindingSource(annotations)
 
