@@ -8,6 +8,7 @@
     * There is no Producers support.
     * There is no Hilt support, though some features are similar in the same way that Anvil’s features are similar.
     * There is no `@Reusable`.
+    * There is no `@LazyClassKey`.
     * There is no `@BindsOptionalOf`. Instead, Metro supports default [optional bindings](bindings.md#optional-bindings).
         * Metro does support [interop](interop.md) with Dagger's `@BindsOptionalOf` annotation.
     * Metro can inject private properties, functions, and constructors.

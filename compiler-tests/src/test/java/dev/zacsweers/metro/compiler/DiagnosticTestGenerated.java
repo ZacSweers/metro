@@ -907,6 +907,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DaggerLazyClassKeyIsUnsupported.kt")
+    public void testDaggerLazyClassKeyIsUnsupported() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/DaggerLazyClassKeyIsUnsupported.kt");
+    }
+
+    @Test
     @TestMetadata("DuplicateMapKeys.kt")
     public void testDuplicateMapKeys() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/DuplicateMapKeys.kt");

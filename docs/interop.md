@@ -55,6 +55,8 @@ metro {
   }
 }
 ```
+!!! warning
+    Dagger's special-case `@Reusable` and `@LazyClassKey` annotations are not supported in Metro.
 
 `@DependencyGraph` is replaceable but your mileage may vary if you use Anvil or modules, since Metro’s annotation unifies Anvil’s `@MergeComponent` functionality and doesn’t support modules.
 
