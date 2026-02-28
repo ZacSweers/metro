@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772232412973,
+  "lastUpdate": 1772316888192,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -7896,6 +7896,62 @@ window.BENCHMARK_DATA = {
             "value": 29322.726000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.26%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "ed645ef1~1",
+          "message": "[before] Report diagnostic for LazyClassKey (#1929)",
+          "timestamp": "2026-02-28T21:31:22Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/ed645ef1cce72fa79bbeffe96f5ff67b7ae5b2bc"
+        },
+        "date": 1772316888192,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31413.404000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "ed645ef1cce72fa79bbeffe96f5ff67b7ae5b2bc",
+          "message": "[after] Report diagnostic for LazyClassKey (#1929)",
+          "timestamp": "2026-02-28T21:31:22Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/ed645ef1cce72fa79bbeffe96f5ff67b7ae5b2bc"
+        },
+        "date": 1772316888193,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 30829.71,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.86%"
           }
         ]
       }
