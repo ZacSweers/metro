@@ -21,14 +21,14 @@ This is disabled by default (even if other framework interops like `includeDagge
     warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding kotlin.collections.Map<kotlin.reflect.KClass<*>, BaseViewModel> is unused but has 4 source binding(s). Did you possibly bind them to the wrong type?
 
       SuspiciousUnusedMultibinding.kt:36:1
-        Impl5 contributes a binding of BaseViewModel
-                                       ~~~~~~~~~~~~~
+        HomeViewmodel contributes a binding of BaseViewModel
+                                               ~~~~~~~~~~~~~
       SuspiciousUnusedMultibinding.kt:31:1
-        Impl4 contributes a binding of BaseViewModel
-                                       ~~~~~~~~~~~~~
+        AccountViewModel contributes a binding of BaseViewModel
+                                                  ~~~~~~~~~~~~~
       SuspiciousUnusedMultibinding.kt:26:1
-        Impl3 contributes a binding of BaseViewModel
-                                       ~~~~~~~~~~~~~
+        SettingsViewModel contributes a binding of BaseViewModel
+                                                   ~~~~~~~~~~~~~
       ...and 1 more
 
     Similar multibindings:
