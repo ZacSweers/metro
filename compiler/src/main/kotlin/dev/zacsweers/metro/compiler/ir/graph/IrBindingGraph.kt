@@ -302,6 +302,13 @@ internal class IrBindingGraph(
         val unusedMultibindingElements =
           unused.filterToSet { it.multibindingBindingElementId != null }
         if (unusedMultibindingElements.isNotEmpty()) {
+          val allMultibindings by memoize {
+            buildList {
+                realGraph.bindings.forEachValue { b -> if (b is IrBinding.Multibinding) add(b) }
+                addAll(bindingLookup.getAvailableMultibindings().values)
+              }
+              .distinctBy { it.typeKey }
+          }
           for ((key, binding) in bindingLookup.getAvailableMultibindings()) {
             if (binding.declaration != null) continue // Skip explicitly declared
             val unusedSources = binding.sourceBindings.intersect(unusedMultibindingElements)
@@ -327,6 +334,8 @@ internal class IrBindingGraph(
                   "  ...and ${unusedSources.size - MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT} more"
                 )
               }
+
+              appendSimilarMultibindingHints(binding, allMultibindings)
             }
 
             reportCompat(node.sourceGraph, MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING, message)
@@ -410,17 +419,7 @@ internal class IrBindingGraph(
             "If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`."
           )
 
-          val similarBindings = findSimilarMultibindings(multibinding, allMultibindings).toList()
-          if (similarBindings.isNotEmpty()) {
-            appendLine()
-            appendLine("Similar multibindings:")
-            val reported = mutableSetOf<IrTypeKey>()
-            for (key in similarBindings) {
-              if (key in reported) continue
-              appendLine("- ${key.renderForDiagnostic(short = true)}")
-              reported += key
-            }
-          }
+          appendSimilarMultibindingHints(multibinding, allMultibindings)
         }
         val declarationToReport =
           if (multibinding.declaration?.isFakeOverride == true) {
@@ -489,6 +488,23 @@ internal class IrBindingGraph(
           .map { it.typeKey }
 
       yieldAll(similar)
+    }
+  }
+
+  private fun Appendable.appendSimilarMultibindingHints(
+    multibinding: IrBinding.Multibinding,
+    allMultibindings: List<IrBinding.Multibinding>,
+  ) {
+    val similarBindings = findSimilarMultibindings(multibinding, allMultibindings).toList()
+    if (similarBindings.isNotEmpty()) {
+      appendLine()
+      appendLine("Similar multibindings:")
+      val reported = mutableSetOf<IrTypeKey>()
+      for (key in similarBindings) {
+        if (key in reported) continue
+        appendLine("- ${key.renderForDiagnostic(short = true)}")
+        reported += key
+      }
     }
   }
 

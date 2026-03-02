@@ -11,3 +11,5 @@
                                    ~~~~~~~~~~~~~
   ...and 1 more
 
+Similar multibindings:
+- Map<KClass<*>, ViewModel>

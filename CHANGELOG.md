@@ -17,6 +17,24 @@ This is disabled by default (even if other framework interops like `includeDagge
 - **[FIR]**: Report adhoc graph extension factories as these are unsupported in Metro (but apparently supported in Dagger!)
 - **[FIR]**: Report a diagnostic error for usage of Dagger's `@LazyClassKey` as this is unsupported in Metro.
 - **[IR]**: Report warning diagnostics for unused synthetic multibindings, as it's often a sign that the user accidentally bound them to the wrong supertype.
+    ```
+    warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding kotlin.collections.Map<kotlin.reflect.KClass<*>, BaseViewModel> is unused but has 4 source binding(s). Did you possibly bind them to the wrong type?
+    
+      SuspiciousUnusedMultibinding.kt:36:1
+        Impl5 contributes a binding of BaseViewModel
+                                       ~~~~~~~~~~~~~
+      SuspiciousUnusedMultibinding.kt:31:1
+        Impl4 contributes a binding of BaseViewModel
+                                       ~~~~~~~~~~~~~
+      SuspiciousUnusedMultibinding.kt:26:1
+        Impl3 contributes a binding of BaseViewModel
+                                       ~~~~~~~~~~~~~
+      ...and 1 more
+    
+    Similar multibindings:
+    - Map<KClass<*>, ViewModel>
+    ```
+- **[Gradle]**: Add IDE support docs link to `@RequiresIdeSupport` opt-in message.
 
 ### Fixes
 
