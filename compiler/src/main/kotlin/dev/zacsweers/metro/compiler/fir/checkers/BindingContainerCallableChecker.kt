@@ -47,6 +47,7 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isExtension
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirBlock
@@ -161,6 +162,27 @@ internal object BindingContainerCallableChecker :
 
     if (!annotations.isProvides && !annotations.isBinds && !annotations.isMultibinds) {
       return
+    }
+
+    // Suspend checks: @Binds and @Multibinds cannot be suspend (no body to suspend in)
+    if (declaration is FirFunction && declaration.isSuspend) {
+      if (annotations.isBinds) {
+        reporter.reportOn(
+          source,
+          MetroDiagnostics.BINDS_ERROR,
+          "@Binds declarations cannot be suspend functions — they have no body to suspend in.",
+        )
+        return
+      }
+      if (annotations.isMultibinds) {
+        reporter.reportOn(
+          source,
+          MetroDiagnostics.MULTIBINDS_ERROR,
+          "@Multibinds declarations cannot be suspend functions — they have no body to suspend in.",
+        )
+        return
+      }
+      // suspend @Provides is allowed — this is the new feature
     }
 
     declaration

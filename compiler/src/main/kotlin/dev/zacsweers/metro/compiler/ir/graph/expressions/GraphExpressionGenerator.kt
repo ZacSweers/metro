@@ -135,7 +135,11 @@ private constructor(
         bindingPropertyContext.get(contextualTypeKey)?.let { bindingProperty ->
           val (property, storedKey, shardProperty, shardIndex) = bindingProperty
           val actual =
-            if (storedKey.isWrappedInProvider) AccessType.PROVIDER else AccessType.INSTANCE
+            when {
+              storedKey.isWrappedInSuspendProvider -> AccessType.SUSPEND_PROVIDER
+              storedKey.isWrappedInProvider -> AccessType.PROVIDER
+              else -> AccessType.INSTANCE
+            }
 
           // Determine the correct receiver for property access based on shard context
           val propertyAccess = generatePropertyAccess(property, shardProperty, shardIndex)
@@ -273,11 +277,15 @@ private constructor(
 
           // Optimization: Skip factory instantiation when we don't need a provider instance.
           // This applies when accessType is INSTANCE and the providerFactory supports direct
-          // invocation
+          // invocation.
+          // For suspend bindings, always bypass the factory since factories implement Provider<T>,
+          // not SuspendProvider<T>. The suspend call must be inlined or wrapped in a
+          // SuspendProvider lambda.
           val canBypassFactory =
             providerFactory.canBypassFactory &&
               // TODO what if the return type is a Provider?
-              accessType == AccessType.INSTANCE
+              (accessType == AccessType.INSTANCE ||
+                (binding.isSuspend && accessType == AccessType.SUSPEND_PROVIDER))
 
           if (canBypassFactory) {
             val providerFunction = providerFactory.function
@@ -460,7 +468,8 @@ private constructor(
             }
           when (accessType) {
             INSTANCE -> instanceExpr
-            PROVIDER -> {
+            PROVIDER,
+            SUSPEND_PROVIDER -> {
               instanceExpr.toTargetType(
                 actual = AccessType.INSTANCE,
                 contextualTypeKey = contextualTypeKey,
@@ -681,10 +690,10 @@ private constructor(
       return params.allParameters.mapIndexed { i, param ->
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
         val accessType =
-          if (param.contextualTypeKey.requiresProviderInstance) {
-            AccessType.PROVIDER
-          } else {
-            AccessType.INSTANCE
+          when {
+            param.contextualTypeKey.isWrappedInSuspendProvider -> AccessType.SUSPEND_PROVIDER
+            param.contextualTypeKey.requiresProviderInstance -> AccessType.PROVIDER
+            else -> AccessType.INSTANCE
           }
 
         // TODO consolidate this logic with generateBindingCode
@@ -692,30 +701,40 @@ private constructor(
           // IFF the parameter can take a direct instance, try our instance fields
           bindingPropertyContext.get(contextualTypeKey)?.let { bindingProperty ->
             val (property, storedKey, shardProperty, shardIndex) = bindingProperty
-            // Only return early if we got an actual instance property, not a provider fallback
-            if (!storedKey.isWrappedInProvider) {
+            // Only return early if we got an actual instance property, not a
+            // provider/suspendProvider fallback
+            if (!storedKey.isWrappedInProvider && !storedKey.isWrappedInSuspendProvider) {
               return@mapIndexed generatePropertyAccess(property, shardProperty, shardIndex)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             }
           }
         }
 
-        // When we need a provider (accessType == PROVIDER), look up by the provider-wrapped key
+        // When we need a provider/suspendProvider, look up by the wrapped key
         // to get the provider property (e.g., longInstanceProvider) instead of the scalar property
         // (e.g., longInstance).
         val lookupKey =
-          if (accessType == AccessType.PROVIDER) contextualTypeKey.wrapInProvider()
-          else contextualTypeKey
+          when (accessType) {
+            AccessType.PROVIDER -> contextualTypeKey.wrapInProvider()
+            // SuspendProvider keys are already wrapped in the contextualTypeKey
+            AccessType.SUSPEND_PROVIDER -> contextualTypeKey
+            else -> contextualTypeKey
+          }
         val providerInstance =
           bindingPropertyContext.get(lookupKey)?.let { bindingProperty ->
             val (property, storedKey, shardProperty, shardIndex) = bindingProperty
             // If it's in provider fields, invoke that field
             val propertyAccess = generatePropertyAccess(property, shardProperty, shardIndex)
 
-            // If we wanted an instance but got a provider property, invoke it to get the instance
+            // If we wanted an instance but got a provider/suspendProvider property, invoke it
             if (accessType == AccessType.INSTANCE && storedKey.isWrappedInProvider) {
               propertyAccess.toTargetType(
                 actual = AccessType.PROVIDER,
+                contextualTypeKey = contextualTypeKey,
+              )
+            } else if (accessType == AccessType.INSTANCE && storedKey.isWrappedInSuspendProvider) {
+              propertyAccess.toTargetType(
+                actual = AccessType.SUSPEND_PROVIDER,
                 contextualTypeKey = contextualTypeKey,
               )
             } else {

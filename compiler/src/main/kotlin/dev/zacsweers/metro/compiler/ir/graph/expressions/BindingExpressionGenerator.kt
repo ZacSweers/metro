@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.parameters.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -33,14 +34,15 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
   enum class AccessType {
     INSTANCE,
     // note: maybe rename this to PROVIDER_LIKE or PROVIDER_OR_FACTORY
-    PROVIDER;
+    PROVIDER,
+    SUSPEND_PROVIDER;
 
     companion object {
       fun of(contextKey: IrContextualTypeKey): AccessType {
-        return if (contextKey.isWrappedInProvider) {
-          PROVIDER
-        } else {
-          INSTANCE
+        return when {
+          contextKey.isWrappedInSuspendProvider -> SUSPEND_PROVIDER
+          contextKey.isWrappedInProvider -> PROVIDER
+          else -> INSTANCE
         }
       }
     }
@@ -51,10 +53,10 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     binding: T,
     contextualTypeKey: IrContextualTypeKey,
     accessType: AccessType =
-      if (contextualTypeKey.requiresProviderInstance) {
-        AccessType.PROVIDER
-      } else {
-        AccessType.INSTANCE
+      when {
+        contextualTypeKey.isWrappedInSuspendProvider -> AccessType.SUSPEND_PROVIDER
+        contextualTypeKey.requiresProviderInstance -> AccessType.PROVIDER
+        else -> AccessType.INSTANCE
       },
     fieldInitKey: IrTypeKey? = null,
   ): IrExpression
@@ -83,28 +85,28 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     contextualTypeKey: IrContextualTypeKey,
     actual: AccessType = run {
       val classId = type.classOrNull?.owner?.classId
-      val isProviderType =
-        classId in metroSymbols.providerTypes || classId in metroSymbols.lazyTypes
-      if (isProviderType) {
-        AccessType.PROVIDER
-      } else {
-        AccessType.INSTANCE
+      when {
+        classId in metroSymbols.suspendProviderTypes -> AccessType.SUSPEND_PROVIDER
+        classId in metroSymbols.providerTypes || classId in metroSymbols.lazyTypes ->
+          AccessType.PROVIDER
+        else -> AccessType.INSTANCE
       }
     },
     requested: AccessType =
-      if (contextualTypeKey.requiresProviderInstance) {
-        AccessType.PROVIDER
-      } else {
-        AccessType.INSTANCE
+      when {
+        contextualTypeKey.isWrappedInSuspendProvider -> AccessType.SUSPEND_PROVIDER
+        contextualTypeKey.requiresProviderInstance -> AccessType.PROVIDER
+        else -> AccessType.INSTANCE
       },
     useInstanceFactory: Boolean = true,
     allowPropertyGetter: Boolean = false,
   ): IrExpression {
-    // Step 1: Transform access type (INSTANCE <-> PROVIDER)
+    // Step 1: Transform access type
     val accessTransformed =
       when (requested) {
         actual -> this
         PROVIDER -> {
+          check(actual == INSTANCE) { "Unsupported access type conversion: $actual -> $requested" }
           if (useInstanceFactory) {
             // actual is an instance, wrap it
             wrapInInstanceFactory(contextualTypeKey.typeKey.type, allowPropertyGetter)
@@ -112,14 +114,34 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
             scope.wrapInProviderFunction(contextualTypeKey.typeKey.type) { this@toTargetType }
           }
         }
+        SUSPEND_PROVIDER -> {
+          when (actual) {
+            INSTANCE -> {
+              // Wrap instance expression in a suspend provider lambda
+              scope.wrapInSuspendProviderFunction(contextualTypeKey.typeKey.type) {
+                this@toTargetType
+              }
+            }
+            PROVIDER -> {
+              // Unwrap provider to instance, then wrap in suspend provider
+              val instance = unwrapProvider(contextualTypeKey.typeKey.type)
+              scope.wrapInSuspendProviderFunction(contextualTypeKey.typeKey.type) { instance }
+            }
+            else -> this
+          }
+        }
         INSTANCE -> {
-          // actual is a provider but we want instance
-          unwrapProvider(contextualTypeKey.typeKey.type)
+          when (actual) {
+            PROVIDER -> unwrapProvider(contextualTypeKey.typeKey.type)
+            SUSPEND_PROVIDER -> unwrapSuspendProvider(contextualTypeKey.typeKey.type)
+            else -> this
+          }
         }
       }
 
     // Step 2: Convert provider if needed (e.g., Metro -> Dagger)
     // Only do this if we're in PROVIDER mode (or transformed to it)
+    // SuspendProvider doesn't need framework conversion (no Dagger/Javax equivalent)
     val finalAccessType = if (requested == AccessType.PROVIDER) requested else actual
     return if (finalAccessType == AccessType.PROVIDER) {
       with(scope) {
@@ -155,10 +177,38 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     )
   }
 
+  protected fun IrBuilderWithScope.wrapInSuspendProviderFunction(
+    type: IrType,
+    returnExpression: IrBlockBodyBuilder.(function: IrSimpleFunction) -> IrExpression,
+  ): IrExpression {
+    val lambda =
+      irLambda(parent = this.parent, receiverParameter = null, emptyList(), type, suspend = true) {
+        +irReturn(returnExpression(it))
+      }
+    return irInvoke(
+      dispatchReceiver = null,
+      callee = metroSymbols.metroSuspendProviderFunction,
+      typeHint = type.wrapInSuspendProvider(),
+      typeArgs = listOf(type),
+      args = listOf(lambda),
+    )
+  }
+
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.unwrapProvider(type: IrType): IrExpression {
     return with(scope) {
       irInvoke(this@unwrapProvider, callee = metroSymbols.providerInvoke, typeHint = type)
+    }
+  }
+
+  context(scope: IrBuilderWithScope)
+  protected fun IrExpression.unwrapSuspendProvider(type: IrType): IrExpression {
+    return with(scope) {
+      irInvoke(
+        this@unwrapSuspendProvider,
+        callee = metroSymbols.suspendProviderInvoke,
+        typeHint = type,
+      )
     }
   }
 }

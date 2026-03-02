@@ -1,0 +1,3 @@
+/SuspendBindingWrappedInProvider.kt:(179,358): error: [Metro/SuspendBindingFromNonSuspendAccessor] Accessor '<get-value>' must be a suspend function because it transitively depends on suspend binding(s).
+
+/SuspendBindingWrappedInProvider.kt:(255,265): error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use SuspendProvider instead.

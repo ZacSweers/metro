@@ -75,6 +75,13 @@ internal class IrBindingGraph(
 ) : IrMetroContext by metroContext {
   private var hasErrors = false
 
+  /**
+   * Set of type keys whose bindings transitively require a suspend context. Computed during
+   * [validateSuspendBindings] and used during code generation.
+   */
+  internal var requiresSuspendContext: Set<IrTypeKey> = emptySet()
+    private set
+
   private var _bindingLookup: BindingLookup? = bindingLookup
     set(value) {
       if (value == null) {
@@ -774,6 +781,105 @@ internal class IrBindingGraph(
       validateMultibindings(binding, bindings, roots, adjacency.forward)
       validateAssistedInjection(binding, bindings, rootsByTypeKey, adjacency.reverse)
     }
+    validateSuspendBindings(bindings, roots, adjacency)
+  }
+
+  /**
+   * Validates suspend binding propagation through the dependency graph.
+   *
+   * Suspension is contagious: if binding B is provided by a `suspend fun`, then any binding A that
+   * depends on B also requires a suspend context — unless A wraps B in a `SuspendProvider<T>`,
+   * which defers the suspend call.
+   */
+  private fun validateSuspendBindings(
+    bindings: ScatterMap<IrTypeKey, IrBinding>,
+    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
+    adjacency: GraphAdjacency<IrTypeKey>,
+  ) {
+    // Step 1: Compute the set of type keys that transitively require a suspend context
+    val suspendSet = mutableSetOf<IrTypeKey>()
+
+    // Seed with directly suspend bindings
+    bindings.forEachValue { binding ->
+      if (binding.isSuspend) {
+        suspendSet.add(binding.typeKey)
+      }
+    }
+
+    // If no suspend bindings, nothing to validate
+    if (suspendSet.isEmpty()) {
+      requiresSuspendContext = emptySet()
+      return
+    }
+
+    // Propagate suspend requirement through the dependency graph
+    // Walk the reverse adjacency: for each binding that depends on a suspend binding,
+    // if the dependency is NOT wrapped in SuspendProvider, the binding also requires suspend
+    var changed = true
+    while (changed) {
+      changed = false
+      bindings.forEachValue { binding ->
+        if (binding.typeKey in suspendSet) return@forEachValue // Already marked
+
+        for (dep in binding.dependencies) {
+          if (dep.typeKey in suspendSet && !dep.isWrappedInSuspendProvider) {
+            suspendSet.add(binding.typeKey)
+            changed = true
+            break
+          }
+        }
+      }
+    }
+
+    requiresSuspendContext = suspendSet
+
+    // Step 2: Validate accessors
+    for ((contextKey, _) in roots) {
+      val accessor = node.accessors.find { it.contextKey.typeKey == contextKey.typeKey } ?: continue
+      val accessorIsSuspend = accessor.metroFunction.ir.isSuspend
+      val requiresSuspend = contextKey.typeKey in suspendSet
+
+      if (requiresSuspend && !accessorIsSuspend && !contextKey.isWrappedInSuspendProvider) {
+        val message = buildString {
+          append(
+            "[Metro/SuspendBindingFromNonSuspendAccessor] Accessor '${accessor.metroFunction.ir.name}' must be a suspend function because it transitively depends on suspend binding(s)."
+          )
+        }
+        reportError(accessor.metroFunction.ir, message)
+      }
+    }
+
+    // Step 3: Validate wrapping conflicts — Provider<T>/Lazy<T> wrapping a suspend binding
+    bindings.forEachValue { binding ->
+      for (dep in binding.dependencies) {
+        if (dep.typeKey !in suspendSet) continue
+
+        if (dep.isWrappedInProvider) {
+          val message = buildString {
+            append(
+              "[Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding '${dep.typeKey.render(short = true)}' via Provider. Use SuspendProvider instead."
+            )
+          }
+          val element = binding.reportableDeclaration ?: continue
+          reportError(element, message)
+        }
+
+        if (dep.isWrappedInLazy) {
+          val message = buildString {
+            append(
+              "[Metro/SuspendBindingWrappedInLazy] Cannot depend on suspend binding '${dep.typeKey.render(short = true)}' via Lazy."
+            )
+          }
+          val element = binding.reportableDeclaration ?: continue
+          reportError(element, message)
+        }
+      }
+    }
+  }
+
+  private fun reportError(element: IrDeclarationWithName, message: String) {
+    hasErrors = true
+    metroContext.reportCompat(element, MetroDiagnostics.METRO_ERROR, message)
   }
 
   // Check scoping compatibility

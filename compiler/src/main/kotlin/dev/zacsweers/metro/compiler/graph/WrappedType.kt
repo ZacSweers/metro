@@ -70,6 +70,36 @@ internal sealed interface WrappedType<T : Any> {
     override fun toString() = cachedToString
   }
 
+  /** A type wrapped in a SuspendProvider. */
+  class SuspendProvider<T : Any>(val innerType: WrappedType<T>, val providerType: ClassId) :
+    WrappedType<T> {
+    private val cachedHashCode by memoize {
+      var result = innerType.hashCode()
+      result = 31 * result + providerType.hashCode()
+      result
+    }
+
+    private val cachedToString by memoize { "${providerType.asFqNameString()}<$innerType>" }
+
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+
+      other as SuspendProvider<*>
+
+      if (cachedHashCode != other.cachedHashCode) return false
+
+      if (innerType != other.innerType) return false
+      if (providerType != other.providerType) return false
+
+      return true
+    }
+
+    override fun hashCode() = cachedHashCode
+
+    override fun toString() = cachedToString
+  }
+
   /** A type wrapped in a Lazy. */
   class Lazy<T : Any>(val innerType: WrappedType<T>, val lazyType: ClassId) : WrappedType<T> {
     private val cachedHashCode by memoize {
@@ -134,15 +164,17 @@ internal sealed interface WrappedType<T : Any> {
     when (this) {
       is Canonical -> type
       is Provider -> innerType.canonicalType()
+      is SuspendProvider -> innerType.canonicalType()
       is Lazy -> innerType.canonicalType()
       is Map -> type()
     }
 
-  /** Returns true if this type is wrapped in a Provider or Lazy at any level. */
+  /** Returns true if this type is wrapped in a Provider, SuspendProvider, or Lazy at any level. */
   fun isDeferrable(): Boolean =
     when (this) {
       is Canonical -> false
       is Provider -> true
+      is SuspendProvider -> true
       is Lazy -> true
       is Map -> valueType.isDeferrable()
     }
@@ -151,6 +183,7 @@ internal sealed interface WrappedType<T : Any> {
     return when (this) {
       is Canonical -> this
       is Provider -> innerType.findMapValueType()
+      is SuspendProvider -> innerType.findMapValueType()
       is Lazy -> innerType.findMapValueType()
       is Map -> valueType
     }
@@ -160,6 +193,7 @@ internal sealed interface WrappedType<T : Any> {
     when (this) {
       is Canonical -> renderType(type)
       is Provider -> "Provider<${innerType.render(renderType)}>"
+      is SuspendProvider -> "SuspendProvider<${innerType.render(renderType)}>"
       is Lazy -> "Lazy<${innerType.render(renderType)}>"
       // Use the actual map type, not hardcoded "Map"
       is Map -> renderType(type())

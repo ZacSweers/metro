@@ -258,20 +258,21 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
 
     type?.let {
       // Check if it's a Provider<*> or Provider<Lazy<*>>
-      val isProvider =
-        it.typeArguments.isNotEmpty() &&
-          it.classLikeLookupTagIfAny?.classId in session.metroFirBuiltIns.classIds.providerTypes
-      if (isProvider) {
+      val classIds = session.metroFirBuiltIns.classIds
+      val classId = it.classLikeLookupTagIfAny?.classId
+      val isProvider = it.typeArguments.isNotEmpty() && classId in classIds.providerTypes
+      val isSuspendProvider =
+        it.typeArguments.isNotEmpty() && classId in classIds.suspendProviderTypes
+      if (isProvider || isSuspendProvider) {
         val arg = it.typeArguments[0]
         if (arg == ConeStarProjection) {
           return true
-        } else if (checkProviderOfLazy) {
+        } else if (checkProviderOfLazy && isProvider) {
           // Check if it's a Lazy<*>
           val argType = arg.type ?: return false
           val isLazyStar =
             argType.typeArguments.isNotEmpty() &&
-              argType.classLikeLookupTagIfAny?.classId in
-                session.metroFirBuiltIns.classIds.lazyTypes &&
+              argType.classLikeLookupTagIfAny?.classId in classIds.lazyTypes &&
               argType.typeArguments[0] == ConeStarProjection
           if (isLazyStar) {
             return true

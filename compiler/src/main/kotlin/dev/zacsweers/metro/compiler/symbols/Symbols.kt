@@ -161,6 +161,8 @@ internal class Symbols(
     val metroContribution =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.METRO_CONTRIBUTION.asName())
     val metroFactory = ClassId(FqNames.metroRuntimeInternalPackage, Names.FactoryClass)
+    val metroSuspendFactory =
+      ClassId(FqNames.metroRuntimeInternalPackage, Names.SuspendFactoryClass)
     val metroIncludes = ClassId(FqNames.metroRuntimePackage, StringNames.INCLUDES.asName())
     val metroInject = ClassId(FqNames.metroRuntimePackage, StringNames.INJECT.asName())
     val metroInjectedFunctionClass =
@@ -170,14 +172,18 @@ internal class Symbols(
     val metroImplMarker = ClassId(FqNames.metroRuntimeInternalPackage, "MetroImplMarker".asName())
     val metroOrigin = ClassId(FqNames.metroRuntimePackage, "Origin".asName())
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
+    val metroSuspendProvider = ClassId(FqNames.metroRuntimePackage, Names.SuspendProviderClass)
     val metroProvides = ClassId(FqNames.metroRuntimePackage, StringNames.PROVIDES.asName())
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())
     val metroInstanceFactory =
       ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
 
     val function0 = StandardClassIds.FunctionN(0)
+    val suspendFunction0 = ClassId(FqName("kotlin.coroutines"), "SuspendFunction0".asName())
 
-    val commonMetroProviders by lazy { setOf(metroProvider, metroFactory, metroInstanceFactory) }
+    val commonMetroProviders by lazy {
+      setOf(metroProvider, metroFactory, metroSuspendFactory, metroInstanceFactory)
+    }
   }
 
   object Names {
@@ -186,12 +192,14 @@ internal class Symbols(
     val BindsMirrorClass = "BindsMirror".asName()
     val Container = "Container".asName()
     val FactoryClass = "Factory".asName()
+    val SuspendFactoryClass = "SuspendFactory".asName()
     val MetroContributionNamePrefix = StringNames.METRO_CONTRIBUTION_NAME_PREFIX.asName()
     val MetroFactory = StringNames.METRO_FACTORY.asName()
     val Impl = StringNames.IMPL.asName()
     val MetroMembersInjector = "MetroMembersInjector".asName()
     val Optional = "Optional".asName()
     val ProviderClass = "Provider".asName()
+    val SuspendProviderClass = "SuspendProvider".asName()
     val Provides = StringNames.PROVIDES.asName()
     val additionalScopes = StringNames.ADDITIONAL_SCOPES.asName()
     val asContribution = "asContribution".asName()
@@ -455,6 +463,32 @@ internal class Symbols(
     metroProvider.requireSimpleFunction("invoke")
   }
 
+  val metroSuspendProvider: IrClassSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.metroSuspendProvider)!!
+  }
+
+  val metroSuspendProviderFunction: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(metroRuntime.packageFqName, "suspendProvider".asName()))
+      .single()
+  }
+
+  val suspendProviderInvoke: IrSimpleFunctionSymbol by lazy {
+    metroSuspendProvider.requireSimpleFunction("invoke")
+  }
+
+  private val suspendDoubleCheck: IrClassSymbol? by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntimeInternal.packageFqName, "SuspendDoubleCheck".asName())
+    )
+  }
+  val suspendDoubleCheckCompanionObject by lazy {
+    suspendDoubleCheck?.owner?.companionObject()?.symbol
+  }
+  val suspendDoubleCheckProvider by lazy {
+    suspendDoubleCheckCompanionObject?.requireSimpleFunction("provider")
+  }
+
   private val metroDelegateFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(metroRuntimeInternal.packageFqName, "DelegateFactory".asName())
@@ -489,6 +523,12 @@ internal class Symbols(
 
   val metroFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassId(metroRuntimeInternal.packageFqName, "Factory".asName()))!!
+  }
+
+  val metroSuspendFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntimeInternal.packageFqName, "SuspendFactory".asName())
+    )!!
   }
 
   val metroSingleIn: IrClassSymbol by lazy {
@@ -697,6 +737,9 @@ internal class Symbols(
 
   val providerTypes
     get() = classIds.providerTypes
+
+  val suspendProviderTypes
+    get() = classIds.suspendProviderTypes
 
   val lazyTypes
     get() = classIds.lazyTypes

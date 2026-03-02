@@ -15,10 +15,17 @@ internal interface BaseContextualTypeKey<
     get() = wrappedType.isDeferrable()
 
   val requiresProviderInstance: Boolean
-    get() = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider
+    get() =
+      isWrappedInProvider ||
+        isWrappedInLazy ||
+        isLazyWrappedInProvider ||
+        isWrappedInSuspendProvider
 
   val isWrappedInProvider: Boolean
     get() = wrappedType is WrappedType.Provider
+
+  val isWrappedInSuspendProvider: Boolean
+    get() = wrappedType is WrappedType.SuspendProvider
 
   val isWrappedInLazy: Boolean
     get() = wrappedType is WrappedType.Lazy
@@ -33,6 +40,9 @@ internal interface BaseContextualTypeKey<
 
   val isMapLazy: Boolean
     get() = wrappedType.findMapValueType() is WrappedType.Lazy
+
+  val isMapSuspendProvider: Boolean
+    get() = wrappedType.findMapValueType() is WrappedType.SuspendProvider
 
   val isMapProviderLazy: Boolean
     get() {

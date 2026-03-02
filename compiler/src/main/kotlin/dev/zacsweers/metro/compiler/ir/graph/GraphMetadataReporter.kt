@@ -284,6 +284,7 @@ internal class GraphMetadataReporter(
     when (this) {
       is Canonical -> null
       is Provider -> "Provider"
+      is WrappedType.SuspendProvider -> "SuspendProvider"
       is WrappedType.Lazy -> "Lazy"
       is WrappedType.Map -> valueType.wrapperTypeName()
     }

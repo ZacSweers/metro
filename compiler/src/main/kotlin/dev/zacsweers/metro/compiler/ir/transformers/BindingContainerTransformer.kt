@@ -662,7 +662,10 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
       factoryCls.irCallableMetadata(mirrorFunction, sourceAnnotations, isInterop = false)
     val factoryType =
       factoryCls.superTypes
-        .first { it.classOrNull == metroSymbols.metroFactory }
+        .first {
+          it.classOrNull == metroSymbols.metroFactory ||
+            it.classOrNull == metroSymbols.metroSuspendFactory
+        }
         .requireSimpleType(factoryCls) {
           appendLine()
           appendLine("(Hint)")

@@ -226,6 +226,12 @@ public class ClassIds(
       add(Symbols.ClassIds.function0)
     }
   }
+  internal val suspendProviderTypes = buildSet {
+    add(Symbols.ClassIds.metroSuspendProvider)
+    if (enableFunctionProviders) {
+      add(Symbols.ClassIds.suspendFunction0)
+    }
+  }
   internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses
 
   internal val includes = setOf(Symbols.ClassIds.metroIncludes)

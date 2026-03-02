@@ -219,6 +219,7 @@ internal fun FirDeclarationGenerationExtension.buildNewInstanceFunction(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
+  isSuspend: Boolean = false,
 ): FirNamedFunctionSymbol =
   with(session.compatContext) {
     return generateMemberFunction(
@@ -280,6 +281,11 @@ internal fun FirDeclarationGenerationExtension.buildNewInstanceFunction(
           val substitutor = substitutorByMap(classTypeArgsToReplace, session)
           val copiedType = substitutor.substituteOrNull(type) ?: type
           this.returnTypeRef = copiedType.toFirResolvedTypeRef()
+        }
+      }
+      .apply {
+        if (isSuspend) {
+          replaceStatus(status.copy(isSuspend = true))
         }
       }
       .symbol as FirNamedFunctionSymbol

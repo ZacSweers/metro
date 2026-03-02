@@ -106,7 +106,9 @@ internal class MetroProviderFramework(
   override fun isApplicable(classId: ClassId): Boolean {
     return classId == metroFrameworkSymbols.canonicalProviderType.owner.classId ||
       classId == kotlinLazyClassId ||
-      (enableFunctionProviders && classId == Symbols.ClassIds.function0)
+      classId == Symbols.ClassIds.metroSuspendProvider ||
+      (enableFunctionProviders && classId == Symbols.ClassIds.function0) ||
+      (enableFunctionProviders && classId == Symbols.ClassIds.suspendFunction0)
   }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
@@ -143,7 +145,25 @@ internal class MetroProviderFramework(
       return provider.toMetroProvider(providerType = provider.type, sourceClassId = sourceClassId)
     }
 
-    // Otherwise, no conversion needed (Provider -> Provider, or Function0 -> Function0)
+    // SuspendProvider -> SuspendFunction0
+    if (
+      enableFunctionProviders &&
+        targetClassId == Symbols.ClassIds.suspendFunction0 &&
+        sourceClassId != Symbols.ClassIds.suspendFunction0
+    ) {
+      return provider.toSuspendFunctionType(targetKey)
+    }
+
+    // SuspendFunction0 -> SuspendProvider
+    if (
+      enableFunctionProviders &&
+        sourceClassId == Symbols.ClassIds.suspendFunction0 &&
+        targetClassId == Symbols.ClassIds.metroSuspendProvider
+    ) {
+      return provider.fromSuspendFunctionToSuspendProvider(targetKey)
+    }
+
+    // Otherwise, no conversion needed (Provider -> Provider, Function0 -> Function0, etc.)
     return provider
   }
 
@@ -167,6 +187,9 @@ internal class MetroProviderFramework(
     ) {
       return provider.toFunctionType(targetKey)
     }
+
+    // Metro Provider -> SuspendFunction0 (not a valid conversion path,
+    // SuspendProvider conversions go through handleSameFramework)
 
     // Metro Provider -> Metro Provider (no conversion)
     return provider
@@ -231,6 +254,68 @@ internal class MetroProviderFramework(
     } else {
       // Non-JS: Provider implements () -> T, no conversion needed
       provider
+    }
+  }
+
+  /**
+   * Converts a SuspendProvider to SuspendFunction0 (`suspend () -> T`).
+   *
+   * On non-JS platforms, SuspendProvider implements `suspend () -> T`, so no conversion is needed.
+   * On JS, SuspendProvider does not implement `suspend () -> T`, so we wrap it in a suspend lambda.
+   */
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
+  private fun IrExpression.toSuspendFunctionType(targetKey: IrContextualTypeKey): IrExpression {
+    val provider = this
+    return if (context.platform.isJs()) {
+      // JS: SuspendProvider does not implement suspend () -> T, wrap in a suspend lambda
+      val valueType =
+        (provider.type as? IrSimpleType)?.arguments?.firstOrNull()?.typeOrNull
+          ?: targetKey.typeKey.type
+      irLambda(
+        parent = scope.parent,
+        receiverParameter = null,
+        valueParameters = emptyList(),
+        returnType = valueType,
+        suspend = true,
+      ) {
+        +irReturn(
+          irInvoke(
+            provider,
+            callee = context.metroSymbols.suspendProviderInvoke,
+            typeHint = valueType,
+          )
+        )
+      }
+    } else {
+      // Non-JS: SuspendProvider implements suspend () -> T, no conversion needed
+      provider
+    }
+  }
+
+  /**
+   * Converts a SuspendFunction0 (`suspend () -> T`) to a SuspendProvider.
+   *
+   * Wraps the suspend function with `suspendProvider(fn)`.
+   */
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
+  private fun IrExpression.fromSuspendFunctionToSuspendProvider(
+    targetKey: IrContextualTypeKey
+  ): IrExpression {
+    val fn = this
+    val valueType =
+      (fn.type as IrSimpleType).arguments[0].typeOrNull
+        ?: reportCompilerBug(
+          "SuspendFunction0 type missing type argument: ${fn.type.dumpKotlinLike()}"
+        )
+
+    return with(scope) {
+      irInvoke(
+        dispatchReceiver = null,
+        callee = context.metroSymbols.metroSuspendProviderFunction,
+        typeHint = targetKey.toIrType(),
+        typeArgs = listOf(valueType),
+        args = listOf(fn),
+      )
     }
   }
 

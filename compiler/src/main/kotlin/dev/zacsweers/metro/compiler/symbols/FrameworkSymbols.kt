@@ -52,6 +52,12 @@ internal interface FrameworkSymbols {
   val mapProviderLazyFactoryBuilderPutFunction: IrSimpleFunctionSymbol
   val mapProviderLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapProviderLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
+  val mapSuspendProviderFactoryBuilder: IrClassSymbol
+  val mapSuspendProviderFactoryBuilderFunction: IrSimpleFunctionSymbol
+  val mapSuspendProviderFactoryEmptyFunction: IrSimpleFunctionSymbol?
+  val mapSuspendProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol
+  val mapSuspendProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
+  val mapSuspendProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
 }
 
 internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
@@ -61,6 +67,7 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
   protected abstract val mapProviderFactory: IrClassSymbol
   protected abstract val mapLazyFactory: IrClassSymbol
   protected abstract val mapProviderLazyFactory: IrClassSymbol
+  protected abstract val mapSuspendProviderFactory: IrClassSymbol
 
   override val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
   override val doubleCheckProvider by lazy {
@@ -147,6 +154,22 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
 
   override val mapProviderLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderLazyFactoryBuilder.requireSimpleFunction("build")
+  }
+
+  override val mapSuspendProviderFactoryBuilder: IrClassSymbol by lazy {
+    mapSuspendProviderFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
+
+  override val mapSuspendProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryBuilder.requireSimpleFunction("put")
+  }
+
+  override val mapSuspendProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryBuilder.requireSimpleFunction("putAll")
+  }
+
+  override val mapSuspendProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryBuilder.requireSimpleFunction("build")
   }
 }
 
@@ -265,6 +288,24 @@ internal class MetroFrameworkSymbols(
 
   override val mapProviderLazyFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderLazyFactoryCompanionObject.requireSimpleFunction("empty")
+  }
+
+  override val mapSuspendProviderFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntimeInternal.packageFqName, "MapSuspendProviderFactory".asName())
+    )!!
+  }
+
+  private val mapSuspendProviderFactoryCompanionObject: IrClassSymbol by lazy {
+    mapSuspendProviderFactory.owner.companionObject()!!.symbol
+  }
+
+  override val mapSuspendProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryCompanionObject.requireSimpleFunction("builder")
+  }
+
+  override val mapSuspendProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryCompanionObject.requireSimpleFunction("empty")
   }
 }
 
@@ -578,6 +619,21 @@ internal class DaggerSymbols(
 
   override val mapProviderLazyFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderLazyFactory.requireSimpleFunction("empty")
+  }
+
+  // Dagger has no SuspendProvider concept, use Metro's runtime version
+  override val mapSuspendProviderFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(FqName("dev.zacsweers.metro.internal"), "MapSuspendProviderFactory".asName())
+    )!!
+  }
+
+  override val mapSuspendProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactory.owner.companionObject()!!.symbol.requireSimpleFunction("builder")
+  }
+
+  override val mapSuspendProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactory.owner.companionObject()!!.symbol.requireSimpleFunction("empty")
   }
 
   val daggerLazy: IrClassSymbol by lazy {

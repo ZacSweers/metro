@@ -44,6 +44,7 @@ import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
+import dev.zacsweers.metro.compiler.ir.suspendDoubleCheck
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -51,6 +52,7 @@ import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.letIf
@@ -979,19 +981,27 @@ internal class IrGraphGenerator(
       val isDeferred = shardBinding.isDeferred
       val switchingId = shardBinding.switchingId
 
-      val requiresDoubleCheck = isScoped && isProviderType
+      val isSuspendBinding = binding.isSuspend
+      val requiresDoubleCheck = isScoped && (isProviderType || isSuspendBinding)
 
       context(scope: IrBuilderWithScope)
       fun IrExpression.applyScoping(): IrExpression {
         return if (requiresDoubleCheck) {
-          doubleCheck(metroSymbols, binding.typeKey)
+          if (isSuspendBinding) {
+            suspendDoubleCheck(metroSymbols, binding.typeKey)
+          } else {
+            doubleCheck(metroSymbols, binding.typeKey)
+          }
         } else {
           this
         }
       }
 
       val accessType =
-        if (isProviderType) {
+        if (isSuspendBinding && shardBinding.propertyKind == PropertyKind.FIELD) {
+          // Suspend bindings with FIELD properties use SuspendProvider<T>
+          BindingExpressionGenerator.AccessType.SUSPEND_PROVIDER
+        } else if (isProviderType) {
           BindingExpressionGenerator.AccessType.PROVIDER
         } else {
           BindingExpressionGenerator.AccessType.INSTANCE
@@ -1303,7 +1313,13 @@ internal class IrGraphGenerator(
   ): BindingMetadata {
     val key = binding.typeKey
     var isProviderType = collectedIsProviderType
-    val finalContextKey = collectedContextKey.letIf(isProviderType) { it.wrapInProvider() }
+    val isSuspendBinding = binding.isSuspend
+    val finalContextKey =
+      if (isSuspendBinding && propertyType == PropertyKind.FIELD) {
+        collectedContextKey.wrapInSuspendProvider()
+      } else {
+        collectedContextKey.letIf(isProviderType) { it.wrapInProvider() }
+      }
     val suffix: String
     val irType =
       if (binding is IrBinding.ConstructorInjected && binding.isAssisted) {
@@ -1313,6 +1329,10 @@ internal class IrGraphGenerator(
       } else if (propertyType == PropertyKind.GETTER) {
         suffix = if (isProviderType) "Provider" else ""
         finalContextKey.toIrType()
+      } else if (isSuspendBinding) {
+        // Suspend bindings use SuspendProvider<T> for field storage
+        suffix = "SuspendProvider"
+        metroSymbols.metroSuspendProvider.typeWith(key.type)
       } else {
         suffix = "Provider"
         metroSymbols.metroProvider.typeWith(key.type)
@@ -1326,6 +1346,7 @@ internal class IrGraphGenerator(
       nameHint = binding.nameHint.decapitalizeUS().suffixIfNot(suffix).asName(),
       isProviderType = isProviderType,
       isScoped = binding.isScoped(),
+      isSuspend = isSuspendBinding,
     )
   }
 
@@ -1338,6 +1359,7 @@ internal class IrGraphGenerator(
     val nameHint: Name,
     val isProviderType: Boolean,
     val isScoped: Boolean,
+    val isSuspend: Boolean = false,
   )
 
   /**
@@ -1378,18 +1400,28 @@ internal class IrGraphGenerator(
               arguments[1] = irInt(switchingId)
             }
         } else {
+          val accessType =
+            if (binding.isSuspend) {
+              BindingExpressionGenerator.AccessType.SUSPEND_PROVIDER
+            } else {
+              BindingExpressionGenerator.AccessType.PROVIDER
+            }
           expressionGeneratorFactory
             .create(thisReceiver, shardContext = shardExprContext)
             .generateBindingCode(
               binding = binding,
               contextualTypeKey = contextKey,
-              accessType = BindingExpressionGenerator.AccessType.PROVIDER,
+              accessType = accessType,
               fieldInitKey = fieldInitKey,
             )
         }
 
       return if (applyScoping) {
-        providerExpr.doubleCheck(metroSymbols, binding.typeKey)
+        if (binding.isSuspend) {
+          providerExpr.suspendDoubleCheck(metroSymbols, binding.typeKey)
+        } else {
+          providerExpr.doubleCheck(metroSymbols, binding.typeKey)
+        }
       } else {
         providerExpr
       }

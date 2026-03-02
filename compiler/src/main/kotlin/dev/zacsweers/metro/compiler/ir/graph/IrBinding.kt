@@ -68,6 +68,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   override val contextualTypeKey: IrContextualTypeKey
   val reportableDeclaration: IrDeclarationWithName?
 
+  /** Returns true if this binding is provided by a suspend function. */
+  val isSuspend: Boolean
+    get() = false
+
   /**
    * Returns true if this binding should be scoped (cached) in the graph. For most bindings, this is
    * true if [scope] != null.
@@ -229,6 +233,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val dependencies: List<IrContextualTypeKey> by memoize {
       parameters.allParameters.map { it.contextualTypeKey }
     }
+
+    override val isSuspend: Boolean
+      get() = providerFactory.function.isSuspend
 
     override val scope: IrAnnotation?
       get() = annotations.scope

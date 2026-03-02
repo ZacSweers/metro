@@ -2217,6 +2217,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("MapSuspendProviderValues.kt")
+    public void testMapSuspendProviderValues() {
+      runTest("compiler-tests/src/test/data/box/multibindings/MapSuspendProviderValues.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
     public void testMultibindingGraphWithWithScopedMapProviderDeps() {
       runTest("compiler-tests/src/test/data/box/multibindings/MultibindingGraphWithWithScopedMapProviderDeps.kt");
@@ -2368,6 +2374,36 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("StatusTransformedPrivateProviderAnnotationsArePropagated.kt")
     public void testStatusTransformedPrivateProviderAnnotationsArePropagated() {
       runTest("compiler-tests/src/test/data/box/provides/StatusTransformedPrivateProviderAnnotationsArePropagated.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendAccessorDirect.kt")
+    public void testSuspendAccessorDirect() {
+      runTest("compiler-tests/src/test/data/box/provides/SuspendAccessorDirect.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendFunctionProvider.kt")
+    public void testSuspendFunctionProvider() {
+      runTest("compiler-tests/src/test/data/box/provides/SuspendFunctionProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendProviderAccessor.kt")
+    public void testSuspendProviderAccessor() {
+      runTest("compiler-tests/src/test/data/box/provides/SuspendProviderAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendProviderBreaksSuspendChain.kt")
+    public void testSuspendProviderBreaksSuspendChain() {
+      runTest("compiler-tests/src/test/data/box/provides/SuspendProviderBreaksSuspendChain.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendProviderTransitiveDep.kt")
+    public void testSuspendProviderTransitiveDep() {
+      runTest("compiler-tests/src/test/data/box/provides/SuspendProviderTransitiveDep.kt");
     }
 
     @Test

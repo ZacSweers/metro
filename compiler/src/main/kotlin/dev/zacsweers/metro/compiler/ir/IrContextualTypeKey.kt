@@ -79,6 +79,11 @@ internal class IrContextualTypeKey(
         innerType.wrapInProvider(context.referenceClass(wt.providerType)!!)
       }
 
+      is WrappedType.SuspendProvider -> {
+        val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
+        innerType.wrapInProvider(context.referenceClass(wt.providerType)!!)
+      }
+
       is WrappedType.Lazy -> {
         val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
         innerType.wrapInProvider(context.referenceClass(wt.lazyType)!!)
@@ -152,6 +157,7 @@ internal class IrContextualTypeKey(
     fun create(
       typeKey: IrTypeKey,
       isWrappedInProvider: Boolean = false,
+      isWrappedInSuspendProvider: Boolean = false,
       isWrappedInLazy: Boolean = false,
       isLazyWrappedInProvider: Boolean = false,
       hasDefault: Boolean = false,
@@ -169,6 +175,10 @@ internal class IrContextualTypeKey(
 
           isWrappedInProvider -> {
             Provider(baseType, rawClassId!!)
+          }
+
+          isWrappedInSuspendProvider -> {
+            WrappedType.SuspendProvider(baseType, rawClassId!!)
           }
 
           isWrappedInLazy -> {
@@ -248,9 +258,24 @@ internal fun IrContextualTypeKey.stripProvider(): IrContextualTypeKey {
  * but the inner structure (e.g., Map<K, V> vs Map<K, Provider<V>>) determines the binding variant.
  */
 context(context: IrMetroContext)
+internal fun IrContextualTypeKey.stripSuspendProvider(): IrContextualTypeKey {
+  return if (wrappedType !is WrappedType.SuspendProvider) {
+    this
+  } else {
+    IrContextualTypeKey(
+      typeKey,
+      wrappedType.innerType,
+      hasDefault,
+      rawType?.requireSimpleType()?.arguments?.single()?.typeOrFail,
+    )
+  }
+}
+
+context(context: IrMetroContext)
 internal fun IrContextualTypeKey.stripOuterProviderOrLazy(): IrContextualTypeKey {
   return when (wrappedType) {
     is Provider -> stripProvider()
+    is WrappedType.SuspendProvider -> stripSuspendProvider()
     is WrappedType.Lazy -> stripIfLazy()
     else -> this
   }
@@ -280,6 +305,21 @@ internal fun IrContextualTypeKey.wrapInProvider(
       Provider(wrappedType, providerType.classIdOrFail),
       hasDefault,
       rawType?.let { providerType.typeWith(it) },
+    )
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrContextualTypeKey.wrapInSuspendProvider(): IrContextualTypeKey {
+  val suspendProviderType = context.metroSymbols.metroSuspendProvider.owner
+  return if (wrappedType is WrappedType.SuspendProvider) {
+    this
+  } else {
+    IrContextualTypeKey(
+      typeKey,
+      WrappedType.SuspendProvider(wrappedType, suspendProviderType.classIdOrFail),
+      hasDefault,
+      rawType?.let { suspendProviderType.typeWith(it) },
     )
   }
 }
@@ -367,6 +407,17 @@ private fun IrSimpleType.asWrappedType(
     return Provider(innerWrappedType, rawClassId!!)
   }
 
+  // Check if this is a SuspendProvider type
+  if (rawClassId in context.metroSymbols.suspendProviderTypes) {
+    val innerType = arguments[0].typeOrFail
+
+    // Recursively analyze the inner type
+    val innerWrappedType =
+      innerType.requireSimpleType(declaration).asWrappedType(patchMutableCollections, declaration)
+
+    return WrappedType.SuspendProvider(innerWrappedType, rawClassId!!)
+  }
+
   // Check if this is a Lazy type
   if (rawClassId in context.metroSymbols.lazyTypes) {
     val innerType = arguments[0].typeOrFail
@@ -392,6 +443,12 @@ internal fun WrappedType<IrType>.toIrType(): IrType {
       providerType.typeWith(innerIrType)
     }
 
+    is WrappedType.SuspendProvider -> {
+      val innerIrType = innerType.toIrType()
+      val providerType = context.referenceClass(providerType)!!
+      providerType.typeWith(innerIrType)
+    }
+
     is WrappedType.Lazy -> {
       val innerIrType = innerType.toIrType()
       val lazyType = context.referenceClass(lazyType)!!
@@ -411,6 +468,10 @@ internal fun WrappedType<IrType>.remapType(remapper: TypeRemapper): WrappedType<
     is Canonical -> Canonical(remapper.remapType(type))
     is Provider -> {
       Provider(innerType.remapType(remapper), providerType)
+    }
+
+    is WrappedType.SuspendProvider -> {
+      WrappedType.SuspendProvider(innerType.remapType(remapper), providerType)
     }
 
     is WrappedType.Lazy -> {
@@ -438,6 +499,8 @@ internal fun WrappedType<IrType>.withCanonicalType(type: IrType): WrappedType<Ir
   return when (this) {
     is Canonical -> Canonical(type)
     is Provider -> Provider(innerType.withCanonicalType(type), providerType)
+    is WrappedType.SuspendProvider ->
+      WrappedType.SuspendProvider(innerType.withCanonicalType(type), providerType)
     is WrappedType.Lazy -> WrappedType.Lazy(innerType.withCanonicalType(type), lazyType)
     is WrappedType.Map -> {
       val simpleType = type.requireSimpleType()

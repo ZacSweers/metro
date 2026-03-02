@@ -639,7 +639,8 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   val irType = convertedBindingCode.type
 
   if (!irType.implementsLazyType() && !irType.implementsProviderType()) {
-    // Not a provider, nothing else to do here!
+    // Not a provider or suspend provider, nothing else to do here!
+    // SuspendProvider doesn't need provider framework conversion
     return convertedBindingCode
   }
 
@@ -701,6 +702,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   val shouldInvoke =
     !contextKey.isWrappedInProvider &&
       !contextKey.isWrappedInLazy &&
+      !contextKey.isWrappedInSuspendProvider &&
       !isAssisted &&
       !isGraphInstance
 
@@ -896,6 +898,29 @@ internal fun IrExpression.doubleCheck(symbols: Symbols, typeKey: IrTypeKey): IrE
       typeHint = providerType,
       typeArgs = listOf(providerType, typeKey.type),
       args = listOf(this@doubleCheck),
+    )
+  }
+
+context(context: IrMetroContext, scope: IrBuilderWithScope)
+internal fun IrExpression.suspendDoubleCheck(symbols: Symbols, typeKey: IrTypeKey): IrExpression =
+  with(scope) {
+    val companionObject =
+      symbols.suspendDoubleCheckCompanionObject
+        ?: reportCompilerBug(
+          "SuspendDoubleCheck not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+        )
+    val providerFun =
+      symbols.suspendDoubleCheckProvider
+        ?: reportCompilerBug(
+          "SuspendDoubleCheck.provider not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+        )
+    val suspendProviderType = symbols.metroSuspendProvider.typeWith(typeKey.type)
+    irInvoke(
+      dispatchReceiver = irGetObject(companionObject),
+      callee = providerFun,
+      typeHint = suspendProviderType,
+      typeArgs = listOf(suspendProviderType, typeKey.type),
+      args = listOf(this@suspendDoubleCheck),
     )
   }
 

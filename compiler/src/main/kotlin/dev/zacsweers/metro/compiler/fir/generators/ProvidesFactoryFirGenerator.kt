@@ -33,6 +33,7 @@ import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
@@ -156,7 +157,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
           buildFactoryCreateFunction(
             context = nonNullContext,
             returnType =
-              Symbols.ClassIds.metroFactory.constructClassLikeType(arrayOf(callable.returnType)),
+              callable.factoryClassId.constructClassLikeType(arrayOf(callable.returnType)),
             instanceReceiver = callable.instanceReceiver,
             extensionReceiver = null,
             valueParameters = callable.valueParameters.dedupeParameters(session),
@@ -170,6 +171,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             callable.instanceReceiver,
             null,
             callable.valueParameters,
+            isSuspend = callable.isSuspend,
           )
         }
         else -> {
@@ -264,7 +266,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
           if (returnTypeRef is FirResolvedTypeRef) {
             val factoryType =
               session.symbolProvider
-                .getClassLikeSymbolByClassId(Symbols.ClassIds.metroFactory)!!
+                .getClassLikeSymbolByClassId(sourceCallable.factoryClassId)!!
                 .constructType(arrayOf(returnTypeRef.coneType))
             superType(factoryType)
           }
@@ -285,14 +287,20 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
 
   private fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
     val instanceReceiver = if (owner.classKind.isObject) null else owner.defaultType()
+    val isSuspend: Boolean
     val params =
       when (this) {
-        is FirPropertySymbol -> emptyList()
-        is FirNamedFunctionSymbol ->
+        is FirPropertySymbol -> {
+          isSuspend = false
+          emptyList()
+        }
+        is FirNamedFunctionSymbol -> {
+          isSuspend = this.isSuspend
           this.valueParameterSymbols.map { MetroFirValueParameter(session, it) }
+        }
         else -> return null
       }
-    return ProviderCallable(owner, this, instanceReceiver, params)
+    return ProviderCallable(owner, this, instanceReceiver, params, isSuspend)
   }
 
   private fun buildCallableMetadataAnnotation(sourceCallable: ProviderCallable): FirAnnotation {
@@ -377,6 +385,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     val symbol: FirCallableSymbol<*>,
     val instanceReceiver: ConeClassLikeType?,
     val valueParameters: List<MetroFirValueParameter>,
+    val isSuspend: Boolean,
   ) {
     val callableId = CallableId(owner.classId, symbol.name)
     val name = symbol.name
@@ -391,6 +400,10 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
 
     val newInstanceName: Name
       get() = name
+
+    /** The ClassId for the factory supertype — Factory or SuspendFactory. */
+    val factoryClassId: ClassId
+      get() = if (isSuspend) Symbols.ClassIds.metroSuspendFactory else Symbols.ClassIds.metroFactory
   }
 }
 
@@ -475,9 +488,15 @@ internal class ProvidesFactorySupertypeGenerator(
         else -> return emptyList()
       }
 
+    val factoryClassId =
+      if (callable is FirNamedFunctionSymbol && callable.isSuspend) {
+        Symbols.ClassIds.metroSuspendFactory
+      } else {
+        Symbols.ClassIds.metroFactory
+      }
     val factoryType =
       session.symbolProvider
-        .getClassLikeSymbolByClassId(Symbols.ClassIds.metroFactory)!!
+        .getClassLikeSymbolByClassId(factoryClassId)!!
         .constructType(arrayOf(returnType))
     return listOf(factoryType.toFirResolvedTypeRef().coneType)
   }

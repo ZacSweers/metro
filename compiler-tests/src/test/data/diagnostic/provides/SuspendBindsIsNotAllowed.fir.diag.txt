@@ -1,0 +1,3 @@
+/SuspendBindsIsNotAllowed.kt:(124,128): error: @Binds declarations cannot be suspend functions — they have no body to suspend in.
+
+/SuspendBindsIsNotAllowed.kt:(220,224): error: @Binds declarations cannot be suspend functions — they have no body to suspend in.

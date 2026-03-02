@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 
@@ -124,6 +125,20 @@ internal class BindingPropertyContext(
           storedKey = providerKey,
           shardProperty = shardProperties[providerKey],
           shardIndex = shardIndices.getOrDefault(providerKey, -1).takeUnless { it == -1 },
+        )
+      }
+    }
+
+    // For non-suspend-provider requests, try SuspendProvider key
+    // (suspend bindings may be stored with SuspendProvider wrapping)
+    if (!key.isWrappedInSuspendProvider) {
+      val suspendProviderKey = key.stripOuterProviderOrLazy().wrapInSuspendProvider()
+      properties[suspendProviderKey]?.let {
+        return BindingProperty(
+          property = it,
+          storedKey = suspendProviderKey,
+          shardProperty = shardProperties[suspendProviderKey],
+          shardIndex = shardIndices.getOrDefault(suspendProviderKey, -1).takeUnless { it == -1 },
         )
       }
     }

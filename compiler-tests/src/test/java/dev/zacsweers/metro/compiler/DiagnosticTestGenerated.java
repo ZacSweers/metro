@@ -1131,5 +1131,35 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testProvides_Interface_MayNotHaveTypeParameters() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_Interface_MayNotHaveTypeParameters.kt");
     }
+
+    @Test
+    @TestMetadata("SuspendBindingFromNonSuspendAccessor.kt")
+    public void testSuspendBindingFromNonSuspendAccessor() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/SuspendBindingFromNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendBindingWrappedInLazy.kt")
+    public void testSuspendBindingWrappedInLazy() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/SuspendBindingWrappedInLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendBindingWrappedInProvider.kt")
+    public void testSuspendBindingWrappedInProvider() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/SuspendBindingWrappedInProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendBindsIsNotAllowed.kt")
+    public void testSuspendBindsIsNotAllowed() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/SuspendBindsIsNotAllowed.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendMultibindsIsNotAllowed.kt")
+    public void testSuspendMultibindsIsNotAllowed() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/SuspendMultibindsIsNotAllowed.kt");
+    }
   }
 }
