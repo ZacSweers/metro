@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
+import dev.zacsweers.metro.compiler.fir.generators.BindingContainerObjectFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.CompositeMetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.ContributedInterfaceSupertypeGenerator
@@ -109,6 +110,17 @@ public class MetroFirExtensionRegistrar(
             )
           )
         }
+
+        // Generates nested binding container objects for @ContributesTemplate-annotated
+        // annotations. Must run before ContributionsFirGenerator so the generated objects are
+        // visible to contribution processing.
+        add(
+          wrapNativeGenerator(
+            "FirGen - BindingContainerObject",
+            true,
+            ::BindingContainerObjectFirGenerator,
+          )(session)
+        )
 
         // These need to run in the IDE for supertype merging inlays to be visible
         add(

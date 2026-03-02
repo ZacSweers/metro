@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.computeMultibindingId
 import dev.zacsweers.metro.compiler.ir.createMapBindingId
 import dev.zacsweers.metro.compiler.ir.implements
+import dev.zacsweers.metro.compiler.ir.originClassOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.rawType
@@ -82,7 +83,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // First check if we have the contributing file and line number
     val binding = this
     val locationString =
-      reportableDeclaration?.renderSourceLocation(short = shortLocation)
+      resolveBindingContainerLocation(shortLocation)
+        ?: reportableDeclaration?.renderSourceLocation(short = shortLocation)
         // Or the fully-qualified contributing class name
         // TODO is this right
         ?: parameters.allParameters.firstOrNull()?.typeKey?.renderForDiagnostic(short = short)
@@ -99,6 +101,28 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       locationString,
       renderDescriptionDiagnostic(short = short, underlineTypeKey = underlineTypeKey),
     )
+  }
+
+  /**
+   * For bindings from generated binding container objects (created by `@ContributesTemplate`),
+   * resolves the source location and appends `(via @AnnotationName)` context. Uses the
+   * declaration's own source location if available, otherwise falls back to the `@Origin`
+   * annotation on the parent container object.
+   */
+  private fun resolveBindingContainerLocation(shortLocation: Boolean): String? {
+    val declaration = reportableDeclaration ?: return null
+    val parentClass = declaration.parentClassOrNull ?: return null
+    val parentName = parentClass.name.asString()
+    if (!parentName.startsWith(Symbols.StringNames.METRO_BINDING_CONTAINER_FOR_PREFIX)) return null
+    val location =
+      declaration.renderSourceLocation(short = shortLocation)
+        ?: parentClass.annotations
+          .firstNotNullOfOrNull { it.originClassOrNull() }
+          ?.renderSourceLocation(short = shortLocation)
+        ?: return null
+    val annotationName =
+      parentName.removePrefix(Symbols.StringNames.METRO_BINDING_CONTAINER_FOR_PREFIX)
+    return "$location (via @$annotationName)"
   }
 
   sealed interface BindingWithAnnotations : IrBinding {

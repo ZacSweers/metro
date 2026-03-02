@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.resolve.isContextParameter
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames.UNDERSCORE_FOR_UNUSED_VAR
@@ -40,6 +41,12 @@ internal interface MetroFirValueParameter {
        * (e.g. setter value parameters where the default lives on the property).
        */
       hasDefault: Boolean? = null,
+      /**
+       * Explicit type override. When set, this type is used for the contextKey instead of the
+       * symbol's resolved return type. Used for binding container delegate functions where the
+       * companion function's type parameter needs to be substituted with the concrete target type.
+       */
+      typeOverride: ConeKotlinType? = null,
     ): MetroFirValueParameter =
       object : MetroFirValueParameter {
         override val symbol = symbol
@@ -64,14 +71,26 @@ internal interface MetroFirValueParameter {
          * phase.
          */
         private val contextKeyLazy = memoize {
-          FirContextualTypeKey.from(
-            session,
-            symbol,
-            wrapInProvider = wrapInProvider,
-            stripLazyIfWrappedInProvider = stripLazyIfWrappedInProvider,
-            qualifierSource = qualifierSource,
-            hasDefault = hasDefault,
-          )
+          if (typeOverride != null) {
+            FirContextualTypeKey.from(
+              session,
+              symbol,
+              type = typeOverride,
+              wrapInProvider = wrapInProvider,
+              stripLazyIfWrappedInProvider = stripLazyIfWrappedInProvider,
+              qualifierSource = qualifierSource,
+              hasDefault = hasDefault,
+            )
+          } else {
+            FirContextualTypeKey.from(
+              session,
+              symbol,
+              wrapInProvider = wrapInProvider,
+              stripLazyIfWrappedInProvider = stripLazyIfWrappedInProvider,
+              qualifierSource = qualifierSource,
+              hasDefault = hasDefault,
+            )
+          }
         }
         override val contextKey by contextKeyLazy
 

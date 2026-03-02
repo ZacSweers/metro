@@ -52,6 +52,20 @@ public abstract interface annotation class dev/zacsweers/metro/ContributesIntoSe
 	public abstract fun value ()[Ldev/zacsweers/metro/ContributesIntoSet;
 }
 
+public abstract interface annotation class dev/zacsweers/metro/ContributesTemplate : java/lang/annotation/Annotation {
+	public abstract fun scope ()Ljava/lang/Class;
+	public abstract fun template ()Ljava/lang/Class;
+}
+
+public abstract interface annotation class dev/zacsweers/metro/ContributesTemplate$Template : java/lang/annotation/Annotation {
+}
+
+public abstract class dev/zacsweers/metro/ContributesTemplate$TemplateScope {
+}
+
+public abstract class dev/zacsweers/metro/ContributesTemplate$TemplateTarget {
+}
+
 public abstract interface annotation class dev/zacsweers/metro/ContributesTo : java/lang/annotation/Annotation {
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;

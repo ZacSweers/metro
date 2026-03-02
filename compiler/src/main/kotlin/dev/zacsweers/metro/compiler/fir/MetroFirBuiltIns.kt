@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
 internal class MetroFirBuiltIns(
@@ -167,6 +168,17 @@ internal class MetroFirBuiltIns(
     session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroImplMarker)
       as FirRegularClassSymbol
   }
+
+  /**
+   * Binding container hints from
+   * [BindingContainerObjectFirGenerator][dev.zacsweers.metro.compiler.fir.generators.BindingContainerObjectFirGenerator].
+   * Populated during [getTopLevelClassIds] and read by
+   * [ContributionHintFirGenerator][dev.zacsweers.metro.compiler.fir.generators.ContributionHintFirGenerator]
+   * to generate contribution hints for generated binding containers.
+   *
+   * Each entry is a pair of (generatedBindingContainerClassId, scopeClassId).
+   */
+  val bindingContainerHints = mutableListOf<Pair<ClassId, ClassId>>()
 
   /**
    * @param diagnosticKey A string identifier for the category of diagnostic being generated. This

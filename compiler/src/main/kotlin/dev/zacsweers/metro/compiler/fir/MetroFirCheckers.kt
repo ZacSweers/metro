@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.fir.checkers.AsContributionChecker
 import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker
 import dev.zacsweers.metro.compiler.fir.checkers.BindingContainerCallableChecker
 import dev.zacsweers.metro.compiler.fir.checkers.BindingContainerClassChecker
+import dev.zacsweers.metro.compiler.fir.checkers.ContributesTemplateChecker
 import dev.zacsweers.metro.compiler.fir.checkers.CreateGraphChecker
 import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphChecker
 import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphCreatorChecker
@@ -41,6 +42,7 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
             BindingContainerClassChecker,
             MergedContributionChecker,
             MapKeyChecker,
+            ContributesTemplateChecker,
           )
 
       override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>

@@ -37,6 +37,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContributesTemplateValidation.kt")
+    public void testContributesTemplateValidation() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributesTemplateValidation.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt")
     public void testContributesToOnlyPermittedOnInterfacesOrBindingContainers() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt");
@@ -266,6 +272,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("ConfigurableMaxIrErrors.kt")
     public void testConfigurableMaxIrErrors() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/ConfigurableMaxIrErrors.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesTemplateDuplicateBinding.kt")
+    public void testContributesTemplateDuplicateBinding() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/ContributesTemplateDuplicateBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesTemplateMissingBinding.kt")
+    public void testContributesTemplateMissingBinding() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/ContributesTemplateMissingBinding.kt");
     }
 
     @Test
