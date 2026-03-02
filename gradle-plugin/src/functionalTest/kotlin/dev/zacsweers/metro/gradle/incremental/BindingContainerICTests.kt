@@ -5,6 +5,7 @@
 package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.gradle.Dependency
+import com.autonomousapps.kit.gradle.Dependency.Companion.project
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
@@ -2154,6 +2155,128 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     libProject.modify(project.rootDir, fixture.bindingContainer, fixture.removedContribution)
 
     // Build is expected to fail due to missing contribution
+    project.compileKotlinAndFail()
+  }
+
+  @Test
+  fun contributesToScopeChangeWithInterfaceBindingMultimodule() {
+    val fixture =
+      object : MetroProject() {
+        val userApi =
+          source(
+            """
+          interface UserApi {
+              fun getCurrentUser(): String
+          }
+      """
+          )
+
+        val userService =
+          source(
+            """
+          interface UserService {
+           fun doWork(): String
+          }
+      """
+          )
+
+        val userServiceImpl =
+          source(
+            """
+          @ContributesBinding(AppScope::class)
+          class UserServiceImpl @Inject constructor(
+              private val userApi: UserApi
+          ) : UserService {
+              override fun doWork() = userApi.getCurrentUser()
+          }
+      """
+          )
+
+        val bindingContainer =
+          source(
+            """
+          @BindingContainer
+          @ContributesTo(AppScope::class)
+          object UserApiModule {
+              @Provides
+              fun provideUserApi(): UserApi = object : UserApi {
+                  override fun getCurrentUser() = "user"
+              }
+          }
+      """
+          )
+
+        val appGraph =
+          source(
+            """
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+           val userService: UserService
+          }
+      """
+          )
+
+        override fun sources() = listOf(appGraph)
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = sources()
+                  applyMetroDefault()
+                  dependencies(project("implementation", ":lib"))
+                }
+                withMetroSettings()
+              }
+              .withSubproject("lib") {
+                sources.addAll(listOf(userApi, userService, userServiceImpl, bindingContainer))
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+      }
+
+    val project = fixture.gradleProject
+    val libSubproject = project.subprojects.first { it.name == "lib" }
+
+    project.compileKotlin()
+
+    // Change UserApiModule to a different scope to trigger the change
+    // This should break UserServiceImpl (which is in AppScope)
+    libSubproject.modify(
+      project.rootDir,
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      @ContributesTo(Unit::class)
+      object UserApiModule {
+          @Provides
+          fun provideUserApi(): UserApi = object : UserApi {
+              override fun getCurrentUser() = "user"
+          }
+      }
+  """,
+    )
+
+    // Expect failure: UserServiceImpl needs UserApi, but UserApi is now in Unit scope
+    project.compileKotlinAndFail()
+
+    // Remove @ContributesTo entirely
+    libSubproject.modify(
+      project.rootDir,
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      object UserApiModule {
+          @Provides
+          fun provideUserApi(): UserApi = object : UserApi {
+              override fun getCurrentUser() = "user"
+          }
+      }
+  """,
+    )
+
+    // Expect failure: UserApi is not in any scope at all
     project.compileKotlinAndFail()
   }
 }
