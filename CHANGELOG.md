@@ -6,7 +6,7 @@ Changelog
 
 ### New
 
-- **`Class`/`KClass` map key interop**
+#### **`Class`/`KClass` map key interop**
 
 This release introduces a special-cased opt-in `java.lang.Class` and `kotlin.reflect.KClass` interop on JVM/android compilations. While these types are not intrinsics of each other in regular code, they _are_ in annotations and are often used in `Map` multibindings. Metro can support these if you enable the `enableKClassToClassMapKeyInterop` option. When enabled, `java.lang.Class` and `kotlin.reflect.KClass` are treated as interchangeable in map key types, matching Kotlin's own annotation compilation behavior. This only applies to map keys because these are the only scenario where annotation arguments are materialized into non-annotation code (i.e. `@ClassKey(Foo::class) -> Map<Class<*>, V>`).
 
@@ -17,9 +17,10 @@ This is disabled by default (even if other framework interops like `includeDagge
 - **[FIR]**: Report adhoc graph extension factories as these are unsupported in Metro (but apparently supported in Dagger!)
 - **[FIR]**: Report a diagnostic error for usage of Dagger's `@LazyClassKey` as this is unsupported in Metro.
 - **[IR]**: Report warning diagnostics for unused synthetic multibindings, as it's often a sign that the user accidentally bound them to the wrong supertype.
-- **[IR]**: Fix a code gen bug where `@Provides` graph parameters wouldn't correctly be used by scoped bindings directly held in that graph.
 
 ### Fixes
+
+- **[IR]**: Fix a code gen bug where `@Provides` graph parameters wouldn't correctly be used by scoped bindings directly held in that graph.
 
 ### Changes
 
