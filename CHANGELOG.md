@@ -19,7 +19,7 @@ This is disabled by default (even if other framework interops like `includeDagge
 - **[IR]**: Report warning diagnostics for unused synthetic multibindings, as it's often a sign that the user accidentally bound them to the wrong supertype.
     ```
     warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding kotlin.collections.Map<kotlin.reflect.KClass<*>, BaseViewModel> is unused but has 4 source binding(s). Did you possibly bind them to the wrong type?
-    
+
       SuspiciousUnusedMultibinding.kt:36:1
         Impl5 contributes a binding of BaseViewModel
                                        ~~~~~~~~~~~~~
@@ -30,7 +30,7 @@ This is disabled by default (even if other framework interops like `includeDagge
         Impl3 contributes a binding of BaseViewModel
                                        ~~~~~~~~~~~~~
       ...and 1 more
-    
+
     Similar multibindings:
     - Map<KClass<*>, ViewModel>
     ```
