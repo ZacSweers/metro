@@ -12,7 +12,13 @@ Changelog
 
 ### Fixes
 
+- **[FIR]**: Don't use a memoizing sequence for all FirSession instance as it seems that the IDE will mutate the underlying source lists in some cases.
+
 ### Changes
+
+- Test Kotlin 2.3.20-RC.
+- Test Android Studio Panda 2
+- Test Android Studio Panda 3 canaries
 
 ### Contributors
 
