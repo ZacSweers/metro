@@ -8,8 +8,13 @@
 #   Preview: RC/Canary need explicit filename_prefix since filenames differ from version
 #            e.g., "2025.3.1 RC 1" has version "2025.3.1.6" but filename "android-studio-panda1-rc1"
 #
+# To find AS versions in this format: ./list-android-studio-versions.sh
 # To find preview filenames: check https://jb.gg/android-studio-releases-list.xml
-#   or use: curl -s 'https://jb.gg/android-studio-releases-list.xml' | grep -A5 'version="2025.3.1.6"'
 #
+# IntelliJ Stable
 IU:2025.3.2
+# AS stable
 AS:2025.3.1.8:android-studio-panda1-patch1 # Panda 1 Patch 1
+AS:2025.3.2.6 # Panda 2
+# AS Canary
+AS:2025.3.3.2:android-studio-panda3-canary2 # Panda 3 Canary 2
