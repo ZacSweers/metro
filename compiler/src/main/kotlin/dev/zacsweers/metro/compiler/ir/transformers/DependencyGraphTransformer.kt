@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.BindingLookupCache
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
+import dev.zacsweers.metro.compiler.ir.graph.ChildGraphScopeInfo
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.ir.graph.GraphNodes
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
@@ -475,8 +476,18 @@ internal class DependencyGraphTransformer(
       }
     }
 
+    val childGraphScopes =
+      childValidationResults
+        .filter { !it.hasErrors }
+        .map { child ->
+          ChildGraphScopeInfo(
+            reachableKeys = child.sealResult.reachableKeys,
+            scopeNames = child.node.aggregationScopes,
+          )
+        }
+
     val sealResult =
-      bindingGraph.seal { errors ->
+      bindingGraph.seal(childGraphScopes) { errors ->
         for ((declaration, message) in errors) {
           reportCompat(
             irDeclarations = sequenceOf(declaration, dependencyGraphDeclaration),

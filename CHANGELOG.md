@@ -4,6 +4,18 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+### Enhancements
+
+- **[IR]**: When reporting suspicious unused multibindings, include a hint about their use in graph extensions if applicable.
+
+### Fixes
+
+### Changes
+
+### Contributors
+
 0.11.2
 ------
 

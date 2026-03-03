@@ -47,6 +47,7 @@ internal class BindsCallable(
    * @return A pair of (declaration, isContributed) or null if the function is null. If
    *   isContributed is true, the declaration is the source class that contributed this binding.
    */
+  // TODO also report target scopes?
   fun resolveSourceDeclaration(): Pair<IrDeclarationWithName, Boolean> {
     val ir = function
     val resolvedIr = ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir
