@@ -325,6 +325,11 @@ internal class ContributedInterfaceSupertypeGenerator(
     val contributions =
       TreeMap<ClassId, ConeKotlinType>(compareBy(ClassId::asString)).apply {
         for (contribution in contributionClassLikes) {
+          // Skip binding containers - they're tracked separately in contributionMappingsByClassId
+          // and filtered out in the final step. Including them here causes key collisions when a
+          // class has both a MetroContribution and a binding container nested class, since both
+          // share the same parentClassId.
+          if (contributionMappingsByClassId[contribution.classId] == true) continue
           // This is always the `MetroContribution`, the contribution is its parent
           val classId = contribution.classId?.parentClassId ?: continue
           put(classId, contribution)

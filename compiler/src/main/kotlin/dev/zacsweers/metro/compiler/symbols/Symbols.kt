@@ -79,6 +79,7 @@ internal class Symbols(
     const val INTO_SET = "IntoSet"
     const val IMPL = "Impl"
     const val INVOKE = "invoke"
+    const val METRO_BINDING_CONTAINER_FOR_PREFIX = "MetroBindingContainerFor"
     const val METRO_CONTRIBUTION = "MetroContribution"
     const val METRO_CONTRIBUTION_NAME_PREFIX = "MetroContribution"
     const val METRO_FACTORY = "MetroFactory"
@@ -96,6 +97,10 @@ internal class Symbols(
     const val SCOPE = "scope"
     const val SINGLE_IN = "SingleIn"
     const val STABLE = "Stable"
+    const val TEMPLATE = "Template"
+    const val TEMPLATE_PARAM = "template"
+    const val TEMPLATE_SCOPE = "TemplateScope"
+    const val TEMPLATE_TARGET = "TemplateTarget"
   }
 
   object FqNames {
@@ -152,6 +157,7 @@ internal class Symbols(
     val Throws = ClassId(StandardClassIds.BASE_KOTLIN_PACKAGE, "Throws".asName())
     val IllegalStateException =
       ClassId(StandardClassIds.BASE_KOTLIN_PACKAGE, "IllegalStateException".asName())
+    val contributesTemplate = ClassId(FqNames.metroRuntimePackage, "ContributesTemplate".asName())
     val graphExtension = ClassId(FqNames.metroRuntimePackage, "GraphExtension".asName())
     val graphExtensionFactory = graphExtension.createNestedClassId(Names.FactoryClass)
     val metroAssisted = ClassId(FqNames.metroRuntimePackage, StringNames.ASSISTED.asName())
@@ -172,6 +178,12 @@ internal class Symbols(
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
     val metroProvides = ClassId(FqNames.metroRuntimePackage, StringNames.PROVIDES.asName())
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())
+    val metroTemplateScope =
+      contributesTemplate.createNestedClassId(StringNames.TEMPLATE_SCOPE.asName())
+    val metroTemplateTarget =
+      contributesTemplate.createNestedClassId(StringNames.TEMPLATE_TARGET.asName())
+    val contributesTemplateTemplate =
+      contributesTemplate.createNestedClassId(StringNames.TEMPLATE.asName())
     val metroInstanceFactory =
       ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
 
@@ -186,6 +198,7 @@ internal class Symbols(
     val BindsMirrorClass = "BindsMirror".asName()
     val Container = "Container".asName()
     val FactoryClass = "Factory".asName()
+    val MetroBindingContainerForPrefix = StringNames.METRO_BINDING_CONTAINER_FOR_PREFIX.asName()
     val MetroContributionNamePrefix = StringNames.METRO_CONTRIBUTION_NAME_PREFIX.asName()
     val MetroFactory = StringNames.METRO_FACTORY.asName()
     val Impl = StringNames.IMPL.asName()
@@ -227,6 +240,7 @@ internal class Symbols(
     val replaces = StringNames.REPLACES.asName()
     val subcomponents = "subcomponents".asName()
     val scope = StringNames.SCOPE.asName()
+    val template = StringNames.TEMPLATE_PARAM.asName()
     val unwrapValue = "unwrapValue".asName()
   }
 

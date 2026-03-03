@@ -9,15 +9,19 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
+import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isCli
+import dev.zacsweers.metro.compiler.fir.isProvidesAnnotated
+import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
+import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -32,8 +36,10 @@ import org.jetbrains.kotlin.fir.computeTypeAttributes
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
@@ -49,6 +55,7 @@ import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.withParameterNameAnnotation
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
@@ -60,10 +67,13 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.CompilerConeAttributes
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.FirErrorTypeRef
 import org.jetbrains.kotlin.fir.types.FirFunctionTypeRef
 import org.jetbrains.kotlin.fir.types.FirImplicitTypeRef
@@ -181,7 +191,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
   }
 
   // TODO can we get a finer-grained callback other than just per-class?
-  @OptIn(DirectDeclarationsAccess::class)
+  @OptIn(DirectDeclarationsAccess::class, SymbolInternals::class)
   override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
@@ -196,31 +206,151 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       } else {
         setOf(SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT)
       }
+    } else if (classSymbol.hasOrigin(Keys.BindingContainerObjectDeclaration)) {
+      // For generated binding container objects, discover @Provides from the annotation's
+      // companion object and generate factory classes for them.
+      discoverBindingContainerFactories(classSymbol)
+    } else if (isTemplateClass(classSymbol)) {
+      // Skip @ContributesTemplate.Template classes — their @Provides functions are
+      // templates with type parameters, not direct providers.
+      emptySet()
     } else {
       // It's a provider-containing class, generated factory class names and store callable info
-      classSymbol.declarationSymbols
-        .filterIsInstance<FirCallableSymbol<*>>()
-        .filter {
-          it.isAnnotatedWithAny(session, session.classIds.providesAnnotations) ||
-            (it as? FirPropertySymbol)
-              ?.getterSymbol
-              ?.isAnnotatedWithAny(session, session.classIds.providesAnnotations) == true
-        }
-        .mapNotNullToSet { providesCallable ->
-          val providerCallable =
-            providesCallable.asProviderCallable(classSymbol) ?: return@mapNotNullToSet null
-          val simpleName =
-            buildString {
-                append(providerCallable.name.capitalizeUS())
-                append(Symbols.Names.MetroFactory.asString())
-              }
-              .asName()
-          simpleName.also {
-            providerFactoryClassIdsToCallables[
-              classSymbol.classId.createNestedClassId(simpleName)] = providerCallable
+      val result =
+        classSymbol.declarationSymbols
+          .filterIsInstance<FirCallableSymbol<*>>()
+          .filter { it.isProvidesAnnotated(session, session.classIds.providesAnnotations) }
+          .mapNotNullToSet { providesCallable ->
+            val providerCallable =
+              providesCallable.asProviderCallable(classSymbol) ?: return@mapNotNullToSet null
+            val simpleName =
+              buildString {
+                  append(providerCallable.name.capitalizeUS())
+                  append(Symbols.Names.MetroFactory.asString())
+                }
+                .asName()
+            simpleName.also {
+              providerFactoryClassIdsToCallables[
+                classSymbol.classId.createNestedClassId(simpleName)] = providerCallable
+            }
           }
-        }
+
+      result
     }
+  }
+
+  /**
+   * Discovers @Provides functions for a binding container by looking at the template class
+   * referenced from the `@ContributesTemplate` annotation. The binding container name encodes the
+   * annotation name (`{TargetName}_MetroBindingContainerFor{AnnotationName}`), which we use to find
+   * the annotation class and then its template. Type parameters in the template functions are
+   * substituted with the concrete target class type.
+   */
+  @OptIn(DirectDeclarationsAccess::class)
+  private fun discoverBindingContainerFactories(classSymbol: FirClassSymbol<*>): Set<Name> {
+    val result = mutableSetOf<Name>()
+
+    // Extract the annotation class name from the binding container name
+    // Format: "{TargetName}_MetroBindingContainerFor{AnnotationName}"
+    val containerName = classSymbol.name.identifier
+    val annotationSimpleName =
+      containerName.substringAfter(Symbols.StringNames.METRO_BINDING_CONTAINER_FOR_PREFIX, "")
+    if (annotationSimpleName.isEmpty()) return emptySet()
+
+    // For top-level binding containers, get the target class from @Origin annotation
+    val originAnnotation =
+      classSymbol.resolvedCompilerAnnotationsWithClassIds.firstOrNull {
+        it.isResolved && it.toAnnotationClassIdSafe(session) in session.classIds.originAnnotations
+      }
+    val targetClassId =
+      originAnnotation
+        ?.argumentAsOrNull<FirGetClassCall>(
+          org.jetbrains.kotlin.builtins.StandardNames.DEFAULT_VALUE_PARAMETER,
+          0,
+        )
+        ?.resolvedClassId()
+
+    val targetClassSymbol =
+      targetClassId?.let {
+        session.symbolProvider.getClassLikeSymbolByClassId(it) as? FirRegularClassSymbol
+      } ?: return emptySet()
+
+    val classIds = session.classIds
+
+    // Find the matching custom annotation on the target and extract the template class
+    var templateSymbol: FirRegularClassSymbol? = null
+    for (annotation in targetClassSymbol.resolvedCompilerAnnotationsWithClassIds) {
+      if (!annotation.isResolved) continue
+      val annotationClassId = annotation.toAnnotationClassIdSafe(session) ?: continue
+      if (annotationClassId.shortClassName.identifier != annotationSimpleName) continue
+
+      val annotationClassSymbol =
+        session.symbolProvider.getClassLikeSymbolByClassId(annotationClassId)
+          as? FirRegularClassSymbol ?: continue
+
+      // Find @ContributesTemplate meta-annotation
+      val metaAnnotation =
+        annotationClassSymbol.resolvedCompilerAnnotationsWithClassIds.firstOrNull {
+          it.isResolved &&
+            it.toAnnotationClassIdSafe(session) == classIds.contributesTemplateAnnotation
+        } ?: continue
+
+      // Extract the template class reference
+      val templateGetClassCall =
+        metaAnnotation.argumentAsOrNull<FirGetClassCall>(Symbols.Names.template, 0)
+      val templateClassId = templateGetClassCall?.resolvedClassId() ?: continue
+
+      templateSymbol =
+        session.symbolProvider.getClassLikeSymbolByClassId(templateClassId)
+          as? FirRegularClassSymbol
+      break
+    }
+
+    if (templateSymbol == null) return emptySet()
+
+    // Find @Provides functions on the template class and register factory entries.
+    // Substitute the template function's type parameter T with the target class type.
+    val targetClassType = targetClassSymbol.defaultType()
+    templateSymbol.declarationSymbols
+      .filterIsInstance<FirNamedFunctionSymbol>()
+      .filter { it.isProvidesAnnotated(session, session.classIds.providesAnnotations) }
+      .forEach { templateFn ->
+        val substitutionMap = templateFn.typeParameterSymbols.associateWith { targetClassType }
+        val substitutor = substitutorByMap(substitutionMap, session)
+
+        val substitutedReturnType = substitutor.substituteOrSelf(templateFn.resolvedReturnType)
+
+        val substitutedParams =
+          templateFn.valueParameterSymbols.map { param ->
+            MetroFirValueParameter(
+              session,
+              param,
+              typeOverride = substitutor.substituteOrSelf(param.resolvedReturnType),
+            )
+          }
+
+        val providerCallable =
+          ProviderCallable(
+            owner = classSymbol,
+            symbol = templateFn,
+            instanceReceiver = null,
+            valueParameters = substitutedParams,
+            returnTypeOverride = substitutedReturnType,
+          )
+
+        val simpleName =
+          buildString {
+              append(providerCallable.name.capitalizeUS())
+              append(Symbols.Names.MetroFactory.asString())
+            }
+            .asName()
+
+        val factoryClassId = classSymbol.classId.createNestedClassId(simpleName)
+        providerFactoryClassIdsToCallables[factoryClassId] = providerCallable
+        result.add(simpleName)
+      }
+
+    return result
   }
 
   override fun generateNestedClassLikeDeclaration(
@@ -261,7 +391,10 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
           // For source-declared @Provides functions with unresolved return types
           // (FirUserTypeRef), ProvidesFactorySupertypeGenerator still handles them as before.
           @OptIn(SymbolInternals::class) val returnTypeRef = sourceCallable.symbol.fir.returnTypeRef
-          if (returnTypeRef is FirResolvedTypeRef) {
+          if (
+            returnTypeRef is FirResolvedTypeRef &&
+              !returnTypeRef.coneType.containsTypeParameterTypes()
+          ) {
             val factoryType =
               session.symbolProvider
                 .getClassLikeSymbolByClassId(Symbols.ClassIds.metroFactory)!!
@@ -283,13 +416,40 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     }
   }
 
+  /**
+   * Returns true if [classSymbol] is a class annotated with `@ContributesTemplate.Template`. Such
+   * classes contain template @Provides functions with type parameters and should not have factory
+   * classes generated directly.
+   */
+  private fun isTemplateClass(classSymbol: FirClassSymbol<*>): Boolean {
+    return classSymbol.isAnnotatedWithAny(
+      session,
+      setOf(Symbols.ClassIds.contributesTemplateTemplate),
+    )
+  }
+
   private fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
     val instanceReceiver = if (owner.classKind.isObject) null else owner.defaultType()
+    return asProviderCallable(owner, instanceReceiver)
+  }
+
+  private fun FirCallableSymbol<*>.asProviderCallable(
+    owner: FirClassSymbol<*>,
+    instanceReceiver: ConeClassLikeType?,
+    filterParams: ((FirValueParameterSymbol) -> Boolean)? = null,
+  ): ProviderCallable? {
     val params =
       when (this) {
         is FirPropertySymbol -> emptyList()
-        is FirNamedFunctionSymbol ->
-          this.valueParameterSymbols.map { MetroFirValueParameter(session, it) }
+        is FirNamedFunctionSymbol -> {
+          val symbols =
+            if (filterParams != null) {
+              this.valueParameterSymbols.filter(filterParams)
+            } else {
+              this.valueParameterSymbols
+            }
+          symbols.map { MetroFirValueParameter(session, it) }
+        }
         else -> return null
       }
     return ProviderCallable(owner, this, instanceReceiver, params)
@@ -377,6 +537,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     val symbol: FirCallableSymbol<*>,
     val instanceReceiver: ConeClassLikeType?,
     val valueParameters: List<MetroFirValueParameter>,
+    private val returnTypeOverride: ConeKotlinType? = null,
   ) {
     val callableId = CallableId(owner.classId, symbol.name)
     val name = symbol.name
@@ -387,7 +548,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       get() = symbol is FirPropertySymbol
 
     val returnType
-      get() = symbol.resolvedReturnType
+      get() = returnTypeOverride ?: symbol.resolvedReturnType
 
     val newInstanceName: Name
       get() = name
@@ -417,8 +578,10 @@ internal class ProvidesFactorySupertypeGenerator(
   ): List<ConeKotlinType> {
     val originClassSymbol =
       klass.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
-    val callableName =
-      klass.name.asString().removeSuffix(Symbols.Names.MetroFactory.asString()).decapitalizeUS()
+
+    val klassNameStr = klass.name.asString()
+    val withoutFactory = klassNameStr.removeSuffix(Symbols.Names.MetroFactory.asString())
+    val callableName = withoutFactory.decapitalizeUS()
     val callable =
       originClassSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().firstOrNull {
         val nameMatches =
@@ -436,7 +599,10 @@ internal class ProvidesFactorySupertypeGenerator(
         } else {
           false
         }
-      } ?: return emptyList()
+      }
+        // Fallback: for binding containers, look at interface supertypes for the @Provides function
+        ?: findInheritedProvidesCallable(originClassSymbol, callableName)
+        ?: return emptyList()
 
     val returnType =
       when (val type = callable.fir.returnTypeRef) {
@@ -480,6 +646,34 @@ internal class ProvidesFactorySupertypeGenerator(
         .getClassLikeSymbolByClassId(Symbols.ClassIds.metroFactory)!!
         .constructType(arrayOf(returnType))
     return listOf(factoryType.toFirResolvedTypeRef().coneType)
+  }
+
+  /**
+   * For binding containers, find a @Provides-annotated callable by name directly on the class.
+   * Binding containers now have their @Provides functions generated directly (not inherited).
+   */
+  @OptIn(DirectDeclarationsAccess::class)
+  private fun findInheritedProvidesCallable(
+    classSymbol: FirClassSymbol<*>,
+    callableName: String,
+  ): FirCallableSymbol<*>? {
+    // Binding containers now have @Provides functions generated directly, so just search
+    // the class's own declarations
+    return classSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().firstOrNull {
+      val nameMatches =
+        it.name.asString().equals(callableName, ignoreCase = true) ||
+          (it is FirPropertySymbol &&
+            it.name
+              .asString()
+              .equals(callableName.removePrefix("get").decapitalizeUS(), ignoreCase = true))
+      if (nameMatches) {
+        val metroAnnotations =
+          it.metroAnnotations(session, kinds = EnumSet.of(MetroAnnotations.Kind.Provides))
+        metroAnnotations.isProvides
+      } else {
+        false
+      }
+    }
   }
 
   private fun FirTypeRef.coneTypeLayered(typeResolver: TypeResolveService): ConeKotlinType? {
@@ -550,5 +744,14 @@ internal class ProvidesFactorySupertypeGenerator(
     return classId
       .toLookupTag()
       .constructClassType(parameters.toTypedArray(), typeRef.isMarkedNullable, attributes)
+  }
+}
+
+/** Returns true if this type or any of its type arguments contains a [ConeTypeParameterType]. */
+private fun ConeKotlinType.containsTypeParameterTypes(): Boolean {
+  if (this is ConeTypeParameterType) return true
+  return typeArguments.any { arg ->
+    val type = arg as? ConeKotlinType ?: return@any false
+    type.containsTypeParameterTypes()
   }
 }

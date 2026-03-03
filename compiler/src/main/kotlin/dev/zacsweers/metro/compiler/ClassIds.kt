@@ -110,6 +110,8 @@ public class ClassIds(
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("BindingContainer")) +
       customBindingContainerAnnotations
 
+  internal val contributesTemplateAnnotation = Symbols.ClassIds.contributesTemplate
+
   internal val originAnnotations = setOf(Symbols.ClassIds.metroOrigin) + customOriginAnnotations
 
   internal val graphPrivateAnnotation =

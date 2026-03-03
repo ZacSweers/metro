@@ -72,6 +72,7 @@ import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getJvmNameFromAnnotation
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -157,6 +158,11 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         declaration.isAnnotatedWithAny(metroSymbols.classIds.contributesToAnnotations)
     val isGraph = graphAnnotation != null
 
+    // Skip @Provides functions in classes annotated with @ContributesTemplate.Template.
+    // These are template functions that get delegated to by generated binding containers,
+    // not direct providers to register.
+    val skipDirectProvides = declaration.hasAnnotation(Symbols.ClassIds.contributesTemplateTemplate)
+
     declaration.declarations
       .asSequence()
       // Skip (fake) overrides, we care only about the original declaration because those have
@@ -166,6 +172,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
       .forEach { nestedDeclaration ->
         when (nestedDeclaration) {
           is IrProperty -> {
+            if (skipDirectProvides) return@forEach
             val getter = nestedDeclaration.getter ?: return@forEach
             val metroFunction = metroFunctionOf(getter)
             if (metroFunction.annotations.isProvides) {
@@ -174,6 +181,14 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
             }
           }
           is IrSimpleFunction -> {
+            if (skipDirectProvides) return@forEach
+            // Generate body for binding container delegate functions (calls annotation companion)
+            if (
+              nestedDeclaration.origin == Origins.BindingContainerGeneratedFunction &&
+                nestedDeclaration.body == null
+            ) {
+              generateImplFunctionBody(nestedDeclaration)
+            }
             val metroFunction = metroFunctionOf(nestedDeclaration)
             if (metroFunction.annotations.isProvides) {
               providerFactories[nestedDeclaration.callableId] =
@@ -194,6 +209,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
 
     val bindingContainerAnnotation =
       declaration.annotationsIn(metroSymbols.classIds.bindingContainerAnnotations).singleOrNull()
+
     val includes =
       bindingContainerAnnotation?.includedClasses()?.mapNotNullToSet {
         it.classType.rawTypeOrNull()?.classIdOrFail
@@ -250,6 +266,83 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
     return getOrLookupProviderFactory(
       getOrPutCallableReference(declaration, declaration.parentAsClass, metroFunction.annotations)
     )
+  }
+
+  /**
+   * Generates a body for a binding container delegate function that calls the template object's
+   * method. The generated body is: `return TemplateObject.method<TargetType>(args)`
+   *
+   * The binding container is a nested class inside the target with an `@Origin(TargetClass::class)`
+   * annotation. The annotation class name is encoded in the container name:
+   * `MetroBindingContainerFor{AnnotationName}`
+   */
+  private fun generateImplFunctionBody(function: IrSimpleFunction) {
+    val bindingContainerClass = function.parentAsClass
+
+    // Extract the annotation class name from the binding container name.
+    // Format: "MetroBindingContainerFor{AnnotationName}"
+    val containerName = bindingContainerClass.name.identifier
+    val annotationClassName =
+      containerName.substringAfter(Symbols.StringNames.METRO_BINDING_CONTAINER_FOR_PREFIX, "")
+    if (annotationClassName.isEmpty()) return
+
+    // Find the target class via @Origin annotation
+    val originAnnotation =
+      bindingContainerClass.annotations.firstOrNull {
+        it.symbol.owner.parentAsClass.classId == Symbols.ClassIds.metroOrigin
+      }
+    val targetClass =
+      originAnnotation?.let {
+        val arg = it.arguments.firstOrNull() ?: return@let null
+        (arg as? org.jetbrains.kotlin.ir.expressions.IrClassReference)
+          ?.classType
+          ?.classOrNull
+          ?.owner
+      }
+    if (targetClass == null) return
+
+    // Find the annotation class on the target
+    val annotationClass =
+      targetClass.annotations
+        .map { it.symbol.owner.parentAsClass }
+        .firstOrNull { it.name.identifier == annotationClassName } ?: return
+
+    // Find the @ContributesTemplate meta-annotation to get the template class
+    val metaAnnotation =
+      annotationClass.annotations.firstOrNull {
+        it.symbol.owner.parentAsClass.classId == Symbols.ClassIds.contributesTemplate
+      } ?: return
+
+    // Extract the template class from the meta-annotation's first argument
+    val templateClassRef =
+      metaAnnotation.arguments.firstOrNull()
+        as? org.jetbrains.kotlin.ir.expressions.IrClassReference ?: return
+    val templateClass = templateClassRef.classType.classOrNull?.owner ?: return
+
+    // Find the matching template function
+    val templateFunction =
+      templateClass.declarations.filterIsInstance<IrSimpleFunction>().firstOrNull {
+        it.name == function.name
+      } ?: return
+
+    function.body =
+      pluginContext.createIrBuilder(function.symbol).run {
+        irExprBodySafe(
+          irCall(templateFunction.symbol, type = function.returnType).apply {
+            // Set dispatch receiver to the template object
+            arguments[0] = irGetObject(templateClass.symbol)
+            // Set type argument T -> TargetClass
+            if (templateFunction.typeParameters.isNotEmpty()) {
+              typeArguments[0] = targetClass.defaultType
+            }
+            // Map all value parameters directly
+            val delegateParams = function.regularParameters
+            for ((i, param) in delegateParams.withIndex()) {
+              arguments[i + 1] = irGet(param)
+            }
+          }
+        )
+      }
   }
 
   fun getOrLookupProviderFactory(binding: IrBinding.Provided): ProviderFactory? {
@@ -612,7 +705,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
 
     private val simpleName by lazy {
       buildString {
-        append(name.capitalizeUS())
+        append(name.identifier.capitalizeUS())
         append(Symbols.Names.MetroFactory.asString())
       }
     }

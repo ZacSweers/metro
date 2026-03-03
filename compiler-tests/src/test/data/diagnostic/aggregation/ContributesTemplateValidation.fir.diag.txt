@@ -1,0 +1,19 @@
+/ContributesTemplateValidation.kt:(534,543): error: `@Provides` declarations may not have type parameters.
+
+/ContributesTemplateValidation.kt:(544,551): error: @Provides declarations must be within an either a @BindingContainer-annotated class XOR interface, class, or companion object. `provide` appears to be defined directly within a (non-companion) object that is not annotated @BindingContainer.
+
+/ContributesTemplateValidation.kt:(650,675): error: Template class `NotATemplate` must be annotated with `@ContributesTemplate.Template`.
+
+/ContributesTemplateValidation.kt:(804,824): error: Classes annotated with `@ContributesTemplate.Template` must be an `object` or `abstract class`.
+
+/ContributesTemplateValidation.kt:(1103,1122): error: Template class `EmptyTemplate` must have at least one `@Provides` function.
+
+/ContributesTemplateValidation.kt:(1376,1397): error: Template function 'provideInt' in `NoTypeParamTemplate` must have exactly one type parameter, but has 0.
+
+/ContributesTemplateValidation.kt:(1660,1683): error: Template function 'provide' in `TwoTypeParamsTemplate` must have exactly one type parameter, but has 2.
+
+/ContributesTemplateValidation.kt:(1976,1993): error: Annotation class annotated with `@ContributesTemplate` must have a `scope: KClass<*>` parameter or specify a `scope` in `@ContributesTemplate`.
+
+/ContributesTemplateValidation.kt:(2499,2517): error: Annotation class annotated with `@ContributesTemplate` must not have a `scope` parameter when `@ContributesTemplate` already specifies a `scope`.
+
+/ContributesTemplateValidation.kt:(2984,3018): error: Target class `InvalidTarget` does not satisfy type parameter bound `Marker` of `@Provides` function 'contribute' in `@BoundedContainer`.

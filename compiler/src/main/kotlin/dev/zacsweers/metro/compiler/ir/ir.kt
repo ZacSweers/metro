@@ -167,6 +167,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.remapTypes
@@ -361,7 +362,14 @@ internal fun IrBuilderWithScope.irInvoke(
           if (it.isObject) {
             irGetObject(it.symbol)
           } else {
-            null
+            // For fake overrides from interface supertypes, the dispatch receiver type may
+            // reference the interface rather than the declaring object class.
+            val parentClass = callee.owner.parentClassOrNull
+            if (parentClass?.isObject == true) {
+              irGetObject(parentClass.symbol)
+            } else {
+              null
+            }
           }
         }
       }
