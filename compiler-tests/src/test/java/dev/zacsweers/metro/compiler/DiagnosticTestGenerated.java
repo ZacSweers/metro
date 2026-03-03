@@ -943,6 +943,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("SuspiciousUnusedMultibindingInChildScope.kt")
+    public void testSuspiciousUnusedMultibindingInChildScope() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/SuspiciousUnusedMultibindingInChildScope.kt");
+    }
+
+    @Test
     @TestMetadata("SuspiciousUnusedMultibindingSet.kt")
     public void testSuspiciousUnusedMultibindingSet() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/SuspiciousUnusedMultibindingSet.kt");

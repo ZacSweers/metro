@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
@@ -62,8 +63,14 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.name.ClassId
 
 private const val MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT = 3
+
+internal data class ChildGraphScopeInfo(
+  val reachableKeys: Set<IrTypeKey>,
+  val scopeNames: Set<ClassId>,
+)
 
 internal class IrBindingGraph(
   metroContext: IrMetroContext,
@@ -233,7 +240,10 @@ internal class IrBindingGraph(
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
   context(traceScope: TraceScope)
-  fun seal(onError: (List<GraphError>) -> Unit): BindingGraphResult {
+  fun seal(
+    childGraphScopes: List<ChildGraphScopeInfo> = emptyList(),
+    onError: (List<GraphError>) -> Unit,
+  ): BindingGraphResult {
     val topologyResult =
       trace("seal graph") {
         val roots = buildMap {
@@ -320,7 +330,7 @@ internal class IrBindingGraph(
                 "[Metro/SuspiciousUnusedMultibinding] Synthetic multibinding " +
                   "${key.renderForDiagnostic(short = false)} is unused but has " +
                   "${binding.sourceBindings.size} source binding(s). " +
-                  "Did you possibly bind them to the wrong type?"
+                  "Did you possibly bind them to the wrong type or contribute them to the wrong scope?"
               )
               appendLine()
               for (source in unusedSources.take(MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT)) {
@@ -336,6 +346,24 @@ internal class IrBindingGraph(
               }
 
               appendSimilarMultibindingHints(binding, allMultibindings)
+
+              // Check if this multibinding type is used in any child graph extension
+              val childScopesUsingThis =
+                childGraphScopes.filter { key in it.reachableKeys }.flatMapToSet { it.scopeNames }
+
+              if (childScopesUsingThis.isNotEmpty()) {
+                appendLine()
+                appendLine("(Hint)")
+                appendLine(
+                  "${key.renderForDiagnostic(short = true)} _is_ used in the following child graph scope(s):"
+                )
+                for (scope in childScopesUsingThis) {
+                  appendLine("  - ${scope.asFqNameString()}")
+                }
+                appendLine(
+                  "These bindings may need to be contributed to one of those scopes instead."
+                )
+              }
             }
 
             reportCompat(node.sourceGraph, MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING, message)
