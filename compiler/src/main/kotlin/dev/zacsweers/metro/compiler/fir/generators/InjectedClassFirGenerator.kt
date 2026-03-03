@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
+import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
@@ -20,7 +21,6 @@ import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
-import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
@@ -234,8 +234,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         return it
       }
       val resolver =
-        MetroFirTypeResolver.Factory(session, session.memoizedAllSessionsSequence)
-          .create(classSymbol) ?: return false
+        MetroFirTypeResolver.Factory(session, session.allSessions).create(classSymbol)
+          ?: return false
 
       return classSymbol.fir.superTypeRefs
         .any {

@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
 import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.mapToArray
-import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.GuiceSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -1448,8 +1447,13 @@ internal fun typeRefFromQualifierParts(
   return userTypeRef
 }
 
-internal val FirSession.memoizedAllSessionsSequence: Sequence<FirSession>
-  get() = sequenceOf(this).plus(moduleData.allDependsOnDependencies.map { it.session }).memoized()
+internal val FirSession.allSessions: List<FirSession>
+  get() = buildList {
+    add(this@allSessions)
+    for (transitive in moduleData.allDependsOnDependencies) {
+      add(transitive.session)
+    }
+  }
 
 internal fun FirClassSymbol<*>.originClassId(
   session: FirSession,

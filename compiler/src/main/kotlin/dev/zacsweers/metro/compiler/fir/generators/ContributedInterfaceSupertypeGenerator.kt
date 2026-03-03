@@ -9,12 +9,12 @@ import dev.zacsweers.metro.compiler.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
+import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
-import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.originClassId
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -89,7 +89,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     loadExternalContributionExtensions(session, options)
   }
 
-  private val allSessions = session.memoizedAllSessionsSequence
+  private val allSessions = session.allSessions
   private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
 
   private val inCompilationScopesToContributions:

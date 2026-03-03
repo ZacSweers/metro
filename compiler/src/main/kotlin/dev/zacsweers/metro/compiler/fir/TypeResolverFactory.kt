@@ -33,7 +33,7 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 internal sealed interface MetroFirTypeResolver {
   fun resolveType(typeRef: FirTypeRef): ConeKotlinType
 
-  class Factory(private val session: FirSession, private val allSessions: Sequence<FirSession>) {
+  class Factory(private val session: FirSession, private val allSessions: List<FirSession>) {
     private val scopeSession = ScopeSession()
     private val resolversByFile = mutableMapOf<FirFile, LocalMetroFirTypeResolver?>()
     private val externalResolver by lazy { ExternalMetroFirTypeResolver(session) }
