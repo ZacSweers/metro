@@ -321,6 +321,10 @@ internal class IrBindingGraph(
           }
           for ((key, binding) in bindingLookup.getAvailableMultibindings()) {
             if (binding.declaration != null) continue // Skip explicitly declared
+            // If the synthetic multibinding key itself is reachable, it's consumed by the graph
+            // (e.g., via constructor injection of a @ContributesBinding class) and should not be
+            // flagged as suspicious.
+            if (key in reachableKeys) continue
             val unusedSources = binding.sourceBindings.intersect(unusedMultibindingElements)
             if (unusedSources.isEmpty()) continue
 

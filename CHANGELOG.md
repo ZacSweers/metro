@@ -12,6 +12,8 @@ Changelog
 
 ### Fixes
 
+- **[IR]**: Fix false positive `SuspiciousUnusedMultibinding` warning when a synthetic multibinding is consumed via `@ContributesBinding` constructor injection in the same scope.
+
 ### Changes
 
 ### Contributors

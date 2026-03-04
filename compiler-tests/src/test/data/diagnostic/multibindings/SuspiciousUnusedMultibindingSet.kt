@@ -31,3 +31,26 @@ class Impl4 : BaseViewModel
 @ContributesIntoSet(AppScope::class)
 @Inject
 class Impl5 : BaseViewModel
+
+interface Writer
+
+interface Tracker
+
+@ContributesIntoSet(AppScope::class, binding = binding<Writer>())
+@Inject
+class WriterA : Writer
+
+@ContributesIntoSet(AppScope::class, binding = binding<Writer>())
+@Inject
+class WriterB : Writer
+
+@ContributesBinding(AppScope::class, binding = binding<Tracker>())
+@Inject
+class DefaultTracker(
+  private val writers: Set<Writer>,
+) : Tracker
+
+@DependencyGraph(AppScope::class)
+interface TrackerGraph {
+  val tracker: Tracker
+}
