@@ -36,8 +36,6 @@ import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
-import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -49,9 +47,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
-import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
-import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -218,24 +214,6 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
           classKind = classKind,
         ) {
           copyTypeParametersFrom(owner, session)
-
-          // Eagerly set the Factory<T> supertype when the return type is already resolved.
-          // This is necessary because FirSupertypeGenerationExtension callbacks are not invoked
-          // for generated classes nested inside other generated classes (e.g., a factory inside
-          // a generated @ContributesTo interface from a MetroFirDeclarationGenerationExtension).
-          // In that case, ProvidesFactorySupertypeGenerator never runs, and the factory would
-          // be left with only kotlin.Any as its supertype. Setting it eagerly here ensures the
-          // factory always has the correct Factory<T> supertype.
-          // For source-declared @Provides functions with unresolved return types
-          // (FirUserTypeRef), ProvidesFactorySupertypeGenerator still handles them as before.
-          @OptIn(SymbolInternals::class) val returnTypeRef = sourceCallable.symbol.fir.returnTypeRef
-          if (returnTypeRef is FirResolvedTypeRef) {
-            val factoryType =
-              session.symbolProvider
-                .getClassLikeSymbolByClassId(Symbols.ClassIds.metroFactory)!!
-                .constructType(arrayOf(returnTypeRef.coneType))
-            superType(factoryType)
-          }
         }
         .apply {
           markAsDeprecatedHidden(session)
