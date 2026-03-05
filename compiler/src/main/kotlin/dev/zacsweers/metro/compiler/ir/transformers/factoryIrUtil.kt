@@ -79,9 +79,11 @@ internal fun generateStaticCreateFunction(
         providerFunction = providerFunction,
         sourceMetroParameters = parameters,
         sourceParameters =
-          parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.asValueParameter },
+          parameters.nonDispatchParameters
+            .filterNot { it.isAssisted || it.ir?.origin == Origins.InstanceParameter }
+            .map { it.asValueParameter },
         targetParameters = valueParamsToPatch,
-        targetGraphParameter = instanceParam,
+        containerParameter = instanceParam,
         wrapInProvider = true,
       )
     }
@@ -145,7 +147,7 @@ internal fun generateStaticNewInstanceFunction(
       sourceMetroParameters = sourceMetroParameters,
       sourceParameters = sourceParameters,
       targetParameters = valueParametersToMap,
-      targetGraphParameter = instanceParam,
+      containerParameter = instanceParam,
     )
 
     body = context.createIrBuilder(symbol).run { irExprBodySafe(buildBody(this@apply)) }

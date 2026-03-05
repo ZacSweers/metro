@@ -37,7 +37,7 @@ internal fun copyParameterDefaultValues(
   sourceMetroParameters: Parameters,
   sourceParameters: List<IrValueParameter>,
   targetParameters: List<IrValueParameter>,
-  targetGraphParameter: IrValueParameter?,
+  containerParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
   isTopLevelFunction: Boolean = false,
 ) {
@@ -66,7 +66,7 @@ internal fun copyParameterDefaultValues(
       override fun visitGetValue(expression: IrGetValue, data: RemappingData): IrExpression {
         // Check if the expression is the instance receiver
         if (expression.symbol == providerFunction?.dispatchReceiverParameter?.symbol) {
-          return IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, targetGraphParameter!!.symbol)
+          return IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, containerParameter!!.symbol)
         }
         val index = sourceParameters.indexOfFirst { it.symbol == expression.symbol }
         if (index != -1) {

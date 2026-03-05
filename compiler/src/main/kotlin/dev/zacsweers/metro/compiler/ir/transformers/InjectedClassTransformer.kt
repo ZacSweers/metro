@@ -251,7 +251,7 @@ internal class InjectedClassTransformer(
 
     val constructorParametersToFields = assignConstructorParamsToFields(ctor, factoryCls)
 
-    // Build a mapping from ALL source parameters to fields, handling the fact that
+    // Build a mapping from all source parameters to fields, handling the fact that
     // multiple source params with the same type key share the same deduped field.
     val dedupedParamToField: Map<Parameter, IrField> =
       constructorParametersToFields.entries.withIndex().associate { (index, pair) ->
@@ -259,26 +259,7 @@ internal class InjectedClassTransformer(
         val sourceParam = dedupedParameters[index]
         sourceParam to field
       }
-    val typeKeyToField: Map<IrTypeKey, IrField> = buildMap {
-      for ((param, field) in dedupedParamToField) {
-        // Params with defaults have their own entries (they're never deduped), so they
-        // don't belong in the type-key map. Only non-default params share fields by type key.
-        if (!param.hasDefault) {
-          putIfAbsent(param.typeKey, field)
-        }
-      }
-    }
-    val sourceParametersToFields: Map<Parameter, IrField> = buildMap {
-      for (param in nonAssistedParameters) {
-        if (param.hasDefault) {
-          // Params with defaults have their own dedicated fields (looked up by identity)
-          dedupedParamToField[param]?.let { put(param, it) }
-        } else {
-          // Non-default params share fields by type key (deduped)
-          typeKeyToField[param.typeKey]?.let { put(param, it) }
-        }
-      }
-    }
+    val typeKeyToField: Map<IrTypeKey, IrField> = dedupedParamToField.mapKeys { it.key.typeKey }
 
     val newInstanceFunction =
       generateCreators(
@@ -315,7 +296,7 @@ internal class InjectedClassTransformer(
       newInstanceFunction,
       constructorParameters,
       injectors,
-      sourceParametersToFields,
+      typeKeyToField,
     )
 
     possiblyImplementInvoke(declaration, constructorParameters)
@@ -359,7 +340,7 @@ internal class InjectedClassTransformer(
     newInstanceFunction: IrSimpleFunction,
     constructorParameters: Parameters,
     injectors: List<MembersInjectorTransformer.MemberInjectClass>,
-    parametersToFields: Map<Parameter, IrField>,
+    fields: Map<IrTypeKey, IrField>,
   ) {
     if (invokeFunction.isFakeOverride) {
       invokeFunction.finalizeFakeOverride(thisReceiver)
@@ -384,7 +365,7 @@ internal class InjectedClassTransformer(
                 val providerInstance =
                   irGetField(
                     irGet(invokeFunction.dispatchReceiverParameter!!),
-                    parametersToFields.getValue(constructorParam),
+                    fields.getValue(constructorParam.typeKey),
                   )
                 val contextKey = targetParam.contextualTypeKey
                 typeAsProviderArgument(
@@ -436,7 +417,7 @@ internal class InjectedClassTransformer(
                       parametersAsProviderArguments(
                         parameters,
                         invokeFunction.dispatchReceiverParameter!!,
-                        parametersToFields,
+                        fields,
                       )
                     )
                   },
@@ -495,7 +476,7 @@ internal class InjectedClassTransformer(
                     .filter { it.isAssisted }
                     .map { it.asValueParameter },
                 targetParameters = invokeFunction.nonDispatchParameters,
-                targetGraphParameter = null,
+                containerParameter = null,
                 wrapInProvider = false,
                 isTopLevelFunction = true,
               )
