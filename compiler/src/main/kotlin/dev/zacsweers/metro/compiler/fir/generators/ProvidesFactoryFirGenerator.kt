@@ -2,54 +2,41 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.isCli
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.memoize
-import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import java.util.EnumSet
-import org.jetbrains.kotlin.builtins.functions.FunctionTypeKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.computeTypeAttributes
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
-import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
-import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
-import org.jetbrains.kotlin.fir.extensions.ExperimentalSupertypesGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
-import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
-import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
-import org.jetbrains.kotlin.fir.resolve.withParameterNameAnnotation
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
@@ -61,22 +48,10 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
-import org.jetbrains.kotlin.fir.types.CompilerConeAttributes
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
-import org.jetbrains.kotlin.fir.types.ConeKotlinType
-import org.jetbrains.kotlin.fir.types.FirErrorTypeRef
-import org.jetbrains.kotlin.fir.types.FirFunctionTypeRef
-import org.jetbrains.kotlin.fir.types.FirImplicitTypeRef
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
-import org.jetbrains.kotlin.fir.types.FirTypeRef
-import org.jetbrains.kotlin.fir.types.FirUserTypeRef
-import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
-import org.jetbrains.kotlin.fir.types.constructClassType
 import org.jetbrains.kotlin.fir.types.constructType
-import org.jetbrains.kotlin.fir.types.functionTypeService
-import org.jetbrains.kotlin.fir.types.parametersCount
-import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -112,8 +87,8 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       } ?: return emptySet()
 
     return buildSet {
-      add(SpecialNames.INIT)
       if (classSymbol.classKind == ClassKind.OBJECT) {
+        add(SpecialNames.INIT)
         // Generate create() and newInstance headers
         add(Symbols.Names.create)
         add(callable.newInstanceName)
@@ -126,14 +101,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       if (context.owner.classKind == ClassKind.OBJECT) {
         createDefaultPrivateConstructor(context.owner, Keys.Default)
       } else {
-        val callable =
-          providerFactoryClassIdsToCallables[context.owner.classId] ?: return emptyList()
-        buildFactoryConstructor(
-          context,
-          callable.instanceReceiver,
-          null,
-          callable.valueParameters.dedupeParameters(session),
-        )
+        return emptyList()
       }
     return listOf(constructor.symbol)
   }
@@ -391,164 +359,5 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
 
     val newInstanceName: Name
       get() = name
-  }
-}
-
-internal class ProvidesFactorySupertypeGenerator(
-  session: FirSession,
-  compatContext: CompatContext,
-) : FirSupertypeGenerationExtension(session), CompatContext by compatContext {
-
-  override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
-    return declaration.symbol.hasOrigin(Keys.ProviderFactoryClassDeclaration)
-  }
-
-  override fun computeAdditionalSupertypes(
-    classLikeDeclaration: FirClassLikeDeclaration,
-    resolvedSupertypes: List<FirResolvedTypeRef>,
-    typeResolver: TypeResolveService,
-  ): List<ConeKotlinType> = emptyList()
-
-  @OptIn(SymbolInternals::class, DirectDeclarationsAccess::class)
-  @ExperimentalSupertypesGenerationApi
-  override fun computeAdditionalSupertypesForGeneratedNestedClass(
-    klass: FirRegularClass,
-    typeResolver: TypeResolveService,
-  ): List<ConeKotlinType> {
-    val originClassSymbol =
-      klass.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
-    val callableName =
-      klass.name.asString().removeSuffix(Symbols.Names.MetroFactory.asString()).decapitalizeUS()
-    val callable =
-      originClassSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().firstOrNull {
-        val nameMatches =
-          it.name.asString().equals(callableName, ignoreCase = true) ||
-            (it is FirPropertySymbol &&
-              it.name
-                .asString()
-                .equals(callableName.removePrefix("get").decapitalizeUS(), ignoreCase = true))
-        if (nameMatches) {
-          // Secondary check to ensure it's a @Provides-annotated callable. Otherwise we may
-          // match against overloaded non-Provides declarations
-          val metroAnnotations =
-            it.metroAnnotations(session, kinds = EnumSet.of(MetroAnnotations.Kind.Provides))
-          metroAnnotations.isProvides
-        } else {
-          false
-        }
-      } ?: return emptyList()
-
-    val returnType =
-      when (val type = callable.fir.returnTypeRef) {
-        is FirUserTypeRef -> {
-          typeResolver
-            .resolveUserType(type)
-            .also {
-              if (it is FirErrorTypeRef) {
-                val message =
-                  """
-                Could not resolve provider return type for provider: ${callable.callableId}
-                This can happen if the provider references a class that is nested within the same parent class and has cyclical references to other classes.
-                ${callable.fir.render()}
-              """
-                    .trimIndent()
-                if (session.isCli()) {
-                  reportCompilerBug(message)
-                } else {
-                  // TODO TypeResolveService appears to be unimplemented in the IDE
-                  //  https://youtrack.jetbrains.com/issue/KT-74553/
-                  System.err.println(message)
-                  return emptyList()
-                }
-              }
-            }
-            .coneType
-        }
-        is FirFunctionTypeRef -> {
-          createFunctionType(type, typeResolver) ?: return emptyList()
-        }
-        is FirResolvedTypeRef -> type.coneType
-        is FirImplicitTypeRef -> {
-          // Ignore, will report in FIR checker
-          return emptyList()
-        }
-        else -> return emptyList()
-      }
-
-    val factoryType =
-      session.symbolProvider
-        .getClassLikeSymbolByClassId(Symbols.ClassIds.metroFactory)!!
-        .constructType(arrayOf(returnType))
-    return listOf(factoryType.toFirResolvedTypeRef().coneType)
-  }
-
-  private fun FirTypeRef.coneTypeLayered(typeResolver: TypeResolveService): ConeKotlinType? {
-    return when (this) {
-      is FirUserTypeRef ->
-        typeResolver.resolveUserType(this).takeUnless { it is FirErrorTypeRef }?.coneType
-      is FirFunctionTypeRef -> createFunctionType(this, typeResolver)
-      else -> coneTypeOrNull
-    }
-  }
-
-  private fun createFunctionType(
-    typeRef: FirFunctionTypeRef,
-    typeResolver: TypeResolveService,
-  ): ConeClassLikeType? {
-    val parametersWithNulls =
-      typeRef.contextParameterTypeRefs.map { it.coneTypeLayered(typeResolver) } +
-        listOfNotNull(typeRef.receiverTypeRef?.coneTypeLayered(typeResolver)) +
-        typeRef.parameters.map {
-          it.returnTypeRef.coneTypeLayered(typeResolver)?.withParameterNameAnnotation(it)
-        } +
-        listOf(typeRef.returnTypeRef.coneTypeLayered(typeResolver))
-    val parameters = parametersWithNulls.filterNotNull()
-    if (parameters.size != parametersWithNulls.size) {
-      val message =
-        "Could not resolve function type parameters for function type: ${typeRef.render()}"
-      if (session.isCli()) {
-        reportCompilerBug(message)
-      } else {
-        // TODO TypeResolveService appears to be unimplemented in the IDE
-        //  https://youtrack.jetbrains.com/issue/KT-74553/
-        System.err.println(message)
-        return null
-      }
-    }
-    val functionKinds =
-      session.functionTypeService.extractAllSpecialKindsForFunctionTypeRef(typeRef)
-    val kind =
-      when (functionKinds.size) {
-        0 -> FunctionTypeKind.Function
-        1 -> functionKinds.single()
-        else -> {
-          FunctionTypeKind.Function
-        }
-      }
-
-    val classId = kind.numberedClassId(typeRef.parametersCount)
-
-    val attributes =
-      typeRef.annotations.computeTypeAttributes(
-        session,
-        predefined =
-          buildList {
-            if (typeRef.receiverTypeRef != null) {
-              add(CompilerConeAttributes.ExtensionFunctionType)
-            }
-
-            if (typeRef.contextParameterTypeRefs.isNotEmpty()) {
-              add(
-                CompilerConeAttributes.ContextFunctionTypeParams(
-                  typeRef.contextParameterTypeRefs.size
-                )
-              )
-            }
-          },
-        shouldExpandTypeAliases = true,
-      )
-    return classId
-      .toLookupTag()
-      .constructClassType(parameters.toTypedArray(), typeRef.isMarkedNullable, attributes)
   }
 }

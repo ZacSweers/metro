@@ -20,7 +20,6 @@ import dev.zacsweers.metro.compiler.fir.generators.InjectedClassFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.LoggingFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.LoggingFirSupertypeGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactoryFirGenerator
-import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactorySupertypeGenerator
 import dev.zacsweers.metro.compiler.fir.generators.kotlinOnly
 import java.util.ServiceLoader
 import kotlin.io.path.appendText
@@ -62,11 +61,6 @@ public class MetroFirExtensionRegistrar(
 
     // These are types
     if (!isIde) {
-      +supertypeGenerator(
-        "Supertypes - provider factories",
-        ::ProvidesFactorySupertypeGenerator,
-        false,
-      )
       +{ session: FirSession -> FirAccessorOverrideStatusTransformer(session, compatContext) }
     }
     if (options.transformProvidersToPrivate) {
