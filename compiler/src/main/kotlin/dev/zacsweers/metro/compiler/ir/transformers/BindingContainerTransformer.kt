@@ -49,7 +49,6 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
@@ -75,7 +74,6 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
-import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -88,7 +86,6 @@ import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeAlias
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -336,38 +333,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         sourceParameters
       }
 
-    fun IrFunction.addParameters(
-      dedupe: Boolean,
-      wrapInProvider: Boolean,
-      onParam: (IrTypeKey, IrValueParameter) -> Unit = { _, _ -> },
-    ) {
-      val params = if (dedupe) dedupedSourceParameters else reference.parameters
-      for (param in params.allParameters) {
-        val isInstanceParam = param.asValueParameter.kind == IrParameterKind.DispatchReceiver
-        addValueParameter(
-            name =
-              if (isInstanceParam) {
-                Symbols.Names.instance
-              } else {
-                param.name
-              },
-            type =
-              if (wrapInProvider && !isInstanceParam) {
-                param.contextualTypeKey.stripOuterProviderOrLazy().wrapInProvider().toIrType()
-              } else {
-                param.contextualTypeKey.toIrType()
-              },
-            origin =
-              if (isInstanceParam) {
-                Origins.InstanceParameter
-              } else {
-                Origins.RegularParameter
-              },
-          )
-          .also { onParam(param.typeKey, it) }
-      }
-    }
-
     val typeKeyToField = mutableMapOf<IrTypeKey, IrField>()
     val ctor: IrConstructor
     if (factoryCls.isObject) {
@@ -383,7 +348,9 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
             isPrimary = true
           }
           .apply {
-            addParameters(dedupe = true, wrapInProvider = true) { typeKey, irParam ->
+            addParameters(params = dedupedSourceParameters.allParameters, wrapInProvider = true) {
+              typeKey,
+              irParam ->
               typeKeyToField[typeKey] = irParam.addBackingFieldTo(factoryCls)
             }
             body = generateDefaultConstructorBody()

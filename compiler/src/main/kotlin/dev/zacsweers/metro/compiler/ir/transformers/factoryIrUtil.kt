@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -13,17 +14,21 @@ import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
+import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.setExtensionReceiver
+import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
@@ -31,6 +36,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -228,4 +234,36 @@ internal fun generateMetadataVisibleMirrorFunction(
       }
   context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
   return function
+}
+
+context(context: IrMetroContext)
+internal fun IrFunction.addParameters(
+  params: List<Parameter>,
+  wrapInProvider: Boolean,
+  onParam: (IrTypeKey, IrValueParameter) -> Unit = { _, _ -> },
+) {
+  for (param in params) {
+    val isInstanceParam = param.asValueParameter.kind == IrParameterKind.DispatchReceiver
+    addValueParameter(
+        name =
+          if (isInstanceParam) {
+            Symbols.Names.instance
+          } else {
+            param.name
+          },
+        type =
+          if (wrapInProvider && !isInstanceParam) {
+            param.contextualTypeKey.stripOuterProviderOrLazy().wrapInProvider().toIrType()
+          } else {
+            param.contextualTypeKey.toIrType()
+          },
+        origin =
+          if (isInstanceParam) {
+            Origins.InstanceParameter
+          } else {
+            Origins.RegularParameter
+          },
+      )
+      .also { onParam(param.typeKey, it) }
+  }
 }
