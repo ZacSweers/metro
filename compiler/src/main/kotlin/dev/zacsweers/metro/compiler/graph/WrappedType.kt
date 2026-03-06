@@ -161,7 +161,6 @@ internal sealed interface WrappedType<T : Any> {
       is Canonical -> renderType(type)
       is Provider -> "Provider<${innerType.render(renderType)}>"
       is Lazy -> "Lazy<${innerType.render(renderType)}>"
-      // Use the actual map type, not hardcoded "Map"
-      is Map -> renderType(type())
+      is Map -> "Map<${renderType(keyType)}, ${valueType.render(renderType)}>"
     }
 }
