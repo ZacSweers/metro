@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
@@ -44,12 +45,15 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
@@ -66,19 +70,94 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
  * fun <T> create(valueProvider: Provider<T>): Example_Factory<T> = Example_Factory<T>(valueProvider)
  * ```
  */
+@IgnorableReturnValue
 context(context: IrMetroContext)
 internal fun generateStaticCreateFunction(
-  parentClass: IrClass,
+  objectClassToGenerateIn: IrClass,
+  factoryClass: IrClass,
   targetClass: IrClass,
   targetConstructor: IrConstructorSymbol,
   parameters: Parameters,
   providerFunction: IrFunction?,
   patchCreationParams: Boolean = true,
-  copyQualifiers: Boolean = false,
-  function: IrSimpleFunction =
-    parentClass.functions.first { it.origin == Origins.FactoryCreateFunction },
+  isAssistedInject: Boolean = false,
 ): IrSimpleFunction {
-  return function.apply {
+  val createFunction =
+    objectClassToGenerateIn
+      .addFunction(
+        name = Symbols.StringNames.CREATE,
+        // Placeholder, replaced in body
+        returnType = context.irBuiltIns.unitType,
+        origin = Origins.FactoryCreateFunction,
+      )
+      .apply {
+        val typeParams = copyTypeParametersFrom(targetClass)
+        this.returnType =
+          if (isAssistedInject) {
+            factoryClass.symbol.typeWithParameters(typeParams)
+          } else {
+            context.metroSymbols.metroFactory.typeWith(
+              targetClass.symbol.typeWithParameters(typeParams)
+            )
+          }
+        val typeRemapper =
+          targetClass.deepRemapperFor(targetClass.symbol.typeWithParameters(typeParams))
+        addParameters(
+          parameters.allParameters.filterNot { it.isAssisted },
+          wrapInProvider = true,
+          copyQualifiers = true,
+          typeRemapper = { type -> typeRemapper.remapType(type) },
+        )
+        context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
+      }
+  transformStaticCreateFunction(
+    factoryClass = factoryClass,
+    targetConstructor = targetConstructor,
+    parameters = parameters,
+    providerFunction = providerFunction,
+    patchCreationParams = patchCreationParams,
+    copyQualifiers = false, // We've already done it
+    createFunction = createFunction,
+  )
+  return createFunction
+}
+
+@IgnorableReturnValue
+context(context: IrMetroContext)
+internal fun transformStaticCreateFunction(
+  objectClassToGenerateIn: IrClass,
+  factoryClass: IrClass,
+  targetConstructor: IrConstructorSymbol,
+  parameters: Parameters,
+  providerFunction: IrFunction?,
+  patchCreationParams: Boolean = true,
+  copyQualifiers: Boolean = false,
+): IrSimpleFunction {
+  val createFunction =
+    objectClassToGenerateIn.functions.first { it.origin == Origins.FactoryCreateFunction }
+  transformStaticCreateFunction(
+    factoryClass = factoryClass,
+    targetConstructor = targetConstructor,
+    parameters = parameters,
+    providerFunction = providerFunction,
+    patchCreationParams = patchCreationParams,
+    copyQualifiers = copyQualifiers,
+    createFunction = createFunction,
+  )
+  return createFunction
+}
+
+context(context: IrMetroContext)
+private fun transformStaticCreateFunction(
+  factoryClass: IrClass,
+  targetConstructor: IrConstructorSymbol,
+  parameters: Parameters,
+  providerFunction: IrFunction?,
+  patchCreationParams: Boolean, // TODO eventually move this to function creation
+  copyQualifiers: Boolean,
+  createFunction: IrSimpleFunction,
+) {
+  createFunction.apply {
     if (patchCreationParams) {
       val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
       val valueParamsToPatch =
@@ -112,10 +191,10 @@ internal fun generateStaticCreateFunction(
     body =
       context.createIrBuilder(symbol).run {
         irExprBodySafe(
-          if (targetClass.isObject) {
-            irGetObject(targetClass.symbol)
+          if (factoryClass.isObject) {
+            irGetObject(factoryClass.symbol)
           } else {
-            irCallConstructorWithSameParameters(function, targetConstructor)
+            irCallConstructorWithSameParameters(createFunction, targetConstructor)
           }
         )
       }
@@ -139,17 +218,76 @@ internal fun generateStaticCreateFunction(
 context(context: IrMetroContext)
 internal fun generateStaticNewInstanceFunction(
   parentClass: IrClass,
+  targetClass: IrClass,
   sourceMetroParameters: Parameters,
   sourceParameters: List<IrValueParameter>,
   targetFunction: IrFunction? = null,
-  function: IrSimpleFunction =
-    parentClass.functions.first { it.origin == Origins.FactoryNewInstanceFunction },
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
 ): IrSimpleFunction {
-  return function.apply {
+  val newInstanceFunction =
+    parentClass
+      .addFunction(
+        name = Symbols.StringNames.NEW_INSTANCE,
+        // Placeholder, replaced in body
+        returnType = targetClass.defaultType,
+        origin = Origins.FactoryNewInstanceFunction,
+      )
+      .apply {
+        val typeParams = copyTypeParametersFrom(targetClass)
+        this.returnType = targetClass.symbol.typeWithParameters(typeParams)
+        val typeRemapper =
+          targetClass.deepRemapperFor(targetClass.symbol.typeWithParameters(typeParams))
+        addParameters(
+          sourceMetroParameters.allParameters,
+          wrapInProvider = false,
+          copyQualifiers = true,
+          typeRemapper = { type -> typeRemapper.remapType(type) },
+        )
+        context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
+      }
+  transformStaticNewInstanceFunction(
+    sourceMetroParameters = sourceMetroParameters,
+    sourceParameters = sourceParameters,
+    targetFunction = targetFunction,
+    newInstanceFunction = newInstanceFunction,
+    buildBody = buildBody,
+  )
+  return newInstanceFunction
+}
+
+context(context: IrMetroContext)
+internal fun transformStaticNewInstanceFunction(
+  parentClass: IrClass,
+  sourceMetroParameters: Parameters,
+  sourceParameters: List<IrValueParameter>,
+  targetFunction: IrFunction? = null,
+  buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
+): IrSimpleFunction {
+  val newInstanceFunction =
+    parentClass.functions.first { it.origin == Origins.FactoryNewInstanceFunction }
+  transformStaticNewInstanceFunction(
+    sourceMetroParameters = sourceMetroParameters,
+    sourceParameters = sourceParameters,
+    targetFunction = targetFunction,
+    newInstanceFunction = newInstanceFunction,
+    buildBody = buildBody,
+  )
+  return newInstanceFunction
+}
+
+context(context: IrMetroContext)
+private fun transformStaticNewInstanceFunction(
+  sourceMetroParameters: Parameters,
+  sourceParameters: List<IrValueParameter>,
+  targetFunction: IrFunction?,
+  newInstanceFunction: IrSimpleFunction,
+  buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
+) {
+  newInstanceFunction.apply {
     val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
     val valueParametersToMap =
       nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
+    // TODO move to function creation
     copyParameterDefaultValues(
       providerFunction = targetFunction,
       sourceMetroParameters = sourceMetroParameters,

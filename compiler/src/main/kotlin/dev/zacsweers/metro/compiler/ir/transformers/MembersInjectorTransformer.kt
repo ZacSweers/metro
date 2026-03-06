@@ -280,9 +280,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext) :
 
     // Static create()
     @Suppress("RETURN_VALUE_NOT_USED")
-    generateStaticCreateFunction(
-      parentClass = companionObject,
-      targetClass = injectorClass,
+    transformStaticCreateFunction(
+      objectClassToGenerateIn = companionObject,
+      factoryClass = injectorClass,
       targetConstructor = ctor.symbol,
       parameters =
         injectedMembersByClass.values

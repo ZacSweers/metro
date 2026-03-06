@@ -44,7 +44,6 @@ import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
-import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -55,7 +54,6 @@ import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.transformIfIntoMultibinding
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
@@ -536,9 +534,9 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
 
     // Generate create()
     @Suppress("RETURN_VALUE_NOT_USED")
-    generateStaticCreateFunction(
-      parentClass = classToGenerateCreatorsIn,
-      targetClass = factoryCls,
+    transformStaticCreateFunction(
+      objectClassToGenerateIn = classToGenerateCreatorsIn,
+      factoryClass = factoryCls,
       targetConstructor = factoryConstructor,
       parameters = factoryParameters,
       providerFunction = reference.callee?.owner,
@@ -546,7 +544,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
 
     // Generate the named newInstance function
     val newInstanceFunction =
-      generateStaticNewInstanceFunction(
+      transformStaticNewInstanceFunction(
         parentClass = classToGenerateCreatorsIn,
         targetFunction = reference.callee?.owner,
         sourceMetroParameters = reference.parameters,

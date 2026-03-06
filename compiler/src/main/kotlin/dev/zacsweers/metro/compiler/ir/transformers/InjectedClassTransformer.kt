@@ -61,11 +61,9 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
-import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.functions
@@ -666,86 +664,37 @@ internal class InjectedClassTransformer(
           else mergedParameters.regularParameters
       )
 
-    val createFunction =
-      classToGenerateCreatorsIn
-        .addFunction(
-          name = Symbols.StringNames.CREATE,
-          // Placeholder, replaced in body
-          returnType = irBuiltIns.unitType,
-          origin = Origins.FactoryCreateFunction,
-        )
-        .apply {
-          val typeParams = copyTypeParametersFrom(targetClass)
-          this.returnType =
-            if (isAssistedInject) {
-              factoryCls.symbol.typeWithParameters(typeParams)
-            } else {
-              metroSymbols.metroFactory.typeWith(targetClass.symbol.typeWithParameters(typeParams))
-            }
-          val typeRemapper =
-            targetClass.deepRemapperFor(targetClass.symbol.typeWithParameters(typeParams))
-          addParameters(
-            dedupedMerged.allParameters.filterNot { it.isAssisted },
-            wrapInProvider = true,
-            copyQualifiers = true,
-            typeRemapper = { type -> typeRemapper.remapType(type) },
-          )
-          metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
-        }
-
     // Generate create()
-    @Suppress("RETURN_VALUE_NOT_USED")
     generateStaticCreateFunction(
-      parentClass = classToGenerateCreatorsIn,
-      targetClass = factoryCls,
+      objectClassToGenerateIn = classToGenerateCreatorsIn,
+      factoryClass = factoryCls,
+      targetClass = targetClass,
       targetConstructor = factoryConstructor,
       parameters = dedupedMerged,
+      isAssistedInject = isAssistedInject,
       providerFunction = null,
-      function = createFunction,
     )
-
-    val newInstanceFunction =
-      classToGenerateCreatorsIn
-        .addFunction(
-          name = Symbols.StringNames.NEW_INSTANCE,
-          // Placeholder, replaced in body
-          returnType = targetClass.defaultType,
-          origin = Origins.FactoryNewInstanceFunction,
-        )
-        .apply {
-          val typeParams = copyTypeParametersFrom(targetClass)
-          this.returnType = targetClass.symbol.typeWithParameters(typeParams)
-          val typeRemapper =
-            targetClass.deepRemapperFor(targetClass.symbol.typeWithParameters(typeParams))
-          addParameters(
-            constructorParameters.allParameters,
-            wrapInProvider = false,
-            copyQualifiers = true,
-            typeRemapper = { type -> typeRemapper.remapType(type) },
-          )
-          metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
-        }
 
     // newInstance() preserves the original constructor signature (no deduplication)
     // so that each parameter gets its own distinct value from the provider.
-    @Suppress("RETURN_VALUE_NOT_USED")
-    generateStaticNewInstanceFunction(
-      parentClass = classToGenerateCreatorsIn,
-      sourceMetroParameters = constructorParameters,
-      sourceParameters = constructorParameters.regularParameters.map { it.asValueParameter },
-      function = newInstanceFunction,
-    ) { function ->
-      irCallConstructor(
-          callee = targetConstructor,
-          typeArguments = function.typeParameters.map { it.defaultType },
-        )
-        .apply {
-          val functionParameters = function.nonDispatchParameters
-          for ((i, param) in constructorParameters.allParameters.withIndex()) {
-            arguments[param.asValueParameter.indexInParameters] = irGet(functionParameters[i])
+    val newInstanceFunction =
+      generateStaticNewInstanceFunction(
+        parentClass = classToGenerateCreatorsIn,
+        targetClass = targetClass,
+        sourceMetroParameters = constructorParameters,
+        sourceParameters = constructorParameters.regularParameters.map { it.asValueParameter },
+      ) { function ->
+        irCallConstructor(
+            callee = targetConstructor,
+            typeArguments = function.typeParameters.map { it.defaultType },
+          )
+          .apply {
+            val functionParameters = function.nonDispatchParameters
+            for ((i, param) in constructorParameters.allParameters.withIndex()) {
+              arguments[param.asValueParameter.indexInParameters] = irGet(functionParameters[i])
+            }
           }
-        }
-    }
+      }
     return newInstanceFunction
   }
 }
