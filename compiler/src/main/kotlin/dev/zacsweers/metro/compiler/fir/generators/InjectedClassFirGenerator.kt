@@ -559,7 +559,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     // Factory class
     // Factory (companion) object
     if (isFactoryCreatorClass) {
-      names += Symbols.Names.create
       names += Symbols.Names.newInstance
     }
 
@@ -730,27 +729,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       val returnType = injectedClass.classSymbol.defaultType()
       functions +=
         when (callableId.callableName) {
-          Symbols.Names.create -> {
-            buildFactoryCreateFunction(
-              nonNullContext,
-              { typeParams ->
-                if (injectedClass.isAssistedInject) {
-                  targetClass.constructType(typeParams.mapToArray(FirTypeParameterRef::toConeType))
-                } else {
-                  Symbols.ClassIds.metroFactory.constructClassLikeType(
-                    arrayOf(
-                      injectedClass.classSymbol.constructType(
-                        typeParams.mapToArray(FirTypeParameterRef::toConeType)
-                      )
-                    )
-                  )
-                }
-              },
-              null,
-              null,
-              injectedClass.allParameters.dedupeParameters(session),
-            )
-          }
           Symbols.Names.newInstance -> {
             buildNewInstanceFunction(
               nonNullContext,

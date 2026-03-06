@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.applyIf
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -42,6 +43,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
@@ -73,9 +75,9 @@ internal fun generateStaticCreateFunction(
   providerFunction: IrFunction?,
   patchCreationParams: Boolean = true,
   copyQualifiers: Boolean = false,
+  function: IrSimpleFunction =
+    parentClass.functions.first { it.origin == Origins.FactoryCreateFunction },
 ): IrSimpleFunction {
-  val function = parentClass.functions.first { it.origin == Origins.FactoryCreateFunction }
-
   return function.apply {
     if (patchCreationParams) {
       val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
@@ -240,10 +242,18 @@ context(context: IrMetroContext)
 internal fun IrFunction.addParameters(
   params: List<Parameter>,
   wrapInProvider: Boolean,
+  copyQualifiers: Boolean = false,
+  typeRemapper: ((IrType) -> IrType)? = null,
   onParam: (IrTypeKey, IrValueParameter) -> Unit = { _, _ -> },
 ) {
   for (param in params) {
     val isInstanceParam = param.asValueParameter.kind == IrParameterKind.DispatchReceiver
+    val baseType =
+      if (wrapInProvider && !isInstanceParam) {
+        param.contextualTypeKey.stripOuterProviderOrLazy().wrapInProvider().toIrType()
+      } else {
+        param.contextualTypeKey.toIrType()
+      }
     addValueParameter(
         name =
           if (isInstanceParam) {
@@ -251,12 +261,7 @@ internal fun IrFunction.addParameters(
           } else {
             param.name
           },
-        type =
-          if (wrapInProvider && !isInstanceParam) {
-            param.contextualTypeKey.stripOuterProviderOrLazy().wrapInProvider().toIrType()
-          } else {
-            param.contextualTypeKey.toIrType()
-          },
+        type = typeRemapper?.invoke(baseType) ?: baseType,
         origin =
           if (isInstanceParam) {
             Origins.InstanceParameter
@@ -264,6 +269,9 @@ internal fun IrFunction.addParameters(
             Origins.RegularParameter
           },
       )
+      .applyIf(copyQualifiers) {
+        param.typeKey.qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
+      }
       .also { onParam(param.typeKey, it) }
   }
 }

@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
@@ -29,7 +30,6 @@ import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
-import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
@@ -37,7 +37,6 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -62,9 +61,11 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.functions
@@ -243,12 +244,12 @@ internal class InjectedClassTransformer(
 
     val constructorParameters = targetConstructor.parameters()
 
-    val isAssisted =
+    val isAssistedInject =
       listOf(declaration, targetConstructor).any {
         it.isAnnotatedWithAny(metroSymbols.classIds.assistedInjectAnnotations)
       }
 
-    if (!isAssisted) {
+    if (!isAssistedInject) {
       // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to read
       // directly since we'll read the mirror function to get the target type
       factoryCls.superTypes += metroSymbols.metroFactory.typeWith(declaration.defaultType)
@@ -261,11 +262,11 @@ internal class InjectedClassTransformer(
         .addFunction(
           Symbols.StringNames.INVOKE,
           declaration.defaultType,
-          isFakeOverride = !isAssisted,
+          isFakeOverride = !isAssistedInject,
         )
         .apply {
           isOperator = true
-          if (!isAssisted) {
+          if (!isAssistedInject) {
             overriddenSymbols = listOf(metroSymbols.providerInvoke)
           } else {
             // Add assisted params
@@ -310,7 +311,12 @@ internal class InjectedClassTransformer(
             isPrimary = true
           }
           .apply {
-            addParameters(params = dedupedParameters, wrapInProvider = true) { typeKey, irParam ->
+            val typeRemapper = declaration.deepRemapperFor(factoryCls.defaultType)
+            addParameters(
+              params = dedupedParameters,
+              wrapInProvider = true,
+              typeRemapper = { type -> typeRemapper.remapType(type) },
+            ) { typeKey, irParam ->
               typeKeyToField[typeKey] = irParam.addBackingFieldTo(factoryCls)
             }
             body = generateDefaultConstructorBody()
@@ -319,11 +325,13 @@ internal class InjectedClassTransformer(
 
     val newInstanceFunction =
       generateCreators(
+        declaration,
         factoryCls,
         ctor.symbol,
         targetConstructor.symbol,
         constructorParameters,
         allParameters,
+        isAssistedInject,
       )
 
     /*
@@ -629,11 +637,13 @@ internal class InjectedClassTransformer(
   }
 
   private fun generateCreators(
+    targetClass: IrClass,
     factoryCls: IrClass,
     factoryConstructor: IrConstructorSymbol,
     targetConstructor: IrConstructorSymbol,
     constructorParameters: Parameters,
     allParameters: List<Parameters>,
+    isAssistedInject: Boolean,
   ): IrSimpleFunction {
     // If this is an object, we can generate directly into this object
     val isObject = factoryCls.kind == ClassKind.OBJECT
@@ -656,6 +666,33 @@ internal class InjectedClassTransformer(
           else mergedParameters.regularParameters
       )
 
+    val createFunction =
+      classToGenerateCreatorsIn
+        .addFunction(
+          name = Symbols.StringNames.CREATE,
+          // Placeholder, replaced in body
+          returnType = irBuiltIns.unitType,
+          origin = Origins.FactoryCreateFunction,
+        )
+        .apply {
+          val typeParams = copyTypeParametersFrom(targetClass)
+          this.returnType =
+            if (isAssistedInject) {
+              factoryCls.symbol.typeWithParameters(typeParams)
+            } else {
+              metroSymbols.metroFactory.typeWith(targetClass.symbol.typeWithParameters(typeParams))
+            }
+          val typeRemapper =
+            targetClass.deepRemapperFor(targetClass.symbol.typeWithParameters(typeParams))
+          addParameters(
+            dedupedMerged.allParameters.filterNot { it.isAssisted },
+            wrapInProvider = true,
+            copyQualifiers = true,
+            typeRemapper = { type -> typeRemapper.remapType(type) },
+          )
+          metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
+        }
+
     // Generate create()
     @Suppress("RETURN_VALUE_NOT_USED")
     generateStaticCreateFunction(
@@ -664,6 +701,7 @@ internal class InjectedClassTransformer(
       targetConstructor = factoryConstructor,
       parameters = dedupedMerged,
       providerFunction = null,
+      function = createFunction,
     )
 
     // newInstance() preserves the original constructor signature (no deduplication)

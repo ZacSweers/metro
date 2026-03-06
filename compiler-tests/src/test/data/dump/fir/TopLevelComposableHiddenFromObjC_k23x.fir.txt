@@ -28,8 +28,6 @@ FILE: /ComposableApp.kt
 
         @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class MetroFactory : R|kotlin/Any| {
             public final companion object Companion : R|kotlin/Any| {
-                public final fun create(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|dev/zacsweers/metro/internal/Factory<ComposableApp>|
-
                 public final fun newInstance(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|ComposableApp|
 
                 private constructor(): R|ComposableApp.MetroFactory.Companion| {
@@ -51,8 +49,6 @@ FILE: /NonComposableApp.kt
 
         @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class MetroFactory : R|kotlin/Any| {
             public final companion object Companion : R|kotlin/Any| {
-                public final fun create(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|dev/zacsweers/metro/internal/Factory<NonComposableApp>|
-
                 public final fun newInstance(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|NonComposableApp|
 
                 private constructor(): R|NonComposableApp.MetroFactory.Companion| {

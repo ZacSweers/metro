@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findAnnotations
@@ -348,9 +349,13 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
             isPrimary = true
           }
           .apply {
-            addParameters(params = dedupedSourceParameters.allParameters, wrapInProvider = true) {
-              typeKey,
-              irParam ->
+            val ownerClass = reference.parent.owner
+            val typeRemapper = ownerClass.deepRemapperFor(factoryCls.defaultType)
+            addParameters(
+              params = dedupedSourceParameters.allParameters,
+              wrapInProvider = true,
+              typeRemapper = { type -> typeRemapper.remapType(type) },
+            ) { typeKey, irParam ->
               typeKeyToField[typeKey] = irParam.addBackingFieldTo(factoryCls)
             }
             body = generateDefaultConstructorBody()
