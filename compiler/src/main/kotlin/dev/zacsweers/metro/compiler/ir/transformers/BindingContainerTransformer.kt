@@ -49,13 +49,14 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.transformIfIntoMultibinding
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
-import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
@@ -289,7 +290,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
           "No expected factory class generated for ${reference.callableId}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
         )
 
-    // Aadd factory supertype. It won't be visible in metadata but that's ok, we don't need to read
+    // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to read
     // directly since we'll read the mirror function to get the target type
     factoryCls.superTypes += metroSymbols.metroFactory.typeWith(reference.typeKey.type)
     // Cannot call addFakeOverrides because FIR2IR has already done that, so we need to add the
@@ -301,6 +302,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
           overriddenSymbols = listOf(metroSymbols.providerInvoke)
           isOperator = true
         }
+
+    metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(invokeFunction)
 
     val sourceParameters =
       reference.parameters.copy(
@@ -349,8 +352,10 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
                 param.name
               },
             type =
-              param.type.letIf(wrapInProvider && !isInstanceParam) {
-                it.wrapInProvider(metroSymbols.metroProvider)
+              if (wrapInProvider && !isInstanceParam) {
+                param.contextualTypeKey.stripOuterProviderOrLazy().wrapInProvider().toIrType()
+              } else {
+                param.contextualTypeKey.toIrType()
               },
             origin =
               if (isInstanceParam) {
