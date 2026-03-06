@@ -74,7 +74,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
@@ -443,7 +442,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         membersInjectorClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
       }
-      return classesToGenerate
+      classesToGenerate
     }
   }
 
@@ -491,14 +490,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             classKind = classKind,
           ) {
             copyTypeParametersFrom(injectedClass.classSymbol, session)
-
-            if (!injectedClass.isAssistedInject) {
-              superType { typeParameterRefs ->
-                Symbols.ClassIds.metroFactory.constructClassLikeType(
-                  arrayOf(owner.constructType(typeParameterRefs))
-                )
-              }
-            }
           }
           .apply {
             markAsDeprecatedHidden(session)
@@ -553,19 +544,20 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       return emptySet()
     }
 
+    if (isFactoryClass && !isFactoryCreatorClass) {
+      // Factory class constructor and invoke() are implemented in IR
+      return emptySet()
+    }
+
     val names = mutableSetOf<Name>()
-    names += SpecialNames.INIT
+
+    if (isObject || !isFactoryClass) {
+      // Don't add constructors for regular factory classes, they are added in IR
+      names += SpecialNames.INIT
+    }
 
     // Factory class
     // Factory (companion) object
-    if (isFactoryClass) {
-      // Only generate an invoke() function if it has assisted parameters, as it won't be inherited
-      // from Factory<T> in this case
-      val target = injectFactoryClassIdsToInjectedClass[classSymbol.classId]
-      if (target?.isAssistedInject == true) {
-        names += Symbols.Names.invoke
-      }
-    }
     if (isFactoryCreatorClass) {
       names += Symbols.Names.create
       names += Symbols.Names.newInstance
@@ -636,12 +628,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         val injectedClass =
           injectFactoryClassIdsToInjectedClass[context.owner.classId] ?: return emptyList()
         injectedClass.populateAncestorMemberInjections(session)
-        buildFactoryConstructor(
-          context = context,
-          instanceReceiver = null,
-          extensionReceiver = null,
-          valueParameters = injectedClass.allParameters.dedupeParameters(session),
-        )
+        return emptyList()
       } else if (context.owner.hasOrigin(Keys.MembersInjectorClassDeclaration)) {
         val injectedClass =
           membersInjectorClassIdsToInjectedClass[context.owner.classId] ?: return emptyList()
@@ -743,30 +730,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       val returnType = injectedClass.classSymbol.defaultType()
       functions +=
         when (callableId.callableName) {
-          Symbols.Names.invoke -> {
-            // Assisted types do not inherit from Factory<T>, so we need to generate invoke here
-            createMemberFunction(
-                owner = nonNullContext.owner,
-                key = Keys.Default,
-                name = callableId.callableName,
-                returnTypeProvider = {
-                  injectedClass.classSymbol.constructType(
-                    nonNullContext.owner.typeParameterSymbols.mapToArray(
-                      FirTypeParameterSymbol::toConeType
-                    )
-                  )
-                },
-              ) {
-                injectedClass.assistedParameters.forEach { assistedParameter ->
-                  valueParameter(
-                    assistedParameter.name,
-                    assistedParameter.symbol.resolvedReturnType,
-                    key = Keys.RegularParameter,
-                  )
-                }
-              }
-              .symbol as FirNamedFunctionSymbol
-          }
           Symbols.Names.create -> {
             buildFactoryCreateFunction(
               nonNullContext,
