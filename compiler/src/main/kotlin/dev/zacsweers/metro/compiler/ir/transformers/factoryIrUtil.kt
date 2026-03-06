@@ -142,10 +142,10 @@ internal fun generateStaticNewInstanceFunction(
   sourceMetroParameters: Parameters,
   sourceParameters: List<IrValueParameter>,
   targetFunction: IrFunction? = null,
+  function: IrSimpleFunction =
+    parentClass.functions.first { it.origin == Origins.FactoryNewInstanceFunction },
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
 ): IrSimpleFunction {
-  val function = parentClass.functions.first { it.origin == Origins.FactoryNewInstanceFunction }
-
   return function.apply {
     val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
     val valueParametersToMap =

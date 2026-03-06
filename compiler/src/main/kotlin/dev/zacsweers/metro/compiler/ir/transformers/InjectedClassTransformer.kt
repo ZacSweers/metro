@@ -704,25 +704,48 @@ internal class InjectedClassTransformer(
       function = createFunction,
     )
 
+    val newInstanceFunction =
+      classToGenerateCreatorsIn
+        .addFunction(
+          name = Symbols.StringNames.NEW_INSTANCE,
+          // Placeholder, replaced in body
+          returnType = targetClass.defaultType,
+          origin = Origins.FactoryNewInstanceFunction,
+        )
+        .apply {
+          val typeParams = copyTypeParametersFrom(targetClass)
+          this.returnType = targetClass.symbol.typeWithParameters(typeParams)
+          val typeRemapper =
+            targetClass.deepRemapperFor(targetClass.symbol.typeWithParameters(typeParams))
+          addParameters(
+            constructorParameters.allParameters,
+            wrapInProvider = false,
+            copyQualifiers = true,
+            typeRemapper = { type -> typeRemapper.remapType(type) },
+          )
+          metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
+        }
+
     // newInstance() preserves the original constructor signature (no deduplication)
     // so that each parameter gets its own distinct value from the provider.
-    val newInstanceFunction =
-      generateStaticNewInstanceFunction(
-        parentClass = classToGenerateCreatorsIn,
-        sourceMetroParameters = constructorParameters,
-        sourceParameters = constructorParameters.regularParameters.map { it.asValueParameter },
-      ) { function ->
-        irCallConstructor(
-            callee = targetConstructor,
-            typeArguments = function.typeParameters.map { it.defaultType },
-          )
-          .apply {
-            val functionParameters = function.nonDispatchParameters
-            for ((i, param) in constructorParameters.allParameters.withIndex()) {
-              arguments[param.asValueParameter.indexInParameters] = irGet(functionParameters[i])
-            }
+    @Suppress("RETURN_VALUE_NOT_USED")
+    generateStaticNewInstanceFunction(
+      parentClass = classToGenerateCreatorsIn,
+      sourceMetroParameters = constructorParameters,
+      sourceParameters = constructorParameters.regularParameters.map { it.asValueParameter },
+      function = newInstanceFunction,
+    ) { function ->
+      irCallConstructor(
+          callee = targetConstructor,
+          typeArguments = function.typeParameters.map { it.defaultType },
+        )
+        .apply {
+          val functionParameters = function.nonDispatchParameters
+          for ((i, param) in constructorParameters.allParameters.withIndex()) {
+            arguments[param.asValueParameter.indexInParameters] = irGet(functionParameters[i])
           }
-      }
+        }
+    }
     return newInstanceFunction
   }
 }

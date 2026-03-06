@@ -556,12 +556,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       names += SpecialNames.INIT
     }
 
-    // Factory class
-    // Factory (companion) object
-    if (isFactoryCreatorClass) {
-      names += Symbols.Names.newInstance
-    }
-
     // MembersInjector class
     // MembersInjector companion object
     if (isInjectorCreatorClass) {
@@ -725,24 +719,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       val injectedClass = injectFactoryClassIdsToInjectedClass[targetClassId] ?: return emptyList()
 
       injectedClass.populateAncestorMemberInjections(session)
-
-      val returnType = injectedClass.classSymbol.defaultType()
-      functions +=
-        when (callableId.callableName) {
-          Symbols.Names.newInstance -> {
-            buildNewInstanceFunction(
-              nonNullContext,
-              Symbols.Names.newInstance,
-              returnType,
-              null,
-              null,
-              injectedClass.constructorParameters,
-            )
-          }
-          else -> {
-            reportCompilerBug("Unrecognized function $callableId")
-          }
-        }
+      // Rest is generated in IR
     } else if (targetClass.hasOrigin(Keys.MembersInjectorClassDeclaration)) {
       val injectedClass =
         membersInjectorClassIdsToInjectedClass[targetClassId] ?: return emptyList()

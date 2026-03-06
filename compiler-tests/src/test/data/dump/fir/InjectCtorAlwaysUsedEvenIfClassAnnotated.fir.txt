@@ -14,8 +14,6 @@ FILE: InjectCtorAlwaysUsedEvenIfClassAnnotated.kt
         }
 
         @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final object MetroFactory : R|kotlin/Any| {
-            public final fun newInstance(): R|Impl|
-
             private constructor(): R|Impl.MetroFactory| {
                 super<R|kotlin/Any|>()
             }
