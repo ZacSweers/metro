@@ -62,4 +62,6 @@ object ClasspathBasedStandardLibrariesPathProvider : MetroKotlinStandardLibrarie
   }
 
   override fun commonStdlibForTests(): File = getFile("kotlin-common-stdlib")
+
+  override fun webStdlibForTests(): File = getFile("kotlin-stdlib-web")
 }

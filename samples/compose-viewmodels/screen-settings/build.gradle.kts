@@ -14,8 +14,8 @@ kotlin {
     commonMain {
       dependencies {
         api("dev.zacsweers.metro:metrox-viewmodel-compose")
-        implementation(compose.material3)
-        implementation(compose.runtime)
+        implementation(libs.compose.material3)
+        implementation(libs.compose.runtime)
       }
     }
   }

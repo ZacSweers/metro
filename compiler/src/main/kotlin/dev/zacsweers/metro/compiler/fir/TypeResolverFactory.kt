@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 
 /**
  * A custom type resolver focused on resolving [FirTypeRef] instances potentially from other files
@@ -34,12 +35,13 @@ import org.jetbrains.kotlin.fir.types.coneType
 internal sealed interface MetroFirTypeResolver {
   fun resolveType(typeRef: FirTypeRef): ConeKotlinType
 
-  class Factory(private val session: FirSession, private val allSessions: Sequence<FirSession>) {
+  class Factory(private val session: FirSession, private val allSessions: List<FirSession>) {
     private val scopeSession = ScopeSession()
     private val resolversByFile = mutableMapOf<FirFile, LocalMetroFirTypeResolver?>()
+    private val externalResolver by lazy { ExternalMetroFirTypeResolver(session) }
 
     fun create(classSymbol: FirClassLikeSymbol<*>): MetroFirTypeResolver? {
-      if (classSymbol.origin !is FirDeclarationOrigin.Source) return ExternalMetroFirTypeResolver
+      if (classSymbol.origin !is FirDeclarationOrigin.Source) return externalResolver
       // Look up through all firProviders as we may be a KMP compilation
       // The implementation of getFirClassifierContainerFileIfAny is an O(1) lookup in its impl in
       // FirProviderImpl
@@ -75,10 +77,28 @@ internal sealed interface MetroFirTypeResolver {
     }
   }
 
-  private object ExternalMetroFirTypeResolver : MetroFirTypeResolver {
+  private class ExternalMetroFirTypeResolver(private val session: FirSession) :
+    MetroFirTypeResolver {
+
     override fun resolveType(typeRef: FirTypeRef): ConeKotlinType {
       check(typeRef is FirUserTypeRef)
-      return typeRef.coneType
+      // Try the already-resolved type first, but fall back to actual resolution for cases where
+      // the type ref is freshly constructed and unresolved (e.g., during SUPERTYPES phase in
+      // Kotlin 2.3.20+).
+      typeRef.coneTypeOrNull?.let {
+        return it
+      }
+      return session.typeResolver
+        .resolveType(
+          typeRef = typeRef,
+          configuration = EMPTY_CONFIGURATION,
+          areBareTypesAllowed = true,
+          isOperandOfIsOperator = false,
+          resolveDeprecations = false,
+          supertypeSupplier = SupertypeSupplier.Default,
+          expandTypeAliases = false,
+        )
+        .type
     }
   }
 
@@ -98,6 +118,25 @@ internal sealed interface MetroFirTypeResolver {
           expandTypeAliases = false,
         )
         .type
+    }
+  }
+
+  companion object {
+    // For cases where we use this in IR, types are already resolved so just read coneType
+    fun forIrUse(): MetroFirTypeResolver = IrMetroFirTypeResolver
+
+    private val EMPTY_CONFIGURATION =
+      TypeResolutionConfiguration(
+        scopes = emptyList(),
+        containingClassDeclarations = emptyList(),
+        useSiteFile = null,
+      )
+  }
+
+  private object IrMetroFirTypeResolver : MetroFirTypeResolver {
+    override fun resolveType(typeRef: FirTypeRef): ConeKotlinType {
+      check(typeRef is FirUserTypeRef)
+      return typeRef.coneType
     }
   }
 }

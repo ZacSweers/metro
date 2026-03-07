@@ -16,10 +16,6 @@ private constructor(
 
   override fun toString(): String = render(short = true)
 
-  override fun withTypeKey(typeKey: StringTypeKey, rawType: String?): StringContextualTypeKey {
-    return create(typeKey, hasDefault = hasDefault, rawType = rawType)
-  }
-
   override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
     append(
       wrappedType.render { type ->

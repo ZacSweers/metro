@@ -1,0 +1,64 @@
+name: 'Setup Gradle'
+description: 'Configures JDK, Gradle wrapper cache, setup-gradle, and optional Konan cache'
+
+inputs:
+  encryption-key:
+    description: 'Gradle cache encryption key'
+    required: true
+  cache-read-only:
+    description: 'Whether gradle cache is read-only'
+    required: false
+    default: 'false'
+  konan:
+    description: 'Whether to set up konan cache'
+    required: false
+    default: 'false'
+  konan-cache-prefix:
+    description: 'Extra prefix segment for konan cache key (e.g. matrix.kotlin-compiler)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure JDK
+      uses: actions/setup-java@v5
+      with:
+        distribution: 'zulu'
+        java-version-file: .github/workflows/.java-version
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v5
+      with:
+        cache-read-only: ${{ inputs.cache-read-only }}
+        gradle-home-cache-strict-match: true
+        cache-encryption-key: ${{ inputs.encryption-key }}
+        gradle-home-cache-excludes: |
+          caches/jars-9
+          caches/transforms-3
+          wrapper/dists
+
+    - name: Cache Gradle wrapper
+      uses: actions/cache@v5
+      with:
+        path: ~/.gradle/wrapper/dists
+        key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
+
+    - name: Cache konan
+      if: inputs.konan == 'true'
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.konan/cache
+          ~/.konan/dependencies
+          ~/.konan/kotlin-native-macos*
+          ~/.konan/kotlin-native-mingw*
+          ~/.konan/kotlin-native-windows*
+          ~/.konan/kotlin-native-linux*
+          ~/.konan/kotlin-native-prebuilt-macos*
+          ~/.konan/kotlin-native-prebuilt-mingw*
+          ~/.konan/kotlin-native-prebuilt-windows*
+          ~/.konan/kotlin-native-prebuilt-linux*
+        key: ${{ runner.os }}-${{ inputs.konan-cache-prefix && format('{0}-', inputs.konan-cache-prefix) || '' }}konan-${{ hashFiles('**/*.gradle*') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ inputs.konan-cache-prefix && format('{0}-', inputs.konan-cache-prefix) || '' }}konan-

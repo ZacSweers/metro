@@ -19,7 +19,7 @@ interface AppGraph {
 
     private val setOfInt: Set<Int>
       private get(): Set<Int> {
-        return setOf<Int>(element = Companion.provideInt(instance = <this>.#thisGraphInstance, string = Companion.provideString(instance = <this>.#thisGraphInstance)))
+        return setOf<Int>(element = <this>.#thisGraphInstance.provideInt(string = <this>.#thisGraphInstance.provideString()))
       }
 
   }
@@ -116,12 +116,12 @@ interface AppGraph {
 
   @Provides
   @IntoSet
-  private fun provideInt(string: String): Int {
+  fun provideInt(string: String): Int {
     return toInt(/* <this> = string */)
   }
 
   @Provides
-  private fun provideString(): String {
+  fun provideString(): String {
     return "3"
   }
 

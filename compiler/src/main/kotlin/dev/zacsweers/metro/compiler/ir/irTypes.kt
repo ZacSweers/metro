@@ -61,8 +61,8 @@ private fun buildDeepSubstitutionMap(
     }
 
     // Walk up the hierarchy
-    currentClass.superTypes.forEach { superType ->
-      val superClass = superType.classOrNull?.owner ?: return@forEach
+    for (superType in currentClass.superTypes) {
+      val superClass = superType.classOrNull?.owner ?: continue
 
       // Apply current substitutions to the supertype
       val substitutedSuperType = superType.substitute(result)
@@ -90,7 +90,16 @@ private class DeepTypeSubstitutor(private val substitutionMap: Map<IrTypeParamet
         is IrSimpleType -> {
           val classifier = type.classifier
           if (classifier is IrTypeParameterSymbol) {
-            substitutionMap[classifier]?.let { remapType(it) } ?: type
+            substitutionMap[classifier]?.let { substituted ->
+              // Guard against identity mappings (T -> T) to prevent infinite recursion.
+              // This can happen for dynamic containers where the generated parameter type
+              // still has unresolved type parameters.
+              if (substituted is IrSimpleType && substituted.classifier == classifier) {
+                type
+              } else {
+                remapType(substituted)
+              }
+            } ?: type
           } else {
             val newArgs =
               type.arguments.map { arg ->
@@ -245,7 +254,10 @@ internal fun IrType.hasErrorTypes(): Boolean {
 
     // recurse
     if (current is IrSimpleType) {
-      for (arg in current.arguments) {
+      // Defensive copy: IrSimpleType.arguments can be an ArrayList that is mutated
+      // by compactIfPossible() (via trimToSize()) when another thread creates a derived
+      // type through toBuilder().buildSimpleType()
+      for (arg in current.arguments.toList()) {
         if (arg is IrTypeProjection) {
           stack.add(arg.type)
         }

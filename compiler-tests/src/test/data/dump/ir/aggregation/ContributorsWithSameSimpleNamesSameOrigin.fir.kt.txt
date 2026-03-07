@@ -1,0 +1,104 @@
+// FILE: File1.kt
+package com.mecharip.base
+
+interface Foo {
+  abstract fun foo()
+
+}
+
+// FILE: File2.kt
+package com.mecharip.sharedkit
+
+interface Foo : Foo {
+  abstract fun bar()
+
+}
+
+// FILE: File3.kt
+
+@Inject
+@ContributesBinding(scope = AppScope::class, binding = binding<Foo>())
+@ContributesBinding(scope = AppScope::class, binding = binding<Foo>())
+class FooImpl : Foo {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<FooImpl> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<FooImpl> {
+      return MetroFactory
+    }
+
+    fun newInstance(): FooImpl {
+      return FooImpl()
+    }
+
+    override operator fun invoke(): FooImpl {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): FooImpl {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface MetroContributionToAppScope {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
+    abstract class BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @Binds
+      @CallableMetadata(callableName = "bindsAsFoo", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindsAsFoo(instance: FooImpl): Foo
+
+      @Binds
+      @CallableMetadata(callableName = "bindsAsFoo2", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindsAsFoo2(instance: FooImpl): Foo
+
+    }
+
+    @Binds
+    @ComptimeOnly
+    abstract fun bindsAsFoo(instance: FooImpl): Foo {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @ComptimeOnly
+    abstract fun bindsAsFoo2(instance: FooImpl): Foo {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  override fun bar() {
+  }
+
+  override fun foo() {
+  }
+
+}
+
+// FILE: fooImplAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: FooImpl) {
+  return error(message = "Never called")
+}

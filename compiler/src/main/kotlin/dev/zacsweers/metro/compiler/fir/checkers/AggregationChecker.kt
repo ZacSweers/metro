@@ -3,9 +3,11 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
+import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -13,11 +15,15 @@ import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
+import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -29,13 +35,17 @@ import org.jetbrains.kotlin.fir.analysis.checkers.fullyExpandedClassId
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
+import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isAny
 import org.jetbrains.kotlin.fir.types.isNothing
+import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
@@ -64,10 +74,35 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val classQualifier = declaration.annotations.qualifierAnnotation(session)
 
-    for (annotation in declaration.annotations.filter { it.isResolved }) {
+    for (annotation in declaration.annotations) {
+      if (!annotation.isResolved) continue
       val classId = annotation.toAnnotationClassId(session) ?: continue
       if (classId in classIds.allContributesAnnotations) {
         val scope = annotation.resolvedScopeClassId() ?: continue
+
+        // Check if the target looks suspicious
+        // - If it's a `@Scope` annotation class that's prolly not right
+        // - If it's a graph class
+        val scopeClass = scope.toLookupTag().toClassSymbolCompat(session) ?: continue
+        if (scopeClass.classKind == ClassKind.ANNOTATION_CLASS) {
+          scopeClass.annotationsIn(session, classIds.scopeAnnotations).firstOrNull()?.let {
+            reporter.reportOn(
+              annotation.scopeArgument()?.source ?: annotation.source,
+              MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
+              "Suspicious aggregation scope '${scope.asFqNameString()}' is a concrete `@Scope` annotation type, and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+            )
+          }
+        } else {
+          for (graphLikeAnno in scopeClass.annotationsIn(session, classIds.graphLikeAnnotations)) {
+            if (graphLikeAnno !is FirAnnotationCall) continue
+            reporter.reportOn(
+              annotation.scopeArgument()?.source ?: annotation.source,
+              MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
+              "Suspicious aggregation scope '${scope.asFqNameString()}' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+            )
+          }
+        }
+
         val replaces = emptySet<ClassId>() // TODO implement
         val checkIntoSet by memoize {
           checkBindingContribution(
@@ -120,6 +155,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
               return
             }
           }
+
           in classIds.contributesBindingAnnotations -> {
             val valid =
               checkBindingContribution(
@@ -145,16 +181,19 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
               return
             }
           }
+
           in classIds.contributesIntoSetAnnotations -> {
             if (!checkIntoSet) {
               return
             }
           }
+
           in classIds.contributesIntoMapAnnotations -> {
             if (!checkIntoMap) {
               return
             }
           }
+
           in classIds.customContributesIntoSetAnnotations -> {
             val isMapBinding = declaration.annotations.mapKeyAnnotation(session) != null
             val valid = if (isMapBinding) checkIntoMap else checkIntoSet
@@ -344,6 +383,8 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
       onError()
     }
+    // Check for non-public contributions
+    checkNonPublicContribution(session, contribution.declaration, annotation, kind, scope)
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -374,6 +415,58 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       )
       onError()
     }
+  }
+
+  /**
+   * Checks if a contributed class (or any containing class) has non-public effective visibility. If
+   * it does, and the scope is not also non-public, reports a diagnostic based on the configured
+   * severity.
+   *
+   * Note: We treat `protected` as non-public for contributions, even though it's technically part
+   * of the public API from an inheritance perspective. A protected class can't be accessed from
+   * outside its class hierarchy, making it unsuitable for contributions to public scopes.
+   */
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkNonPublicContribution(
+    session: FirSession,
+    declaration: FirClass,
+    annotation: FirAnnotation,
+    kind: ContributionKind,
+    scope: ClassId,
+  ) {
+    val options = session.metroFirBuiltIns.options
+    val severity = options.nonPublicContributionSeverity
+    if (severity == MetroOptions.DiagnosticSeverity.NONE) return
+
+    val effectiveVisibility = declaration.effectiveVisibility
+    // Treat protected as non-public for contributions - a protected class can't be accessed
+    // from outside its class hierarchy, making it unsuitable for contributions to public scopes
+    val isProtected = effectiveVisibility.toVisibility() == Visibilities.Protected
+    if (effectiveVisibility.publicApi && !isProtected) return
+
+    // Check if the scope class is also non-public - if so, don't report since it's intentionally
+    // non-public. Note: protected scopes are treated as public here since hint functions only use
+    // the scope for naming, not by directly referencing it.
+    val scopeSymbol = session.symbolProvider.getClassLikeSymbolByClassId(scope)
+    if (scopeSymbol != null) {
+      if (!scopeSymbol.effectiveVisibility.publicApi) {
+        return
+      }
+    }
+
+    val visibilityName = effectiveVisibility.name
+
+    val message =
+      "`@${annotation.toAnnotationClassId(session)?.shortClassName ?: kind.readableName}`-annotated class ${declaration.classId.asSingleFqName()} is $visibilityName but contributes to a public scope `${scope.shortClassName}`. " +
+        "Consider making the class public or using a non-public scope."
+
+    val diagnosticFactory =
+      when (severity) {
+        ERROR -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_ERROR
+        WARN -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_WARNING
+        NONE -> return
+      }
+    reporter.reportOn(declaration.source, diagnosticFactory, message)
   }
 
   sealed interface Contribution {

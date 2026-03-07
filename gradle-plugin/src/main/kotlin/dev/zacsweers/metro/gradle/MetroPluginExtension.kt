@@ -7,7 +7,9 @@ import org.gradle.api.Action
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.provider.SetProperty
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
@@ -17,56 +19,73 @@ import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 public abstract class MetroPluginExtension
 @Inject
 constructor(
-  baseKotlinVersion: KotlinToolingVersion,
+  compilerVersion: Provider<KotlinToolingVersion>,
   layout: ProjectLayout,
   objects: ObjectFactory,
-  providers: ProviderFactory,
+  private val providers: ProviderFactory,
 ) {
 
   public val interop: InteropHandler = objects.newInstance(InteropHandler::class.java)
 
   /** Controls whether Metro's compiler plugin will be enabled on this project. */
-  public val enabled: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(true)
+  public val enabled: Property<Boolean> = objects.booleanProperty("metro.enabled", true)
+
+  /** Controls whether Metro's runtime artifact dependencies should be automatically added. */
+  public val automaticallyAddRuntimeDependencies: Property<Boolean> =
+    objects.booleanProperty("metro.automaticallyAddRuntimeDependencies", true)
 
   /**
    * Maximum number of IR errors to report before exiting IR processing. Default is 20, must be > 0.
    */
-  public val maxIrErrors: Property<Int> = objects.property(Int::class.javaObjectType).convention(20)
+  public val maxIrErrors: Property<Int> = objects.intProperty("metro.maxIrErrors", 20)
 
   /**
    * If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging.
    *
    * Optionally, you can specify a `metro.debug` gradle property to enable this globally.
    */
-  public val debug: Property<Boolean> =
-    objects
-      .property(Boolean::class.javaObjectType)
-      .convention(providers.gradleProperty("metro.debug").map { it.toBoolean() }.orElse(false))
+  public val debug: Property<Boolean> = objects.booleanProperty("metro.debug", false)
 
   /**
    * Enables whether the Metro compiler plugin will automatically generate assisted factories for
    * injected constructors with assisted parameters. See the kdoc on `AssistedFactory` for more
    * details.
    */
+  @RequiresIdeSupport
   public val generateAssistedFactories: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.booleanProperty("metro.generateAssistedFactories", false)
+
+  @Deprecated("This does not do anything anymore and will be removed")
+  public abstract val generateThrowsAnnotations: Property<Boolean>
 
   /**
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
    * `Inject` for more details.
    *
    * **Warnings**
-   * - Prior to Kotlin 2.3.20, top-level function injection is only compatible with jvm/android
-   *   targets.
-   * - Top-level function injection is not yet compatible with incremental compilation on any
-   *   platform
+   * - Prior to Kotlin 2.3.20-Beta1, top-level function injection is only compatible with
+   *   jvm/android targets.
+   * - Prior to Kotlin 2.3.20-Beta1, top-level function injection is not yet compatible with
+   *   incremental compilation on any platform
+   * - Kotlin/JS does not support this with incremental compilation enabled. See
+   *   https://youtrack.jetbrains.com/issue/KT-82395
    */
+  @RequiresIdeSupport
   @DelicateMetroGradleApi(
     "Top-level function injection is experimental and does not work yet in all cases. See the kdoc."
   )
   public val enableTopLevelFunctionInjection: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects
+      .booleanProperty()
+      .convention(
+        compilerVersion.map {
+          // Kotlin 2.3.20-Beta1, top-level declaration gen is fully supported on all platforms are
+          // supported except JS
+          // https://youtrack.jetbrains.com/issue/KT-82395
+          // https://youtrack.jetbrains.com/issue/KT-82989
+          KotlinVersions.supportsTopLevelFirGen(it)
+        }
+      )
 
   /**
    * Enable/disable contribution hint generation in IR for contributed types. Enabled by default.
@@ -75,23 +94,36 @@ constructor(
    * can set a value to force it to one or the other, otherwise if unset it will default to the
    * default for each compilation's platform type.
    */
-  public val generateContributionHints: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType)
+  public val generateContributionHints: Property<Boolean> = objects.booleanProperty()
 
   /**
    * Enable/disable contribution hint generation in FIR. Disabled by default as this is still
    * experimental. Requires [generateContributionHints] to be true.
    *
    * **Warnings**
-   * - Prior to Kotlin 2.3.20, FIR contribution hint gen is only compatible with jvm/android
+   * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint gen is only compatible with jvm/android
    *   targets.
-   * - FIR contribution hint gen is not yet compatible with incremental compilation on any platform
+   * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint gen is not yet compatible with
+   *   incremental compilation on any platform
+   * - Kotlin/JS does not support this with incremental compilation enabled. See
+   *   https://youtrack.jetbrains.com/issue/KT-82395
    */
+  @ExperimentalMetroGradleApi // Will eventually be the default and removed
   @DelicateMetroGradleApi(
     "FIR contribution hint gen is experimental and does not work yet in all cases. See the kdoc."
   )
   public val generateContributionHintsInFir: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects
+      .booleanProperty()
+      .convention(
+        compilerVersion.map {
+          // Kotlin 2.3.20-Beta1, FIR hint gen is fully supported on all platforms.
+          // JS is further gated on incremental compilation being disabled in MetroGradleSubplugin.
+          // https://youtrack.jetbrains.com/issue/KT-82395
+          // https://youtrack.jetbrains.com/issue/KT-82989
+          KotlinVersions.supportsTopLevelFirGen(it)
+        }
+      )
 
   /**
    * Sets the platforms for which contribution hints will be generated. If not set, defaults are
@@ -100,7 +132,11 @@ constructor(
    * **Warnings** Prior to Kotlin 2.3.20, contribution hint gen is
    * - ...only compatible with jvm/android targets.
    * - ...does not support incremental compilation on any targets.
+   *
+   * Kotlin/JS does not support this with incremental compilation enabled. See
+   * https://youtrack.jetbrains.com/issue/KT-82395
    */
+  @ExperimentalMetroGradleApi // This may eventually be removed
   @DelicateMetroGradleApi(
     "Contribution hint gen does not work yet in all platforms on all Kotlin versions. See the kdoc."
   )
@@ -108,9 +144,11 @@ constructor(
     objects
       .setProperty(KotlinPlatformType::class.javaObjectType)
       .convention(
-        providers.provider {
-          if (baseKotlinVersion >= KotlinVersions.kotlin2320) {
-            // Kotlin 2.3.20, all platforms are supported
+        compilerVersion.map { version ->
+          if (KotlinVersions.supportsTopLevelFirGen(version)) {
+            // Kotlin 2.3.20, all platforms are supported. JS is further gated on
+            // incremental compilation being disabled in MetroGradleSubplugin.
+            // https://youtrack.jetbrains.com/issue/KT-82395
             KotlinPlatformType.entries.toSet()
           } else {
             // Only jvm/android work prior to Kotlin 2.3.20
@@ -126,43 +164,57 @@ constructor(
    * This is equivalent to Dagger's `-Adagger.fullBindingGraphValidation` option, though there are
    * no controls for diagnostic severity.
    */
+  @DelicateMetroGradleApi("This may slow down your build since it may perform extra work!")
   public val enableFullBindingGraphValidation: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.booleanProperty("metro.enableFullBindingGraphValidation", false)
 
   /**
    * If true changes the return type of generated Graph Factories from the declared interface type
    * to the generated Metro graph type. This is helpful for Dagger/Anvil interop.
    */
   public val enableGraphImplClassAsReturnType: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.booleanProperty("metro.enableGraphImplClassAsReturnType", false)
 
   /** Enable/disable shrinking of unused bindings. Enabled by default. */
+  @DelicateMetroGradleApi("This may slow down your build since it may perform extra work!")
   public val shrinkUnusedBindings: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.booleanProperty("metro.shrinkUnusedBindings", true)
 
   /** Enable/disable chunking of field initializers. Enabled by default. */
+  @Deprecated("This is the default and the option will be removed", level = DeprecationLevel.ERROR)
   public val chunkFieldInits: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.booleanProperty("metro.chunkFieldInits", true)
 
   /**
    * Maximum number of statements per init function when chunking field initializers. Default is 25,
    * must be > 0.
    */
   public val statementsPerInitFun: Property<Int> =
-    objects.property(Int::class.javaObjectType).convention(25)
+    objects.intProperty("metro.statementsPerInitFun", 25)
 
-  /** Enable/disable graph sharding of binding graphs. Disabled by default. */
-  @DelicateMetroGradleApi("Sharding is not yet finished")
+  /** Enable/disable graph sharding of binding graphs. Enabled by default. */
   public val enableGraphSharding: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.booleanProperty("metro.enableGraphSharding", true)
 
   /**
    * Maximum number of binding keys per graph shard when sharding is enabled. Default is 2000, must
    * be > 0.
    */
-  @DelicateMetroGradleApi("Sharding is not yet finished")
-  public val keysPerGraphShard: Property<Int> =
-    objects.property(Int::class.javaObjectType).convention(2000)
+  public val keysPerGraphShard: Property<Int> = objects.intProperty("metro.keysPerGraphShard", 2000)
+
+  /**
+   * Enables switching providers for deferred class loading. This reduces graph initialization time
+   * by deferring bindings' class init until it's actually requested.
+   *
+   * This is analogous to Dagger's `fastInit` option.
+   *
+   * You should really only use this if you've benchmarked it and measured a meaningful difference,
+   * as it comes with the same tradeoffs (always holding a graph instance ref, etc.)
+   *
+   * Disabled by default.
+   */
+  public val enableSwitchingProviders: Property<Boolean> =
+    objects.booleanProperty("metro.enableSwitchingProviders", false)
 
   /**
    * Controls the behavior of optional dependencies on a per-compilation basis. Default is
@@ -174,33 +226,60 @@ constructor(
       .convention(OptionalBindingBehavior.DEFAULT)
 
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
+  @Deprecated(
+    "Transforming providers to private is deprecated as it results in less efficient code generation",
+    level = DeprecationLevel.ERROR,
+  )
   public val transformProvidersToPrivate: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.booleanProperty("metro.transformProvidersToPrivate", false)
+
+  @Deprecated(
+    "This is just a proxy to publicScopedProviderSeverity now",
+    replaceWith = ReplaceWith("publicScopedProviderSeverity"),
+  )
+  public val publicProviderSeverity: Property<DiagnosticSeverity>
+    get() = publicScopedProviderSeverity
 
   /**
-   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters `public`
-   * provider callables. See the kdoc on `Provides` for more details.
+   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
+   * **scoped** `public` provider callables. See the kdoc on `Provides` for more details.
    */
-  public val publicProviderSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+  public val publicScopedProviderSeverity: Property<DiagnosticSeverity> =
+    objects.enumProperty<DiagnosticSeverity>(
+      "publicScopedProviderSeverity",
+      DiagnosticSeverity.NONE,
+    )
+
+  /**
+   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
+   * `@Contributes*`-annotated declarations that are non-public (`internal`, `private`, `protected`,
+   * nested in non-public classes, etc.)
+   *
+   * Note that if the scope argument to the annotation is itself a non-public class, the check will
+   * not report, regardless of severity, since the contribution is assumed to be intentionally
+   * internal.
+   *
+   * Disabled by default.
+   */
+  public val nonPublicContributionSeverity: Property<DiagnosticSeverity> =
+    objects.enumProperty<DiagnosticSeverity>(
+      "nonPublicContributionSeverity",
+      DiagnosticSeverity.NONE,
+    )
 
   /**
    * Enable/disable Kotlin version compatibility checks. Defaults to true or the value of the
    * `metro.version.check` gradle property.
    */
   public val enableKotlinVersionCompatibilityChecks: Property<Boolean> =
-    objects
-      .property(Boolean::class.javaObjectType)
-      .convention(
-        providers.gradleProperty("metro.version.check").map { it.toBoolean() }.orElse(true)
-      )
+    objects.booleanProperty("metro.version.check", true)
 
   /**
    * Enable/disable suggestion to lift @Inject to class when there is only one constructor. Enabled
    * by default.
    */
   public val warnOnInjectAnnotationPlacement: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.booleanProperty("metro.warnOnInjectAnnotationPlacement", true)
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters interop
@@ -209,16 +288,177 @@ constructor(
    * Disabled by default as this can be quite noisy in a codebase that uses a lot of interop.
    */
   public val interopAnnotationsNamedArgSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+    objects.enumProperty<DiagnosticSeverity>(
+      "interopAnnotationsNamedArgSeverity",
+      DiagnosticSeverity.NONE,
+    )
+
+  /**
+   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters unused
+   * graph inputs (graph factory parameters or directly included binding containers that are not
+   * used by the graph).
+   *
+   * WARN by default.
+   */
+  public val unusedGraphInputsSeverity: Property<DiagnosticSeverity> =
+    objects.enumProperty<DiagnosticSeverity>("unusedGraphInputsSeverity", DiagnosticSeverity.WARN)
 
   /**
    * If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject`
    * annotations.
    *
-   * Disabled by default.
+   * Enabled by default.
    */
   public val contributesAsInject: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.booleanProperty("metro.contributesAsInject", true)
+
+  /**
+   * Enable/disable deduplication of injected parameters with the same type key in generated
+   * factories. When enabled, if multiple injected parameters share the same type key, only one
+   * parameter is generated in the factory.
+   *
+   * Note that parameters with default values are always included.
+   *
+   * Enabled by default.
+   */
+  @ExperimentalMetroGradleApi // Will Eventually become the default
+  public val deduplicateInjectedParams: Property<Boolean> =
+    objects.booleanProperty("metro.deduplicateInjectedParams", true)
+
+  /**
+   * Enable/disable klib parameter qualifier checking.
+   *
+   * This is automatically enabled for Kotlin versions `[2.3.0, 2.3.20-Beta2)` and disabled
+   * otherwise.
+   *
+   * See https://github.com/ZacSweers/metro/issues/1556 for more information.
+   */
+  @ExperimentalMetroGradleApi // Will eventually be removed after 2.3.20
+  public val enableKlibParamsCheck: Property<Boolean> =
+    objects
+      .booleanProperty()
+      .convention(
+        compilerVersion.map {
+          it >= KotlinVersions.kotlin230 && it < KotlinVersions.kotlin2320Beta2
+        }
+      )
+
+  /**
+   * Enable/disable patching of klib parameter qualifiers to work around a kotlinc bug. Only applies
+   * when [enableKlibParamsCheck] is also enabled.
+   *
+   * When enabled, Metro will patch the affected parameter qualifiers at compile time and emit a
+   * warning instead of an error.
+   *
+   * See https://github.com/ZacSweers/metro/issues/1556 for more information.
+   */
+  @ExperimentalMetroGradleApi // Will eventually be removed after 2.3.20
+  public val patchKlibParams: Property<Boolean> =
+    objects.booleanProperty("metro.patchKlibParams", true)
+
+  /**
+   * Force enable Metro's FIR extensions in IDE even if the compat layer cannot be determined.
+   *
+   * This is useful when working with IDE versions where Metro cannot automatically detect the
+   * correct compatibility layer.
+   *
+   * Disabled by default.
+   */
+  @DangerousMetroGradleApi("This could break analysis in your IDE if you force-enable!")
+  public val forceEnableFirInIde: Property<Boolean> =
+    objects.booleanProperty("metro.forceEnableFirInIde", false)
+
+  /**
+   * Override the Kotlin compiler version Metro operates with.
+   *
+   * If set, Metro will behave as if running in this Kotlin environment (e.g., "2.3.20-dev-1234").
+   * This is useful for testing or working around version detection issues.
+   *
+   * Null by default (uses the detected runtime Kotlin version).
+   */
+  @DangerousMetroGradleApi("This could break Metro's compatibility layer!")
+  public val compilerVersion: Property<String> = objects.metroProperty("metro.compilerVersion", "")
+
+  /**
+   * When enabled, Metro's native `@Assisted` annotation uses the parameter name as the default
+   * assisted identifier. When disabled, defaults to an empty string (legacy/Dagger behavior).
+   *
+   * This only affects Metro's own `@Assisted` annotation, not custom/interop annotations which may
+   * use the legacy empty-string default.
+   *
+   * Enabled by default.
+   */
+  public val useAssistedParamNamesAsIdentifiers: Property<Boolean> =
+    objects.booleanProperty("metro.useAssistedParamNamesAsIdentifiers", true)
+
+  /**
+   * Controls the diagnostic severity when explicit `@Assisted("value")` identifiers are used on
+   * Metro's native `@Assisted` annotation _where the value differs from the parameter name_.
+   *
+   * This is an initial step toward deprecating explicit assisted identifiers in favor of parameter
+   * names. Only meaningful when [useAssistedParamNamesAsIdentifiers] is `true`.
+   *
+   * Set to [DiagnosticSeverity.WARN] by default. Eventually it will become a proper deprecation
+   * warning, then error, then removed.
+   */
+  public val assistedIdentifierSeverity: Property<DiagnosticSeverity> =
+    objects.enumProperty<DiagnosticSeverity>("assistedIdentifierSeverity", DiagnosticSeverity.WARN)
+
+  /**
+   * Compiler version aliases mapping fake IDE versions to their real compiler versions.
+   *
+   * This is useful for IDE builds (e.g., Android Studio canary) that report a fake Kotlin compiler
+   * version. When Metro detects a compiler version that matches an alias key, it will use the
+   * corresponding value as the real version.
+   *
+   * User-defined aliases take priority over built-in aliases.
+   *
+   * Empty by default.
+   */
+  public val compilerVersionAliases: MapProperty<String, String> =
+    objects.mapProperty(String::class.java, String::class.java).convention(emptyMap())
+
+  /**
+   * Number of threads to use for Metro's compiler.
+   *
+   * 0 (default) disables parallelism.
+   */
+  @ExperimentalMetroGradleApi
+  @DangerousMetroGradleApi(
+    "Parallelization in Metro is _extremely_ experimental and may break your build"
+  )
+  public val parallelThreads: Property<Int> = objects.intProperty("metro.parallelThreads", 0)
+
+  /**
+   * Enable/disable treating `() -> T` (i.e., `Function0<T>`) as a provider type.
+   *
+   * When enabled, `() -> T` can be used as an alternative to `Provider<T>` for injecting provider
+   * dependencies. This works because `Provider<T>` implements `() -> T` on JVM, Native, and WASM
+   * platforms.
+   *
+   * Note: On JS, `Provider<T>` does not implement `() -> T`, so an ad-hoc wrapping lambda is
+   * generated.
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val enableFunctionProviders: Property<Boolean> =
+    objects.booleanProperty("metro.enableFunctionProviders", false)
+
+  /**
+   * Enable/disable [kotlin.reflect.KClass]/[Class] interop for multibinding map keys. When enabled,
+   * `java.lang.Class` and `kotlin.reflect.KClass` are treated as interchangeable in map key types,
+   * matching Kotlin's own annotation compilation behavior. This only applies to map keys because
+   * these are the only scenario where annotation arguments are materialized into non-annotation
+   * code (i.e. `@ClassKey(Foo::class) -> Map<Class<*>, V>`).
+   *
+   * Disabled by default because this is purely for annotations interop and potentially comes at
+   * some runtime overhead cost to interop since `KClass` types are still used under the hood and
+   * must be mapped in some cases. It's recommended to migrate these to `KClass` and call `.java`
+   * where necessary if possible.
+   */
+  public val enableKClassToClassMapKeyInterop: Property<Boolean> =
+    objects.booleanProperty("metro.enableKClassToClassMapKeyInterop", false)
 
   /**
    * Enable/disable Metro-native Circuit code generation. When enabled, Metro will generate
@@ -255,6 +495,23 @@ constructor(
         providers.gradleProperty("metro.reportsDestination").flatMap {
           layout.buildDirectory.dir(it)
         }
+      )
+
+  /**
+   * If set, the Metro compiler will dump compiler trace information to the given destination.
+   * Outputs are per-compilation granularity (i.e. `build/metro-traces/main/...`).
+   *
+   * Unlike [reportsDestination], this is designed for low-overhead performance tracing and can be
+   * used in realistic scenarios without significantly impacting compilation performance.
+   *
+   * Optionally, you can specify a `metro.traceDestination` gradle property whose value is a
+   * _relative_ path from the project's **build** directory.
+   */
+  public val traceDestination: DirectoryProperty =
+    objects
+      .directoryProperty()
+      .convention(
+        providers.gradleProperty("metro.traceDestination").flatMap { layout.buildDirectory.dir(it) }
       )
 
   /**
@@ -374,5 +631,53 @@ constructor(
       enableGuiceRuntimeInterop.set(true)
       includeGuiceAnnotations.set(true)
     }
+  }
+
+  private fun ObjectFactory.booleanProperty(): Property<Boolean> {
+    return property(Boolean::class.java)
+  }
+
+  private fun ObjectFactory.booleanProperty(
+    name: String,
+    defaultValue: Boolean,
+  ): Property<Boolean> {
+    return booleanProperty().propertyNameConventionImpl(name, defaultValue, String::toBoolean)
+  }
+
+  private fun ObjectFactory.intProperty(name: String, defaultValue: Int): Property<Int> {
+    return property(Int::class.java).propertyNameConventionImpl(name, defaultValue, String::toInt)
+  }
+
+  private inline fun <reified T : Enum<T>> ObjectFactory.enumProperty(
+    name: String,
+    defaultValue: T,
+  ): Property<T> {
+    return property(T::class.java).propertyNameConventionImpl(name, defaultValue) { value ->
+      enumValues<T>().find { it.name.equals(defaultValue.name, ignoreCase = true) }
+        ?: error(
+          "Value '$value' is not a valid input for metro.$name. Allowed values: ${enumValues<T>().joinToString { it.name }}"
+        )
+    }
+  }
+
+  private fun ObjectFactory.metroProperty(name: String, defaultValue: String): Property<String> {
+    return property(String::class.java)
+      .convention(
+        providers.gradleProperty(name).orElse(providers.systemProperty(name)).orElse(defaultValue)
+      )
+  }
+
+  private fun <T : Any> Property<T>.propertyNameConventionImpl(
+    propertyName: String,
+    defaultValue: T,
+    mapper: (String) -> T,
+  ): Property<T> {
+    return convention(
+      providers
+        .gradleProperty(propertyName)
+        .orElse(providers.systemProperty(propertyName))
+        .map(mapper)
+        .orElse(defaultValue)
+    )
   }
 }

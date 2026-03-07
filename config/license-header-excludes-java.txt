@@ -1,0 +1,3 @@
+**/src/test/data/**
+**/BetweennessCentrality.java
+**/*Generated.java

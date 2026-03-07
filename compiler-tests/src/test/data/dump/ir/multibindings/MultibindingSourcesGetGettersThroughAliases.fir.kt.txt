@@ -82,6 +82,7 @@ class Foo : Base {
 @DependencyGraph
 interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -114,33 +115,15 @@ interface AppGraph {
 
     }
 
-    @Binds
-    @IntoSet
-    override val Foo.bind: Any
-      override get(): Any {
-        return error(message = "Never called")
-      }
-
-    @Binds
-    override val Bar.bind2: Base
-      override get(): Base {
-        return error(message = "Never called")
-      }
-
-    @Binds
-    @IntoSet
-    override val Base.bind3: Any
-      override get(): Any {
-        return error(message = "Never called")
-      }
-
     private val setOfAny: Set<Any>
       private get(): Set<Any> {
-        return buildSet<Any>(capacity = 2, builderAction = local fun MutableSet<Any>.<anonymous>() {
-          $receiver.add(element = Foo())
-          $receiver.add(element = Bar())
-        }
+        return { // BLOCK
+          buildSet<Any>(capacity = 2, builderAction = local fun MutableSet<Any>.<anonymous>() {
+            $receiver.add(element = Foo())
+            $receiver.add(element = Bar())
+          }
 )
+        }
       }
 
     override val values: Set<Any>
@@ -167,15 +150,18 @@ interface AppGraph {
   @Binds
   @IntoSet
   abstract val Foo.bind: Any
+    @ComptimeOnly
     abstract get
 
   @Binds
   abstract val Bar.bind2: Base
+    @ComptimeOnly
     abstract get
 
   @Binds
   @IntoSet
   abstract val Base.bind3: Any
+    @ComptimeOnly
     abstract get
 
   abstract val values: Set<Any>

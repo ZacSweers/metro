@@ -6,6 +6,8 @@ import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
+import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
@@ -16,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -26,8 +29,13 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classFqName
+import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.fileOrNull
+import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -181,11 +189,11 @@ internal interface IrBindingStack :
       */
       fun memberInjectedAt(
         contextKey: IrContextualTypeKey,
-        member: IrDeclarationWithName,
+        member: IrDeclarationWithName?,
+        context: String?,
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
       ): Entry {
-        val context = member.parent.kotlinFqName.child(member.name).asString()
         return Entry(
           contextKey = contextKey,
           displayTypeKey = displayTypeKey,
@@ -354,7 +362,11 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
         "└─"
       }
     val contextHint =
-      if (entry.typeKey != entry.displayTypeKey) "(${entry.typeKey.render(short = true)}) " else ""
+      if (entry.typeKey != entry.displayTypeKey) {
+        "(${entry.typeKey.renderForDiagnostic(short = true)}) "
+      } else {
+        ""
+      }
     logger.log("$logPrefix $contextHint${entry.toString().withoutLineBreaks}")
     stack.addFirst(entry)
     entrySet.add(entry.typeKey)
@@ -416,9 +428,9 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
             row {
               cellStyle { alignment = TextAlignment.MiddleCenter }
               cell("${stack.lastIndex - i}")
-              cell(entry.displayTypeKey.render(short = true))
+              cell(entry.displayTypeKey.renderForDiagnostic(short = true))
               cell("${entry.usage}...")
-              val key = entry.typeKey.render(short = true)
+              val key = entry.typeKey.renderForDiagnostic(short = true)
               cell(key)
               val contextKey = entry.contextKey.render(short = true)
               cell(if (contextKey == key) "--" else contextKey)
@@ -447,7 +459,7 @@ internal fun bindingStackEntryForDependency(
   targetKey: IrTypeKey,
 ): Entry {
   return when (callingBinding) {
-    is IrBinding.ConstructorInjected -> {
+    is ConstructorInjected -> {
       Entry.injectedAt(
         contextKey,
         callingBinding.classFactory.function,
@@ -456,10 +468,10 @@ internal fun bindingStackEntryForDependency(
         isMirrorFunction = true,
       )
     }
-    is IrBinding.CustomWrapper -> {
+    is CustomWrapper -> {
       Entry.injectedAt(contextKey, callingBinding.declaration, displayTypeKey = targetKey)
     }
-    is IrBinding.Alias -> {
+    is Alias -> {
       Entry.injectedAt(
         contextKey,
         callingBinding.ir,
@@ -467,7 +479,7 @@ internal fun bindingStackEntryForDependency(
         displayTypeKey = targetKey,
       )
     }
-    is IrBinding.Provided -> {
+    is Provided -> {
       Entry.injectedAt(
         contextKey,
         callingBinding.providerFactory.function,
@@ -476,34 +488,76 @@ internal fun bindingStackEntryForDependency(
         isMirrorFunction = false,
       )
     }
-    is IrBinding.Assisted -> {
+    is AssistedFactory -> {
       Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
     }
-    is IrBinding.MembersInjected -> {
-      Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
+    is MembersInjected -> {
+      // Try to find the specific member (property/function) that requires this dependency
+      val param = callingBinding.parameterFor(targetKey)
+      if (param != null && param.isMember && param.ir != null) {
+        // Create a context string to indicate the TargetClass.injectedMember format
+        var context: String? = null
+        if (param.ir.isFromJava()) {
+          // TODO this is all super ugly
+          // Dagger interop, we need to synthesize the actual field or function
+          // param -> injector fun
+          val injectFunction = param.ir.parent.expectAs<IrSimpleFunction>()
+          val realName = injectFunction.name.asString().removePrefix("inject")
+          // injector fun -> injector class -> supertype
+          context =
+            injectFunction.parentAsClass
+              // Find the MembersInjector supertype
+              .superTypes
+              .find { it.rawType().classId == DaggerSymbols.ClassIds.DAGGER_MEMBERS_INJECTOR }
+              ?.let { membersInjectorSupertype ->
+                // Read the target type from its type args
+                membersInjectorSupertype.type
+                  .expectAs<IrSimpleType>()
+                  .arguments[0]
+                  .typeOrFail
+                  .classFqName
+              }
+              ?.child(realName.asName().decapitalizeUS())
+              ?.asString()
+        }
+
+        if (context == null) {
+          context = param.ir.parent.kotlinFqName.child(param.ir.name).asString()
+        }
+
+        Entry.memberInjectedAt(
+          contextKey,
+          member = param.ir,
+          context = context,
+          displayTypeKey = targetKey,
+        )
+      } else {
+        // Fallback to showing the inject() function
+        Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
+      }
     }
-    is IrBinding.Multibinding -> {
+    is Multibinding -> {
       Entry.contributedToMultibinding(callingBinding.contextualTypeKey, callingBinding.declaration)
     }
-    is IrBinding.ObjectClass -> TODO()
-    is IrBinding.BoundInstance -> TODO()
-    is IrBinding.GraphDependency -> {
+    is ObjectClass -> TODO()
+    is BoundInstance -> TODO()
+    is GraphDependency -> {
       Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
     }
-    is IrBinding.GraphExtension -> {
+    is GraphExtension -> {
       Entry.generatedExtensionAt(
         contextKey,
         parent = callingBinding.parent.kotlinFqName.asString(),
         callingBinding.accessor,
       )
     }
-    is IrBinding.GraphExtensionFactory -> {
+    is GraphExtensionFactory -> {
       Entry.generatedExtensionAt(
         contextKey,
         parent = callingBinding.parent.kotlinFqName.asString(),
         callingBinding.accessor,
       )
     }
-    is IrBinding.Absent -> reportCompilerBug("Should never happen")
+    is Absent -> reportCompilerBug("Should never happen")
   }
 }

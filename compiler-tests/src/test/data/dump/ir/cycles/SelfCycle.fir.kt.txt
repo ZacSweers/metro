@@ -12,7 +12,6 @@ class S {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<S> {
     private /* final field */ val sProvider: Provider<S> = sProvider
-    private /* final field */ val sLazy: Provider<S> = sLazy
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -20,8 +19,8 @@ class S {
 
       }
 
-      fun create(sProvider: Provider<S>, sLazy: Provider<S>): Factory<S> {
-        return MetroFactory(sProvider = sProvider, sLazy = sLazy)
+      fun create(sProvider: Provider<S>): Factory<S> {
+        return MetroFactory(sProvider = sProvider)
       }
 
       fun newInstance(sProvider: Provider<S>): S {
@@ -30,7 +29,7 @@ class S {
 
     }
 
-    private constructor(sProvider: Provider<S>, sLazy: Provider<S>) /* primary */ {
+    private constructor(sProvider: Provider<S>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -38,7 +37,7 @@ class S {
 
     override operator fun invoke(): S {
       val tmp_0: S = Companion.newInstance(sProvider = <this>.#sProvider)
-      Companion.injectSLazy(instance = tmp_0, sLazy = Companion.lazy<Provider<S>, S>(provider = <this>.#sLazy))
+      Companion.injectSLazy(instance = tmp_0, sLazy = Companion.lazy<Provider<S>, S>(provider = <this>.#sProvider))
       return tmp_0
     }
 
@@ -100,7 +99,7 @@ interface SelfCycleGraph {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<S>(delegateFactory = <this>.#sProvider, delegate = Companion.create(sProvider = <this>.#sProvider, sLazy = <this>.#sProvider))
+      Companion.setDelegate<S>(delegateFactory = <this>.#sProvider, delegate = Companion.create(sProvider = <this>.#sProvider))
     }
 
     override fun s(): S {

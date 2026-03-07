@@ -12,7 +12,7 @@ val r8Configuration: Configuration by configurations.creating
 dependencies {
   // Only used for R8 processing, not exposed transitively
   compileOnly(project(":app:component"))
-  r8Configuration("com.android.tools:r8:8.13.17")
+  r8Configuration(libs.r8)
 }
 
 abstract class BaseR8Task : JavaExec() {
@@ -88,6 +88,7 @@ abstract class R8Task : BaseR8Task() {
 
   override fun computeArgs(): Iterable<String> {
     return buildList {
+      add("--release") // Enable more aggressive optimizations
       add("--classfile")
       add("--output")
       add(r8Jar.get().asFile.absolutePath)
@@ -114,7 +115,7 @@ val componentJar =
     group = BUILD_GROUP
     description = "Creates a jar from :app:component compiled classes."
 
-    dependsOn(componentProject.tasks.named("classes"))
+    dependsOn(componentProject.tasks.named { it == "classes" || it == "jvmMainClasses" })
 
     from(componentProject.layout.buildDirectory.dir("classes/kotlin/main"))
     from(componentProject.layout.buildDirectory.dir("classes/java/main"))
@@ -132,9 +133,10 @@ val componentJar =
 val componentBuildPath = componentProject.layout.buildDirectory.get().asFile.absolutePath
 val benchmarkRootPath = rootProject.projectDir.absolutePath
 val componentRuntimeClasspath =
-  componentProject.configurations.named("runtimeClasspath").get().filter { file ->
-    !file.absolutePath.startsWith(componentBuildPath)
-  }
+  componentProject.configurations
+    .named { it == "runtimeClasspath" || it == "jvmMainRuntimeClasspath" }
+    .first()
+    .filter { file -> !file.absolutePath.startsWith(componentBuildPath) }
 
 // Separate program classpath (project modules - included in output) from
 // library classpath (external deps like kotlin stdlib - used for analysis only)

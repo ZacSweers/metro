@@ -34,6 +34,7 @@ public class ClassIds(
   customOriginAnnotations: Set<ClassId> = emptySet(),
   customOptionalBindingAnnotations: Set<ClassId> = emptySet(),
   private val contributesAsInject: Boolean = false,
+  private val enableFunctionProviders: Boolean = false,
 ) {
   public companion object {
     public fun fromOptions(options: MetroOptions): ClassIds =
@@ -64,6 +65,7 @@ public class ClassIds(
         customOriginAnnotations = options.customOriginAnnotations,
         customOptionalBindingAnnotations = options.customOptionalBindingAnnotations,
         contributesAsInject = options.contributesAsInject,
+        enableFunctionProviders = options.enableFunctionProviders,
       )
   }
 
@@ -88,7 +90,7 @@ public class ClassIds(
   internal val assistedInjectAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("AssistedInject")) +
       customAssistedInjectAnnotations
-  private val metroAssisted = Symbols.FqNames.metroRuntimePackage.classIdOf("Assisted")
+  internal val metroAssisted = Symbols.FqNames.metroRuntimePackage.classIdOf("Assisted")
   internal val assistedAnnotations = setOf(metroAssisted) + customAssistedAnnotations
   internal val metroAssistedFactory =
     Symbols.FqNames.metroRuntimePackage.classIdOf("AssistedFactory")
@@ -109,6 +111,9 @@ public class ClassIds(
       customBindingContainerAnnotations
 
   internal val originAnnotations = setOf(Symbols.ClassIds.metroOrigin) + customOriginAnnotations
+
+  internal val graphPrivateAnnotation =
+    Symbols.FqNames.metroRuntimePackage.classIdOf("GraphPrivate")
 
   internal val optionalBindingAnnotations =
     setOf(
@@ -176,10 +181,17 @@ public class ClassIds(
    * sure and is just a general catch-all.
    */
   internal val allRepeatableContributesAnnotationsContainers =
-    allContributesAnnotations.mapToSet { it.createNestedClassId(Symbols.Names.Container) }
+    allContributesAnnotations.toContainerAnnotations()
 
   internal val allContributesAnnotationsWithContainers =
     allContributesAnnotations + allRepeatableContributesAnnotationsContainers
+
+  internal val contributesBindingAnnotationsWithContainers =
+    contributesBindingAnnotations + contributesBindingAnnotations.toContainerAnnotations()
+
+  private fun Set<ClassId>.toContainerAnnotations() = mapToSet {
+    it.createNestedClassId(Symbols.Names.Container)
+  }
 
   internal val graphLikeAnnotations = dependencyGraphAnnotations + graphExtensionAnnotations
   internal val graphFactoryLikeAnnotations =
@@ -207,7 +219,13 @@ public class ClassIds(
       injectAnnotations + assistedInjectAnnotations
     }
 
-  internal val providerTypes = setOf(Symbols.ClassIds.metroProvider) + customProviderClasses
+  internal val providerTypes = buildSet {
+    add(Symbols.ClassIds.metroProvider)
+    addAll(customProviderClasses)
+    if (enableFunctionProviders) {
+      add(Symbols.ClassIds.function0)
+    }
+  }
   internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses
 
   internal val includes = setOf(Symbols.ClassIds.metroIncludes)

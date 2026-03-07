@@ -9,11 +9,11 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols.FqNames.kotlinCollectionsPackageFqn
-import kotlin.lazy
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getPropertyGetter
 import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
@@ -68,6 +69,7 @@ internal class Symbols(
     const val EXTENDS = "Extends"
     const val FACTORY = "factory"
     const val GET = "get"
+    const val GRAPH = "graph"
     const val IGNORE_QUALIFIER = "ignoreQualifier"
     const val INCLUDES = "Includes"
     const val INJECT = "Inject"
@@ -107,6 +109,8 @@ internal class Symbols(
       metroRuntimeInternalPackage.child("GraphFactoryInvokeFunctionMarker".asName())
     val CallableMetadataClass =
       metroRuntimeInternalPackage.child(StringNames.CALLABLE_METADATA.asName())
+    val MetroContribution =
+      metroRuntimeInternalPackage.child(StringNames.METRO_CONTRIBUTION.asName())
 
     fun scopeHint(scopeClassId: ClassId): FqName {
       return CallableIds.scopeHint(scopeClassId).asSingleFqName()
@@ -128,10 +132,12 @@ internal class Symbols(
 
   object ClassIds {
     val Composable = ClassId(FqNames.composeRuntime, StringNames.COMPOSABLE.asName())
+    val HiddenFromObjC = ClassId(FqName("kotlin.native"), "HiddenFromObjC".asName())
     val GraphFactoryInvokeFunctionMarkerClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
     val HasMemberInjections = ClassId(FqNames.metroRuntimePackage, "HasMemberInjections".asName())
     val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
+    val JavaLangClass = ClassId(FqName("java.lang"), "Class".asName())
     val JvmField = ClassId(FqName("kotlin.jvm"), "JvmField".asName())
     val Lazy = StandardClassIds.byName("Lazy")
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
@@ -141,7 +147,11 @@ internal class Symbols(
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
     val CallableMetadata =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.CALLABLE_METADATA.asName())
+    val ComptimeOnly = ClassId(FqNames.metroRuntimeInternalPackage, "ComptimeOnly".asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
+    val Throws = ClassId(StandardClassIds.BASE_KOTLIN_PACKAGE, "Throws".asName())
+    val IllegalStateException =
+      ClassId(StandardClassIds.BASE_KOTLIN_PACKAGE, "IllegalStateException".asName())
     val graphExtension = ClassId(FqNames.metroRuntimePackage, "GraphExtension".asName())
     val graphExtensionFactory = graphExtension.createNestedClassId(Names.FactoryClass)
     val metroAssisted = ClassId(FqNames.metroRuntimePackage, StringNames.ASSISTED.asName())
@@ -164,6 +174,8 @@ internal class Symbols(
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())
     val metroInstanceFactory =
       ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
+
+    val function0 = StandardClassIds.FunctionN(0)
 
     val commonMetroProviders by lazy { setOf(metroProvider, metroFactory, metroInstanceFactory) }
   }
@@ -199,6 +211,7 @@ internal class Symbols(
     val exclude = StringNames.EXCLUDE.asName()
     val excludes = StringNames.EXCLUDES.asName()
     val factory = StringNames.FACTORY.asName()
+    val graph = StringNames.GRAPH.asName()
     val ignoreQualifier = StringNames.IGNORE_QUALIFIER.asName()
     val includes = "includes".asName()
     val injectMembers = StringNames.INJECT_MEMBERS.asName()
@@ -230,6 +243,38 @@ internal class Symbols(
     moduleFragment.createPackage(kotlinCollectionsPackageFqn.asString())
   }
 
+  /** Getter for the `kotlin.jvm.java` extension property on `KClass<T>` -> `Class<T>`. */
+  val kClassJavaPropertyGetter: IrSimpleFunctionSymbol? by lazy {
+    pluginContext
+      .referenceProperties(CallableId(FqName("kotlin.jvm"), "java".asName()))
+      .firstOrNull()
+      ?.owner
+      ?.getter
+      ?.symbol
+  }
+
+  val mapEntryClassSymbol: IrClassSymbol by lazy {
+    pluginContext.referenceClass(StandardClassIds.MapEntry)!!
+  }
+
+  /** `kotlin.collections.mapKeys` extension function for Map. */
+  val mapKeysFunction: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(kotlinCollectionsPackageFqn, "mapKeys".asName()))
+      .first()
+  }
+
+  /** Getter for the `key` property on `Map.Entry`. */
+  val mapEntryKeyGetter: IrSimpleFunctionSymbol by lazy {
+    val mapEntryClassId = StandardClassIds.Map.createNestedClassId("Entry".asName())
+    pluginContext
+      .referenceProperties(CallableId(mapEntryClassId, "key".asName()))
+      .first()
+      .owner
+      .getter!!
+      .symbol
+  }
+
   val metroFrameworkSymbols = MetroFrameworkSymbols(metroRuntimeInternal, pluginContext)
 
   private val daggerSymbols: DaggerSymbols?
@@ -247,7 +292,8 @@ internal class Symbols(
 
   init {
     val frameworks = mutableListOf<ProviderFramework>()
-    val metroProviderFramework = MetroProviderFramework(metroFrameworkSymbols)
+    val metroProviderFramework =
+      MetroProviderFramework(metroFrameworkSymbols, options.enableFunctionProviders)
     // Metro is always first (canonical representation)
     frameworks.add(metroProviderFramework)
 
@@ -382,6 +428,19 @@ internal class Symbols(
     pluginContext.referenceClass(ClassIds.CallableMetadata)!!.constructors.first()
   }
 
+  val comptimeOnlyAnnotationConstructor: IrConstructorSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.ComptimeOnly)?.constructors?.first()!!
+  }
+
+  val throwsAnnotationConstructor: IrConstructorSymbol? by lazy {
+    // For some reason this isn't visible until 2.3.0?
+    pluginContext.referenceClass(ClassIds.Throws)?.constructors?.first()
+  }
+
+  val illegalStateExceptionClassSymbol: IrClassSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.IllegalStateException)!!
+  }
+
   val metroProvider: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassId(metroRuntime.packageFqName, "Provider".asName()))!!
   }
@@ -494,6 +553,34 @@ internal class Symbols(
     pluginContext.irBuiltIns.mutableSetClass.owner.declarations
       .filterIsInstance<IrSimpleFunction>()
       .single { it.name.asString() == "add" }
+  }
+
+  val mutableSetAddAll by lazy {
+    pluginContext.irBuiltIns.mutableSetClass.owner.declarations
+      .filterIsInstance<IrSimpleFunction>()
+      .single { it.name.asString() == "addAll" }
+  }
+
+  val collectionSize by lazy {
+    pluginContext.irBuiltIns.collectionClass.owner.declarations
+      .filterIsInstance<IrProperty>()
+      .single { it.name.asString() == "size" }
+      .getter!!
+      .symbol
+  }
+
+  val intPlus by lazy {
+    pluginContext.irBuiltIns.intClass.owner.functions
+      .single {
+        it.name.asString() == "plus" &&
+          it.hasShape(
+            dispatchReceiver = true,
+            regularParameters = 1,
+            parameterTypes =
+              listOf(pluginContext.irBuiltIns.intType, pluginContext.irBuiltIns.intType),
+          )
+      }
+      .symbol
   }
 
   val buildMapWithCapacity by lazy {

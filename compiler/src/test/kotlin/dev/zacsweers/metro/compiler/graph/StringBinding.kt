@@ -10,7 +10,11 @@ internal class StringBinding(
   override val dependencies: List<StringContextualTypeKey> = emptyList(),
 ) : BaseBinding<String, StringTypeKey, StringContextualTypeKey> {
 
-  override fun renderLocationDiagnostic(short: Boolean): LocationDiagnostic {
+  override fun renderLocationDiagnostic(
+    short: Boolean,
+    shortLocation: Boolean,
+    underlineTypeKey: Boolean,
+  ): LocationDiagnostic {
     return LocationDiagnostic(contextualTypeKey.typeKey.render(short = true), null)
   }
 

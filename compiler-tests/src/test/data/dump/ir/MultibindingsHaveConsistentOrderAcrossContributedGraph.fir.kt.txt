@@ -93,6 +93,7 @@ class TaskImpl4 : Task {
 @DependencyGraph(scope = AppScope::class)
 interface ExampleGraph : MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -118,12 +119,12 @@ interface ExampleGraph : MetroContributionToAppScope {
     private val thisGraphInstance: ExampleGraph
       field = <this>
 
-    private val exampleGraphProvider: Provider<ExampleGraph>
-      field = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
-
     @DependencyGraph(scope = Unit::class)
-    private inner class LoggedInGraphImpl : LoggedInGraph {
-      constructor() /* primary */ {
+    private class LoggedInGraphImpl : LoggedInGraph {
+      private val exampleGraphImpl: Impl
+        field = exampleGraphImpl
+
+      constructor(exampleGraphImpl: Impl) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
@@ -131,13 +132,15 @@ interface ExampleGraph : MetroContributionToAppScope {
 
       private val setOfTask: Set<Task>
         private get(): Set<Task> {
-          return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-            $receiver.add(element = Companion.provide4(instance = <this>))
-            $receiver.add(element = Companion.provide3(instance = <this>))
-            $receiver.add(element = TaskImpl1())
-            $receiver.add(element = TaskImpl2())
-          }
+          return { // BLOCK
+            buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
+              $receiver.add(element = <this>.#exampleGraphImpl.provide4())
+              $receiver.add(element = <this>.#exampleGraphImpl.provide3())
+              $receiver.add(element = TaskImpl1())
+              $receiver.add(element = TaskImpl2())
+            }
 )
+          }
         }
 
       override val tasksFromParent: Set<Task>
@@ -154,32 +157,20 @@ interface ExampleGraph : MetroContributionToAppScope {
     }
 
     override fun createLoggedInGraph(): LoggedInGraph {
-      return <this>.LoggedInGraphImpl()
+      return LoggedInGraphImpl(exampleGraphImpl = <this>)
     }
-
-    @IntoSet
-    @Binds
-    override val TaskImpl2.bind: Task
-      override get(): Task {
-        return error(message = "Never called")
-      }
-
-    @IntoSet
-    @Binds
-    override val TaskImpl1.bind: Task
-      override get(): Task {
-        return error(message = "Never called")
-      }
 
     private val setOfTask: Set<Task>
       private get(): Set<Task> {
-        return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-          $receiver.add(element = Companion.provide4(instance = <this>.#thisGraphInstance))
-          $receiver.add(element = Companion.provide3(instance = <this>.#thisGraphInstance))
-          $receiver.add(element = TaskImpl1())
-          $receiver.add(element = TaskImpl2())
-        }
+        return { // BLOCK
+          buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
+            $receiver.add(element = <this>.#thisGraphInstance.provide4())
+            $receiver.add(element = <this>.#thisGraphInstance.provide3())
+            $receiver.add(element = TaskImpl1())
+            $receiver.add(element = TaskImpl2())
+          }
 )
+        }
       }
 
     override val tasks: Set<Task>
@@ -281,24 +272,26 @@ interface ExampleGraph : MetroContributionToAppScope {
 
   @IntoSet
   @Provides
-  private fun provide3(): Task {
+  fun provide3(): Task {
     return TaskImpl3()
   }
 
   @IntoSet
   @Provides
-  private fun provide4(): Task {
+  fun provide4(): Task {
     return TaskImpl4()
   }
 
   @IntoSet
   @Binds
   abstract val TaskImpl2.bind: Task
+    @ComptimeOnly
     abstract get
 
   @IntoSet
   @Binds
   abstract val TaskImpl1.bind: Task
+    @ComptimeOnly
     abstract get
 
   abstract val tasks: Set<Task>

@@ -735,7 +735,7 @@ ${packages.mapIndexed { i, pkg ->
               <div class="edge-legend-item"><span class="edge-line injects"></span> Injects (member injection)</div>
               <div class="edge-legend-item"><span class="edge-line inherited"></span> Inherited binding (from parent)</div>
               <div class="edge-legend-item"><span class="edge-line deferrable"></span> Deferrable (Provider/Lazy)</div>
-              <div class="edge-legend-item"><span class="edge-line assisted"></span> Assisted injection</div>
+              <div class="edge-legend-item"><span class="edge-line assisted"></span> Assisted factory → inject</div>
               <div class="edge-legend-item"><span class="edge-line multibinding"></span> Multibinding source</div>
               <div class="edge-legend-item"><span class="edge-line alias"></span> Alias (type binding)</div>
               <div class="edge-legend-item"><span class="edge-line default"></span> Default value (fallback)</div>
@@ -813,6 +813,7 @@ ${packages.mapIndexed { i, pkg ->
               if (d.isGraph) html += ' <span style="color:#009952;font-size:10px">◆ GRAPH</span>';
               else if (d.isExtension) html += ' <span style="color:#EB6800;font-size:10px">▢ EXTENSION</span>';
               else if (d.isDefaultValue) html += ' <span style="color:#F6BC26;font-size:10px">📌 DEFAULT</span>';
+              else if (d.isAssistedTarget) html += ' <span style="color:#D82233;font-size:10px">⚡ ASSISTED-INJECT</span>';
               else if (d.synthetic) html += ' <span style="color:#8b949e;font-size:10px">(synthetic)</span>';
               html += '</div>';
               html += '<div style="color:#8b949e;font-size:11px">' + esc(d.fullKey) + '</div>';
@@ -821,6 +822,14 @@ ${packages.mapIndexed { i, pkg ->
               html += '<div>Package: <span style="color:#e6edf3">' + (d.pkg || '(root)') + '</span></div>';
               if (d.scoped) html += '<div>Scoped: <span style="color:#FFFFFF;font-weight:600">Yes</span></div>';
               if (d.scope) html += '<div>Scope: <span style="color:#e6edf3">' + d.scope + '</span></div>';
+              // Assisted parameters (for assisted-inject targets)
+              if (d.assistedParams && d.assistedParams.length > 0) {
+                html += '</div><div style="margin-top:8px;padding-top:8px;border-top:1px solid #30363d">';
+                html += '<div style="font-size:10px;color:#8b949e;margin-bottom:4px">ASSISTED PARAMS (call-time)</div>';
+                for (const param of d.assistedParams) {
+                  html += '<div><span style="color:#D82233">' + esc(param.name) + '</span>: <span style="color:#e6edf3">' + esc(param.type) + '</span></div>';
+                }
+              }
               // Analysis metrics (if available) with heatmap coloring
               if (d.fanIn !== undefined || d.fanOut !== undefined) {
                 html += '</div><div style="margin-top:8px;padding-top:8px;border-top:1px solid #30363d">';
@@ -867,7 +876,7 @@ ${packages.mapIndexed { i, pkg ->
                 'boundinstance': 'bound instance (graph @Provides input)',
                 'inherited': 'inherited binding (from parent graph)',
                 'deferrable': 'depends on (Provider/Lazy)',
-                'assisted': 'assisted injects',
+                'assisted': 'assisted factory creates',
                 'multibinding': 'multibinding source',
                 'alias': 'is an alias to',
                 'default': 'default value (fallback available)',
@@ -1378,12 +1387,13 @@ ${packages.mapIndexed { i, pkg ->
         "GraphExtension" to 5,
         "GraphExtensionFactory" to 5,
         "Assisted" to 6,
-        "ObjectClass" to 7,
-        "GraphDependency" to 8,
-        "MembersInjected" to 9,
-        "CustomWrapper" to 10,
-        "DefaultValue" to 11,
-        "Absent" to 12,
+        "AssistedInject" to 7,
+        "ObjectClass" to 8,
+        "GraphDependency" to 9,
+        "MembersInjected" to 10,
+        "CustomWrapper" to 11,
+        "DefaultValue" to 12,
+        "Absent" to 13,
       )
 
     // Calculate dynamic glow thresholds based on graph size and metrics distribution
@@ -1429,6 +1439,7 @@ ${packages.mapIndexed { i, pkg ->
         "GraphExtension" to Colors.GRAPH_EXTENSION,
         "GraphExtensionFactory" to Colors.GRAPH_EXTENSION,
         "Assisted" to Colors.ASSISTED,
+        "AssistedInject" to Colors.ASSISTED,
         "ObjectClass" to Colors.OBJECT_CLASS,
         "GraphDependency" to Colors.GRAPH_DEPENDENCY,
         "MembersInjected" to Colors.MEMBERS_INJECTED,
@@ -1626,14 +1637,70 @@ ${packages.mapIndexed { i, pkg ->
           }
         )
       }
+
+      // Add nodes for assisted-inject targets (encapsulated within Assisted factory bindings)
+      for (binding in metadata.bindings) {
+        val target = binding.assistedTarget ?: continue
+        val displayName = extractDisplayName(target.key)
+        val pkg = extractPackage(target.key)
+
+        add(
+          buildJsonObject {
+            put("id", JsonPrimitive(target.key))
+            put("name", JsonPrimitive(displayName))
+            put("fullKey", JsonPrimitive(target.key))
+            put("pkg", JsonPrimitive(pkg))
+            put("kind", JsonPrimitive("AssistedInject"))
+            put("scoped", JsonPrimitive(target.isScoped))
+            put("synthetic", JsonPrimitive(false))
+            put("isGraph", JsonPrimitive(false))
+            put("isExtension", JsonPrimitive(false))
+            put("isAssistedTarget", JsonPrimitive(true))
+            put("scope", target.scope?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
+            put("origin", target.origin?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
+            put("category", JsonPrimitive(categoryMap["AssistedInject"] ?: 7))
+            put("symbol", JsonPrimitive("circle"))
+            put("symbolSize", JsonPrimitive(if (target.isScoped) 20 else 14))
+            // Include assisted parameters for tooltip display
+            put(
+              "assistedParams",
+              buildJsonArray {
+                for (param in target.assistedParameters) {
+                  add(
+                    buildJsonObject {
+                      put("name", JsonPrimitive(param.name))
+                      put("type", JsonPrimitive(extractDisplayName(param.key)))
+                    }
+                  )
+                }
+              },
+            )
+            put(
+              "itemStyle",
+              buildJsonObject {
+                put("color", JsonPrimitive(Colors.ASSISTED))
+                if (target.isScoped) {
+                  put("borderColor", JsonPrimitive(Colors.SCOPED_BORDER))
+                  put("borderWidth", JsonPrimitive(3))
+                }
+              },
+            )
+          }
+        )
+      }
     }
 
     // For target lookup, we need to map type keys to their provider node IDs (not MembersInjected
-    // roots)
-    val keyToProviderNodeId =
-      metadata.bindings
-        .filterNot { it.bindingKind == "MembersInjected" && it.key in membersInjectedRoots }
-        .associate { it.key to it.key }
+    // roots). Also include assisted-inject targets which are encapsulated within Assisted bindings.
+    val keyToProviderNodeId = buildMap {
+      for (binding in metadata.bindings) {
+        if (!(binding.bindingKind == "MembersInjected" && binding.key in membersInjectedRoots)) {
+          put(binding.key, binding.key)
+        }
+        // Include assisted-inject targets
+        binding.assistedTarget?.let { target -> put(target.key, target.key) }
+      }
+    }
 
     // Build map from (consumerKey, targetType) -> syntheticKey for default value edge routing
     val defaultValueNodeMap =
@@ -1725,8 +1792,8 @@ ${packages.mapIndexed { i, pkg ->
               when {
                 isInheritedScope -> "inherited"
                 isAlias -> "alias"
-                dep.isAssisted || (isAssistedFactory && targetKey == binding.aliasTarget) ->
-                  "assisted"
+                // Assisted factory edges to its target's dependencies are "assisted" type
+                isAssistedFactory -> "assisted"
                 dep.isDeferrable -> "deferrable"
                 isMultibinding && dep.key in multibindingSourceKeys -> "multibinding"
                 else -> "normal"
@@ -1895,6 +1962,60 @@ ${packages.mapIndexed { i, pkg ->
           }
         }
       }
+
+      // Add edges for assisted-inject targets (encapsulated within Assisted factory bindings)
+      // 1. Edge from Assisted factory to its target
+      // 2. Edges from target to its dependencies
+      for (binding in metadata.bindings) {
+        val target = binding.assistedTarget ?: continue
+
+        // Edge from factory to target (dashed to indicate factory creates instances)
+        add(
+          buildJsonObject {
+            put("source", JsonPrimitive(binding.key))
+            put("target", JsonPrimitive(target.key))
+            put("edgeType", JsonPrimitive("assisted"))
+            put("value", JsonPrimitive(0.3)) // Short edge for direct relationship
+            put(
+              "lineStyle",
+              buildJsonObject {
+                put("color", JsonPrimitive(Colors.EDGE_ASSISTED))
+                put("type", JsonPrimitive("dashed"))
+                put("width", JsonPrimitive(2))
+              },
+            )
+          }
+        )
+
+        // Edges from target to its dependencies
+        for (dep in target.dependencies) {
+          val depTargetKey = unwrapTypeKey(dep.key.substringBefore(" = "))
+          if (depTargetKey in keyToProviderNodeId) {
+            val edgeType = if (dep.isDeferrable) "deferrable" else "normal"
+            val sourceColor = Colors.ASSISTED
+            add(
+              buildJsonObject {
+                put("source", JsonPrimitive(target.key))
+                put("target", JsonPrimitive(depTargetKey))
+                put("edgeType", JsonPrimitive(edgeType))
+                put("value", JsonPrimitive(1.0))
+                if (edgeType == "deferrable" && dep.wrapperType != null) {
+                  put("wrapperType", JsonPrimitive(dep.wrapperType))
+                }
+                put(
+                  "lineStyle",
+                  buildJsonObject {
+                    put("color", JsonPrimitive(sourceColor))
+                    if (edgeType == "deferrable") {
+                      put("type", JsonPrimitive("dashed"))
+                    }
+                  },
+                )
+              }
+            )
+          }
+        }
+      }
     }
 
     return buildJsonObject {
@@ -1912,7 +2033,8 @@ ${packages.mapIndexed { i, pkg ->
         "BoundInstance" to Colors.BOUND_INSTANCE,
         "Multibinding" to Colors.MULTIBINDING,
         "GraphExtension" to Colors.GRAPH_EXTENSION,
-        "Assisted" to Colors.ASSISTED,
+        "Assisted Factory" to Colors.ASSISTED,
+        "Assisted Inject" to Colors.ASSISTED,
         "ObjectClass" to Colors.OBJECT_CLASS,
         "GraphDependency" to Colors.GRAPH_DEPENDENCY,
         "MembersInjected" to Colors.MEMBERS_INJECTED,
@@ -2048,7 +2170,7 @@ internal object Colors {
   const val BOUND_INSTANCE = SUBWAY_TEAL // bound instances
   const val MULTIBINDING = SUBWAY_PURPLE // collections
   const val GRAPH_EXTENSION = SUBWAY_ORANGE // extensions
-  const val ASSISTED = SUBWAY_RED // assisted factories
+  const val ASSISTED = SUBWAY_RED // assisted factories and inject targets
   const val OBJECT_CLASS = SUBWAY_TEAL // object classes
   const val GRAPH_DEPENDENCY = SUBWAY_BLUE // graph dependencies
   const val MEMBERS_INJECTED = SUBWAY_LIGHT_GREEN // members injection
@@ -2065,7 +2187,7 @@ internal object Colors {
 
   // Edge type colors (for special edge types)
   const val EDGE_DEFERRABLE = SUBWAY_TEAL // Provider/Lazy
-  const val EDGE_ASSISTED = SUBWAY_RED // assisted injection
+  const val EDGE_ASSISTED = SUBWAY_RED // assisted factory → assisted-inject
   const val EDGE_INHERITED = SUBWAY_ORANGE // inherited from parent - match extension color
   const val EDGE_MULTIBINDING = SUBWAY_PURPLE // multibinding contributions
 

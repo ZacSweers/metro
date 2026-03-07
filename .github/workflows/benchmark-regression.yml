@@ -1,0 +1,823 @@
+name: Benchmark Regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'compiler/**'
+      - 'runtime/**'
+      - 'benchmark/**'
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write  # For pushing to gh-pages
+  pull-requests: write  # For commenting on PRs
+
+jobs:
+  benchmark:
+    name: "Multiplatform Startup Benchmark"
+    # Run on push to main, or on PRs with 'run-benchmarks' label
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.label.name == 'run-benchmarks')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine refs to benchmark
+        id: refs
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # On push to main: compare HEAD~1 (baseline) vs HEAD (current)
+            # Resolve to absolute SHAs so refs remain valid after git checkout
+            echo "baseline_ref=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
+            echo "current_ref=${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "baseline_name=main~1" >> $GITHUB_OUTPUT
+            echo "current_name=main" >> $GITHUB_OUTPUT
+          else
+            # On PR: compare main (baseline) vs PR branch (current)
+            echo "baseline_ref=origin/main" >> $GITHUB_OUTPUT
+            echo "current_ref=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+            echo "baseline_name=main" >> $GITHUB_OUTPUT
+            echo "current_name=PR #${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: true
+
+      # Run baseline benchmark
+      - name: Checkout baseline (${{ steps.refs.outputs.baseline_name }})
+        run: git checkout ${{ steps.refs.outputs.baseline_ref }}
+
+      - name: Run baseline benchmark
+        run: |
+          cd benchmark
+          ./run_startup_benchmarks.sh jvm --modes metro --count 500
+
+      - name: Save baseline results
+        id: baseline
+        run: |
+          # JMH produces results.json
+          json_path=$(find benchmark/startup-benchmark-results -name "results.json" 2>/dev/null | head -1)
+          if [ -z "$json_path" ]; then
+            echo "No baseline results.json found"
+            exit 1
+          fi
+
+          # Extract score
+          score=$(python3 -c "import json; data=json.load(open('$json_path')); print(data[0]['primaryMetric']['score'])")
+          echo "score=$score" >> $GITHUB_OUTPUT
+
+          # Extract allocation rate (B/op)
+          alloc_rate=$(python3 -c "import json; data=json.load(open('$json_path')); print(data[0].get('secondaryMetrics', {}).get('·gc.alloc.rate.norm', {}).get('score', 0))")
+          echo "alloc_rate=$alloc_rate" >> $GITHUB_OUTPUT
+
+          # Copy to temp location
+          mkdir -p /tmp/benchmark-baseline
+          cp "$json_path" /tmp/benchmark-baseline/results.json
+
+          # Create modified JSON with renamed benchmark for charting
+          python3 -c "
+          import json
+          with open('$json_path') as f:
+              data = json.load(f)
+          data[0]['benchmark'] = 'baseline'
+          with open('/tmp/benchmark-baseline/baseline.json', 'w') as f:
+              json.dump(data, f)
+          "
+          echo "json_path=/tmp/benchmark-baseline/baseline.json" >> $GITHUB_OUTPUT
+
+          # Extract binary metrics from class-metrics.json
+          class_metrics=$(find benchmark/startup-benchmark-results -name "class-metrics.json" 2>/dev/null | head -1)
+          if [ -n "$class_metrics" ] && [ -f "$class_metrics" ]; then
+            cp "$class_metrics" /tmp/benchmark-baseline/class-metrics.json
+            fields=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('fields', 0))")
+            methods=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('methods', 0))")
+            size_bytes=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('total_size_bytes', 0))")
+            size_kb=$(python3 -c "print(f'{$size_bytes / 1024:.1f}')")
+            echo "fields=$fields" >> $GITHUB_OUTPUT
+            echo "methods=$methods" >> $GITHUB_OUTPUT
+            echo "size_kb=$size_kb" >> $GITHUB_OUTPUT
+          else
+            echo "No class-metrics.json found, skipping binary metrics"
+            echo "fields=0" >> $GITHUB_OUTPUT
+            echo "methods=0" >> $GITHUB_OUTPUT
+            echo "size_kb=0" >> $GITHUB_OUTPUT
+          fi
+
+      # Run current benchmark
+      - name: Checkout current (${{ steps.refs.outputs.current_name }})
+        run: git checkout ${{ steps.refs.outputs.current_ref }}
+
+      - name: Run current benchmark
+        run: |
+          cd benchmark
+          # Clean previous results
+          rm -rf startup-benchmark-results
+          ./run_startup_benchmarks.sh jvm --modes metro --count 500
+
+      - name: Save current results
+        id: current
+        run: |
+          # JMH produces results.json
+          json_path=$(find benchmark/startup-benchmark-results -name "results.json" 2>/dev/null | head -1)
+          if [ -z "$json_path" ]; then
+            echo "No current results.json found"
+            exit 1
+          fi
+
+          # Extract score
+          score=$(python3 -c "import json; data=json.load(open('$json_path')); print(data[0]['primaryMetric']['score'])")
+          echo "score=$score" >> $GITHUB_OUTPUT
+
+          # Extract allocation rate (B/op)
+          alloc_rate=$(python3 -c "import json; data=json.load(open('$json_path')); print(data[0].get('secondaryMetrics', {}).get('·gc.alloc.rate.norm', {}).get('score', 0))")
+          echo "alloc_rate=$alloc_rate" >> $GITHUB_OUTPUT
+
+          # Copy to temp location
+          mkdir -p /tmp/benchmark-current
+          cp "$json_path" /tmp/benchmark-current/results.json
+
+          # Create modified JSON with renamed benchmark for charting
+          python3 -c "
+          import json
+          with open('$json_path') as f:
+              data = json.load(f)
+          data[0]['benchmark'] = 'current'
+          with open('/tmp/benchmark-current/current.json', 'w') as f:
+              json.dump(data, f)
+          "
+          echo "json_path=/tmp/benchmark-current/current.json" >> $GITHUB_OUTPUT
+
+          # Extract binary metrics from class-metrics.json
+          class_metrics=$(find benchmark/startup-benchmark-results -name "class-metrics.json" 2>/dev/null | head -1)
+          if [ -n "$class_metrics" ] && [ -f "$class_metrics" ]; then
+            cp "$class_metrics" /tmp/benchmark-current/class-metrics.json
+            fields=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('fields', 0))")
+            methods=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('methods', 0))")
+            size_bytes=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('total_size_bytes', 0))")
+            size_kb=$(python3 -c "print(f'{$size_bytes / 1024:.1f}')")
+            echo "fields=$fields" >> $GITHUB_OUTPUT
+            echo "methods=$methods" >> $GITHUB_OUTPUT
+            echo "size_kb=$size_kb" >> $GITHUB_OUTPUT
+          else
+            echo "No class-metrics.json found, skipping binary metrics"
+            echo "fields=0" >> $GITHUB_OUTPUT
+            echo "methods=0" >> $GITHUB_OUTPUT
+            echo "size_kb=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Calculate delta and check regression
+        id: compare
+        run: |
+          baseline=${{ steps.baseline.outputs.score }}
+          current=${{ steps.current.outputs.score }}
+          baseline_alloc=${{ steps.baseline.outputs.alloc_rate }}
+          current_alloc=${{ steps.current.outputs.alloc_rate }}
+
+          delta_pct=$(python3 -c "
+          baseline = $baseline
+          current = $current
+          delta = ((current - baseline) / baseline) * 100
+          print(f'{delta:.2f}')
+          ")
+
+          alloc_delta_pct=$(python3 -c "
+          baseline = $baseline_alloc
+          current = $current_alloc
+          if baseline == 0:
+              print('0.00')
+          else:
+              delta = ((current - baseline) / baseline) * 100
+              print(f'{delta:.2f}')
+          ")
+
+          echo "delta_pct=$delta_pct" >> $GITHUB_OUTPUT
+          echo "alloc_delta_pct=$alloc_delta_pct" >> $GITHUB_OUTPUT
+
+          # Check if regression (>5% slower)
+          is_regression=$(python3 -c "print('true' if $delta_pct > 5 else 'false')")
+          echo "is_regression=$is_regression" >> $GITHUB_OUTPUT
+
+      - name: Add summary
+        run: |
+          baseline_score=${{ steps.baseline.outputs.score }}
+          current_score=${{ steps.current.outputs.score }}
+          delta_pct=${{ steps.compare.outputs.delta_pct }}
+          
+          baseline_alloc=${{ steps.baseline.outputs.alloc_rate }}
+          current_alloc=${{ steps.current.outputs.alloc_rate }}
+          alloc_delta_pct=${{ steps.compare.outputs.alloc_delta_pct }}
+          
+          is_regression=${{ steps.compare.outputs.is_regression }}
+
+          # Binary metrics
+          baseline_fields=${{ steps.baseline.outputs.fields }}
+          baseline_methods=${{ steps.baseline.outputs.methods }}
+          baseline_size_kb=${{ steps.baseline.outputs.size_kb }}
+          current_fields=${{ steps.current.outputs.fields }}
+          current_methods=${{ steps.current.outputs.methods }}
+          current_size_kb=${{ steps.current.outputs.size_kb }}
+          
+          # Format alloc rate to KB
+          baseline_alloc_kb=$(python3 -c "print(f'{$baseline_alloc / 1024:.2f}')")
+          current_alloc_kb=$(python3 -c "print(f'{$current_alloc / 1024:.2f}')")
+
+          echo "## Multiplatform Startup Benchmark" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "$is_regression" == "true" ]]; then
+            echo "### ⚠️ Regression Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "| Metric | ${{ steps.refs.outputs.baseline_name }} (baseline) | ${{ steps.refs.outputs.current_name }} (current) | Delta |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Score (ms/op)** | ${baseline_score} | ${current_score} | **${delta_pct}%** |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Alloc (KB/op)** | ${baseline_alloc_kb} | ${current_alloc_kb} | **${alloc_delta_pct}%** |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Add binary metrics table if we have data
+          if [[ "$baseline_fields" != "0" ]] || [[ "$current_fields" != "0" ]]; then
+            # Calculate deltas for binary metrics
+            fields_delta=$((current_fields - baseline_fields))
+            methods_delta=$((current_methods - baseline_methods))
+            size_delta=$(python3 -c "print(f'{$current_size_kb - $baseline_size_kb:.1f}')")
+
+            # Format with sign
+            fields_sign=""
+            if [ "$fields_delta" -gt 0 ]; then fields_sign="+"; fi
+            methods_sign=""
+            if [ "$methods_delta" -gt 0 ]; then methods_sign="+"; fi
+            size_sign=""
+            if (( $(echo "$current_size_kb > $baseline_size_kb" | bc -l) )); then size_sign="+"; fi
+
+            echo "### Binary Metrics (Pre-Minification)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Baseline | Current | Delta |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|----------|---------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Fields | ${baseline_fields} | ${current_fields} | ${fields_sign}${fields_delta} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Methods | ${baseline_methods} | ${current_methods} | ${methods_sign}${methods_delta} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Size (KB) | ${baseline_size_kb} | ${current_size_kb} | ${size_sign}${size_delta} |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "_Both benchmarks run on the same machine. The delta accounts for hardware variance._" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment on PR if regression
+        if: github.event_name == 'pull_request' && steps.compare.outputs.is_regression == 'true'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const baselineFields = '${{ steps.baseline.outputs.fields }}';
+            const currentFields = '${{ steps.current.outputs.fields }}';
+            const baselineMethods = '${{ steps.baseline.outputs.methods }}';
+            const currentMethods = '${{ steps.current.outputs.methods }}';
+            const baselineSize = '${{ steps.baseline.outputs.size_kb }}';
+            const currentSize = '${{ steps.current.outputs.size_kb }}';
+            
+            const baselineAlloc = (${{ steps.baseline.outputs.alloc_rate }} / 1024).toFixed(2);
+            const currentAlloc = (${{ steps.current.outputs.alloc_rate }} / 1024).toFixed(2);
+
+            let binaryMetrics = '';
+            if (baselineFields !== '0' || currentFields !== '0') {
+              const fieldsDelta = parseInt(currentFields) - parseInt(baselineFields);
+              const methodsDelta = parseInt(currentMethods) - parseInt(baselineMethods);
+              const sizeDelta = (parseFloat(currentSize) - parseFloat(baselineSize)).toFixed(1);
+              const formatDelta = (d) => d > 0 ? `+${d}` : `${d}`;
+
+              binaryMetrics = `
+            ### Binary Metrics (Pre-Minification)
+
+            | Metric | Baseline | Current | Delta |
+            |--------|----------|---------|-------|
+            | Fields | ${baselineFields} | ${currentFields} | ${formatDelta(fieldsDelta)} |
+            | Methods | ${baselineMethods} | ${currentMethods} | ${formatDelta(methodsDelta)} |
+            | Size (KB) | ${baselineSize} | ${currentSize} | ${formatDelta(sizeDelta)} |
+            `;
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ⚠️ Benchmark Regression Detected
+
+            | Metric | Baseline | Current | Delta |
+            |---|---|---|---|
+            | **Score (ms/op)** | ${{ steps.baseline.outputs.score }} | ${{ steps.current.outputs.score }} | **${{ steps.compare.outputs.delta_pct }}%** |
+            | **Alloc (KB/op)** | ${baselineAlloc} | ${currentAlloc} | **${{ steps.compare.outputs.alloc_delta_pct }}%** |
+            
+            ${binaryMetrics}
+            The startup benchmark shows a >5% regression. Please investigate.
+
+            _Both benchmarks were run on the same machine to ensure a fair comparison._`
+            })
+
+      - name: Upload results
+        uses: actions/upload-artifact@v7
+        with:
+          name: startup-benchmark-results
+          path: |
+            /tmp/benchmark-baseline/
+            /tmp/benchmark-current/
+          retention-days: 7
+
+      - name: Restore original checkout
+        if: always()
+        run: git checkout ${{ github.sha }}
+
+  build-benchmark:
+    name: "Build Time Benchmark"
+    # Run on push to main, or on PRs with 'run-benchmarks' label
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.label.name == 'run-benchmarks')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine refs to benchmark
+        id: refs
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Resolve to absolute SHAs so refs remain valid after git checkout
+            echo "baseline_ref=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
+            echo "current_ref=${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "baseline_name=main~1" >> $GITHUB_OUTPUT
+            echo "current_name=main" >> $GITHUB_OUTPUT
+          else
+            echo "baseline_ref=origin/main" >> $GITHUB_OUTPUT
+            echo "current_ref=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+            echo "baseline_name=main" >> $GITHUB_OUTPUT
+            echo "current_name=PR #${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: true
+
+      - name: Get cache key for gradle-profiler
+        id: gradle-profiler-cache-key
+        run: echo "week=$(date +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: Cache gradle-profiler
+        uses: actions/cache@v5
+        with:
+          path: tmp/gradle-profiler-source/build/install/gradle-profiler
+          key: gradle-profiler-${{ runner.os }}-${{ steps.gradle-profiler-cache-key.outputs.week }}
+          restore-keys: gradle-profiler-${{ runner.os }}-
+
+      - name: Install gradle-profiler
+        run: ./benchmark/install-gradle-profiler.sh
+
+      # Run baseline benchmark
+      - name: Checkout baseline (${{ steps.refs.outputs.baseline_name }})
+        run: git checkout ${{ steps.refs.outputs.baseline_ref }}
+
+      - name: Run baseline build benchmark
+        run: |
+          cd benchmark
+          ./run_benchmarks.sh single --ref HEAD --modes metro --scenarios abi_change,raw_compilation 500
+
+      - name: Save baseline results
+        id: baseline
+        run: |
+          # Find the benchmark results CSV
+          csv_file=$(find benchmark/benchmark-results -name "benchmark.csv" 2>/dev/null | head -1)
+          if [ -z "$csv_file" ]; then
+            echo "No baseline benchmark.csv found"
+            exit 1
+          fi
+
+          # Extract mean build time from measured builds
+          # Gradle profiler CSV format: scenario,value (e.g., "measured build 1,1234")
+          mean_ms=$(python3 -c "
+          import csv
+          with open('$csv_file') as f:
+              reader = csv.reader(f)
+              values = [float(row[1]) for row in reader if row[0].startswith('measured build')]
+              print(sum(values) / len(values) if values else 0)
+          ")
+          echo "score=$mean_ms" >> $GITHUB_OUTPUT
+
+          # Copy results
+          mkdir -p /tmp/build-benchmark-baseline
+          cp -r benchmark/benchmark-results/* /tmp/build-benchmark-baseline/
+
+          # Create JSON for benchmark-action (customSmallerIsBetter format)
+          python3 -c "
+          import json
+          result = [{
+              'name': 'Build Time (baseline)',
+              'unit': 'ms',
+              'value': $mean_ms
+          }]
+          with open('/tmp/build-benchmark-baseline/baseline.json', 'w') as f:
+              json.dump(result, f)
+          "
+          echo "json_path=/tmp/build-benchmark-baseline/baseline.json" >> $GITHUB_OUTPUT
+
+      # Run current benchmark
+      - name: Checkout current (${{ steps.refs.outputs.current_name }})
+        run: git checkout ${{ steps.refs.outputs.current_ref }}
+
+      - name: Run current build benchmark
+        run: |
+          cd benchmark
+          rm -rf benchmark-results
+          ./run_benchmarks.sh single --ref HEAD --modes metro --scenarios abi_change,raw_compilation 500
+
+      - name: Save current results
+        id: current
+        run: |
+          csv_file=$(find benchmark/benchmark-results -name "benchmark.csv" 2>/dev/null | head -1)
+          if [ -z "$csv_file" ]; then
+            echo "No current benchmark.csv found"
+            exit 1
+          fi
+
+          # Gradle profiler CSV format: scenario,value (e.g., "measured build 1,1234")
+          mean_ms=$(python3 -c "
+          import csv
+          with open('$csv_file') as f:
+              reader = csv.reader(f)
+              values = [float(row[1]) for row in reader if row[0].startswith('measured build')]
+              print(sum(values) / len(values) if values else 0)
+          ")
+          echo "score=$mean_ms" >> $GITHUB_OUTPUT
+
+          mkdir -p /tmp/build-benchmark-current
+          cp -r benchmark/benchmark-results/* /tmp/build-benchmark-current/
+
+          python3 -c "
+          import json
+          result = [{
+              'name': 'Build Time (current)',
+              'unit': 'ms',
+              'value': $mean_ms
+          }]
+          with open('/tmp/build-benchmark-current/current.json', 'w') as f:
+              json.dump(result, f)
+          "
+          echo "json_path=/tmp/build-benchmark-current/current.json" >> $GITHUB_OUTPUT
+
+      - name: Calculate delta and check regression
+        id: compare
+        run: |
+          baseline=${{ steps.baseline.outputs.score }}
+          current=${{ steps.current.outputs.score }}
+
+          delta_pct=$(python3 -c "
+          baseline = $baseline
+          current = $current
+          delta = ((current - baseline) / baseline) * 100 if baseline != 0 else 0
+          print(f'{delta:.2f}')
+          ")
+          echo "delta_pct=$delta_pct" >> $GITHUB_OUTPUT
+
+          is_regression=$(python3 -c "print('true' if float('$delta_pct') > 5 else 'false')")
+          echo "is_regression=$is_regression" >> $GITHUB_OUTPUT
+
+      - name: Add summary
+        run: |
+          baseline_score=${{ steps.baseline.outputs.score }}
+          current_score=${{ steps.current.outputs.score }}
+          delta_pct=${{ steps.compare.outputs.delta_pct }}
+          is_regression=${{ steps.compare.outputs.is_regression }}
+
+          # Convert ms to seconds for readability
+          baseline_s=$(python3 -c "print(f'{$baseline_score / 1000:.2f}')")
+          current_s=$(python3 -c "print(f'{$current_score / 1000:.2f}')")
+
+          echo "## Build Time Benchmark" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "$is_regression" == "true" ]]; then
+            echo "### ⚠️ Regression Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "| Ref | Build Time |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ${{ steps.refs.outputs.baseline_name }} (baseline) | ${baseline_s}s |" >> $GITHUB_STEP_SUMMARY
+          echo "| ${{ steps.refs.outputs.current_name }} (current) | ${current_s}s |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Delta** | **${delta_pct}%** |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "_Both benchmarks run on the same machine. The delta accounts for hardware variance._" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment on PR if regression
+        if: github.event_name == 'pull_request' && steps.compare.outputs.is_regression == 'true'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const baseline_s = (${{ steps.baseline.outputs.score }} / 1000).toFixed(2);
+            const current_s = (${{ steps.current.outputs.score }} / 1000).toFixed(2);
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ⚠️ Build Time Regression Detected
+
+            | Ref | Build Time |
+            |-----|------------|
+            | main (baseline) | ${baseline_s}s |
+            | This PR (current) | ${current_s}s |
+            | **Delta** | **${{ steps.compare.outputs.delta_pct }}%** |
+
+            The build benchmark shows a >5% regression. Please investigate.
+
+            _Both benchmarks were run on the same machine to ensure a fair comparison._`
+            })
+
+      - name: Upload results
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-benchmark-results
+          path: |
+            /tmp/build-benchmark-baseline/
+            /tmp/build-benchmark-current/
+          retention-days: 7
+
+      - name: Restore original checkout
+        if: always()
+        run: git checkout ${{ github.sha }}
+
+  publish-benchmarks:
+    name: "Publish Benchmark Results"
+    # Only run on push to main, after both benchmark jobs complete
+    if: github.event_name == 'push'
+    needs: [benchmark, build-benchmark]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Checkout main (for commit info)
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: main-checkout
+          fetch-depth: 1
+
+      - name: Download startup benchmark results
+        uses: actions/download-artifact@v8
+        with:
+          name: startup-benchmark-results
+          path: /tmp/startup-results
+
+      - name: Download build benchmark results
+        uses: actions/download-artifact@v8
+        with:
+          name: build-benchmark-results
+          path: /tmp/build-results
+
+      - name: Append startup benchmark results (sawtooth format)
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          REPO_URL: https://github.com/${{ github.repository }}
+        run: |
+          cd gh-pages
+
+          # Get commit info
+          COMMIT_SHORT="${COMMIT_SHA:0:8}"
+
+          # Read baseline and current values
+          baseline_json="/tmp/startup-results/benchmark-baseline/baseline.json"
+          current_json="/tmp/startup-results/benchmark-current/current.json"
+
+          export BASELINE_VALUE=$(python3 -c "import json; print(json.load(open('$baseline_json'))[0]['primaryMetric']['score'])")
+          export CURRENT_VALUE=$(python3 -c "import json; print(json.load(open('$current_json'))[0]['primaryMetric']['score'])")
+
+          # Calculate delta
+          export DELTA_PCT=$(python3 -c "
+          baseline = $BASELINE_VALUE
+          current = $CURRENT_VALUE
+          delta = ((current - baseline) / baseline) * 100
+          sign = '+' if delta > 0 else ''
+          print(f'{sign}{delta:.2f}')
+          ")
+
+          # Get commit details from main checkout (not gh-pages)
+          export COMMIT_MSG=$(git -C ../main-checkout log -1 --format='%s' 2>/dev/null || echo "Commit $COMMIT_SHORT")
+          export COMMIT_AUTHOR=$(git -C ../main-checkout log -1 --format='%an' 2>/dev/null || echo "Unknown")
+          export COMMIT_TIME=$(git -C ../main-checkout log -1 --format='%cI' 2>/dev/null || echo "")
+          export DATE_MS=$(python3 -c "import time; print(int(time.time() * 1000))")
+          export COMMIT_SHORT
+
+          # Update data.js with new entries
+          python3 << 'EOF'
+          import json
+          import os
+
+          data_file = 'dev/bench/data.js'
+          commit_sha = os.environ['COMMIT_SHA']
+          commit_short = os.environ['COMMIT_SHORT']
+          github_actor = os.environ['GITHUB_ACTOR']
+          repo_url = os.environ['REPO_URL']
+          baseline_value = float(os.environ['BASELINE_VALUE'])
+          current_value = float(os.environ['CURRENT_VALUE'])
+          delta_pct = os.environ['DELTA_PCT']
+          commit_msg = os.environ['COMMIT_MSG']
+          commit_author = os.environ['COMMIT_AUTHOR']
+          commit_time = os.environ['COMMIT_TIME']
+          date_ms = int(os.environ['DATE_MS'])
+
+          # Read existing data
+          if os.path.exists(data_file):
+              with open(data_file) as f:
+                  content = f.read()
+              json_str = content.replace('window.BENCHMARK_DATA = ', '')
+              data = json.loads(json_str)
+          else:
+              data = {'lastUpdate': 0, 'repoUrl': repo_url, 'entries': {}}
+
+          # Ensure chart exists
+          if 'Startup Benchmark' not in data['entries']:
+              data['entries']['Startup Benchmark'] = []
+
+          entries = data['entries']['Startup Benchmark']
+
+          commit_info = {
+              'author': {'name': commit_author, 'username': github_actor},
+              'committer': {'name': commit_author, 'username': github_actor},
+              'distinct': True,
+              'id': commit_sha,
+              'message': commit_msg,
+              'timestamp': commit_time,
+              'tree_id': '',
+              'url': f'{repo_url}/commit/{commit_sha}'
+          }
+
+          # Before entry (with ~1 suffix to show as previous commit)
+          before_entry = {
+              'commit': {**commit_info, 'id': f'{commit_short}~1', 'message': '[before] ' + commit_info['message'][:50]},
+              'date': date_ms,
+              'tool': 'jmh',
+              'benches': [{
+                  'name': 'Startup',
+                  'value': baseline_value,
+                  'unit': 'ms/op',
+                  'extra': 'before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1'
+              }]
+          }
+          entries.append(before_entry)
+
+          # After entry
+          after_entry = {
+              'commit': {**commit_info, 'message': '[after] ' + commit_info['message'][:50]},
+              'date': date_ms + 1,
+              'tool': 'jmh',
+              'benches': [{
+                  'name': 'Startup',
+                  'value': current_value,
+                  'unit': 'ms/op',
+                  'extra': f'after (HEAD)\ndelta: {delta_pct}%\niterations: 10\nforks: 2\nthreads: 1'
+              }]
+          }
+          entries.append(after_entry)
+
+          data['lastUpdate'] = date_ms
+
+          with open(data_file, 'w') as f:
+              f.write('window.BENCHMARK_DATA = ')
+              json.dump(data, f, indent=2)
+
+          print(f"Added 2 entries. Total: {len(entries)}")
+          EOF
+
+      - name: Append build benchmark results (sawtooth format)
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          REPO_URL: https://github.com/${{ github.repository }}
+        run: |
+          cd gh-pages
+
+          COMMIT_SHORT="${COMMIT_SHA:0:8}"
+
+          baseline_json="/tmp/build-results/build-benchmark-baseline/baseline.json"
+          current_json="/tmp/build-results/build-benchmark-current/current.json"
+
+          export BASELINE_VALUE=$(python3 -c "import json; print(json.load(open('$baseline_json'))[0]['value'])")
+          export CURRENT_VALUE=$(python3 -c "import json; print(json.load(open('$current_json'))[0]['value'])")
+
+          export DELTA_PCT=$(python3 -c "
+          baseline = $BASELINE_VALUE
+          current = $CURRENT_VALUE
+          if baseline != 0:
+              delta = ((current - baseline) / baseline) * 100
+              sign = '+' if delta > 0 else ''
+              print(f'{sign}{delta:.2f}')
+          else:
+              print('N/A')
+          ")
+
+          # Get commit details from main checkout (not gh-pages)
+          export COMMIT_MSG=$(git -C ../main-checkout log -1 --format='%s' 2>/dev/null || echo "Commit $COMMIT_SHORT")
+          export COMMIT_AUTHOR=$(git -C ../main-checkout log -1 --format='%an' 2>/dev/null || echo "Unknown")
+          export COMMIT_TIME=$(git -C ../main-checkout log -1 --format='%cI' 2>/dev/null || echo "")
+          export DATE_MS=$(python3 -c "import time; print(int(time.time() * 1000))")
+          export COMMIT_SHORT
+
+          python3 << 'EOF'
+          import json
+          import os
+
+          data_file = 'dev/bench/build/data.js'
+          os.makedirs(os.path.dirname(data_file), exist_ok=True)
+
+          commit_sha = os.environ['COMMIT_SHA']
+          commit_short = os.environ['COMMIT_SHORT']
+          github_actor = os.environ['GITHUB_ACTOR']
+          repo_url = os.environ['REPO_URL']
+          baseline_value = float(os.environ['BASELINE_VALUE'])
+          current_value = float(os.environ['CURRENT_VALUE'])
+          delta_pct = os.environ['DELTA_PCT']
+          commit_msg = os.environ['COMMIT_MSG']
+          commit_author = os.environ['COMMIT_AUTHOR']
+          commit_time = os.environ['COMMIT_TIME']
+          date_ms = int(os.environ['DATE_MS'])
+
+          if os.path.exists(data_file):
+              with open(data_file) as f:
+                  content = f.read()
+              json_str = content.replace('window.BENCHMARK_DATA = ', '')
+              data = json.loads(json_str)
+          else:
+              data = {'lastUpdate': 0, 'repoUrl': repo_url, 'entries': {}}
+
+          if 'Build Time Benchmark' not in data['entries']:
+              data['entries']['Build Time Benchmark'] = []
+
+          entries = data['entries']['Build Time Benchmark']
+
+          commit_info = {
+              'author': {'name': commit_author, 'username': github_actor},
+              'committer': {'name': commit_author, 'username': github_actor},
+              'distinct': True,
+              'id': commit_sha,
+              'message': commit_msg,
+              'timestamp': commit_time,
+              'tree_id': '',
+              'url': f'{repo_url}/commit/{commit_sha}'
+          }
+
+          before_entry = {
+              'commit': {**commit_info, 'id': f'{commit_short}~1', 'message': '[before] ' + commit_info['message'][:50]},
+              'date': date_ms,
+              'tool': 'customSmallerIsBetter',
+              'benches': [{
+                  'name': 'Build Time',
+                  'value': baseline_value,
+                  'unit': 'ms',
+                  'extra': 'before (HEAD~1)'
+              }]
+          }
+          entries.append(before_entry)
+
+          after_entry = {
+              'commit': {**commit_info, 'message': '[after] ' + commit_info['message'][:50]},
+              'date': date_ms + 1,
+              'tool': 'customSmallerIsBetter',
+              'benches': [{
+                  'name': 'Build Time',
+                  'value': current_value,
+                  'unit': 'ms',
+                  'extra': f'after (HEAD)\ndelta: {delta_pct}%'
+              }]
+          }
+          entries.append(after_entry)
+
+          data['lastUpdate'] = date_ms
+
+          with open(data_file, 'w') as f:
+              f.write('window.BENCHMARK_DATA = ')
+              json.dump(data, f, indent=2)
+
+          print(f"Added 2 entries. Total: {len(entries)}")
+          EOF
+
+      - name: Commit and push results
+        run: |
+          cd gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Update benchmark results for ${{ github.sha }}" || echo "No changes to commit"
+          git push

@@ -262,8 +262,8 @@ class MultibindsErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:34 `@ElementsIntoSet` must return a Collection.
-        e: ExampleGraph.kt:8:34 `@ElementsIntoSet` must return a Collection.
+        e: ExampleGraph.kt:7:41 `@ElementsIntoSet` must return a Collection.
+        e: ExampleGraph.kt:8:49 `@ElementsIntoSet` must return a Collection.
         """
           .trimIndent()
       )

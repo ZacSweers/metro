@@ -29,8 +29,8 @@ kotlin {
         implementation(libs.jetbrains.navigation3.ui)
         implementation(libs.jetbrains.lifecycle.viewmodel.navigation3)
         implementation(libs.kotlinx.serialization.json)
-        implementation(compose.material3)
-        implementation(compose.runtime)
+        implementation(libs.compose.material3)
+        implementation(libs.compose.runtime)
       }
     }
     commonTest { dependencies { implementation(libs.kotlin.test) } }
@@ -63,10 +63,4 @@ android {
   }
 
   buildTypes { release { isMinifyEnabled = false } }
-
-  compileOptions {
-    val javaVersion = libs.versions.jvmTarget.get().let(JavaVersion::toVersion)
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
-  }
 }

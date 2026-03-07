@@ -9,6 +9,7 @@ Compile-only annotations are mostly supported. This includes the following:
 * `@AssistedFactory`
 * `@AssistedInject`
 * `@Assisted`
+  * Includes Dagger's `@Assisted.value` custom identifiers. While Metro's native `@Assisted` uses parameter names for matching, Dagger's explicit `value` identifiers are fully supported when using Dagger's annotations.
 * `@BindsInstance`
 * `@Binds`
 * `@ContributesBinding`
@@ -54,6 +55,8 @@ metro {
   }
 }
 ```
+!!! warning
+    Dagger's special-case `@Reusable` and `@LazyClassKey` annotations are not supported in Metro.
 
 `@DependencyGraph` is replaceable but your mileage may vary if you use Anvil or modules, since Metro’s annotation unifies Anvil’s `@MergeComponent` functionality and doesn’t support modules.
 
@@ -141,6 +144,12 @@ This specifically enables three features.
 
 Note the companion Gradle plugin automatically adds an extra `dev.zacsweers.metro:interop-dagger` runtime dependency to support this interop. If you only want annotation interop, just replace the annotations only.
 
+### `Class`/`KClass` map key interop
+
+A special opt-in form of interop exists for `java.lang.Class` and `kotlin.reflect.KClass` on JVM/android compilations. While these types are not intrinsics of each other in regular code, they _are_ in annotations and are often used in `Map` multibindings. Metro can support these if you enable the `enableKClassToClassMapKeyInterop` option. When enabled, `java.lang.Class` and `kotlin.reflect.KClass` are treated as interchangeable in map key types, matching Kotlin's own annotation compilation behavior. This only applies to map keys because these are the only scenario where annotation arguments are materialized into non-annotation code (i.e. `@ClassKey(Foo::class) -> Map<Class<*>, V>`).
+
+This is disabled by default (even if other framework interops like `includeDagger` are enabled) because this is purely for annotations interop and potentially comes at some runtime overhead cost to interop since `KClass` types are still used under the hood and must be mapped in some cases. It's recommended to migrate these to `KClass` and call `.java` where necessary if possible.
+
 ### Guice
 
 Enabling Guice interop enables annotation interop with the following Guice annotations:
@@ -148,6 +157,7 @@ Enabling Guice interop enables annotation interop with the following Guice annot
 - `@Inject` (but not `@Inject.optional`)
 - `@Provides`
 - `@Assisted`
+  - Includes Guice's `@Assisted.value` custom identifiers. While Metro's native `@Assisted` uses parameter names for matching, Guice's explicit `value` identifiers are fully supported when using Guice's annotations.
 - `@AssistedInject`
 - `@BindingAnnotation`
 - `@ScopeAnnotation`

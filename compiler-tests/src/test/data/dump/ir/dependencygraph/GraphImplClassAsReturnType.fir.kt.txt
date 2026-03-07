@@ -8,12 +8,12 @@ interface AppGraph : MetroContributionToAppScope {
     private val thisGraphInstance: AppGraph
       field = <this>
 
-    private val appGraphProvider: Provider<AppGraph>
-      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
-
     @DependencyGraph(scope = String::class)
-    private inner class ChildGraphImpl : ChildGraph {
-      constructor() /* primary */ {
+    private class ChildGraphImpl : ChildGraph {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      constructor(appGraphImpl: Impl) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
@@ -28,7 +28,7 @@ interface AppGraph : MetroContributionToAppScope {
     }
 
     override fun create(): ChildGraphImpl {
-      return <this>.ChildGraphImpl()
+      return ChildGraphImpl(appGraphImpl = <this>)
     }
 
   }

@@ -73,7 +73,7 @@ class Y {
         return MetroFactory(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 
-      fun newInstance(mapOfProvidersOfX: Map<String, X>, mapOfProvidersOfY: Map<String, Y>): Y {
+      fun newInstance(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
         return Y(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 
@@ -106,6 +106,7 @@ class Y {
 @DependencyGraph
 interface CycleMapGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -137,37 +138,29 @@ interface CycleMapGraph {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Companion.create(mapOfProvidersOfX = <this>.<get-mapOfStringToX>(), mapOfProvidersOfY = <this>.<get-mapOfStringToY>()))
+      Companion.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Companion.create(mapOfProvidersOfX = <this>.<get-mapOfStringToXProvider>(), mapOfProvidersOfY = <this>.<get-mapOfStringToYProvider>()))
     }
 
     override fun y(): Y {
       return <this>.#yProvider.invoke()
     }
 
-    private val mapOfStringToX: Provider<Map<String, Provider<X>>>
+    private val mapOfStringToXProvider: Provider<Map<String, Provider<X>>>
       private get(): Provider<Map<String, Provider<X>>> {
-        return Companion.builder<String, X>(size = 1).put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider)).build()
+        return { // BLOCK
+          val tmp_0: Builder<String, X> = Companion.builder<String, X>(size = 1)
+          tmp_0.put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider))
+          tmp_0.build()
+        }
       }
 
-    private val mapOfStringToY: Provider<Map<String, Provider<Y>>>
+    private val mapOfStringToYProvider: Provider<Map<String, Provider<Y>>>
       private get(): Provider<Map<String, Provider<Y>>> {
-        return Companion.builder<String, Y>(size = 1).put(key = "Y", providerOfValue = <this>.#yProvider).build()
-      }
-
-    @Binds
-    @IntoMap
-    @StringKey(value = "X")
-    override val X.x: X
-      override get(): X {
-        return error(message = "Never called")
-      }
-
-    @Binds
-    @IntoMap
-    @StringKey(value = "Y")
-    override val Y.y: Y
-      override get(): Y {
-        return error(message = "Never called")
+        return { // BLOCK
+          val tmp_1: Builder<String, Y> = Companion.builder<String, Y>(size = 1)
+          tmp_1.put(key = "Y", providerOfValue = <this>.#yProvider)
+          tmp_1.build()
+        }
       }
 
   }
@@ -192,12 +185,14 @@ interface CycleMapGraph {
   @IntoMap
   @StringKey(value = "X")
   abstract val X.x: X
+    @ComptimeOnly
     abstract get
 
   @Binds
   @IntoMap
   @StringKey(value = "Y")
   abstract val Y.y: Y
+    @ComptimeOnly
     abstract get
 
 }

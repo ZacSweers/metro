@@ -13,14 +13,16 @@ import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
-import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.TransformerContextAccess
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.md5base64
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
@@ -30,21 +32,24 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 internal class IrDynamicGraphGenerator(
-  private val dependencyGraphTransformer: DependencyGraphTransformer,
+  metroContext: IrMetroContext,
   private val bindingContainerResolver: IrBindingContainerResolver,
   private val contributionMerger: IrContributionMerger,
-) : IrMetroContext by dependencyGraphTransformer {
+  private val onGraphGenerated: (graphImpl: IrClass, graphAnno: IrConstructorCall) -> Unit,
+) : IrMetroContext by metroContext {
 
   private val generatedClassesCache = mutableMapOf<CacheKey, IrClass>()
 
   private data class CacheKey(val targetGraphClassId: ClassId, val containerKeys: Set<IrTypeKey>)
 
+  context(traceScope: TraceScope)
   fun getOrBuildDynamicGraph(
     targetType: IrType,
     containerTypes: Set<IrType>,
     isFactory: Boolean,
     context: TransformerContextAccess,
     containingFunction: IrSimpleFunction,
+    sourceExpression: IrCall,
   ): IrClass {
     val targetClass = targetType.rawType()
 
@@ -70,7 +75,8 @@ internal class IrDynamicGraphGenerator(
           containerTypeKeys = containerTypeKeys,
           isFactory = isFactory,
           context = context,
-          containingFunction,
+          containingFunction = containingFunction,
+          sourceExpression = sourceExpression,
         )
       }
       .also {
@@ -79,12 +85,14 @@ internal class IrDynamicGraphGenerator(
       }
   }
 
+  context(traceScope: TraceScope)
   private fun generateDynamicGraph(
     targetType: IrType,
     containerTypeKeys: Set<IrTypeKey>,
     isFactory: Boolean,
     context: TransformerContextAccess,
     containingFunction: IrSimpleFunction,
+    sourceExpression: IrCall,
   ): IrClass {
     val rawType = targetType.rawType()
     // Get factory SAM function if this is a factory
@@ -114,6 +122,7 @@ internal class IrDynamicGraphGenerator(
         parentGraph = null,
         originDeclaration = containingFunction,
         containerToAddTo = containerToAddTo,
+        traceScope = traceScope,
       )
 
     // Extend the target type (graph interface or factory interface)
@@ -140,13 +149,12 @@ internal class IrDynamicGraphGenerator(
     // Store the overriding containers for later use
     graphImpl.overridingBindingContainers = containerTypeKeys
 
-    // Store factory impl for later reference if needed
-    if (factoryImpl != null) {
-      graphImpl.generatedDynamicGraphData = GeneratedDynamicGraphData(factoryImpl = factoryImpl)
-    }
+    // Store data for later reference if needed
+    graphImpl.generatedDynamicGraphData =
+      GeneratedDynamicGraphData(factoryImpl = factoryImpl, sourceExpression = sourceExpression)
 
     // Process the new graph
-    dependencyGraphTransformer.processDependencyGraph(graphImpl, newGraphAnno, graphImpl, null)
+    onGraphGenerated(graphImpl, newGraphAnno)
 
     return graphImpl
   }
@@ -173,7 +181,10 @@ internal class IrDynamicGraphGenerator(
 }
 
 // Data class to store generated dynamic graph metadata
-internal class GeneratedDynamicGraphData(val factoryImpl: IrClass? = null)
+internal class GeneratedDynamicGraphData(
+  val factoryImpl: IrClass? = null,
+  val sourceExpression: IrCall? = null,
+)
 
 // Extension property to store generated dynamic graph data
 internal var IrClass.generatedDynamicGraphData: GeneratedDynamicGraphData? by

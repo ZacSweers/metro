@@ -2,16 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.resolvedBindingContainersClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedIncludesClassIds
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateVisibility
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -34,13 +37,11 @@ import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
 import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
-import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.toLookupTag
@@ -51,6 +52,11 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
+    context(context.session.compatContext) { checkImpl(declaration) }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
+  private fun checkImpl(declaration: FirClass) {
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -90,7 +96,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       } else if (declaration is FirAnonymousObject) {
         report("Anonymous objects")
         return
-      } else if (declaration.isLocal) {
+      } else if (with(compatContext) { declaration.isLocalCompat }) {
         report("Local classes")
         return
       }
@@ -117,7 +123,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
     if (isBindingContainer) {
       // Binding containers can't extend other binding containers
       for (supertype in declaration.symbol.getSuperTypes(session)) {
-        val supertypeClass = supertype.toClassSymbol(session) ?: continue
+        val supertypeClass = supertype.toClassSymbolCompat(session) ?: continue
         if (supertypeClass.isBindingContainer(session)) {
           val directRef = declaration.superTypeRefs.firstOrNull { it.coneType == supertype }
           val source = directRef?.source ?: source
@@ -153,7 +159,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       // includes can only be objects, interfaces/abstract classes, or simple non-generic classes
       // with a noarg constructor
       val target =
-        includedClassCall.resolvedClassId()?.toLookupTag()?.toClassSymbol(session) ?: continue
+        includedClassCall.resolvedClassId()?.toLookupTag()?.toClassSymbolCompat(session) ?: continue
 
       // Target must be a binding container
       if (!target.isBindingContainer(session)) {

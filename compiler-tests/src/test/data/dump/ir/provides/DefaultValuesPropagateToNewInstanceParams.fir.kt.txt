@@ -41,7 +41,7 @@ interface IntProvider {
   }
 
   @Provides
-  private fun provideInt(stringValue: String? = null): Int {
+  fun provideInt(stringValue: String? = null): Int {
     return { // BLOCK
       val tmp_0: Int? = { // BLOCK
         val tmp_1: String? = stringValue
@@ -58,3 +58,4 @@ interface IntProvider {
   }
 
 }
+

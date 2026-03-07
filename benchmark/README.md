@@ -28,10 +28,13 @@ with different parameters. This makes it easy to experiment with different scale
 
 The script supports multiple modes and configurable module counts:
 - **Metro mode** (`--mode metro`): Uses Metro for dependency injection with metro interop
-- **Anvil mode** (`--mode anvil`): Uses pure Anvil-KSP for dependency injection
+- **Vanilla mode** (`--mode vanilla`): Pure Kotlin with no DI framework (true baseline)
+- **Metro-NOOP mode** (`--mode metro_noop`): Metro compiler plugin applied but no Metro annotations (measures plugin overhead)
+- **Dagger mode** (`--mode dagger`): Uses Dagger with Anvil for dependency injection
 - **Kotlin-inject + Anvil mode** (`--mode kotlin-inject-anvil`): Uses Metro with kotlin-inject + anvil interop
 - **Module count** (`--count <number>`): Total number of modules to generate (default: 500)
-- **Processor** (`--processor ksp|kapt`): Annotation processor for Anvil mode (default: ksp)
+- **Processor** (`--processor ksp|kapt`): Annotation processor for Dagger mode (default: ksp)
+- **Provider multibindings** (`--provider-multibindings`): Wrap multibinding accessors in `Provider<Set<E>>` instead of `Set<E>` to benchmark `SetFactory`/`MapFactory` optimizations
 
 ## Usage
 
@@ -39,20 +42,29 @@ The script supports multiple modes and configurable module counts:
 # Generate the project for Metro mode with default 500 modules
 kotlin generate-projects.main.kts --mode metro
 
-# Generate the project for Anvil mode with default 500 modules
-kotlin generate-projects.main.kts --mode anvil
+# Generate the project for Dagger mode with default 500 modules
+kotlin generate-projects.main.kts --mode dagger
+
+# Generate Vanilla baseline project (pure Kotlin, no DI)
+kotlin generate-projects.main.kts --mode vanilla
+
+# Generate Metro-NOOP project (Metro plugin applied but no annotations)
+kotlin generate-projects.main.kts --mode metro_noop
 
 # Generate a larger project with 1000 modules
 kotlin generate-projects.main.kts --mode metro --count 1000
 
 # Generate a smaller project for quick testing
-kotlin generate-projects.main.kts --mode anvil --count 100
+kotlin generate-projects.main.kts --mode dagger --count 100
 
-# Generate a project using kapt for dagger-compiler (Anvil mode)
-kotlin generate-projects.main.kts --mode anvil --processor kapt
+# Generate a project using kapt for dagger-compiler (Dagger mode)
+kotlin generate-projects.main.kts --mode dagger --processor kapt
 
 # Generate kotlin-inject + anvil mode project (uses Amazon kotlin-inject-anvil)
 kotlin generate-projects.main.kts --mode kotlin-inject-anvil
+
+# Generate with Provider-wrapped multibindings (for SetFactory/MapFactory benchmarking)
+kotlin generate-projects.main.kts --mode metro --provider-multibindings
 
 # Build the entire benchmark
 ./gradlew build
@@ -66,35 +78,70 @@ kotlin generate-projects.main.kts --mode kotlin-inject-anvil
 Use the `run_benchmarks.sh` script for comprehensive performance testing:
 
 ```bash
-# Run all benchmark modes (metro, dagger-ksp, dagger-kapt, kotlin-inject)
+# Run all benchmark modes on current branch (metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil)
 ./run_benchmarks.sh all
 
-# Run specific modes
+# Run all modes including baseline benchmarks (vanilla + metro-noop)
+./run_benchmarks.sh all --include-baselines
+
+# Run specific modes on current branch
 ./run_benchmarks.sh metro 500
 ./run_benchmarks.sh dagger-ksp 250
-./run_benchmarks.sh dagger-kapt 750
 ./run_benchmarks.sh kotlin-inject-anvil 500
 
 # Include clean build scenarios (opt-in)
 ./run_benchmarks.sh all --include-clean-builds
-./run_benchmarks.sh metro 250 --include-clean-builds
 
-# Build-only mode (skip gradle-profiler benchmarks)
-./run_benchmarks.sh all --build-only
+# Using single/compare commands for more control
+./run_benchmarks.sh single --ref HEAD --modes metro,dagger-ksp   # Current branch
+./run_benchmarks.sh single --ref main --modes all                 # Specific branch
+./run_benchmarks.sh single --ref feature-branch --modes metro     # Feature branch
+./run_benchmarks.sh compare --ref1 main --ref2 feature-branch --modes all
 
 # Results are saved to timestamped directories in benchmark-results/
-# Merged comparison HTMLs are generated for each test type (ABI, non-ABI, raw compilation, clean build)
-# Uses bash + jq for fast HTML result merging
+# HTML reports are generated with comparison charts
 ```
+
+### GC and Memory Profiling
+
+Build benchmarks automatically track GC time via `--measure-gc` (Gradle 6.1+). GC time is displayed
+inline with build times in both markdown summaries and HTML reports (e.g., `24.5s (gc: 1.2s)`).
+
+For deeper memory/allocation analysis, use the `--profile` option (can be specified multiple times):
+
+```bash
+# Add JFR profiling (low-overhead CPU, allocation, IO wait, lock profiling)
+./run_benchmarks.sh metro --profile jfr
+
+# Profile heap allocations with async-profiler
+./run_benchmarks.sh metro --profile async-profiler-heap
+
+# Combine multiple profilers
+./run_benchmarks.sh metro --profile jfr --profile async-profiler-heap
+
+# Available profile types:
+#   jfr                  - Java Flight Recorder (recommended for allocation analysis)
+#   async-profiler-heap  - Heap allocation profiling (Linux/macOS)
+#   async-profiler-all   - CPU + heap + locks combined
+#   yourkit-heap         - YourKit memory allocation profiling
+#   heap-dump            - Capture heap dump at end of each measured build
+```
+
+Profile outputs are saved alongside benchmark results in the scenario output directories.
 
 ### Benchmark Scenarios
 
-The benchmark suite includes several types of performance tests for each mode:
+The benchmark suite uses generic scenarios that are shared across all modes. The script automatically
+generates the appropriate project for each mode and runs the same scenarios against it.
 
 **Standard Scenarios (always included):**
-- **ABI Change**: Measures incremental compilation when public API changes
-- **Non-ABI Change**: Measures incremental compilation when implementation changes
-- **Raw Compilation**: Measures compilation performance of the (`:app:component`) module specifically with `--rerun-tasks`. This benchmarks raw contribution merging + graph/component generation + validation.
+- **ABI Change**: Measures incremental compilation when public API changes (DI-annotated files)
+- **Non-ABI Change**: Measures incremental compilation when implementation changes (DI-annotated files)
+- **Plain Kotlin ABI/Non-ABI Change**: Same as above but for plain Kotlin files without DI annotations
+- **Raw Compilation**: Measures full compilation performance of `:app:component`
+  - **Metro/Vanilla/Metro-NOOP**: Pure compiler plugin, uses `--rerun-tasks` on `compileKotlin`
+  - **kotlin-inject-anvil**: KSP generates Kotlin, uses `--rerun-tasks -a` on `compileKotlin`
+  - **Dagger (KSP/KAPT)**: Generates Java code, uses `--rerun-tasks -a` on `classes` task
 
 **Clean Build Scenarios (opt-in with `--include-clean-builds`):**
 - **Clean Build**: Measures full compilation from scratch with no caches
@@ -107,6 +154,22 @@ Clean build scenarios are useful for:
 - Testing CI/ephemeral build scenarios
 - Comparing full compilation times across different DI frameworks
 
+**Scenario Implementation:**
+
+The `benchmark.scenarios` file contains generic scenarios that are selected based on mode:
+- `abi_change` / `abi_change_ksp` - ABI change scenarios (KSP variant uses `--rerun-tasks` for fair comparison)
+- `non_abi_change`, `plain_abi_change`, `plain_non_abi_change` - Incremental scenarios
+- `raw_compilation` (Metro/Vanilla/Metro-NOOP), `raw_compilation_ksp` (kotlin-inject-anvil), `raw_compilation_java` (Dagger)
+- `clean_build`
+
+**Note on KSP incremental behavior:** KSP's incremental model may skip work when only the classpath changes
+(e.g., modifying an interface in a dependency). For kotlin-inject-anvil, we use `--rerun-tasks` for ABI
+change scenarios to ensure KSP regenerates the merged component, providing a fair comparison to Metro's
+compiler plugin which always runs during `compileKotlin`.
+
+The `run_benchmarks.sh` script handles mode-specific logic by regenerating the project for each mode
+and selecting the appropriate scenario variant based on the mode's compilation requirements.
+
 ## Modes
 
 ### Metro Mode
@@ -114,6 +177,19 @@ Clean build scenarios are useful for:
 - Uses `dev.zacsweers.anvil:annotations` with Metro interop
 - Supports `AppScope` and `@SingleIn` scoping
 - Generates `createGraph<AppComponent>()` for runtime execution
+
+### Vanilla Mode (Baseline)
+- Pure Kotlin with no DI framework at all
+- No compiler plugins applied
+- Generates the same class structure as other modes but without DI annotations
+- Provides a true baseline for measuring Kotlin compilation overhead
+- Useful for determining how much overhead DI frameworks add
+
+### Metro-NOOP Mode (Plugin Overhead)
+- Metro compiler plugin is applied but no Metro annotations are used
+- Generates the same class structure as Vanilla mode (no DI annotations)
+- Measures the overhead of having the Metro plugin present with nothing to process
+- Useful for understanding Metro's plugin baseline cost
 
 ### Dagger + Anvil Mode
 - Uses `dagger-compiler` with KSP or KAPT for component/factory generation
@@ -199,6 +275,54 @@ The `:startup-jvm-minified` module then depends on this minified jar and runs st
 
 This provides insight into how Metro performs in production Android apps where R8 is typically enabled.
 
+### Multiplatform Startup Benchmarks (kotlinx-benchmark)
+
+Uses [kotlinx-benchmark](https://github.com/Kotlin/kotlinx-benchmark) to measure graph creation
+performance across multiple Kotlin targets (JVM, JS, WasmJS, Native).
+
+```bash
+# First, generate the multiplatform benchmark project
+kotlin generate-projects.main.kts --mode metro --multiplatform
+
+# Run kotlinx-benchmark for all targets
+./gradlew :startup-multiplatform:benchmark
+
+# Run for specific targets
+./gradlew :startup-multiplatform:jvmBenchmark
+./gradlew :startup-multiplatform:jsBenchmark
+./gradlew :startup-multiplatform:wasmJsBenchmark
+./gradlew :startup-multiplatform:macosArm64Benchmark  # or macosX64Benchmark, linuxX64Benchmark
+
+# Results are saved to startup-multiplatform/build/reports/benchmarks/
+```
+
+Or use the runner script:
+
+```bash
+# Run all targets
+./run_startup_benchmarks.sh multiplatform
+
+# Run specific target
+./run_startup_benchmarks.sh multiplatform --target jvm
+./run_startup_benchmarks.sh multiplatform --target js
+./run_startup_benchmarks.sh multiplatform --target wasmJs
+./run_startup_benchmarks.sh multiplatform --target native
+
+# Results are saved to startup-benchmark-results/{timestamp}/multiplatform-{target}_metro/
+```
+
+#### Analyzing Results with Kotlin Notebooks
+
+kotlinx-benchmark outputs JSON results that can be analyzed in [Kotlin Notebooks](https://plugins.jetbrains.com/plugin/16340-kotlin-notebook)
+for statistical analysis and visualization.
+
+1. Install the Kotlin Notebook plugin in IntelliJ IDEA
+2. Open `notebooks/analyze-benchmark-results.ipynb`
+3. Update the results path and run cells
+
+See [JetBrains Blog: Exploring kotlinx-benchmark Results](https://blog.jetbrains.com/kotlin/2025/12/a-better-way-to-explore-kotlinx-benchmark-results-with-kotlin-notebooks/)
+for more details on analysis techniques.
+
 ### Android Startup Benchmarks
 
 Uses [AndroidX Macrobenchmark](https://developer.android.com/topic/performance/benchmarking/macrobenchmark-overview)
@@ -229,6 +353,10 @@ Use the `run_startup_benchmarks.sh` script to run all startup benchmarks and agg
 
 # Run only JVM R8-minified benchmarks (Metro only)
 ./run_startup_benchmarks.sh jvm-r8
+
+# Run multiplatform benchmarks (Metro only, kotlinx-benchmark)
+./run_startup_benchmarks.sh multiplatform
+./run_startup_benchmarks.sh multiplatform --target jvm  # specific target
 
 # Run only Android benchmarks (requires device)
 ./run_startup_benchmarks.sh android
@@ -306,3 +434,81 @@ This allows comparing performance across Metro releases or testing a published v
 
 The Android benchmark app (`startup-android/app`) is configured with:
 - **R8 optimization**: Minification and shrinking enabled for release/benchmark builds
+
+## Continuous Regression Testing
+
+Automated benchmark regression testing runs via GitHub Actions to catch performance regressions early.
+
+### How It Works
+
+The `benchmark-regression.yml` workflow uses a **paired comparison** approach:
+- On every push to `main`, it benchmarks both `HEAD~1` (baseline) and `HEAD` (current)
+- Both benchmarks run on the **same machine** in the same job
+- This eliminates hardware variance - only the delta between runs matters
+
+```
+─── baseline (main~1)    ─── current (main)
+
+     │
+0.20 │    ●────●              ← Both jump (different machine)
+     │   /      \
+0.15 │  ●        ●────●       ← Both drop (different machine)
+     │ ╱          ╲   ╲
+0.10 │●            ●───●
+     └─────────────────────
+       run1  run2  run3  run4
+
+The gap between lines = real performance change
+Both lines moving together = hardware variance (ignore)
+```
+
+### What Gets Benchmarked
+
+Two benchmarks run in parallel:
+
+| Benchmark | What it measures | Tool |
+|-----------|------------------|------|
+| **Startup** | Time to create and initialize Metro graph | kotlinx-benchmark |
+| **Build** | Time to compile the benchmark project | Gradle Profiler |
+
+### Triggering Benchmarks
+
+**Automatic (on push to main):**
+- Runs when `compiler/`, `runtime/`, or `benchmark/` paths change
+- Results are stored for historical tracking
+
+**Manual (on PRs):**
+1. Add the `benchmark` label to your PR
+2. Workflow compares your PR against `main`
+3. Comments on the PR if >5% regression detected
+
+### Viewing Results
+
+**Historical Charts:**
+- Visit [zacsweers.github.io/metro/dev/bench/](https://zacsweers.github.io/metro/dev/bench/) for startup benchmarks
+- Visit [zacsweers.github.io/metro/dev/bench/build/](https://zacsweers.github.io/metro/dev/bench/build/) for build time benchmarks
+
+**Per-Run Results:**
+- Check the workflow run's **Summary** tab for a comparison table
+- Download artifacts for raw JSON/CSV data
+
+### Regression Threshold
+
+A **5% slowdown** triggers a regression warning. This threshold balances:
+- Catching meaningful regressions
+- Avoiding false positives from measurement noise
+
+### Manual Benchmarks
+
+For more comprehensive benchmarking (multiple modes, Android, etc.), use the manual `benchmarks.yml` workflow:
+
+```bash
+# Via GitHub CLI
+gh workflow run benchmarks.yml \
+  -f ref1=main \
+  -f ref2=feature-branch \
+  -f metro=true \
+  -f run-multiplatform-benchmarks=true
+```
+
+Or trigger from the Actions tab in GitHub with the desired options.

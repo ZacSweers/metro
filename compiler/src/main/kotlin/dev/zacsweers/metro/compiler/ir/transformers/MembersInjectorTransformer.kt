@@ -44,12 +44,12 @@ import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.newName
-import dev.zacsweers.metro.compiler.proto.InjectedClassProto
-import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.proto.MemberInjectionsProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
@@ -82,7 +82,8 @@ import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
-internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroContext by context {
+internal class MembersInjectorTransformer(context: IrMetroContext) :
+  IrMetroContext by context, Lockable by Lockable() {
 
   data class MemberInjectClass(
     val sourceClass: IrClass,
@@ -96,6 +97,14 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     val declaredInjectFunctions: Map<IrSimpleFunction, Parameters>,
     val isDagger: Boolean,
   ) {
+    fun toProto(): MemberInjectionsProto {
+      return MemberInjectionsProto(
+        // Simple name is fine because it's always nested in the parent class
+        injector_class_name = injectorClass!!.name.asString(),
+        member_inject_functions = declaredInjectFunctions.keys.map { it.name.asString() }.sorted(),
+      )
+    }
+
     fun mergedParameters(remapper: TypeRemapper): Parameters {
       // `MembersInjector` -> origin class
       val allParams =
@@ -108,11 +117,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     }
   }
 
-  private val generatedInjectors = mutableMapOf<ClassId, Optional<MemberInjectClass>>()
-  private val injectorParamsByClass = mutableMapOf<ClassId, List<Parameters>>()
+  // Thread-safe for concurrent access during parallel graph validation.
+  private val generatedInjectors = ConcurrentHashMap<ClassId, Optional<MemberInjectClass>>()
+  private val injectorParamsByClass = ConcurrentHashMap<ClassId, List<Parameters>>()
 
-  fun visitClass(declaration: IrClass) {
-    getOrGenerateInjector(declaration)
+  fun visitClass(declaration: IrClass): Boolean {
+    return getOrGenerateInjector(declaration) != null
   }
 
   private fun requireInjector(declaration: IrClass): MemberInjectClass {
@@ -194,7 +204,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       )
     }
 
-    val lazyClassMetadata = memoize { declaration.metroMetadata?.injected_class }
+    val lazyClassMetadata = memoize { declaration.metroMetadata?.injected_class?.member_injections }
 
     // For external classes with no Metro metadata, the only option is Dagger (if enabled)
     if (isExternal) {
@@ -250,6 +260,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       return memberInjectClass.also { generatedInjectors[injectedClassId] = Optional.of(it) }
     }
 
+    checkNotLocked()
+
     val ctor = injectorClass.primaryConstructor!!
 
     val injectedMembersByClass = memberInjectClass.requiredParametersByClass
@@ -267,9 +279,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       }
 
     // Static create()
-    generateStaticCreateFunction(
-      parentClass = companionObject,
-      targetClass = injectorClass,
+    @Suppress("RETURN_VALUE_NOT_USED")
+    transformStaticCreateFunction(
+      objectClassToGenerateIn = companionObject,
+      factoryClass = injectorClass,
       targetConstructor = ctor.symbol,
       parameters =
         injectedMembersByClass.values
@@ -295,7 +308,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
         val instanceParam = regularParameters[0]
 
         // Copy any qualifier annotations over to propagate them
-        for ((i, param) in regularParameters.drop(1).withIndex()) {
+        regularParameters.drop(1).forEachIndexed { i, param ->
           val injectedParam = params.regularParameters[i]
           injectedParam.typeKey.qualifier?.let { qualifier ->
             pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
@@ -368,9 +381,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     injectorClass.dumpToMetroLog()
 
     // Write metadata to indicate Metro generated this injector
-    val functionNames =
-      memberInjectClass.declaredInjectFunctions.keys.map { it.name.asString() }.sorted()
-    declaration.writeMetadata(injectorClass, functionNames)
+    declaration.writeMetadata(memberInjectClass)
 
     return memberInjectClass.also { generatedInjectors[injectedClassId] = Optional.of(it) }
   }
@@ -387,18 +398,18 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     val result =
       processTypes(allTypes) { clazz, classId, nameAllocator ->
-        injectorParamsByClass.getOrPut(classId) {
+        injectorParamsByClass.computeIfAbsent(classId) {
           // Check for Dagger injector first if we're in Dagger mode or interop is enabled
           if (isDagger || options.enableDaggerRuntimeInterop) {
             val daggerParams = clazz.tryDeriveDaggerMemberInjectParameters(nameAllocator)
             if (daggerParams != null) {
-              return@getOrPut daggerParams
+              return@computeIfAbsent daggerParams
             }
           }
 
           if (clazz.isExternalParent) {
             // No Dagger injector found - check Metro metadata
-            val metadata = clazz.metroMetadata?.injected_class
+            val metadata = clazz.metroMetadata?.injected_class?.member_injections
             val injectFunctionNames = metadata?.member_inject_functions ?: emptyList()
 
             if (injectFunctionNames.isNotEmpty()) {
@@ -459,7 +470,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     )
   }
 
-  private fun IrClass.writeMetadata(injectorClass: IrClass, functionNames: List<String>) {
+  private fun IrClass.writeMetadata(mic: MemberInjectClass) {
     if (isExternalParent) {
       return
     } else if (findInjectableConstructor(false) != null) {
@@ -467,14 +478,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       // TODO maybe better to abstract metadata writing somewhere higher level
       return
     }
-    val injectedClass =
-      InjectedClassProto(
-        member_inject_functions = functionNames,
-        injector_class_name = injectorClass.name.asString(),
-      )
 
     // Store the metadata for this class only
-    metroMetadata = MetroMetadata(injected_class = injectedClass)
+    writeInjectedClassMetadata(classFactory = null, memberInjectClass = mic)
   }
 
   /**
@@ -519,7 +525,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     injectFunctionNames: List<String>,
     nameAllocator: NameAllocator,
   ): List<Parameters> {
-    val injectorClassName = clazz.metroMetadata?.injected_class?.injector_class_name!!.asName()
+    val injectorClassName =
+      clazz.metroMetadata?.injected_class?.member_injections?.injector_class_name!!.asName()
     val injectorClass =
       clazz.nestedClasses.singleOrNull { it.name == injectorClassName } ?: return emptyList()
 

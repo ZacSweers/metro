@@ -6,10 +6,10 @@
   "packageRules": [
     {
       "description": "Disable Kotlin updates - manually managed due to compiler plugin compatibility",
-      "matchPackagePatterns": [
-        "^org\\.jetbrains\\.kotlin"
-      ],
-      "enabled": false
+      "enabled": false,
+      "matchPackageNames": [
+        "/^org\\.jetbrains\\.kotlin/"
+      ]
     },
     {
       "description": "Disable Android Gradle Plugin updates - manually managed",

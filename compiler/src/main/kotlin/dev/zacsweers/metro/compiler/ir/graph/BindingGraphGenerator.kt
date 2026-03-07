@@ -4,16 +4,18 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.flatMapToSet
+import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsLikeCallable
+import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.ParentContext
+import dev.zacsweers.metro.compiler.ir.MetroDeclarations
+import dev.zacsweers.metro.compiler.ir.MultibindsCallable
+import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
-import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
@@ -24,19 +26,16 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
-import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
-import dev.zacsweers.metro.compiler.ir.trackMemberDeclarationCall
-import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.typeWithArguments
-import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 
@@ -46,19 +45,19 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
  */
 internal class BindingGraphGenerator(
   metroContext: IrMetroContext,
-  private val node: DependencyGraphNode,
-  // TODO preprocess these instead and just lookup via irAttribute
-  private val injectConstructorTransformer: InjectConstructorTransformer,
-  private val membersInjectorTransformer: MembersInjectorTransformer,
+  traceScope: TraceScope,
+  private val node: GraphNode.Local,
+  private val metroDeclarations: MetroDeclarations,
   private val contributionData: IrContributionData,
-  private val parentContext: ParentContext?,
-) : IrMetroContext by metroContext {
+  private val parentContext: ParentContextReader?,
+  private val bindingLookupCache: BindingLookupCache,
+) : IrMetroContext by metroContext, TraceScope by traceScope {
 
   private val ProviderFactory.isDynamic: Boolean
-    get() = node.dynamicTypeKeys[typeKey] == this
+    get() = this in node.dynamicTypeKeys[typeKey].orEmpty()
 
   private val BindsLikeCallable.isDynamic: Boolean
-    get() = node.dynamicTypeKeys[typeKey] == this
+    get() = this in node.dynamicTypeKeys[typeKey].orEmpty()
 
   fun generate(): IrBindingGraph {
     val bindingLookup =
@@ -66,14 +65,15 @@ internal class BindingGraphGenerator(
         metroContext = metroContext,
         sourceGraph = node.sourceGraph,
         findClassFactory = { clazz ->
-          injectConstructorTransformer.getOrGenerateFactory(
+          metroDeclarations.findClassFactory(
             clazz,
             previouslyFoundConstructor = null,
             doNotErrorOnMissing = true,
           )
         },
-        findMemberInjectors = membersInjectorTransformer::getOrGenerateAllInjectorsFor,
+        findMemberInjectors = metroDeclarations::findAllInjectorsFor,
         parentContext = parentContext,
+        bindingLookupCache = bindingLookupCache,
       )
 
     val graph =
@@ -93,15 +93,23 @@ internal class BindingGraphGenerator(
         metroContext.loggerFor(MetroLogger.Type.BindingGraphConstruction),
       )
 
+    fun putBinding(typeKey: IrTypeKey, isLocallyDeclared: Boolean, binding: IrBinding) {
+      bindingLookup.putBinding(binding, isLocallyDeclared = isLocallyDeclared)
+
+      if (options.enableFullBindingGraphValidation) {
+        graph.addBinding(typeKey, binding, bindingStack)
+      }
+    }
+
     // Add instance parameters
     val graphInstanceBinding =
       IrBinding.BoundInstance(
-        node.typeKey,
-        "${node.sourceGraph.name}Provider",
-        node.sourceGraph,
-        node.metroGraph!!.thisReceiverOrFail,
+        typeKey = node.typeKey,
+        nameHint = "${node.sourceGraph.name}Provider",
+        reportableDeclaration = node.sourceGraph,
+        token = null, // indicates self-binding, code gen uses thisReceiver
       )
-    graph.addBinding(node.typeKey, graphInstanceBinding, bindingStack)
+    putBinding(graphInstanceBinding.typeKey, isLocallyDeclared = false, graphInstanceBinding)
 
     // Mapping of supertypes to aliased bindings
     // We populate this for the current graph type first and then
@@ -112,302 +120,284 @@ internal class BindingGraphGenerator(
     // and we do not need to try to add another (duplicate) binding
     val superTypeToAlias = mutableMapOf<IrTypeKey, IrTypeKey>()
 
-    // Add aliases for all its supertypes
-    // TODO dedupe supertype iteration
-    for (superType in node.supertypes) {
-      val superTypeKey = IrTypeKey(superType)
-      superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
-    }
-
-    val inheritedProviderFactories =
-      node.allExtendedNodes
-        .flatMap { (_, extendedNode) ->
-          extendedNode.providerFactories.entries.filterNot { (_, factory) ->
-            // Do not include scoped providers as these should _only_ come from this graph
-            // instance
-            factory.annotations.isScoped
-          }
-        }
-        // Filter out inherited providers whose typeKey is already in the current node
-        .filterNot { (typeKey, _) -> typeKey in node.providerFactories }
-        .associate { it.toPair() }
-
-    val inheritedBindsCallables =
-      node.allExtendedNodes.values
-        .flatMap { it.bindsCallables.entries }
-        // Filter out inherited binds callables whose typeKey is already in the current node
-        .filterNot { (typeKey, _) -> typeKey in node.bindsCallables }
-        .associate { it.toPair() }
-
-    val providerFactoriesToAdd = buildList {
-      addAll(node.providerFactories.entries)
-      addAll(inheritedProviderFactories.entries)
-    }
-
-    for ((typeKey, providerFactory) in providerFactoriesToAdd) {
-      // Track IC lookups but don't add bindings yet - they'll be added lazily
-      trackClassLookup(node.sourceGraph, providerFactory.factoryClass)
-      trackFunctionCall(node.sourceGraph, providerFactory.function)
-      if (providerFactory is ProviderFactory.Metro) {
-        trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
-      }
-
-      if (
-        !providerFactory.annotations.isIntoMultibinding &&
-          typeKey in graph &&
-          typeKey in inheritedProviderFactories
-      ) {
-        // If we already have a binding provisioned in this scenario, ignore the parent's version
-        continue
-      }
-
-      // typeKey is already the transformed multibinding key
-      val targetTypeKey = providerFactory.typeKey
-      val contextKey = IrContextualTypeKey(targetTypeKey)
-
-      val binding =
-        IrBinding.Provided(
-          providerFactory = providerFactory,
-          contextualTypeKey = contextKey,
-          parameters = providerFactory.parameters,
-          annotations = providerFactory.annotations,
-        )
-
-      // Check for duplicates before adding to cache
-      // TODO aggregate duplicates and report all
-      val existingProvider = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Provided
-      val isDynamic = providerFactory.isDynamic
-
-      if (existingProvider != null && existingProvider != binding) {
-        // Check if the existing one is from an inherited graph
-        val isExistingInherited = existingProvider.typeKey in inheritedProviderFactories
-        val isExistingDynamic = existingProvider.providerFactory.isDynamic
-        val isCurrentInherited = typeKey in inheritedProviderFactories
-
-        if (isDynamic || (isExistingInherited && !isCurrentInherited)) {
-          // Current graph's binding replaces the inherited one
-          bindingLookup.putBinding(binding)
-        } else if (isExistingDynamic) {
-          // Was already replaced with a dynamic one, don't overwrite it
-          continue
-        } else if (!isExistingInherited && isCurrentInherited) {
-          // Current graph already has this binding, skip the inherited one
-          // Do nothing - keep the existing binding
-          continue
-        } else {
-          // Both are from the same level (both current or both inherited) - this is an error
-          graph.reportDuplicateBinding(typeKey, existingProvider, binding, bindingStack)
-          continue
-        }
-      } else if (existingProvider == null) {
-        // Also check if there's already a provider factory for this key
-        val existingAlias = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Alias
-        if (existingAlias != null) {
-          // Check if the existing provider is from an inherited graph
-          val isAliasInherited = existingAlias.typeKey in inheritedBindsCallables
-          val isAliasDynamic = existingAlias.bindsCallable?.isDynamic == true
-          val isCurrentInherited = typeKey in inheritedProviderFactories
-
-          if (isDynamic || (isAliasInherited && !isCurrentInherited)) {
-            // Current graph's @Binds replaces the inherited @Provides
-            bindingLookup.removeAliasBinding(targetTypeKey)
-            bindingLookup.putBinding(binding)
-          } else if (isAliasDynamic) {
-            // Was already replaced with a dynamic one, don't overwrite it
-            continue
-          } else if (!isAliasInherited && isCurrentInherited) {
-            // Current graph already has @Binds, skip the inherited @Provides
-            // Do nothing - keep the existing provider factory
-            continue
-          } else {
-            // Both are from the same level - this is an error
-            graph.reportDuplicateBinding(targetTypeKey, existingAlias, binding, bindingStack)
-            continue
-          }
-        } else {
-          // Add to cache for O(1) lookups
-          bindingLookup.putBinding(binding)
-        }
-      }
-
-      if (options.enableFullBindingGraphValidation) {
-        graph.addBinding(binding.typeKey, binding, bindingStack)
-      } else {
-        // The actual binding will be added lazily via BindingLookup when needed
+    trace("Iterate supertypes") {
+      // Add aliases for all its supertypes
+      // TODO dedupe supertype iteration
+      node.supertypes.forEach { superType ->
+        val superTypeKey = IrTypeKey(superType)
+        @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
       }
     }
 
-    val bindsFunctionsToAdd = buildList {
-      addAll(node.bindsCallables.values)
-      addAll(inheritedBindsCallables.values)
-    }
-
-    for (bindsCallable in bindsFunctionsToAdd) {
-      // Track IC lookups but don't add bindings yet - they'll be added lazily
-      trackFunctionCall(node.sourceGraph, bindsCallable.function)
-      trackFunctionCall(node.sourceGraph, bindsCallable.callableMetadata.mirrorFunction)
-      trackClassLookup(node.sourceGraph, bindsCallable.function.parentAsClass)
-      trackClassLookup(
-        node.sourceGraph,
-        bindsCallable.callableMetadata.mirrorFunction.parentAsClass,
-      )
-
-      if (
-        !bindsCallable.callableMetadata.annotations.isIntoMultibinding &&
-          bindsCallable.typeKey in graph &&
-          bindsCallable.typeKey in inheritedBindsCallables
-      ) {
-        // If we already have a binding provisioned in this scenario, ignore the parent's version
-        continue
-      }
-
-      val annotations = bindsCallable.callableMetadata.annotations
-      // typeKey is already the transformed multibinding key
-      val targetTypeKey = bindsCallable.typeKey
-      val parameters = bindsCallable.function.parameters()
-      val bindsImplType =
-        parameters.extensionOrFirstParameter?.contextualTypeKey
-          ?: reportCompilerBug(
-            "Missing receiver parameter for @Binds function: ${bindsCallable.function}"
+    trace("Add injectors") {
+      // Register MembersInjector functions for deferred binding creation
+      // The actual bindings are created in BindingLookup.computeMembersInjectorBindings
+      for ((contextKey, injector) in node.injectors) {
+        val param = injector.ir.regularParameters.single()
+        val paramType = param.type
+        // Show the target class being injected, not the MembersInjector<T> type
+        val entry =
+          IrBindingStack.Entry.injectedAt(
+            contextKey = contextKey,
+            function = injector.ir,
+            displayTypeKey = IrTypeKey(paramType),
           )
 
-      val binding =
-        IrBinding.Alias(
-          typeKey = targetTypeKey,
-          aliasedType = bindsImplType.typeKey,
-          bindsCallable = bindsCallable,
-          parameters = parameters,
-        )
-
-      val contextKey = binding.contextualTypeKey
-
-      // Check for duplicates before adding to cache
-      // TODO aggregate duplicates and report all
-      val existingBinding = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Alias
-      val isDynamic = bindsCallable.isDynamic
-
-      if (existingBinding != null && existingBinding.bindsCallable != bindsCallable) {
-        // Check if the existing one is from an inherited graph
-        val isExistingInherited = existingBinding.typeKey in inheritedBindsCallables
-        val isExistingDynamic = existingBinding.bindsCallable?.isDynamic == true
-        val isCurrentInherited = targetTypeKey in inheritedBindsCallables
-
-        if (isDynamic || (isExistingInherited && !isCurrentInherited)) {
-          // Current graph's binding replaces the inherited one
-          bindingLookup.putBinding(binding)
-        } else if (isExistingDynamic) {
-          // Was already replaced with a dynamic one, don't overwrite it
-          continue
-        } else if (!isExistingInherited && isCurrentInherited) {
-          // Current graph already has this binding, skip the inherited one
-          // Do nothing - keep the existing binding
-          continue
-        } else {
-          // Both are from the same level (both current or both inherited) - this is an error
-          // TODO Could check if there's a duplicate from provider factories to better message
-          graph.reportDuplicateBinding(targetTypeKey, existingBinding, binding, bindingStack)
+        graph.addInjector(contextKey, entry)
+        if (contextKey.typeKey in bindingLookup) {
+          // Injectors may be requested multiple times, don't double-register
           continue
         }
-      } else if (existingBinding == null) {
-        // Also check if there's already a provider factory for this key
-        val existingProvider = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Provided
-        if (existingProvider != null) {
-          // Check if the existing provider is from an inherited graph
-          val isProviderInherited = existingProvider.typeKey in inheritedProviderFactories
-          val isProviderDynamic = existingProvider.providerFactory.isDynamic
-          val isCurrentInherited = targetTypeKey in inheritedBindsCallables
-
-          if (isDynamic || (isProviderInherited && !isCurrentInherited)) {
-            // Current graph's @Binds replaces the inherited @Provides
-            bindingLookup.removeProvidedBinding(targetTypeKey)
-            bindingLookup.putBinding(binding)
-          } else if (isProviderDynamic) {
-            // Was already replaced with a dynamic one, don't overwrite it
-            continue
-          } else if (!isProviderInherited && isCurrentInherited) {
-            // Current graph already has @Provides, skip the inherited @Binds
-            // Do nothing - keep the existing provider factory
-            continue
-          } else {
-            // Both are from the same level - this is an error
-            graph.reportDuplicateBinding(targetTypeKey, existingProvider, binding, bindingStack)
-            continue
-          }
-        } else {
-          // Add to cache for O(1) lookups
-          bindingLookup.putBinding(binding)
+        // Skip if there's a dynamic replacement for this injector type
+        if (contextKey.typeKey in node.dynamicTypeKeys) {
+          continue
         }
-      }
-
-      if (options.enableFullBindingGraphValidation) {
-        val bindings =
-          bindingLookup.lookup(
-            contextKey,
-            currentBindings = graph.bindingsSnapshot().keys,
-            bindingStack,
-          )
-        for (binding in bindings) {
-          graph.addBinding(binding.typeKey, binding, bindingStack)
-        }
-      } else {
-        // The actual binding will be added lazily via BindingLookup when needed
+        // Register the injector function - binding will be created lazily in BindingLookup
+        bindingLookup.registerInjectorFunction(contextKey.typeKey, injector.ir, injector.callableId)
       }
     }
 
-    node.creator?.parameters?.regularParameters.orEmpty().forEach { creatorParam ->
-      // Only expose the binding if it's a bound instance, extended graph, or target is a binding
-      // container
-      val shouldExposeBinding =
-        creatorParam.isBindsInstance ||
-          with(this@BindingGraphGenerator) {
-            creatorParam.typeKey.type.rawTypeOrNull()?.isBindingContainer() == true
+    // Collect all inherited data from extended nodes in a single pass
+    val inheritedData = trace("Collect inherited data") { collectInheritedData(node) }
+    val inheritedProviderFactoryKeys = inheritedData.providerFactoryKeys
+    val inheritedProviderFactories = inheritedData.providerFactories
+    val inheritedBindsCallableKeys = inheritedData.bindsCallableKeys
+
+    trace("Collect provider factories") {
+      // Collect all provider factories to add (flatten from lists)
+      val providerFactoriesToAdd = buildList {
+        node.providerFactories.values.flatten().forEach { factory ->
+          add(factory.typeKey to factory)
+        }
+        addAll(inheritedProviderFactories)
+      }
+
+      for ((typeKey, providerFactory) in providerFactoriesToAdd) {
+        // Track IC lookups but don't add bindings yet - they'll be added lazily
+        trackClassLookup(node.sourceGraph, providerFactory.factoryClass)
+        trackFunctionCall(node.sourceGraph, providerFactory.function)
+        if (providerFactory is ProviderFactory.Metro) {
+          trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
+        }
+
+        val isInherited = typeKey in inheritedProviderFactoryKeys
+        if (
+          !providerFactory.annotations.isIntoMultibinding && typeKey in bindingLookup && isInherited
+        ) {
+          // If we already have a binding provisioned in this scenario, ignore the parent's version
+          continue
+        }
+
+        // Skip non-dynamic bindings that have dynamic replacements
+        if (!providerFactory.isDynamic && typeKey in node.dynamicTypeKeys) {
+          continue
+        }
+
+        // typeKey is already the transformed multibinding key
+        val targetTypeKey = providerFactory.typeKey
+        val isDynamic = providerFactory.isDynamic
+        val existingBinding = bindingLookup[targetTypeKey]
+
+        if (isDynamic && existingBinding != null) {
+          // Only clear existing if they are not dynamic
+          // If existing bindings are also dynamic, keep them both for duplicate detection
+          val existingAreDynamic =
+            when (existingBinding) {
+              is Provided -> existingBinding.providerFactory.isDynamic
+              is Alias -> existingBinding.bindsCallable?.isDynamic == true
+              else -> false
+            }
+
+          if (!existingAreDynamic) {
+            // Dynamic binding replaces non-dynamic existing bindings
+            bindingLookup.clearBindings(targetTypeKey)
           }
-      if (shouldExposeBinding) {
-        val paramTypeKey = creatorParam.typeKey
+        }
 
-        // Check if there's a dynamic replacement for this bound instance
-        val hasDynamicReplacement = paramTypeKey in node.dynamicTypeKeys
-        val isDynamic = creatorParam.ir?.origin == Origins.DynamicContainerParam
+        val contextKey = IrContextualTypeKey(targetTypeKey)
 
-        if (isDynamic || !hasDynamicReplacement) {
-          // Only add the bound instance if there's no dynamic replacement
-          graph.addBinding(
-            paramTypeKey,
-            IrBinding.BoundInstance(creatorParam, creatorParam.ir!!),
-            bindingStack,
-          )
-
-          val rawType = creatorParam.type.rawType()
-          // Add the original type too as an alias
-          val regularGraph = rawType.sourceGraphIfMetroGraph
-          if (regularGraph != rawType) {
-            val keyType =
-              regularGraph.symbol.typeWithArguments(
-                creatorParam.type.requireSimpleType(creatorParam.ir).arguments
+        // Use cached binding if available, otherwise create and cache
+        val binding =
+          providerFactory.factoryClass.cachedProvidedBinding
+            ?: IrBinding.Provided(
+                providerFactory = providerFactory,
+                contextualTypeKey = contextKey,
+                parameters = providerFactory.parameters,
+                annotations = providerFactory.annotations,
               )
-            val typeKey = IrTypeKey(keyType)
-            superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
+              .also { providerFactory.factoryClass.cachedProvidedBinding = it }
+
+        // Add the binding to the lookup (duplicates tracked as lists)
+        putBinding(binding.typeKey, isLocallyDeclared = !isInherited, binding)
+      }
+    }
+
+    trace("Collect binds callables") {
+      // Collect all binds callables to add (flatten from lists)
+      val bindsCallablesToAdd = buildList {
+        node.bindsCallables.values.flatten().forEach { callable ->
+          add(callable.typeKey to callable)
+        }
+        // Add inherited from extended nodes (already collected in single pass)
+        addAll(inheritedData.bindsCallables)
+      }
+
+      for ((typeKey, bindsCallable) in bindsCallablesToAdd) {
+        // Track IC lookups but don't add bindings yet - they'll be added lazily
+        trackFunctionCall(node.sourceGraph, bindsCallable.function)
+        trackFunctionCall(node.sourceGraph, bindsCallable.callableMetadata.mirrorFunction)
+        trackClassLookup(node.sourceGraph, bindsCallable.function.parentAsClass)
+        trackClassLookup(
+          node.sourceGraph,
+          bindsCallable.callableMetadata.mirrorFunction.parentAsClass,
+        )
+
+        val isInherited = typeKey in inheritedBindsCallableKeys
+        if (
+          !bindsCallable.callableMetadata.annotations.isIntoMultibinding &&
+            typeKey in bindingLookup &&
+            isInherited
+        ) {
+          // If we already have a binding provisioned in this scenario, ignore the parent's version
+          continue
+        }
+
+        // Skip non-dynamic bindings that have dynamic replacements
+        if (!bindsCallable.isDynamic && typeKey in node.dynamicTypeKeys) {
+          continue
+        }
+
+        // typeKey is already the transformed multibinding key
+        val targetTypeKey = bindsCallable.typeKey
+        val isDynamic = bindsCallable.isDynamic
+        val existingBinding = bindingLookup[targetTypeKey]
+
+        if (isDynamic && existingBinding != null) {
+          // Only clear existing if they are NOT dynamic
+          // If existing bindings are also dynamic, keep them for duplicate detection
+          val existingAreDynamic =
+            when (existingBinding) {
+              is Provided -> existingBinding.providerFactory.isDynamic
+              is Alias -> existingBinding.bindsCallable?.isDynamic == true
+              else -> false
+            }
+          if (!existingAreDynamic) {
+            // Dynamic binding replaces non-dynamic existing bindings
+            bindingLookup.clearBindings(targetTypeKey)
+          }
+        }
+
+        val mirrorFunction = bindsCallable.callableMetadata.mirrorFunction
+
+        // Use cached binding if available, otherwise create and cache
+        val binding =
+          mirrorFunction.cachedAliasBinding
+            ?: run {
+              val parameters = bindsCallable.function.parameters()
+              val bindsImplType =
+                parameters.extensionOrFirstParameter?.contextualTypeKey
+                  ?: reportCompilerBug(
+                    "Missing receiver parameter for @Binds function: ${bindsCallable.function}"
+                  )
+              IrBinding.Alias(
+                  typeKey = targetTypeKey,
+                  aliasedType = bindsImplType.typeKey,
+                  bindsCallable = bindsCallable,
+                  parameters = parameters,
+                )
+                .also { mirrorFunction.cachedAliasBinding = it }
+            }
+
+        // Add the binding to the lookup (duplicates tracked as lists)
+        putBinding(binding.typeKey, isLocallyDeclared = !isInherited, binding)
+      }
+    }
+
+    // For graph extensions, use the original factory creator to reference source parameter
+    // declarations
+    val originalCreator = node.originalCreator ?: node.creator
+
+    trace("Process creator params") {
+      node.creator?.parameters?.regularParameters.orEmpty().forEach { creatorParam ->
+        // Only expose the binding if it's a bound instance, extended graph, or target is a binding
+        // container
+        val shouldExposeBinding =
+          creatorParam.isBindsInstance ||
+            with(this@BindingGraphGenerator) {
+              creatorParam.typeKey.type.rawTypeOrNull()?.isBindingContainer() == true
+            }
+        if (shouldExposeBinding) {
+          val paramTypeKey = creatorParam.typeKey
+
+          // Check if there's a dynamic replacement for this bound instance
+          val hasDynamicReplacement = paramTypeKey in node.dynamicTypeKeys
+          val isDynamic = creatorParam.ir?.origin == Origins.DynamicContainerParam
+
+          if (isDynamic || !hasDynamicReplacement) {
+            val declaration =
+              originalCreator?.parametersByTypeKey?.get(paramTypeKey)?.ir ?: creatorParam.ir!!
+
+            // Only add the bound instance if there's no dynamic replacement
+            val binding =
+              IrBinding.BoundInstance(
+                parameter = creatorParam,
+                reportableLocation = declaration,
+                isGraphInput = true,
+              )
+
+            putBinding(binding.typeKey, isLocallyDeclared = true, binding)
+            // Track as locally declared for unused key reporting
+            bindingLookup.trackDeclaredKey(paramTypeKey)
+
+            val rawType = creatorParam.type.rawType()
+            // Add the original type too as an alias
+            val regularGraph = rawType.sourceGraphIfMetroGraph
+            if (regularGraph != rawType) {
+              val keyType =
+                regularGraph.symbol.typeWithArguments(
+                  creatorParam.type.requireSimpleType(creatorParam.ir).arguments
+                )
+              val typeKey = IrTypeKey(keyType)
+              @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
+            }
           }
         }
       }
     }
 
-    val allManagedBindingContainerInstances = buildSet {
-      addAll(node.bindingContainers)
-      addAll(node.allExtendedNodes.values.flatMapToSet { it.bindingContainers })
-    }
-    for (it in allManagedBindingContainerInstances) {
-      val typeKey = IrTypeKey(it)
+    trace("Process binding containers") {
+      val allManagedBindingContainerInstances = buildSet {
+        addAll(node.bindingContainers)
+        addAll(inheritedData.bindingContainers)
+      }
 
-      val hasDynamicReplacement = typeKey in node.dynamicTypeKeys
+      for (bindingContainer in allManagedBindingContainerInstances) {
+        val typeKey = IrTypeKey(bindingContainer)
 
-      if (!hasDynamicReplacement) {
-        // Only add the bound instance if there's no dynamic replacement
-        graph.addBinding(
-          typeKey,
-          IrBinding.BoundInstance(typeKey, it.name.asString(), it),
-          bindingStack,
-        )
+        val hasDynamicReplacement = typeKey in node.dynamicTypeKeys
+
+        if (!hasDynamicReplacement) {
+          val declaration =
+            originalCreator?.parametersByTypeKey?.get(typeKey)?.ir ?: bindingContainer
+
+          val irElement = node.annotationDeclaredBindingContainers[typeKey]
+          val isGraphInput = irElement != null
+
+          // Only add the bound instance if there's no dynamic replacement
+          val binding =
+            IrBinding.BoundInstance(
+              typeKey = typeKey,
+              nameHint = bindingContainer.name.asString(),
+              irElement = irElement,
+              reportableDeclaration = declaration,
+              isGraphInput = isGraphInput,
+            )
+          putBinding(binding.typeKey, isLocallyDeclared = isGraphInput, binding)
+          // Track as locally declared for unused key reporting (only if it's a graph input)
+          if (isGraphInput) {
+            bindingLookup.trackDeclaredKey(typeKey)
+          }
+        }
       }
     }
 
@@ -424,171 +414,173 @@ internal class BindingGraphGenerator(
       trackFunctionCall(node.sourceGraph, getter)
     }
 
-    val allMultibindsCallables = buildList {
-      addAll(node.multibindsCallables)
-      addAll(node.allExtendedNodes.values.flatMapToSet { it.multibindsCallables })
-    }
+    trace("Process multibindings") {
+      val allMultibindsCallables = buildList {
+        addAll(node.multibindsCallables)
+        addAll(inheritedData.multibindsCallables)
+      }
 
-    for (multibindsCallable in allMultibindsCallables) {
-      // Track IC lookups but don't add bindings yet - they'll be added lazily
-      trackFunctionCall(node.sourceGraph, multibindsCallable.function)
-      trackClassLookup(
-        node.sourceGraph,
-        multibindsCallable.function.propertyIfAccessor.parentAsClass,
-      )
+      allMultibindsCallables.forEach { multibindsCallable ->
+        // Track IC lookups but don't add bindings yet - they'll be added lazily
+        trackFunctionCall(node.sourceGraph, multibindsCallable.function)
+        trackClassLookup(
+          node.sourceGraph,
+          multibindsCallable.function.propertyIfAccessor.parentAsClass,
+        )
 
-      val contextKey = IrContextualTypeKey(multibindsCallable.typeKey)
-      registerMultibindsDeclaration(
-        contextKey,
-        multibindsCallable.callableMetadata.mirrorFunction,
-        multibindsCallable.callableMetadata.annotations.multibinds!!,
-      )
-    }
-
-    val allOptionalKeys = buildMap {
-      putAll(node.optionalKeys)
-      for ((_, extendedNode) in node.allExtendedNodes) {
-        putAll(extendedNode.optionalKeys)
+        val contextKey = IrContextualTypeKey(multibindsCallable.typeKey)
+        registerMultibindsDeclaration(
+          contextKey,
+          multibindsCallable.callableMetadata.mirrorFunction,
+          multibindsCallable.callableMetadata.annotations.multibinds!!,
+        )
       }
     }
 
-    // Register optional bindings for lazy creation (only when accessed)
-    for ((optionalKey, callables) in allOptionalKeys) {
-      for (callable in callables) {
-        bindingLookup.registerOptionalBinding(optionalKey, callable)
+    trace("Process optional bindings") {
+      val allOptionalKeys = buildMap {
+        putAll(node.optionalKeys)
+        putAll(inheritedData.optionalKeys)
+      }
+
+      // Register optional bindings for lazy creation (only when accessed)
+      for ((optionalKey, callables) in allOptionalKeys) {
+        for (callable in callables) {
+          bindingLookup.registerOptionalBinding(optionalKey, callable)
+        }
       }
     }
 
-    // Traverse all parent graph supertypes to create binding aliases as needed
-    // TODO since this is processed with the parent, is it still needed?
-    for ((typeKey, extendedNode) in node.allExtendedNodes) {
+    trace("Create supertype aliases") {
+      // Traverse all parent graph supertypes to create binding aliases as needed.
       // If it's a contributed graph, add an alias for the parent types since that's what
       // bindings will look for. i.e. LoggedInGraphImpl -> LoggedInGraph + supertypes
-      for (superType in extendedNode.supertypes) {
-        val parentTypeKey = IrTypeKey(superType)
-
-        // Ignore the graph declaration itself, handled separately
-        if (parentTypeKey == typeKey) continue
-
-        superTypeToAlias.putIfAbsent(parentTypeKey, typeKey)
+      // (Already collected in single pass via collectInheritedData)
+      for ((parentTypeKey, aliasedTypeKey) in inheritedData.supertypeAliases) {
+        @Suppress("RETURN_VALUE_NOT_USED")
+        superTypeToAlias.putIfAbsent(parentTypeKey, aliasedTypeKey)
       }
-    }
 
-    // Now that we've processed all supertypes/aliases
-    for ((superTypeKey, aliasedType) in superTypeToAlias) {
-      // We may have already added a `@Binds` declaration explicitly, this is ok!
-      // TODO warning?
-      if (superTypeKey !in graph) {
-        graph.addBinding(
-          superTypeKey,
-          IrBinding.Alias(superTypeKey, aliasedType, null, Parameters.empty()),
-          bindingStack,
-        )
-      }
-    }
-
-    val accessorsToAdd = buildList {
-      addAll(node.accessors)
-      addAll(
-        node.allExtendedNodes.flatMap { (_, extendedNode) ->
-          // Pass down @Multibinds declarations in the same way we do for multibinding providers
-          extendedNode.accessors.filter { it.metroFunction.annotations.isMultibinds }
+      // Now that we've processed all supertypes/aliases
+      for ((superTypeKey, aliasedType) in superTypeToAlias) {
+        // We may have already added a `@Binds` declaration explicitly, this is ok!
+        // We don't double-add if it's already in the lookup, which can be the case for graph nodes
+        // TODO warning?
+        if (superTypeKey !in bindingLookup && superTypeKey !in node.dynamicTypeKeys) {
+          val binding = IrBinding.Alias(superTypeKey, aliasedType, null, Parameters.empty())
+          putBinding(binding.typeKey, isLocallyDeclared = false, binding)
         }
-      )
-    }
-
-    for ((contextualTypeKey, getter, _) in accessorsToAdd) {
-      val multibinds = getter.annotations.multibinds
-      val isMultibindingDeclaration = multibinds != null
-
-      if (isMultibindingDeclaration) {
-        graph.addAccessor(
-          contextualTypeKey,
-          IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
-        )
-        registerMultibindsDeclaration(contextualTypeKey, getter.ir, multibinds)
-      } else {
-        graph.addAccessor(
-          contextualTypeKey,
-          IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
-        )
       }
     }
 
-    for ((key, accessors) in node.graphExtensions) {
-      for (accessor in accessors) {
-        val shouldAddBinding =
-          accessor.isFactory &&
-            // It's allowed to specify multiple accessors for the same factory
-            accessor.key.typeKey !in graph &&
-            // Don't add a binding if the graph itself implements the factory
-            accessor.key.typeKey.classId !in node.supertypeClassIds
+    trace("Process accessors") {
+      val accessorsToAdd = buildList {
+        addAll(node.accessors)
+        // Pass down @Multibinds declarations in the same way we do for multibinding providers
+        // (Already collected in single pass via collectInheritedData)
+        addAll(inheritedData.multibindingAccessors)
+      }
 
-        if (shouldAddBinding) {
-          graph.addBinding(
-            accessor.key.typeKey,
-            IrBinding.GraphExtensionFactory(
-              typeKey = accessor.key.typeKey,
-              extensionTypeKey = key,
-              parent = node.metroGraph!!,
-              parentKey = node.typeKey,
-              accessor = accessor.accessor.ir,
-            ),
-            bindingStack,
+      for ((contextualTypeKey, getter, _) in accessorsToAdd) {
+        val multibinds = getter.annotations.multibinds
+        val isMultibindingDeclaration = multibinds != null
+
+        if (isMultibindingDeclaration) {
+          graph.addAccessor(
+            contextualTypeKey,
+            IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
+          )
+          registerMultibindsDeclaration(contextualTypeKey, getter.ir, multibinds)
+        } else {
+          graph.addAccessor(
+            contextualTypeKey,
+            IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
           )
         }
       }
     }
 
-    // Add bindings from graph dependencies
-    // TODO dedupe this allDependencies iteration with graph gen
-    // TODO try to make accessors in this single-pass
-    // Only add it if it's a directly included node. Indirect will be propagated by metro
-    // accessors
-    for ((depNodeKey, depNode) in node.includedGraphNodes) {
-      // Only add accessors for included types
-      for ((contextualTypeKey, getter, _) in depNode.accessors) {
-        // Add a ref to the included graph if not already present
-        if (depNodeKey !in graph) {
-          graph.addBinding(
-            depNodeKey,
-            IrBinding.BoundInstance(
-              depNodeKey,
-              "${depNode.sourceGraph.name}Provider",
-              depNode.sourceGraph,
-            ),
-            bindingStack,
-          )
-        }
+    trace("Process extensions") {
+      for ((key, accessors) in node.graphExtensions) {
+        accessors.forEach { accessor ->
+          val shouldAddBinding =
+            accessor.isFactory &&
+              // It's allowed to specify multiple accessors for the same factory
+              accessor.key.typeKey !in bindingLookup &&
+              // Don't add a binding if the graph itself implements the factory
+              accessor.key.typeKey.classId !in node.supertypeClassIds &&
+              // Don't add a binding if there's a dynamic replacement
+              accessor.key.typeKey !in node.dynamicTypeKeys
 
-        val irGetter = getter.ir
-        val parentClass = irGetter.parentAsClass
-        val getterToUse =
-          if (
-            irGetter.overriddenSymbols.isNotEmpty() &&
-              parentClass.sourceGraphIfMetroGraph != parentClass
-          ) {
-            // Use the original graph decl so we don't tie this invocation to any impls
-            // specifically
-            irGetter.overriddenSymbolsSequence().firstOrNull()?.owner
-              ?: run { reportCompilerBug("${irGetter.dumpKotlinLike()} overrides nothing") }
-          } else {
-            irGetter
+          if (shouldAddBinding) {
+            val binding =
+              IrBinding.GraphExtensionFactory(
+                typeKey = accessor.key.typeKey,
+                extensionTypeKey = key,
+                parent = node.metroGraph!!,
+                parentKey = IrTypeKey(node.metroGraph!!),
+                accessor = accessor.accessor.ir,
+              )
+            putBinding(binding.typeKey, false, binding)
+          }
+        }
+      }
+    }
+
+    trace("Process included graph nodes") {
+      // Add bindings from graph dependencies
+      // TODO dedupe this allDependencies iteration with graph gen
+      // TODO try to make accessors in this single-pass
+      // Only add it if it's a directly included node. Indirect will be propagated by metro
+      // accessors
+      for ((depNodeKey, depNode) in node.includedGraphNodes) {
+        // Only add accessors for included types
+        depNode.accessors.forEach { (contextualTypeKey, getter, _) ->
+          // Add a ref to the included graph if not already present
+          if (depNodeKey !in bindingLookup) {
+            val declaration =
+              originalCreator?.parametersByTypeKey?.get(depNodeKey)?.ir ?: depNode.sourceGraph
+
+            val binding =
+              IrBinding.BoundInstance(
+                depNodeKey,
+                "${depNode.sourceGraph.name}Provider",
+                declaration,
+                isGraphInput = true,
+              )
+            putBinding(binding.typeKey, isLocallyDeclared = true, binding)
+            // Track as locally declared for unused key reporting
+            bindingLookup.trackDeclaredKey(depNodeKey)
           }
 
-        graph.addBinding(
-          contextualTypeKey.typeKey,
-          IrBinding.GraphDependency(
-            ownerKey = depNodeKey,
-            graph = depNode.sourceGraph,
-            getter = getterToUse,
-            typeKey = contextualTypeKey.typeKey,
-          ),
-          bindingStack,
-        )
-        // Record a lookup for IC
-        trackFunctionCall(node.sourceGraph, irGetter)
-        trackFunctionCall(node.sourceGraph, getterToUse)
+          val irGetter = getter.ir
+          val parentClass = irGetter.parentAsClass
+          val getterToUse =
+            if (
+              irGetter.overriddenSymbols.isNotEmpty() &&
+                parentClass.sourceGraphIfMetroGraph != parentClass
+            ) {
+              // Use the original graph decl so we don't tie this invocation to any impls
+              // specifically
+              irGetter.overriddenSymbolsSequence().firstOrNull()?.owner
+                ?: run { reportCompilerBug("${irGetter.dumpKotlinLike()} overrides nothing") }
+            } else {
+              irGetter
+            }
+
+          val binding =
+            IrBinding.GraphDependency(
+              ownerKey = depNodeKey,
+              graph = depNode.sourceGraph,
+              getter = getterToUse,
+              typeKey = contextualTypeKey.typeKey,
+              contextualTypeKey = contextualTypeKey,
+            )
+          putBinding(binding.typeKey, isLocallyDeclared = true, binding)
+          // Record a lookup for IC
+          trackFunctionCall(node.sourceGraph, irGetter)
+          trackFunctionCall(node.sourceGraph, getterToUse)
+        }
       }
     }
 
@@ -596,153 +588,205 @@ internal class BindingGraphGenerator(
     // Only present if this is a contributed graph
     val isGraphExtension = node.sourceGraph.origin == Origins.GeneratedGraphExtension
     if (isGraphExtension) {
-      if (parentContext == null) {
-        reportCompilerBug("No parent bindings found for graph extension ${node.sourceGraph.name}")
-      }
-
-      val parentKeysByClass = mutableMapOf<IrClass, IrTypeKey>()
-      for ((parentKey, parentNode) in node.allExtendedNodes) {
-        val parentNodeClass = parentNode.sourceGraph.metroGraphOrFail
-
-        parentKeysByClass[parentNodeClass] = parentKey
-
-        // Add bindings for the parent itself as a field reference
-        // TODO it would be nice if we could do this lazily with addLazyParentKey
-        val propertyAccess =
-          parentContext.mark(parentKey) ?: reportCompilerBug("Missing parent key $parentKey")
-        graph.addBinding(
-          parentKey,
-          IrBinding.BoundInstance(
-            parentKey,
-            "parent",
-            parentNode.sourceGraph,
-            classReceiverParameter = parentNodeClass.thisReceiver,
-            providerPropertyAccess = propertyAccess,
-          ),
-          bindingStack,
-        )
-
-        // Add the original type too as an alias
-        val regularGraph = parentNode.sourceGraph.sourceGraphIfMetroGraph
-        if (regularGraph != parentNode.sourceGraph) {
-          val keyType =
-            regularGraph.symbol.typeWithArguments(
-              parentNode.typeKey.type.requireSimpleType().arguments
-            )
-          val typeKey = IrTypeKey(keyType)
-          superTypeToAlias.putIfAbsent(typeKey, parentKey)
-        }
-      }
-
-      for (key in parentContext.availableKeys()) {
-        // Graph extensions that are scoped instances _in_ their parents may show up here, so we
-        // check and continue if we see them
-        if (key == node.typeKey) continue
-        if (key == node.metroGraph?.generatedGraphExtensionData?.typeKey) continue
-        val existingBinding = graph.findBinding(key)
-        if (existingBinding != null) {
-          // If we already have a binding provisioned in this scenario, ignore the parent's
-          // version
-          continue
+      trace("Process inherited bindings") {
+        if (parentContext == null) {
+          reportCompilerBug("No parent bindings found for graph extension ${node.sourceGraph.name}")
         }
 
-        // Register a lazy parent key that will only call mark() when actually used
-        bindingLookup.addLazyParentKey(key) {
-          val propertyAccess =
-            parentContext.mark(key) ?: reportCompilerBug("Missing parent key $key")
+        val parentKeysByClass = mutableMapOf<IrClass, IrTypeKey>()
+        for ((parentKey, parentNode) in node.allParentGraphs) {
+          trace("Process parent ${parentNode.metroGraphOrFail.name}") {
+            val parentNodeClass = parentNode.sourceGraph.metroGraphOrFail
 
-          // Record a lookup for IC when the binding is actually created
-          val propertyParentClass = propertyAccess.property.parentAsClass
-          trackMemberDeclarationCall(
-            node.sourceGraph,
-            propertyParentClass.kotlinFqName,
-            propertyAccess.property.name.asString(),
-          )
+            parentKeysByClass[parentNodeClass] = parentKey
 
-          if (key == propertyAccess.parentKey) {
             // Add bindings for the parent itself as a field reference
-            IrBinding.BoundInstance(
-              key,
-              "parent",
-              propertyAccess.property,
-              classReceiverParameter = propertyAccess.receiverParameter,
-              providerPropertyAccess = propertyAccess,
-            )
-          } else {
-            IrBinding.GraphDependency(
-              ownerKey = parentKeysByClass.getValue(propertyParentClass),
-              graph = node.sourceGraph,
-              propertyAccess = propertyAccess,
-              typeKey = key,
-            )
+            // TODO it would be nice if we could do this lazily with addLazyParentKey
+            val token =
+              parentContext.mark(parentKey) ?: reportCompilerBug("Missing parent key $parentKey")
+            val binding =
+              IrBinding.BoundInstance(
+                typeKey = parentKey,
+                nameHint = "parent",
+                reportableDeclaration = parentNode.sourceGraph,
+                token = token,
+              )
+            putBinding(binding.typeKey, isLocallyDeclared = false, binding)
+
+            // Add the original type too as an alias
+            val regularGraph = parentNode.sourceGraph.sourceGraphIfMetroGraph
+            if (regularGraph != parentNode.sourceGraph) {
+              val keyType =
+                regularGraph.symbol.typeWithArguments(
+                  parentNode.typeKey.type.requireSimpleType().arguments
+                )
+              val typeKey = IrTypeKey(keyType)
+              @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(typeKey, parentKey)
+            }
           }
         }
-      }
-    }
 
-    // Add MembersInjector bindings defined on injector functions
-    for ((contextKey, injector) in node.injectors) {
-      val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
-
-      graph.addInjector(contextKey, entry)
-      if (contextKey.typeKey in graph) {
-        // Injectors may be requested multiple times, don't double-add a binding
-        continue
-      }
-      bindingStack.withEntry(entry) {
-        val param = injector.ir.regularParameters.single()
-        val paramType = param.type
-        val targetClass = paramType.rawType()
-        // Don't return null on missing because it's legal to inject a class with no member
-        // injections
-        // TODO warn on this?
-        val generatedInjectors =
-          membersInjectorTransformer.getOrGenerateAllInjectorsFor(targetClass)
-
-        val mergedMappedParameters =
-          if (generatedInjectors.isEmpty()) {
-              Parameters.empty()
-            } else {
-              generatedInjectors
-                .map { generatedInjector ->
-                  // Create a remapper for the target class type parameters
-                  val remapper = targetClass.deepRemapperFor(paramType)
-                  generatedInjector.mergedParameters(remapper)
-                }
-                .reduce { current, next -> current.mergeValueParametersWith(next) }
+        trace("Add bindings from parent context") {
+          for (key in parentContext.availableKeys()) {
+            // Graph extensions that are scoped instances _in_ their parents may show up here, so we
+            // check and continue if we see them
+            if (key == node.typeKey) continue
+            if (key == node.metroGraph?.generatedGraphExtensionData?.typeKey) continue
+            // Skip if there's a dynamic replacement for this key
+            if (key in node.dynamicTypeKeys) continue
+            val existingBinding = graph.findBinding(key)
+            if (existingBinding != null) {
+              // If we already have a binding provisioned in this scenario, ignore the parent's
+              // version
+              continue
             }
-            .withCallableId(injector.callableId)
 
-        val binding =
-          IrBinding.MembersInjected(
-            contextKey,
-            // Need to look up the injector class and gather all params
-            parameters = mergedMappedParameters,
-            reportableDeclaration = injector.ir,
-            function = injector.ir,
-            isFromInjectorFunction = true,
-            targetClassId = targetClass.classIdOrFail,
-          )
+            // If this key is a multibinding contribution (has @MultibindingElement qualifier),
+            // register it so the child's multibinding will include this parent contribution
+            if (key.multibindingKeyData != null) {
+              bindingLookup.registerMultibindingContributionByBindingId(key)
+            }
 
-        // Cache in BindingLookup to avoid re-creating it later
-        bindingLookup.putBinding(binding)
+            // Register a lazy parent key that will only call mark() when actually used
+            bindingLookup.addLazyParentKey(key) {
+              val token = parentContext.mark(key) ?: reportCompilerBug("Missing parent key $key")
 
-        graph.addBinding(contextKey.typeKey, binding, bindingStack)
+              // IC tracking will be done during generation when the actual property is resolved
 
-        // Ensure that we traverse the target class's superclasses and lookup relevant bindings for
-        // them too, namely ancestor member injectors
-        val extraBindings =
-          bindingLookup.lookup(
-            IrContextualTypeKey.from(param),
-            graph.bindingsSnapshot().keys,
-            bindingStack,
-          )
-        for (extraBinding in extraBindings) {
-          graph.addBinding(extraBinding.typeKey, extraBinding, bindingStack)
+              if (key == token.ownerGraphKey) {
+                // Add bindings for the parent itself as a field reference
+                IrBinding.BoundInstance(
+                  typeKey = key,
+                  nameHint = "parent",
+                  reportableDeclaration = null, // will be available during generation
+                  token = token,
+                )
+              } else {
+                IrBinding.GraphDependency(
+                  ownerKey = token.ownerGraphKey,
+                  graph = node.sourceGraph,
+                  token = token,
+                  typeKey = key,
+                )
+              }
+            }
+          }
         }
       }
     }
 
     return graph
   }
+
+  /** Collects all inherited data from parent nodes in a single pass. */
+  private fun collectInheritedData(node: GraphNode.Local): InheritedGraphData {
+    val providerFactories = mutableSetOf<Pair<IrTypeKey, ProviderFactory>>()
+    val providerFactoryKeys = mutableSetOf<IrTypeKey>()
+    val bindsCallableKeys = mutableSetOf<IrTypeKey>()
+    val bindsCallables = mutableListOf<Pair<IrTypeKey, BindsCallable>>()
+    val bindingContainers = mutableSetOf<IrClass>()
+    val multibindsCallables = mutableSetOf<MultibindsCallable>()
+    val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
+    val supertypeAliases = mutableMapOf<IrTypeKey, IrTypeKey>()
+    val multibindingAccessors = mutableListOf<GraphAccessor>()
+
+    for ((typeKey, extendedNode) in node.allParentGraphs) {
+      // Collect provider factories (non-scoped, not already directly provided in current node)
+      // Skip @GraphPrivate factories — private contributions should not leak to child graphs.
+      val isDynamicParent =
+        extendedNode is GraphNode.Local && extendedNode.dynamicTypeKeys.isNotEmpty()
+      for ((key, factories) in extendedNode.providerFactories) {
+        // Dynamic parent bindings take precedence over child's directly provided keys
+        val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
+        if (key !in node.directlyProvidedKeys || isDynamicInParent) {
+          for (factory in factories) {
+            if (!factory.annotations.isScoped && key !in extendedNode.graphPrivateKeys) {
+              providerFactories.add(key to factory)
+              providerFactoryKeys.add(key)
+            }
+          }
+        }
+      }
+
+      // Collect binds callables (not already directly provided in current node)
+      // Skip binds whose source type is graph-private in the parent — the child can't resolve
+      // the private source. The binds result type is promoted to the parent context instead,
+      // so the child resolves it as a GraphDependency.
+      for ((key, callables) in extendedNode.bindsCallables) {
+        // Dynamic parent bindings take precedence over child's directly provided keys
+        val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
+        if (key !in node.directlyProvidedKeys || isDynamicInParent) {
+          for (callable in callables) {
+            if (callable.source in extendedNode.graphPrivateKeys) continue
+            bindsCallableKeys.add(key)
+            bindsCallables.add(key to callable)
+          }
+        }
+      }
+
+      // Collect binding containers (only from Local nodes)
+      if (extendedNode is GraphNode.Local) {
+        bindingContainers.addAll(extendedNode.bindingContainers)
+      }
+
+      // Collect multibinds callables
+      multibindsCallables.addAll(extendedNode.multibindsCallables)
+
+      // Collect optional keys
+      for ((optKey, callables) in extendedNode.optionalKeys) {
+        optionalKeys.getOrPut(optKey) { mutableSetOf() }.addAll(callables)
+      }
+
+      // Collect supertype aliases for parent graphs
+      for (superType in extendedNode.supertypes) {
+        val parentTypeKey = IrTypeKey(superType)
+        if (parentTypeKey != typeKey) {
+          @Suppress("RETURN_VALUE_NOT_USED") supertypeAliases.putIfAbsent(parentTypeKey, typeKey)
+        }
+      }
+
+      // Collect multibinding accessors
+      for (accessor in extendedNode.accessors) {
+        if (accessor.metroFunction.annotations.isMultibinds) {
+          multibindingAccessors.add(accessor)
+        }
+      }
+    }
+
+    return InheritedGraphData(
+      providerFactories = providerFactories,
+      providerFactoryKeys = providerFactoryKeys,
+      bindsCallableKeys = bindsCallableKeys,
+      bindsCallables = bindsCallables,
+      bindingContainers = bindingContainers,
+      multibindsCallables = multibindsCallables,
+      optionalKeys = optionalKeys,
+      supertypeAliases = supertypeAliases,
+      multibindingAccessors = multibindingAccessors,
+    )
+  }
 }
+
+/**
+ * Data collected from parent nodes in a single pass. Avoids multiple iterations over
+ * allParentGraphs.
+ */
+private data class InheritedGraphData(
+  val providerFactories: Set<Pair<IrTypeKey, ProviderFactory>>,
+  val providerFactoryKeys: Set<IrTypeKey>,
+  val bindsCallableKeys: Set<IrTypeKey>,
+  val bindsCallables: List<Pair<IrTypeKey, BindsCallable>>,
+  val bindingContainers: Set<IrClass>,
+  val multibindsCallables: Set<MultibindsCallable>,
+  val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
+  val supertypeAliases: Map<IrTypeKey, IrTypeKey>,
+  val multibindingAccessors: List<GraphAccessor>,
+)
+
+/** Cached [IrBinding.Alias] binding for this binds callable's mirror function. */
+internal var IrSimpleFunction.cachedAliasBinding: IrBinding.Alias? by
+  irAttribute(copyByDefault = false)
+
+/** Cached [IrBinding.Provided] binding for this provider factory class. */
+internal var IrClass.cachedProvidedBinding: IrBinding.Provided? by
+  irAttribute(copyByDefault = false)

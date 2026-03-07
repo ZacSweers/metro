@@ -51,7 +51,9 @@ class TopLevelInjectTest : MetroCompilerTest() {
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
     val app = graph.callProperty<Any>("app")
-    val output = captureStandardOut { app.invokeInstanceMethod<Any>("invoke") }
+    val output = captureStandardOut {
+      val _ = app.invokeInstanceMethod<Any>("invoke")
+    }
     assertThat(output).isEqualTo("Hello, world!")
   }
 
@@ -78,7 +80,9 @@ class TopLevelInjectTest : MetroCompilerTest() {
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
     val app = graph.callProperty<Any>("app")
-    val output = captureStandardOut { app.invokeInstanceMethod<Any>("invoke", "Hello, world!") }
+    val output = captureStandardOut {
+      val _ = app.invokeInstanceMethod<Any>("invoke", "Hello, world!")
+    }
     assertThat(output).isEqualTo("Hello, world!")
   }
 
@@ -110,7 +114,9 @@ class TopLevelInjectTest : MetroCompilerTest() {
     val graph = result.ExampleGraph.generatedImpl().createGraphViaFactory("Hello, world!")
 
     val app = graph.callProperty<Any>("app")
-    val output = captureStandardOut { app.invokeInstanceMethod<Any>("invoke") }
+    val output = captureStandardOut {
+      val _ = app.invokeInstanceMethod<Any>("invoke")
+    }
     assertThat(output).isEqualTo("Hello, world!")
   }
 

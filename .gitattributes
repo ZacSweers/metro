@@ -5,3 +5,4 @@ compiler-tests/**/*.java linguist-generated=true
 **/yarn.lock linguist-generated=true
 **/package-lock.lock linguist-generated=true
 *.bat text eol=crlf
+config/bin/* filter=lfs diff=lfs merge=lfs -text

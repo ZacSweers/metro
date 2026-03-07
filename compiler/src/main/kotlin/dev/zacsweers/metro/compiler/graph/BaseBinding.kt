@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.MetroOptions
+
 internal interface BaseBinding<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, *>,
@@ -34,7 +36,11 @@ internal interface BaseBinding<
   val isImplicitlyDeferrable: Boolean
     get() = contextualTypeKey.isDeferrable
 
-  fun renderLocationDiagnostic(short: Boolean = false): LocationDiagnostic
+  fun renderLocationDiagnostic(
+    short: Boolean = false,
+    shortLocation: Boolean = short || MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+    underlineTypeKey: Boolean = true,
+  ): LocationDiagnostic
 
   fun renderDescriptionDiagnostic(short: Boolean = false, underlineTypeKey: Boolean = false): String
 }

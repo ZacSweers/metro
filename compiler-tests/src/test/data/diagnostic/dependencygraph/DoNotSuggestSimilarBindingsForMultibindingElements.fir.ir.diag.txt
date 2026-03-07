@@ -1,0 +1,4 @@
+/DoNotSuggestSimilarBindingsForMultibindingElements.kt:(214,217): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+    kotlin.Int is requested at
+        [AppGraph] AppGraph.int

@@ -1,4 +1,5 @@
 **/build
+out/
 **/.idea/*
 !.idea/externalDependencies.xml
 !.idea/kotlinTestDataPluginTestDataPaths.xml
@@ -10,6 +11,12 @@
 *.iml
 local.properties
 .DS_Store
+
+# Python stuff
+**/__pycache__
+
+# Generated file from IDE integration testing
+**/gradle-daemon-jvm.properties
 
 gradle-plugin/docs/
 docs/code-of-conduct.md

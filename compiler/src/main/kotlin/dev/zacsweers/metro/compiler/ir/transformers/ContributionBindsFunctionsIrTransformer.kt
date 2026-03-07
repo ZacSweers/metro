@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContributionData
@@ -24,7 +25,10 @@ import dev.zacsweers.metro.compiler.ir.requireScope
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.reserveName
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -39,6 +43,7 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrTransformer
@@ -51,8 +56,10 @@ import org.jetbrains.kotlin.name.ClassId
  *    overrides of them.
  * 3. Collects contribution data while transforming for use by the dependency graph.
  */
-internal class ContributionTransformer(private val context: IrMetroContext) :
-  IrTransformer<IrContributionData>(), IrMetroContext by context {
+internal class ContributionTransformer(
+  private val context: IrMetroContext,
+  traceScope: TraceScope,
+) : IrTransformer<IrContributionData>(), IrMetroContext by context, TraceScope by traceScope {
 
   private val transformedContributions = mutableSetOf<ClassId>()
 
@@ -71,30 +78,41 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
    */
   private val contributionsByClass = mutableMapOf<ClassId, Map<ClassId, Set<Contribution>>>()
 
-  override fun visitClass(declaration: IrClass, data: IrContributionData): IrStatement {
-    // TODO others?
-    val shouldSkip = declaration.isLocal
-    if (shouldSkip) {
-      return super.visitClass(declaration, data)
+  override fun visitClass(declaration: IrClass, data: IrContributionData): IrStatement =
+    trace("Visit ${declaration.name}") {
+      // TODO others?
+      val shouldSkip = declaration.isLocal
+      if (shouldSkip) {
+        return@trace declaration
+      }
+
+      trace("Transform ${declaration.name} bindings") {
+        val isBindingContainer by memoize { declaration.isBindingContainer() }
+
+        // First, perform transformations
+        if (declaration.origin == Origins.MetroContributionClassDeclaration) {
+          trace("Transform and collect contribution") {
+            val metroContributionAnno =
+              declaration.findAnnotations(Symbols.ClassIds.metroContribution).first()
+            val scope = metroContributionAnno.requireScope()
+            trace("Transform class") { transformContributionClass(declaration, scope) }
+            trace("Collect contribution data") {
+              collectContributionDataFromContribution(declaration, data, scope, isBindingContainer)
+            }
+          }
+        } else if (
+          declaration.isAnnotatedWithAny(context.metroSymbols.classIds.graphLikeAnnotations)
+        ) {
+          trace("Transform graphlike") { transformGraphLike(declaration) }
+        } else if (isBindingContainer) {
+          trace("Collect contributions from container") {
+            collectContributionDataFromContainer(declaration, data)
+          }
+        }
+      }
+
+      return@trace super.visitClass(declaration, data)
     }
-
-    val isBindingContainer by memoize { declaration.isBindingContainer() }
-
-    // First, perform transformations
-    if (declaration.origin == Origins.MetroContributionClassDeclaration) {
-      val metroContributionAnno =
-        declaration.findAnnotations(Symbols.ClassIds.metroContribution).first()
-      val scope = metroContributionAnno.requireScope()
-      transformContributionClass(declaration, scope)
-      collectContributionDataFromContribution(declaration, data, scope, isBindingContainer)
-    } else if (declaration.isAnnotatedWithAny(context.metroSymbols.classIds.graphLikeAnnotations)) {
-      transformGraphLike(declaration)
-    } else if (isBindingContainer) {
-      collectContributionDataFromContainer(declaration, data)
-    }
-
-    return super.visitClass(declaration, data)
-  }
 
   private fun collectContributionDataFromContribution(
     declaration: IrClass,
@@ -124,10 +142,17 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
     if (classId !in transformedContributions) {
       val contributor = declaration.parentAsClass
       val contributions = getOrFindContributions(contributor, scope).orEmpty()
-      val bindsFunctions = mutableSetOf<IrSimpleFunction>()
-      for (contribution in contributions) {
-        if (contribution !is Contribution.BindingContribution) continue
-        with(contribution) { bindsFunctions += declaration.generateBindingFunction(metroContext) }
+
+      if (contributions.isNotEmpty()) {
+        val bindsFunctions = mutableSetOf<IrSimpleFunction>()
+        val nameAllocator = NameAllocator(mode = COUNT)
+        contributor.functions.forEach { nameAllocator.reserveName(it.name) }
+        for (contribution in contributions) {
+          if (contribution !is Contribution.BindingContribution) continue
+          with(contribution) {
+            bindsFunctions += declaration.generateBindingFunction(metroContext, nameAllocator)
+          }
+        }
       }
       declaration.dumpToMetroLog()
     }
@@ -172,7 +197,10 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
       override val origin: ClassId
         get() = annotatedType.classIdOrFail
 
-      fun IrClass.generateBindingFunction(metroContext: IrMetroContext): IrSimpleFunction =
+      fun IrClass.generateBindingFunction(
+        metroContext: IrMetroContext,
+        nameAllocator: NameAllocator,
+      ): IrSimpleFunction =
         with(metroContext) {
           val (explicitBindingType, ignoreQualifier) = annotation.bindingTypeOrNull()
           val bindingType =
@@ -204,7 +232,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
 
           // We need a unique name because addFakeOverrides() doesn't handle overloads with
           // different return types
-          val name = (callableName + suffix).asName()
+          val name = nameAllocator.newName(callableName + suffix).asName()
           addFunction {
               this.name = name
               this.returnType = bindingType

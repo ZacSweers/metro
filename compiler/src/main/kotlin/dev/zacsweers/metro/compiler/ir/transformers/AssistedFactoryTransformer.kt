@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
@@ -33,9 +34,9 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.AssistedFactoryImplProto
-import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -78,16 +79,17 @@ import org.jetbrains.kotlin.name.SpecialNames
 
 internal class AssistedFactoryTransformer(
   context: IrMetroContext,
-  private val injectConstructorTransformer: InjectConstructorTransformer,
-) : IrMetroContext by context {
+  private val injectedClassTransformer: InjectedClassTransformer,
+) : IrMetroContext by context, Lockable by Lockable() {
 
   private val implsCache = mutableMapOf<ClassId, AssistedFactoryImpl>()
 
-  fun visitClass(declaration: IrClass) {
+  fun visitClass(declaration: IrClass): Boolean {
     val isAssistedFactory = declaration.isAnnotatedWithAny(metroSymbols.assistedFactoryAnnotations)
     if (isAssistedFactory) {
-      getOrGenerateImplClass(declaration)
+      @Suppress("RETURN_VALUE_NOT_USED") getOrGenerateImplClass(declaration)
     }
+    return isAssistedFactory
   }
 
   internal fun getOrGenerateImplClass(declaration: IrClass): AssistedFactoryImpl {
@@ -149,6 +151,8 @@ internal class AssistedFactoryTransformer(
       }
       reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
     }
+
+    checkNotLocked()
 
     // Find the SAM function - for external use metadata as hint, for in-compilation get directly
     val samFunction = declaration.singleAbstractFunction()
@@ -335,7 +339,7 @@ internal class AssistedFactoryTransformer(
     val creatorFunction = samFunction.toAssistedFactoryFunction(implSamFunction, remapper)
 
     val generatedFactory =
-      injectConstructorTransformer.getOrGenerateFactory(
+      injectedClassTransformer.getOrGenerateFactory(
         targetType,
         injectConstructor,
         doNotErrorOnMissing = false,
@@ -350,7 +354,7 @@ internal class AssistedFactoryTransformer(
       assistedParameters.map { parameter ->
         val substitutedTypeKey = parameter.typeKey.remapTypes(remapper)
         parameter
-          .copy(contextualTypeKey = parameter.contextualTypeKey.withTypeKey(substitutedTypeKey))
+          .copy(contextualTypeKey = parameter.contextualTypeKey.withIrTypeKey(substitutedTypeKey))
           .assistedParameterKey
       }
 
@@ -421,7 +425,7 @@ internal class AssistedFactoryTransformer(
       )
 
     // Store the metadata for this factory class
-    factoryClass.metroMetadata = MetroMetadata(assisted_factory_impl = assistedFactoryImpl)
+    factoryClass.metroMetadata = createMetroMetadata(assisted_factory_impl = assistedFactoryImpl)
   }
 
   /** Represents a parsed function in an `@AssistedFactory`-annotated interface. */
@@ -449,7 +453,12 @@ internal class AssistedFactoryTransformer(
             originalDeclaration.regularParameters.mapIndexed { index, param ->
               val baseTypeKey = params.regularParameters[index].typeKey
               val substitutedTypeKey = remapper?.let { baseTypeKey.remapTypes(it) } ?: baseTypeKey
-              param.toAssistedParameterKey(context.metroSymbols, substitutedTypeKey)
+              param.toAssistedParameterKey(
+                symbols = context.metroSymbols,
+                typeKey = substitutedTypeKey,
+                useAssistedParamNamesAsIdentifiers =
+                  context.options.useAssistedParamNamesAsIdentifiers,
+              )
             },
         )
       }
@@ -496,7 +505,7 @@ internal sealed interface AssistedFactoryImpl {
             args = listOf(delegateFactory),
             typeHint = createFunction.returnType,
           )
-          .convertTo(targetType)
+          .convertTo(targetType.wrapInProvider())
       }
     }
   }

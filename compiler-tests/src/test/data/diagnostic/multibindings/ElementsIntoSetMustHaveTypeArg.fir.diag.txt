@@ -1,0 +1,3 @@
+/ElementsIntoSetMustHaveTypeArg.kt:(142,151): error: `@ElementsIntoSet` must return a Collection type with exactly one generic type argument.
+
+/ElementsIntoSetMustHaveTypeArg.kt:(213,219): error: `@ElementsIntoSet` cannot return a star projection type.

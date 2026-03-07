@@ -81,7 +81,7 @@ class DetailsViewModel(@Assisted val id: String) : ViewModel() {
   // ...
 
   @AssistedFactory
-  @ViewModelAssistedFactoryKey(Factory::class)
+  @ViewModelAssistedFactoryKey(DetailsViewModel::class)
   @ContributesIntoMap(AppScope::class)
   fun interface Factory : ViewModelAssistedFactory {
     override fun create(extras: CreationExtras): DetailsViewModel {

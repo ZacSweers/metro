@@ -12,7 +12,7 @@ interface AppGraph {
   fun loggedInGraphFactory(): LoggedInGraph
 
   // Illegal
-  fun loggedInGraphFactory(<!DEPENDENCY_GRAPH_ERROR!>param1<!>: Long, <!DEPENDENCY_GRAPH_ERROR!>param2<!>: Int): LoggedInGraph
+  fun <!ADHOC_GRAPH_EXTENSION_FACTORY!>loggedInGraphFactory<!>(param1: Long, param2: Int): LoggedInGraph
 
   fun <!DEPENDENCY_GRAPH_ERROR!>String<!>.loggedInGraphFactory(): LoggedInGraph
 

@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
 import org.jetbrains.kotlin.test.util.KtTestUtil;
-import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,7 +18,13 @@ import java.util.regex.Pattern;
 public class FirDumpTestGenerated extends AbstractFirDumpTest {
   @Test
   public void testAllFilesPresentInFir() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir"), Pattern.compile("^(.+)\\.kt$"), null, true);
+  }
+
+  @Test
+  @TestMetadata("InjectCtorAlwaysUsedEvenIfClassAnnotated.kt")
+  public void testInjectCtorAlwaysUsedEvenIfClassAnnotated() {
+    runTest("compiler-tests/src/test/data/dump/fir/InjectCtorAlwaysUsedEvenIfClassAnnotated.kt");
   }
 
   @Test
@@ -28,13 +33,25 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     runTest("compiler-tests/src/test/data/dump/fir/scratch.kt");
   }
 
+  @Test
+  @TestMetadata("TopLevelComposableHiddenFromObjC_k22x.kt")
+  public void testTopLevelComposableHiddenFromObjC_k22x() {
+    runTest("compiler-tests/src/test/data/dump/fir/TopLevelComposableHiddenFromObjC_k22x.kt");
+  }
+
+  @Test
+  @TestMetadata("TopLevelComposableHiddenFromObjC_k23x.kt")
+  public void testTopLevelComposableHiddenFromObjC_k23x() {
+    runTest("compiler-tests/src/test/data/dump/fir/TopLevelComposableHiddenFromObjC_k23x.kt");
+  }
+
   @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/fir/aggregation")
   @TestDataPath("$PROJECT_ROOT")
   public class Aggregation {
     @Test
     public void testAllFilesPresentInAggregation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -74,7 +91,7 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
   public class Private_provides_status_transformation {
     @Test
     public void testAllFilesPresentInPrivate_provides_status_transformation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test

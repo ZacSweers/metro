@@ -5,6 +5,8 @@ package dev.zacsweers.metro.compiler.fir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.WrappedType.Canonical
+import dev.zacsweers.metro.compiler.graph.WrappedType.Provider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
@@ -48,8 +50,8 @@ internal class FirContextualTypeKey(
 
   fun originalType(session: FirSession): ConeKotlinType {
     return when (val wt = wrappedType) {
-      is WrappedType.Canonical -> wt.type
-      is WrappedType.Provider -> {
+      is Canonical -> wt.type
+      is Provider -> {
         val innerType =
           FirContextualTypeKey(typeKey, wt.innerType, hasDefault, isDeferrable)
             .originalType(session)
@@ -67,15 +69,19 @@ internal class FirContextualTypeKey(
     }
   }
 
-  override fun toString(): String = render(short = true)
+  override fun toString(): String = render(short = true, includeAbbreviation = true)
 
-  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
+  fun render(
+    short: Boolean,
+    includeAbbreviation: Boolean,
+    includeQualifier: Boolean = true,
+  ): String = buildString {
     append(
       wrappedType.render { type ->
         if (type == typeKey.type) {
-          typeKey.render(short, includeQualifier)
+          typeKey.render(short, includeQualifier, includeAbbreviation)
         } else {
-          buildString { renderType(short, type) }
+          buildString { renderType(short, type, includeAbbreviation) }
         }
       }
     )
@@ -112,6 +118,15 @@ internal class FirContextualTypeKey(
       type: ConeKotlinType = callable.resolvedTypeSafe(session),
       wrapInProvider: Boolean = false,
       stripLazyIfWrappedInProvider: Boolean = false,
+      /**
+       * Optional source for qualifier resolution, e.g. a property symbol for setter-based
+       * injection.
+       */
+      qualifierSource: FirCallableSymbol<*>? = null,
+      /**
+       * Explicit override for hasDefault, used when the callable itself doesn't carry this info.
+       */
+      hasDefault: Boolean? = null,
     ): FirContextualTypeKey {
       return type
         .letIf(wrapInProvider) {
@@ -126,8 +141,17 @@ internal class FirContextualTypeKey(
         .asFirContextualTypeKey(
           session = session,
           qualifierAnnotation =
-            callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
-          hasDefault = callable is FirValueParameterSymbol && callable.hasMetroDefault(session),
+            (qualifierSource ?: callable).findAnnotation(
+              session,
+              FirBasedSymbol<*>::qualifierAnnotation,
+            ),
+          hasDefault =
+            hasDefault
+              ?: when (callable) {
+                is FirValueParameterSymbol -> callable.hasMetroDefault(session)
+                is FirFieldSymbol -> callable.hasMetroDefault(session)
+                else -> false
+              },
         )
     }
   }
@@ -146,7 +170,7 @@ internal fun ConeKotlinType.asFirContextualTypeKey(
   val typeKey =
     FirTypeKey(
       when (wrappedType) {
-        is WrappedType.Canonical -> wrappedType.type
+        is Canonical -> wrappedType.type
         // For Map types, we keep the original type in the TypeKey
         is WrappedType.Map -> declaredType
         else -> wrappedType.canonicalType()
@@ -174,9 +198,7 @@ private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeK
     val valueWrappedType = valueType.asWrappedType(session)
 
     return WrappedType.Map(keyType, valueWrappedType) {
-      session.metroFirBuiltIns.mapClassSymbol.constructType(
-        arrayOf(keyType, valueWrappedType.canonicalType())
-      )
+      session.metroFirBuiltIns.mapClassSymbol.constructType(arrayOf(keyType, valueType))
     }
   }
 

@@ -13,7 +13,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
-internal enum class PropertyType {
+internal enum class PropertyKind {
   FIELD,
   GETTER,
 }
@@ -23,17 +23,25 @@ internal enum class PropertyType {
  * inits, but we always mark them as `val` anyway because the IR code gen will just set the field
  * directly in those cases.
  */
+@IgnorableReturnValue
 context(context: IrMetroContext)
 internal fun IrProperty.ensureInitialized(
-  propertyType: PropertyType,
-  type: () -> IrType = { graphPropertyData!!.type },
+  propertyKind: PropertyKind,
+  type: IrType = graphPropertyData!!.type,
 ): IrProperty = apply {
   if (backingField == null && getter == null) {
-    when (propertyType) {
-      PropertyType.FIELD -> with(context) { addBackingFieldCompat { this.type = type() } }
-      PropertyType.GETTER ->
+    when (propertyKind) {
+      FIELD ->
+        with(context) {
+          addBackingFieldCompat {
+            this.type = type
+            // Match the property visibility
+            this.visibility = this@ensureInitialized.visibility
+          }
+        }
+      GETTER ->
         addGetter {
-            this.returnType = type()
+            this.returnType = type
             this.visibility = this@ensureInitialized.visibility
           }
           .apply {

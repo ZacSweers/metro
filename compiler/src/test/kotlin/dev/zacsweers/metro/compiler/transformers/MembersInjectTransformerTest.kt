@@ -87,6 +87,21 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
               result = 31 * result + privateSetter.hashCode()
               return result
             }
+
+            override fun toString(): String {
+             return "ExampleClas(" +
+              "\nstring=" + string +
+              "\nqualifiedString=" + qualifiedString +
+              "\ncharSequence=" + charSequence +
+              "\nlist=" + list +
+              "\npair=" + pair +
+              "\nset=" + set +
+              "\nsetterAnnotated=" + setterAnnotated +
+              "\nsetterAnnotated2=" + setterAnnotated2 +
+              "\nprivateField=" + privateField +
+              "\nprivateSetter=" + privateSetter +
+              ")"
+            }
           }
 
           """
@@ -954,11 +969,11 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        e: ExampleGraph.kt:11:24 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
-                [test.ExampleGraph] test.ExampleGraph.inject()
-            dev.zacsweers.metro.MembersInjector<test.ExampleClass> is requested at
+                [test.ExampleGraph] test.ExampleClass.value
+            test.ExampleClass is injected at
                 [test.ExampleGraph] test.ExampleGraph.inject()
         """
           .trimIndent()

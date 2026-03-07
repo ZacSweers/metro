@@ -17,6 +17,8 @@
 package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.compiler.testTraceScope
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.util.SortedSet
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -25,7 +27,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
-class TopologicalSortTest {
+class TopologicalSortTest : TraceScope by testTraceScope() {
   @Test
   fun emptyEdges() {
     val unsorted = listOf("a", "b", "c")
@@ -81,7 +83,7 @@ class TopologicalSortTest {
   fun cycleCrashes() {
     val exception =
       assertFailsWith<IllegalArgumentException> {
-        listOf("a", "b").topologicalSort(edges("ab", "ba"))
+        val _ = listOf("a", "b").topologicalSort(edges("ab", "ba"))
       }
     assertThat(exception)
       .hasMessageThat()
@@ -99,7 +101,7 @@ class TopologicalSortTest {
   fun elementConsumedButNotDeclaredCrashes() {
     val exception =
       assertFailsWith<IllegalArgumentException> {
-        listOf("a", "b").topologicalSort(edges("ab", "ac"))
+        val _ = listOf("a", "b").topologicalSort(edges("ab", "ac"))
       }
     assertThat(exception)
       .hasMessageThat()
@@ -115,8 +117,9 @@ class TopologicalSortTest {
   fun exceptionMessageOnlyIncludesProblematicItems() {
     val exception =
       assertFailsWith<IllegalArgumentException> {
-        listOf("a", "b", "c", "d", "e")
-          .topologicalSort(edges("ab", "bc", "da", "de", "db", "ed", "ef"))
+        val _ =
+          listOf("a", "b", "c", "d", "e")
+            .topologicalSort(edges("ab", "bc", "da", "de", "db", "ed", "ef"))
       }
     assertThat(exception)
       .hasMessageThat()
@@ -310,12 +313,13 @@ class TopologicalSortTest {
 
     // Test 1: Starting from "a" should detect the cycle
     assertFailsWith<IllegalArgumentException> {
-      topologicalSort(
-        fullAdjacency = fullAdjacency,
-        isDeferrable = { _, _ -> false },
-        onCycle = { cycle -> throw IllegalArgumentException("Cycle detected: $cycle") },
-        roots = typedSortedSetOf("a"),
-      )
+      val _ =
+        topologicalSort(
+          fullAdjacency = fullAdjacency,
+          isDeferrable = { _, _ -> false },
+          onCycle = { cycle -> throw IllegalArgumentException("Cycle detected: $cycle") },
+          roots = typedSortedSetOf("a"),
+        )
     }
 
     // Test 2: Starting from "d" should NOT detect the cycle (it's unreachable)
@@ -503,13 +507,14 @@ class TopologicalSortTest {
 
     val exception =
       assertFailsWith<IllegalArgumentException> {
-        topologicalSort(
-          fullAdjacency = fullAdjacency,
-          isDeferrable = isDeferrable,
-          onCycle = { cycle ->
-            throw IllegalArgumentException("Hard cycle detected: ${cycle.sorted()}")
-          },
-        )
+        val _ =
+          topologicalSort(
+            fullAdjacency = fullAdjacency,
+            isDeferrable = isDeferrable,
+            onCycle = { cycle ->
+              throw IllegalArgumentException("Hard cycle detected: ${cycle.sorted()}")
+            },
+          )
       }
 
     // The cycle should be detected and reported with all three vertices
@@ -574,13 +579,14 @@ class TopologicalSortTest {
 
     val exception =
       assertFailsWith<IllegalArgumentException> {
-        topologicalSort(
-          fullAdjacency = fullAdjacency,
-          isDeferrable = isDeferrable,
-          onCycle = { cycle ->
-            throw IllegalArgumentException("Hard cycle detected: ${cycle.sorted()}")
-          },
-        )
+        val _ =
+          topologicalSort(
+            fullAdjacency = fullAdjacency,
+            isDeferrable = isDeferrable,
+            onCycle = { cycle ->
+              throw IllegalArgumentException("Hard cycle detected: ${cycle.sorted()}")
+            },
+          )
       }
 
     // SCC2 (C,D,E) has no deferrable edges, so it should cause a hard cycle error

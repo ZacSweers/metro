@@ -28,6 +28,22 @@ For simple cases, all you need to do is
     }
     ```
 
+## Injecting Android app components
+
+To constructor inject Android app components (`Activity`, `Service`, etc), annotate them with the corresponding map key and contribute them into the maps used by `MetroAppComponentFactory`.
+
+For example, use `@ActivityKey` for an injected `Activity`:
+
+```kotlin
+@ContributesIntoMap(AppScope::class, binding<Activity>())
+@ActivityKey(MainActivity::class)
+class MainActivity(private val fragmentFactory: FragmentFactory): AppCompatActivity()
+```
+
+For other types of components, use `@BroadcastReceiverKey`, `@ContentProviderKey`, and `@ServiceKey` the same way.
+
+Note that the built-in `MetroAppComponentFactory` uses the base `Activity`, `Service`, etc types. If you want to use your own bases (`ComponentActivity`, etc), you'll need to create your own `AppComponentFactory` + relevant multibindings typed to the key you need.
+
 ## Advanced
 
 If you have your own custom `AppComponentFactory`, you will need to exclude the MetroX implementation in your `AndroidManifest.xml` via `tools:replace` attribute.

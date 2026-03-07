@@ -54,6 +54,7 @@ open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
         JVM_TARGET.with(JvmTarget.JVM_11)
         +FULL_JDK
         +WITH_STDLIB
+        commonMetroTestDirectives()
 
         +IGNORE_DEXING // Avoids loading R8 from the classpath.
       }
@@ -64,5 +65,13 @@ open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
           { NoIrCompilationErrorsHandler.primaryConstructor!!.javaConstructor!!.newInstance(it) })
       }
     }
+  }
+}
+
+open class AbstractFastInitBoxTest : AbstractBoxTest() {
+  override fun configure(builder: TestConfigurationBuilder) {
+    super.configure(builder)
+
+    with(builder) { defaultDirectives { MetroDirectives.ENABLE_SWITCHING_PROVIDERS.with(true) } }
   }
 }

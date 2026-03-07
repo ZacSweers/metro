@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.sharding
 
+import androidx.collection.MutableObjectIntMap
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -25,14 +27,14 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
  * Cross-shard edges represent dependencies from bindings in one shard to bindings in another. High
  * edge counts may indicate heavy coupling between shards.
  *
- * Reports are written to `sharding-plan-{GraphName}.txt` in [MetroOptions.reportsDestination].
+ * Reports are written to `sharding-plan-{GraphName}.txt` in [MetroOptions.reportsDir].
  */
 internal object ShardingDiagnostics {
   private const val MAX_CROSS_SHARD_DEPS = 100
 
   fun generateShardingPlanReport(
     graphClass: IrClass,
-    shardInfos: List<ShardInfo>,
+    shards: List<Shard>,
     initOrder: List<Int>,
     totalBindings: Int,
     options: MetroOptions,
@@ -43,7 +45,7 @@ internal object ShardingDiagnostics {
     appendLine("Graph: ${graphClass.kotlinFqName}")
     appendLine("Total bindings: $totalBindings")
     appendLine("Keys per shard limit: ${options.keysPerGraphShard}")
-    appendLine("Shard count: ${shardInfos.size}")
+    appendLine("Shard count: ${shards.size}")
     appendLine("Sharding enabled: ${options.enableGraphSharding}")
     appendLine()
 
@@ -51,48 +53,50 @@ internal object ShardingDiagnostics {
     appendLine()
 
     // First compute cross-shard dependencies to get per-shard counts
-    val bindingToShard = mutableMapOf<IrTypeKey, Int>()
-    shardInfos.forEach { info ->
-      info.bindings.forEach { binding -> bindingToShard[binding.typeKey] = info.index }
+    val bindingToShard = MutableObjectIntMap<IrTypeKey>()
+    for (shard in shards) {
+      for (binding in shard.bindings) {
+        bindingToShard[binding.typeKey] = shard.index
+      }
     }
 
     // Track outgoing cross-shard edges per shard to identify hotspots
-    val crossShardEdgeCounts = IntArray(shardInfos.size)
-    shardInfos.forEach { info ->
-      info.bindings.forEach { binding ->
+    val crossShardEdgeCounts = IntArray(shards.size)
+    for (shard in shards) {
+      for (binding in shard.bindings.filterOutAssistedInjectConstructors()) {
         val deps = bindingGraph.requireBinding(binding.typeKey).dependencies
-        deps.forEach { dep ->
-          val depShard = bindingToShard[dep.typeKey]
-          if (depShard != null && depShard != info.index) {
-            crossShardEdgeCounts[info.index]++
+        for (dep in deps) {
+          val depShard = bindingToShard.getOrDefault(dep.typeKey, -1)
+          if (depShard != -1 && depShard != shard.index) {
+            crossShardEdgeCounts[shard.index]++
           }
         }
       }
     }
 
-    shardInfos.forEach { info ->
-      appendLine("Shard ${info.index + 1}:")
-      appendLine("  Class: ${info.shardClass.name}")
-      val bindingCount = info.bindings.size
+    for (shard in shards) {
+      appendLine("Shard ${shard.index + 1}:")
+      appendLine("  Class: ${shard.shardClass.name}")
+      val bindingCount = shard.bindings.size
       val limit = options.keysPerGraphShard
       if (bindingCount > limit) {
         appendLine("  Bindings: $bindingCount (exceeds limit of $limit due to large SCC)")
       } else {
         appendLine("  Bindings: $bindingCount")
       }
-      appendLine("  Outgoing cross-shard edges: ${crossShardEdgeCounts[info.index]}")
+      appendLine("  Outgoing cross-shard edges: ${crossShardEdgeCounts[shard.index]}")
 
-      if (info.bindings.size <= 10) {
+      if (shard.bindings.size <= 10) {
         // Show all bindings for small shards
         appendLine("  Binding keys:")
-        info.bindings.forEach { binding -> appendLine("    - ${binding.typeKey}") }
+        shard.bindings.forEach { binding -> appendLine("    - ${binding.typeKey}") }
       } else {
         // Show first and last for large shards
         appendLine("  Binding keys (first 5):")
-        info.bindings.take(5).forEach { binding -> appendLine("    - ${binding.typeKey}") }
-        appendLine("    ... (${info.bindings.size - 10} more)")
+        shard.bindings.take(5).forEach { binding -> appendLine("    - ${binding.typeKey}") }
+        appendLine("    ... (${shard.bindings.size - 10} more)")
         appendLine("  Binding keys (last 5):")
-        info.bindings.takeLast(5).forEach { binding -> appendLine("    - ${binding.typeKey}") }
+        shard.bindings.takeLast(5).forEach { binding -> appendLine("    - ${binding.typeKey}") }
       }
       appendLine()
     }
@@ -101,15 +105,15 @@ internal object ShardingDiagnostics {
     appendLine("Cross-shard dependencies:")
     var crossShardDepCount = 0
     var reportedCount = 0
-    shardInfos.forEach { info ->
-      info.bindings.forEach { binding ->
+    for (shard in shards) {
+      for (binding in shard.bindings.filterOutAssistedInjectConstructors()) {
         val deps = bindingGraph.requireBinding(binding.typeKey).dependencies
         deps.forEach { dep ->
-          val depShard = bindingToShard[dep.typeKey]
-          if (depShard != null && depShard != info.index) {
+          val depShard = bindingToShard.getOrDefault(dep.typeKey, -1)
+          if (depShard != -1 && depShard != shard.index) {
             if (reportedCount < MAX_CROSS_SHARD_DEPS) {
               appendLine(
-                "  Shard${info.index + 1}.${binding.typeKey} → Shard${depShard + 1}.${dep.typeKey}"
+                "  Shard${shard.index + 1}.${binding.typeKey} → Shard${depShard + 1}.${dep.typeKey}"
               )
               reportedCount++
             }
@@ -126,5 +130,13 @@ internal object ShardingDiagnostics {
     }
     appendLine()
     appendLine("Total cross-shard dependencies: $crossShardDepCount")
+  }
+
+  // We track @AssistedInject constructors from @AssistedFactory targets, but they are not
+  // actually on the graph
+  private fun List<ShardBinding>.filterOutAssistedInjectConstructors(): List<ShardBinding> {
+    return filter { binding ->
+      (binding.binding as? IrBinding.ConstructorInjected)?.isAssisted != true
+    }
   }
 }

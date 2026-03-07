@@ -26,7 +26,6 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
-import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.CallableId.Companion.PACKAGE_FQ_NAME_FOR_LOCAL
 import org.jetbrains.kotlin.name.Name
@@ -105,6 +104,7 @@ internal class Parameters(
     )
   }
 
+  context(metroContext: IrMetroContext)
   fun overlayQualifiers(qualifiers: List<IrAnnotation?>): Parameters {
     return Parameters(
       callableId = callableId,
@@ -115,7 +115,7 @@ internal class Parameters(
           val qualifier = qualifiers[i] ?: return@mapIndexed param
           param.copy(
             contextualTypeKey =
-              param.contextualTypeKey.withTypeKey(
+              param.contextualTypeKey.withIrTypeKey(
                 param.contextualTypeKey.typeKey.copy(qualifier = qualifier)
               )
           )
@@ -142,11 +142,11 @@ internal class Parameters(
         append("fun ")
       }
       dispatchReceiverParameter?.let {
-        append(it.typeKey.render(short = true, includeQualifier = false))
+        append(it.typeKey.renderForDiagnostic(short = true, includeQualifier = false))
         append('.')
       }
       extensionReceiverParameter?.let {
-        append(it.typeKey.render(short = true, includeQualifier = false))
+        append(it.typeKey.renderForDiagnostic(short = true, includeQualifier = false))
         append('.')
       }
       val name: Name? =
@@ -168,7 +168,7 @@ internal class Parameters(
         if (!it.returnType.isUnit()) {
           append(": ")
           val typeKey = IrTypeKey(it.returnType)
-          append(typeKey.render(short = true, includeQualifier = false))
+          append(typeKey.renderForDiagnostic(short = true, includeQualifier = false))
         }
       }
     }

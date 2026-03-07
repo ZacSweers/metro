@@ -17,6 +17,7 @@
 
 package dev.zacsweers.metro.compiler
 
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import org.jetbrains.kotlin.name.Name
@@ -166,8 +167,8 @@ private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
 // TODO change to Name?
 internal class NameAllocator
 private constructor(
-  private val allocatedNames: MutableSet<String>,
-  private val tagToName: MutableMap<Any, String>,
+  allocatedNames: Set<String>,
+  private val tagToName: ConcurrentHashMap<Any, String>,
   private val mode: Mode,
 ) {
   /**
@@ -201,13 +202,27 @@ private constructor(
   ) : this(
     allocatedNames =
       if (preallocateKeywords) {
-        RESERVED_KEYWORDS.toMutableSet()
+        RESERVED_KEYWORDS
       } else {
-        mutableSetOf()
+        emptySet()
       },
-    tagToName = mutableMapOf(),
+    tagToName = ConcurrentHashMap(),
     mode = mode,
   )
+
+  private val allocatedNames =
+    ConcurrentHashMap<String, Unit>().apply {
+      for (allocated in allocatedNames) {
+        put(allocated, Unit)
+      }
+    }
+
+  fun allocatedNames(): Set<String> = allocatedNames.keys
+
+  fun reserveName(suggestedName: String, tag: Any = Uuid.random().toString()) {
+    @Suppress("RETURN_VALUE_NOT_USED")
+    newNameImpl(suggestedName, tag, generateNewIfExisting = false)
+  }
 
   /**
    * Return a new name using [suggestion] that will not be a Java identifier or clash with other
@@ -215,28 +230,33 @@ private constructor(
    * [NameAllocator.get].
    */
   fun newName(suggestion: String, tag: Any = Uuid.random().toString()): String {
+    return newNameImpl(suggestion, tag, generateNewIfExisting = true)
+  }
+
+  /**
+   * Return a new name using [suggestion] that will not be a Java identifier or clash with other
+   * names. The returned value can be queried multiple times by passing `tag` to
+   * [NameAllocator.get].
+   */
+  private fun newNameImpl(suggestion: String, tag: Any, generateNewIfExisting: Boolean): String {
     val cleanedSuggestion = toSafeIdentifier(suggestion)
-    val result = buildString {
-      append(cleanedSuggestion)
-      var count = 1
-      while (!allocatedNames.add(toString())) {
-        when (mode) {
-          Mode.UNDERSCORE -> append('_')
-          Mode.COUNT -> {
-            deleteRange(cleanedSuggestion.length, length)
-            append(++count)
+    return tagToName.compute(tag) { _, existing ->
+      require(existing == null) { "tag $tag cannot be used for both '$existing' and '$suggestion'" }
+      buildString {
+        append(cleanedSuggestion)
+        var count = 1
+        while (allocatedNames.putIfAbsent(toString(), Unit) != null) {
+          if (!generateNewIfExisting) break
+          when (mode) {
+            UNDERSCORE -> append('_')
+            COUNT -> {
+              deleteRange(cleanedSuggestion.length, length)
+              append(++count)
+            }
           }
         }
       }
-    }
-
-    val replaced = tagToName.put(tag, result)
-    if (replaced != null) {
-      tagToName[tag] = replaced // Put things back as they were!
-      throw IllegalArgumentException("tag $tag cannot be used for both '$replaced' and '$result'")
-    }
-
-    return result
+    }!!
   }
 
   /** Retrieve a name created with [NameAllocator.newName]. */
@@ -250,7 +270,7 @@ private constructor(
    * @return A deep copy of this NameAllocator.
    */
   fun copy(): NameAllocator {
-    return NameAllocator(allocatedNames.toMutableSet(), tagToName.toMutableMap(), mode = mode)
+    return NameAllocator(allocatedNames.keys, ConcurrentHashMap(tagToName), mode = mode)
   }
 
   internal enum class Mode {
@@ -321,4 +341,8 @@ internal fun toSafeIdentifier(suggestion: String) = buildString {
 
 internal fun NameAllocator.newName(suggestion: Name, tag: Any = Uuid.random().toString()): Name {
   return newName(suggestion.asString(), tag).asName()
+}
+
+internal fun NameAllocator.reserveName(suggestion: Name, tag: Any = Uuid.random().toString()) {
+  return reserveName(suggestion.asString(), tag)
 }

@@ -20,8 +20,8 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirStatusTransformerExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 
-internal class FirProvidesStatusTransformer(session: FirSession) :
-  FirStatusTransformerExtension(session), CompatContext by session.compatContext {
+internal class FirProvidesStatusTransformer(session: FirSession, compatContext: CompatContext) :
+  FirStatusTransformerExtension(session), CompatContext by compatContext {
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.providesAnnotationPredicate)
   }

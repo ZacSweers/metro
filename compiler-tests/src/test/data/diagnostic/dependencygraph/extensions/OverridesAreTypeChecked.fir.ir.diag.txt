@@ -1,0 +1,17 @@
+/OverridesAreTypeChecked.kt:(739,747): error: Incompatible return types: 'kotlin.Int' vs 'kotlin.String'
+
+  OverridesAreTypeChecked.kt:28:1
+    fun fooFunction(): kotlin.Int (defined in 'IntProvider')
+                       ~~~~~~~~~~
+  OverridesAreTypeChecked.kt:19:1
+    fun fooFunction(): kotlin.String (defined in 'StringProvider')
+                       ~~~~~~~~~~~~~
+
+/OverridesAreTypeChecked.kt:(739,747): error: Incompatible return types: 'kotlin.Int' vs 'kotlin.String'
+
+  OverridesAreTypeChecked.kt:28:1
+    val fooProperty: kotlin.Int (defined in 'IntProvider')
+                     ~~~~~~~~~~
+  OverridesAreTypeChecked.kt:19:1
+    val fooProperty: kotlin.String (defined in 'StringProvider')
+                     ~~~~~~~~~~~~~

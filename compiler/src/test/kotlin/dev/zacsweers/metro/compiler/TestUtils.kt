@@ -182,6 +182,7 @@ class StaticMethod(val method: Method, val instance: Any? = null) {
   val name: String
     get() = method.name
 
+  @IgnorableReturnValue
   operator fun invoke(vararg args: Any?): Any? {
     try {
       return method.invoke(instance, *args)
@@ -242,7 +243,18 @@ fun Class<*>.invokeCreate(vararg args: Any): Any {
 
   return when (createFunctions.size) {
     0 -> error("No create functions found in $this")
-    1 -> createFunctions.single()(*args)
+    1 -> {
+      val function = createFunctions.single()
+      check(function.method.parameterCount == args.size) {
+        """
+          Mismatched number of parameters
+          Found: ${function.method.parameters.joinToString(", ") { it.name + it.parameterizedType }}
+          Expected: ${args.joinToString(", ") { it.javaClass.toString() }}
+        """
+          .trimIndent()
+      }
+      function(*args)
+    }
     else -> {
       error("Multiple create functions found in $this:\n${createFunctions.joinToString("\n")}")
     }
@@ -340,6 +352,7 @@ fun Class<*>.implOrNull(): Class<*>? {
   return declaredClasses.singleOrNull { it.isAnnotationPresent(MetroImplMarker::class.java) }
 }
 
+@IgnorableReturnValue
 fun <T> Any.callFunction(name: String, vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
   return javaClass
@@ -531,7 +544,9 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
     .let { parsed ->
       buildMap {
         putAll(parsed)
-        DiagnosticSeverity.entries.forEach { severity -> getOrPut(severity, ::emptyList) }
+        DiagnosticSeverity.entries.forEach { severity ->
+          @Suppress("RETURN_VALUE_NOT_USED") getOrPut(severity, ::emptyList)
+        }
       }
     }
 }

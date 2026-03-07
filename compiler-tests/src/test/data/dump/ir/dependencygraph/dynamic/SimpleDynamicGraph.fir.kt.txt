@@ -19,7 +19,7 @@ class Example {
 
     override val int: Int
       override get(): Int {
-        return Companion.provideInt(instance = <this>.#container0Instance)
+        return <this>.#container0Instance.provideInt()
       }
 
   }
@@ -87,7 +87,7 @@ class TestIntProvider {
   }
 
   @Provides
-  private fun provideInt(): Int {
+  fun provideInt(): Int {
     return <this>.<get-value>()
   }
 
@@ -109,7 +109,7 @@ interface AppGraph {
 
     override val int: Int
       override get(): Int {
-        return Companion.provideInt(instance = <this>.#thisGraphInstance)
+        return <this>.#thisGraphInstance.provideInt()
       }
 
   }
@@ -166,7 +166,7 @@ interface AppGraph {
   }
 
   @Provides
-  private fun provideInt(): Int {
+  fun provideInt(): Int {
     return 3
   }
 

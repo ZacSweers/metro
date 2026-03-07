@@ -4,16 +4,12 @@
 
 package dev.zacsweers.metro.gradle.incremental
 
-import com.autonomousapps.kit.GradleBuilder.build
-import com.autonomousapps.kit.GradleBuilder.buildAndFail
-import com.autonomousapps.kit.GradleProject
-import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.assertOutputContains
-import dev.zacsweers.metro.gradle.classLoader
+import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Test
@@ -90,7 +86,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Add a new binding to the container
@@ -111,7 +107,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(project.asMetroProject.appGraphReports.keysPopulated).doesNotContain("InterfaceB")
 
     // Second build should succeed with the new binding available
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.asMetroProject.appGraphReports.keysPopulated)
       .containsAtLeastElementsIn(setOf("test.InterfaceB", "test.ImplB"))
@@ -182,7 +178,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove a binding that's being used
@@ -201,11 +197,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail due to missing binding
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
 
             test.InterfaceB is injected at
                 [test.AppGraph] test.Target(…, b)
@@ -275,7 +271,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.asMetroProject.appGraphReports.keysPopulated)
       .doesNotContain("test.InterfaceB")
@@ -294,11 +290,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail due to missing InterfaceA binding
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
@@ -365,7 +361,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should fail - no binding for InterfaceA
-    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlinAndFail()
     assertThat(firstBuildResult.output).contains("Cannot find an @Inject constructor")
 
     // Add the binding container to the graph
@@ -381,7 +377,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should succeed with the binding container included
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
@@ -432,7 +428,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove the binding container from the graph
@@ -448,11 +444,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail - no binding for InterfaceA
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
@@ -510,7 +506,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.asMetroProject.appGraphReports.scopedProviderPropertyKeys).isEmpty()
 
@@ -529,7 +525,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should succeed with the scoped provider
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.asMetroProject.appGraphReports.scopedProviderPropertyKeys)
       .contains("kotlin.String")
@@ -583,7 +579,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove the binding from the container
@@ -605,7 +601,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output).contains("Cannot find an @Inject constructor")
   }
 
@@ -613,25 +609,13 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
   fun multiModuleBindingContainerChanges() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = listOf(appGraph, featureGraph, target)
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = sources()
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib"))
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("lib") {
-                sources.add(bindingContainer)
-                withBuildScript { applyMetroDefault() }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph, featureGraph, target)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(bindingContainer) }
+        }
 
         private val appGraph =
           source(
@@ -693,7 +677,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val libProject = project.subprojects.first { it.name == "lib" }
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change the binding in the container
@@ -718,11 +702,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail - InterfaceA is no longer bound
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph.Impl.FeatureGraphImpl] test.Target(…, a)
@@ -802,7 +786,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove a binding from the parent container
@@ -818,11 +802,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail - InterfaceA binding is missing
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
@@ -890,7 +874,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change the provides method
@@ -917,11 +901,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail - String is no longer provided
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
                 [test.AppGraph] test.Target(…, string)
@@ -1001,7 +985,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed with only ContainerA
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Add ContainerB to the array
@@ -1017,7 +1001,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should still succeed with both containers
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove ContainerA from the array
@@ -1033,11 +1017,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Third build should fail - InterfaceA is no longer bound
-    val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val thirdBuildResult = project.compileKotlinAndFail()
     assertThat(thirdBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
@@ -1134,7 +1118,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed with ParentContainerA included
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Add ParentContainerB to the includes array
@@ -1151,7 +1135,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should still succeed with both parents included
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove ParentContainerA from the includes array
@@ -1168,11 +1152,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Third build should fail - InterfaceA is no longer bound
-    val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val thirdBuildResult = project.compileKotlinAndFail()
     assertThat(thirdBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
@@ -1268,7 +1252,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should fail - no containers included
-    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlinAndFail()
     assertThat(firstBuildResult.output).contains("Cannot find an @Inject constructor")
 
     // Add multiple containers at once
@@ -1284,7 +1268,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should succeed with all containers
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove multiple containers at once, keeping only ContainerA
@@ -1300,11 +1284,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Third build should fail - InterfaceB is no longer bound
-    val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val thirdBuildResult = project.compileKotlinAndFail()
     assertThat(thirdBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
 
             test.InterfaceB is injected at
                 [test.AppGraph] test.Target(…, b)
@@ -1400,7 +1384,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed - A includes B, B includes C
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove ContainerC from ContainerB's includes
@@ -1417,11 +1401,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail - InterfaceC is no longer available through the chain
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceC
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceC
 
             test.InterfaceC is injected at
                 [test.AppGraph] test.Target(…, c)
@@ -1445,7 +1429,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Third build should succeed again - ContainerC is now directly included in ContainerA
-    val thirdBuildResult = build(project.rootDir, "compileKotlin")
+    val thirdBuildResult = project.compileKotlin()
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
@@ -1491,7 +1475,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed with empty set
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove the binding
@@ -1506,11 +1490,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail - Set<String> is no longer available
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
 
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
@@ -1561,7 +1545,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should fail - Set<String> is not available
-    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlinAndFail()
     assertThat(firstBuildResult.output)
       .contains(
         """
@@ -1589,7 +1573,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should succeed with empty set
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
@@ -1635,7 +1619,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed with empty set
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Add a qualifier annotation to the multibinds method
@@ -1653,11 +1637,11 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail - unqualified Set<String> is no longer available
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
 
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
@@ -1710,7 +1694,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed with empty set
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove allowEmpty
@@ -1727,7 +1711,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail - Set is now empty and not allowed
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
@@ -1794,7 +1778,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed with unscoped provider
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Add scope to the provider in the binding container
@@ -1812,7 +1796,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should succeed with scoped provider
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove scope from the provider
@@ -1829,7 +1813,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Third build should succeed with unscoped provider again
-    val thirdBuildResult = build(project.rootDir, "compileKotlin")
+    val thirdBuildResult = project.compileKotlin()
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
@@ -1904,7 +1888,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed with BindingContainerA
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change to use BindingContainerB
@@ -1919,7 +1903,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should succeed with BindingContainerB
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change to use both containers (should fail due to duplicate String binding)
@@ -1934,16 +1918,16 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     )
 
     // Third build should fail - duplicate String binding
-    val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val thirdBuildResult = project.compileKotlinAndFail()
 
     thirdBuildResult.assertOutputContains(
       """
       [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
 
-        test/BindingContainerA.provideString
+        test.BindingContainerA
           fun provideString(): kotlin.String
                                ~~~~~~~~~~~~~
-        test/BindingContainerB.provideString
+        test.BindingContainerB
           fun provideString(): kotlin.String
                                ~~~~~~~~~~~~~
       """
@@ -1981,26 +1965,13 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
         val appModule = source(appModuleContent)
 
-        override fun sources() = throw IllegalStateException()
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = listOf(main, appGraph)
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib"))
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("lib") {
-                sources.add(multibindings)
-                sources.add(appModule)
-                withBuildScript { applyMetroDefault() }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(main, appGraph)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(multibindings, appModule) }
+        }
 
         private val appGraph =
           source(
@@ -2034,33 +2005,155 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val libProject = project.subprojects.first { it.name == "lib" }
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    with(project.classLoader().loadClass("test.MainKt")) {
-      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(result).isEqualTo("[AppMultibinding]")
-    }
+    assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]")
 
     // Remove contributing module from the build
     libProject.delete(project.rootDir, fixture.appModule)
 
     // Second build should succeed
-    val secondBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    with(project.classLoader().loadClass("test.MainKt")) {
-      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(result).isEqualTo("[]")
-    }
+    assertThat(project.invokeMain<String>()).isEqualTo("[]")
 
     // Restore contributing module to the build
     libProject.modify(project.rootDir, fixture.appModule, fixture.appModuleContent)
 
     // Third build should succeed
-    val thirdBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    val thirdBuildResult = project.compileKotlin()
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    with(project.classLoader().loadClass("test.MainKt")) {
-      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(result).isEqualTo("[AppMultibinding]")
-    }
+    assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]")
+  }
+
+  @Test
+  fun contributionScopeChangeInMultiModuleProject() {
+    val fixture =
+      object : MetroProject() {
+        val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val target: Target
+            }
+
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            @ContributesTo(AppScope::class)
+            class StringModule {
+              @Provides
+              fun provideString(): String = "test"
+            }
+            """
+              .trimIndent()
+          )
+
+        val changedContribution =
+          """
+          class AnotherScope
+
+          @BindingContainer
+          @ContributesTo(AnotherScope::class)
+          class StringModule {
+            @Provides
+            fun provideString(): String = "test"
+          }
+          """
+            .trimIndent()
+
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(bindingContainer) }
+        }
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build succeed and caches hint about StringModule
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Change contribution target scope, which should stop contributing to AppGraph
+    libProject.modify(project.rootDir, fixture.bindingContainer, fixture.changedContribution)
+
+    // Build is expected to fail, because module is contributed to wrong scope
+    project.compileKotlinAndFail()
+  }
+
+  @Test
+  fun contributionWasRemovedInMultiModuleProject() {
+    val fixture =
+      object : MetroProject() {
+        val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val target: Target
+            }
+
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            @ContributesTo(AppScope::class)
+            class StringModule {
+              @Provides
+              fun provideString(): String = "test"
+            }
+            """
+              .trimIndent()
+          )
+
+        val removedContribution =
+          """
+          @BindingContainer
+          class StringModule {
+            @Provides
+            fun provideString(): String = "test"
+          }
+          """
+            .trimIndent()
+
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(bindingContainer) }
+        }
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build succeed and caches hint about StringModule
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Remove contribution
+    libProject.modify(project.rootDir, fixture.bindingContainer, fixture.removedContribution)
+
+    // Build is expected to fail due to missing contribution
+    project.compileKotlinAndFail()
   }
 }

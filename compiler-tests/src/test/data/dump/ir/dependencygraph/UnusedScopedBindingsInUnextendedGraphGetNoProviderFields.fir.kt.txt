@@ -116,7 +116,7 @@ interface AppGraph {
 
   @Provides
   @SingleIn(scope = AppScope::class)
-  private fun provideString(): String {
+  fun provideString(): String {
     return "Hi"
   }
 

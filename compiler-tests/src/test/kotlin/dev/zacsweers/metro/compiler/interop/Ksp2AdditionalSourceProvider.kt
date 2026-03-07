@@ -150,8 +150,9 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
     val messageCollector =
       PrintingMessageCollector(System.err, MessageRenderer.PLAIN_RELATIVE_PATHS, true)
     val logger = TestKSPLogger(messageCollector, allWarningsAsErrors = config.allWarningsAsErrors)
+    val ksp = KotlinSymbolProcessing(config, providers, logger)
     try {
-      when (KotlinSymbolProcessing(config, providers, logger).execute()) {
+      when (ksp.execute()) {
         KotlinSymbolProcessing.ExitCode.PROCESSING_ERROR -> error("Processing error!")
         KotlinSymbolProcessing.ExitCode.OK -> {
           // Succeeded

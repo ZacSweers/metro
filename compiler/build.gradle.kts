@@ -4,25 +4,11 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
-  alias(libs.plugins.dokka)
-  alias(libs.plugins.mavenPublish)
   alias(libs.plugins.poko)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
   alias(libs.plugins.shadow) apply false
-  alias(libs.plugins.testkit)
-}
-
-kotlin {
-  compilerOptions {
-    freeCompilerArgs.add("-Xcontext-parameters")
-    optIn.addAll(
-      "dev.drewhamilton.poko.SkipSupport",
-      "kotlin.contracts.ExperimentalContracts",
-      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
-      "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-    )
-  }
+  id("metro.publish")
 }
 
 buildConfig {
@@ -41,6 +27,9 @@ buildConfig {
       providers.gradleProperty("VERSION_NAME").map { "\"$it\"" },
     )
     buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
+    // Metadata version for compatibility checking. Increment when making breaking changes to
+    // metro_metadata.proto
+    buildConfigField("Int", "METADATA_VERSION", 1)
   }
   sourceSets.named("test") {
     buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })
@@ -89,6 +78,8 @@ val shadowJar =
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     mergeServiceFiles()
 
+    relocate("androidx.collection", "dev.zacsweers.metro.compiler.shaded.androidx.collection")
+    relocate("androidx.tracing", "dev.zacsweers.metro.compiler.shaded.androidx.tracing")
     relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
     relocate("com.squareup.okio", "dev.zacsweers.metro.compiler.shaded.com.squareup.okio")
     relocate("com.jakewharton.picnic", "dev.zacsweers.metro.compiler.shaded.com.jakewharton.picnic")
@@ -127,7 +118,10 @@ dependencies {
   compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
+  compileOnly(libs.androidx.collection)
 
+  add(embedded.name, libs.androidx.collection)
+  add(embedded.name, libs.androidx.tracing.wire)
   add(embedded.name, libs.picnic)
   add(embedded.name, libs.wire.runtime)
   add(embedded.name, libs.kotlinx.serialization.json)
@@ -160,4 +154,5 @@ dependencies {
   testImplementation(libs.dagger.compiler)
   testImplementation(libs.dagger.runtime)
   testImplementation(libs.anvil.annotations)
+  testImplementation(libs.androidx.collection)
 }

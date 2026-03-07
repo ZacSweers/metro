@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import org.gradle.kotlin.dsl.sourceSets
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
+import org.jetbrains.kotlin.tooling.core.isDev
+import org.jetbrains.kotlin.tooling.core.toKotlinVersion
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -9,22 +12,22 @@ plugins {
   java
 }
 
-kotlin.compilerOptions.freeCompilerArgs.add("-Xcontext-parameters")
+kotlin {
+  compilerOptions { optIn.add("org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI") }
+}
 
 sourceSets {
   register("generator220")
   register("generator230")
   register("generator2320")
+  register("generator2320RC")
 }
 
 val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVersion")
 
 val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
 
-val testKotlinVersion =
-  testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
-    KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
-  }
+val testKotlinVersion = KotlinToolingVersion(testCompilerVersion)
 
 buildConfig {
   generateAtSync = true
@@ -74,33 +77,47 @@ val guiceClasspath: Configuration by configurations.creating {}
 val javaxInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 val jakartaInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 
-dependencies {
-  // IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
-  // needed for those tests
-  val compilerTestFrameworkVersion: String
+// IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
+// needed for those tests
+var compilerTestFrameworkVersion: String
+var reflectVersion: String
+var generatorConfigToUse: String
 
-  val generatorConfigToUse: String
-
-  if (testKotlinVersion >= KotlinVersion(2, 3)) {
-    generatorConfigToUse =
-      if (testKotlinVersion >= KotlinVersion(2, 3, 20)) {
+if (testKotlinVersion >= KotlinToolingVersion(KotlinVersion(2, 3))) {
+  generatorConfigToUse =
+    if (testKotlinVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)) {
+      if (testKotlinVersion < KotlinToolingVersion(2, 3, 20, "RC")) {
         "generator2320"
       } else {
-        "generator230"
+        "generator2320RC"
       }
-    compilerTestFrameworkVersion = testCompilerVersion
-  } else {
-    generatorConfigToUse = "generator220"
-    compilerTestFrameworkVersion = libs.versions.kotlin.get()
-  }
+    } else {
+      "generator230"
+    }
+  compilerTestFrameworkVersion = testCompilerVersion
+  reflectVersion =
+    if (testKotlinVersion.minor == 3 && testKotlinVersion.isDev) {
+      "2.3.20-Beta1"
+    } else {
+      testCompilerVersion
+    }
+} else {
+  generatorConfigToUse = "generator220"
+  compilerTestFrameworkVersion = "2.2.20"
+  reflectVersion = "2.2.20"
+}
 
+dependencies {
   // 2.3.0 changed the test gen APIs around into different packages
-  "generator220CompileOnly"(libs.kotlin.compilerTestFramework)
+  "generator220CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.2.20")
   "generator230CompileOnly"(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
   )
   "generator2320CompileOnly"(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20-dev-5437"
+  )
+  "generator2320RCCompileOnly"(
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20-RC"
   )
 
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
@@ -139,7 +156,8 @@ dependencies {
   testRuntimeOnly(libs.anvil.kspCompiler)
 
   // Dependencies required to run the internal test framework.
-  testRuntimeOnly(libs.kotlin.reflect)
+  // Use the test compiler version because 2.3.20+ uses new APIs from here
+  testRuntimeOnly("org.jetbrains.kotlin:kotlin-reflect:$reflectVersion")
   testRuntimeOnly(libs.kotlin.test)
   testRuntimeOnly(libs.kotlin.scriptRuntime)
   testRuntimeOnly(libs.kotlin.annotationsJvm)
@@ -152,7 +170,7 @@ val generateTests =
       .withPropertyName("testData")
       .withPathSensitivity(PathSensitivity.RELATIVE)
 
-    testCompilerVersionProvider.orNull?.let { inputs.property("testCompilerVersion", it) }
+    inputs.property("testCompilerVersion", testCompilerVersion)
 
     outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
 
@@ -168,16 +186,22 @@ val generateTests =
     jvmArgs("-Xss1m")
   }
 
-val enableShardTest = providers.gradleProperty("metro.enableShardTest").isPresent
+val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
 
-  if (enableShardTest) {
-    // Increase heap for LargeGraphStressTest stress test
-    minHeapSize = "512m"
-    maxHeapSize = "2g"
-  }
+  // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
+  minHeapSize = "512m"
+  maxHeapSize = if (largeTestMode) "4g" else "2g"
+  jvmArgs(
+    "-ea",
+    "-XX:+UseCodeCacheFlushing",
+    "-XX:ReservedCodeCacheSize=256m",
+    "-XX:MaxMetaspaceSize=${if (largeTestMode) "512m" else "1g"}",
+    "-XX:CICompilerCount=2",
+    "-Djna.nosys=true",
+  )
 
   dependsOn(metroRuntimeClasspath)
   dependsOn(daggerInteropClasspath)
@@ -191,7 +215,40 @@ tasks.withType<Test> {
 
   workingDir = rootDir
 
+  if (providers.gradleProperty("metro.debugCompilerTests").isPresent) {
+    testLogging {
+      showStandardStreams = true
+      showStackTraces = true
+
+      // Set options for log level LIFECYCLE
+      events("started", "passed", "failed", "skipped")
+      setExceptionFormat("short")
+
+      // Setting this to 0 (the default is 2) will display the test executor that each test is
+      // running on.
+      displayGranularity = 0
+    }
+
+    val outputDir = isolated.rootProject.projectDirectory.dir("tmp").asFile.apply { mkdirs() }
+
+    jvmArgs(
+      "-XX:+HeapDumpOnOutOfMemoryError", // Produce a heap dump when an OOM occurs
+      "-XX:+CrashOnOutOfMemoryError", // Produce a crash report when an OOM occurs
+      "-XX:+UseGCOverheadLimit",
+      "-XX:GCHeapFreeLimit=10",
+      "-XX:GCTimeLimit=20",
+      "-XX:HeapDumpPath=$outputDir",
+      "-XX:ErrorFile=$outputDir",
+    )
+  }
+
   useJUnitPlatform()
+
+  if (largeTestMode) {
+    filter { includeTestsMatching("*StressTest*") }
+  } else {
+    filter { excludeTestsMatching("*StressTest*") }
+  }
 
   setLibraryProperty("kotlin.minimal.stdlib.path", "kotlin-stdlib")
   setLibraryProperty("kotlin.full.stdlib.path", "kotlin-stdlib-jdk8")
@@ -200,10 +257,7 @@ tasks.withType<Test> {
   setLibraryProperty("kotlin.script.runtime.path", "kotlin-script-runtime")
   setLibraryProperty("kotlin.annotations.path", "kotlin-annotations-jvm")
 
-  if (enableShardTest) {
-    systemProperty("metro.enableShardTest", true)
-    systemProperty("metro.singleTestName", "testLargeGraphStressTest")
-  }
+  systemProperty("metro.shortLocations", "true")
 
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
   systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)

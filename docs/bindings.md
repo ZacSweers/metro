@@ -158,8 +158,7 @@ To expose accessors for optional bindings, use `@OptionalBinding` on the accesso
 @DependencyGraph
 interface AppGraph {
   @OptionalBinding
-  val message: String
-    get() = "Absent!"
+  val count: Int? get() = null
 }
 ```
 

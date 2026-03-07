@@ -53,6 +53,22 @@ on:
         required: false
         type: boolean
         default: true
+      run-multiplatform-benchmarks:
+        description: 'Run multiplatform benchmarks using kotlinx-benchmark (Metro only)'
+        required: false
+        type: boolean
+        default: false
+      multiplatform-target:
+        description: 'Target for multiplatform benchmarks'
+        required: false
+        type: choice
+        options:
+          - jvm
+          - js
+          - wasmJs
+          - native
+          - all
+        default: 'jvm'
       rerun-non-metro:
         description: 'Re-run non-metro modes on ref2 (default: only metro, uses ref1 results for others)'
         required: false
@@ -197,18 +213,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Fetch and checkout refs
         run: |
@@ -281,7 +290,7 @@ jobs:
           echo "Results directory: $results_dir"
 
       - name: Upload startup benchmark results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: startup-benchmark-results
           path: ${{ steps.results.outputs.results_dir }}
@@ -322,18 +331,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Fetch and checkout refs
         run: |
@@ -409,14 +411,14 @@ jobs:
           echo "Results directory: $results_dir"
 
       - name: Upload R8 startup benchmark results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: startup-r8-benchmark-results
           path: ${{ steps.results.outputs.results_dir }}
           retention-days: 30
 
       - name: Upload diffuse output
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: diffuse-output
@@ -459,18 +461,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Fetch and checkout refs
         run: |
@@ -555,7 +550,7 @@ jobs:
           echo "Results directory: $results_dir"
 
       - name: Upload build benchmark results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: build-benchmark-results
           path: ${{ steps.results.outputs.results_dir }}
@@ -582,3 +577,73 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "No summary found. Check the uploaded artifacts for raw results." >> $GITHUB_STEP_SUMMARY
           fi
+
+  # Multiplatform benchmarks using kotlinx-benchmark (Metro only)
+  # For automated regression tracking, see benchmark-regression.yml
+  multiplatform-benchmarks:
+    name: "${{ !inputs.run-multiplatform-benchmarks && 'Multiplatform (kotlinx-benchmark) (skipped)' || format('Multiplatform: {0}', inputs.multiplatform-target) }}"
+    runs-on: ${{ inputs.multiplatform-target == 'native' && 'macos-latest' || 'ubuntu-latest' }}
+    needs: validate
+    if: inputs.run-multiplatform-benchmarks
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref1 }}
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: true
+
+      - name: Setup Node.js (for JS/WasmJS targets)
+        if: inputs.multiplatform-target == 'js' || inputs.multiplatform-target == 'wasmJs' || inputs.multiplatform-target == 'all'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Run multiplatform benchmark
+        run: |
+          cd benchmark
+          ./run_startup_benchmarks.sh multiplatform \
+            --target "${{ inputs.multiplatform-target }}" \
+            --count "${{ inputs.module_count }}"
+
+      - name: Find results directory
+        id: results
+        run: |
+          results_dir=$(ls -td benchmark/startup-benchmark-results/*/ 2>/dev/null | head -1)
+          if [ -z "$results_dir" ]; then
+            echo "Error: No results directory found"
+            exit 1
+          fi
+          echo "results_dir=$results_dir" >> $GITHUB_OUTPUT
+
+      - name: Generate summary
+        run: |
+          results_dir="${{ steps.results.outputs.results_dir }}"
+          echo "## Multiplatform Benchmark Results (kotlinx-benchmark)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Ref:** ${{ inputs.ref1 }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target:** ${{ inputs.multiplatform-target }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Module count:** ${{ inputs.module_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Display results for each platform
+          for json_file in "$results_dir"*/main/*/*.json; do
+            if [ -f "$json_file" ]; then
+              platform=$(basename "$json_file" .json)
+              score=$(python3 -c "import json; d=json.load(open('$json_file')); print(f\"{d[0]['primaryMetric']['score']:.4f}\")" 2>/dev/null || echo "N/A")
+              echo "| $platform | ${score} ms/op |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+      - name: Upload results
+        uses: actions/upload-artifact@v7
+        with:
+          name: multiplatform-benchmark-results
+          path: ${{ steps.results.outputs.results_dir }}
+          retention-days: 7

@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import java.util.Locale
+import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -32,7 +33,7 @@ internal const val LOG_PREFIX = "[METRO]"
 internal const val REPORT_METRO_MESSAGE =
   "This is possibly a bug in the Metro compiler, please report it with details and/or a reproducer to https://github.com/zacsweers/metro."
 
-internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.NONE, initializer)
+internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.PUBLICATION, initializer)
 
 internal inline fun <reified T : Any> Any.expectAs(): T {
   contract { returns() implies (this@expectAs is T) }
@@ -62,56 +63,7 @@ internal fun String.capitalizeUS() = replaceFirstChar {
 
 internal fun String.decapitalizeUS() = replaceFirstChar { it.lowercase(Locale.US) }
 
-internal fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
-  return filterTo(mutableSetOf(), predicate)
-}
-
-internal fun <T, R> Iterable<T>.mapToSet(transform: (T) -> R): Set<R> {
-  return mapTo(mutableSetOf(), transform)
-}
-
-internal fun <T, R> Sequence<T>.mapToSet(transform: (T) -> R): Set<R> {
-  return mapTo(mutableSetOf(), transform)
-}
-
-internal fun <T, R> Iterable<T>.flatMapToSet(transform: (T) -> Iterable<R>): Set<R> {
-  return flatMapTo(mutableSetOf(), transform)
-}
-
-internal fun <T, R> Sequence<T>.flatMapToSet(transform: (T) -> Sequence<R>): Set<R> {
-  return flatMapTo(mutableSetOf(), transform)
-}
-
-internal fun <T, R : Any> Iterable<T>.mapNotNullToSet(transform: (T) -> R?): Set<R> {
-  return mapNotNullTo(mutableSetOf(), transform)
-}
-
-internal fun <T, R : Any> Sequence<T>.mapNotNullToSet(transform: (T) -> R?): Set<R> {
-  return mapNotNullTo(mutableSetOf(), transform)
-}
-
-internal inline fun <T, reified R> List<T>.mapToArray(transform: (T) -> R): Array<R> {
-  return Array(size) { transform(get(it)) }
-}
-
-internal inline fun <T, reified R> Array<T>.mapToArray(transform: (T) -> R): Array<R> {
-  return Array(size) { transform(get(it)) }
-}
-
-internal inline fun <T, C : Collection<T>, O> C.ifNotEmpty(body: C.() -> O?): O? =
-  if (isNotEmpty()) this.body() else null
-
-internal fun <T, R> Iterable<T>.mapToSetWithDupes(transform: (T) -> R): Pair<Set<R>, Set<R>> {
-  val dupes = mutableSetOf<R>()
-  val destination = mutableSetOf<R>()
-  for (item in this) {
-    val transformed = transform(item)
-    if (!destination.add(transformed)) {
-      dupes += transformed
-    }
-  }
-  return destination to dupes
-}
+internal fun Name.decapitalizeUS() = asString().decapitalizeUS().asName()
 
 internal inline fun <T, Buffer : Appendable> Buffer.appendIterableWith(
   iterable: Iterable<T>,
@@ -131,10 +83,50 @@ internal inline fun <T, Buffer : Appendable> Buffer.appendIterableWith(
 }
 
 internal inline fun <T> T.letIf(condition: Boolean, block: (T) -> T): T {
+  @Suppress("RETURN_VALUE_NOT_USED")
+  contract {
+    callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+    //    condition holdsIn block
+  }
   return if (condition) block(this) else this
 }
 
+internal inline fun <T> T.runIf(condition: Boolean, block: T.() -> T): T {
+  @Suppress("RETURN_VALUE_NOT_USED")
+  contract {
+    callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+    //    condition holdsIn block
+  }
+  return if (condition) block(this) else this
+}
+
+internal inline fun <T> T.alsoIf(condition: Boolean, block: (T) -> Unit): T {
+  @Suppress("RETURN_VALUE_NOT_USED")
+  contract {
+    callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+    // Declares that the condition is assumed to be true inside the lambda
+    //    condition holdsIn block
+  }
+  if (condition) block(this)
+  return this
+}
+
+internal inline fun <T> T.applyIf(condition: Boolean, block: T.() -> Unit): T {
+  @Suppress("RETURN_VALUE_NOT_USED")
+  contract {
+    callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+    // Declares that the condition is assumed to be true inside the lambda
+    //    condition holdsIn block
+  }
+  if (condition) block(this)
+  return this
+}
+
 internal inline fun <T> T?.escapeIfNull(block: () -> Nothing): T {
+  contract {
+    callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+    returns() implies (this@escapeIfNull != null)
+  }
   if (this == null) block()
   return this
 }
@@ -198,11 +190,21 @@ internal fun <T : Comparable<T>> List<T>.compareTo(other: List<T>): Int {
 internal fun String.suffixIfNot(suffix: String) =
   if (this.endsWith(suffix)) this else "$this$suffix"
 
+internal fun Name.suffixIfNot(suffix: String) =
+  if (asString().endsWith(suffix)) this else "$this$suffix".asName()
+
 // TODO this doesn't include the package name, should we include it
 internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClassName
 
-internal fun reportCompilerBug(message: String): Nothing {
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun reportCompilerBug(message: String): Nothing {
   error("${message.suffixIfNot(".")} $REPORT_METRO_MESSAGE ")
+}
+
+internal inline fun metroCheck(condition: Boolean, body: () -> String) {
+  if (!condition) {
+    reportCompilerBug(body())
+  }
 }
 
 internal fun StringBuilder.appendLineWithUnderlinedContent(
@@ -221,6 +223,7 @@ internal fun StringBuilder.appendLineWithUnderlinedContent(
 /**
  * Copied from [kotlin.collections.joinTo] with the support for dynamically choosing a [separator].
  */
+@IgnorableReturnValue
 internal fun <T, A : Appendable> Iterable<T>.joinWithDynamicSeparatorTo(
   buffer: A,
   separator: (prev: T, next: T) -> CharSequence,
@@ -295,10 +298,27 @@ internal fun <T> Sequence<T>.singleOrNullUnlessMultiple(
   return found
 }
 
-internal fun <K, V> MutableMap<K, MutableSet<V>>.getAndAdd(key: K, value: V): MutableSet<V> {
-  return getOrInit(key).also { it.add(value) }
+@JvmName("getAndAddSet")
+internal fun <K, V> MutableMap<K, MutableSet<V>>.getAndAdd(key: K, value: V) {
+  getOrInit(key).also { it.add(value) }
 }
 
+@JvmName("getAndAddList")
+internal fun <K, V> MutableMap<K, MutableList<V>>.getAndAdd(key: K, value: V) {
+  getOrInit(key).also { it.add(value) }
+}
+
+@IgnorableReturnValue
+@JvmName("getOrInitSet")
 internal fun <K, V> MutableMap<K, MutableSet<V>>.getOrInit(key: K): MutableSet<V> {
   return getOrPut(key, ::mutableSetOf)
 }
+
+@IgnorableReturnValue
+@JvmName("getOrInitList")
+internal fun <K, V> MutableMap<K, MutableList<V>>.getOrInit(key: K): MutableList<V> {
+  return getOrPut(key, ::mutableListOf)
+}
+
+internal val ClassId.safePathString: String
+  get() = asFqNameString().replace('.', '_')

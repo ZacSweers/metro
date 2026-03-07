@@ -4,15 +4,16 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
 import dev.zacsweers.metro.compiler.fir.allAnnotations
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.callableSymbols
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
-import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
@@ -22,14 +23,18 @@ import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
+import dev.zacsweers.metro.compiler.fir.toSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.fir.validateBindingRef
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
+import org.jetbrains.kotlin.fir.FirExpectActualMatchingContext
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -42,14 +47,14 @@ import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
 import org.jetbrains.kotlin.fir.dispatchReceiverClassTypeOrNull
+import org.jetbrains.kotlin.fir.expectActualMatchingContextFactory
 import org.jetbrains.kotlin.fir.resolve.firClassLike
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
-import org.jetbrains.kotlin.fir.resolve.toSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
@@ -65,13 +70,32 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
+    context(context.session.compatContext) { checkImpl(declaration) }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
+  private fun checkImpl(declaration: FirClass) {
     declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
 
-    val dependencyGraphAnno =
-      declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull() ?: return
+    val dependencyGraphAnnos =
+      declaration.annotationsIn(session, classIds.graphLikeAnnotations).toList().ifEmpty {
+        return
+      }
 
+    if (dependencyGraphAnnos.size > 1) {
+      dependencyGraphAnnos.forEach { anno ->
+        reporter.reportOn(
+          anno.source,
+          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+          "Only one @DependencyGraph-like annotation is allowed per class but found ${dependencyGraphAnnos.size}. Remove all but one of these annotations.",
+        )
+      }
+      return
+    }
+
+    val dependencyGraphAnno = dependencyGraphAnnos.first()
     val graphAnnotationClassId = dependencyGraphAnno.toAnnotationClassIdSafe(session) ?: return
 
     // Ensure scope is defined if any additionalScopes are defined
@@ -113,7 +137,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
     for (supertypeRef in declaration.superTypeRefs) {
       val supertype = supertypeRef.coneType as? ConeClassLikeType ?: continue
-      val supertypeClass = supertype.lookupTag.toSymbol(session) ?: continue
+      val supertypeClass = supertype.lookupTag.toSymbolCompat(session) ?: continue
       if (supertypeClass.isAnnotatedWithAny(session, classIds.graphLikeAnnotations)) {
         reporter.reportOn(
           supertypeRef.source ?: declaration.source,
@@ -149,8 +173,14 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     val implementedGraphExtensionCreators =
       graphExtensionFactorySupertypes.values.mapToSet { it.classId }
 
-    // Note this doesn't check inherited supertypes. Maybe we should, but where do we report errors?
-    for (callable in declaration.symbol.directCallableSymbols()) {
+    val matchingContext =
+      context.session.expectActualMatchingContextFactory.create(
+        context.session,
+        context.scopeSession,
+        allowedWritingMemberExpectForActualMapping = true,
+      )
+
+    for (callable in declaration.symbol.callableSymbols()) {
       val annotations =
         callable.metroAnnotations(
           session,
@@ -169,16 +199,64 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       val isBindsOrProvides = annotations.isBinds || annotations.isProvides
       if (isBindsOrProvides) continue
 
+      val isInherited =
+        declaration.symbol.let {
+          it is FirRegularClassSymbol && callable.isFakeOverride(it, matchingContext)
+        }
+
       // Check graph extensions
       val returnType = callable.resolvedReturnTypeRef.coneType
 
       // Check if it's a graph extension creator
-      val returnTypeClassSymbol = returnType.toClassSymbol(session)
+      val returnTypeClassSymbol = returnType.toClassSymbolCompat(session)
       val isGraphExtensionCreator =
         returnTypeClassSymbol?.isAnnotatedWithAny(
           session,
           classIds.graphExtensionFactoryAnnotations,
         ) == true
+
+      // Check for ad-hoc graph extension factories (functions with parameters returning a
+      // graph extension that are not overrides from @GraphExtension.Factory classes).
+      // This check applies to both directly declared and inherited callables.
+      val isGraphExtension =
+        returnTypeClassSymbol?.isAnnotatedWithAny(session, classIds.graphExtensionAnnotations) ==
+          true
+
+      if (
+        isGraphExtension &&
+          callable is FirNamedFunctionSymbol &&
+          callable.valueParameterSymbols.isNotEmpty() &&
+          callable.rawStatus.modality == Modality.ABSTRACT
+      ) {
+        // Check that it's not from a @GraphExtension.Factory-annotated class.
+        val isFromFactory =
+          if (isInherited) {
+            // For fake overrides, the symbol points to the original declaration,
+            // so we can check the callable's containing class directly.
+            callable
+              .dispatchReceiverClassTypeOrNull()
+              ?.toClassSymbolCompat(session)
+              ?.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations) == true
+          } else {
+            callable.isOverride &&
+              callable.directOverriddenSymbolsSafe().any { overriddenSymbol ->
+                overriddenSymbol
+                  .dispatchReceiverClassTypeOrNull()
+                  ?.toClassSymbolCompat(session)
+                  ?.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations) == true
+              }
+          }
+        if (!isFromFactory) {
+          reporter.reportOn(
+            if (isInherited) declaration.source else callable.source,
+            MetroDiagnostics.ADHOC_GRAPH_EXTENSION_FACTORY,
+          )
+        }
+        continue
+      }
+
+      // For all other checks, only process directly declared callables
+      if (isInherited) continue
 
       if (isGraphExtensionCreator) {
         val graphExtensionClass =
@@ -193,12 +271,10 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           parentAggregationScopes = aggregationScopes,
         )
         continue
-      }
-
-      if (callable.isOverride) {
+      } else if (callable.isOverride) {
         // If it's an optionaldep, ensure annotations are propagated
         if (!annotations.isOptionalBinding) {
-          for (overridden in callable.directOverriddenSymbolsSafe()) {
+          callable.directOverriddenSymbolsSafe().forEach { overridden ->
             if (
               overridden
                 .metroAnnotations(session, MetroAnnotations.Kind.OptionalBinding)
@@ -215,9 +291,10 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
         val graphExtensionClass =
           callable.directOverriddenSymbolsSafe().firstNotNullOfOrNull { overriddenSymbol ->
-            overriddenSymbol.dispatchReceiverClassTypeOrNull()?.toClassSymbol(session)?.takeIf {
-              it.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
-            }
+            overriddenSymbol
+              .dispatchReceiverClassTypeOrNull()
+              ?.toClassSymbolCompat(session)
+              ?.takeIf { it.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations) }
           }
         if (graphExtensionClass != null) {
           validateGraphExtension(
@@ -233,175 +310,156 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         }
       }
 
-      val isGraphExtension =
-        returnTypeClassSymbol?.isAnnotatedWithAny(session, classIds.graphExtensionAnnotations) ==
-          true
-      if (isGraphExtension) {
-        // Check if that extension has a creator. If so, we either must implement that creator or
-        // it's an error
-        // because they need to use it
-        val creator =
-          returnTypeClassSymbol.nestedClasses().firstOrNull { nestedClass ->
-            nestedClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
-          }
-        if (creator != null) {
-          // Final check - make sure this callable belongs to that extension
-          val belongsToExtension =
-            callable.isOverride &&
-              creator.classId !in implementedGraphExtensionCreators &&
-              callable.directOverriddenSymbolsSafe().any {
-                it.dispatchReceiverClassLookupTagOrNull()?.classId == creator.classId
+      when {
+        isGraphExtension -> {
+          // Functions with parameters are already handled above as ad-hoc factories.
+          // Check if that extension has a creator. If so, we either must implement that creator
+          // or it's an error because they need to use it.
+          val creator =
+            returnTypeClassSymbol.nestedClasses().firstOrNull { nestedClass ->
+              nestedClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
+            }
+          when {
+            creator != null -> {
+              // Final check - make sure this callable belongs to that extension
+              val belongsToExtension =
+                callable.isOverride &&
+                  creator.classId !in implementedGraphExtensionCreators &&
+                  callable.directOverriddenSymbolsSafe().any {
+                    it.dispatchReceiverClassLookupTagOrNull()?.classId == creator.classId
+                  }
+              if (!belongsToExtension) {
+                reporter.reportOn(
+                  callable.source,
+                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                  "Graph extension '${returnTypeClassSymbol.classId.asSingleFqName()}' has a creator type '${creator.classId.asSingleFqName()}' that must be used to create its instances. Either make '${declaration.classId.asSingleFqName()}' implement '${creator.classId.asSingleFqName()}' or expose an accessor for '${creator.classId.asSingleFqName()}' instead of '${returnTypeClassSymbol.classId.asSingleFqName()}' directly.",
+                )
               }
-          if (!belongsToExtension) {
+            }
+
+            callable.contextParameterSymbols.isNotEmpty() -> {
+              callable.contextParameterSymbols.forEach { parameter ->
+                reporter.reportOn(
+                  parameter.source,
+                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                  "Graph extension accessors may not have context parameters.",
+                )
+              }
+            }
+
+            callable.receiverParameterSymbol != null -> {
+              reporter.reportOn(
+                callable.receiverParameterSymbol!!.source,
+                MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                "Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.",
+              )
+            }
+          }
+        }
+
+        callable is FirPropertySymbol ||
+          callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isEmpty() -> {
+          // Functions with no params are accessors
+          callable.validateBindingRef(annotations)
+
+          val hasBody =
+            when (callable) {
+              is FirPropertySymbol -> callable.getterSymbol?.hasBody == true
+              is FirNamedFunctionSymbol -> callable.hasBody
+              else -> false
+            }
+
+          if (annotations.isOptionalBinding) {
+            callable.checkOptionalDepAccessor(isEffectivelyOpen, hasBody)
+          } else if (hasBody) {
+            continue
+          }
+
+          val returnType = callable.resolvedReturnTypeRef.coneType
+          if (returnType.isUnit) {
+            reporter.reportOn(
+              callable.resolvedReturnTypeRef.source ?: callable.source,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+              "Graph accessor members must have a return type and cannot be Unit.",
+            )
+          } else if (returnType.isNothing) {
             reporter.reportOn(
               callable.source,
               MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-              "Graph extension '${returnTypeClassSymbol.classId.asSingleFqName()}' has a creator type '${creator.classId.asSingleFqName()}' that must be used to create its instances. Either make '${declaration.classId.asSingleFqName()}' implement '${creator.classId.asSingleFqName()}' or expose an accessor for '${creator.classId.asSingleFqName()}' instead of '${returnTypeClassSymbol.classId.asSingleFqName()}' directly.",
-            )
-            continue
-          }
-        } else if (callable.contextParameterSymbols.isNotEmpty()) {
-          for (parameter in callable.contextParameterSymbols) {
-            reporter.reportOn(
-              parameter.source,
-              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-              "Graph extension accessors may not have context parameters.",
+              "Graph accessor members cannot return Nothing.",
             )
           }
-          continue
-        } else if (callable.receiverParameterSymbol != null) {
-          reporter.reportOn(
-            callable.receiverParameterSymbol!!.source,
-            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-            "Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.",
-          )
-          continue
-        } else if (
-          callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty()
-        ) {
-          for (parameter in callable.valueParameterSymbols) {
-            reporter.reportOn(
-              parameter.source,
-              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-              "Graph extension accessors may not have parameters. Use `@GraphExtension.Factory` instead.",
-            )
-          }
-          continue
-        }
-      }
 
-      // Functions with no params are accessors
-      if (
-        callable is FirPropertySymbol ||
-          (callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isEmpty())
-      ) {
-        callable.validateBindingRef(annotations)
-
-        val hasBody =
-          when (callable) {
-            is FirPropertySymbol -> callable.getterSymbol?.hasBody == true
-            is FirNamedFunctionSymbol -> callable.hasBody
-            else -> false
-          }
-
-        if (annotations.isOptionalBinding) {
-          callable.checkOptionalDepAccessor(isEffectivelyOpen, hasBody)
-        } else if (hasBody) {
-          continue
-        }
-
-        val returnType = callable.resolvedReturnTypeRef.coneType
-        if (returnType.isUnit) {
-          reporter.reportOn(
-            callable.resolvedReturnTypeRef.source ?: callable.source,
-            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-            "Graph accessor members must have a return type and cannot be Unit.",
-          )
-          continue
-        } else if (returnType.isNothing) {
-          reporter.reportOn(
+          validateInjectionSiteType(
+            session,
+            callable.resolvedReturnTypeRef,
+            callable.qualifierAnnotation(session),
             callable.source,
-            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-            "Graph accessor members cannot return Nothing.",
+            isAccessor = true,
+            isOptionalBinding = annotations.isOptionalBinding,
           )
-          continue
+
+          val scopeAnnotations = callable.allAnnotations().scopeAnnotations(session)
+          for (scopeAnnotation in scopeAnnotations) {
+            reporter.reportOn(scopeAnnotation.fir.source, MetroDiagnostics.SCOPED_GRAPH_ACCESSOR)
+          }
         }
 
-        validateInjectionSiteType(
-          session,
-          callable.resolvedReturnTypeRef,
-          callable.qualifierAnnotation(session),
-          callable.source,
-          isAccessor = true,
-          isOptionalBinding = annotations.isOptionalBinding,
-        )
+        callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty() -> {
+          // Functions with params are possibly injectors
+          if (!callable.resolvedReturnTypeRef.coneType.isUnit) {
+            reporter.reportOn(
+              callable.resolvedReturnTypeRef.source,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+              "Inject functions must not return anything other than Unit.",
+            )
+          }
 
-        val scopeAnnotations = callable.allAnnotations().scopeAnnotations(session)
-        for (scopeAnnotation in scopeAnnotations) {
-          reporter.reportOn(
-            scopeAnnotation.fir.source,
-            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-            "Graph accessor members cannot be scoped.",
-          )
-        }
-        continue
-      }
+          // If it has one param, it's an injector
+          when (callable.valueParameterSymbols.size) {
+            1 -> {
+              val parameter = callable.valueParameterSymbols[0]
+              val clazz = parameter.resolvedReturnTypeRef.firClassLike(session) ?: continue
+              val classSymbol = clazz.symbol as? FirClassSymbol<*> ?: continue
+              val isInjected = classSymbol.findInjectLikeConstructors(session).isNotEmpty()
 
-      // Functions with params are possibly injectors
-      if (callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty()) {
-        if (!callable.resolvedReturnTypeRef.coneType.isUnit) {
-          reporter.reportOn(
-            callable.resolvedReturnTypeRef.source,
-            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-            "Inject functions must not return anything other than Unit.",
-          )
-          continue
-        }
+              parameter.validateBindingRef(annotations)
 
-        // If it has one param, it's an injector
-        when (callable.valueParameterSymbols.size) {
-          1 -> {
-            val parameter = callable.valueParameterSymbols[0]
-            val clazz = parameter.resolvedReturnTypeRef.firClassLike(session) ?: continue
-            val classSymbol = clazz.symbol as? FirClassSymbol<*> ?: continue
-            val isInjected = classSymbol.findInjectLikeConstructors(session).isNotEmpty()
+              if (isInjected) {
+                reporter.reportOn(
+                  parameter.source,
+                  MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION,
+                  "Injected class '${clazz.classId.asSingleFqName()}' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.",
+                )
+              }
 
-            parameter.validateBindingRef(annotations)
-
-            if (isInjected) {
-              reporter.reportOn(
-                parameter.source,
-                MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-                "Injected class '${clazz.classId.asSingleFqName()}' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.",
-              )
+              if (annotations.isOptionalBinding) {
+                reporter.reportOn(
+                  callable.source,
+                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                  "Injector functions cannot be annotated with @OptionalBinding.",
+                )
+              }
+              parameter
+                .annotationsIn(session, session.classIds.optionalBindingAnnotations)
+                .firstOrNull()
+                ?.let {
+                  reporter.reportOn(
+                    it.source ?: parameter.source,
+                    MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                    "Injector function parameters cannot be annotated with @OptionalBinding.",
+                  )
+                }
             }
-
-            if (annotations.isOptionalBinding) {
+            // > 1
+            else -> {
+              // TODO Not actually sure what dagger does. Maybe we should support this?
               reporter.reportOn(
                 callable.source,
                 MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-                "Injector functions cannot be annotated with @OptionalBinding.",
+                "Inject functions must have exactly one parameter.",
               )
             }
-            parameter
-              .annotationsIn(session, session.classIds.optionalBindingAnnotations)
-              .firstOrNull()
-              ?.let {
-                reporter.reportOn(
-                  it.source ?: parameter.source,
-                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-                  "Injector function parameters cannot be annotated with @OptionalBinding.",
-                )
-              }
-          }
-          // > 1
-          else -> {
-            // TODO Not actually sure what dagger does. Maybe we should support this?
-            reporter.reportOn(
-              callable.source,
-              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-              "Inject functions must have exactly one parameter.",
-            )
           }
         }
       }
@@ -490,5 +548,12 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         "@OptionalBinding accessors must have a default body.",
       )
     }
+  }
+
+  private fun FirCallableSymbol<*>.isFakeOverride(
+    containingClass: FirRegularClassSymbol,
+    matchingContext: FirExpectActualMatchingContext,
+  ): Boolean {
+    return with(matchingContext) { this@isFakeOverride.isFakeOverride(containingClass) }
   }
 }

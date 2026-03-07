@@ -34,6 +34,11 @@ RERUN_NON_METRO=false
 INCLUDE_MACROBENCHMARK=false
 # Whether to only collect binary metrics without running benchmarks (for testing)
 BINARY_METRICS_ONLY=false
+# Target for multiplatform benchmarks (jvm, js, wasmJs, native, all)
+MULTIPLATFORM_TARGET="all"
+# Feature flags for Metro (empty string means use default/auto)
+ENABLE_GRAPH_SHARDING=""
+ENABLE_SWITCHING_PROVIDERS=""
 
 # Script-specific print functions (styles differ from run_benchmarks.sh)
 print_header() {
@@ -91,14 +96,15 @@ show_usage() {
     echo "Usage: $0 [command] [options]"
     echo ""
     echo "Commands:"
-    echo "  jvm       Run JVM startup benchmarks using JMH"
-    echo "  jvm-r8    Run JVM startup benchmarks with R8-minified classes"
-    echo "  android   Run Android benchmarks (requires device)"
-    echo "  all       Run all benchmarks (default)"
-    echo "  single    Run benchmarks on a single git ref or Metro version"
-    echo "  compare   Compare benchmarks across two refs (git refs or Metro versions)"
-    echo "  summary   Regenerate summary from existing results (use with --timestamp)"
-    echo "  help      Show this help message"
+    echo "  jvm           Run JVM startup benchmarks using JMH"
+    echo "  jvm-r8        Run JVM startup benchmarks with R8-minified classes"
+    echo "  multiplatform Run multiplatform benchmarks using kotlinx-benchmark (Metro only)"
+    echo "  android       Run Android benchmarks (requires device)"
+    echo "  all           Run all benchmarks (default)"
+    echo "  single        Run benchmarks on a single git ref or Metro version"
+    echo "  compare       Compare benchmarks across two refs (git refs or Metro versions)"
+    echo "  summary       Regenerate summary from existing results (use with --timestamp)"
+    echo "  help          Show this help message"
     echo ""
     echo "Options:"
     echo "  --modes <list>          Comma-separated list of modes to benchmark"
@@ -111,6 +117,12 @@ show_usage() {
     echo "  --binary-metrics-only   Only collect binary metrics (skip JMH/benchmark runs)"
     echo "                          Useful for testing binary metrics collection quickly"
     echo ""
+    echo "Feature Options:"
+    echo "  --enable-graph-sharding     Enable Metro graph sharding (default: auto for 500+ modules)"
+    echo "  --no-enable-graph-sharding  Disable Metro graph sharding"
+    echo "  --enable-switching-providers Enable Metro switching providers (deferred class loading)"
+    echo "                              Also enables Dagger fastInit when running Dagger modes"
+    echo ""
     echo "Single Options:"
     echo "  --ref <ref>         Git ref (branch name/commit) or Metro version (e.g., 1.0.0)"
     echo "  --benchmark <type>  Benchmark type: jvm, jvm-r8, android, or all (default: jvm)"
@@ -122,6 +134,14 @@ show_usage() {
     echo "  --rerun-non-metro   Re-run non-metro modes on ref2 (default: only run metro on ref2)"
     echo "                      When disabled (default), ref2 uses ref1's non-metro results for comparison"
     echo ""
+    echo "Feature Compare Options:"
+    echo "  --benchmark <type>  Benchmark type: jvm, jvm-r8, or all (default: jvm)"
+    echo "                      Runs Metro with four configurations:"
+    echo "                        - baseline: no sharding, no switching"
+    echo "                        - sharding: graph sharding enabled"
+    echo "                        - switching: switching providers enabled"
+    echo "                        - both: sharding + switching enabled"
+    echo ""
     echo "Ref Types:"
     echo "  Refs can be either git refs or Metro versions. The script automatically detects"
     echo "  the type based on the format:"
@@ -131,9 +151,14 @@ show_usage() {
     echo "  When using a Metro version, benchmarks run on the current branch with the"
     echo "  specified Metro version from Maven Central (instead of the included build)."
     echo ""
+    echo "Multiplatform Options:"
+    echo "  --target <target>   Target platform: jvm, js, wasmJs, native, or all (default: all)"
+    echo ""
     echo "Examples:"
     echo "  $0 jvm                              # Run JVM benchmarks for all modes"
     echo "  $0 jvm-r8                           # Run JVM benchmarks with R8-minified classes for all modes"
+    echo "  $0 multiplatform                    # Run kotlinx-benchmark for all targets (Metro only)"
+    echo "  $0 multiplatform --target jvm       # Run kotlinx-benchmark for JVM only"
     echo "  $0 jvm --modes metro,dagger-ksp     # Run JVM benchmarks for specific modes"
     echo "  $0 all --count 250                  # Run all benchmarks with 250 modules"
     echo "  $0 android --include-macrobenchmark # Run Android benchmarks including macrobenchmarks"
@@ -158,44 +183,74 @@ show_usage() {
     echo "  $0 compare --ref1 1.0.0 --ref2 1.1.0  # Compare two released versions"
     echo "  $0 compare --ref1 1.0.0 --ref2 main   # Compare release to git branch"
     echo ""
+    echo "  $0 jvm --enable-switching-providers   # Single run with switching providers enabled"
+    echo ""
     echo "Results will be saved to: $RESULTS_DIR/"
 }
 
 # Parse mode string to generator arguments
 get_generator_args() {
     local mode="$1"
+    local args=""
+
     case "$mode" in
         metro)
-            echo "--mode metro"
+            args="--mode metro"
             ;;
         dagger-ksp)
-            echo "--mode dagger --processor ksp"
+            args="--mode dagger --processor ksp"
             ;;
         dagger-kapt)
-            echo "--mode dagger --processor kapt"
+            args="--mode dagger --processor kapt"
             ;;
         kotlin-inject-anvil)
-            echo "--mode kotlin_inject_anvil"
+            args="--mode kotlin_inject_anvil"
             ;;
         *)
             print_error "Unknown mode: $mode"
             exit 1
             ;;
     esac
+
+    # Add feature flags for Metro mode
+    if [ "$mode" = "metro" ]; then
+        if [ "$ENABLE_GRAPH_SHARDING" = "true" ]; then
+            args="$args --enable-graph-sharding"
+        elif [ "$ENABLE_GRAPH_SHARDING" = "false" ]; then
+            args="$args --no-enable-graph-sharding"
+        fi
+
+        if [ "$ENABLE_SWITCHING_PROVIDERS" = "true" ]; then
+            args="$args --enable-switching-providers"
+        fi
+    fi
+
+    # Add switching providers flag for Dagger modes (Dagger calls this fastInit)
+    if [[ "$mode" == dagger-* ]]; then
+        if [ "$ENABLE_SWITCHING_PROVIDERS" = "true" ]; then
+            args="$args --enable-switching-providers"
+        fi
+    fi
+
+    echo "$args"
 }
 
 # Get extra Gradle arguments for a mode (e.g., disable incremental for flaky KSP)
 get_gradle_args() {
     local mode="$1"
+    local args=""
+
     case "$mode" in
         dagger-ksp|dagger-kapt|kotlin-inject-anvil)
             # Disable incremental processing and build cache to avoid flaky KSP/KAPT builds
-            echo "--no-build-cache -Pksp.incremental=false -Pkotlin.incremental=false"
+            args="--no-build-cache -Pksp.incremental=false -Pkotlin.incremental=false"
             ;;
         *)
-            echo ""
+            args=""
             ;;
     esac
+
+    echo "$args"
 }
 
 # Extract class metrics from compiled AppComponent classes using javap
@@ -468,7 +523,8 @@ setup_for_mode() {
 # Run JMH benchmark only (no clean/generate)
 run_jvm_benchmark_only() {
     local mode="$1"
-    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
+    local output_suffix="${2:-$mode}"
+    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm_${output_suffix}"
     mkdir -p "$output_dir"
 
     local gradle_args=$(get_gradle_args "$mode")
@@ -529,7 +585,8 @@ run_jvm_benchmark() {
 # Run JMH R8 benchmark only (no clean/generate)
 run_jvm_r8_benchmark_only() {
     local mode="${1:-metro}"
-    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"
+    local output_suffix="${2:-$mode}"
+    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${output_suffix}"
     mkdir -p "$output_dir"
 
     local jar_file="startup-jvm/minified-jar/build/libs/minified-jar.jar"
@@ -580,6 +637,88 @@ run_jvm_r8_benchmark() {
     local mode="${1:-metro}"
     setup_for_mode "$mode"
     run_jvm_r8_benchmark_only "$mode"
+}
+
+# Run kotlinx-benchmark multiplatform benchmark only (no clean/generate)
+# Only supports metro mode since it requires multiplatform project generation
+run_multiplatform_benchmark_only() {
+    local target="${1:-all}"
+    local output_dir="$RESULTS_DIR/${TIMESTAMP}/multiplatform-${target}_metro"
+    mkdir -p "$output_dir"
+
+    # Determine Gradle task based on target
+    local task=""
+    local gradle_args=""
+    case "$target" in
+        all)
+            task=":startup-multiplatform:benchmark"
+            ;;
+        jvm)
+            task=":startup-multiplatform:jvmBenchmark"
+            ;;
+        js)
+            task=":startup-multiplatform:jsBenchmark"
+            ;;
+        wasmJs)
+            task=":startup-multiplatform:wasmJsBenchmark"
+            ;;
+        native)
+            # Detect host platform for native target
+            if [[ "$(uname)" == "Darwin" ]]; then
+                if [[ "$(uname -m)" == "arm64" ]]; then
+                    task=":startup-multiplatform:macosArm64Benchmark"
+                else
+                    task=":startup-multiplatform:macosX64Benchmark"
+                fi
+            elif [[ "$(uname)" == "Linux" ]]; then
+                task=":startup-multiplatform:linuxX64Benchmark"
+                gradle_args="-Pbenchmark.native.linux=true"
+            else
+                task=":startup-multiplatform:mingwX64Benchmark"
+                gradle_args="-Pbenchmark.native.windows=true"
+            fi
+            ;;
+        *)
+            print_error "Unknown multiplatform target: $target"
+            return 1
+            ;;
+    esac
+
+    # Enable platform-specific native targets when running all
+    if [[ "$target" == "all" ]]; then
+        if [[ "$(uname)" == "Linux" ]]; then
+            gradle_args="-Pbenchmark.native.linux=true"
+        elif [[ "$(uname)" == MINGW* ]] || [[ "$(uname)" == CYGWIN* ]]; then
+            gradle_args="-Pbenchmark.native.windows=true"
+        fi
+    fi
+
+    print_step "Running kotlinx-benchmark ($target) for metro..."
+
+    if ./gradlew --quiet $gradle_args $task 2>&1 | tee "$output_dir/benchmark-output.txt"; then
+        # Copy JSON results
+        local results_dir="startup-multiplatform/build/reports/benchmarks"
+        if [ -d "$results_dir" ]; then
+            cp -r "$results_dir"/* "$output_dir/" 2>/dev/null || true
+        fi
+        print_success "kotlinx-benchmark ($target) complete for metro"
+    else
+        print_error "kotlinx-benchmark ($target) failed for metro"
+        return 1
+    fi
+}
+
+# Run kotlinx-benchmark multiplatform benchmark (with clean/generate)
+run_multiplatform_benchmark() {
+    local target="${1:-all}"
+
+    # Multiplatform only supports metro mode
+    clean_build_artifacts
+
+    print_step "Generating multiplatform project for metro..."
+    kotlin generate-projects.main.kts --mode metro --multiplatform --count "$MODULE_COUNT" > /dev/null
+
+    run_multiplatform_benchmark_only "$target"
 }
 
 # Run Android benchmark only (no clean/generate)
@@ -703,6 +842,17 @@ extract_jmh_score() {
     fi
 }
 
+# Extract JMH GC allocation rate from results (bytes per operation)
+extract_jmh_alloc() {
+    local results_file="$1"
+    if [ -f "$results_file" ]; then
+        if command -v jq &> /dev/null; then
+            # Extract gc.alloc.rate.norm from secondaryMetrics (B/op)
+            jq -r '.[0].secondaryMetrics["·gc.alloc.rate.norm"].score // empty' "$results_file" 2>/dev/null || echo ""
+        fi
+    fi
+}
+
 # Extract Android macrobenchmark score from results
 extract_android_macro_score() {
     local results_dir="$1"
@@ -750,21 +900,24 @@ generate_summary() {
 
 Graph creation and initialization time (lower is better):
 
-| Framework | Time (ms) | vs Metro |
-|-----------|-----------|----------|
+| Framework | Time (ms) | Alloc (KB/op) | vs Metro |
+|-----------|-----------|---------------|----------|
 EOF
 
     # Collect JVM results
     local metro_jvm_score=""
+    local metro_jvm_alloc=""
 
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
     for mode in "${MODE_ARRAY[@]}"; do
         local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
         local score=""
+        local alloc=""
 
-        # Try to get score from JSON first, then text output
+        # Try to get score and alloc from JSON first, then text output
         if [ -f "$jvm_dir/results.json" ]; then
             score=$(extract_jmh_score "$jvm_dir/results.json")
+            alloc=$(extract_jmh_alloc "$jvm_dir/results.json")
         fi
 
         # Fallback: parse from results.txt or jmh-output.txt
@@ -779,6 +932,7 @@ EOF
 
         if [ "$mode" = "metro" ]; then
             metro_jvm_score="$score"
+            metro_jvm_alloc="$alloc"
         fi
 
         # Calculate comparison
@@ -787,15 +941,7 @@ EOF
             if [ "$mode" = "metro" ]; then
                 comparison="baseline"
             else
-                local pct=$(printf "%.1f" "$(echo "scale=4; (($score - $metro_jvm_score) / $metro_jvm_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                if [ -n "$pct" ]; then
-                    # Add + sign for positive percentages (slower than baseline)
-                    if [[ "$pct" != -* ]]; then
-                        comparison="+${pct}%"
-                    else
-                        comparison="${pct}%"
-                    fi
-                fi
+                comparison=$(format_pct_diff "$score" "$metro_jvm_score")
             fi
         fi
 
@@ -804,7 +950,13 @@ EOF
             display_score=$(printf "%.2f" "$score")
         fi
 
-        echo "| $mode | $display_score | $comparison |" >> "$summary_file"
+        # Format allocation in KB
+        local display_alloc="N/A"
+        if [ -n "$alloc" ]; then
+            display_alloc=$(echo "scale=2; $alloc / 1024" | bc 2>/dev/null || echo "N/A")
+        fi
+
+        echo "| $mode | $display_score | $display_alloc | $comparison |" >> "$summary_file"
     done
 
     # Add JVM R8 results if any exist
@@ -817,11 +969,13 @@ EOF
     done
 
     if [ "$has_r8_results" = true ]; then
-        # Get metro R8 score for "vs Metro R8" column
+        # Get metro R8 score and alloc for "vs Metro R8" column
         local metro_jvm_r8_score=""
+        local metro_jvm_r8_alloc=""
         local r8_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
         if [ -f "$r8_dir/results.json" ]; then
             metro_jvm_r8_score=$(extract_jmh_score "$r8_dir/results.json")
+            metro_jvm_r8_alloc=$(extract_jmh_alloc "$r8_dir/results.json")
         fi
         if [ -z "$metro_jvm_r8_score" ] && [ -f "$r8_dir/jmh-output.txt" ]; then
             metro_jvm_r8_score=$(grep 'graphCreationAndInitialization' "$r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
@@ -833,8 +987,8 @@ EOF
 
 Graph creation and initialization time with R8 optimization (lower is better):
 
-| Framework | Time (ms) | vs Metro R8 |
-|-----------|-----------|-------------|
+| Framework | Time (ms) | Alloc (KB/op) | vs Metro R8 |
+|-----------|-----------|---------------|-------------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
@@ -844,8 +998,10 @@ EOF
             fi
 
             local r8_score=""
+            local r8_alloc=""
             if [ -f "$jvm_r8_dir/results.json" ]; then
                 r8_score=$(extract_jmh_score "$jvm_r8_dir/results.json")
+                r8_alloc=$(extract_jmh_alloc "$jvm_r8_dir/results.json")
             fi
             if [ -z "$r8_score" ] && [ -f "$jvm_r8_dir/jmh-output.txt" ]; then
                 r8_score=$(grep 'graphCreationAndInitialization' "$jvm_r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
@@ -859,18 +1015,18 @@ EOF
             if [ "$mode" = "metro" ]; then
                 r8_comparison="baseline"
             elif [ -n "$metro_jvm_r8_score" ] && [ "$metro_jvm_r8_score" != "0" ]; then
-                local pct=$(printf "%.1f" "$(echo "scale=4; (($r8_score - $metro_jvm_r8_score) / $metro_jvm_r8_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                if [ -n "$pct" ]; then
-                    if [[ "$pct" != -* ]]; then
-                        r8_comparison="+${pct}%"
-                    else
-                        r8_comparison="${pct}%"
-                    fi
-                fi
+                r8_comparison=$(format_pct_diff "$r8_score" "$metro_jvm_r8_score")
             fi
 
             local r8_display_score=$(printf "%.2f" "$r8_score")
-            echo "| $mode | $r8_display_score | $r8_comparison |" >> "$summary_file"
+
+            # Format allocation in KB
+            local r8_display_alloc="N/A"
+            if [ -n "$r8_alloc" ]; then
+                r8_display_alloc=$(echo "scale=2; $r8_alloc / 1024" | bc 2>/dev/null || echo "N/A")
+            fi
+
+            echo "| $mode | $r8_display_score | $r8_display_alloc | $r8_comparison |" >> "$summary_file"
         done
     fi
 
@@ -903,15 +1059,7 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     comparison="baseline"
                 else
-                    local pct=$(printf "%.1f" "$(echo "scale=4; (($score - $metro_android_score) / $metro_android_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct" ]; then
-                        # Add + sign for positive percentages (slower than baseline)
-                        if [[ "$pct" != -* ]]; then
-                            comparison="+${pct}%"
-                        else
-                            comparison="${pct}%"
-                        fi
-                    fi
+                    comparison=$(format_pct_diff "$score" "$metro_android_score")
                 fi
             fi
 
@@ -951,15 +1099,7 @@ EOF
             if [ "$mode" = "metro" ]; then
                 comparison="baseline"
             else
-                local pct=$(printf "%.1f" "$(echo "scale=4; (($score - $metro_android_micro_score) / $metro_android_micro_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                if [ -n "$pct" ]; then
-                    # Add + sign for positive percentages (slower than baseline)
-                    if [[ "$pct" != -* ]]; then
-                        comparison="+${pct}%"
-                    else
-                        comparison="${pct}%"
-                    fi
-                fi
+                comparison=$(format_pct_diff "$score" "$metro_android_micro_score")
             fi
         fi
 
@@ -1838,6 +1978,17 @@ extract_jmh_score_for_ref() {
     echo "$score"
 }
 
+# Extract JMH alloc for a ref
+extract_jmh_alloc_for_ref() {
+    local ref_label="$1"
+    local mode="$2"
+    local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/jvm_${mode}"
+
+    if [ -f "$jvm_dir/results.json" ]; then
+        extract_jmh_alloc "$jvm_dir/results.json"
+    fi
+}
+
 # Extract JMH R8 score for a ref
 extract_jmh_r8_score_for_ref() {
     local ref_label="$1"
@@ -1859,6 +2010,17 @@ extract_jmh_r8_score_for_ref() {
     fi
 
     echo "$score"
+}
+
+# Extract JMH R8 alloc for a ref
+extract_jmh_r8_alloc_for_ref() {
+    local ref_label="$1"
+    local mode="$2"
+    local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/jvm-r8_${mode}"
+
+    if [ -f "$jvm_dir/results.json" ]; then
+        extract_jmh_alloc "$jvm_dir/results.json"
+    fi
 }
 
 # Extract Android macro score for a ref
@@ -2000,11 +2162,7 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro1="baseline"
                 elif [ -n "$metro_jvm_score1" ] && [ "$metro_jvm_score1" != "0" ]; then
-                    local pct1=$(printf "%.1f" "$(echo "scale=4; ($score1 / $metro_jvm_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult1=$(printf "%.2f" "$(echo "scale=4; $score1 / $metro_jvm_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct1" ] && [ -n "$mult1" ]; then
-                        vs_metro1="+${pct1}% (${mult1}x)"
-                    fi
+                    vs_metro1=$(format_vs_baseline "$score1" "$metro_jvm_score1")
                 fi
             fi
 
@@ -2013,28 +2171,55 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro2="baseline"
                 elif [ -n "$metro_jvm_score2" ] && [ "$metro_jvm_score2" != "0" ]; then
-                    local pct2=$(printf "%.1f" "$(echo "scale=4; ($score2 / $metro_jvm_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult2=$(printf "%.2f" "$(echo "scale=4; $score2 / $metro_jvm_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct2" ] && [ -n "$mult2" ]; then
-                        vs_metro2="+${pct2}% (${mult2}x)"
-                    fi
+                    vs_metro2=$(format_vs_baseline "$score2" "$metro_jvm_score2")
                 fi
             fi
 
             if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                local pct=$(printf "%.2f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                if [ -n "$pct" ]; then
-                    if [[ "$pct" == -* ]]; then
-                        diff="${pct}%"
-                    elif [[ "$pct" == "0.00" ]]; then
-                        diff="+0.00% (no change)"
-                    else
-                        diff="+${pct}%"
-                    fi
+                local pct_diff=$(format_pct_diff "$score2" "$score1" 2)
+                if [ "$pct_diff" = "0%" ] || [ "$pct_diff" = "0.00%" ]; then
+                    diff="+0.00% (no change)"
+                else
+                    diff="$pct_diff"
                 fi
             fi
 
             echo "| $mode | $display1 | $vs_metro1 | $display2 | $vs_metro2 | $diff |" >> "$summary_file"
+        done
+
+        # Add allocation table
+        cat >> "$summary_file" << EOF
+
+### Allocation (KB/op)
+
+| Framework | $ref1_label | $ref2_label | Difference |
+|-----------|-------------|-------------|------------|
+EOF
+
+        for mode in "${MODE_ARRAY[@]}"; do
+            local alloc1=$(extract_jmh_alloc_for_ref "$ref1_label" "$mode")
+            local alloc2=""
+            if mode_was_run_for_ref "$ref2_label" "$mode" "jvm"; then
+                alloc2=$(extract_jmh_alloc_for_ref "$ref2_label" "$mode")
+            fi
+
+            # Format allocations in KB
+            local display_alloc1="N/A"
+            local display_alloc2="N/A"
+            local alloc_diff="-"
+
+            if [ -n "$alloc1" ]; then
+                display_alloc1=$(echo "scale=2; $alloc1 / 1024" | bc 2>/dev/null || echo "N/A")
+            fi
+            if [ -n "$alloc2" ]; then
+                display_alloc2=$(echo "scale=2; $alloc2 / 1024" | bc 2>/dev/null || echo "N/A")
+            fi
+
+            if [ -n "$alloc1" ] && [ -n "$alloc2" ] && [ "$alloc1" != "0" ]; then
+                alloc_diff=$(python3 -c "print(f'{(($alloc2 - $alloc1) / $alloc1) * 100:.2f}%')" 2>/dev/null || echo "-")
+            fi
+
+            echo "| $mode | $display_alloc1 | $display_alloc2 | $alloc_diff |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -2104,11 +2289,7 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro1="baseline"
                     elif [ -n "$metro_jvm_r8_score1" ] && [ "$metro_jvm_r8_score1" != "0" ]; then
-                        local pct1=$(printf "%.1f" "$(echo "scale=4; ($score1 / $metro_jvm_r8_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        local mult1=$(printf "%.2f" "$(echo "scale=4; $score1 / $metro_jvm_r8_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        if [ -n "$pct1" ] && [ -n "$mult1" ]; then
-                            vs_metro1="+${pct1}% (${mult1}x)"
-                        fi
+                        vs_metro1=$(format_vs_baseline "$score1" "$metro_jvm_r8_score1")
                     fi
                 fi
 
@@ -2116,28 +2297,60 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro2="baseline"
                     elif [ -n "$metro_jvm_r8_score2" ] && [ "$metro_jvm_r8_score2" != "0" ]; then
-                        local pct2=$(printf "%.1f" "$(echo "scale=4; ($score2 / $metro_jvm_r8_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        local mult2=$(printf "%.2f" "$(echo "scale=4; $score2 / $metro_jvm_r8_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        if [ -n "$pct2" ] && [ -n "$mult2" ]; then
-                            vs_metro2="+${pct2}% (${mult2}x)"
-                        fi
+                        vs_metro2=$(format_vs_baseline "$score2" "$metro_jvm_r8_score2")
                     fi
                 fi
 
                 if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                    local pct=$(printf "%.2f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct" ]; then
-                        if [[ "$pct" == -* ]]; then
-                            diff="${pct}%"
-                        elif [[ "$pct" == "0.00" ]]; then
-                            diff="+0.00% (no change)"
-                        else
-                            diff="+${pct}%"
-                        fi
+                    local pct_diff=$(format_pct_diff "$score2" "$score1" 2)
+                    if [ "$pct_diff" = "0%" ] || [ "$pct_diff" = "0.00%" ]; then
+                        diff="+0.00% (no change)"
+                    else
+                        diff="$pct_diff"
                     fi
                 fi
 
                 echo "| $mode | $display1 | $vs_metro1 | $display2 | $vs_metro2 | $diff |" >> "$summary_file"
+            done
+
+            # Add R8 allocation table
+            cat >> "$summary_file" << EOF
+
+### Allocation (KB/op)
+
+| Framework | $ref1_label | $ref2_label | Difference |
+|-----------|-------------|-------------|------------|
+EOF
+
+            for mode in "${MODE_ARRAY[@]}"; do
+                local alloc1=$(extract_jmh_r8_alloc_for_ref "$ref1_label" "$mode")
+                local alloc2=""
+                if mode_was_run_for_ref "$ref2_label" "$mode" "jvm-r8"; then
+                    alloc2=$(extract_jmh_r8_alloc_for_ref "$ref2_label" "$mode")
+                fi
+
+                # Skip if no alloc data
+                if [ -z "$alloc1" ] && [ -z "$alloc2" ]; then
+                    continue
+                fi
+
+                # Format allocations in KB
+                local display_alloc1="N/A"
+                local display_alloc2="N/A"
+                local alloc_diff="-"
+
+                if [ -n "$alloc1" ]; then
+                    display_alloc1=$(echo "scale=2; $alloc1 / 1024" | bc 2>/dev/null || echo "N/A")
+                fi
+                if [ -n "$alloc2" ]; then
+                    display_alloc2=$(echo "scale=2; $alloc2 / 1024" | bc 2>/dev/null || echo "N/A")
+                fi
+
+                if [ -n "$alloc1" ] && [ -n "$alloc2" ] && [ "$alloc1" != "0" ]; then
+                    alloc_diff=$(python3 -c "print(f'{(($alloc2 - $alloc1) / $alloc1) * 100:.2f}%')" 2>/dev/null || echo "-")
+                fi
+
+                echo "| $mode | $display_alloc1 | $display_alloc2 | $alloc_diff |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"
@@ -2207,11 +2420,7 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro1="baseline"
                     elif [ -n "$metro_macro_score1" ] && [ "$metro_macro_score1" != "0" ]; then
-                        local pct1=$(printf "%.1f" "$(echo "scale=4; ($score1 / $metro_macro_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        local mult1=$(printf "%.2f" "$(echo "scale=4; $score1 / $metro_macro_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        if [ -n "$pct1" ] && [ -n "$mult1" ]; then
-                            vs_metro1="+${pct1}% (${mult1}x)"
-                        fi
+                        vs_metro1=$(format_vs_baseline "$score1" "$metro_macro_score1")
                     fi
                 fi
 
@@ -2220,24 +2429,16 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro2="baseline"
                     elif [ -n "$metro_macro_score2" ] && [ "$metro_macro_score2" != "0" ]; then
-                        local pct2=$(printf "%.1f" "$(echo "scale=4; ($score2 / $metro_macro_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        local mult2=$(printf "%.2f" "$(echo "scale=4; $score2 / $metro_macro_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        if [ -n "$pct2" ] && [ -n "$mult2" ]; then
-                            vs_metro2="+${pct2}% (${mult2}x)"
-                        fi
+                        vs_metro2=$(format_vs_baseline "$score2" "$metro_macro_score2")
                     fi
                 fi
 
                 if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                    local pct=$(printf "%.2f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct" ]; then
-                        if [[ "$pct" == -* ]]; then
-                            diff="${pct}%"
-                        elif [[ "$pct" == "0.00" ]]; then
-                            diff="+0.00% (no change)"
-                        else
-                            diff="+${pct}%"
-                        fi
+                    local pct_diff=$(format_pct_diff "$score2" "$score1" 2)
+                    if [ "$pct_diff" = "0%" ] || [ "$pct_diff" = "0.00%" ]; then
+                        diff="+0.00% (no change)"
+                    else
+                        diff="$pct_diff"
                     fi
                 fi
 
@@ -2298,11 +2499,7 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro1="baseline"
                 elif [ -n "$metro_micro_score1" ] && [ "$metro_micro_score1" != "0" ]; then
-                    local pct1=$(printf "%.1f" "$(echo "scale=4; ($score1 / $metro_micro_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult1=$(printf "%.2f" "$(echo "scale=4; $score1 / $metro_micro_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct1" ] && [ -n "$mult1" ]; then
-                        vs_metro1="+${pct1}% (${mult1}x)"
-                    fi
+                    vs_metro1=$(format_vs_baseline "$score1" "$metro_micro_score1")
                 fi
             fi
 
@@ -2311,24 +2508,16 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro2="baseline"
                 elif [ -n "$metro_micro_score2" ] && [ "$metro_micro_score2" != "0" ]; then
-                    local pct2=$(printf "%.1f" "$(echo "scale=4; ($score2 / $metro_micro_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult2=$(printf "%.2f" "$(echo "scale=4; $score2 / $metro_micro_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct2" ] && [ -n "$mult2" ]; then
-                        vs_metro2="+${pct2}% (${mult2}x)"
-                    fi
+                    vs_metro2=$(format_vs_baseline "$score2" "$metro_micro_score2")
                 fi
             fi
 
             if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                local pct=$(printf "%.2f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                if [ -n "$pct" ]; then
-                    if [[ "$pct" == -* ]]; then
-                        diff="${pct}%"
-                    elif [[ "$pct" == "0.00" ]]; then
-                        diff="+0.00% (no change)"
-                    else
-                        diff="+${pct}%"
-                    fi
+                local pct_diff=$(format_pct_diff "$score2" "$score1" 2)
+                if [ "$pct_diff" = "0%" ] || [ "$pct_diff" = "0.00%" ]; then
+                    diff="+0.00% (no change)"
+                else
+                    diff="$pct_diff"
                 fi
             fi
 
@@ -2717,12 +2906,13 @@ EOF
 
 Graph creation and initialization time (lower is better):
 
-| Framework | Time (ms) | vs Metro |
-|-----------|-----------|----------|
+| Framework | Time (ms) | Alloc (KB/op) | vs Metro |
+|-----------|-----------|---------------|----------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
             local score=$(extract_jmh_score_for_ref "$ref_label" "$mode")
+            local alloc=$(extract_jmh_alloc_for_ref "$ref_label" "$mode")
             local display="${score:-N/A}"
             local vs_metro="—"
 
@@ -2731,14 +2921,17 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro="baseline"
                 elif [ -n "$metro_jvm_score" ] && [ "$metro_jvm_score" != "0" ]; then
-                    local pct=$(printf "%.1f" "$(echo "scale=4; ($score / $metro_jvm_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult=$(printf "%.2f" "$(echo "scale=4; $score / $metro_jvm_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct" ] && [ -n "$mult" ]; then
-                        vs_metro="+${pct}% (${mult}x)"
-                    fi
+                    vs_metro=$(format_vs_baseline "$score" "$metro_jvm_score")
                 fi
             fi
-            echo "| $mode | $display | $vs_metro |" >> "$summary_file"
+
+            # Format allocation in KB
+            local display_alloc="N/A"
+            if [ -n "$alloc" ]; then
+                display_alloc=$(echo "scale=2; $alloc / 1024" | bc 2>/dev/null || echo "N/A")
+            fi
+
+            echo "| $mode | $display | $display_alloc | $vs_metro |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -2764,8 +2957,8 @@ EOF
 
 Graph creation and initialization time with R8 optimization (lower is better):
 
-| Framework | Time (ms) | vs Metro R8 |
-|-----------|-----------|-------------|
+| Framework | Time (ms) | Alloc (KB/op) | vs Metro R8 |
+|-----------|-----------|---------------|-------------|
 EOF
 
             for mode in "${MODE_ARRAY[@]}"; do
@@ -2776,19 +2969,23 @@ EOF
                     continue
                 fi
 
+                local alloc=$(extract_jmh_r8_alloc_for_ref "$ref_label" "$mode")
                 local display=$(printf "%.3f" "$score")
                 local vs_metro="—"
 
                 if [ "$mode" = "metro" ]; then
                     vs_metro="baseline"
                 elif [ -n "$metro_jvm_r8_score" ] && [ "$metro_jvm_r8_score" != "0" ]; then
-                    local pct=$(printf "%.1f" "$(echo "scale=4; ($score / $metro_jvm_r8_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult=$(printf "%.2f" "$(echo "scale=4; $score / $metro_jvm_r8_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct" ] && [ -n "$mult" ]; then
-                        vs_metro="+${pct}% (${mult}x)"
-                    fi
+                    vs_metro=$(format_vs_baseline "$score" "$metro_jvm_r8_score")
                 fi
-                echo "| $mode | $display | $vs_metro |" >> "$summary_file"
+
+                # Format allocation in KB
+                local display_alloc="N/A"
+                if [ -n "$alloc" ]; then
+                    display_alloc=$(echo "scale=2; $alloc / 1024" | bc 2>/dev/null || echo "N/A")
+                fi
+
+                echo "| $mode | $display | $display_alloc | $vs_metro |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"
@@ -2829,11 +3026,7 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro="baseline"
                     elif [ -n "$metro_macro_score" ] && [ "$metro_macro_score" != "0" ]; then
-                        local pct=$(printf "%.1f" "$(echo "scale=4; ($score / $metro_macro_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        local mult=$(printf "%.2f" "$(echo "scale=4; $score / $metro_macro_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        if [ -n "$pct" ] && [ -n "$mult" ]; then
-                            vs_metro="+${pct}% (${mult}x)"
-                        fi
+                        vs_metro=$(format_vs_baseline "$score" "$metro_macro_score")
                     fi
                 fi
                 echo "| $mode | $display | $vs_metro |" >> "$summary_file"
@@ -2864,11 +3057,7 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro="baseline"
                 elif [ -n "$metro_micro_score" ] && [ "$metro_micro_score" != "0" ]; then
-                    local pct=$(printf "%.1f" "$(echo "scale=4; ($score / $metro_micro_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult=$(printf "%.2f" "$(echo "scale=4; $score / $metro_micro_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct" ] && [ -n "$mult" ]; then
-                        vs_metro="+${pct}% (${mult}x)"
-                    fi
+                    vs_metro=$(format_vs_baseline "$score" "$metro_micro_score")
                 fi
             fi
             echo "| $mode | $display | $vs_metro |" >> "$summary_file"
@@ -4264,6 +4453,22 @@ main() {
                 BINARY_METRICS_ONLY=true
                 shift
                 ;;
+            --target)
+                MULTIPLATFORM_TARGET="$2"
+                shift 2
+                ;;
+            --enable-graph-sharding)
+                ENABLE_GRAPH_SHARDING="true"
+                shift
+                ;;
+            --no-enable-graph-sharding)
+                ENABLE_GRAPH_SHARDING="false"
+                shift
+                ;;
+            --enable-switching-providers)
+                ENABLE_SWITCHING_PROVIDERS="true"
+                shift
+                ;;
             *)
                 print_error "Unknown option: $1"
                 show_usage
@@ -4276,26 +4481,40 @@ main() {
 
     case "$command" in
         jvm)
-            run_jvm_benchmarks
-            generate_summary
+            # 'jvm' is shorthand for 'single --ref HEAD --benchmark jvm' (current branch)
+            SINGLE_REF="HEAD"
+            COMPARE_BENCHMARK_TYPE="jvm"
+            run_single
             ;;
         jvm-r8)
-            run_jvm_r8_benchmarks
-            generate_summary
+            # 'jvm-r8' is shorthand for 'single --ref HEAD --benchmark jvm-r8' (current branch)
+            SINGLE_REF="HEAD"
+            COMPARE_BENCHMARK_TYPE="jvm-r8"
+            run_single
+            ;;
+        multiplatform)
+            print_header "Running Multiplatform Benchmarks"
+            print_info "Target: $MULTIPLATFORM_TARGET"
+            run_multiplatform_benchmark "$MULTIPLATFORM_TARGET"
+            print_success "Multiplatform benchmarks complete!"
+            print_final_results "$RESULTS_DIR/${TIMESTAMP}"
             ;;
         android)
-            run_android_benchmarks
-            generate_summary
+            # 'android' is shorthand for 'single --ref HEAD --benchmark android' (current branch)
+            SINGLE_REF="HEAD"
+            COMPARE_BENCHMARK_TYPE="android"
+            run_single
             ;;
         all)
-            run_all_benchmarks
-            # Also run R8 benchmarks for metro
-            run_jvm_r8_benchmarks
-            generate_summary
+            # 'all' is shorthand for 'single --ref HEAD --benchmark all' (current branch)
+            SINGLE_REF="HEAD"
+            COMPARE_BENCHMARK_TYPE="all"
+            run_single
             ;;
         summary)
             # Just regenerate the summary from existing results
             generate_summary
+            print_final_results "$RESULTS_DIR/${TIMESTAMP}"
             ;;
         single)
             run_single
@@ -4313,10 +4532,6 @@ main() {
             exit 1
             ;;
     esac
-
-    if [ "$command" != "compare" ] && [ "$command" != "single" ]; then
-        print_final_results "$RESULTS_DIR/${TIMESTAMP}"
-    fi
 }
 
 main "$@"

@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
 import org.jetbrains.kotlin.test.util.KtTestUtil;
-import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,7 +18,13 @@ import java.util.regex.Pattern;
 public class IrDumpTestGenerated extends AbstractIrDumpTest {
   @Test
   public void testAllFilesPresentInIr() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir"), Pattern.compile("^(.+)\\.kt$"), null, true);
+  }
+
+  @Test
+  @TestMetadata("AssistedInjectClassFactoriesGetReused.kt")
+  public void testAssistedInjectClassFactoriesGetReused() {
+    runTest("compiler-tests/src/test/data/dump/ir/AssistedInjectClassFactoriesGetReused.kt");
   }
 
   @Test
@@ -46,13 +51,19 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Aggregation {
     @Test
     public void testAllFilesPresentInAggregation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
     @TestMetadata("ContributorsWithSameSimpleNames.kt")
     public void testContributorsWithSameSimpleNames() {
       runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributorsWithSameSimpleNames.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributorsWithSameSimpleNamesSameOrigin.kt")
+    public void testContributorsWithSameSimpleNamesSameOrigin() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributorsWithSameSimpleNamesSameOrigin.kt");
     }
 
     @Test
@@ -68,7 +79,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Cycles {
     @Test
     public void testAllFilesPresentInCycles() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/cycles"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/cycles"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -102,7 +113,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Dependencygraph {
     @Test
     public void testAllFilesPresentInDependencygraph() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -160,6 +171,24 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("MixedUseFactoryAcrossMultipleMultis.kt")
+    public void testMixedUseFactoryAcrossMultipleMultis() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MixedUseFactoryAcrossMultipleMultis.kt");
+    }
+
+    @Test
+    @TestMetadata("MixedUseFactoryAcrossMultipleNestedMiddleMultis.kt")
+    public void testMixedUseFactoryAcrossMultipleNestedMiddleMultis() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MixedUseFactoryAcrossMultipleNestedMiddleMultis.kt");
+    }
+
+    @Test
+    @TestMetadata("MixedUseFactoryAndScalarRefsShouldUseOneProviderField.kt")
+    public void testMixedUseFactoryAndScalarRefsShouldUseOneProviderField() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MixedUseFactoryAndScalarRefsShouldUseOneProviderField.kt");
+    }
+
+    @Test
     @TestMetadata("MultipleRefsGetProviderFields.kt")
     public void testMultipleRefsGetProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MultipleRefsGetProviderFields.kt");
@@ -181,6 +210,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("RefCountingFollowsAliases.kt")
     public void testRefCountingFollowsAliases() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/RefCountingFollowsAliases.kt");
+    }
+
+    @Test
+    @TestMetadata("ReusableScalarBindings.kt")
+    public void testReusableScalarBindings() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/ReusableScalarBindings.kt");
     }
 
     @Test
@@ -207,7 +242,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public class Dynamic {
       @Test
       public void testAllFilesPresentInDynamic() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -223,7 +258,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public class Interop {
       @Test
       public void testAllFilesPresentInInterop() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/interop"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -239,7 +274,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public class Sharding {
       @Test
       public void testAllFilesPresentInSharding() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -314,6 +349,58 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
         runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/sharding/ThreeShardsWithOrder.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Switchingproviders {
+      @Test
+      public void testAllFilesPresentInSwitchingproviders() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("ChunkedSwitchingProvider.kt")
+      public void testChunkedSwitchingProvider() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/ChunkedSwitchingProvider.kt");
+      }
+
+      @Test
+      @TestMetadata("SimpleSwitchingProvider.kt")
+      public void testSimpleSwitchingProvider() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SimpleSwitchingProvider.kt");
+      }
+
+      @Test
+      @TestMetadata("SimpleSwitchingProviderWithShards.kt")
+      public void testSimpleSwitchingProviderWithShards() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SimpleSwitchingProviderWithShards.kt");
+      }
+
+      @Test
+      @TestMetadata("SwitchingProvidersAcrossExtensions.kt")
+      public void testSwitchingProvidersAcrossExtensions() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SwitchingProvidersAcrossExtensions.kt");
+      }
+
+      @Test
+      @TestMetadata("SwitchingProvidersWithBindsOptional.kt")
+      public void testSwitchingProvidersWithBindsOptional() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SwitchingProvidersWithBindsOptional.kt");
+      }
+
+      @Test
+      @TestMetadata("SwitchingProvidersWithCycles.kt")
+      public void testSwitchingProvidersWithCycles() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SwitchingProvidersWithCycles.kt");
+      }
+
+      @Test
+      @TestMetadata("SwitchingProvidersWithMembersInjectProvider.kt")
+      public void testSwitchingProvidersWithMembersInjectProvider() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SwitchingProvidersWithMembersInjectProvider.kt");
+      }
+    }
   }
 
   @Nested
@@ -322,7 +409,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Injectconstructor {
     @Test
     public void testAllFilesPresentInInjectconstructor() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/injectconstructor"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/injectconstructor"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -344,13 +431,37 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Multibindings {
     @Test
     public void testAllFilesPresentInMultibindings() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("ElementsIntoSetWorkInScalars.kt")
+    public void testElementsIntoSetWorkInScalars() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/ElementsIntoSetWorkInScalars.kt");
+    }
+
+    @Test
+    @TestMetadata("ElementsIntoSetWorkInScalarsMixed.kt")
+    public void testElementsIntoSetWorkInScalarsMixed() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/ElementsIntoSetWorkInScalarsMixed.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectorFunctionsDoNotTriggerProviderGets.kt")
+    public void testInjectorFunctionsDoNotTriggerProviderGets() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/InjectorFunctionsDoNotTriggerProviderGets.kt");
     }
 
     @Test
     @TestMetadata("MapProvidersParticipateInProviderRefcounting.kt")
     public void testMapProvidersParticipateInProviderRefcounting() {
       runTest("compiler-tests/src/test/data/dump/ir/multibindings/MapProvidersParticipateInProviderRefcounting.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingInParentMemberInjectedClass.kt")
+    public void testMultibindingInParentMemberInjectedClass() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingInParentMemberInjectedClass.kt");
     }
 
     @Test
@@ -384,7 +495,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Provides {
     @Test
     public void testAllFilesPresentInProvides() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/provides"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/provides"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -406,7 +517,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Visibility {
     @Test
     public void testAllFilesPresentInVisibility() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/visibility"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/visibility"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test

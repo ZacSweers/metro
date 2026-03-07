@@ -5,16 +5,16 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
+import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
-import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.originClassId
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -28,6 +28,8 @@ import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
+import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.singleOrError
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -39,11 +41,13 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.extensions.ExperimentalSupertypesGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
@@ -51,6 +55,7 @@ import org.jetbrains.kotlin.fir.lookupTracker
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.moduleVisibilityChecker
 import org.jetbrains.kotlin.fir.recordFqNameLookup
+import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
@@ -73,9 +78,10 @@ import org.jetbrains.kotlin.name.StandardClassIds
 
 internal class ContributedInterfaceSupertypeGenerator(
   session: FirSession,
+  compatContext: CompatContext,
   private val loadExternalContributionExtensions:
     (FirSession, MetroOptions) -> List<MetroContributionExtension>,
-) : FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
+) : FirSupertypeGenerationExtension(session), CompatContext by compatContext {
 
   /** External contribution extensions loaded via ServiceLoader. */
   private val externalContributionExtensions: List<MetroContributionExtension> by lazy {
@@ -83,14 +89,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     loadExternalContributionExtensions(session, options)
   }
 
-  private val dependencyGraphs by lazy {
-    session.predicateBasedProvider
-      .getSymbolsByPredicate(session.predicates.dependencyGraphPredicate)
-      .filterIsInstance<FirRegularClassSymbol>()
-      .toSet()
-  }
-
-  private val allSessions = session.memoizedAllSessionsSequence
+  private val allSessions = session.allSessions
   private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
 
   private val inCompilationScopesToContributions:
@@ -128,25 +127,57 @@ internal class ContributedInterfaceSupertypeGenerator(
           scopeHintFqName.shortName(),
         )
 
-      val contributingClasses =
-        functionsInPackage
-          .filter {
-            when (it.visibility) {
-              Visibilities.Internal -> {
-                it.moduleData == session.moduleData ||
-                  @OptIn(SymbolInternals::class)
-                  session.moduleVisibilityChecker?.isInFriendModule(it.fir) == true
-              }
-              else -> true
+      val filteredFunctions =
+        functionsInPackage.filter {
+          when (it.visibility) {
+            Visibilities.Internal -> {
+              it.moduleData == session.moduleData ||
+                @OptIn(SymbolInternals::class)
+                session.moduleVisibilityChecker?.isInFriendModule(it.fir) == true
             }
+            else -> true
           }
-          .mapNotNull { contribution ->
-            // This is the single value param
-            contribution.valueParameterSymbols
-              .single()
-              .resolvedReturnType
-              .toRegularClassSymbol(session)
-          }
+        }
+
+      val contributingClasses =
+        filteredFunctions.mapNotNull { contribution ->
+          // This is the single value param
+          contribution.valueParameterSymbols
+            .single()
+            .resolvedReturnType
+            .toRegularClassSymbol(session)
+        }
+
+      session.metroFirBuiltIns.writeDiagnostic(
+        "discovered-hints-fir",
+        { "${scopeClassId.safePathString}.txt" },
+      ) {
+        val allFunctions =
+          functionsInPackage
+            .map { @OptIn(SymbolInternals::class) it.fir.render() }
+            .sorted()
+            .joinToString("\n")
+
+        val filtered =
+          filteredFunctions
+            .map { @OptIn(SymbolInternals::class) it.fir.render() }
+            .sorted()
+            .joinToString("\n")
+
+        val contributedIds =
+          contributingClasses.map { it.classId.safePathString }.sorted().joinToString("\n")
+
+        buildString {
+          appendLine("== All functions")
+          appendLine(allFunctions)
+          appendLine()
+          appendLine("== Filtered functions")
+          appendLine(filtered)
+          appendLine()
+          appendLine("== Contributing classes")
+          appendLine(contributedIds)
+        }
+      }
 
       getScopedContributions(contributingClasses, scopeClassId, typeResolver)
     }
@@ -203,9 +234,9 @@ internal class ContributedInterfaceSupertypeGenerator(
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
-    if (declaration.symbol !in dependencyGraphs) {
-      return false
-    }
+    // Note: we check the annotation directly rather than using the predicate-based provider
+    // because generated @DependencyGraph classes (from external FIR extensions) are not
+    // visible to the predicate-based provider.
     val graphAnnotation = declaration.graphAnnotation() ?: return false
 
     // Can't check the scope class ID here but we'll check in computeAdditionalSupertypes
@@ -229,12 +260,29 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
   }
 
+  @ExperimentalSupertypesGenerationApi
+  override fun computeAdditionalSupertypesForGeneratedNestedClass(
+    klass: FirRegularClass,
+    typeResolver: TypeResolveService,
+  ): List<ConeKotlinType> {
+    // For generated @DependencyGraph classes (from external FIR extensions), FIR calls this
+    // method instead of computeAdditionalSupertypes. Delegate to the shared implementation.
+    return computeContributionSupertypes(klass, typeResolver)
+  }
+
   override fun computeAdditionalSupertypes(
     classLikeDeclaration: FirClassLikeDeclaration,
     resolvedSupertypes: List<FirResolvedTypeRef>,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    val graphAnnotation = classLikeDeclaration.graphAnnotation()!!
+    return computeContributionSupertypes(classLikeDeclaration, typeResolver)
+  }
+
+  private fun computeContributionSupertypes(
+    classLikeDeclaration: FirClassLikeDeclaration,
+    typeResolver: TypeResolveService,
+  ): List<ConeKotlinType> {
+    val graphAnnotation = classLikeDeclaration.graphAnnotation() ?: return emptyList()
 
     val scopes =
       buildSet {
@@ -410,7 +458,12 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
     if (unmatchedExclusions.isNotEmpty()) {
-      // TODO warn?
+      session.metroFirBuiltIns.writeDiagnostic(
+        "merging-unmatched-exclusions-fir",
+        { "${classLikeDeclaration.classId.safePathString}.txt" },
+      ) {
+        unmatchedExclusions.map { it.safePathString }.sorted().joinToString("\n")
+      }
     }
 
     // Process replacements from native contributions
@@ -455,7 +508,12 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
     if (unmatchedReplacements.isNotEmpty()) {
-      // TODO warn?
+      session.metroFirBuiltIns.writeDiagnostic(
+        "merging-unmatched-replacements-fir",
+        { "${classLikeDeclaration.classId.safePathString}.txt" },
+      ) {
+        unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
+      }
     }
 
     if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
@@ -464,11 +522,16 @@ internal class ContributedInterfaceSupertypeGenerator(
         processRankBasedReplacements(scopes, contributions, typeResolver)
 
       pendingRankReplacements.distinct().forEach { replacedClassId ->
-        removeContribution(replacedClassId, unmatchedReplacements)
+        removeContribution(replacedClassId, unmatchedRankReplacements)
       }
 
       if (unmatchedRankReplacements.isNotEmpty()) {
-        // TODO we could report all rank based replacements here
+        session.metroFirBuiltIns.writeDiagnostic(
+          "merging-unmatched-rank-replacements-fir",
+          { "${classLikeDeclaration.classId.safePathString}.txt" },
+        ) {
+          unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
+        }
       }
     }
 
@@ -483,16 +546,20 @@ internal class ContributedInterfaceSupertypeGenerator(
         .map { it.supertype }
         .toSet()
 
-    return contributions.values.filter { metroContribution ->
-      // External contributions pass through directly
-      if (metroContribution in externalSupertypes) {
-        return@filter true
+    return contributions.values
+      .filter { metroContribution ->
+        // External contributions pass through directly
+        if (metroContribution in externalSupertypes) {
+          return@filter true
+        }
+        // Filter out binding containers at the end, they participate in replacements but not in
+        // supertypes
+        metroContribution.classId?.parentClassId?.parentClassId != declarationClassId &&
+          contributionMappingsByClassId[metroContribution.classId] != true
       }
-      // Filter out binding containers at the end, they participate in replacements but not in
-      // supertypes
-      metroContribution.classId?.parentClassId?.parentClassId != declarationClassId &&
-        contributionMappingsByClassId[metroContribution.classId] != true
-    }
+      // Deduplicate by classId. The same contribution type can appear under different keys when
+      // discovered via both hint-based and external extension paths.
+      .distinctBy { it.classId }
   }
 
   /**
@@ -506,15 +573,13 @@ internal class ContributedInterfaceSupertypeGenerator(
     contributions: Map<ClassId, ConeKotlinType>,
     typeResolver: TypeResolveService,
   ): Set<ClassId> {
-    val pendingRankReplacements = mutableSetOf<ClassId>()
-
     val rankedBindings =
       contributions.values
         .filterIsInstance<ConeClassLikeType>()
         .mapNotNull { it.toClassSymbol(session)?.getContainingClassSymbol() }
         .flatMap { contributingType ->
           contributingType
-            .annotationsIn(session, session.classIds.contributesBindingAnnotations)
+            .annotationsIn(session, session.classIds.contributesBindingAnnotationsWithContainers)
             .mapNotNull { annotation ->
               val scope = annotation.resolvedScopeClassId(typeResolver) ?: return@mapNotNull null
               if (scope !in allScopes) return@mapNotNull null
@@ -539,7 +604,7 @@ internal class ContributedInterfaceSupertypeGenerator(
                       .coneType
                   } ?: contributingType.implicitBoundType(typeResolver)
 
-                ContributedBinding(
+                IrRankedBindingProcessing.ContributedBinding(
                   contributingType = contributingType,
                   typeKey =
                     FirTypeKey(
@@ -552,25 +617,12 @@ internal class ContributedInterfaceSupertypeGenerator(
             }
         }
 
-    val bindingGroups =
-      rankedBindings
-        .groupBy { binding -> binding.typeKey }
-        .filter { bindingGroup -> bindingGroup.value.size > 1 }
-
-    for (bindingGroup in bindingGroups.values) {
-      val topBindings =
-        bindingGroup
-          .groupBy { binding -> binding.rank }
-          .toSortedMap()
-          .let { it.getValue(it.lastKey()) }
-
-      // These are the bindings that were outranked and should not be processed further
-      bindingGroup.minus(topBindings).forEach {
-        pendingRankReplacements += it.contributingType.classId
-      }
-    }
-
-    return pendingRankReplacements
+    return computeOutrankedBindings(
+      rankedBindings,
+      typeKeySelector = { it.typeKey },
+      rankSelector = { it.rank },
+      classId = { it.contributingType.classId },
+    )
   }
 
   @OptIn(ResolveStateAccess::class, SymbolInternals::class)
@@ -596,10 +648,4 @@ internal class ContributedInterfaceSupertypeGenerator(
         "${classId.asSingleFqName()} has a ranked binding with no explicit bound type and $size supertypes ($superTypeFqNames). There must be exactly one supertype or an explicit bound type."
       }
   }
-
-  private data class ContributedBinding(
-    val contributingType: FirClassLikeSymbol<*>,
-    val typeKey: FirTypeKey,
-    val rank: Long,
-  )
 }

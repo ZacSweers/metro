@@ -1,4 +1,4 @@
-// Copyright (C) 2021 Zac Sweers
+// Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
@@ -13,7 +13,10 @@ import org.gradle.api.problems.ProblemId
 import org.gradle.api.problems.Problems
 import org.gradle.api.problems.Severity
 import org.gradle.api.provider.Provider
+import org.jetbrains.kotlin.buildtools.api.ExperimentalBuildToolsApi
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
 import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
@@ -24,31 +27,33 @@ import org.jetbrains.kotlin.gradle.plugin.kotlinToolingVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
-public class MetroGradleSubplugin @Inject constructor(private val problems: Problems) :
+public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
   KotlinCompilerPluginSupportPlugin {
 
   private companion object {
-    val gradleMetroKotlinVersion by
-      lazy(LazyThreadSafetyMode.NONE) {
-        KotlinVersion.fromVersion(BASE_KOTLIN_VERSION.substringBeforeLast('.'))
-      }
+    val minKotlinVersion by lazy {
+      SUPPORTED_KOTLIN_VERSIONS.minOf { KotlinVersion.fromVersion(it.substringBeforeLast('.')) }
+    }
 
     val PROBLEM_GROUP: ProblemGroup = ProblemGroup.create("metro-group", "Metro Problems")
+
+    private const val COMPILER_VERSION_OVERRIDE = "metro.compilerVersionOverride"
+    private const val COMPILER_VERSION_OVERRIDE_PROPERTY = "metroCompilerVersionOverride"
   }
 
   private val problemReporter = problems.reporter
 
+  @OptIn(ExperimentalBuildToolsApi::class, ExperimentalKotlinGradlePluginApi::class)
   override fun apply(target: Project) {
-    val toolingVersion = target.kotlinToolingVersion
-
-    val baseToolingVersion =
-      KotlinToolingVersion(toolingVersion.major, toolingVersion.minor, toolingVersion.patch, null)
+    val compilerVersionProvider =
+      target.kotlinExtension.compilerVersion.map { KotlinToolingVersion(it) }
+        ?: target.provider { target.kotlinToolingVersion }
 
     val extension =
       target.extensions.create(
         "metro",
         MetroPluginExtension::class.java,
-        baseToolingVersion,
+        compilerVersionProvider,
         target.layout,
       )
 
@@ -62,18 +67,19 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
           .getOrElse(true)
 
       if (checkVersions) {
+        val compilerVersion = compilerVersionProvider.get()
         val supportedVersions = SUPPORTED_KOTLIN_VERSIONS.map(::KotlinToolingVersion)
         val minSupported = supportedVersions.min()
         val maxSupported = supportedVersions.max()
 
-        val isSupported = toolingVersion in minSupported..maxSupported
+        val isSupported = compilerVersion in minSupported..maxSupported
         if (!isSupported) {
           val compatibilityUrl = "https://zacsweers.github.io/metro/latest/compatibility"
           val disableSolution =
             "You can disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property"
-          if (toolingVersion < minSupported) {
+          if (compilerVersion < minSupported) {
             val label =
-              "Metro '$VERSION' requires Kotlin ${SUPPORTED_KOTLIN_VERSIONS.first()} or later, but this build uses '$toolingVersion'"
+              "Metro '$VERSION' requires Kotlin ${SUPPORTED_KOTLIN_VERSIONS.first()} or later, but this build uses '$compilerVersion'"
             val details =
               "Supported Kotlin versions: ${SUPPORTED_KOTLIN_VERSIONS.first()} - ${SUPPORTED_KOTLIN_VERSIONS.last()}"
             val solution =
@@ -97,7 +103,7 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
               "$label. $solution.\n$details.\nDocs: $compatibilityUrl\n($disableSolution)"
             )
           } else {
-            val label = "This build uses unrecognized Kotlin version '$toolingVersion'"
+            val label = "This build uses unrecognized Kotlin version '$compilerVersion'"
             val details =
               "Metro '$VERSION' supports the following Kotlin versions: $SUPPORTED_KOTLIN_VERSIONS"
             val solution =
@@ -164,7 +170,7 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
   override fun getCompilerPluginId(): String = PLUGIN_ID
 
   override fun getPluginArtifact(): SubpluginArtifact {
-    val version = System.getProperty("metro.compilerVersionOverride", VERSION)
+    val version = System.getProperty(COMPILER_VERSION_OVERRIDE, VERSION)
     return SubpluginArtifact(
       groupId = "dev.zacsweers.metro",
       artifactId = "compiler",
@@ -176,6 +182,11 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
     return true
   }
 
+  @OptIn(
+    DangerousMetroGradleApi::class,
+    ExperimentalMetroGradleApi::class,
+    RequiresIdeSupport::class,
+  )
   override fun applyToCompilation(
     kotlinCompilation: KotlinCompilation<*>
   ): Provider<List<SubpluginOption>> {
@@ -200,40 +211,52 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
       }
     }
 
-    // Ensure that the languageVersion is 2.x
     kotlinCompilation.compileTaskProvider.configure { task ->
+      // Specify the compiler version
+      task.inputs.property(
+        COMPILER_VERSION_OVERRIDE_PROPERTY,
+        project.providers.systemProperty(COMPILER_VERSION_OVERRIDE).orElse(VERSION),
+      )
+
+      // Ensure that the languageVersion is compatible
       task.doFirst { innerTask ->
         val compilerOptions = (innerTask as KotlinCompilationTask<*>).compilerOptions
         val languageVersion = compilerOptions.languageVersion.orNull ?: return@doFirst
-        check(languageVersion >= gradleMetroKotlinVersion) {
-          "Compilation task '${innerTask.name}' targets language version '${languageVersion.version}' but Metro requires Kotlin '${gradleMetroKotlinVersion.version}' or later."
+        check(languageVersion >= minKotlinVersion) {
+          "Compilation task '${innerTask.name}' targets language version '${languageVersion.version}' but Metro requires Kotlin '${minKotlinVersion.version}' or later."
         }
       }
-    }
-
-    project.dependencies.add(
-      kotlinCompilation.implementationConfigurationName,
-      "dev.zacsweers.metro:runtime:$VERSION",
-    )
-    if (kotlinCompilation.implementationConfigurationName == "metadataCompilationImplementation") {
-      project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
     }
 
     val isJvmTarget =
       kotlinCompilation.target.platformType == KotlinPlatformType.jvm ||
         kotlinCompilation.target.platformType == KotlinPlatformType.androidJvm
-    if (isJvmTarget) {
-      if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
-        project.dependencies.add(
-          kotlinCompilation.implementationConfigurationName,
-          "dev.zacsweers.metro:interop-dagger:$VERSION",
-        )
+
+    if (extension.automaticallyAddRuntimeDependencies.get()) {
+      project.dependencies.add(
+        kotlinCompilation.defaultSourceSet.implementationConfigurationName,
+        "dev.zacsweers.metro:runtime:$VERSION",
+      )
+      if (
+        kotlinCompilation.defaultSourceSet.implementationConfigurationName ==
+          "metadataCompilationImplementation"
+      ) {
+        project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
       }
-      if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
-        project.dependencies.add(
-          kotlinCompilation.implementationConfigurationName,
-          "dev.zacsweers.metro:interop-guice:$VERSION",
-        )
+
+      if (isJvmTarget) {
+        if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
+          project.dependencies.add(
+            kotlinCompilation.defaultSourceSet.implementationConfigurationName,
+            "dev.zacsweers.metro:interop-dagger:$VERSION",
+          )
+        }
+        if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
+          project.dependencies.add(
+            kotlinCompilation.defaultSourceSet.implementationConfigurationName,
+            "dev.zacsweers.metro:interop-guice:$VERSION",
+          )
+        }
       }
     }
 
@@ -300,14 +323,20 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
               extension.enableGraphImplClassAsReturnType.orElse(false),
             )
           )
+          @Suppress("DEPRECATION_ERROR")
           add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
           add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
+          @Suppress("DEPRECATION_ERROR")
           add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
           add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
           add(lazyOption("enable-graph-sharding", extension.enableGraphSharding))
           add(lazyOption("keys-per-graph-shard", extension.keysPerGraphShard))
+          add(lazyOption("enable-switching-providers", extension.enableSwitchingProviders))
           add(lazyOption("optional-binding-behavior", extension.optionalBindingBehavior))
-          add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
+          add(lazyOption("public-scoped-provider-severity", extension.publicScopedProviderSeverity))
+          add(
+            lazyOption("non-public-contribution-severity", extension.nonPublicContributionSeverity)
+          )
           add(
             lazyOption(
               "warn-on-inject-annotation-placement",
@@ -320,6 +349,7 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
               extension.interopAnnotationsNamedArgSeverity,
             )
           )
+          add(lazyOption("unused-graph-inputs-severity", extension.unusedGraphInputsSeverity))
           add(
             lazyOption(
               "enable-top-level-function-injection",
@@ -327,6 +357,28 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
             )
           )
           add(lazyOption("contributes-as-inject", extension.contributesAsInject))
+          add(lazyOption("deduplicate-injected-params", extension.deduplicateInjectedParams))
+          add(lazyOption("enable-klib-params-check", extension.enableKlibParamsCheck))
+          add(lazyOption("patch-klib-params", extension.patchKlibParams))
+          add(lazyOption("force-enable-fir-in-ide", extension.forceEnableFirInIde))
+          add(lazyOption("compiler-version", extension.compilerVersion))
+          add(
+            lazyOption(
+              "compiler-version-aliases",
+              extension.compilerVersionAliases.map { map ->
+                map.entries.joinToString(":") { "${it.key}=${it.value}" }
+              },
+            )
+          )
+          add(
+            lazyOption(
+              "use-assisted-param-names-as-identifiers",
+              extension.useAssistedParamNamesAsIdentifiers,
+            )
+          )
+          add(lazyOption("assisted-identifier-severity", extension.assistedIdentifierSeverity))
+          add(lazyOption("parallel-threads", extension.parallelThreads))
+          add(lazyOption("enable-function-providers", extension.enableFunctionProviders))
           add(lazyOption("enable-circuit-codegen", extension.enableCircuitCodegen))
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
@@ -334,11 +386,27 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
             ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
             ?.let(::add)
 
+          val traceDir =
+            extension.traceDestination.map { baseDir ->
+              listOf(kotlinCompilation.target.name, kotlinCompilation.name)
+                .filter(String::isNotBlank)
+                .fold(baseDir) { dir, segment -> dir.dir(segment) }
+            }
+          traceDir.orNull
+            ?.let { FilesSubpluginOption("trace-destination", listOf(it.asFile)) }
+            ?.let(::add)
+
           if (isJvmTarget) {
             add(
               SubpluginOption(
                 "enable-dagger-runtime-interop",
                 extension.interop.enableDaggerRuntimeInterop.getOrElse(false).toString(),
+              )
+            )
+            add(
+              lazyOption(
+                "enable-kclass-to-class-interop",
+                extension.enableKClassToClassMapKeyInterop,
               )
             )
           }

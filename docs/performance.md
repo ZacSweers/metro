@@ -23,7 +23,7 @@ Metro's compiler plugin is designed to be _fast_. Running as a compiler plugin a
 - Generate IR that lowers directly into target platforms
 - Hook directly into kotlinc's IC APIs.
 
-**In a straightforward migration, it improves ABI-changing build performance by 80-85%.**
+**In a straightforward migration, it improves ABI-changing build performance by 80–85%.**
 
 #### Methodology
 
@@ -147,63 +147,25 @@ Below are some results from real-world projects, shared with the developers' per
 
     > We already had incremental compilation in the single-digit seconds range, but I’m still blown away by how much faster it is now that the entire codebase is fully on Metro. 🤯
 
-## Reporting
+!!! note "Vinted"
+    Vinted adopted metro and reaped significant build time and developer experience improvements: [From Dagger to Metro](https://vinted.engineering/2026/02/12/from-dagger-to-metro/)
 
-If you want to investigate the performance of different stages of Metro's compiler pipeline, you can enable reporting in the Gradle DSL.
+    > Metro consolidated all the best practices from other popular frameworks, while leaving out the not-so-best practices on the side, allowed us to enable K2 and immediately experience significant build time improvements, while also unlocking incremental compilation, which means that the builds will be getting even faster
+
+## Tracing
+
+If you want to investigate the performance of Metro's compiler pipeline, you can enable tracing in the Gradle DSL.
 
 ```kotlin
 metro {
-  reportsDestination.set(layout.buildDirectory.dir("metro/reports"))
+  traceDestination.set(layout.buildDirectory.dir("metro/trace"))
 }
 ```
 
-Among the reports written there, there will also be a trace log that dumps a simple trace of the different stages.
+This will output a Perfetto trace file after the compilation that you can then load into https://ui.perfetto.dev.
 
-```
-[ExampleGraph] ▶ Transform dependency graph
-  ▶ Build DependencyGraphNode
-  ◀ Build DependencyGraphNode (xx ms)
-  ▶ Implement creator functions
-  ◀ Implement creator functions (xx ms)
-  ▶ Build binding graph
-  ◀ Build binding graph (xx ms)
-  ▶ Validate binding graph
-    ▶ Check self-cycles
-    ◀ Check self-cycles (xx ms)
-    ▶ Validate graph
-      ▶ seal graph
-        ▶ Populate bindings
-        ◀ Populate bindings (xx ms)
-        ▶ Build adjacency list
-        ◀ Build adjacency list (xx ms)
-        ▶ Sort and validate
-          ▶ Topo sort
-            ▶ Compute SCCs
-            ◀ Compute SCCs (xx ms)
-            ▶ Check for cycles
-            ◀ Check for cycles (xx ms)
-            ▶ Build component DAG
-            ◀ Build component DAG (xx ms)
-            ▶ Topo sort component DAG
-            ◀ Topo sort component DAG (xx ms)
-            ▶ Expand components
-            ◀ Expand components (xx ms)
-          ◀ Topo sort (xx ms)
-        ◀ Sort and validate (xx ms)
-        ▶ Compute binding indices
-        ◀ Compute binding indices (xx ms)
-      ◀ seal graph (xx ms)
-      ▶ check empty multibindings
-      ◀ check empty multibindings (xx ms)
-      ▶ check for absent bindings
-      ◀ check for absent bindings (xx ms)
-    ◀ Validate graph (xx ms)
-  ◀ Validate binding graph (xx ms)
-  ▶ Transform metro graph
-    ▶ Collect bindings
-    ◀ Collect bindings (xx ms)
-    ▶ Implement overrides
-    ◀ Implement overrides (xx ms)
-  ◀ Transform metro graph (xx ms)
-[ExampleGraph] ◀ Transform dependency graph (xx ms)
-```
+Note that these traces probably do require a bit of familiarity with the Metro compiler internals and only trace the IR transformation layer.
+
+!!! warning
+
+    Note that file option inputs like `traceDestination` are _not_ tracked as inputs to the kotlin compilation, so you should run your target kotlin compilation task with `--rerun` (not `--rerun-tasks`!) to ensure it it's not cached.

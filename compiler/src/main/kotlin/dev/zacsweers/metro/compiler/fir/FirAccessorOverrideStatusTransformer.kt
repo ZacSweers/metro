@@ -35,8 +35,10 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 
-internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
-  FirStatusTransformerExtension(session), CompatContext by session.compatContext {
+internal class FirAccessorOverrideStatusTransformer(
+  session: FirSession,
+  compatContext: CompatContext,
+) : FirStatusTransformerExtension(session), CompatContext by compatContext {
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.dependencyGraphPredicate)
   }

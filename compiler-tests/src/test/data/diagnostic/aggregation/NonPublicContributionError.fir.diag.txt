@@ -1,0 +1,7 @@
+/NonPublicContributionError.kt:(185,193): error: `@ContributesBinding`-annotated class InternalContribution is internal but contributes to a public scope `AppScope`. Consider making the class public or using a non-public scope.
+
+/NonPublicContributionError.kt:(270,277): error: `@ContributesTo`-annotated class PrivateContribution is private-in-file but contributes to a public scope `AppScope`. Consider making the class public or using a non-public scope.
+
+/NonPublicContributionError.kt:(415,441): error: `@ContributesBinding`-annotated class InternalObject.PublicContributionInObject is internal but contributes to a public scope `AppScope`. Consider making the class public or using a non-public scope.
+
+/NonPublicContributionError.kt:(528,537): error: `@ContributesTo`-annotated class AbstractClass.ProtectedContribution is protected but contributes to a public scope `AppScope`. Consider making the class public or using a non-public scope.

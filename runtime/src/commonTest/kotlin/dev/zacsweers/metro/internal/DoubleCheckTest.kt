@@ -22,11 +22,15 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
-import kotlinx.atomicfu.atomic
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.incrementAndFetch
 
+@OptIn(ExperimentalAtomicApi::class)
 class DoubleCheckTest {
-  val doubleCheckReference = atomic<Provider<Any>?>(null)
-  val invocationCount = atomic(0)
+  val doubleCheckReference = AtomicReference<Provider<Any>?>(null)
+  val invocationCount = AtomicInt(0)
 
   @Test
   fun `double wrapping provider`() {
@@ -44,13 +48,13 @@ class DoubleCheckTest {
     val doubleCheck =
       DoubleCheck.provider(
         Provider {
-          if (invocationCount.incrementAndGet() == 1) {
-            doubleCheckReference.value!!.invoke()
+          if (invocationCount.incrementAndFetch() == 1) {
+            doubleCheckReference.load()!!.invoke()
           }
           obj
         }
       )
-    doubleCheckReference.value = doubleCheck
+    doubleCheckReference.store(doubleCheck)
     assertSame(obj, doubleCheck())
   }
 
@@ -59,13 +63,13 @@ class DoubleCheckTest {
     val doubleCheck =
       DoubleCheck.provider(
         Provider {
-          if (invocationCount.incrementAndGet() == 1) {
-            doubleCheckReference.value!!.invoke()
+          if (invocationCount.incrementAndFetch() == 1) {
+            doubleCheckReference.load()!!.invoke()
           }
           Any()
         }
       )
-    doubleCheckReference.value = doubleCheck
+    doubleCheckReference.store(doubleCheck)
     assertFailsWith<IllegalStateException> { doubleCheck() }
   }
 

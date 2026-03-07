@@ -46,7 +46,7 @@ internal object IrOptionalExpressionGenerator : IrWrappedTypeGenerator {
     val callee: IrFunctionSymbol
     val typeHint: IrType
     when (kind) {
-      OptionalKind.JAVA -> {
+      JAVA -> {
         callee = context.metroSymbols.javaOptionalEmpty
         typeHint = context.metroSymbols.javaOptional.typeWith(type)
       }
@@ -64,7 +64,7 @@ internal object IrOptionalExpressionGenerator : IrWrappedTypeGenerator {
     val callee: IrFunctionSymbol
     val typeHint: IrType
     when (kind) {
-      OptionalKind.JAVA -> {
+      JAVA -> {
         callee = context.metroSymbols.javaOptionalOf
         typeHint = context.metroSymbols.javaOptional.typeWith(type)
       }
@@ -82,7 +82,7 @@ internal fun IrType.optionalKind(): OptionalKind? {
   val classId = rawTypeOrNull()?.classId ?: return null
   return when (classId) {
     Symbols.ClassIds.JavaOptional -> OptionalKind.JAVA
-    else -> return null
+    else -> null
   }
 }
 
@@ -93,7 +93,7 @@ internal fun IrType.optionalType(declaration: IrDeclaration?): IrType? {
       val message = "Optional type argument is star projection"
       declaration?.let { context.reportCompat(it, MetroDiagnostics.METRO_ERROR, message) }
         ?: error(message)
-      return null
+      null
     }
     is IrTypeProjection -> typeArg.type
   }

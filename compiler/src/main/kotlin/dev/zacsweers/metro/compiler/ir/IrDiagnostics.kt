@@ -3,7 +3,10 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.ERROR
@@ -23,6 +26,8 @@ import org.jetbrains.kotlin.ir.util.sourceElement
 /*
 Compat reporting functions until IrDiagnosticReporter supports source-less declarations
 */
+
+private val REPORT_LOCK = ReentrantLock()
 
 @OptIn(InternalDiagnosticFactoryMethod::class)
 internal fun <A : Any> IrMetroContext.reportCompat(
@@ -49,26 +54,50 @@ private fun convertSeverity(severity: Severity): CompilerMessageSeverity =
     Severity.FIXED_WARNING -> FIXED_WARNING
   }
 
-@OptIn(InternalDiagnosticFactoryMethod::class)
-@Suppress("DEPRECATION")
 internal fun <A : Any> IrMetroContext.reportCompat(
   irDeclaration: IrDeclaration?,
   factory: KtDiagnosticFactory1<A>,
   a: A,
   extraContext: StringBuilder.() -> Unit = {},
 ) {
+  if (options.parallelThreads > 0) {
+    REPORT_LOCK.withLock { reportCompatImpl(irDeclaration, factory, a, extraContext) }
+  } else {
+    reportCompatImpl(irDeclaration, factory, a, extraContext)
+  }
+}
+
+private fun <A : Any> IrMetroContext.reportCompatImpl(
+  irDeclaration: IrDeclaration?,
+  factory: KtDiagnosticFactory1<A>,
+  a: A,
+  extraContext: StringBuilder.() -> Unit,
+) {
   val sourceElement = irDeclaration?.sourceElement()
   if (irDeclaration?.fileOrNull == null || sourceElement == null) {
     // Report through message collector for now
     // If we have a source element, report the diagnostic directly
     if (sourceElement != null) {
-      val diagnostic = factory.on(sourceElement, a, null, languageVersionSettings)
-      reportDiagnosticToMessageCollector(
-        diagnostic!!,
-        irDeclaration.locationOrNull(),
-        messageCollector,
-        false,
-      )
+      // TODO https://youtrack.jetbrains.com/issue/KT-83491
+      // val sourcelessFactory = factory.asSourcelessFactory()
+      val sourcelessFactory = MetroDiagnostics.SOURCELESS_METRO_ERROR
+      if (supportsSourcelessIrDiagnostics) {
+        diagnosticReporter.reportCompat(sourcelessFactory, a as String)
+      } else {
+        val diagnostic =
+          sourcelessFactory.createCompat(
+            a as String,
+            irDeclaration.locationOrNull(),
+            languageVersionSettings,
+          )
+        @Suppress("DEPRECATION")
+        reportDiagnosticToMessageCollector(
+          diagnostic!!,
+          irDeclaration.locationOrNull(),
+          messageCollector,
+          false,
+        )
+      }
       return
     }
     val severity = convertSeverity(factory.severity)
@@ -85,20 +114,29 @@ internal fun <A : Any> IrMetroContext.reportCompat(
           appendLine()
           appendLine("(context)")
           append("Encountered while processing declaration '")
-          append(irDeclaration.humanReadableDiagnosticLocation())
+          val (fullPath, metadata) = irDeclaration.humanReadableDiagnosticMetadata()
+          append(fullPath)
           append("'")
           appendLine(" (no source location available)")
+          if (metadata.isNotEmpty()) {
+            for (line in metadata) {
+              appendLine("- $line")
+            }
+          }
           extraContext()
         }
       } else {
         a.toString()
       }
-    messageCollector.report(severity, message, location)
+    @Suppress("DEPRECATION") messageCollector.report(severity, message, location)
   } else {
     diagnosticReporter.at(irDeclaration).report(factory, a)
   }
-  // Log an error to MetroContext
-  onErrorReported()
+
+  if (factory.severity == Severity.ERROR) {
+    // Log an error to MetroContext
+    onErrorReported()
+  }
 }
 
 private fun reportDiagnosticToMessageCollector(

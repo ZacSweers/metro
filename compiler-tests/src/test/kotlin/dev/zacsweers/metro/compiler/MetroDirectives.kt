@@ -9,8 +9,7 @@ import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.SimpleDirectivesContainer
 
 object MetroDirectives : SimpleDirectivesContainer() {
-  val ENABLE_IF_PROPERTY_SET by
-    stringDirective("Ignores this test unless a given property is set to true")
+  val METRO_IGNORE by directive("Ignores this test unless a given property is set to true")
   val DISABLE_METRO by directive("Disables metro entirely on this module compilation if present.")
   val COMPILER_VERSION by stringDirective("Target kotlin compiler version, if any")
   // TODO eventually support multiple outputs
@@ -18,15 +17,17 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive("Generate custom test data files per compiler version")
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
-  val DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE by
-    directive("Disables automatic transformation of providers to be private.")
+  val TRANSFORM_PROVIDERS_TO_PRIVATE by
+    valueDirective("Controls automatic transformation of providers to be private.") {
+      it.toBoolean()
+    }
   val GENERATE_CONTRIBUTION_HINTS by
     valueDirective("Enable/disable generation of contribution hint generation.") { it.toBoolean() }
   val GENERATE_CONTRIBUTION_HINTS_IN_FIR by
     directive("Enable/disable generation of contribution hint generation in FIR.")
-  val PUBLIC_PROVIDER_SEVERITY by
+  val PUBLIC_SCOPED_PROVIDER_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
-      "Control diagnostic severity reporting of public providers."
+      "Control diagnostic severity reporting of public scoped providers."
     )
   val SHRINK_UNUSED_BINDINGS by
     valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
@@ -40,6 +41,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Maximum number of binding keys per graph shard when sharding is enabled.") {
       it.toInt()
     }
+  val ENABLE_SWITCHING_PROVIDERS by
+    valueDirective("Enable SwitchingProviders for deferred class loading.") { it.toBoolean() }
   val ENABLE_FULL_BINDING_GRAPH_VALIDATION by
     directive(
       "Enable/disable full binding graph validation of binds and provides declarations even if they are unused."
@@ -62,10 +65,33 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of interop annotations using positional arguments instead of named arguments."
     )
+  val NON_PUBLIC_CONTRIBUTION_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of @Contributes*-annotated declarations that are non-public."
+    )
+  val UNUSED_GRAPH_INPUTS_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph)."
+    )
   val CONTRIBUTES_AS_INJECT by
     directive(
       "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations."
     )
+  val USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS by
+    valueDirective(
+      "When enabled, Metro's native @Assisted annotation uses the parameter name as the default identifier."
+    ) {
+      it.toBoolean()
+    }
+  val ASSISTED_IDENTIFIER_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity when explicit @Assisted(\"value\") identifiers are used."
+    )
+  val PARALLEL_THREADS by
+    valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
+  val ENABLE_FUNCTION_PROVIDERS by directive("Enable () -> T as a provider type.")
+  val ENABLE_KCLASS_TO_CLASS_INTEROP by
+    directive("Enable KClass/Class interop for multibinding map keys.")
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
@@ -114,6 +140,12 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val REPORTS_DESTINATION by
     stringDirective(
       "Relative path to a directory to dump Metro reports information. Example: 'metro/reports'."
+    )
+  val CHECK_REPORTS by
+    stringDirective(
+      "Specifies report file names to verify against expected files. Can be specified multiple times. " +
+        "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir/test/AppGraph'. " +
+        "Expected files should be named '<testFile>/<diagnosticKey>/<path>/<reportName>.txt'."
     )
   val ENABLE_CIRCUIT by
   directive(

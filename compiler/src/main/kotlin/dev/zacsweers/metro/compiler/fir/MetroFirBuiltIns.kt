@@ -5,8 +5,13 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import java.nio.file.Path
+import kotlin.io.path.createParentDirectories
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.writeText
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
@@ -19,6 +24,7 @@ internal class MetroFirBuiltIns(
   val classIds: ClassIds,
   val predicates: ExtensionPredicates,
   val options: MetroOptions,
+  val compatContext: CompatContext,
 ) : FirExtensionSessionComponent(session) {
 
   val errorFunctionSymbol by memoize {
@@ -92,6 +98,11 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
+  val hiddenFromObjCClassSymbol by memoize {
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.HiddenFromObjC)
+      as FirRegularClassSymbol?
+  }
+
   val stableClassSymbol by memoize {
     session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.Stable)
       as FirRegularClassSymbol
@@ -157,10 +168,42 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
-  companion object {
-    fun getFactory(classIds: ClassIds, options: MetroOptions) = Factory { session ->
-      MetroFirBuiltIns(session, classIds, ExtensionPredicates(classIds), options)
+  /**
+   * @param diagnosticKey A string identifier for the category of diagnostic being generated. This
+   *   will be treated as a prefix path segment. E.g. a key of "keys-populated" will result in
+   *   <reports-folder>/keys-populated/<fileName>
+   */
+  internal inline fun writeDiagnostic(
+    diagnosticKey: String,
+    fileName: () -> String,
+    text: () -> String,
+  ) {
+    if (session.isCli() && options.reportsEnabled) {
+      options.reportsDir.value?.let { writeDiagnostic(it, diagnosticKey, fileName(), text()) }
     }
+  }
+
+  private fun writeDiagnostic(
+    reportsDir: Path,
+    diagnosticKey: String,
+    fileName: String,
+    text: String,
+  ) {
+    reportsDir
+      .resolve(createDiagnosticReportPath(diagnosticKey, fileName))
+      .apply {
+        // Ensure that the path leading up to the file has been created
+        createParentDirectories()
+        deleteIfExists()
+      }
+      .writeText(text)
+  }
+
+  companion object {
+    fun getFactory(classIds: ClassIds, options: MetroOptions, compatContext: CompatContext) =
+      Factory { session ->
+        MetroFirBuiltIns(session, classIds, ExtensionPredicates(classIds), options, compatContext)
+      }
   }
 }
 
@@ -172,6 +215,5 @@ internal val FirSession.classIds: ClassIds
 internal val FirSession.predicates: ExtensionPredicates
   get() = metroFirBuiltIns.predicates
 
-@Suppress("UnusedReceiverParameter")
-internal val FirSession.compatContext: CompatContext
-  get() = CompatContext.getInstance()
+internal inline val FirSession.compatContext: CompatContext
+  get() = metroFirBuiltIns.compatContext

@@ -240,6 +240,62 @@ interface AppGraph {
 }
 ```
 
+### Graph-private Bindings
+
+By default, all bindings in a graph are implicitly available to its graph extensions. `@GraphPrivate` allows marking `@Provides`, `@Binds`, or `@Multibinds` declarations as _private_ to the graph they are provided in. This means:
+
+- The binding **may not** be exposed directly via an accessor.
+- The binding **will not** be visible to extensions of this graph.
+
+Private bindings _may_ be depended on by other bindings within the same graph as an implementation detail.
+
+This is useful for a few situations:
+
+- Confining certain bindings to a given graph, such as a base `HttpClient` that shouldn't leak to child graphs.
+- Omitting certain contributions to multibindings from leaking to extensions.
+- Avoiding accidental leaking of same-typed scoped instances across graph boundaries. For example, both a parent and child graph may provide a scoped `CoroutineScope` — by marking each as private, you can trust that each graph uses its own instance without needing qualifier annotations like `@ForScope` to disambiguate.
+
+```kotlin
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  @GraphPrivate
+  @Provides
+  @SingleIn(AppScope::class)
+  fun provideCoroutineScope(): CoroutineScope = ...
+
+  // Error — cannot expose a @GraphPrivate binding as an accessor
+  val coroutineScope: CoroutineScope
+
+  val loggedInGraph: LoggedInGraph
+}
+
+@GraphExtension
+interface LoggedInGraph {
+  // Error — CoroutineScope is @GraphPrivate in the parent and not visible here
+  val coroutineScope: CoroutineScope
+}
+```
+
+??? note "Binds Implementation Notes"
+
+    A non-private `@Binds` declaration _may_ depend on a `@GraphPrivate` binding. In this case, the result type is visible to child graphs even though the source type is not. The child accesses the aliased type as a parent-resolved dependency rather than re-resolving the alias.
+
+    ```kotlin
+    @DependencyGraph(AppScope::class)
+    interface AppGraph {
+      @GraphPrivate @SingleIn(AppScope::class) @Provides fun provideString(): String = "hello"
+      @Binds fun bindCharSequence(value: String): CharSequence
+    
+      fun createChild(): ChildGraph
+    }
+    
+    @GraphExtension
+    interface ChildGraph {
+      val text: CharSequence // OK — CharSequence is visible via the public @Binds alias
+      val string: String     // Error — String is @GraphPrivate in the parent
+    }
+    ```
+
 ### Creators
 
 See [DependencyGraph](#inputs)'s section on creators.
@@ -558,7 +614,7 @@ Dependency graph code gen is designed to largely match how Dagger components are
 
 Metro applies several optimizations to generated graph code to reduce class size and improve runtime performance.
 
-#### Dead binding elimination
+#### Unused binding elimination
 
 By default, Metro removes bindings that are not reachable from any accessor or member injector function. This reduces the size of generated code and avoids unnecessary initialization work.
 
@@ -619,10 +675,12 @@ class AppGraph$Impl : AppGraph {
 }
 ```
 
-Configuration options:
+!!! Configuration
 
-- `metro.chunkFieldInits` - Enable/disable chunking (default: `true`)
-- `metro.statementsPerInitFun` - Max statements per init function (default: `25`)
+    | Gradle Extension Property | Gradle/System Property | Compiler Option | Description |
+    | ------------------ | --------------- | --------------- | ----------- |
+    | chunkFieldInits | `metro.chunkFieldInits` | `chunk-field-inits` | Enable/disable chunking (default: `true`) |
+    | statementsPerInitFun | `metro.statementsPerInitFun` | `statements-per-init-fun` | Max statements per init function (default: `25`) |
 
 #### Sharding
 
@@ -659,8 +717,53 @@ class AppGraph$Impl : AppGraph {
 
 Sharding respects required binding initialization order and keeps strongly connected components (valid cycles broken by `Provider`/`Lazy`) together in the same shard.
 
-Configuration options:
+This feature is disabled by default but will likely be enabled by default in the future.
 
-- `metro.enableGraphSharding` - Enable/disable sharding (default: `false`)
-- `metro.keysPerGraphShard` - Max bindings per shard (default: `2000`)
+!!! Configuration
 
+    | Gradle Extension Property | Gradle/System Property | Compiler Option | Description |
+    | ------------------ | --------------- | --------------- | ----------- |
+    | enableGraphSharding | `metro.enableGraphSharding` | `enable-graph-sharding` | Enable/disable sharding (default: `false`) |
+    | keysPerGraphShard | `metro.keysPerGraphShard` | `keys-per-graph-shard` | Max bindings per shard (default: `2000`) |
+
+#### Switching Providers
+
+Switching providers are an optimization in graph generation that defers class loading. This can reduce graph initialization time by deferring bindings' class init until it's actually requested.
+
+This is analogous to Dagger's `fastInit` option.
+
+You should really _only_ use this if you've benchmarked it and measured a meaningful difference, as it comes with the same tradeoffs (always holding a graph instance ref, etc.)
+
+```kotlin
+// The graph
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  @Provides @SingleIn(AppScope::class) fun provideString(): String = "Hello, world!"
+  @Provides @SingleIn(AppScope::class) fun provideInt(string: String): Int = string.length
+  
+  val stringLength: Int
+}
+
+// Generated structure for a graph with switching providers
+class AppGraph$Impl : AppGraph {
+  private val provider1: Provider<String> DoubleCheck.provider(SwitchingProvider<String>(this, 0))
+  private val provider2: Provider<Int> DoubleCheck.provider(SwitchingProvider<Int>(this, 1))
+  
+  @Provides 
+
+  private class SwitchingProvider<T>(private val graph: Impl, private val id: Int) : Provider<T> {
+    override operator fun invoke(): T {
+      when (id) {
+        0 -> StringFactory.newInstance(...) as T
+        1 -> IntFactory.newInstance(graph.provider1()) as T
+      }
+    }
+  }
+}
+```
+
+!!! Configuration
+
+    | Gradle Extension Property | Gradle/System Property | Compiler Option | Description |
+    | ------------------ | --------------- | --------------- | ----------- |
+    | enableSwitchingProviders | `metro.enableSwitchingProviders` | `enable-switching-providers` | Enable/disable switching providers (default: `false`) |

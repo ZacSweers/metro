@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.FirContextualTypeKey
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -15,7 +14,9 @@ import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateBindingSource
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.memoize
@@ -24,6 +25,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.KtFakeSourceElementKind
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -39,6 +41,8 @@ import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
@@ -51,20 +55,23 @@ import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.propertyIfAccessor
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.fir.types.isList
+import org.jetbrains.kotlin.fir.types.isSet
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.type
 
-// TODO
-//  What about future Kotlin versions where you can have different get signatures
 internal object BindingContainerCallableChecker :
   FirCallableDeclarationChecker(MppCheckerKind.Common) {
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirCallableDeclaration) {
+    // Skip value params we only really care about member callables here
+    // tbh not sure why these come through here
+    if (declaration is FirValueParameter) return
+
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -114,7 +121,25 @@ internal object BindingContainerCallableChecker :
 
     val annotations = declaration.symbol.metroAnnotations(session)
 
+    // Dagger's @LazyClassKey isn't supported
+    if (declaration !is FirPropertyAccessor) {
+      annotations.lazyClassKey?.let {
+        reporter.reportOn(it.fir.source ?: source, MetroDiagnostics.DAGGER_LAZY_CLASS_KEY_ERROR)
+        return
+      }
+    }
+
     declaration.symbol.validateBindingSource(annotations)
+
+    // @GraphPrivate can only be applied to @Provides, @Binds, or @Multibinds declarations
+    if (annotations.isGraphPrivate) {
+      val hasValidBindingAnnotation =
+        annotations.isProvides ||
+          annotations.isBinds ||
+          annotations.isMultibinds ||
+          annotations.isBindsOptionalOf // Not noted in the message as it's just for interop
+      reportInvalidGraphPrivate(source, hasValidBindingAnnotation)
+    }
 
     if (
       session.metroFirBuiltIns.options.enableDaggerRuntimeInterop && annotations.isBindsOptionalOf
@@ -230,23 +255,22 @@ internal object BindingContainerCallableChecker :
     }
 
     val isPrivate = declaration.visibility == Visibilities.Private
-    if (!isPrivate && !annotations.isMultibinds && declaration !is FirProperty) {
-      if (
-        session.metroFirBuiltIns.options.publicProviderSeverity !=
-          MetroOptions.DiagnosticSeverity.NONE
-      ) {
-        val kind = if (annotations.isBinds) "Binds" else "Provides"
-        val message = "`@$kind` declarations should be private."
-        val diagnosticFactory =
-          when (session.metroFirBuiltIns.options.publicProviderSeverity) {
-            MetroOptions.DiagnosticSeverity.NONE -> reportCompilerBug("Not possible")
-            MetroOptions.DiagnosticSeverity.WARN ->
-              MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
-            MetroOptions.DiagnosticSeverity.ERROR ->
-              MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
-          }
-        reporter.reportOn(source, diagnosticFactory, message)
-      }
+    val shouldReportForPublic =
+      !isPrivate &&
+        annotations.isScoped &&
+        !annotations.isMultibinds &&
+        declaration !is FirProperty &&
+        session.metroFirBuiltIns.options.publicScopedProviderSeverity.isEnabled
+
+    if (shouldReportForPublic) {
+      val message = "Scoped @Provides declarations should be private."
+      val diagnosticFactory =
+        when (session.metroFirBuiltIns.options.publicScopedProviderSeverity) {
+          NONE -> reportCompilerBug("Not possible")
+          WARN -> MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING
+          ERROR -> MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR
+        }
+      reporter.reportOn(source, diagnosticFactory, message)
     }
 
     val bodyExpression =
@@ -358,6 +382,17 @@ internal object BindingContainerCallableChecker :
 
     val returnType = returnTypeRef.coneTypeOrNull ?: return
 
+    // Report a warning if this is `@IntoSet` and also returns a `Set`, as it's probably not what
+    // they mean!
+    if (annotations.isIntoSet && (returnType.isSet || returnType.isList)) {
+      val render = returnType.render(short = true)
+      reporter.reportOn(
+        returnTypeRef.source ?: declaration.source,
+        MetroDiagnostics.SUSPICIOUS_SET_INTO_SET,
+        "Suspicious `@IntoSet` return type. This declaration returns a `$render`, which would create a `Set<$render>` multibinding. Did you mean to use `@ElementsIntoSet`? Or if this is intentional, suppress this warning with `@Suppress(\"${MetroDiagnostics.SUSPICIOUS_SET_INTO_SET.name}\")`",
+      )
+    }
+
     if (annotations.isProvides) {
       if (bodyExpression == null) {
         reporter.reportOn(
@@ -368,7 +403,7 @@ internal object BindingContainerCallableChecker :
       }
 
       if (returnType.typeArguments.isEmpty()) {
-        val returnClass = returnType.toClassSymbol(session) ?: return
+        val returnClass = returnType.toClassSymbolCompat(session) ?: return
         val injectConstructor = returnClass.findInjectConstructors(session).firstOrNull()
 
         if (injectConstructor != null) {
@@ -457,5 +492,23 @@ internal object BindingContainerCallableChecker :
       }
     }
     return false
+  }
+}
+
+/**
+ * Reports [MetroDiagnostics.PRIVATE_BINDING_ERROR] if `@GraphPrivate` is used without a valid
+ * binding annotation (`@Provides`, `@Binds`, or `@Multibinds`).
+ */
+context(context: CheckerContext, reporter: DiagnosticReporter)
+internal fun reportInvalidGraphPrivate(
+  source: KtSourceElement?,
+  hasValidBindingAnnotation: Boolean,
+) {
+  if (!hasValidBindingAnnotation) {
+    reporter.reportOn(
+      source,
+      MetroDiagnostics.PRIVATE_BINDING_ERROR,
+      "@GraphPrivate can only be applied to @Provides, @Binds, or @Multibinds declarations.",
+    )
   }
 }

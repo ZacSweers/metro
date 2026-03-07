@@ -30,34 +30,38 @@ public annotation class Assisted(
    *
    * Within an [Inject] constructor, each [Assisted] parameter must be uniquely defined by the
    * combination of its identifier and type. If no identifier is specified, the default identifier
-   * is an empty string. Thus, the following parameters are equivalent within an [Inject]
-   * constructor:
+   * is the parameter name. Thus, the following parameters have identifier `"foo"` within an
+   * [Inject] constructor:
    * * `@Assisted foo: Foo`
-   * * `@Assisted("") foo: Foo`
+   * * `@Assisted("foo") foo: Foo`
    *
    * Within an [AssistedFactory] method, each parameter must match an [Assisted] parameter in the
    * associated [Inject] constructor (i.e. identifier + type). A parameter with no `@Assisted`
-   * annotation will be assigned the default identifier. Thus, the following parameters are
-   * equivalent within an [AssistedFactory] method:
+   * annotation will be assigned the parameter name as its identifier. Thus, the following
+   * parameters are equivalent within an [AssistedFactory] method:
    * * `foo: Foo`
    * * `@Assisted foo: Foo`
-   * * `@Assisted("") foo: Foo`
+   * * `@Assisted("foo") foo: Foo`
+   *
+   * Because the parameter name is used as the default identifier, parameter names must match
+   * between the factory method and the constructor. Explicit identifiers via [value] are
+   * soft-deprecated and will be removed in a future release. Use matching parameter names instead.
    *
    * Example:
    * ```
    * class DataService(
    *   bindingFromDagger: BindingFromDagger,
    *   @Assisted name: String,
-   *   @Assisted("id") id: String,
-   *   @Assisted("repo") repo: String,
+   *   @Assisted id: String,
+   *   @Assisted repo: String,
    * )
    *
    * @AssistedFactory
    * fun interface DataServiceFactory {
    *   fun create(
    *     name: String,
-   *     @Assisted("id") id: String,
-   *     @Assisted("repo") repo: String,
+   *     id: String,
+   *     repo: String,
    *   ): DataService
    * }
    * ```

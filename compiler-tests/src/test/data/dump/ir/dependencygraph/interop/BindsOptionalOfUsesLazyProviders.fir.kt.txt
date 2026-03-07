@@ -9,6 +9,12 @@ interface AppGraph {
     private val provideStringProvider: Provider<String>
       field = Companion.provider<Provider<String>, String>(delegate = Companion.create(instance = <this>.#thisGraphInstance))
 
+    private val optionalStringProvider: Provider<Optional<String>>
+      field = provider<Optional<String>>(provider = local fun <anonymous>(): Optional<String> {
+        return of<String>(p0 = <this>.#provideStringProvider.invoke())
+      }
+)
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -18,22 +24,19 @@ interface AppGraph {
     override val intProvider: Provider<Optional<Int>>
       override get(): Provider<Optional<Int>> {
         return provider<Optional<Int>>(provider = local fun <anonymous>(): Optional<Int> {
-          return of<Int>(p0 = Companion.provideInt(instance = <this>.#thisGraphInstance))
+          return of<Int>(p0 = <this>.#thisGraphInstance.provideInt())
         }
 )
       }
 
     override val string: Optional<String>
       override get(): Optional<String> {
-        return of<String>(p0 = <this>.#provideStringProvider.invoke())
+        return <this>.#optionalStringProvider.invoke()
       }
 
     override val stringProvider: Provider<Optional<String>>
       override get(): Provider<Optional<String>> {
-        return provider<Optional<String>>(provider = local fun <anonymous>(): Optional<String> {
-          return of<String>(p0 = <this>.#provideStringProvider.invoke())
-        }
-)
+        return <this>.#optionalStringProvider
       }
 
   }
@@ -128,13 +131,13 @@ interface AppGraph {
   }
 
   @Provides
-  private fun provideInt(): Int {
+  fun provideInt(): Int {
     return 3
   }
 
   @Provides
   @SingleIn(scope = AppScope::class)
-  private fun provideString(): String {
+  fun provideString(): String {
     return "Hello"
   }
 
@@ -152,6 +155,7 @@ interface AppGraph {
 @BindingContainer
 interface Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -170,10 +174,16 @@ interface Bindings {
   }
 
   @BindsOptionalOf
-  abstract fun optionalInt(): Int
+  @ComptimeOnly
+  abstract fun optionalInt(): Int {
+    return error(message = "Never called")
+  }
 
   @BindsOptionalOf
-  abstract fun optionalString(): String
+  @ComptimeOnly
+  abstract fun optionalString(): String {
+    return error(message = "Never called")
+  }
 
 }
 

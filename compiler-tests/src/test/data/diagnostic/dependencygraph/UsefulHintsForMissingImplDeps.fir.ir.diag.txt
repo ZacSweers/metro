@@ -5,8 +5,3 @@
     Base is requested at
         [AppGraph] AppGraph.base
 
-(Hint)
-'FooImpl' doesn't appear to be visible to this compilation. This can happen when a binding references a type from an 'implementation' dependency that isn't exposed to the consuming graph's module.
-Possible fixes:
-- Mark the module containing 'FooImpl' as an 'api' dependency in the module that defines 'Bindings' (which is requesting it).
-- Add the module containing 'FooImpl' as an explicit dependency to the module that defines 'AppGraph'.

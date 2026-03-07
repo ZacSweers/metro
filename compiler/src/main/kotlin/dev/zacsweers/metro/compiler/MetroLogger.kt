@@ -5,9 +5,9 @@ package dev.zacsweers.metro.compiler
 public interface MetroLogger {
   public val type: Type
 
-  public fun indent(): MetroLogger
+  @IgnorableReturnValue public fun indent(): MetroLogger
 
-  public fun unindent(): MetroLogger
+  @IgnorableReturnValue public fun unindent(): MetroLogger
 
   public fun log(message: String) {
     log { message }

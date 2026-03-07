@@ -7,6 +7,8 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.effectiveVisibility
+import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
@@ -62,6 +64,7 @@ import org.jetbrains.kotlin.name.Name
 internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModuleFragment) :
   IrMetroContext by context {
 
+  @IgnorableReturnValue
   fun generateHint(sourceClass: IrClass, hintName: Name): IrSimpleFunction {
     val function =
       pluginContext.irFactory
@@ -69,7 +72,7 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
           name = hintName
           origin = Origins.Default
           returnType = pluginContext.irBuiltIns.unitType
-          visibility = sourceClass.visibility
+          visibility = sourceClass.effectiveVisibility()
         }
         .apply {
           parameters +=
@@ -126,6 +129,12 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     // Link the hint back to the source class so source class changes in IC also mark this hint
     // https://github.com/ZacSweers/metro/pull/1349
     trackClassLookup(function, sourceClass)
+    // We do this extra step to cover cases where the scope changes or is removed from the source,
+    // and thus this hint file should ostensibly be recompiled or even removed. This appears to work
+    // for this scenario.
+    // https://github.com/ZacSweers/metro/pull/1637
+    // https://github.com/ZacSweers/metro/issues/1393
+    linkDeclarationsInCompilation(callingFile = hintFile, sourceClass)
     hintFile.dumpToMetroLog(fakeNewPath.name)
     return function
   }

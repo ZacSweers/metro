@@ -33,3 +33,34 @@ Generally speaking, Metro adopts new language features as they become available 
 !!! note "Example"
     Metro's compiler _supports_ context parameters in Kotlin `2.2.20` but context parameters were not yet stable in that version of Kotlin.
 
+## Feature Tiers
+
+Metro has a few different focus areas. Their prioritization is best described as a tier system.
+
+### Tier 1
+
+_These are core metro features that are well-tested and well-supported._
+
+- Graph validation
+- Compiler code gen
+- Runtime
+- Interop
+- Diagnostics
+- MetroX artifacts
+- Incremental compilation
+- IDE support for stable IntelliJ/Android Studio versions.
+- Multiplatform support (runtime and compiler)
+- Compiler compat (simultaneous support for different kotlin versions)
+
+### Tier 2
+
+_These are generally debugging-only tools and not as well tested._
+
+- Reporting (i.e. `reportsDestination`)
+- Graph analysis _Gradle_ APIs (visualization, JSON reporting, etc.)
+
+### Tier 3
+
+_These are generally nice-to-haves. You are welcome to file issues about them but they may not get looked at with any urgency._
+
+- Preview IDE versions (Android Studio canaries, IntelliJ EAPs, etc.)

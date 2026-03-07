@@ -136,17 +136,19 @@ class CacheImpl(...) : Cache, AnotherType
 
 ### Implicitly-injected `@ContributesBinding` types
 
-Up to version `0.7.0`, Metro has always required you to use `@Inject` on most `@Contributes*` annotated types. However, this can feel a bit repetitive and tedious. Starting in `0.7.0`, there is a new `contributesAsInject` Gradle DSL option that can be enabled that will treat all `@Contributes*` annotated types as `@Inject` by default. You can still use `@Inject` on classes to be explicit, and if you have multiple constructors you must still use `@Inject` on the constructor you want to be used.
-
-_The only exception to this is `@ContributesTo`, which isn't applicable to injected types._
-
-This is disabled by default to start but will likely become the default in a future release.
+Unlike Anvil, Metro does not require `@Inject` on `@Contributes*` annotated types. The `@Contributes*` annotation itself is sufficient to indicate that the type should be injected.
 
 ```kotlin
 @ContributesBinding(AppScope::class)
 // @Inject // <-- now implicit!
 class TacoImpl(...) : Taco
 ```
+
+You can still use `@Inject` on classes to be explicit, and if you have multiple constructors you must use `@Inject` on the constructor you want to be used.
+
+_The only exception to this is `@ContributesTo`, which isn't applicable to injected types._
+
+This behavior can be disabled via the `contributesAsInject` Gradle DSL option if you prefer to require explicit `@Inject` annotations.
 
 ## @ContributesIntoSet/@ContributesIntoMap
 

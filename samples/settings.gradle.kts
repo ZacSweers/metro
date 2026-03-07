@@ -1,14 +1,21 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 pluginManagement {
+  includeBuild("../build-logic")
   repositories {
     mavenCentral()
     google()
     gradlePluginPortal()
+    mavenLocal()
+    maven("https://redirector.kotlinlang.org/maven/bootstrap")
+    maven("https://redirector.kotlinlang.org/maven/dev/")
+    // Publications used by IJ
+    // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
+    maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
   }
   plugins {
-    id("com.gradle.develocity") version "4.3"
-    id("com.android.settings") version "8.13.1"
+    id("com.gradle.develocity") version "4.3.2"
+    id("com.android.settings") version "8.13.2"
   }
 }
 
@@ -17,6 +24,12 @@ dependencyResolutionManagement {
   repositories {
     mavenCentral()
     google()
+    mavenLocal()
+    maven("https://redirector.kotlinlang.org/maven/bootstrap")
+    maven("https://redirector.kotlinlang.org/maven/dev/")
+    // Publications used by IJ
+    // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
+    maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
   }
 }
 

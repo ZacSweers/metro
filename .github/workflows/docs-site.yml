@@ -35,25 +35,15 @@ jobs:
     if: github.repository == 'zacsweers/metro' && github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
-
-      - name: Configure JDK
-        uses: actions/setup-java@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
+          fetch-depth: 0 # Full history needed for git-revision-date-localized plugin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
-          # Only save Gradle User Home state for builds on the 'main' branch.
-          # Builds on other branches will only read existing entries from the cache.
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-
-          # Don't reuse cache entries from any other Job.
-          gradle-home-cache-strict-match: true
-
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Generate API docs
         # NOTE: The `dokkaPublications.html` task is pre-configured to generate HTML in `/docs/api`.
@@ -162,20 +152,15 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
-
-      - name: Configure JDK
-        uses: actions/setup-java@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
+          fetch-depth: 0 # Full history needed for git-revision-date-localized plugin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Generate API docs
         run: ./scripts/generate_docs_dokka.sh
@@ -198,8 +183,8 @@ jobs:
         run: |
           echo "Building docs as a dry run to verify requirements and other configs are working..."
           # Build to a temporary directory for validation without side effects
-          mkdocs build --strict --site-dir /tmp/docs-site-validation
-          
+          mkdocs build --site-dir /tmp/docs-site-validation
+
           echo "Validating directory URL structure..."
           # Verify that use_directory_urls: true configuration is effective
           # This creates installation/index.html from installation.md, enabling

@@ -383,17 +383,11 @@ interface TestGraph {
     private val provideBaseProvider: Provider<Base>
       field = Companion.create(instance = <this>.#thisGraphInstance)
 
-    private val provideInt2Provider: Provider<Int>
-      field = Companion.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider)
-
-    private val provideInt1Provider: Provider<Int>
-      field = Companion.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider)
-
     private val setConsumerAProvider: Provider<SetConsumerA>
-      field = Companion.create(set = <this>.<get-setOfInt>())
+      field = Companion.create(set = <this>.<get-setOfIntProvider>())
 
     private val setConsumerBProvider: Provider<SetConsumerB>
-      field = Companion.create(set = <this>.<get-setOfInt>())
+      field = Companion.create(set = <this>.<get-setOfIntProvider>())
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -406,9 +400,14 @@ interface TestGraph {
         return Entry(a1 = WrapperA1(consumer = <this>.#setConsumerAProvider), a2 = WrapperA2(consumer = <this>.#setConsumerAProvider), b1 = WrapperB1(consumer = <this>.#setConsumerBProvider), b2 = WrapperB2(consumer = <this>.#setConsumerBProvider))
       }
 
-    private val setOfInt: Provider<Set<Int>>
+    private val setOfIntProvider: Provider<Set<Int>>
       private get(): Provider<Set<Int>> {
-        return Companion.builder<Int>(individualProviderSize = 2, collectionProviderSize = 0).addProvider(individualProvider = <this>.#provideInt2Provider).addProvider(individualProvider = <this>.#provideInt1Provider).build()
+        return { // BLOCK
+          val tmp_0: Builder<Int> = Companion.builder<Int>(individualProviderSize = 2, collectionProviderSize = 0)
+          tmp_0.addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider))
+          tmp_0.addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider))
+          tmp_0.build()
+        }
       }
 
   }
@@ -543,19 +542,19 @@ interface TestGraph {
   }
 
   @Provides
-  private fun provideBase(): Base {
+  fun provideBase(): Base {
     return Base()
   }
 
   @Provides
   @IntoSet
-  private fun provideInt1(base: Base): Int {
+  fun provideInt1(base: Base): Int {
     return 1
   }
 
   @Provides
   @IntoSet
-  private fun provideInt2(base: Base): Int {
+  fun provideInt2(base: Base): Int {
     return 2
   }
 

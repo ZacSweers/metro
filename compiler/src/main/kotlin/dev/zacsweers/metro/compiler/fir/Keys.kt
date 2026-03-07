@@ -124,4 +124,12 @@ internal object Keys {
   data object DynamicContainerParam : GeneratedDeclarationKey() {
     override fun toString() = "DynamicContainerParam"
   }
+
+  data object ParentGraphParam : GeneratedDeclarationKey() {
+    override fun toString() = "ParentGraphParam"
+  }
+
+  data object GeneratedAssistedFactoryCreateFunction : GeneratedDeclarationKey() {
+    override fun toString() = "GeneratedAssistedFactoryCreateFunction"
+  }
 }

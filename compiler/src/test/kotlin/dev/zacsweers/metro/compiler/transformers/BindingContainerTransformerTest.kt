@@ -270,8 +270,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
 
     // Exercise calling the create + invoke() functions
     val providesFactory =
-      providesFactoryClass.invokeCreateAs<Factory<String>>(graph, provider { 2 }, provider { 3 })
-    assertThat(providesFactory()).isEqualTo("Hello, 2 - 3!")
+      providesFactoryClass.invokeCreateAs<Factory<String>>(graph, provider { 2 })
+    assertThat(providesFactory()).isEqualTo("Hello, 2 - 2!")
   }
 
   @Test
@@ -615,9 +615,11 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       previousCompilationResult = firstCompilation,
       options = metroOptions.withDaggerInterop(),
     ) {
-      ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertDiagnostics(
-        "w: Included Dagger module 'ExampleModule' declares a `subcomponents` parameter but this will be ignored by Metro in interop."
+        """
+        w: Included Dagger module 'ExampleModule' declares a `subcomponents` parameter but this will be ignored by Metro in interop.
+        """
+          .trimIndent()
       )
     }
   }

@@ -19,7 +19,14 @@ fun main() {
       null
     }
 
-  generateTests<AbstractBoxTest, AbstractDiagnosticTest, AbstractFirDumpTest, AbstractIrDumpTest>(
+  generateTests<
+    AbstractBoxTest,
+    AbstractFastInitBoxTest,
+    AbstractDiagnosticTest,
+    AbstractFirDumpTest,
+    AbstractIrDumpTest,
+    AbstractReportsTest,
+  >(
     exclusionPattern
   )
 }

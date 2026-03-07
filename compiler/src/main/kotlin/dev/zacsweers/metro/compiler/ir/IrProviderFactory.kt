@@ -5,14 +5,17 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.runIf
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
@@ -110,6 +113,18 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val parameters by parametersLazy
 
     override val isDaggerFactory: Boolean = false
+
+    fun withRemappedTypes(remapper: TypeRemapper): Metro {
+      return Metro(
+        factoryClass = factoryClass,
+        typeKey = typeKey.remapTypes(remapper),
+        rawTypeKey = rawTypeKey.remapTypes(remapper),
+        contextualTypeKey = contextualTypeKey.remapType(remapper),
+        realDeclaration = realDeclaration,
+        callableMetadata = callableMetadata,
+        parametersLazy = lazy { parameters.remapTypes(remapper) },
+      )
+    }
   }
 
   class Dagger(
@@ -126,6 +141,22 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val realDeclaration: IrFunction,
   ) : ProviderFactory() {
     override val isDaggerFactory: Boolean = true
+
+    fun withRemappedTypes(remapper: TypeRemapper): Dagger {
+      return Dagger(
+        factoryClass = factoryClass,
+        typeKey = typeKey.remapTypes(remapper),
+        contextualTypeKey = contextualTypeKey.remapType(remapper),
+        rawTypeKey = rawTypeKey.remapTypes(remapper),
+        callableId = callableId,
+        annotations = annotations,
+        parameters = parameters.remapTypes(remapper),
+        function = function,
+        isPropertyAccessor = isPropertyAccessor,
+        newInstanceName = newInstanceName,
+        realDeclaration = realDeclaration,
+      )
+    }
   }
 
   companion object {
@@ -138,14 +169,36 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       callableMetadata: IrCallableMetadata,
       /** Pre-computed real declaration for in-compilation case. If null, will be looked up. */
       realDeclaration: IrDeclaration? = null,
-    ): Metro {
+    ): Metro? {
       val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
-      val typeKey = rawTypeKey.transformMultiboundQualifier(callableMetadata.annotations)
+      val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
+
+      // Validate and optionally patch parameter types due to
+      // https://github.com/ZacSweers/metro/issues/1556
+      val hadUnpatchedMismatch =
+        checkMirrorParamMismatches(
+          factoryClass = clazz,
+          newInstanceFunctionName = callableMetadata.newInstanceName!!.asString(),
+          mirrorFunction = callableMetadata.mirrorFunction,
+          mirrorParams = { callableMetadata.mirrorFunction.parameters().nonDispatchParameters },
+          reportingFunction = callableMetadata.function,
+          primaryConstructorParamOffset = 1,
+        ) {
+          it
+            .parameters()
+            .regularParameters
+            // Drop the dispatch receiver if this original class is not an object class
+            .runIf(callableMetadata.function.parentClassOrNull?.isObject != true) { drop(1) }
+        }
+
+      if (hadUnpatchedMismatch) {
+        return null
+      }
 
       return Metro(
         factoryClass = clazz,
         typeKey = typeKey,
-        contextualTypeKey = contextKey.withTypeKey(typeKey),
+        contextualTypeKey = contextKey.withIrTypeKey(typeKey),
         rawTypeKey = rawTypeKey,
         callableMetadata = callableMetadata,
         realDeclaration =
