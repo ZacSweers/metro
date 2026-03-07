@@ -374,9 +374,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
             callee = bytecodeFunction.symbol,
             args =
               parametersAsProviderArguments(
-                parameters = dedupedSourceParameters,
-                // TODO this reload of params should be avoidable since we do it above
-                calleeParameters = bytecodeFunction.parameters(),
+                parameters = sourceParameters,
                 receiver = invokeFunction.dispatchReceiverParameter!!,
                 fields = typeKeyToField,
               ),
@@ -534,21 +532,26 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
 
     // Generate create()
     @Suppress("RETURN_VALUE_NOT_USED")
-    transformStaticCreateFunction(
+    generateStaticCreateFunction(
       objectClassToGenerateIn = classToGenerateCreatorsIn,
       factoryClass = factoryCls,
       targetConstructor = factoryConstructor,
       parameters = factoryParameters,
-      providerFunction = reference.callee?.owner,
+      sourceFunction = reference.callee?.owner,
+      returnTypeProvider = { metroSymbols.metroFactory.typeWith(reference.typeKey.type) },
+      sourceTypeParameters = reference.parent.owner,
     )
 
     // Generate the named newInstance function
     val newInstanceFunction =
-      transformStaticNewInstanceFunction(
+      generateStaticNewInstanceFunction(
         parentClass = classToGenerateCreatorsIn,
         targetFunction = reference.callee?.owner,
         sourceMetroParameters = reference.parameters,
         sourceParameters = reference.parameters.regularParameters.map { it.asValueParameter },
+        sourceTypeParameters = reference.parent.owner,
+        returnTypeProvider = { reference.typeKey.type },
+        functionName = reference.name.asString(),
       ) { function ->
         val parameters = function.regularParameters
 

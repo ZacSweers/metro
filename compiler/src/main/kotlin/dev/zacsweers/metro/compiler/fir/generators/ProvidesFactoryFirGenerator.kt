@@ -23,7 +23,6 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
-import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
@@ -47,7 +46,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
-import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -74,21 +72,16 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
-    val callable =
-      if (classSymbol.hasOrigin(Keys.ProviderFactoryCompanionDeclaration)) {
-        val owner = classSymbol.getContainingClassSymbol() ?: return emptySet()
-        providerFactoryClassIdsToCallables[owner.classId]
-      } else {
-        providerFactoryClassIdsToCallables[classSymbol.classId]
-      } ?: return emptySet()
-
-    return buildSet {
-      if (classSymbol.classKind == ClassKind.OBJECT) {
-        add(SpecialNames.INIT)
-        // Generate create() and newInstance headers
-        add(Symbols.Names.create)
-        add(callable.newInstanceName)
-      }
+    val shouldHandle =
+      // Is it one of our factories or their companion objects?
+      (classSymbol.hasOrigin(Keys.ProviderFactoryCompanionDeclaration) ||
+        classSymbol.hasOrigin(Keys.ProviderFactoryClassDeclaration)) &&
+        // Only if it's an object class type. Regular constructors will be generated in IR
+        classSymbol.classKind == ClassKind.OBJECT
+    return if (shouldHandle) {
+      setOf(SpecialNames.INIT)
+    } else {
+      emptySet()
     }
   }
 
@@ -100,48 +93,6 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
         return emptyList()
       }
     return listOf(constructor.symbol)
-  }
-
-  override fun generateFunctions(
-    callableId: CallableId,
-    context: MemberGenerationContext?,
-  ): List<FirNamedFunctionSymbol> {
-    val nonNullContext = context ?: return emptyList()
-    val factoryClassId =
-      if (nonNullContext.owner.isCompanion) {
-        nonNullContext.owner.getContainingClassSymbol()?.classId ?: return emptyList()
-      } else {
-        nonNullContext.owner.classId
-      }
-    val callable = providerFactoryClassIdsToCallables[factoryClassId] ?: return emptyList()
-    val function =
-      when (callableId.callableName) {
-        Symbols.Names.create -> {
-          buildFactoryCreateFunction(
-            context = nonNullContext,
-            returnType =
-              Symbols.ClassIds.metroFactory.constructClassLikeType(arrayOf(callable.returnType)),
-            instanceReceiver = callable.instanceReceiver,
-            extensionReceiver = null,
-            valueParameters = callable.valueParameters.dedupeParameters(session),
-          )
-        }
-        callable.newInstanceName -> {
-          buildNewInstanceFunction(
-            nonNullContext,
-            callable.newInstanceName,
-            callable.returnType,
-            callable.instanceReceiver,
-            null,
-            callable.valueParameters,
-          )
-        }
-        else -> {
-          println("Unrecognized function $callableId")
-          return emptyList()
-        }
-      }
-    return listOf(function)
   }
 
   // TODO can we get a finer-grained callback other than just per-class?

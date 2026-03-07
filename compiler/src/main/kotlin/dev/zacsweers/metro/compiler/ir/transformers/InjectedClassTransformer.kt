@@ -61,6 +61,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -668,11 +669,14 @@ internal class InjectedClassTransformer(
     generateStaticCreateFunction(
       objectClassToGenerateIn = classToGenerateCreatorsIn,
       factoryClass = factoryCls,
-      targetClass = targetClass,
+      sourceTypeParameters = targetClass,
+      returnTypeProvider = { typeParams ->
+        metroSymbols.metroFactory.typeWith(targetClass.symbol.typeWithParameters(typeParams))
+      },
       targetConstructor = factoryConstructor,
       parameters = dedupedMerged,
       isAssistedInject = isAssistedInject,
-      providerFunction = null,
+      sourceFunction = null,
     )
 
     // newInstance() preserves the original constructor signature (no deduplication)
@@ -680,7 +684,8 @@ internal class InjectedClassTransformer(
     val newInstanceFunction =
       generateStaticNewInstanceFunction(
         parentClass = classToGenerateCreatorsIn,
-        targetClass = targetClass,
+        sourceTypeParameters = targetClass,
+        returnTypeProvider = { typeParams -> targetClass.symbol.typeWithParameters(typeParams) },
         sourceMetroParameters = constructorParameters,
         sourceParameters = constructorParameters.regularParameters.map { it.asValueParameter },
       ) { function ->

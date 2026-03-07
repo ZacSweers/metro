@@ -40,12 +40,12 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
@@ -53,7 +53,6 @@ import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
-import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
@@ -75,10 +74,11 @@ context(context: IrMetroContext)
 internal fun generateStaticCreateFunction(
   objectClassToGenerateIn: IrClass,
   factoryClass: IrClass,
-  targetClass: IrClass,
+  sourceTypeParameters: IrClass,
+  returnTypeProvider: (List<IrTypeParameter>) -> IrType, // Not called if assisted inject
   targetConstructor: IrConstructorSymbol,
   parameters: Parameters,
-  providerFunction: IrFunction?,
+  sourceFunction: IrFunction?,
   patchCreationParams: Boolean = true,
   isAssistedInject: Boolean = false,
 ): IrSimpleFunction {
@@ -91,17 +91,17 @@ internal fun generateStaticCreateFunction(
         origin = Origins.FactoryCreateFunction,
       )
       .apply {
-        val typeParams = copyTypeParametersFrom(targetClass)
+        val typeParams = copyTypeParametersFrom(sourceTypeParameters)
         this.returnType =
           if (isAssistedInject) {
             factoryClass.symbol.typeWithParameters(typeParams)
           } else {
-            context.metroSymbols.metroFactory.typeWith(
-              targetClass.symbol.typeWithParameters(typeParams)
-            )
+            returnTypeProvider(typeParams)
           }
         val typeRemapper =
-          targetClass.deepRemapperFor(targetClass.symbol.typeWithParameters(typeParams))
+          sourceTypeParameters.deepRemapperFor(
+            sourceTypeParameters.symbol.typeWithParameters(typeParams)
+          )
         addParameters(
           parameters.allParameters.filterNot { it.isAssisted },
           wrapInProvider = true,
@@ -114,7 +114,7 @@ internal fun generateStaticCreateFunction(
     factoryClass = factoryClass,
     targetConstructor = targetConstructor,
     parameters = parameters,
-    providerFunction = providerFunction,
+    providerFunction = sourceFunction,
     patchCreationParams = patchCreationParams,
     copyQualifiers = false, // We've already done it
     createFunction = createFunction,
@@ -218,25 +218,29 @@ private fun transformStaticCreateFunction(
 context(context: IrMetroContext)
 internal fun generateStaticNewInstanceFunction(
   parentClass: IrClass,
-  targetClass: IrClass,
+  sourceTypeParameters: IrClass,
+  returnTypeProvider: (List<IrTypeParameter>) -> IrType,
   sourceMetroParameters: Parameters,
   sourceParameters: List<IrValueParameter>,
+  functionName: String = Symbols.StringNames.NEW_INSTANCE,
   targetFunction: IrFunction? = null,
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
 ): IrSimpleFunction {
   val newInstanceFunction =
     parentClass
       .addFunction(
-        name = Symbols.StringNames.NEW_INSTANCE,
+        name = functionName,
         // Placeholder, replaced in body
-        returnType = targetClass.defaultType,
+        returnType = context.irBuiltIns.unitType,
         origin = Origins.FactoryNewInstanceFunction,
       )
       .apply {
-        val typeParams = copyTypeParametersFrom(targetClass)
-        this.returnType = targetClass.symbol.typeWithParameters(typeParams)
+        val typeParams = copyTypeParametersFrom(sourceTypeParameters)
+        this.returnType = returnTypeProvider(typeParams)
         val typeRemapper =
-          targetClass.deepRemapperFor(targetClass.symbol.typeWithParameters(typeParams))
+          sourceTypeParameters.deepRemapperFor(
+            sourceTypeParameters.symbol.typeWithParameters(typeParams)
+          )
         addParameters(
           sourceMetroParameters.allParameters,
           wrapInProvider = false,
