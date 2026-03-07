@@ -72,7 +72,7 @@ public inline fun <
     } else {
       CreationExtras.Empty
     },
-  crossinline createViewModel: FactoryType.() -> VM,
+  crossinline createViewModel: FactoryType.(CreationExtras) -> VM,
 ): VM {
   val factory = LocalMetroViewModelFactory.current
   return viewModel(
@@ -84,7 +84,7 @@ public inline fun <
           val factoryClass = FactoryType::class
           val provider = factory.createManuallyAssistedFactory(factoryClass)
 
-          return modelClass.cast(provider().createViewModel())
+          return modelClass.cast(provider().createViewModel(extras))
         }
       },
     extras = extras,
