@@ -990,6 +990,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ChildProvidesSupersedeScopeSameTypedParentProvidesInMultibinding.kt")
+      public void testChildProvidesSupersedeScopeSameTypedParentProvidesInMultibinding() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChildProvidesSupersedeScopeSameTypedParentProvidesInMultibinding.kt");
+      }
+
+      @Test
       @TestMetadata("ChunkedExtensionInitializers.kt")
       public void testChunkedExtensionInitializers() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChunkedExtensionInitializers.kt");
