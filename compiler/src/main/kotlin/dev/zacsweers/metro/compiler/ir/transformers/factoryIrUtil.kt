@@ -392,7 +392,13 @@ internal fun IrFunction.addParameters(
     val isInstanceParam = param.asValueParameter.kind == IrParameterKind.DispatchReceiver
     val baseType =
       if (wrapInProvider && !isInstanceParam) {
-        param.contextualTypeKey.stripOuterProviderOrLazy().wrapInProvider().toIrType()
+        // Strip all outer Provider/Lazy layers (e.g. Provider<Lazy<T>> → T) but preserve
+        // inner structure like Map<K, Provider<V>>, then wrap in a single Provider.
+        var stripped = param.contextualTypeKey
+        while (stripped.isWrapped) {
+          stripped = stripped.stripOuterProviderOrLazy()
+        }
+        stripped.wrapInProvider().toIrType()
       } else {
         param.contextualTypeKey.toIrType()
       }
