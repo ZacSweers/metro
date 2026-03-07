@@ -3,7 +3,9 @@
 package dev.zacsweers.metro.compiler.circuit
 
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.api.fir.GeneratedInjectClassData
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.api.fir.metroGeneratedInjectClassData
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -283,6 +285,9 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       } else {
         createTopLevelClass(target.factoryClassId, key)
       }
+
+    factoryClass.metroGeneratedInjectClassData =
+      GeneratedInjectClassData(hasConstructorParams = true)
 
     // Add annotations
     val annotations = buildList {

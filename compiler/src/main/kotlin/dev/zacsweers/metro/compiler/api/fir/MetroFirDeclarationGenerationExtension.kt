@@ -5,6 +5,9 @@ package dev.zacsweers.metro.compiler.api.fir
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataKey
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataRegistry
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.name.ClassId
 
@@ -116,3 +119,11 @@ public abstract class MetroFirDeclarationGenerationExtension(session: FirSession
     ): MetroFirDeclarationGenerationExtension?
   }
 }
+
+/** FIR attribute to store metadata about a given generated injected class. */
+public class GeneratedInjectClassData(public val hasConstructorParams: Boolean) {
+  public object Attribute : FirDeclarationDataKey()
+}
+
+public var FirClass.metroGeneratedInjectClassData: GeneratedInjectClassData? by
+  FirDeclarationDataRegistry.data(GeneratedInjectClassData.Attribute)

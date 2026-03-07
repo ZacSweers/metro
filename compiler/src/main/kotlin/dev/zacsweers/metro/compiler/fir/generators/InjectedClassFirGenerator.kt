@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.NameAllocator
+import dev.zacsweers.metro.compiler.api.fir.metroGeneratedInjectClassData
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
@@ -472,11 +473,14 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         // need to separately check them here
         val parentHasInjections = injectedClass.parentClassHasMemberInjections(session)
 
+        @OptIn(SymbolInternals::class)
         val classKind =
           if (
             injectedClass.classSymbol.typeParameterSymbols.isEmpty() &&
               injectedClass.allParameters.isEmpty() &&
-              !parentHasInjections
+              !parentHasInjections &&
+              injectedClass.classSymbol.fir.metroGeneratedInjectClassData?.hasConstructorParams !=
+                true
           ) {
             ClassKind.OBJECT
           } else {
