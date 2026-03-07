@@ -13,6 +13,7 @@ Changelog
 ### Fixes
 
 - **[FIR]**: Don't use a memoizing sequence for all FirSession instance as it seems that the IDE will mutate the underlying source lists in some cases.
+- **[FIR]**: Providers can now return instances of classes nested in the same container class.
 
 ### Changes
 
