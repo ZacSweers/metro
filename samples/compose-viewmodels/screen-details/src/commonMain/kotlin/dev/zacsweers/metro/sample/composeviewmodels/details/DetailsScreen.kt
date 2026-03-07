@@ -23,7 +23,7 @@ fun DetailsScreen(
   onNavBack: () -> Unit,
   modifier: Modifier = Modifier,
   viewModel: DetailsViewModel =
-    assistedMetroViewModel<DetailsViewModel, DetailsViewModel.Factory> { create(data) },
+    assistedMetroViewModel<DetailsViewModel, DetailsViewModel.Factory>(key = data) { create(data) },
 ) =
   Column(
     modifier = modifier.fillMaxSize(),

@@ -26,18 +26,6 @@ public val LocalMetroViewModelFactory: ProvidableCompositionLocal<MetroViewModel
 
 /** Retrieves a Metro-injected ViewModel using the [LocalMetroViewModelFactory]. */
 @Composable
-public inline fun <reified VM : ViewModel> metroViewModel(
-  viewModelStoreOwner: ViewModelStoreOwner = requireViewModelStoreOwner(),
-  key: String? = null,
-): VM =
-  viewModel(
-    viewModelStoreOwner = viewModelStoreOwner,
-    key = key,
-    factory = LocalMetroViewModelFactory.current,
-  )
-
-/** Retrieves a Metro-injected ViewModel using the [LocalMetroViewModelFactory]. */
-@Composable
 public inline fun <reified VM : ViewModel> assistedMetroViewModel(
   viewModelStoreOwner: ViewModelStoreOwner = requireViewModelStoreOwner(),
   key: String? = null,
