@@ -5,11 +5,12 @@ package dev.zacsweers.metrox.viewmodel
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.Provider
 import kotlin.reflect.KClass
@@ -34,13 +35,8 @@ class MetroViewModelComposeTest {
     override fun create(param: Int): ManualTestViewModel = ManualTestViewModel(param)
   }
 
-  private class TestViewModelStoreOwner : ViewModelStoreOwner {
-    override val viewModelStore = ViewModelStore()
-  }
-
   @Test
   fun `metroViewModel retrieves ViewModel from factory`() {
-    val testViewModelStore = TestViewModelStoreOwner()
     val expectedViewModel = TestViewModel()
     val testFactory =
       object : MetroViewModelFactory() {
@@ -51,11 +47,10 @@ class MetroViewModelComposeTest {
     lateinit var retrievedViewModel: TestViewModel
 
     composeTestRule.setContent {
-      CompositionLocalProvider(
-        LocalMetroViewModelFactory provides testFactory,
-        LocalViewModelStoreOwner provides testViewModelStore,
-      ) {
-        retrievedViewModel = metroViewModel<TestViewModel>()
+      val viewModelStoreOwner = rememberViewModelStoreOwner(defaultFactory = testFactory)
+
+      CompositionLocalProvider(LocalViewModelStoreOwner provides viewModelStoreOwner) {
+        retrievedViewModel = viewModel<TestViewModel>()
       }
     }
 
@@ -64,7 +59,6 @@ class MetroViewModelComposeTest {
 
   @Test
   fun `metroViewModel returns same instance on recomposition`() {
-    val testViewModelStore = TestViewModelStoreOwner()
     var createCount = 0
     val testFactory =
       object : MetroViewModelFactory() {
@@ -82,12 +76,13 @@ class MetroViewModelComposeTest {
     lateinit var secondViewModel: TestViewModel
 
     composeTestRule.setContent {
+      val testViewModelStore = rememberViewModelStoreOwner(defaultFactory = testFactory)
       CompositionLocalProvider(
         LocalMetroViewModelFactory provides testFactory,
         LocalViewModelStoreOwner provides testViewModelStore,
       ) {
-        firstViewModel = metroViewModel<TestViewModel>()
-        secondViewModel = metroViewModel<TestViewModel>()
+        firstViewModel = viewModel<TestViewModel>()
+        secondViewModel = viewModel<TestViewModel>()
       }
     }
 
@@ -100,7 +95,6 @@ class MetroViewModelComposeTest {
 
   @Test
   fun `assistedMetroViewModel with extras passes extras to factory`() {
-    val testViewModelStore = TestViewModelStoreOwner()
     val testKey = object : CreationExtras.Key<String> {}
 
     val testFactory =
@@ -122,6 +116,7 @@ class MetroViewModelComposeTest {
     lateinit var retrievedViewModel: AssistedTestViewModel
 
     composeTestRule.setContent {
+      val testViewModelStore = rememberViewModelStoreOwner(defaultFactory = testFactory)
       CompositionLocalProvider(
         LocalMetroViewModelFactory provides testFactory,
         LocalViewModelStoreOwner provides testViewModelStore,
@@ -136,7 +131,6 @@ class MetroViewModelComposeTest {
 
   @Test
   fun `assistedMetroViewModel with manual factory creates ViewModel`() {
-    val testViewModelStore = TestViewModelStoreOwner()
     val testFactory =
       object : MetroViewModelFactory() {
         override val manualAssistedFactoryProviders:
@@ -150,12 +144,17 @@ class MetroViewModelComposeTest {
     lateinit var retrievedViewModel: ManualTestViewModel
 
     composeTestRule.setContent {
+      val testViewModelStore = rememberViewModelStoreOwner(defaultFactory = testFactory)
       CompositionLocalProvider(
         LocalMetroViewModelFactory provides testFactory,
         LocalViewModelStoreOwner provides testViewModelStore,
       ) {
         retrievedViewModel =
-          assistedMetroViewModel<ManualTestViewModel, TestManualFactory> { create(42) }
+          assistedMetroViewModel<ManualTestViewModel, TestManualFactory> { extras ->
+            val savedStateHandle = extras.createSavedStateHandle()
+
+            create(42)
+          }
       }
     }
 
@@ -164,7 +163,6 @@ class MetroViewModelComposeTest {
 
   @Test
   fun `metroViewModel with key creates separate instances`() {
-    val testViewModelStore = TestViewModelStoreOwner()
     val testFactory =
       object : MetroViewModelFactory() {
         override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>> =
@@ -175,12 +173,14 @@ class MetroViewModelComposeTest {
     lateinit var viewModel2: TestViewModel
 
     composeTestRule.setContent {
+      val testViewModelStore = rememberViewModelStoreOwner(defaultFactory = testFactory)
+
       CompositionLocalProvider(
         LocalMetroViewModelFactory provides testFactory,
         LocalViewModelStoreOwner provides testViewModelStore,
       ) {
-        viewModel1 = metroViewModel<TestViewModel>(key = "key1")
-        viewModel2 = metroViewModel<TestViewModel>(key = "key2")
+        viewModel1 = viewModel<TestViewModel>(key = "key1")
+        viewModel2 = viewModel<TestViewModel>(key = "key2")
       }
     }
 

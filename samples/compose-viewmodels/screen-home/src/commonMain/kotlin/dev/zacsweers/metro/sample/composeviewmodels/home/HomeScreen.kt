@@ -15,14 +15,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.zacsweers.metrox.viewmodel.metroViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun HomeScreen(
   onNavToDetails: (data: String) -> Unit,
   onNavToSettings: (userId: String) -> Unit,
   modifier: Modifier = Modifier,
-  viewModel: HomeViewModel = metroViewModel(),
+  viewModel: HomeViewModel = viewModel(),
 ) =
   Column(
     modifier = modifier.fillMaxSize(),
