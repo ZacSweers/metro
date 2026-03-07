@@ -5,6 +5,7 @@ package dev.zacsweers.metrox.viewmodel
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -149,7 +150,11 @@ class MetroViewModelComposeTest {
         LocalViewModelStoreOwner provides testViewModelStore,
       ) {
         retrievedViewModel =
-          assistedMetroViewModel<ManualTestViewModel, TestManualFactory> { create(42) }
+          assistedMetroViewModel<ManualTestViewModel, TestManualFactory> { extras ->
+            val savedStateHandle = extras.createSavedStateHandle()
+
+            create(42)
+          }
       }
     }
 
