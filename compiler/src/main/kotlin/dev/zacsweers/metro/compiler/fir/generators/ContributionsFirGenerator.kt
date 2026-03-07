@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -15,8 +16,10 @@ import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
+import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
+import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -31,6 +34,9 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
+import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
+import org.jetbrains.kotlin.fir.expressions.builder.buildGetClassCall
+import org.jetbrains.kotlin.fir.expressions.builder.buildResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.toReference
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -41,12 +47,17 @@ import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
+import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
+import org.jetbrains.kotlin.name.StandardClassIds
 
 // TODO a bunch of this could probably be cleaned up now that the functions are generated in IR
 /**
@@ -55,6 +66,9 @@ import org.jetbrains.kotlin.name.SpecialNames
  */
 internal class ContributionsFirGenerator(session: FirSession, compatContext: CompatContext) :
   FirDeclarationGenerationExtension(session), CompatContext by compatContext {
+
+  private val allSessions = session.memoizedAllSessionsSequence
+  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
 
   // For each contributing class, track its nested contribution classes and their scope arguments
   private val contributingClassToScopedContributions:
@@ -68,6 +82,12 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       val contributionNamesToScopeArgs = mutableMapOf<Name, FirGetClassCall?>()
 
       if (contributionAnnotations.isNotEmpty()) {
+        // Create a type resolver for this class to handle unresolved scope references.
+        // At the COMPILER_REQUIRED_ANNOTATIONS phase, annotation arguments like AppScope::class
+        // may contain unresolved FirSimpleNamedReferences. The type resolver uses the containing
+        // file's imports to resolve them to full ClassIds.
+        val typeResolver = typeResolverFactory.create(contributingClassSymbol)
+
         // We create a contribution class for each scope being contributed to. E.g. if there are
         // contributions for AppScope and LibScope we'll create `MetroContributionToLibScope` and
         // `MetroContributionToAppScope`
@@ -77,18 +97,41 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           .mapNotNull { it.scopeArgument() }
           .distinctBy { it.scopeName(session) }
           .forEach { scopeArgument ->
+            // Try resolvedClassId first (works for already-resolved scope references).
+            // Fall back to the type resolver for unresolved references (e.g., user-written
+            // @ContributesBinding(AppScope::class) where AppScope is an unresolved
+            // FirSimpleNamedReference at this early FIR phase).
+            val scopeClassId =
+              scopeArgument.resolvedClassId()
+                ?: typeResolver?.let { resolver ->
+                  scopeArgument.resolvedArgumentTypeRef()?.let { typeRef ->
+                    resolver.resolveType(typeRef).toRegularClassSymbol(session)?.classId
+                  }
+                }
+
             val nestedContributionName =
-              scopeArgument.resolvedClassId()?.let { scopeClassId ->
+              if (scopeClassId != null) {
                 MetroContributions.metroContributionName(scopeClassId)
-              }
-                ?: scopeArgument.scopeName(session)?.let { scopeName ->
+              } else {
+                scopeArgument.scopeName(session)?.let { scopeName ->
                   MetroContributions.metroContributionNameFromSuffix(scopeName)
                 }
-                ?: reportCompilerBug(
-                  "Could not get scope name for ${scopeArgument.render()} on class ${contributingClassSymbol.classId}"
-                )
+                  ?: reportCompilerBug(
+                    "Could not get scope name for ${scopeArgument.render()} on class ${contributingClassSymbol.classId}"
+                  )
+              }
 
-            contributionNamesToScopeArgs[nestedContributionName] = scopeArgument
+            // Store a resolved scope expression when available. The original scopeArgument
+            // may contain unresolved references (FirSimpleNamedReference) that downstream
+            // consumers (like ContributedInterfaceSupertypeGenerator) can't resolve.
+            // Build a proper FirGetClassCall with a FirResolvedQualifier when we have the ClassId.
+            val resolvedScopeArg =
+              if (scopeClassId != null && scopeArgument.resolvedClassId() == null) {
+                buildResolvedScopeGetClassCall(scopeClassId, scopeArgument)
+              } else {
+                scopeArgument
+              }
+            contributionNamesToScopeArgs[nestedContributionName] = resolvedScopeArg
           }
       }
       contributionNamesToScopeArgs
@@ -240,6 +283,38 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       return emptySet()
     }
     return contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
+  }
+
+  /**
+   * Build a [FirGetClassCall] with a fully resolved [FirResolvedQualifier] for a scope ClassId.
+   * This replaces unresolved scope expressions that downstream consumers can't resolve.
+   */
+  private fun buildResolvedScopeGetClassCall(
+    scopeClassId: ClassId,
+    original: FirGetClassCall,
+  ): FirGetClassCall {
+    val scopeSymbol = session.symbolProvider.getClassLikeSymbolByClassId(scopeClassId)
+    val scopeType =
+      ConeClassLikeTypeImpl(scopeClassId.toLookupTag(), emptyArray(), isMarkedNullable = false)
+    val kClassType =
+      ConeClassLikeTypeImpl(
+        StandardClassIds.KClass.toLookupTag(),
+        arrayOf(scopeType),
+        isMarkedNullable = false,
+      )
+    return buildGetClassCall {
+      source = original.source
+      coneTypeOrNull = kClassType
+      argumentList = buildArgumentList {
+        arguments += buildResolvedQualifier {
+          packageFqName = scopeClassId.packageFqName
+          relativeClassFqName = scopeClassId.relativeClassName
+          symbol = scopeSymbol
+          coneTypeOrNull = scopeType
+          resolvedToCompanionObject = false
+        }
+      }
+    }
   }
 
   /**
