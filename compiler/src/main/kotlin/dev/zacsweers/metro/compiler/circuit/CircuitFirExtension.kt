@@ -8,13 +8,13 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
+import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.resolveClassId
@@ -70,8 +70,8 @@ import org.jetbrains.kotlin.name.StandardClassIds
  * - `@Origin(originClass)` (for Metro to track the origin)
  */
 @OptIn(ExperimentalTopLevelDeclarationsGenerationApi::class)
-public class CircuitFirExtension(session: FirSession) :
-  MetroFirDeclarationGenerationExtension(session), CompatContext by CompatContext.getInstance() {
+public class CircuitFirExtension(session: FirSession, compatContext: CompatContext) :
+  MetroFirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   private val symbols by lazy { CircuitSymbols.Fir(session) }
 
@@ -102,8 +102,7 @@ public class CircuitFirExtension(session: FirSession) :
   // Cache computed targets during class generation
   private val computedTargets = mutableMapOf<ClassId, CircuitFactoryTarget>()
 
-  private val typeResolverFactory =
-    MetroFirTypeResolver.Factory(session, session.memoizedAllSessionsSequence)
+  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, session.allSessions)
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(CircuitSymbols.circuitInjectPredicate)
@@ -220,56 +219,56 @@ public class CircuitFirExtension(session: FirSession) :
     return listOf(constructor.symbol)
   }
 
-//  override fun generateFunctions(
-//    callableId: CallableId,
-//    context: MemberGenerationContext?,
-//  ): List<FirNamedFunctionSymbol> {
-//    if (context == null) return emptyList()
-//    if (callableId.callableName != CircuitNames.create) return emptyList()
-//
-//    val target = findTargetForFactory(context.owner.classId) ?: return emptyList()
-//
-//    val returnType =
-//      when (target.factoryType) {
-//        FactoryType.UI ->
-//          CircuitClassIds.Ui.constructClassLikeType(
-//            arrayOf(ConeStarProjection),
-//            isMarkedNullable = true,
-//          )
-//        FactoryType.PRESENTER ->
-//          CircuitClassIds.Presenter.constructClassLikeType(
-//            arrayOf(ConeStarProjection),
-//            isMarkedNullable = true,
-//          )
-//      }
-//
-//    val function =
-//      createMemberFunction(
-//        context.owner,
-//        CircuitOrigins.FactoryCreateFunction,
-//        CircuitNames.create,
-//        returnType,
-//      ) {
-//        // Parameters: screen, [navigator for presenter], context
-//        valueParameter(
-//          CircuitNames.screen,
-//          CircuitClassIds.Screen.constructClassLikeType(emptyArray()),
-//        )
-//        if (target.factoryType == FactoryType.PRESENTER) {
-//          valueParameter(
-//            CircuitNames.navigator,
-//            CircuitClassIds.Navigator.constructClassLikeType(emptyArray()),
-//          )
-//        }
-//        valueParameter(
-//          CircuitNames.context,
-//          CircuitClassIds.CircuitContext.constructClassLikeType(emptyArray()),
-//        )
-//      }
-//
-//    // TODO ???
-//    return listOf(function.symbol) as List<FirNamedFunctionSymbol>
-//  }
+  //  override fun generateFunctions(
+  //    callableId: CallableId,
+  //    context: MemberGenerationContext?,
+  //  ): List<FirNamedFunctionSymbol> {
+  //    if (context == null) return emptyList()
+  //    if (callableId.callableName != CircuitNames.create) return emptyList()
+  //
+  //    val target = findTargetForFactory(context.owner.classId) ?: return emptyList()
+  //
+  //    val returnType =
+  //      when (target.factoryType) {
+  //        FactoryType.UI ->
+  //          CircuitClassIds.Ui.constructClassLikeType(
+  //            arrayOf(ConeStarProjection),
+  //            isMarkedNullable = true,
+  //          )
+  //        FactoryType.PRESENTER ->
+  //          CircuitClassIds.Presenter.constructClassLikeType(
+  //            arrayOf(ConeStarProjection),
+  //            isMarkedNullable = true,
+  //          )
+  //      }
+  //
+  //    val function =
+  //      createMemberFunction(
+  //        context.owner,
+  //        CircuitOrigins.FactoryCreateFunction,
+  //        CircuitNames.create,
+  //        returnType,
+  //      ) {
+  //        // Parameters: screen, [navigator for presenter], context
+  //        valueParameter(
+  //          CircuitNames.screen,
+  //          CircuitClassIds.Screen.constructClassLikeType(emptyArray()),
+  //        )
+  //        if (target.factoryType == FactoryType.PRESENTER) {
+  //          valueParameter(
+  //            CircuitNames.navigator,
+  //            CircuitClassIds.Navigator.constructClassLikeType(emptyArray()),
+  //          )
+  //        }
+  //        valueParameter(
+  //          CircuitNames.context,
+  //          CircuitClassIds.CircuitContext.constructClassLikeType(emptyArray()),
+  //        )
+  //      }
+  //
+  //    // TODO ???
+  //    return listOf(function.symbol) as List<FirNamedFunctionSymbol>
+  //  }
 
   private fun generateFactoryClass(
     target: CircuitFactoryTarget,
@@ -482,9 +481,10 @@ public class CircuitFirExtension(session: FirSession) :
     override fun create(
       session: FirSession,
       options: MetroOptions,
+      compatContext: CompatContext,
     ): MetroFirDeclarationGenerationExtension? {
       if (!options.enableCircuitCodegen) return null
-      return CircuitFirExtension(session)
+      return CircuitFirExtension(session, compatContext)
     }
   }
 }

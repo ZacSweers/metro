@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -236,6 +237,7 @@ internal class GenerateProvidesContributionExtension(session: FirSession) :
     override fun create(
       session: FirSession,
       options: MetroOptions,
+      compatContext: CompatContext,
     ): MetroFirDeclarationGenerationExtension = GenerateProvidesContributionExtension(session)
   }
 }

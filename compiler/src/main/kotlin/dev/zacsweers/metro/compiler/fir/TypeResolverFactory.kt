@@ -54,7 +54,8 @@ internal sealed interface MetroFirTypeResolver {
 
     context(compatContext: CompatContext)
     fun create(functionSymbol: FirFunctionSymbol<*>): MetroFirTypeResolver? {
-      if (functionSymbol.origin !is FirDeclarationOrigin.Source) return ExternalMetroFirTypeResolver
+      if (functionSymbol.origin !is FirDeclarationOrigin.Source)
+        return ExternalMetroFirTypeResolver(session)
 
       // if it's not top-level, create in the class instead
       val enclosingClass = with(compatContext) { functionSymbol.getContainingClassSymbol() }

@@ -32,8 +32,8 @@ import org.jetbrains.kotlin.name.ClassId
  * This contributes `Ui.Factory` or `Presenter.Factory` as the supertype for generated factories,
  * which allows the supertype resolution to happen at the correct phase of FIR processing.
  */
-internal class CircuitFactorySupertypeGenerator(session: FirSession) :
-  FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
+internal class CircuitFactorySupertypeGenerator(session: FirSession, compatContext: CompatContext) :
+  FirSupertypeGenerationExtension(session), CompatContext by compatContext {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(CircuitSymbols.circuitInjectPredicate)

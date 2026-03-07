@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -269,6 +270,7 @@ internal class GenerateBindsContributionExtension(session: FirSession) :
     override fun create(
       session: FirSession,
       options: MetroOptions,
+      compatContext: CompatContext,
     ): MetroFirDeclarationGenerationExtension = GenerateBindsContributionExtension(session)
   }
 }

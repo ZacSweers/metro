@@ -3,15 +3,11 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionExtension
-import dev.zacsweers.metro.compiler.api.GenerateBindsContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
-import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
-import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
-import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
 import dev.zacsweers.metro.compiler.circuit.configureCircuit
@@ -195,30 +191,23 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         options = options,
         isIde = false,
         compatContext = compatContext,
-        loadExternalDeclarationExtensions = { session, options ->
+        loadExternalDeclarationExtensions = { session, options, compatContext ->
           buildList {
-            add(GenerateImplExtension.Factory().create(session, options))
-            add(GenerateProvidesContributionExtension.Factory().create(session, options))
-            add(GenerateBindsContributionExtension.Factory().create(session, options))
-            add(GenerateDependencyGraphExtension.Factory().create(session, options))
+            add(GenerateImplExtension.Factory().create(session, options, compatContext))
+            add(
+              GenerateProvidesContributionExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            add(
+              GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
+            )
+            add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
             if (options.enableCircuitCodegen) {
-              add(CircuitFirExtension.Factory().create(session, options))
+              add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
             }
           }
         },
-      ) { session, options ->
-        buildList {
-            add(
-          GenerateImplContributionExtension.Factory().create(session, options),
-          GenerateProvidesContributionMetroExtension.Factory().create(session, options),
-          GenerateBindsContributionMetroExtension.Factory().create(session, options),
-        )
-            if (options.enableCircuitCodegen) {
-              add(CircuitContributionExtension.Factory().create(session, options))
-            }
-          }
-          .filterNotNull()
-      }
+      )
     )
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(

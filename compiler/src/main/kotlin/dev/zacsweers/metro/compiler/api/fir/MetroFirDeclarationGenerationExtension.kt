@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.api.fir
 
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.name.ClassId
@@ -111,6 +112,7 @@ public abstract class MetroFirDeclarationGenerationExtension(session: FirSession
     public fun create(
       session: FirSession,
       options: MetroOptions,
+      compatContext: CompatContext,
     ): MetroFirDeclarationGenerationExtension?
   }
 }
