@@ -20,10 +20,15 @@ Changelog
 ### Changes
 
 - Test Kotlin 2.3.20-RC.
+- Test Kotlin 2.3.20-RC2.
 - Test Android Studio Panda 2
 - Test Android Studio Panda 3 canaries
 
 ### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@hvisser](https://github.com/hvisser)
 
 0.11.2
 ------
