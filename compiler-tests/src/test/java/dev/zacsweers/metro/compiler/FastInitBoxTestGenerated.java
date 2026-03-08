@@ -391,6 +391,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ProvidersReturningANestedTypeInSameClass.kt")
+    public void testProvidersReturningANestedTypeInSameClass() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ProvidersReturningANestedTypeInSameClass.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleContainersWithHintsWork.kt")
     public void testSimpleContainersWithHintsWork() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/SimpleContainersWithHintsWork.kt");
@@ -987,6 +993,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("ChildProvidesSupersedeSameTypedParentProvides.kt")
       public void testChildProvidesSupersedeSameTypedParentProvides() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChildProvidesSupersedeSameTypedParentProvides.kt");
+      }
+
+      @Test
+      @TestMetadata("ChildProvidesSupersedeScopeSameTypedParentProvidesInMultibinding.kt")
+      public void testChildProvidesSupersedeScopeSameTypedParentProvidesInMultibinding() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ChildProvidesSupersedeScopeSameTypedParentProvidesInMultibinding.kt");
       }
 
       @Test
