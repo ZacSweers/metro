@@ -626,8 +626,17 @@ internal class BindingLookup(
         // Report duplicates if there are multiple bindings
         duplicateBindings[key]?.let { onDuplicateBindings(key, it.toList()) }
 
-        // Check if this is available from parent and is scoped
-        if (binding.scope != null && parentContext?.contains(key) == true) {
+        // Check if this is available from parent and is scoped.
+        // Skip locally declared bindings, they're explicitly provided in this graph
+        // (e.g. via @Provides) and should not be delegated to a parent even if the
+        // parent has the same key under a different scope.
+        // "If graph A provides `Logger` and graph B also provides `Logger` (overriding A's),
+        // ensure graph C uses B's"
+        if (
+          binding.scope != null &&
+            key !in locallyDeclaredKeys &&
+            parentContext?.contains(key) == true
+        ) {
           val token = parentContext.mark(key, binding.scope!!)
           return setOf(createParentGraphDependency(key, token!!))
         }
