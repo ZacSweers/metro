@@ -7,21 +7,16 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
-import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
-import org.jetbrains.kotlin.fir.types.ConeKotlinType
-import org.jetbrains.kotlin.fir.types.classId
-import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 
 internal sealed interface CircuitSymbols {
 
   companion object {
-    val circuitInjectPredicate =
-      annotated(CircuitClassIds.CircuitInject.asSingleFqName())
+    val circuitInjectPredicate = annotated(CircuitClassIds.CircuitInject.asSingleFqName())
   }
 
   class Fir(private val session: FirSession) : CircuitSymbols {
