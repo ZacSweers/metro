@@ -95,7 +95,8 @@ internal class CircuitFactorySupertypeGenerator(session: FirSession, compatConte
     val queue = ArrayDeque<FirClass>()
     val seen = mutableSetOf<ClassId>()
     queue.add(parent.fir)
-    for (clazz in queue) {
+    while (queue.isNotEmpty()) {
+      val clazz = queue.removeFirst()
       if (clazz.classId in seen) continue
       seen += clazz.classId
 
