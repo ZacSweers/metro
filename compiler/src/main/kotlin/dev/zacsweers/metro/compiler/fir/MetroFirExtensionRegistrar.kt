@@ -41,7 +41,7 @@ public class MetroFirExtensionRegistrar(
     (FirSession, MetroOptions, CompatContext) -> List<MetroFirDeclarationGenerationExtension> =
     ::loadExternalDeclarationExtensions,
   private val loadExternalContributionExtensions:
-    (FirSession, MetroOptions) -> List<MetroContributionExtension> =
+    (FirSession, MetroOptions, CompatContext) -> List<MetroContributionExtension> =
     ::loadExternalContributionExtensions,
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
@@ -260,6 +260,7 @@ private fun loadExternalDeclarationExtensions(
 private fun loadExternalContributionExtensions(
   session: FirSession,
   options: MetroOptions,
+  compatContext: CompatContext,
 ): List<MetroContributionExtension> {
   return ServiceLoader.load(
       MetroContributionExtension.Factory::class.java,
@@ -267,7 +268,7 @@ private fun loadExternalContributionExtensions(
     )
     .mapNotNull { factory ->
       try {
-        factory.create(session, options)
+        factory.create(session, options, compatContext)
       } catch (e: Exception) {
         if (options.debug) {
           System.err.println(

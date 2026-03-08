@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import java.util.Optional
+import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirFile
@@ -32,15 +34,30 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
  * For external origins, this just looks up the type ref [ConeKotlinType] directly since it is
  * already resolved.
  */
-internal sealed interface MetroFirTypeResolver {
-  fun resolveType(typeRef: FirTypeRef): ConeKotlinType
+public sealed interface MetroFirTypeResolver {
+  public fun resolveType(typeRef: FirTypeRef): ConeKotlinType
 
-  class Factory(private val session: FirSession, private val allSessions: List<FirSession>) {
+  public interface Factory {
+    public fun create(classSymbol: FirClassLikeSymbol<*>): MetroFirTypeResolver?
+
+    context(compatContext: CompatContext)
+    public fun create(functionSymbol: FirFunctionSymbol<*>): MetroFirTypeResolver?
+
+    public companion object {
+      internal operator fun invoke(session: FirSession, allSessions: List<FirSession>): Factory =
+        FactoryImpl(session, allSessions)
+    }
+  }
+
+  private class FactoryImpl(
+    private val session: FirSession,
+    private val allSessions: List<FirSession>,
+  ) : Factory {
     private val scopeSession = ScopeSession()
     private val resolversByFile = mutableMapOf<FirFile, LocalMetroFirTypeResolver?>()
     private val externalResolver by lazy { ExternalMetroFirTypeResolver(session) }
 
-    fun create(classSymbol: FirClassLikeSymbol<*>): MetroFirTypeResolver? {
+    override fun create(classSymbol: FirClassLikeSymbol<*>): MetroFirTypeResolver? {
       if (classSymbol.origin !is FirDeclarationOrigin.Source) return externalResolver
       // Look up through all firProviders as we may be a KMP compilation
       // The implementation of getFirClassifierContainerFileIfAny is an O(1) lookup in its impl in
@@ -53,9 +70,10 @@ internal sealed interface MetroFirTypeResolver {
     }
 
     context(compatContext: CompatContext)
-    fun create(functionSymbol: FirFunctionSymbol<*>): MetroFirTypeResolver? {
-      if (functionSymbol.origin !is FirDeclarationOrigin.Source)
+    override fun create(functionSymbol: FirFunctionSymbol<*>): MetroFirTypeResolver? {
+      if (functionSymbol.origin !is FirDeclarationOrigin.Source) {
         return ExternalMetroFirTypeResolver(session)
+      }
 
       // if it's not top-level, create in the class instead
       val enclosingClass = with(compatContext) { functionSymbol.getContainingClassSymbol() }
@@ -122,9 +140,9 @@ internal sealed interface MetroFirTypeResolver {
     }
   }
 
-  companion object {
+  public companion object {
     // For cases where we use this in IR, types are already resolved so just read coneType
-    fun forIrUse(): MetroFirTypeResolver = IrMetroFirTypeResolver
+    internal fun forIrUse(): MetroFirTypeResolver = IrMetroFirTypeResolver
 
     private val EMPTY_CONFIGURATION =
       TypeResolutionConfiguration(
@@ -138,6 +156,20 @@ internal sealed interface MetroFirTypeResolver {
     override fun resolveType(typeRef: FirTypeRef): ConeKotlinType {
       check(typeRef is FirUserTypeRef)
       return typeRef.coneType
+    }
+  }
+}
+
+internal fun MetroFirTypeResolver.Factory.caching(): MetroFirTypeResolver.Factory {
+  return object : MetroFirTypeResolver.Factory by this {
+    private val delegate = this@caching
+    private val typeResolverCache =
+      mutableMapOf<FirClassLikeSymbol<*>, Optional<MetroFirTypeResolver>>()
+
+    override fun create(classSymbol: FirClassLikeSymbol<*>): MetroFirTypeResolver? {
+      return typeResolverCache
+        .getOrPut(classSymbol) { Optional.ofNullable(delegate.create(classSymbol)) }
+        .getOrNull()
     }
   }
 }

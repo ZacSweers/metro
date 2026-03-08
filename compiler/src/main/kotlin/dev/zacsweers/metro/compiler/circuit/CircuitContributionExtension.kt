@@ -6,19 +6,21 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.classArgument
+import dev.zacsweers.metro.compiler.fir.resolveClassId
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
+import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
-import org.jetbrains.kotlin.fir.resolve.defaultType
-import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
-import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.classId
-import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
@@ -26,10 +28,10 @@ import org.jetbrains.kotlin.name.Name
  * Contribution extension that provides metadata for Circuit-generated factories to Metro's
  * dependency graph merging.
  */
-public class CircuitContributionExtension(private val session: FirSession) :
-  MetroContributionExtension {
-
-  private val symbols by lazy { CircuitSymbols.Fir(session) }
+public class CircuitContributionExtension(
+  private val session: FirSession,
+  compatContext: CompatContext,
+) : MetroContributionExtension, CompatContext by compatContext {
 
   private val annotatedSymbols by lazy {
     session.predicateBasedProvider
@@ -53,13 +55,15 @@ public class CircuitContributionExtension(private val session: FirSession) :
   }
 
   override fun getContributions(
-    scopeClassId: ClassId
+    scopeClassId: ClassId,
+    typeResolverFactory: MetroFirTypeResolver.Factory,
   ): List<MetroContributionExtension.Contribution> {
     val contributions = mutableListOf<MetroContributionExtension.Contribution>()
 
     // Process annotated classes
     for (classSymbol in annotatedClasses) {
-      val contribution = computeContributionForClass(classSymbol, scopeClassId)
+      val typeResolver = typeResolverFactory.create(classSymbol) ?: continue
+      val contribution = computeContributionForClass(classSymbol, scopeClassId, typeResolver)
       if (contribution != null) {
         contributions.add(contribution)
       }
@@ -67,7 +71,8 @@ public class CircuitContributionExtension(private val session: FirSession) :
 
     // Process annotated functions
     for (function in annotatedFunctions) {
-      val contribution = computeContributionForFunction(function, scopeClassId)
+      val typeResolver = typeResolverFactory.create(function) ?: continue
+      val contribution = computeContributionForFunction(function, scopeClassId, typeResolver)
       if (contribution != null) {
         contributions.add(contribution)
       }
@@ -79,12 +84,13 @@ public class CircuitContributionExtension(private val session: FirSession) :
   private fun computeContributionForClass(
     classSymbol: FirRegularClassSymbol,
     requestedScopeClassId: ClassId,
+    typeResolver: MetroFirTypeResolver,
   ): MetroContributionExtension.Contribution? {
     val annotation =
       classSymbol.annotationsIn(session, setOf(CircuitClassIds.CircuitInject)).firstOrNull()
         ?: return null
 
-    val scopeClassId = extractScopeClassId(annotation) ?: return null
+    val scopeClassId = extractScopeClassId(annotation, typeResolver) ?: return null
 
     // Only return contribution if scope matches
     if (scopeClassId != requestedScopeClassId) return null
@@ -96,15 +102,15 @@ public class CircuitContributionExtension(private val session: FirSession) :
 
     val factoryClassId = classSymbol.classId.createNestedClassId(CircuitNames.Factory)
 
-    // Use MetroContributions API to compute the MetroContribution ClassId
+    // Compute the MetroContribution ClassId and construct the type directly.
+    // We can't use symbolProvider here because the MetroContribution class is itself generated
+    // (by ContributionsFirGenerator) inside the circuit-generated factory class. During supertype
+    // resolution, the symbol may not be resolvable yet due to the two-level generation chain.
     val metroContributionClassId =
       MetroContributions.metroContributionClassId(factoryClassId, scopeClassId)
 
-    val metroContributionSymbol =
-      session.symbolProvider.getClassLikeSymbolByClassId(metroContributionClassId) ?: return null
-
     return MetroContributionExtension.Contribution(
-      supertype = metroContributionSymbol.defaultType(),
+      supertype = metroContributionClassId.constructClassLikeType(emptyArray()),
       replaces = emptyList(),
       originClassId = factoryClassId,
     )
@@ -113,12 +119,13 @@ public class CircuitContributionExtension(private val session: FirSession) :
   private fun computeContributionForFunction(
     function: FirNamedFunctionSymbol,
     requestedScopeClassId: ClassId,
+    typeResolver: MetroFirTypeResolver,
   ): MetroContributionExtension.Contribution? {
     val annotation =
       function.annotationsIn(session, setOf(CircuitClassIds.CircuitInject)).firstOrNull()
         ?: return null
 
-    val scopeClassId = extractScopeClassId(annotation) ?: return null
+    val scopeClassId = extractScopeClassId(annotation, typeResolver) ?: return null
 
     // Only return contribution if scope matches
     if (scopeClassId != requestedScopeClassId) return null
@@ -130,38 +137,34 @@ public class CircuitContributionExtension(private val session: FirSession) :
         Name.identifier("${functionName.capitalizeUS()}Factory"),
       )
 
-    // Use MetroContributions API to compute the MetroContribution ClassId
+    // Construct the type directly (see comment in computeContributionForClass)
     val metroContributionClassId =
       MetroContributions.metroContributionClassId(factoryClassId, scopeClassId)
 
-    val metroContributionSymbol =
-      session.symbolProvider.getClassLikeSymbolByClassId(metroContributionClassId)
-        as? FirRegularClassSymbol ?: return null
-
     return MetroContributionExtension.Contribution(
-      supertype = metroContributionSymbol.defaultType(),
+      supertype = metroContributionClassId.constructClassLikeType(emptyArray()),
       replaces = emptyList(),
       originClassId = factoryClassId,
     )
   }
 
-  private fun extractScopeClassId(annotation: FirAnnotation): ClassId? {
-    val mapping = annotation.argumentMapping.mapping
-    if (mapping.size < 2) return null
-
+  private fun extractScopeClassId(
+    annotation: FirAnnotation,
+    typeResolver: MetroFirTypeResolver,
+  ): ClassId? {
+    if (annotation !is FirAnnotationCall) return null
     // Second arg is scope
-    val scopeArg = mapping.values.elementAtOrNull(1) as? FirGetClassCall ?: return null
-    return scopeArg.getTargetType().classId
-  }
-
-  private fun FirGetClassCall.getTargetType(): ConeKotlinType {
-    return argument.resolvedType
+    return annotation.classArgument(Symbols.Names.scope, index = 1)?.resolveClassId(typeResolver)
   }
 
   public class Factory : MetroContributionExtension.Factory {
-    override fun create(session: FirSession, options: MetroOptions): MetroContributionExtension? {
+    override fun create(
+      session: FirSession,
+      options: MetroOptions,
+      compatContext: CompatContext,
+    ): MetroContributionExtension? {
       if (!options.enableCircuitCodegen) return null
-      return CircuitContributionExtension(session)
+      return CircuitContributionExtension(session, compatContext)
     }
   }
 }
