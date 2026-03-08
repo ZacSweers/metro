@@ -17,15 +17,16 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.ProviderFactory.Companion.lookupRealDeclaration
+import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findAnnotations
+import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.includedClasses
@@ -40,17 +41,14 @@ import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.metroMetadata
-import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
@@ -71,7 +69,10 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getJvmNameFromAnnotation
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
+import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -87,20 +88,18 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeAlias
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
-import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
-import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverride
-import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -277,8 +276,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
 
     checkNotLocked()
 
-    val sourceValueParameters = reference.parameters.regularParameters
-
     val generatedClassId = reference.generatedClassId
 
     val factoryCls =
@@ -289,77 +286,88 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
           "No expected factory class generated for ${reference.callableId}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
         )
 
-    val ctor = factoryCls.primaryConstructor!!
+    // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to read
+    // directly since we'll read the mirror function to get the target type
+    factoryCls.superTypes += metroSymbols.metroFactory.typeWith(reference.typeKey.type)
+    // Cannot call addFakeOverrides because FIR2IR has already done that, so we need to add the
+    // invoke override directly later
+    val invokeFunction =
+      factoryCls
+        .addFunction(Symbols.StringNames.INVOKE, reference.typeKey.type, isFakeOverride = true)
+        .apply {
+          overriddenSymbols = listOf(metroSymbols.providerInvoke)
+          isOperator = true
+        }
 
-    val graphType = reference.graphParent.typeWith()
-
-    val instanceParam =
-      if (!reference.isInObject) {
-        val contextualTypeKey = IrContextualTypeKey.create(typeKey = IrTypeKey(graphType))
-        Parameter.regular(
-          kind = IrParameterKind.Regular,
-          name = Name.identifier("graph"),
-          contextualTypeKey = contextualTypeKey,
-          isAssisted = false,
-          assistedIdentifier = "",
-          isGraphInstance = true,
-          isIncludes = false,
-          isBindsInstance = false,
-          ir = null,
-        )
-      } else {
-        null
-      }
+    metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(invokeFunction)
 
     val sourceParameters =
-      Parameters(
-        reference.callableId,
-        instance = instanceParam,
-        extensionReceiver = null,
-        regularParameters = sourceValueParameters,
-        contextParameters = emptyList(),
-        ir = null, // Will set later
+      reference.parameters.copy(
+        dispatchReceiverParameter = null,
+        regularParameters =
+          buildList {
+            reference.parameters.dispatchReceiverParameter?.let {
+              add(
+                it.copy(
+                  kind = IrParameterKind.Regular,
+                  ir =
+                    it.asValueParameter.deepCopyWithSymbols(reference.parameters.ir).apply {
+                      this.name = Symbols.Names.instance
+                      this.origin = Origins.InstanceParameter
+                    },
+                )
+              )
+            }
+            addAll(reference.parameters.regularParameters)
+          },
       )
 
-    val constructorParametersToFields = assignConstructorParamsToFields(ctor, factoryCls)
+    // Possibly de-duped source params used by the constructor and create() function
+    val dedupedSourceParameters =
+      if (options.deduplicateInjectedParams) {
+        sourceParameters.copy(
+          regularParameters = sourceParameters.regularParameters.dedupeParameters()
+        )
+      } else {
+        sourceParameters
+      }
 
-    // Build type-key-to-field from the (potentially deduped) constructor params.
-    // Multiple source params with the same type key will share one field.
     val typeKeyToField = mutableMapOf<IrTypeKey, IrField>()
-    var instanceField: IrField? = null
-    for ((irParam, field) in constructorParametersToFields) {
-      if (irParam.origin == Origins.InstanceParameter) {
-        instanceField = field
-      } else if (reference.callee != null) {
-        val regularParams =
-          reference.callee.owner.parameters.filter { it.kind == IrParameterKind.Regular }
-        val sourceParamIndex = regularParams.indexOfFirst { it.name == irParam.name }
-        if (sourceParamIndex >= 0) {
-          val sourceParam = sourceParameters.regularParameters[sourceParamIndex]
-          typeKeyToField.putIfAbsent(sourceParam.typeKey, field)
-        }
-      }
-    }
-
-    // Map all source params to fields by type key
-    val sourceParametersToFields: Map<Parameter, IrField> = buildMap {
-      sourceParameters.dispatchReceiverParameter?.let { param ->
-        instanceField?.let { put(param, it) }
-      }
-      for (param in sourceValueParameters) {
-        typeKeyToField[param.typeKey]?.let { put(param, it) }
-      }
+    val ctor: IrConstructor
+    if (factoryCls.isObject) {
+      // If it's got no parameters we'll generate it in FIR as an object
+      ctor = factoryCls.primaryConstructor!!
+    } else {
+      // Add constructor
+      // Doesn't have to be metadata-visible
+      ctor =
+        factoryCls
+          .addConstructor {
+            visibility = DescriptorVisibilities.PRIVATE
+            isPrimary = true
+          }
+          .apply {
+            val ownerClass = reference.parent.owner
+            val typeRemapper = ownerClass.deepRemapperFor(factoryCls.defaultType)
+            addParameters(
+              params = dedupedSourceParameters.allParameters,
+              wrapInProvider = true,
+              typeRemapper = { type -> typeRemapper.remapType(type) },
+            ) { typeKey, irParam ->
+              typeKeyToField[typeKey] = irParam.addBackingFieldTo(factoryCls)
+            }
+            body = generateDefaultConstructorBody()
+          }
     }
 
     val bytecodeFunction =
-      implementCreatorBodies(factoryCls, ctor.symbol, reference, sourceParameters)
+      implementCreatorBodies(factoryCls, ctor.symbol, reference, dedupedSourceParameters)
 
     // Implement invoke()
     // TODO DRY this up with the constructor injection override
-    val invokeFunction = factoryCls.requireSimpleFunction(Symbols.StringNames.INVOKE)
-    invokeFunction.owner.finalizeFakeOverride(factoryCls.thisReceiverOrFail)
-    invokeFunction.owner.body =
-      pluginContext.createIrBuilder(invokeFunction).run {
+    invokeFunction.finalizeFakeOverride(factoryCls.thisReceiverOrFail)
+    invokeFunction.body =
+      pluginContext.createIrBuilder(invokeFunction.symbol).run {
         irExprBodySafe(
           irInvoke(
             dispatchReceiver = dispatchReceiverFor(bytecodeFunction),
@@ -367,8 +375,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
             args =
               parametersAsProviderArguments(
                 parameters = sourceParameters,
-                receiver = invokeFunction.owner.dispatchReceiverParameter!!,
-                parametersToFields = sourceParametersToFields,
+                receiver = invokeFunction.dispatchReceiverParameter!!,
+                fields = typeKeyToField,
               ),
           )
         )
@@ -522,24 +530,16 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         factoryCls.companionObject()!!
       }
 
-    // Deduplicate parameters to match the FIR-generated create() function signature
-    val dedupedParameters =
-      if (options.deduplicateInjectedParams) {
-        factoryParameters.copy(
-          regularParameters = factoryParameters.regularParameters.dedupeParameters()
-        )
-      } else {
-        factoryParameters
-      }
-
     // Generate create()
     @Suppress("RETURN_VALUE_NOT_USED")
     generateStaticCreateFunction(
-      parentClass = classToGenerateCreatorsIn,
-      targetClass = factoryCls,
+      objectClassToGenerateIn = classToGenerateCreatorsIn,
+      factoryClass = factoryCls,
       targetConstructor = factoryConstructor,
-      parameters = dedupedParameters,
-      providerFunction = reference.callee?.owner,
+      parameters = factoryParameters,
+      sourceFunction = reference.callee?.owner,
+      returnTypeProvider = { metroSymbols.metroFactory.typeWith(reference.typeKey.type) },
+      sourceTypeParameters = reference.parent.owner,
     )
 
     // Generate the named newInstance function
@@ -549,6 +549,9 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         targetFunction = reference.callee?.owner,
         sourceMetroParameters = reference.parameters,
         sourceParameters = reference.parameters.regularParameters.map { it.asValueParameter },
+        sourceTypeParameters = reference.parent.owner,
+        returnTypeProvider = { reference.typeKey.type },
+        functionName = reference.name.asString(),
       ) { function ->
         val parameters = function.regularParameters
 
@@ -603,7 +606,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
     val isInObject: Boolean
       get() = parent.owner.isObject
 
-    val graphParent =
+    val containerClass =
       if (parent.owner.isCompanionObject) {
         parent.owner.parentAsClass
       } else {
@@ -660,39 +663,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
     val sourceAnnotations = mirrorFunction.metroAnnotations(metroSymbols.classIds)
     val callableMetadata =
       factoryCls.irCallableMetadata(mirrorFunction, sourceAnnotations, isInterop = false)
-    val factoryType =
-      factoryCls.superTypes
-        .first { it.classOrNull == metroSymbols.metroFactory }
-        .requireSimpleType(factoryCls) {
-          appendLine()
-          appendLine("(Hint)")
-          val shortPath = buildString {
-            append(callableMetadata.callableId.classId!!.shortClassName)
-            append(".")
-            append(callableMetadata.callableId.callableName)
-            if (!callableMetadata.isPropertyAccessor) {
-              append("(...)")
-            }
-            append(": ")
-            append(callableMetadata.function.returnType.render(short = true))
-          }
-          appendLine(
-            "This is a generated factory class for the '$shortPath' @Provides declaration, which is likely where the missing type is originally exposed."
-          )
-        }
-
-    val contextKey =
-      factoryType
-        .requireSimpleType(factoryCls)
-        .arguments
-        .first()
-        .typeOrFail
-        .asContextualTypeKey(
-          qualifierAnnotation = sourceAnnotations.qualifier,
-          hasDefault = false,
-          patchMutableCollections = factoryCls.isFromJava(),
-          declaration = callableMetadata.function,
-        )
+    val contextKey = IrContextualTypeKey.from(mirrorFunction)
     return ProviderFactory(
       contextKey,
       factoryCls,

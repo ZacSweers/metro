@@ -26,16 +26,8 @@ FILE: /ComposableApp.kt
             super<R|kotlin/Any|>()
         }
 
-        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class MetroFactory : R|dev/zacsweers/metro/internal/Factory<ComposableApp>| {
-            private constructor(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|ComposableApp.MetroFactory| {
-                super<R|kotlin/Any|>()
-            }
-
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class MetroFactory : R|kotlin/Any| {
             public final companion object Companion : R|kotlin/Any| {
-                public final fun create(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|dev/zacsweers/metro/internal/Factory<ComposableApp>|
-
-                public final fun newInstance(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|ComposableApp|
-
                 private constructor(): R|ComposableApp.MetroFactory.Companion| {
                     super<R|kotlin/Any|>()
                 }
@@ -53,16 +45,8 @@ FILE: /NonComposableApp.kt
             super<R|kotlin/Any|>()
         }
 
-        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class MetroFactory : R|dev/zacsweers/metro/internal/Factory<NonComposableApp>| {
-            private constructor(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|NonComposableApp.MetroFactory| {
-                super<R|kotlin/Any|>()
-            }
-
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class MetroFactory : R|kotlin/Any| {
             public final companion object Companion : R|kotlin/Any| {
-                public final fun create(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|dev/zacsweers/metro/internal/Factory<NonComposableApp>|
-
-                public final fun newInstance(message: R|dev/zacsweers/metro/Provider<kotlin/String>|): R|NonComposableApp|
-
                 private constructor(): R|NonComposableApp.MetroFactory.Companion| {
                     super<R|kotlin/Any|>()
                 }

@@ -141,6 +141,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.TypeRemapper
+import org.jetbrains.kotlin.ir.util.allParameters
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -385,7 +386,12 @@ internal fun IrBuilderWithScope.irInvoke(
   if (!contextArgs.isNullOrEmpty()) argSize += contextArgs.size
   if (extensionReceiver != null) argSize++
   check(callee.owner.parameters.size == argSize) {
-    "Expected ${callee.owner.parameters.size} arguments but got $argSize for function: ${callee.owner.kotlinFqName}"
+    """
+      Expected ${callee.owner.parameters.size} arguments but got $argSize for function: ${callee.owner.kotlinFqName}
+      Expected: ${callee.owner.allParameters.joinToKotlinLike(", ")}
+      Actual: receiver=${finalReceiverExpression?.dumpKotlinLike()} contextArgs=${contextArgs?.joinToKotlinLike(", ")} extension=${extensionReceiver?.dumpKotlinLike()} args=${args.joinToKotlinLike(", ")}
+    """
+      .trimIndent()
   }
 
   var index = 0
@@ -589,6 +595,8 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
 }
 
 /** For use with generated factory creator functions, converts parameters to Provider<T> types. */
+// TODO this is only left over for member injectors. Should migrate that to the typekey fields
+//  overload
 context(context: IrMetroContext)
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
   parameters: Parameters,
@@ -599,28 +607,47 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
     addAll(
       parameters.allParameters
         .filterNot { it.isAssisted }
-        .map { parameter -> parameterAsProviderArgument(parameter, receiver, parametersToFields) }
+        .map { parameter ->
+          // When calling value getter on Provider<T>, make sure the dispatch
+          // receiver is the Provider instance itself
+          val providerInstance = irGetField(irGet(receiver), parametersToFields.getValue(parameter))
+          val typeMetadata = parameter.contextualTypeKey
+          typeAsProviderArgument(
+            typeMetadata,
+            providerInstance,
+            isAssisted = parameter.isAssisted,
+            isGraphInstance = parameter.isGraphInstance,
+          )
+        }
     )
   }
 }
 
-/** For use with generated factory create() functions. */
+/** For use with generated factory creator functions, converts parameters to Provider<T> types. */
 context(context: IrMetroContext)
-internal fun IrBuilderWithScope.parameterAsProviderArgument(
-  parameter: Parameter,
+internal fun IrBuilderWithScope.parametersAsProviderArguments(
+  parameters: Parameters,
   receiver: IrValueParameter,
-  parametersToFields: Map<Parameter, IrField>,
-): IrExpression {
-  // When calling value getter on Provider<T>, make sure the dispatch
-  // receiver is the Provider instance itself
-  val providerInstance = irGetField(irGet(receiver), parametersToFields.getValue(parameter))
-  val typeMetadata = parameter.contextualTypeKey
-  return typeAsProviderArgument(
-    typeMetadata,
-    providerInstance,
-    isAssisted = parameter.isAssisted,
-    isGraphInstance = parameter.isGraphInstance,
-  )
+  fields: Map<IrTypeKey, IrField>,
+  calleeParameters: Parameters = parameters,
+): List<IrExpression?> {
+  return buildList {
+    addAll(
+      calleeParameters.allParameters
+        .filterNot { it.isAssisted }
+        .map { parameter ->
+          // When calling value getter on Provider<T>, make sure the dispatch
+          // receiver is the Provider instance itself
+          val providerInstance = irGetField(irGet(receiver), fields.getValue(parameter.typeKey))
+          typeAsProviderArgument(
+            parameter.contextualTypeKey,
+            providerInstance,
+            isAssisted = parameter.isAssisted,
+            isGraphInstance = parameter.isGraphInstance,
+          )
+        }
+    )
+  }
 }
 
 context(context: IrMetroContext)
@@ -824,26 +851,26 @@ internal fun IrType.normalizeToKClassIfJavaClass(): IrType {
   }
 }
 
+context(context: IrMetroContext)
+internal fun IrValueParameter.addBackingFieldTo(clazz: IrClass): IrField {
+  return clazz
+    .addField(toSafeIdentifier(name.asString()), type, DescriptorVisibilities.PRIVATE)
+    .apply {
+      isFinal = true
+      initializer =
+        context.createIrBuilder(symbol).run { irExprBody(irGet(this@addBackingFieldTo)) }
+    }
+}
+
 // TODO eventually just return a Map<TypeKey, IrField>
 context(context: IrMetroContext)
 internal fun assignConstructorParamsToFields(
   constructor: IrConstructor,
-  clazz: IrClass,
+  clazz: IrClass = constructor.parentAsClass,
 ): Map<IrValueParameter, IrField> {
   return buildMap {
     for (irParameter in constructor.regularParameters) {
-      val irField =
-        clazz
-          .addField(
-            toSafeIdentifier(irParameter.name.asString()),
-            irParameter.type,
-            DescriptorVisibilities.PRIVATE,
-          )
-          .apply {
-            isFinal = true
-            initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
-          }
-      put(irParameter, irField)
+      put(irParameter, irParameter.addBackingFieldTo(clazz))
     }
   }
 }
@@ -855,21 +882,7 @@ internal fun assignConstructorParamsToFields(
 ): Map<Parameter, IrField> {
   return buildMap {
     for (irParameter in parameters.regularParameters) {
-      val irField =
-        clazz
-          .addField(
-            irParameter.name,
-            irParameter.contextualTypeKey.toIrType(),
-            DescriptorVisibilities.PRIVATE,
-          )
-          .apply {
-            isFinal = true
-            initializer =
-              context.createIrBuilder(symbol).run {
-                irExprBody(irGet(irParameter.asValueParameter))
-              }
-          }
-      put(irParameter, irField)
+      put(irParameter, irParameter.asValueParameter.addBackingFieldTo(clazz))
     }
   }
 }

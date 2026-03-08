@@ -19,8 +19,8 @@ androidx-lint-gradle = "1.0.0-alpha05"
 annotation = "1.9.1"
 anvil = "0.5.3"
 circuit = "0.32.0"
-compose-jb = "1.10.1"
-jetbrains-lifecycle-navigation3 = "2.10.0-alpha08"
+compose-jb = "1.10.2"
+jetbrains-lifecycle-navigation3 = "2.10.0-beta01"
 jetbrains-navigation3 = "1.0.0-alpha06"
 dagger = "2.59.2"
 gjf = "1.35.0"
@@ -46,7 +46,7 @@ okhttp = "5.3.2"
 okio = "3.16.4"
 pluginId = "dev.zacsweers.metro.compiler"
 poko = "0.21.3"
-wire = "5.5.0"
+wire = "5.5.1"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -56,11 +56,11 @@ android-test = { id = "com.android.test", version.ref = "agp" }
 anvil = { id = "dev.zacsweers.anvil", version.ref = "anvil" }
 benchmark = { id = "androidx.benchmark", version = "1.4.1" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
-buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.7" }
+buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.9" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
 dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
 gradleTestRetry = { id = "org.gradle.test-retry", version = "1.6.4" }
-intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.11.0" }
+intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.12.0" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

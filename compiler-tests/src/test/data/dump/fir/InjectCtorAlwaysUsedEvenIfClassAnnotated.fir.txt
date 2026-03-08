@@ -13,11 +13,7 @@ FILE: InjectCtorAlwaysUsedEvenIfClassAnnotated.kt
             this<R|Impl|>(Int(3))
         }
 
-        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final object MetroFactory : R|dev/zacsweers/metro/internal/Factory<Impl>| {
-            public final fun create(): R|dev/zacsweers/metro/internal/Factory<Impl>|
-
-            public final fun newInstance(): R|Impl|
-
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final object MetroFactory : R|kotlin/Any| {
             private constructor(): R|Impl.MetroFactory| {
                 super<R|kotlin/Any|>()
             }

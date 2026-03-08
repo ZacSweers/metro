@@ -14,6 +14,9 @@ internal interface BaseContextualTypeKey<
   val isDeferrable: Boolean
     get() = wrappedType.isDeferrable()
 
+  val isWrapped: Boolean
+    get() = isWrappedInProvider || isWrappedInLazy
+
   val requiresProviderInstance: Boolean
     get() = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider
 
