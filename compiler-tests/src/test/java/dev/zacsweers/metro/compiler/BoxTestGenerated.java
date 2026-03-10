@@ -193,6 +193,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ReplacementsWithOriginInContributedGraphExtensionSet.kt")
+    public void testReplacementsWithOriginInContributedGraphExtensionSet() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ReplacementsWithOriginInContributedGraphExtensionSet.kt");
+    }
+
+    @Test
     @TestMetadata("ReplacementsWithOriginInExtension.kt")
     public void testReplacementsWithOriginInExtension() {
       runTest("compiler-tests/src/test/data/box/aggregation/ReplacementsWithOriginInExtension.kt");

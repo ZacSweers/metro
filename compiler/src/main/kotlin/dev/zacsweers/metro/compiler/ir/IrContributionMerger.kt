@@ -188,7 +188,14 @@ internal class IrContributionMerger(
               // Get the actual contribution class (nested `MetroContribution`)
               val contributionClass = contributions.firstOrNull()?.rawTypeOrNull()
               if (contributionClass != null) {
-                contributionClass.originClassId()?.let { originClassId ->
+                // @Origin is usually present on the contribution container (the parent class).
+                // MetroContribution nested classes generated from those containers don't always
+                // carry that annotation, so fall back to the parent to preserve replacement
+                // behavior in IR-only graph-extension merging.
+                val originClassId =
+                  contributionClass.originClassId()
+                    ?: contributionClass.parentAsClass.originClassId()
+                originClassId?.let {
                   originToContributions.getAndAdd(originClassId, contributionClassId)
                 }
               }
