@@ -290,6 +290,24 @@ internal class BindingLookup(
     }
   }
 
+  context(context: IrMetroContext)
+  private fun addMultibindingContribution(
+    bindingId: String,
+    multibindingTypeKey: IrTypeKey,
+    sourceBindingKey: IrTypeKey,
+  ) {
+    val multibinding =
+      multibindingsByBindingId.getOrPut(bindingId) {
+        IrBinding.Multibinding.fromContributor(multibindingTypeKey).also {
+          multibindingsCache[multibindingTypeKey] = it
+        }
+      }
+
+    if (sourceBindingKey !in multibinding.sourceBindings) {
+      multibinding.addSourceBinding(sourceBindingKey)
+    }
+  }
+
   /**
    * Registers a contribution to a multibinding. Eagerly creates the multibinding if it doesn't
    * exist yet.
@@ -304,16 +322,7 @@ internal class BindingLookup(
     sourceBindingKey: IrTypeKey,
   ) {
     val bindingId = sourceBindingKey.multibindingBindingId ?: return
-
-    // Get or create the multibinding
-    val multibinding =
-      multibindingsByBindingId.getOrPut(bindingId) {
-        val newMultibinding = IrBinding.Multibinding.fromContributor(multibindingTypeKey)
-        multibindingsCache[multibindingTypeKey] = newMultibinding
-        newMultibinding
-      }
-
-    multibinding.addSourceBinding(sourceBindingKey)
+    addMultibindingContribution(bindingId, multibindingTypeKey, sourceBindingKey)
   }
 
   /**
@@ -350,15 +359,7 @@ internal class BindingLookup(
         )
       }
 
-    // Get or create the multibinding using the type key from the source binding
-    val multibinding =
-      multibindingsByBindingId.getOrPut(bindingId) {
-        val newMultibinding = IrBinding.Multibinding.fromContributor(multibindingTypeKey)
-        multibindingsCache[multibindingTypeKey] = newMultibinding
-        newMultibinding
-      }
-
-    multibinding.addSourceBinding(sourceBindingKey)
+    addMultibindingContribution(bindingId, multibindingTypeKey, sourceBindingKey)
   }
 
   /**
