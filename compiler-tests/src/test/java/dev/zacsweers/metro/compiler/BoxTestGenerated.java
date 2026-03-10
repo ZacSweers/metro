@@ -1740,6 +1740,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedDaggerLazyParameterInteropRegression.kt")
+      public void testAssistedDaggerLazyParameterInteropRegression() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/AssistedDaggerLazyParameterInteropRegression.kt");
+      }
+
+      @Test
       @TestMetadata("BindsOptionalInAMultibindingCycle.kt")
       public void testBindsOptionalInAMultibindingCycle() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/BindsOptionalInAMultibindingCycle.kt");

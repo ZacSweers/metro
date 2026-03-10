@@ -268,9 +268,13 @@ internal class InjectedClassTransformer(
           if (!isAssistedInject) {
             overriddenSymbols = listOf(metroSymbols.providerInvoke)
           } else {
+            val assistedInvokeParamTypeRemapper =
+              declaration.deepRemapperFor(factoryCls.defaultType)
             // Add assisted params
             for (param in constructorParameters.allParameters.filter { it.isAssisted }) {
-              addValueParameter(param.name, param.type)
+              val assistedParamType =
+                assistedInvokeParamTypeRemapper.remapType(param.contextualTypeKey.toIrType())
+              addValueParameter(param.name, assistedParamType)
             }
           }
         }
