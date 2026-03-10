@@ -36,11 +36,11 @@ kotlin {
   }
 
   // Compose-supported native targets
-  iosArm64()
-  iosSimulatorArm64()
-  iosX64()
-  macosArm64()
-  macosX64()
+  //  iosArm64()
+  //  iosSimulatorArm64()
+  //  iosX64()
+  //  macosArm64()
+  //  macosX64()
 
   @OptIn(ExperimentalKotlinGradlePluginApi::class)
   applyDefaultHierarchyTemplate {

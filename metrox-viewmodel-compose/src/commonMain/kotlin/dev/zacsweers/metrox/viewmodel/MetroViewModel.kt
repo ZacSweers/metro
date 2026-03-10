@@ -5,10 +5,10 @@ package dev.zacsweers.metrox.viewmodel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.lifecycle.HasDefaultViewModelProviderFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.defaultViewModelCreationExtras
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,27 +26,10 @@ public val LocalMetroViewModelFactory: ProvidableCompositionLocal<MetroViewModel
 
 /** Retrieves a Metro-injected ViewModel using the [LocalMetroViewModelFactory]. */
 @Composable
-public inline fun <reified VM : ViewModel> metroViewModel(
-  viewModelStoreOwner: ViewModelStoreOwner = requireViewModelStoreOwner(),
-  key: String? = null,
-): VM =
-  viewModel(
-    viewModelStoreOwner = viewModelStoreOwner,
-    key = key,
-    factory = LocalMetroViewModelFactory.current,
-  )
-
-/** Retrieves a Metro-injected ViewModel using the [LocalMetroViewModelFactory]. */
-@Composable
 public inline fun <reified VM : ViewModel> assistedMetroViewModel(
   viewModelStoreOwner: ViewModelStoreOwner = requireViewModelStoreOwner(),
   key: String? = null,
-  extras: CreationExtras =
-    if (viewModelStoreOwner is HasDefaultViewModelProviderFactory) {
-      viewModelStoreOwner.defaultViewModelCreationExtras
-    } else {
-      CreationExtras.Empty
-    },
+  extras: CreationExtras = viewModelStoreOwner.defaultViewModelCreationExtras,
 ): VM =
   viewModel(
     viewModelStoreOwner = viewModelStoreOwner,
@@ -66,13 +49,8 @@ public inline fun <
 > assistedMetroViewModel(
   viewModelStoreOwner: ViewModelStoreOwner = requireViewModelStoreOwner(),
   key: String? = null,
-  extras: CreationExtras =
-    if (viewModelStoreOwner is HasDefaultViewModelProviderFactory) {
-      viewModelStoreOwner.defaultViewModelCreationExtras
-    } else {
-      CreationExtras.Empty
-    },
-  crossinline createViewModel: FactoryType.() -> VM,
+  extras: CreationExtras = viewModelStoreOwner.defaultViewModelCreationExtras,
+  crossinline createViewModel: FactoryType.(CreationExtras) -> VM,
 ): VM {
   val factory = LocalMetroViewModelFactory.current
   return viewModel(
@@ -84,7 +62,7 @@ public inline fun <
           val factoryClass = FactoryType::class
           val provider = factory.createManuallyAssistedFactory(factoryClass)
 
-          return modelClass.cast(provider().createViewModel())
+          return modelClass.cast(provider().createViewModel(extras))
         }
       },
     extras = extras,

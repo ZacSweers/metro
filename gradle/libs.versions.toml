@@ -135,10 +135,10 @@ guice-assistedInject = "com.google.inject.extensions:guice-assistedinject:7.0.0"
 javaxInject = "javax.inject:javax.inject:1"
 jakartaInject = "jakarta.inject:jakarta.inject-api:2.0.1"
 
-jetbrains-lifecycle-viewmodel = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.9.6"
-jetbrains-lifecycle-viewmodel-compose = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.9.6"
-jetbrains-lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "jetbrains-lifecycle-navigation3" }
-jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "jetbrains-navigation3" }
+jetbrains-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.11.0-SNAPSHOT"
+jetbrains-lifecycle-viewmodel-compose = "androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0-SNAPSHOT"
+jetbrains-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "jetbrains-lifecycle-navigation3" }
+jetbrains-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "jetbrains-navigation3" }
 
 kotlinInject-anvil-compiler = { module = "software.amazon.lastmile.kotlin.inject.anvil:compiler", version.ref = "kotlinInject-anvil" }
 kotlinInject-anvil-runtime = { module = "software.amazon.lastmile.kotlin.inject.anvil:runtime", version.ref = "kotlinInject-anvil" }

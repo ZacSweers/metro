@@ -36,22 +36,22 @@ kotlin {
 
   // Native targets supported by lifecycle-viewmodel
   // Tier 1
-  iosArm64()
-  iosSimulatorArm64()
-  iosX64()
-  linuxX64()
-  macosArm64()
-  macosX64()
-
-  // Tier 2
-  linuxArm64()
-  tvosArm64()
-  tvosSimulatorArm64()
-  tvosX64()
-  watchosArm32()
-  watchosArm64()
-  watchosSimulatorArm64()
-  watchosX64()
+  //  iosArm64()
+  //  iosSimulatorArm64()
+  //  iosX64()
+  //  linuxX64()
+  //  macosArm64()
+  //  macosX64()
+  //
+  //  // Tier 2
+  //  linuxArm64()
+  //  tvosArm64()
+  //  tvosSimulatorArm64()
+  //  tvosX64()
+  //  watchosArm32()
+  //  watchosArm64()
+  //  watchosSimulatorArm64()
+  //  watchosX64()
 
   @OptIn(ExperimentalKotlinGradlePluginApi::class)
   applyDefaultHierarchyTemplate {
