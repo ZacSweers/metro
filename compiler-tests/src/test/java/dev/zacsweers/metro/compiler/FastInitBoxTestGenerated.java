@@ -2013,6 +2013,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
         }
 
         @Test
+        @TestMetadata("DuplicateMultibindingSourcesFromSharedIncludedModule.kt")
+        public void testDuplicateMultibindingSourcesFromSharedIncludedModule() {
+          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/DuplicateMultibindingSourcesFromSharedIncludedModule.kt");
+        }
+
+        @Test
         @TestMetadata("InheritedBindingsDoNotCauseDuplicates.kt")
         public void testInheritedBindingsDoNotCauseDuplicates() {
           runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/InheritedBindingsDoNotCauseDuplicates.kt");
