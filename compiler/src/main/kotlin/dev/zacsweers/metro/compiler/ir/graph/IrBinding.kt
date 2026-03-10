@@ -679,9 +679,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       }
 
     fun addSourceBinding(source: IrTypeKey) {
-      if (source in sourceBindings) {
-        reportCompilerBug("Duplicate multibinding source: $source")
-      }
       sourceBindings.add(source)
     }
 

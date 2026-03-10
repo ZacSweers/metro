@@ -137,13 +137,22 @@ internal class BindingLookup(
   operator fun contains(typeKey: IrTypeKey): Boolean = typeKey in bindingsCache
 
   private fun putBindingInner(binding: IrBinding) {
-    val previous = bindingsCache.put(binding.typeKey, binding)
+    val previous = bindingsCache[binding.typeKey]
+    if (previous == null) {
+      bindingsCache[binding.typeKey] = binding
+      return
+    }
 
-    if (previous != null) {
-      duplicateBindings.getOrInit(binding.typeKey).run {
-        add(previous)
-        add(binding)
-      }
+    // The same declaration can be discovered through multiple include/contribution paths.
+    // Treat equivalent bindings as idempotent instead of creating synthetic duplicates.
+    if (previous == binding) {
+      return
+    }
+
+    bindingsCache[binding.typeKey] = binding
+    duplicateBindings.getOrInit(binding.typeKey).run {
+      add(previous)
+      add(binding)
     }
   }
 
