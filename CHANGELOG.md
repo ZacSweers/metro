@@ -16,14 +16,22 @@ Changelog
 - **[FIR]**: Providers can now return instances of classes nested in the same container class.
 - **[IR]**: Fix codegen error when a scoped binding in a child graph supersedes the same-typed scoped binding from a parent graph and is used in a grandchild graph's multibinding. Basically, if graph A provides `Logger` and graph `B` also provides `Logger` (overriding `A`'s), graph `C` would incorrectly try to get it from `A` instead of `B`.
 - **[IR]**: Fix duplicate binding error in multibindings when multiple contributed containers include the same shared multibinding-contributing container.
+- **[IR]**: Check parent classes for `@Origin` annotations when performing IR-based contribution merging.
+- **[metrox-viewmodel-compose]**: Pass `CreationExtras` to the `createViewModel` lamba for `assistedMetroViewModel` when using `ManualViewModelAssistedFactory`
 
 ### Changes
 
 - Test Kotlin 2.3.20-RC.
+- Test Kotlin 2.3.20-RC2.
 - Test Android Studio Panda 2
 - Test Android Studio Panda 3 canaries
+- Update shaded `androidx.tracing` to `2.0.0-alpha03`.
 
 ### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@hvisser](https://github.com/hvisser)
 
 0.11.2
 ------

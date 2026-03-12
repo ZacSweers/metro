@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import androidx.tracing.TraceDriver
-import androidx.tracing.wire.TraceDriver
+import androidx.tracing.wire.TraceDriver as WireTraceDriver
 import androidx.tracing.wire.TraceSink
 import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
@@ -215,7 +215,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
             tracePath.createDirectories()
             TraceSink(sequenceId = 1, directory = tracePath.toFile())
           }
-        TraceDriver(sink = sink, isEnabled = tracePath != null)
+        WireTraceDriver(sink = sink, isEnabled = tracePath != null)
       }
 
       override val lookupFile: Path? by lazy {

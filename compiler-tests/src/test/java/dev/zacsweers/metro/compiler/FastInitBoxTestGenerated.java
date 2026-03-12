@@ -193,6 +193,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ReplacementsWithOriginInContributedGraphExtensionSet.kt")
+    public void testReplacementsWithOriginInContributedGraphExtensionSet() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ReplacementsWithOriginInContributedGraphExtensionSet.kt");
+    }
+
+    @Test
     @TestMetadata("ReplacementsWithOriginInExtension.kt")
     public void testReplacementsWithOriginInExtension() {
       runTest("compiler-tests/src/test/data/box/aggregation/ReplacementsWithOriginInExtension.kt");
@@ -1737,6 +1743,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("AssistedDaggerFactoryClassWithDifferentInputs.kt")
       public void testAssistedDaggerFactoryClassWithDifferentInputs() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/AssistedDaggerFactoryClassWithDifferentInputs.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedDaggerLazyParameterInteropRegression.kt")
+      public void testAssistedDaggerLazyParameterInteropRegression() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/AssistedDaggerLazyParameterInteropRegression.kt");
       }
 
       @Test
