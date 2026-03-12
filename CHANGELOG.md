@@ -15,6 +15,7 @@ Changelog
 - **[FIR]**: Don't use a memoizing sequence for all FirSession instance as it seems that the IDE will mutate the underlying source lists in some cases.
 - **[FIR]**: Providers can now return instances of classes nested in the same container class.
 - **[IR]**: Fix codegen error when a scoped binding in a child graph supersedes the same-typed scoped binding from a parent graph and is used in a grandchild graph's multibinding. Basically, if graph A provides `Logger` and graph `B` also provides `Logger` (overriding `A`'s), graph `C` would incorrectly try to get it from `A` instead of `B`.
+- **[IR]**: Check parent classes for `@Origin` annotations when performing IR-based contribution merging.
 - **[metrox-viewmodel-compose]**: Pass `CreationExtras` to the `createViewModel` lamba for `assistedMetroViewModel` when using `ManualViewModelAssistedFactory`
 
 ### Changes
