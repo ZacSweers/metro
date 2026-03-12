@@ -2,6 +2,7 @@
 // WITH_ANVIL
 // Regression test for duplicate multibinding source discovery when two contributed modules include
 // the same shared multibinding module.
+// https://github.com/ZacSweers/metro/pull/1960
 
 import com.squareup.anvil.annotations.ContributesTo
 import com.squareup.anvil.annotations.MergeComponent
