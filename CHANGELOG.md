@@ -24,6 +24,7 @@ Changelog
 - Test Kotlin 2.3.20-RC2.
 - Test Android Studio Panda 2
 - Test Android Studio Panda 3 canaries
+- Update shaded `androidx.tracing` to `2.0.0-alpha03`.
 
 ### Contributors
 
