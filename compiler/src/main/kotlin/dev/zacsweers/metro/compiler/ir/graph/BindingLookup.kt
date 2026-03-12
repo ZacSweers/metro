@@ -136,30 +136,15 @@ internal class BindingLookup(
 
   operator fun contains(typeKey: IrTypeKey): Boolean = typeKey in bindingsCache
 
-  /**
-   * Adds [binding] to [bindingsCache].
-   *
-   * @return `true` if this call inserted a new binding for the key
-   */
-  private fun putBindingInner(binding: IrBinding): Boolean {
-    val previous = bindingsCache[binding.typeKey]
-    if (previous == null) {
-      bindingsCache[binding.typeKey] = binding
-      return true
-    }
+  private fun putBindingInner(binding: IrBinding) {
+    val previous = bindingsCache.put(binding.typeKey, binding)
 
-    // The same declaration can be discovered through multiple include/contribution paths.
-    // Treat equivalent bindings as idempotent instead of creating synthetic duplicates.
-    if (previous == binding) {
-      return false
+    if (previous != null) {
+      duplicateBindings.getOrInit(binding.typeKey).run {
+        add(previous)
+        add(binding)
+      }
     }
-
-    bindingsCache[binding.typeKey] = binding
-    duplicateBindings.getOrInit(binding.typeKey).run {
-      add(previous)
-      add(binding)
-    }
-    return false
   }
 
   /**
@@ -170,7 +155,7 @@ internal class BindingLookup(
    */
   context(context: IrMetroContext)
   fun putBinding(binding: IrBinding, isLocallyDeclared: Boolean = false) {
-    val wasAdded = putBindingInner(binding)
+    putBindingInner(binding)
 
     if (isLocallyDeclared) {
       locallyDeclaredKeys += binding.typeKey
@@ -186,7 +171,7 @@ internal class BindingLookup(
 
     // If this is a multibinding contributor, register it
     when (binding) {
-      is IrBinding.BindingWithAnnotations if binding.annotations.isIntoMultibinding && wasAdded -> {
+      is IrBinding.BindingWithAnnotations if binding.annotations.isIntoMultibinding -> {
         val (qualifier, valueType) =
           when (binding) {
             is Provided ->
@@ -296,22 +281,6 @@ internal class BindingLookup(
     }
   }
 
-  context(context: IrMetroContext)
-  private fun addMultibindingContribution(
-    bindingId: String,
-    multibindingTypeKey: IrTypeKey,
-    sourceBindingKey: IrTypeKey,
-  ) {
-    val multibinding =
-      multibindingsByBindingId.getOrPut(bindingId) {
-        IrBinding.Multibinding.fromContributor(multibindingTypeKey).also {
-          multibindingsCache[multibindingTypeKey] = it
-        }
-      }
-
-    multibinding.addSourceBinding(sourceBindingKey)
-  }
-
   /**
    * Registers a contribution to a multibinding. Eagerly creates the multibinding if it doesn't
    * exist yet.
@@ -326,7 +295,16 @@ internal class BindingLookup(
     sourceBindingKey: IrTypeKey,
   ) {
     val bindingId = sourceBindingKey.multibindingBindingId ?: return
-    addMultibindingContribution(bindingId, multibindingTypeKey, sourceBindingKey)
+
+    // Get or create the multibinding
+    val multibinding =
+      multibindingsByBindingId.getOrPut(bindingId) {
+        val newMultibinding = IrBinding.Multibinding.fromContributor(multibindingTypeKey)
+        multibindingsCache[multibindingTypeKey] = newMultibinding
+        newMultibinding
+      }
+
+    multibinding.addSourceBinding(sourceBindingKey)
   }
 
   /**
@@ -363,7 +341,15 @@ internal class BindingLookup(
         )
       }
 
-    addMultibindingContribution(bindingId, multibindingTypeKey, sourceBindingKey)
+    // Get or create the multibinding using the type key from the source binding
+    val multibinding =
+      multibindingsByBindingId.getOrPut(bindingId) {
+        val newMultibinding = IrBinding.Multibinding.fromContributor(multibindingTypeKey)
+        multibindingsCache[multibindingTypeKey] = newMultibinding
+        newMultibinding
+      }
+
+    multibinding.addSourceBinding(sourceBindingKey)
   }
 
   /**
