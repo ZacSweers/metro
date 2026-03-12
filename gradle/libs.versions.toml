@@ -86,7 +86,7 @@ androidx-activity = "androidx.activity:activity-compose:1.13.0"
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-collection = "androidx.collection:collection:1.6.0-rc01"
-androidx-core = "androidx.core:core-ktx:1.17.0"
+androidx-core = "androidx.core:core-ktx:1.18.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
