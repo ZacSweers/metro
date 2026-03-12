@@ -12,7 +12,9 @@ import dagger.multibindings.IntoSet
 import javax.inject.Inject
 
 abstract class AppScope private constructor()
+
 abstract class LoggedInScope private constructor()
+
 abstract class ActivityScope private constructor()
 
 interface PreloadService {
@@ -25,9 +27,7 @@ class ReproPreloadService @Inject constructor() : PreloadService {
 
 @Module
 interface SharedPreloadModule {
-  @Binds
-  @IntoSet
-  fun bind(service: ReproPreloadService): PreloadService
+  @Binds @IntoSet fun bind(service: ReproPreloadService): PreloadService
 }
 
 interface LoggedInWiringA {
