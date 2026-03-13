@@ -250,6 +250,18 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("ContributesBindingMixedRegularAndMultibinding.kt")
+      public void testContributesBindingMixedRegularAndMultibinding() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributesBindingMixedRegularAndMultibinding.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributesBindingMultibindingInterop.kt")
+      public void testContributesBindingMultibindingInterop() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributesBindingMultibindingInterop.kt");
+      }
+
+      @Test
       @TestMetadata("ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt")
       public void testContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt");

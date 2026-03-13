@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.anvilMultibinding
 import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findAnnotations
@@ -314,10 +315,17 @@ internal class ContributionTransformer(
           contributions += Contribution.ContributesTo(contributingSymbol.classIdOrFail, annotation)
         }
         in contributesBindingAnnotations -> {
-          contributions +=
-            Contribution.ContributesBinding(contributingSymbol, annotation) {
-              listOf(buildBindsAnnotation())
-            }
+          if (annotation.anvilMultibinding()) {
+            contributions +=
+              Contribution.ContributesIntoSetBinding(contributingSymbol, annotation) {
+                listOf(buildIntoSetAnnotation(), buildBindsAnnotation())
+              }
+          } else {
+            contributions +=
+              Contribution.ContributesBinding(contributingSymbol, annotation) {
+                listOf(buildBindsAnnotation())
+              }
+          }
         }
         in contributesIntoSetAnnotations -> {
           contributions +=

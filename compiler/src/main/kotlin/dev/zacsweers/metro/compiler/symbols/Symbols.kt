@@ -80,6 +80,7 @@ internal class Symbols(
     const val IMPL = "Impl"
     const val INVOKE = "invoke"
     const val METRO_CONTRIBUTION = "MetroContribution"
+    const val MULTIBINDING = "multibinding"
     const val METRO_CONTRIBUTION_NAME_PREFIX = "MetroContribution"
     const val METRO_FACTORY = "MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
@@ -219,6 +220,7 @@ internal class Symbols(
     val invoke = StringNames.INVOKE.asName()
     val membersInjector = "MembersInjector".asName()
     val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
+    val multibinding = StringNames.MULTIBINDING.asName()
     val modules = "modules".asName()
     val newInstance = StringNames.NEW_INSTANCE.asName()
     val provider = StringNames.PROVIDER.asName()

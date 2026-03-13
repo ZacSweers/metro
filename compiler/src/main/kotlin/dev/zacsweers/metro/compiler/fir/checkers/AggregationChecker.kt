@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.isMultibinding
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
@@ -157,28 +158,34 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           }
 
           in classIds.contributesBindingAnnotations -> {
-            val valid =
-              checkBindingContribution(
-                session,
-                ContributionKind.CONTRIBUTES_BINDING,
-                declaration,
-                classQualifier,
-                annotation,
-                scope,
-                classId,
-                contributesBindingAnnotations,
-                isMapBinding = false,
-              ) { bindingType, _ ->
-                Contribution.ContributesBinding(
+            if (annotation.isMultibinding()) {
+              if (!checkIntoSet) {
+                return
+              }
+            } else {
+              val valid =
+                checkBindingContribution(
+                  session,
+                  ContributionKind.CONTRIBUTES_BINDING,
                   declaration,
+                  classQualifier,
                   annotation,
                   scope,
-                  replaces,
-                  bindingType,
-                )
+                  classId,
+                  contributesBindingAnnotations,
+                  isMapBinding = false,
+                ) { bindingType, _ ->
+                  Contribution.ContributesBinding(
+                    declaration,
+                    annotation,
+                    scope,
+                    replaces,
+                    bindingType,
+                  )
+                }
+              if (!valid) {
+                return
               }
-            if (!valid) {
-              return
             }
           }
 

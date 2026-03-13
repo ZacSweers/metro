@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.isMultibinding
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
@@ -154,10 +155,17 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           contributions += Contribution.ContributesTo(contributingSymbol.classId)
         }
         in contributesBindingAnnotations -> {
-          contributions +=
-            Contribution.ContributesBinding(contributingSymbol, annotation) {
-              listOf(buildBindsAnnotation())
-            }
+          if (annotation.isMultibinding()) {
+            contributions +=
+              Contribution.ContributesIntoSetBinding(contributingSymbol, annotation) {
+                listOf(buildIntoSetAnnotation(), buildBindsAnnotation())
+              }
+          } else {
+            contributions +=
+              Contribution.ContributesBinding(contributingSymbol, annotation) {
+                listOf(buildBindsAnnotation())
+              }
+          }
         }
         in contributesIntoSetAnnotations -> {
           contributions +=
