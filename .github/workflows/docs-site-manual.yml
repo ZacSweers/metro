@@ -74,7 +74,7 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Install MkDocs dependencies
+      - name: Install docs dependencies
         run: |
           pip install --requirement .github/workflows/mkdocs-requirements.txt
 
