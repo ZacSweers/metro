@@ -19,7 +19,7 @@ SOURCE_PATH_MAPPING = {
     'metrox-viewmodel-compose.md': 'metrox-viewmodel-compose/README.md',
 }
 
-def on_page_context(context, page, config, files):
+def on_page_context(context, page, config, nav=None, **kwargs):
     """
     Hook event handler that corrects edit URLs for pages with copied sources.
     https://www.mkdocs.org/dev-guide/plugins/#on_page_context
@@ -32,8 +32,9 @@ def on_page_context(context, page, config, files):
         
         # Only update if repo_url is configured (required for edit links)
         if config.get('repo_url'):
-            # Get the configured edit_uri (defaults to 'edit/main/' if not set)
-            edit_uri = config.get('edit_uri', 'edit/main/')
+            # For actual source files, use edit_uri without the 'docs/' part
+            # since they live at the repo root or in specific directories
+            edit_uri = 'edit/main/'
             
             # Construct the correct edit URL for the actual source file
             # Example result: https://github.com/ZacSweers/metro/edit/main/CHANGELOG.md
