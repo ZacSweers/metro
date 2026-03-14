@@ -2,12 +2,17 @@
 
 # The website is built using Zensical (successor to MkDocs Material).
 # https://zensical.org/
-# It requires Python to run.
+# It requires Python >=3.10 to run.
+#
+# To set up the environment, create a virtual environment and activate it (first time only):
+#   python3 -m venv .venv
+#   source .venv/bin/activate
+#
 # Install the packages with the following command:
-# pip install -r .github/workflows/mkdocs-requirements.txt
+#   pip install -r .github/workflows/mkdocs-requirements.txt
 #
 # To run the site locally with hot-reload support, use:
-# ./scripts/run_local_docs_site.sh
+#   ./scripts/run_local_docs_site.sh
 
 # Check if zensical is installed
 if ! command -v zensical &> /dev/null; then
