@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.fir.scopes.createImportingScopes
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
@@ -126,6 +127,7 @@ public sealed interface MetroFirTypeResolver {
     private val configuration: TypeResolutionConfiguration,
   ) : MetroFirTypeResolver {
     override fun resolveType(typeRef: FirTypeRef): ConeKotlinType {
+      if (typeRef is FirResolvedTypeRef) return typeRef.coneType
       return session.typeResolver
         .resolveType(
           typeRef = typeRef,
