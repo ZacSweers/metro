@@ -477,7 +477,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         val classKind =
           if (
             injectedClass.classSymbol.typeParameterSymbols.isEmpty() &&
-              injectedClass.allParameters.isEmpty() &&
+              injectedClass.allParameters.filterNot { it.isAssisted }.isEmpty() &&
               !parentHasInjections &&
               injectedClass.classSymbol.fir.metroGeneratedInjectClassData?.hasConstructorParams !=
                 true
