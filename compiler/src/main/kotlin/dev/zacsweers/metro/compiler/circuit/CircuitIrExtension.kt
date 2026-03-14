@@ -1,21 +1,24 @@
-// Copyright (C) 2025 Zac Sweers
+// Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.circuit
 
-import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.ir.abstractFunctions
+import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
-import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
-import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
+import dev.zacsweers.metro.compiler.ir.kClassReference
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irBranch
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irElseBranch
+import org.jetbrains.kotlin.ir.builders.irEqeqeq
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -24,14 +27,12 @@ import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irWhen
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrBody
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
-import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.classOrNull
@@ -40,13 +41,9 @@ import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.fields
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.getAnnotation
-import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
-import org.jetbrains.kotlin.name.CallableId
-import org.jetbrains.kotlin.name.Name
 
 /**
  * IR extension that implements constructor and `create()` method bodies for Circuit-generated
@@ -61,36 +58,51 @@ public class CircuitIrExtension : IrGenerationExtension {
   }
 }
 
-@OptIn(DeprecatedForRemovalCompilerApi::class)
 private class CircuitIrTransformer(
   private val pluginContext: IrPluginContext,
   private val symbols: CircuitSymbols.Ir,
 ) : IrElementTransformerVoid() {
 
-  override fun visitConstructor(declaration: IrConstructor): IrStatement {
-    if (declaration.origin == CircuitOrigins.IrFactoryConstructor && declaration.body == null) {
-      declaration.apply { body = context(pluginContext) { generateDefaultConstructorBody() } }
-    }
-    return super.visitConstructor(declaration)
-  }
+  override fun visitClass(declaration: IrClass): IrStatement {
+    if (
+      declaration.origin.expectAsOrNull<IrDeclarationOrigin.GeneratedByPlugin>()?.pluginKey
+        is CircuitOrigins.FactoryClass
+    ) {
+      // Find the target info from the factory class annotations
+      val circuitTargetInfo = declaration.circuitFactoryTargetData!!
+      if (circuitTargetInfo.factoryType == null) {
+        error("Unresolved factory type")
+      }
+      val screenClass = pluginContext.referenceClass(circuitTargetInfo.screenType)!!
 
-  override fun visitSimpleFunction(declaration: IrSimpleFunction): IrStatement {
-    if (declaration.origin == CircuitOrigins.IrFactoryCreateFunction && declaration.body == null) {
-      declaration.body = generateCreateFunctionBody(pluginContext, declaration)
+      // Add an @Origin annotation, because we can't add this in FIR safely
+      circuitTargetInfo.originClassId?.let { originClassId ->
+        pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+          declaration,
+          context(pluginContext) {
+            buildAnnotation(declaration.symbol, symbols.originAnnotationCtor) {
+              it.arguments[0] = kClassReference(pluginContext.referenceClass(originClassId)!!)
+            }
+          },
+        )
+      }
+
+      val createFunction = declaration.abstractFunctions().first { it.name.asString() == "create" }
+      createFunction.isFakeOverride = false
+      createFunction.modality = Modality.FINAL
+      createFunction.body = generateCreateFunctionBody(createFunction, screenClass)
     }
-    return super.visitSimpleFunction(declaration)
+    return super.visitClass(declaration)
   }
 
   private fun generateCreateFunctionBody(
-    pluginContext: IrPluginContext,
     function: IrSimpleFunction,
+    screenClass: IrClassSymbol,
   ): IrBody {
     val factoryClass = function.parentAsClass
     val factoryType = determineFactoryType(factoryClass)
-    val screenParam = function.valueParameters.first { it.name == CircuitNames.screen }
-
-    // Find the target info from the factory class annotations
-    val targetInfo = extractTargetInfo(factoryClass)
+    val screenParam = function.regularParameters.first { it.name == CircuitNames.screen }
+    val targetInfo = TargetInfo(screenClass)
 
     val returnType =
       when (factoryType) {
@@ -100,12 +112,6 @@ private class CircuitIrTransformer(
       }
 
     return pluginContext.createIrBuilder(function.symbol).irBlockBody {
-      // If we couldn't extract target info, just return null
-      if (targetInfo == null) {
-        +irReturn(irNull())
-        return@irBlockBody
-      }
-
       +irReturn(
         irWhen(
           returnType,
@@ -132,10 +138,7 @@ private class CircuitIrTransformer(
 
     return if (screenClassSymbol.owner.kind == ClassKind.OBJECT) {
       // For object screens, use equality check: screen == ScreenObject
-      irCall(pluginContext.irBuiltIns.eqeqSymbol).apply {
-        putValueArgument(0, irGet(screenParam))
-        putValueArgument(1, irGetObject(screenClassSymbol))
-      }
+      irEqeqeq(irGet(screenParam), irGetObject(screenClassSymbol))
     } else {
       // For class screens, use is check: screen is ScreenClass
       irIs(irGet(screenParam), screenClassSymbol.starProjectedType)
@@ -211,10 +214,10 @@ private class CircuitIrTransformer(
 
       // Pass through screen, navigator, context as needed
       var argIndex = 0
-      for (param in createFunction.valueParameters) {
-        val matchingParam = function.valueParameters.find { it.name == param.name }
+      for (param in createFunction.regularParameters) {
+        val matchingParam = function.regularParameters.find { it.name == param.name }
         if (matchingParam != null) {
-          putValueArgument(argIndex++, irGet(matchingParam))
+          arguments[argIndex++] = irGet(matchingParam)
         }
       }
     }
@@ -238,45 +241,9 @@ private class CircuitIrTransformer(
     }
   }
 
-  // TODO make this return non-null
-  private fun extractTargetInfo(factoryClass: IrClass): TargetInfo? {
-    // Try nested factory first (parent is a class with @CircuitInject)
-    val parentClass = factoryClass.parent as? IrClass
-    if (parentClass != null) {
-      val circuitInjectAnnotation =
-        parentClass.getAnnotation(CircuitClassIds.CircuitInject.asSingleFqName())
-      if (circuitInjectAnnotation != null) {
-        return extractScreenFromAnnotation(circuitInjectAnnotation)
-      }
-    }
-
-    // Top-level function factory: derive function name from factory class name
-    // e.g., "HomePresenterFactory" -> "homePresenter"
-    val factoryName = factoryClass.name.asString()
-    if (!factoryName.endsWith("Factory")) return null
-
-    val functionName = factoryName.removeSuffix("Factory").decapitalizeUS()
-    val packageFqName = factoryClass.getPackageFragment().packageFqName
-    val callableId = CallableId(packageFqName, Name.identifier(functionName))
-
-    val functionSymbol = pluginContext.referenceFunctions(callableId).singleOrNull() ?: return null
-    val circuitInjectAnnotation =
-      functionSymbol.owner.getAnnotation(CircuitClassIds.CircuitInject.asSingleFqName())
-        ?: return null
-
-    return extractScreenFromAnnotation(circuitInjectAnnotation)
+  @JvmInline
+  private value class TargetInfo(val screenClassSymbol: IrClassSymbol) {
+    val screenIsObject: Boolean
+      get() = screenClassSymbol.owner.kind == ClassKind.OBJECT
   }
-
-  private fun extractScreenFromAnnotation(circuitInjectAnnotation: IrConstructorCall): TargetInfo? {
-    // First argument is the screen class (CircuitInject(screen = ..., scope = ...))
-    val screenArg = circuitInjectAnnotation.getValueArgument(0) ?: return null
-    val screenClassRef = screenArg.expectAsOrNull<IrClassReference>() ?: return null
-    val screenClassSymbol = screenClassRef.classType.classOrNull ?: return null
-    return TargetInfo(
-      screenClassSymbol = screenClassSymbol,
-      screenIsObject = screenClassSymbol.owner.kind == ClassKind.OBJECT,
-    )
-  }
-
-  private data class TargetInfo(val screenClassSymbol: IrClassSymbol, val screenIsObject: Boolean)
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Zac Sweers
+// Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.circuit
 
@@ -17,7 +17,7 @@ internal object CircuitOrigins {
   object FactoryCreateFunction : GeneratedDeclarationKey()
 
   // IR Origins
-//  val IrFactoryClass = IrDeclarationOrigin.GeneratedByPlugin(FactoryClass)
+  //  val IrFactoryClass = IrDeclarationOrigin.GeneratedByPlugin(FactoryClass)
   val IrFactoryConstructor = IrDeclarationOrigin.GeneratedByPlugin(FactoryConstructor)
   val IrFactoryCreateFunction = IrDeclarationOrigin.GeneratedByPlugin(FactoryCreateFunction)
 }

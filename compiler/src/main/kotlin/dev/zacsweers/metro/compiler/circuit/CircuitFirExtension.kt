@@ -1,11 +1,13 @@
-// Copyright (C) 2025 Zac Sweers
+// Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.circuit
 
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.GeneratedInjectClassData
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.api.fir.MetroOriginData
 import dev.zacsweers.metro.compiler.api.fir.metroGeneratedInjectClassData
+import dev.zacsweers.metro.compiler.api.fir.metroOriginData
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -28,6 +30,7 @@ import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataKey
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataRegistry
@@ -65,6 +68,7 @@ import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
 import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.fir.types.toLookupTag
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
@@ -236,57 +240,6 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     return listOf(constructor.symbol)
   }
 
-  //  override fun generateFunctions(
-  //    callableId: CallableId,
-  //    context: MemberGenerationContext?,
-  //  ): List<FirNamedFunctionSymbol> {
-  //    if (context == null) return emptyList()
-  //    if (callableId.callableName != CircuitNames.create) return emptyList()
-  //
-  //    val target = findTargetForFactory(context.owner.classId) ?: return emptyList()
-  //
-  //    val returnType =
-  //      when (target.factoryType) {
-  //        FactoryType.UI ->
-  //          CircuitClassIds.Ui.constructClassLikeType(
-  //            arrayOf(ConeStarProjection),
-  //            isMarkedNullable = true,
-  //          )
-  //        FactoryType.PRESENTER ->
-  //          CircuitClassIds.Presenter.constructClassLikeType(
-  //            arrayOf(ConeStarProjection),
-  //            isMarkedNullable = true,
-  //          )
-  //      }
-  //
-  //    val function =
-  //      createMemberFunction(
-  //        context.owner,
-  //        CircuitOrigins.FactoryCreateFunction,
-  //        CircuitNames.create,
-  //        returnType,
-  //      ) {
-  //        // Parameters: screen, [navigator for presenter], context
-  //        valueParameter(
-  //          CircuitNames.screen,
-  //          CircuitClassIds.Screen.constructClassLikeType(emptyArray()),
-  //        )
-  //        if (target.factoryType == FactoryType.PRESENTER) {
-  //          valueParameter(
-  //            CircuitNames.navigator,
-  //            CircuitClassIds.Navigator.constructClassLikeType(emptyArray()),
-  //          )
-  //        }
-  //        valueParameter(
-  //          CircuitNames.context,
-  //          CircuitClassIds.CircuitContext.constructClassLikeType(emptyArray()),
-  //        )
-  //      }
-  //
-  //    // TODO ???
-  //    return listOf(function.symbol) as List<FirNamedFunctionSymbol>
-  //  }
-
   private fun generateFactoryClass(
     target: CircuitFactoryTarget,
     owner: FirClassSymbol<*>?,
@@ -316,6 +269,9 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       GeneratedInjectClassData(hasConstructorParams = true)
 
     factoryClass.circuitFactoryTargetData = target
+    target.originClassId?.let { originClassId ->
+      factoryClass.metroOriginData = MetroOriginData(originClassId)
+    }
 
     // Add annotations
     val annotations = buildList {
@@ -324,10 +280,6 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
       // @ContributesIntoSet(scope)
       add(buildContributesIntoSetAnnotation(target.scopeClassId))
-
-      // @Origin(originClass)
-      // TODO add this in IR to avoid the reentrancy?
-      //  add(buildOriginAnnotation(target.originClassId))
     }
 
     context(session.compatContext) { factoryClass.replaceAnnotationsSafe(annotations) }
@@ -351,7 +303,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     val (screenType, scopeType) = extractCircuitInjectArgs(annotation, typeResolver) ?: return null
 
     return CircuitFactoryTarget(
-        originClassId = factoryClassId, // For functions, origin is the factory itself
+        originClassId = null, // For functions, there is no origin to point at statically
         factoryClassId = factoryClassId,
         screenType = screenType,
         scopeClassId = scopeType,
@@ -458,42 +410,6 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     }
   }
 
-  private fun buildOriginAnnotation(originClassId: ClassId): FirAnnotation {
-    val originSymbol =
-      session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroOrigin)
-        ?: error("Could not find Origin annotation")
-
-    val targetSymbol =
-      originClassId.constructClassLikeType().toClassSymbolCompat(session)
-        ?: error("Could not find origin class: $originClassId")
-
-    val targetType = targetSymbol.defaultType()
-
-    return buildAnnotation {
-      annotationTypeRef = originSymbol.defaultType().toFirResolvedTypeRef()
-      argumentMapping = buildAnnotationArgumentMapping {
-        mapping[Name.identifier("value")] = buildGetClassCall {
-          argumentList = buildArgumentList {
-            arguments += buildResolvedQualifier {
-              packageFqName = originClassId.packageFqName
-              relativeClassFqName = originClassId.relativeClassName
-              symbol = targetSymbol
-              resolvedToCompanionObject = false
-              isFullyQualified = true
-              coneTypeOrNull = targetType
-            }
-          }
-          coneTypeOrNull =
-            ConeClassLikeTypeImpl(
-              StandardClassIds.KClass.toLookupTag(),
-              arrayOf(targetType),
-              isMarkedNullable = false,
-            )
-        }
-      }
-    }
-  }
-
   private fun ConeKotlinType.toFirResolvedTypeRef(): FirResolvedTypeRef {
     return buildResolvedTypeRef { coneType = this@toFirResolvedTypeRef }
   }
@@ -536,7 +452,7 @@ internal enum class InstantiationType {
  */
 internal class CircuitFactoryTarget(
   /** The original class that the factory is for (used for @Origin annotation). */
-  val originClassId: ClassId,
+  val originClassId: ClassId?,
   /** The ClassId of the factory to generate. */
   val factoryClassId: ClassId,
   /** The screen type from @CircuitInject. */
@@ -630,3 +546,6 @@ internal class CircuitFactoryTarget(
 
 internal var FirClass.circuitFactoryTargetData: CircuitFactoryTarget? by
   FirDeclarationDataRegistry.data(CircuitFactoryTarget.Attribute)
+
+internal val IrClass.circuitFactoryTargetData: CircuitFactoryTarget?
+  get() = (metadata as? FirMetadataSource.Class)?.fir?.circuitFactoryTargetData
