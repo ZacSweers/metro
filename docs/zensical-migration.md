@@ -21,6 +21,10 @@ Zensical does not yet support versioned docs deployment (the equivalent of [mike
 
 The existing `mkdocs.yml` is used as-is by both Zensical and MkDocs - no separate config is needed. Zensical automatically understands the MkDocs Material configuration format.
 
+### site_url workaround
+
+`site_url` uses `!ENV [SITE_URL, '']` instead of a hardcoded value. This is because zensical's dev server doesn't handle the `/metro/` path prefix correctly - it serves pages at root but the built HTML references prefixed paths, causing pages to render 404 content. By leaving `site_url` empty locally and setting the `SITE_URL` env var in CI and deploy scripts, both `zensical serve` and `mike deploy` work correctly.
+
 ## Completing the Migration
 
 When Zensical adds versioning support:
@@ -29,4 +33,5 @@ When Zensical adds versioning support:
 2. Update `mike deploy` calls in CI workflows (`.github/workflows/docs-site.yml`, `docs-site-manual.yml`) and `scripts/deploy_metro_docs_site.sh` to use Zensical's versioning
 3. Update `scripts/delete_old_version_docs.sh` to use Zensical's equivalent
 4. Update `extra.version.provider` in `mkdocs.yml` if needed
-5. Remove this file
+5. Check if the `site_url` `!ENV` workaround is still needed or if zensical handles the prefix natively
+6. Remove this file

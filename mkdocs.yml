@@ -13,7 +13,8 @@ site_name: Metro
 repo_name: Metro
 repo_url: https://github.com/ZacSweers/metro
 edit_uri: edit/main/docs/
-site_url: https://zacsweers.github.io/metro/
+# site_url is set via env var so local `zensical serve` works at root without prefix issues
+site_url: !ENV [SITE_URL, '']
 site_description: "A multiplatform dependency injection framework for Kotlin"
 site_author: Zac Sweers
 remote_branch: gh-pages

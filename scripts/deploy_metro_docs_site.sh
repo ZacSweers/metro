@@ -64,7 +64,9 @@ echo "Copying required docs files..."
 ./scripts/copy_docs_files.sh
 
 # Deploy with mike, updating aliases and pushing
+# SITE_URL is required because mkdocs.yml uses !ENV to avoid prefix issues with zensical serve
 echo "Deploying with mike..."
+export SITE_URL="https://zacsweers.github.io/metro/"
 if [ "$IS_LATEST" = true ]; then
     mike deploy --update-aliases --push "$VERSION" latest
 else
