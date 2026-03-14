@@ -34,4 +34,5 @@ When Zensical adds versioning support:
 3. Update `scripts/delete_old_version_docs.sh` to use Zensical's equivalent
 4. Update `extra.version.provider` in `mkdocs.yml` if needed
 5. Check if the `site_url` `!ENV` workaround is still needed or if zensical handles the prefix natively
-6. Remove this file
+6. Ensure the `gh-pages` branch root files are preserved or migrated: `index.html` (redirects to `latest/`) and `404.html` (smart redirect for versioned docs). If Zensical provides native equivalents, migrate to those.
+7. Remove this file
