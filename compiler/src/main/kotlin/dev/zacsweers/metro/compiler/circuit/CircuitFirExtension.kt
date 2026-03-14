@@ -13,17 +13,24 @@ import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
+import dev.zacsweers.metro.compiler.fir.caching
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.generators.findSamFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.resolveClassId
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataKey
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataRegistry
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -42,7 +49,9 @@ import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
@@ -51,6 +60,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
 import org.jetbrains.kotlin.fir.types.isUnit
@@ -104,20 +114,20 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   // Cache computed targets during class generation
   private val computedTargets = mutableMapOf<ClassId, CircuitFactoryTarget>()
 
-  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, session.allSessions)
+  private val typeResolverFactory =
+    MetroFirTypeResolver.Factory(session, session.allSessions).caching()
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(CircuitSymbols.circuitInjectPredicate)
+    register(session.predicates.assistedAnnotationPredicate)
+    register(session.predicates.assistedFactoryAnnotationPredicate)
   }
 
-  // ===================
-  // Top-level class generation (for functions)
-  // ===================
-
+  // Top-level circuit functions
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
     return annotatedFunctions.mapNotNullToSet { function ->
-      // Just compute the class ID here, defer full target computation to generation
+      // Just compute the class ID here, defer full target computation to class gen
       val functionName = function.name.asString()
       val factoryClassId =
         ClassId(
@@ -133,12 +143,19 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   override fun generateTopLevelClassLikeDeclaration(classId: ClassId): FirClassLikeSymbol<*>? {
     val function = functionFactoryClassIds[classId] ?: return null
     val typeResolver = typeResolverFactory.create(function) ?: return null
-    val target = computeFactoryTarget(function, classId, typeResolver) ?: return null
-    computedTargets[classId] = target
+    @OptIn(SymbolInternals::class)
+    val returnType = typeResolver.resolveType(function.fir.returnTypeRef)
     val factoryType =
-      if (!function.resolvedReturnType.isUnit) FactoryType.PRESENTER else FactoryType.UI
+      if (returnType.isUnit) {
+        FactoryType.UI
+      } else {
+        FactoryType.PRESENTER
+      }
+    val target =
+      computeFactoryTarget(function, classId, typeResolver, factoryType, returnType) ?: return null
+    computedTargets[classId] = target
     val key = CircuitOrigins.FactoryClass(factoryType)
-    return generateFactoryClass(target, null, key)
+    return generateFactoryClass(target, null, key, factoryType)
   }
 
   // ===================
@@ -171,23 +188,20 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
         // Ignored and separately introspected in supertype gen
         null
       )
-    return generateFactoryClass(target, owner, key)
+    return generateFactoryClass(target, owner, key, factoryType = null)
   }
-
-  // ===================
-  // Callable generation (constructor and create function)
-  // ===================
 
   override fun getCallableNamesForClass(
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
     if (classSymbol.classId !in generatedFactoryClassIds) return emptySet()
-    return setOf(SpecialNames.INIT, CircuitNames.create)
+    return setOf(SpecialNames.INIT) // Create will be handled by fakeOverride gen from supertype
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
     val target = findTargetForFactory(context.owner.classId) ?: return emptyList()
+    target.populate(session)
 
     val constructor =
       createConstructor(
@@ -202,8 +216,9 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
         when {
           target.useProvider -> {
             // Inject Provider<TargetClass>
+            val targetType = target.targetType ?: return@createConstructor
             val providerType =
-              Symbols.ClassIds.metroProvider.constructClassLikeType(arrayOf(target.targetType))
+              Symbols.ClassIds.metroProvider.constructClassLikeType(arrayOf(targetType))
             valueParameter(CircuitNames.provider, providerType)
           }
           target.isAssisted -> {
@@ -276,18 +291,31 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     target: CircuitFactoryTarget,
     owner: FirClassSymbol<*>?,
     key: CircuitOrigins.FactoryClass,
+    /**
+     * Passed from top-level function generation. This is important because it seems those classes
+     * do not pass through [CircuitFactorySupertypeGenerator] anyway.
+     */
+    factoryType: FactoryType?,
   ): FirClassLikeSymbol<*> {
-    // Note: Supertypes (Ui.Factory/Presenter.Factory) are contributed by
-    // CircuitFactorySupertypeGenerator
+    // Supertypes (Ui.Factory/Presenter.Factory) are contributed by
+    // CircuitFactorySupertypeGenerator via BFS through the parent class's supertypes if factoryType
+    // isn't specified
     val factoryClass =
       if (owner != null) {
-        createNestedClass(owner, CircuitNames.Factory, key)
+        createNestedClass(owner, CircuitNames.Factory, key) {
+          factoryType?.factoryClassId?.let { superType(it.constructClassLikeType()) }
+        }
       } else {
-        createTopLevelClass(target.factoryClassId, key)
+        createTopLevelClass(target.factoryClassId, key) {
+          factoryType?.factoryClassId?.let { superType(it.constructClassLikeType()) }
+        }
       }
 
+    // Metadata for metro's later factory gen
     factoryClass.metroGeneratedInjectClassData =
       GeneratedInjectClassData(hasConstructorParams = true)
+
+    factoryClass.circuitFactoryTargetData = target
 
     // Add annotations
     val annotations = buildList {
@@ -298,10 +326,12 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       add(buildContributesIntoSetAnnotation(target.scopeClassId))
 
       // @Origin(originClass)
-      add(buildOriginAnnotation(target.originClassId))
+      // TODO add this in IR to avoid the reentrancy?
+      //  add(buildOriginAnnotation(target.originClassId))
     }
 
     context(session.compatContext) { factoryClass.replaceAnnotationsSafe(annotations) }
+
     generatedFactoryClassIds.add(factoryClass.symbol.classId)
 
     return factoryClass.symbol
@@ -311,6 +341,8 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     function: FirNamedFunctionSymbol,
     factoryClassId: ClassId,
     typeResolver: MetroFirTypeResolver,
+    factoryType: FactoryType,
+    returnType: ConeKotlinType,
   ): CircuitFactoryTarget? {
     val annotation =
       function.annotationsIn(session, setOf(CircuitClassIds.CircuitInject)).firstOrNull()
@@ -319,18 +351,20 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     val (screenType, scopeType) = extractCircuitInjectArgs(annotation, typeResolver) ?: return null
 
     return CircuitFactoryTarget(
-      originClassId = factoryClassId, // For functions, origin is the factory itself
-      factoryClassId = factoryClassId,
-      screenType = screenType,
-      scopeClassId = scopeType,
-      targetType = session.builtinTypes.unitType.coneType, // Not used for functions
-      instantiationType = InstantiationType.FUNCTION,
-      useProvider = false,
-      isAssisted = false,
-      assistedFactoryType = null,
-    )
+        originClassId = factoryClassId, // For functions, origin is the factory itself
+        factoryClassId = factoryClassId,
+        screenType = screenType,
+        scopeClassId = scopeType,
+        classSymbol = null,
+      )
+      .apply { populateForFunction(returnType, factoryType) }
   }
 
+  /**
+   * Computes the early factory target for a class. Only extracts annotation args. Deferred fields
+   * (useProvider, isAssisted, factoryType, etc.) are populated later via
+   * [CircuitFactoryTarget.populate] during supertype resolution.
+   */
   private fun computeFactoryTarget(
     classSymbol: FirClassSymbol<*>,
     typeResolver: MetroFirTypeResolver,
@@ -343,30 +377,12 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
     val factoryClassId = classSymbol.classId.createNestedClassId(CircuitNames.Factory)
 
-    // Check if it uses provider injection (has @Inject constructor without assisted params)
-    val injectConstructor = classSymbol.findInjectLikeConstructors(session, true).firstOrNull()
-
-    val hasAssistedParams =
-      injectConstructor?.constructor?.valueParameterSymbols?.any {
-        it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-      } == true
-
-    val useProvider = injectConstructor != null && !hasAssistedParams
-
-    // Check if this is an assisted factory interface
-    val isAssistedFactory =
-      classSymbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
-
     return CircuitFactoryTarget(
       originClassId = classSymbol.classId,
       factoryClassId = factoryClassId,
       screenType = screenType,
       scopeClassId = scopeType,
-      targetType = classSymbol.defaultType(),
-      instantiationType = InstantiationType.CLASS,
-      useProvider = useProvider,
-      isAssisted = hasAssistedParams || isAssistedFactory,
-      assistedFactoryType = if (isAssistedFactory) classSymbol.defaultType() else null,
+      classSymbol = classSymbol,
     )
   }
 
@@ -448,10 +464,10 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
         ?: error("Could not find Origin annotation")
 
     val targetSymbol =
-      session.symbolProvider.getClassLikeSymbolByClassId(originClassId)
+      originClassId.constructClassLikeType().toClassSymbolCompat(session)
         ?: error("Could not find origin class: $originClassId")
 
-    val targetType = (targetSymbol as FirRegularClassSymbol).defaultType()
+    val targetType = targetSymbol.defaultType()
 
     return buildAnnotation {
       annotationTypeRef = originSymbol.defaultType().toFirResolvedTypeRef()
@@ -509,8 +525,16 @@ internal enum class InstantiationType {
   CLASS,
 }
 
-/** Data class holding all information needed to generate a Circuit factory. */
-internal data class CircuitFactoryTarget(
+/**
+ * Holds all information needed to generate a Circuit factory.
+ *
+ * Early fields ([originClassId], [factoryClassId], [screenType], [scopeClassId]) are set at
+ * construction during class generation. Deferred fields ([targetType], [useProvider], [isAssisted],
+ * [assistedFactoryType], [factoryType]) are populated lazily via [populate] during member
+ * generation (constructor/function generation), when type information (e.g., SAM function
+ * resolution) is available.
+ */
+internal class CircuitFactoryTarget(
   /** The original class that the factory is for (used for @Origin annotation). */
   val originClassId: ClassId,
   /** The ClassId of the factory to generate. */
@@ -519,14 +543,90 @@ internal data class CircuitFactoryTarget(
   val screenType: ClassId,
   /** The scope ClassId from @CircuitInject. */
   val scopeClassId: ClassId,
-  /** The target type (class type for CLASS instantiation, Unit for FUNCTION). */
-  val targetType: ConeKotlinType,
+  /** Stored for deferred population. Null for function targets. */
+  private val classSymbol: FirClassSymbol<*>?,
+) {
+  /** The target type (class type for CLASS instantiation, return type for FUNCTION). */
+  var targetType: ConeKotlinType? = null
+    private set
+
   /** How the target is instantiated. */
-  val instantiationType: InstantiationType,
+  var instantiationType: InstantiationType = InstantiationType.CLASS
+    private set
+
   /** Whether to inject a Provider<TargetClass>. */
-  val useProvider: Boolean,
+  var useProvider: Boolean = false
+    private set
+
   /** Whether this uses assisted injection. */
-  val isAssisted: Boolean,
+  var isAssisted: Boolean = false
+    private set
+
   /** The assisted factory type if isAssisted is true. */
-  val assistedFactoryType: ConeKotlinType?,
-)
+  var assistedFactoryType: ConeKotlinType? = null
+    private set
+
+  var factoryType: FactoryType? = null
+    private set
+
+  private var populated = false
+
+  /** Eagerly populate all fields for function-based targets where everything is known upfront. */
+  fun populateForFunction(targetType: ConeKotlinType, factoryType: FactoryType) {
+    this.targetType = targetType
+    this.instantiationType = InstantiationType.FUNCTION
+    this.factoryType = factoryType
+    this.populated = true
+  }
+
+  /**
+   * Lazily populate deferred fields for class-based targets. Called during member generation
+   * (constructor/function generation) when type information (e.g., SAM functions) is available.
+   */
+  fun populate(session: FirSession) {
+    if (populated) return
+    populated = true
+    val classSymbol = classSymbol ?: return
+
+    val injectConstructor = classSymbol.findInjectLikeConstructors(session, true).firstOrNull()
+
+    val hasAssistedParams =
+      injectConstructor?.constructor?.valueParameterSymbols?.any {
+        it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
+      } == true
+
+    useProvider = injectConstructor != null && !hasAssistedParams
+
+    val isAssistedFactory =
+      classSymbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
+
+    val targetTypeLocal: ConeKotlinType
+    val targetTypeClass: FirClassSymbol<*>
+    if (isAssistedFactory) {
+      targetTypeLocal = classSymbol.findSamFunction(session)?.resolvedReturnType ?: return
+      targetTypeClass = targetTypeLocal.toClassSymbolCompat(session) ?: return
+    } else {
+      targetTypeClass = classSymbol
+      targetTypeLocal = classSymbol.defaultType()
+    }
+
+    targetType = targetTypeLocal
+    isAssisted = hasAssistedParams || isAssistedFactory
+    assistedFactoryType = if (isAssistedFactory) targetTypeLocal else null
+    instantiationType = InstantiationType.CLASS
+
+    factoryType =
+      targetTypeClass.getSuperTypes(session).firstNotNullOfOrNull { superType ->
+        when (superType.classId) {
+          FactoryType.PRESENTER.classId -> FactoryType.PRESENTER
+          FactoryType.UI.classId -> FactoryType.UI
+          else -> null
+        }
+      }
+  }
+
+  object Attribute : FirDeclarationDataKey()
+}
+
+internal var FirClass.circuitFactoryTargetData: CircuitFactoryTarget? by
+  FirDeclarationDataRegistry.data(CircuitFactoryTarget.Attribute)

@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.circuit
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.fir.compatContext
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
@@ -23,7 +22,6 @@ import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
-import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -31,6 +29,10 @@ import org.jetbrains.kotlin.name.ClassId
  *
  * This contributes `Ui.Factory` or `Presenter.Factory` as the supertype for generated factories,
  * which allows the supertype resolution to happen at the correct phase of FIR processing.
+ *
+ * For top-level function factories, their supertype is added when the class is created and do not
+ * appear to pass through this API. For nested class factories, the factory type is determined via
+ * BFS through the parent class's supertypes.
  */
 internal class CircuitFactorySupertypeGenerator(session: FirSession, compatContext: CompatContext) :
   FirSupertypeGenerationExtension(session), CompatContext by compatContext {
@@ -69,10 +71,7 @@ internal class CircuitFactorySupertypeGenerator(session: FirSession, compatConte
     // Determine factory type from parent class (for nested) or from the factory name (for
     // top-level)
     val factoryType = determineFactoryType(declaration, typeResolver) ?: return emptyList()
-
-    val supertypeClassId = factoryType.factoryClassId
-
-    return listOf(supertypeClassId.constructClassLikeType())
+    return listOf(factoryType.factoryClassId.constructClassLikeType())
   }
 
   @OptIn(SymbolInternals::class)
@@ -80,7 +79,7 @@ internal class CircuitFactorySupertypeGenerator(session: FirSession, compatConte
     declaration: FirClass,
     typeResolver: TypeResolveService,
   ): FactoryType? {
-    // Happy path for top-level factories
+    // Happy path for top-level factories — factoryType is stored in the origin key
     declaration.symbol.origin
       .expectAsOrNull<FirDeclarationOrigin.Plugin>()
       ?.key
@@ -90,6 +89,7 @@ internal class CircuitFactorySupertypeGenerator(session: FirSession, compatConte
         return it
       }
 
+    // For nested factories, BFS through the parent class's supertypes
     val parent =
       declaration.getContainingClassSymbol()?.expectAs<FirClassSymbol<FirClass>>() ?: return null
     val queue = ArrayDeque<FirClass>()
