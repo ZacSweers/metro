@@ -699,7 +699,11 @@ internal class BindingGraphGenerator(
       for ((key, factories) in extendedNode.providerFactories) {
         // Dynamic parent bindings take precedence over child's directly provided keys
         val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
-        if ((key !in node.directlyProvidedKeys || isDynamicInParent) && key !in providerFactoryKeys && key !in bindsCallableKeys) {
+        if (
+          (key !in node.directlyProvidedKeys || isDynamicInParent) &&
+            key !in providerFactoryKeys &&
+            key !in bindsCallableKeys
+        ) {
           for (factory in factories) {
             if (!factory.annotations.isScoped && key !in extendedNode.graphPrivateKeys) {
               providerFactories.add(key to factory)
@@ -716,7 +720,11 @@ internal class BindingGraphGenerator(
       for ((key, callables) in extendedNode.bindsCallables) {
         // Dynamic parent bindings take precedence over child's directly provided keys
         val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
-        if ((key !in node.directlyProvidedKeys || isDynamicInParent) && key !in bindsCallableKeys && key !in providerFactoryKeys) {
+        if (
+          (key !in node.directlyProvidedKeys || isDynamicInParent) &&
+            key !in bindsCallableKeys &&
+            key !in providerFactoryKeys
+        ) {
           for (callable in callables) {
             if (callable.source in extendedNode.graphPrivateKeys) continue
             bindsCallableKeys.add(key)
