@@ -15,6 +15,7 @@ interface ParentGraph {
 @GraphExtension
 interface ChildGraph {
   val presentString: String?
+  val grandchild: GrandchildGraph
 
   @Provides fun provideString(): String = "hello"
 
@@ -26,10 +27,16 @@ interface ChildGraph {
   }
 }
 
+@GraphExtension
+interface GrandchildGraph {
+  val string: String?
+}
+
 fun box(): String {
   val parent = createGraph<ParentGraph>()
   assertEquals(null, parent.nullableString)
   val child = parent.childGraphFactory().create()
   assertEquals("hello", child.presentString)
+  assertEquals("hello", child.grandchild.string)
   return "OK"
 }

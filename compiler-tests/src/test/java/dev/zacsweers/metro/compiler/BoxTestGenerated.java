@@ -2088,15 +2088,15 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
-      @TestMetadata("ClassMapKeyInterop.kt")
-      public void testClassMapKeyInterop() {
-        runTest("compiler-tests/src/test/data/box/interop/kclass/ClassMapKeyInterop.kt");
-      }
-
-      @Test
       @TestMetadata("ClassMapKeyInjectConstructorInterop.kt")
       public void testClassMapKeyInjectConstructorInterop() {
         runTest("compiler-tests/src/test/data/box/interop/kclass/ClassMapKeyInjectConstructorInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("ClassMapKeyInterop.kt")
+      public void testClassMapKeyInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/kclass/ClassMapKeyInterop.kt");
       }
 
       @Test
