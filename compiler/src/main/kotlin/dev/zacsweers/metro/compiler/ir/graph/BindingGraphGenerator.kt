@@ -696,13 +696,14 @@ internal class BindingGraphGenerator(
       // Skip @GraphPrivate factories — private contributions should not leak to child graphs.
       val isDynamicParent =
         extendedNode is GraphNode.Local && extendedNode.dynamicTypeKeys.isNotEmpty()
+
+      val alreadyCollectedKeys = providerFactoryKeys + bindsCallableKeys
+
       for ((key, factories) in extendedNode.providerFactories) {
         // Dynamic parent bindings take precedence over child's directly provided keys
         val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
         if (
-          (key !in node.directlyProvidedKeys || isDynamicInParent) &&
-            key !in providerFactoryKeys &&
-            key !in bindsCallableKeys
+          isDynamicInParent || (key !in node.directlyProvidedKeys && key !in alreadyCollectedKeys)
         ) {
           for (factory in factories) {
             if (!factory.annotations.isScoped && key !in extendedNode.graphPrivateKeys) {
@@ -721,9 +722,7 @@ internal class BindingGraphGenerator(
         // Dynamic parent bindings take precedence over child's directly provided keys
         val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
         if (
-          (key !in node.directlyProvidedKeys || isDynamicInParent) &&
-            key !in bindsCallableKeys &&
-            key !in providerFactoryKeys
+          isDynamicInParent || (key !in node.directlyProvidedKeys && key !in alreadyCollectedKeys)
         ) {
           for (callable in callables) {
             if (callable.source in extendedNode.graphPrivateKeys) continue
