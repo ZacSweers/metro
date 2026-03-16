@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.compat.k2320_beta2
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.compat.k2320.CompatContextImpl as DelegateType
+import dev.zacsweers.metro.compiler.compat.k2320_beta1.CompatContextImpl as DelegateType
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.diagnostics.DiagnosticContext
