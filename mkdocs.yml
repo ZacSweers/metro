@@ -3,16 +3,18 @@
 # source .venv/bin/activate
 # pip install -r .github/workflows/mkdocs-requirements.txt
 # ./scripts/copy_docs_files.sh
-# mkdocs serve
+# zensical serve
 #
 # ℹ️ NOTE: Deployment is done via `mike` for versioned site using GitHub Actions
 #          For manual deployment, use `./scripts/deploy_metro_docs_site.sh`
+# ℹ️ NOTE: See docs/zensical-migration.md for details on the partial Zensical migration
 
 site_name: Metro
 repo_name: Metro
 repo_url: https://github.com/ZacSweers/metro
 edit_uri: edit/main/docs/
-site_url: https://zacsweers.github.io/metro/
+# site_url is set via env var so local `zensical serve` works at root without prefix issues
+site_url: !ENV [SITE_URL, '']
 site_description: "A multiplatform dependency injection framework for Kotlin"
 site_author: Zac Sweers
 remote_branch: gh-pages
@@ -59,6 +61,10 @@ theme:
   # Custom dir for theme overrides (eg. custom 404 page)
   # - https://squidfunk.github.io/mkdocs-material/customization/
   custom_dir: 'docs/site-assets/overrides'
+
+hooks:
+  # Hook to fix view & edit links for files copied into docs/ from other locations in the repo
+  - scripts/mkdocs_hook_fix_view_edit_uri.py
 
 plugins:
   # Social plugin for delightful card previews on social media

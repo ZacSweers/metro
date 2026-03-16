@@ -709,8 +709,15 @@ private constructor(
             val (property, storedKey, shardProperty, shardIndex) = bindingProperty
             // Only return early if we got an actual instance property, not a provider fallback
             if (!storedKey.isWrappedInProvider) {
-              return@mapIndexed generatePropertyAccess(property, shardProperty, shardIndex)
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              val instanceExpression =
+                generatePropertyAccess(property, shardProperty, shardIndex)
+                  .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              return@mapIndexed typeAsProviderArgument(
+                param.contextualTypeKey,
+                instanceExpression,
+                isAssisted = param.isAssisted,
+                isGraphInstance = param.isGraphInstance,
+              )
             }
           }
         }
