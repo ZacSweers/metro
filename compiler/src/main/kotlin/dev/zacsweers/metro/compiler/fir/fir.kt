@@ -957,7 +957,7 @@ internal fun FirAnnotation.excludesArgument(session: FirSession) =
 
 internal fun FirAnnotation.replacesArgument() = arrayArgument(Symbols.Names.replaces, index = 2)
 
-internal fun FirAnnotation.isMultibinding(): Boolean {
+internal fun FirAnnotation.isKiaIntoMultibinding(): Boolean {
   return argumentAsOrNull<FirLiteralExpression>(Symbols.Names.multibinding, index = 3)?.value
     as? Boolean ?: false
 }

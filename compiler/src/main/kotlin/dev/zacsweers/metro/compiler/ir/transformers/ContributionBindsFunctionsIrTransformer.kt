@@ -10,13 +10,13 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.anvilMultibinding
 import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.isKiaMultibinding
 import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
@@ -315,17 +315,16 @@ internal class ContributionTransformer(
           contributions += Contribution.ContributesTo(contributingSymbol.classIdOrFail, annotation)
         }
         in contributesBindingAnnotations -> {
-          if (annotation.anvilMultibinding()) {
-            contributions +=
+          contributions +=
+            if (annotation.isKiaMultibinding()) {
               Contribution.ContributesIntoSetBinding(contributingSymbol, annotation) {
                 listOf(buildIntoSetAnnotation(), buildBindsAnnotation())
               }
-          } else {
-            contributions +=
+            } else {
               Contribution.ContributesBinding(contributingSymbol, annotation) {
                 listOf(buildBindsAnnotation())
               }
-          }
+            }
         }
         in contributesIntoSetAnnotations -> {
           contributions +=

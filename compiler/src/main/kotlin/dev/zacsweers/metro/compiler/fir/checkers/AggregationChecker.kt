@@ -12,7 +12,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
-import dev.zacsweers.metro.compiler.fir.isMultibinding
+import dev.zacsweers.metro.compiler.fir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
@@ -158,7 +158,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           }
 
           in classIds.contributesBindingAnnotations -> {
-            if (annotation.isMultibinding()) {
+            if (annotation.isKiaIntoMultibinding()) {
               if (!checkIntoSet) {
                 return
               }

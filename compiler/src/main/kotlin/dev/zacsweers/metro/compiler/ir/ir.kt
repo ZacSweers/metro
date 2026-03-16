@@ -1975,7 +1975,7 @@ internal fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {
   return getConstBooleanArgumentOrNull(Symbols.Names.ignoreQualifier) ?: false
 }
 
-internal fun IrConstructorCall.anvilMultibinding(): Boolean {
+internal fun IrConstructorCall.isKiaMultibinding(): Boolean {
   return getConstBooleanArgumentOrNull(Symbols.Names.multibinding) ?: false
 }
 
