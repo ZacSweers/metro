@@ -24,7 +24,7 @@ _2026-03-16_
 - **[IR]**: Fix `NoSuchFieldError` at runtime when sharded graphs access `@Includes` dependency properties.
 - **[IR]**: Check parent classes for `@Origin` annotations when performing IR-based contribution merging.
 - **[IR]**: Fix graph extensions inheriting stale bindings from ancestor graphs when a nearer parent already superseded them (e.g., a child's `@Binds` overriding a grandparent's `@Provides` of the same type).
-- **[metrox-viewmodel-compose]**: Pass `CreationExtras` to the `createViewModel` lamba for `assistedMetroViewModel` when using `ManualViewModelAssistedFactory`
+- **[metrox-viewmodel-compose]**: Pass `CreationExtras` to the `createViewModel` lambda for `assistedMetroViewModel` when using `ManualViewModelAssistedFactory`.
 
 ### Changes
 
