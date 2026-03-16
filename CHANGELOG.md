@@ -19,7 +19,7 @@ Changelog
 - **[IR]**: Fix duplicate binding error in multibindings when multiple contributed containers include the same shared multibinding-contributing container.
 - **[IR]**: Fix `NoSuchFieldError` at runtime when sharded graphs access `@Includes` dependency properties.
 - **[IR]**: Check parent classes for `@Origin` annotations when performing IR-based contribution merging.
-- **[IR]**: Fix graph extensions receiving replaced bindings from their grandparent graph instead of their parent graph
+- **[IR]**: Fix graph extensions inheriting stale bindings from ancestor graphs when a nearer parent already superseded them (e.g., a child's `@Binds` overriding a grandparent's `@Provides` of the same type).
 - **[metrox-viewmodel-compose]**: Pass `CreationExtras` to the `createViewModel` lamba for `assistedMetroViewModel` when using `ManualViewModelAssistedFactory`
 
 ### Changes
