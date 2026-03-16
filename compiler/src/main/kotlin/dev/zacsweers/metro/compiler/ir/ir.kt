@@ -1975,9 +1975,8 @@ internal fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {
   return getConstBooleanArgumentOrNull(Symbols.Names.ignoreQualifier) ?: false
 }
 
-internal fun IrConstructorCall.isKiaMultibinding(): Boolean {
-  return getConstBooleanArgumentOrNull(Symbols.Names.multibinding) ?: false
-}
+internal fun IrConstructorCall.isKiaIntoMultibinding(): Boolean =
+  getConstBooleanArgumentOrNull(Symbols.Names.multibinding) ?: false
 
 // public for test extension use
 context(context: IrPluginContext)
