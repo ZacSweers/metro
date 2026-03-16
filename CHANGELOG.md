@@ -23,9 +23,8 @@ Changelog
 
 ### Changes
 
-- Test Kotlin 2.3.20-RC.
-- Test Kotlin 2.3.20-RC2.
-- Test Kotlin 2.3.20-RC3.
+- Test Kotlin 2.3.20.
+  - Note that all the 2.3.20 pre-releases were tested up to this release, but are no longer tested after this release.
 - Test Android Studio Panda 2
 - Test Android Studio Panda 3 canaries
 - Update shaded `androidx.tracing` to `2.0.0-alpha03`.
