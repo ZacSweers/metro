@@ -6,7 +6,8 @@ interface ContributedInterface
 
 interface OtherInterface
 
-@ContributesBinding(AppScope::class, boundType = ContributedInterface::class, multibinding = true)
+// Intentional different parameter order
+@ContributesBinding(AppScope::class, multibinding = true, boundType = ContributedInterface::class)
 @Inject
 class Impl : ContributedInterface, OtherInterface
 
