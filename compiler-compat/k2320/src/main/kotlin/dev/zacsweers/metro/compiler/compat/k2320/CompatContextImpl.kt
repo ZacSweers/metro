@@ -1,13 +1,19 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.compat.k2320_dev_5706
+package dev.zacsweers.metro.compiler.compat.k2320
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.k230.CompatContextImpl as DelegateType
 import org.jetbrains.kotlin.GeneratedDeclarationKey
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.DiagnosticContext
+import org.jetbrains.kotlin.diagnostics.KtDiagnostic
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
+import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
@@ -32,6 +38,7 @@ import org.jetbrains.kotlin.fir.toEffectiveVisibility
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.declarations.IrField
@@ -150,8 +157,36 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     return addBackingField(builder)
   }
 
+  override val supportsExternalRepeatableAnnotations: Boolean = true
+  override val supportsSourcelessIrDiagnostics: Boolean = true
+
+  override fun KtSourcelessDiagnosticFactory.createCompat(
+    message: String,
+    location: CompilerMessageSourceLocation?,
+    languageVersionSettings: LanguageVersionSettings,
+  ): KtDiagnosticWithoutSource? {
+    val context =
+      object : DiagnosticContext {
+        override val containingFilePath: String?
+          get() = null
+
+        override fun isDiagnosticSuppressed(diagnostic: KtDiagnostic): Boolean = false
+
+        override val languageVersionSettings: LanguageVersionSettings
+          get() = languageVersionSettings
+      }
+    return create(message, location, context)
+  }
+
+  override fun IrDiagnosticReporter.reportCompat(
+    factory: KtSourcelessDiagnosticFactory,
+    message: String,
+  ) {
+    report(factory, message)
+  }
+
   public class Factory : CompatContext.Factory {
-    override val minVersion: String = "2.3.20-dev-5706"
+    override val minVersion: String = "2.3.20"
 
     override fun create(): CompatContext = CompatContextImpl()
   }
