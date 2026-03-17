@@ -352,6 +352,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
             addParameters(
               params = dedupedSourceParameters.allParameters,
               wrapInProvider = true,
+              stubDefaults = false,
               typeRemapper = { type -> typeRemapper.remapType(type) },
             ) { typeKey, irParam ->
               typeKeyToField[typeKey] = irParam.addBackingFieldTo(factoryCls)

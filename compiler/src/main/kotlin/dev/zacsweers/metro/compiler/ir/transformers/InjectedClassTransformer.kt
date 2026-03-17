@@ -318,6 +318,7 @@ internal class InjectedClassTransformer(
             addParameters(
               params = dedupedParameters,
               wrapInProvider = true,
+              stubDefaults = false,
               typeRemapper = { type -> typeRemapper.remapType(type) },
             ) { typeKey, irParam ->
               typeKeyToField[typeKey] = irParam.addBackingFieldTo(factoryCls)
