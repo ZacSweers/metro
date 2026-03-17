@@ -1,5 +1,6 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -16,7 +17,7 @@ android {
   buildFeatures { viewBinding = true }
 }
 
-metro { enableFunctionProviders.set(true) }
+@OptIn(ExperimentalMetroGradleApi::class) metro { enableFunctionProviders.set(true) }
 
 @OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
 kotlin {
