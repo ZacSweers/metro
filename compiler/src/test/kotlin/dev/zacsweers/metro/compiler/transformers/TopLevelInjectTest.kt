@@ -121,6 +121,46 @@ class TopLevelInjectTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `selects injected top-level function when another function shares the same name`() {
+    val result =
+      compile(
+        source(
+          """
+          @Inject
+          fun App(message: String) {
+            println(message)
+          }
+
+          private fun App(message: String, loading: Boolean = false) {
+            if (loading) {
+              println("loading: ${'$'}message")
+            }
+          }
+
+          @DependencyGraph
+          interface ExampleGraph {
+            val app: App
+
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Provides message: String): ExampleGraph
+            }
+          }
+          """
+            .trimIndent()
+        )
+      )
+
+    val graph = result.ExampleGraph.generatedImpl().createGraphViaFactory("Hello, world!")
+
+    val app = graph.callProperty<Any>("app")
+    val output = captureStandardOut {
+      val _ = app.invokeInstanceMethod<Any>("invoke")
+    }
+    assertThat(output).isEqualTo("Hello, world!")
+  }
+
+  @Test
   fun `simple injected and assisted with return type`() {
     val result =
       compile(
