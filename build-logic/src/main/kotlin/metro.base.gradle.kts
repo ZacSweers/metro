@@ -121,7 +121,7 @@ pluginManager.withPlugin("metro.publish") {
 
   if (isNotCompiler) {
     val metroRuntimeLanguageVersion =
-      catalog.findVersion("metro-runtime-languageVersion").get().requiredVersion
+      catalog.findVersion("kotlinPublished").get().requiredVersion.take(3) // Take 2.2 out of 2.2.20
     val runtimeKotlinVersion = KotlinVersion.fromVersion(metroRuntimeLanguageVersion)
     metroExtension.languageVersion.convention(runtimeKotlinVersion)
     metroExtension.apiVersion.convention(runtimeKotlinVersion)
