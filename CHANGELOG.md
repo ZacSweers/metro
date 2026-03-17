@@ -6,7 +6,11 @@ Changelog
 
 ### New
 
-- [metrox-viewmodel] Add `mingwX64` target.
+- **[metrox-viewmodel]** Add `mingwX64` target.
+
+### Fixes
+
+- **[IR]** Fix a severity conversion compat function call for Kotlin 2.3.20+.
 
 0.11.4
 ------
