@@ -1302,6 +1302,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       public void testRequiredAnnotationWorksWhenPresent() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/optional/RequiredAnnotationWorksWhenPresent.kt");
       }
+
+      @Test
+      @TestMetadata("ScopedDefaultInSeparateCompilation.kt")
+      public void testScopedDefaultInSeparateCompilation() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/optional/ScopedDefaultInSeparateCompilation.kt");
+      }
     }
 
     @Nested

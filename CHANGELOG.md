@@ -4,6 +4,16 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[IR]**: Fix codegen error when a scoped binding in a separate compilation has a default value in its `@Inject` constructor.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@ChristianKatzmann](https://github.com/ChristianKatzmann)
+
 0.11.3
 ------
 

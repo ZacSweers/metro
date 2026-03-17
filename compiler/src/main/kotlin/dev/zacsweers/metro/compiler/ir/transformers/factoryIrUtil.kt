@@ -417,6 +417,14 @@ internal fun IrFunction.addParameters(
             Origins.RegularParameter
           },
       )
+      .apply {
+        // Set a stub default value so that metadata registration (which may happen before
+        // copyParameterDefaultValues runs) records hasDefaultValue = true for this parameter.
+        // The real default expression is set later by copyParameterDefaultValues.
+        if (param.hasDefault) {
+          defaultValue = context.createIrBuilder(symbol).run { irExprBody(stubExpression()) }
+        }
+      }
       .applyIf(copyQualifiers) {
         param.typeKey.qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
       }
