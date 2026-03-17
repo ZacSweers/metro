@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- [metrox-viewmodel] Add `mingwX64` target.
+
 0.11.4
 ------
 
