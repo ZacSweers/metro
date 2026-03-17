@@ -1,5 +1,8 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import dev.zacsweers.metro.gradle.DelicateMetroGradleApi
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
+import dev.zacsweers.metro.gradle.RequiresIdeSupport
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile
@@ -15,10 +18,17 @@ plugins {
 
 ksp { arg("circuit.codegen.mode", "metro") }
 
-// TODO broken for now until
-//  https://youtrack.jetbrains.com/issue/KT-76715
-//  https://youtrack.jetbrains.com/issue/KT-66735
-// metro { enableTopLevelFunctionInjection.set(true) }
+@OptIn(ExperimentalMetroGradleApi::class, DelicateMetroGradleApi::class, RequiresIdeSupport::class)
+metro {
+  // TODO broken for now until
+  //  https://youtrack.jetbrains.com/issue/KT-76715
+  //  https://youtrack.jetbrains.com/issue/KT-66735
+  //  enableTopLevelFunctionInjection.set(true)
+  // Until it's possible to disable JS IC
+  // https://youtrack.jetbrains.com/issue/KT-82989
+  enableTopLevelFunctionInjection.set(false)
+  generateContributionHintsInFir.set(false)
+}
 
 kotlin {
   jvm {
