@@ -452,9 +452,7 @@ public interface CompatContext {
     message: String,
     location: CompilerMessageSourceLocation?,
     languageVersionSettings: LanguageVersionSettings,
-  ): KtDiagnosticWithoutSource? {
-    return create(message, languageVersionSettings)
-  }
+  ): KtDiagnosticWithoutSource?
 
   @CompatApi(
     since = "2.3.20-dev-7621",

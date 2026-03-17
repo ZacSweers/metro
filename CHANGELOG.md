@@ -12,6 +12,10 @@ Changelog
 
 - **[IR]** Fix a severity conversion compat function call for Kotlin 2.3.20+.
 
+### Changes
+
+- Metro's main branch now builds with Kotlin `2.3.20` but still targets Kotlin 2.2 for its runtime artifacts and supports 2.2.20 all to 2.4.0 dev builds in its compiler.
+
 0.11.4
 ------
 
