@@ -7,7 +7,6 @@ plugins {
   alias(libs.plugins.intellijPlatform)
   alias(libs.plugins.gradleTestRetry)
   id("metro.base")
-  id("metro.spotless")
 }
 
 metroProject { jvmTarget.set("21") }

@@ -2,7 +2,6 @@
 set -eo pipefail
 
 # Unified code formatter: license headers, ktfmt, gjf, trailing whitespace.
-# Replaces Spotless for fast local formatting and CI checks.
 #
 # Usage:
 #   scripts/format.sh              Format staged files

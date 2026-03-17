@@ -75,7 +75,6 @@ mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
 shadow = { id = "com.gradleup.shadow", version = "9.4.0" }
-spotless = { id = "com.diffplug.spotless", version = "8.3.0" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.17" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
@@ -164,8 +163,8 @@ kotlinx-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.7.1"
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 
 # Only present to trigger automatic renovate updates
-ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "gjf" }
+ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 
 graphSupport = "com.autonomousapps:graph-support:0.9.0"
 

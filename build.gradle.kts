@@ -11,7 +11,6 @@ plugins {
   alias(libs.plugins.dokka)
   alias(libs.plugins.ksp) apply false
   alias(libs.plugins.mavenPublish) apply false
-  alias(libs.plugins.spotless)
   alias(libs.plugins.binaryCompatibilityValidator)
   alias(libs.plugins.poko) apply false
   alias(libs.plugins.wire) apply false
@@ -75,8 +74,6 @@ dokka {
     includes.from(project.layout.projectDirectory.file("README.md"))
   }
 }
-
-allprojects { apply(plugin = "metro.spotless") }
 
 tasks.register("installForFunctionalTest") {
   description = "Publishes all Metro artifacts to build/functionalTestRepo"
