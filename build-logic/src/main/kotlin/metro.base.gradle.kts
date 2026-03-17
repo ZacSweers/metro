@@ -82,11 +82,12 @@ plugins.withType<KotlinBasePlugin> {
             // TODO Kotlin 2.3.0
             //  "-Xexplicit-backing-fields",
           )
-          if (project.name != "compiler-tests") {
+          if (project.path.contains("compiler")) {
             optIn.addAll(
               "kotlin.contracts.ExperimentalContracts",
               "kotlin.contracts.ExperimentalExtendedContracts",
               "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
+              "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
             )
           }
         }

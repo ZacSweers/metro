@@ -24,12 +24,6 @@ val testKotlinVersion = KotlinToolingVersion(testCompilerVersion)
 
 val kotlin23 = KotlinToolingVersion(KotlinVersion(2, 3))
 
-if (testKotlinVersion < kotlin23) {
-  kotlin {
-    compilerOptions { optIn.add("org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI") }
-  }
-}
-
 buildConfig {
   generateAtSync = true
   packageName("dev.zacsweers.metro.compiler.test")
