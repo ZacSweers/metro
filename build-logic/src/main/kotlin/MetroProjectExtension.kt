@@ -58,9 +58,9 @@ constructor(private val project: Project, objects: ObjectFactory) {
     jsModuleName: String,
     includeAndroid: Boolean = false, // TODO
     isComposeTarget: Boolean = false,
+    requiresAndroidXDeps: Boolean = false,
   ) {
     project.pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
-      // Sourced from https://kotlinlang.org/docs/native-target-support.html
       with(project.kotlinExtension as KotlinMultiplatformExtension) {
         jvm()
         js(IR) {
@@ -85,7 +85,7 @@ constructor(private val project: Project, objects: ObjectFactory) {
           browser {}
         }
 
-        if (!isComposeTarget) {
+        if (!isComposeTarget && !requiresAndroidXDeps) {
           @OptIn(ExperimentalWasmDsl::class)
           wasmWasi {
             binaries.executable()
@@ -94,39 +94,42 @@ constructor(private val project: Project, objects: ObjectFactory) {
         }
 
         /////// Native targets
+        // Sourced from https://kotlinlang.org/docs/native-target-support.html
         if (isComposeTarget) {
           // Compose-supported native targets
-          iosArm64()
-          iosSimulatorArm64()
-          iosX64()
           macosArm64()
+          iosSimulatorArm64()
+          iosArm64()
+          iosX64()
           macosX64()
         } else {
           // Tier 1
-          iosArm64()
-          iosSimulatorArm64()
           macosArm64()
+          iosSimulatorArm64()
+          iosArm64()
 
           // Tier 2
-          linuxArm64()
           linuxX64()
-          tvosArm64()
-          tvosSimulatorArm64()
+          linuxArm64()
+          watchosSimulatorArm64()
           watchosArm32()
           watchosArm64()
-          watchosSimulatorArm64()
+          tvosSimulatorArm64()
+          tvosArm64()
 
           // Tier 3
-          androidNativeArm32()
-          androidNativeArm64()
-          androidNativeX64()
-          androidNativeX86()
+          mingwX64()
           iosX64()
           macosX64()
-          mingwX64()
           tvosX64()
-          watchosDeviceArm64()
           watchosX64()
+          if (!requiresAndroidXDeps) {
+            androidNativeArm32()
+            androidNativeArm64()
+            androidNativeX86()
+            androidNativeX64()
+            watchosDeviceArm64()
+          }
         }
 
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
@@ -134,14 +137,14 @@ constructor(private val project: Project, objects: ObjectFactory) {
           common {
             group("wasm") {
               withWasmJs()
-              if (!isComposeTarget) {
+              if (!isComposeTarget && !requiresAndroidXDeps) {
                 withWasmWasi()
               }
             }
             group("web") {
               withJs()
               withWasmJs()
-              if (!isComposeTarget) {
+              if (!isComposeTarget && !requiresAndroidXDeps) {
                 withWasmWasi()
               }
             }
@@ -164,12 +167,13 @@ constructor(private val project: Project, objects: ObjectFactory) {
                   freeCompilerArgs.add(
                     "-Xklib-duplicated-unique-name-strategy=allow-all-with-warning"
                   )
-                  if (target.platformType == KotlinPlatformType.js) {
-                    freeCompilerArgs.add(
-                      // These are all read at compile-time
-                      "-Xwarning-level=RUNTIME_ANNOTATION_NOT_SUPPORTED:disabled"
-                    )
-                  }
+                  //                  if (target.platformType == KotlinPlatformType.js) {
+                  //                    freeCompilerArgs.add(
+                  //                      // These are all read at compile-time
+                  //
+                  // "-Xwarning-level=RUNTIME_ANNOTATION_NOT_SUPPORTED:disabled"
+                  //                    )
+                  //                  }
                 }
               }
             }
