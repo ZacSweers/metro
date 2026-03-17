@@ -119,7 +119,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
    * Will generate
    *
    * ```
-   * class AppClass @Inject constructor(private val message: Provider<String>) {
+   * class App @Inject constructor(private val message: Provider<String>) {
    *   operator fun invoke() {
    *     App(message())
    *   }
