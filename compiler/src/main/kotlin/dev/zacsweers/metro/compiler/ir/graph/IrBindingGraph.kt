@@ -309,8 +309,9 @@ internal class IrBindingGraph(
       val declaredKeys = bindingLookup.getDeclaredKeys()
       val unused = declaredKeys - reachableKeys
       if (unused.isNotEmpty()) {
-        val unusedMultibindingElements =
-          unused.filterToSet { it.multibindingBindingElementId != null }
+        val unusedMultibindingElements = unused.filterToSet {
+          it.multibindingBindingElementId != null
+        }
         if (unusedMultibindingElements.isNotEmpty()) {
           val allMultibindings by memoize {
             buildList {
@@ -377,15 +378,14 @@ internal class IrBindingGraph(
         }
       }
 
-      unusedKeys =
-        unused.associateWith { key ->
-          val binding = bindingLookup[key]
-          if (binding is IrBinding.BoundInstance && binding.isGraphInput) {
-            binding
-          } else {
-            null
-          }
+      unusedKeys = unused.associateWith { key ->
+        val binding = bindingLookup[key]
+        if (binding is IrBinding.BoundInstance && binding.isGraphInput) {
+          binding
+        } else {
+          null
         }
+      }
     } else {
       unusedKeys = emptyMap()
     }

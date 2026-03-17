@@ -93,8 +93,9 @@ internal class SyntheticGraphGenerator(
   private val traceScope: TraceScope,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
 
-  val contributions =
-    sourceAnnotation?.let { contributionMerger.computeContributions(it, originDeclaration) }
+  val contributions = sourceAnnotation?.let {
+    contributionMerger.computeContributions(it, originDeclaration)
+  }
 
   /** Generates a factory implementation class that implements a factory interface. */
   private fun generateFactoryImpl(
@@ -228,13 +229,12 @@ internal class SyntheticGraphGenerator(
     creatorFunction: IrSimpleFunction?,
     storedParams: List<SyntheticGraphParameter> = emptyList(),
   ): CreatedGraphImpl {
-    val graphImpl =
-      irFactory.buildClass {
-        this.name = name
-        this.origin = origin
-        kind = ClassKind.CLASS
-        visibility = DescriptorVisibilities.PRIVATE
-      }
+    val graphImpl = irFactory.buildClass {
+      this.name = name
+      this.origin = origin
+      kind = ClassKind.CLASS
+      visibility = DescriptorVisibilities.PRIVATE
+    }
 
     val graphAnno = buildDependencyGraphAnnotation(targetClass = graphImpl)
 
@@ -295,17 +295,16 @@ internal class SyntheticGraphGenerator(
         }
 
     // If there's an extension, generate it into this impl
-    val factoryImpl =
-      creatorFunction?.let { factory ->
-        // Don't need to do this if the parent implements the factory
-        if (parentGraph?.implements(factory.parentAsClass.classIdOrFail) == true) return@let null
-        generateFactoryImpl(
-          graphImpl = graphImpl,
-          graphCtor = ctor,
-          factoryInterface = factory.parentAsClass,
-          storedParams = storedParams,
-        )
-      }
+    val factoryImpl = creatorFunction?.let { factory ->
+      // Don't need to do this if the parent implements the factory
+      if (parentGraph?.implements(factory.parentAsClass.classIdOrFail) == true) return@let null
+      generateFactoryImpl(
+        graphImpl = graphImpl,
+        graphCtor = ctor,
+        factoryInterface = factory.parentAsClass,
+        storedParams = storedParams,
+      )
+    }
 
     graphImpl.addFakeOverrides(irTypeSystemContext)
 
@@ -374,30 +373,27 @@ internal class SyntheticGraphGenerator(
       val annotations: MetroAnnotations<IrAnnotation>,
     )
 
-    val overriddenInfos =
-      overriddenSymbols.mapNotNull { symbol ->
-        val owner = symbol.owner
-        val (returnType, container) =
-          when (owner) {
-            is IrSimpleFunction -> (owner.returnType) to (owner as IrAnnotationContainer)
-            is IrProperty ->
-              (owner.getter?.returnType ?: return@mapNotNull null) to
-                (owner as IrAnnotationContainer)
-            else -> return@mapNotNull null
-          }
-        OverriddenInfo(owner, returnType, metroAnnotationsOf(container))
-      }
+    val overriddenInfos = overriddenSymbols.mapNotNull { symbol ->
+      val owner = symbol.owner
+      val (returnType, container) =
+        when (owner) {
+          is IrSimpleFunction -> (owner.returnType) to (owner as IrAnnotationContainer)
+          is IrProperty ->
+            (owner.getter?.returnType ?: return@mapNotNull null) to (owner as IrAnnotationContainer)
+          else -> return@mapNotNull null
+        }
+      OverriddenInfo(owner, returnType, metroAnnotationsOf(container))
+    }
 
     if (overriddenInfos.size < 2) return
 
     // Check type compatibility - find if there's any type that is compatible with all others
-    val hasCompatibleType =
-      overriddenInfos.any { (_, type1) ->
-        overriddenInfos.all { (_, type2) ->
-          type1.isSubtypeOf(type2, irTypeSystemContext) ||
-            type2.isSubtypeOf(type1, irTypeSystemContext)
-        }
+    val hasCompatibleType = overriddenInfos.any { (_, type1) ->
+      overriddenInfos.all { (_, type2) ->
+        type1.isSubtypeOf(type2, irTypeSystemContext) ||
+          type2.isSubtypeOf(type1, irTypeSystemContext)
       }
+    }
 
     // Check all pairs for type and annotation compatibility
     for (i in overriddenInfos.indices) {

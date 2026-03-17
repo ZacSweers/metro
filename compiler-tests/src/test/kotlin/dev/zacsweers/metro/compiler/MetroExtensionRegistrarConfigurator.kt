@@ -58,123 +58,122 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     module: TestModule,
     configuration: CompilerConfiguration,
   ) {
-    val options =
-      MetroOptions.buildOptions {
-        // Set non-annotation properties (only when directive is present or value is non-default)
-        enabled = MetroDirectives.DISABLE_METRO !in module.directives
-        generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
-        module.directives.singleOrZeroValue(MetroDirectives.TRANSFORM_PROVIDERS_TO_PRIVATE)?.let {
-          transformProvidersToPrivate = it
-        }
-        enableTopLevelFunctionInjection =
-          MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives
-        module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)?.let {
-          shrinkUnusedBindings = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS)?.let {
-          chunkFieldInits = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.STATEMENTS_PER_INIT_FUN)?.let {
-          statementsPerInitFun = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.ENABLE_GRAPH_SHARDING)?.let {
-          enableGraphSharding = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
-          keysPerGraphShard = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.ENABLE_SWITCHING_PROVIDERS)?.let {
-          enableFastInit = it
-        }
-        enableFullBindingGraphValidation =
-          MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
-        enableGraphImplClassAsReturnType =
-          MetroDirectives.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE in module.directives
-        generateContributionHints =
-          module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
-        generateContributionHintsInFir =
-          MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
-        if (transformProvidersToPrivate) {
-          publicScopedProviderSeverity = MetroOptions.DiagnosticSeverity.NONE
-        } else {
-          module.directives
-            .singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)
-            ?.let { publicScopedProviderSeverity = it }
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)?.let {
-          optionalBindingBehavior = it
-        }
-        module.directives
-          .singleOrZeroValue(MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY)
-          ?.let { interopAnnotationsNamedArgSeverity = it }
-        module.directives.singleOrZeroValue(MetroDirectives.NON_PUBLIC_CONTRIBUTION_SEVERITY)?.let {
-          nonPublicContributionSeverity = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.UNUSED_GRAPH_INPUTS_SEVERITY)?.let {
-          unusedGraphInputsSeverity = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
-          maxIrErrorsCount = it
-        }
-        // Use explicit REPORTS_DESTINATION or default if CHECK_REPORTS is present
-        val reportsDir =
-          module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)
-            ?: if (module.directives[MetroDirectives.CHECK_REPORTS].isNotEmpty()) {
-              MetroReportsChecker.DEFAULT_REPORTS_DIR
-            } else {
-              null
-            }
-        reportsDir?.let {
-          reportsDestination =
-            Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
-        }
-        module.directives
-          .singleOrZeroValue(MetroDirectives.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS)
-          ?.let { useAssistedParamNamesAsIdentifiers = it }
-        module.directives.singleOrZeroValue(MetroDirectives.ASSISTED_IDENTIFIER_SEVERITY)?.let {
-          assistedIdentifierSeverity = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
-          parallelThreads = it
-        }
-        contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
-        enableFunctionProviders = MetroDirectives.ENABLE_FUNCTION_PROVIDERS in module.directives
-        enableKClassToClassInterop =
-          MetroDirectives.ENABLE_KCLASS_TO_CLASS_INTEROP in module.directives
-
-        // Configure interop annotations using builder helper methods
-        if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
-          includeKotlinInjectAnvilAnnotations()
-        }
-        if (
-          MetroDirectives.WITH_ANVIL in module.directives ||
-            MetroDirectives.ENABLE_ANVIL_KSP in module.directives
-        ) {
-          includeAnvilAnnotations()
-        }
-
-        if (
-          MetroDirectives.WITH_DAGGER in module.directives ||
-            MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
-            MetroDirectives.ENABLE_DAGGER_KSP in module.directives
-        ) {
-          includeDaggerAnnotations()
-        }
-
-        if (MetroDirectives.enableGuiceAnnotations(module.directives)) {
-          includeGuiceAnnotations()
-        }
-
-        // Override enableDaggerRuntimeInterop if needed
-        if (MetroDirectives.enableDaggerRuntimeInterop(module.directives)) {
-          enableDaggerRuntimeInterop = true
-        }
-
-        // Override enableGuiceRuntimeInterop if needed
-        if (MetroDirectives.enableGuiceInterop(module.directives)) {
-          enableGuiceRuntimeInterop = true
+    val options = MetroOptions.buildOptions {
+      // Set non-annotation properties (only when directive is present or value is non-default)
+      enabled = MetroDirectives.DISABLE_METRO !in module.directives
+      generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
+      module.directives.singleOrZeroValue(MetroDirectives.TRANSFORM_PROVIDERS_TO_PRIVATE)?.let {
+        transformProvidersToPrivate = it
+      }
+      enableTopLevelFunctionInjection =
+        MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives
+      module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)?.let {
+        shrinkUnusedBindings = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS)?.let {
+        chunkFieldInits = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.STATEMENTS_PER_INIT_FUN)?.let {
+        statementsPerInitFun = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_GRAPH_SHARDING)?.let {
+        enableGraphSharding = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
+        keysPerGraphShard = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_SWITCHING_PROVIDERS)?.let {
+        enableFastInit = it
+      }
+      enableFullBindingGraphValidation =
+        MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
+      enableGraphImplClassAsReturnType =
+        MetroDirectives.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE in module.directives
+      generateContributionHints =
+        module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
+      generateContributionHintsInFir =
+        MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
+      if (transformProvidersToPrivate) {
+        publicScopedProviderSeverity = MetroOptions.DiagnosticSeverity.NONE
+      } else {
+        module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
+          publicScopedProviderSeverity = it
         }
       }
+      module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)?.let {
+        optionalBindingBehavior = it
+      }
+      module.directives
+        .singleOrZeroValue(MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY)
+        ?.let { interopAnnotationsNamedArgSeverity = it }
+      module.directives.singleOrZeroValue(MetroDirectives.NON_PUBLIC_CONTRIBUTION_SEVERITY)?.let {
+        nonPublicContributionSeverity = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.UNUSED_GRAPH_INPUTS_SEVERITY)?.let {
+        unusedGraphInputsSeverity = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
+        maxIrErrorsCount = it
+      }
+      // Use explicit REPORTS_DESTINATION or default if CHECK_REPORTS is present
+      val reportsDir =
+        module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)
+          ?: if (module.directives[MetroDirectives.CHECK_REPORTS].isNotEmpty()) {
+            MetroReportsChecker.DEFAULT_REPORTS_DIR
+          } else {
+            null
+          }
+      reportsDir?.let {
+        reportsDestination =
+          Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
+      }
+      module.directives
+        .singleOrZeroValue(MetroDirectives.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS)
+        ?.let { useAssistedParamNamesAsIdentifiers = it }
+      module.directives.singleOrZeroValue(MetroDirectives.ASSISTED_IDENTIFIER_SEVERITY)?.let {
+        assistedIdentifierSeverity = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
+        parallelThreads = it
+      }
+      contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
+      enableFunctionProviders = MetroDirectives.ENABLE_FUNCTION_PROVIDERS in module.directives
+      enableKClassToClassInterop =
+        MetroDirectives.ENABLE_KCLASS_TO_CLASS_INTEROP in module.directives
+
+      // Configure interop annotations using builder helper methods
+      if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
+        includeKotlinInjectAnvilAnnotations()
+      }
+      if (
+        MetroDirectives.WITH_ANVIL in module.directives ||
+          MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+      ) {
+        includeAnvilAnnotations()
+      }
+
+      if (
+        MetroDirectives.WITH_DAGGER in module.directives ||
+          MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
+          MetroDirectives.ENABLE_DAGGER_KSP in module.directives
+      ) {
+        includeDaggerAnnotations()
+      }
+
+      if (MetroDirectives.enableGuiceAnnotations(module.directives)) {
+        includeGuiceAnnotations()
+      }
+
+      // Override enableDaggerRuntimeInterop if needed
+      if (MetroDirectives.enableDaggerRuntimeInterop(module.directives)) {
+        enableDaggerRuntimeInterop = true
+      }
+
+      // Override enableGuiceRuntimeInterop if needed
+      if (MetroDirectives.enableGuiceInterop(module.directives)) {
+        enableGuiceRuntimeInterop = true
+      }
+    }
 
     if (!options.enabled) return
 

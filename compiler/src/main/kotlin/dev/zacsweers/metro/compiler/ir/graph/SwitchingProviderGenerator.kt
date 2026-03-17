@@ -364,24 +364,23 @@ internal class SwitchingProviderGenerator(
       // Build branches for each switching binding in this chunk
       val branches = ArrayList<IrBranch>(bindings.size + 1)
 
-      branches +=
-        bindings.map { switchingBinding ->
-          val condition =
-            irEquals(
-              irGetProperty(irGet(switchingProviderThisReceiver), idProperty),
-              irInt(switchingBinding.id),
-            )
-          val result =
-            irImplicitCast(
-              generateBindingExpression(
-                switchingBinding,
-                switchingProviderThisReceiver,
-                switchingProviderContext,
-              ),
-              typeParam.defaultType,
-            )
-          irBranch(condition, result)
-        }
+      branches += bindings.map { switchingBinding ->
+        val condition =
+          irEquals(
+            irGetProperty(irGet(switchingProviderThisReceiver), idProperty),
+            irInt(switchingBinding.id),
+          )
+        val result =
+          irImplicitCast(
+            generateBindingExpression(
+              switchingBinding,
+              switchingProviderThisReceiver,
+              switchingProviderContext,
+            ),
+            typeParam.defaultType,
+          )
+        irBranch(condition, result)
+      }
 
       // For the else branch: either call the next chunk function or throw an error
       val elseBranchExpr =

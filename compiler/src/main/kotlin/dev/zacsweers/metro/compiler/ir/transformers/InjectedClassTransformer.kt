@@ -658,8 +658,9 @@ internal class InjectedClassTransformer(
         factoryCls.companionObject()!!
       }
 
-    val mergedParameters =
-      allParameters.reduce { current, next -> current.mergeValueParametersWithUntyped(next) }
+    val mergedParameters = allParameters.reduce { current, next ->
+      current.mergeValueParametersWithUntyped(next)
+    }
 
     // Deduplicate to match the FIR-generated create() function signature
     val dedupedMerged =

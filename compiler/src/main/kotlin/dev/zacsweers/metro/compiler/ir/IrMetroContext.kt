@@ -172,14 +172,13 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
         }
       }
 
-      override val lookupTracker: LookupTracker? =
-        lookupTracker?.let {
-          if (options.reportsEnabled) {
-            RecordingLookupTracker(this, lookupTracker)
-          } else {
-            lookupTracker
-          }
+      override val lookupTracker: LookupTracker? = lookupTracker?.let {
+        if (options.reportsEnabled) {
+          RecordingLookupTracker(this, lookupTracker)
+        } else {
+          lookupTracker
         }
+      }
 
       override val expectActualTracker: ExpectActualTracker =
         if (options.reportsEnabled) {

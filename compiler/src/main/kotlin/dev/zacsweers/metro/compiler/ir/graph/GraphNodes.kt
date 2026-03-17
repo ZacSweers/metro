@@ -1056,8 +1056,9 @@ internal class GraphNodes(
       }
 
       // Resolve transitive binding containers
-      val unresolvedRoots =
-        bindingContainers.mapNotNullToSet { if (it in resolvedBindingContainers) null else it.ir }
+      val unresolvedRoots = bindingContainers.mapNotNullToSet {
+        if (it in resolvedBindingContainers) null else it.ir
+      }
       val newlyResolved = bindingContainerResolver.resolve(unresolvedRoots)
       val allMergedContainers = resolvedBindingContainers + newlyResolved
 

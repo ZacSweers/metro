@@ -45,26 +45,24 @@ internal object IrRankedBindingProcessing {
         .map { it.rawType().parentAsClass }
         .distinctBy { it.classIdOrFail }
 
-    val rankedBindings =
-      irContributions.flatMap { contributingType ->
-        contributingType.repeatableAnnotationsIn(
-          context.metroSymbols.classIds.contributesBindingAnnotationsWithContainers,
-          irBody = { irAnnotations ->
-            irAnnotations.mapNotNull { annotation ->
-              processIrAnnotation(annotation, contributingType, allScopes)
+    val rankedBindings = irContributions.flatMap { contributingType ->
+      contributingType.repeatableAnnotationsIn(
+        context.metroSymbols.classIds.contributesBindingAnnotationsWithContainers,
+        irBody = { irAnnotations ->
+          irAnnotations.mapNotNull { annotation ->
+            processIrAnnotation(annotation, contributingType, allScopes)
+          }
+        },
+        firBody = firBody@{ session, firAnnotations ->
+            // Fir2IrLazyClass and friends implement Fir2IrComponents, which we need to resolve
+            // binding types to IrTypes
+            val components = contributingType as? Fir2IrComponents ?: return@firBody emptySequence()
+            firAnnotations.mapNotNull { annotation ->
+              processFirAnnotation(session, components, annotation, contributingType, allScopes)
             }
           },
-          firBody = firBody@{ session, firAnnotations ->
-              // Fir2IrLazyClass and friends implement Fir2IrComponents, which we need to resolve
-              // binding types to IrTypes
-              val components =
-                contributingType as? Fir2IrComponents ?: return@firBody emptySequence()
-              firAnnotations.mapNotNull { annotation ->
-                processFirAnnotation(session, components, annotation, contributingType, allScopes)
-              }
-            },
-        )
-      }
+      )
+    }
 
     return computeOutrankedBindings(
       rankedBindings,

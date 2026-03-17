@@ -13,18 +13,15 @@ import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderCont
 internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   // Lets us register and resolve any annotations that are qualifiers
-  internal val qualifiersPredicate =
-    DeclarationPredicate.create {
-      metaAnnotated(classIds.qualifierAnnotations.asFqNames(), includeItself = false)
-    }
-  internal val scopesPredicate =
-    DeclarationPredicate.create {
-      metaAnnotated(classIds.scopeAnnotations.asFqNames(), includeItself = false)
-    }
-  internal val mapKeysPredicate =
-    DeclarationPredicate.create {
-      metaAnnotated(classIds.mapKeyAnnotations.asFqNames(), includeItself = false)
-    }
+  internal val qualifiersPredicate = DeclarationPredicate.create {
+    metaAnnotated(classIds.qualifierAnnotations.asFqNames(), includeItself = false)
+  }
+  internal val scopesPredicate = DeclarationPredicate.create {
+    metaAnnotated(classIds.scopeAnnotations.asFqNames(), includeItself = false)
+  }
+  internal val mapKeysPredicate = DeclarationPredicate.create {
+    metaAnnotated(classIds.mapKeyAnnotations.asFqNames(), includeItself = false)
+  }
 
   internal val bindingContainerPredicate =
     annotated(classIds.bindingContainerAnnotations.asFqNames())

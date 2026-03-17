@@ -107,8 +107,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext) :
 
     fun mergedParameters(remapper: TypeRemapper): Parameters {
       // `MembersInjector` -> origin class
-      val allParams =
-        declaredInjectFunctions.map { (_, parameters) -> parameters.remapTypes(remapper) }
+      val allParams = declaredInjectFunctions.map { (_, parameters) ->
+        parameters.remapTypes(remapper)
+      }
       return when (allParams.size) {
         0 -> Parameters.empty()
         1 -> allParams.first()
@@ -541,21 +542,21 @@ internal class MembersInjectorTransformer(context: IrMetroContext) :
     data class MatchedFunction(val functionName: String, val startPosition: Int)
 
     // TODO what about overloads of the same name?
-    val matchedFunctions =
-      injectFunctionNames.mapNotNull { functionName ->
-        // Extract member name from inject function name (e.g., "injectMessage" -> "message")
-        val memberName = functionName.removePrefix("inject").decapitalizeUS()
+    val matchedFunctions = injectFunctionNames.mapNotNull { functionName ->
+      // Extract member name from inject function name (e.g., "injectMessage" -> "message")
+      val memberName = functionName.removePrefix("inject").decapitalizeUS()
 
-        // Find the position of this member in create() params by matching parameter names
-        val foundPosition =
-          allCreateParams.indexOfFirst { param -> param.name.asString() == memberName }
-
-        if (foundPosition >= 0) {
-          MatchedFunction(functionName, foundPosition)
-        } else {
-          null
-        }
+      // Find the position of this member in create() params by matching parameter names
+      val foundPosition = allCreateParams.indexOfFirst { param ->
+        param.name.asString() == memberName
       }
+
+      if (foundPosition >= 0) {
+        MatchedFunction(functionName, foundPosition)
+      } else {
+        null
+      }
+    }
 
     // If we successfully matched all functions, sort by create() order
     val sortedFunctionNames =
@@ -598,54 +599,53 @@ internal class MembersInjectorTransformer(context: IrMetroContext) :
 
     // Create a synthetic Parameters object from the inject function
     val callableId = CallableId(clazz.classIdOrFail, memberName.asName())
-    val regularParams =
-      dependencyParams.mapIndexed { index, param ->
-        val uniqueName = nameAllocator.newName(param.name)
+    val regularParams = dependencyParams.mapIndexed { index, param ->
+      val uniqueName = nameAllocator.newName(param.name)
 
-        // Determine the qualifier based on context and injection type
-        val qualifier =
-          if (sourceMemberParametersMap != null) {
-            // Dagger context: check if this is a field injection (has @InjectedFieldSignature)
-            val isFieldInjection =
-              function.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_INJECTED_FIELD_SIGNATURE)
+      // Determine the qualifier based on context and injection type
+      val qualifier =
+        if (sourceMemberParametersMap != null) {
+          // Dagger context: check if this is a field injection (has @InjectedFieldSignature)
+          val isFieldInjection =
+            function.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_INJECTED_FIELD_SIGNATURE)
 
-            if (isFieldInjection) {
-              // Field injection: qualifier is on the inject function itself
-              function.qualifierAnnotation()
-            } else {
-              // Setter/method injection: look up the actual member Parameters and extract qualifier
-              val sourceMemberParams =
-                sourceMemberParametersMap.value[memberName]
-                  ?: reportCompilerBug(
-                    """
+          if (isFieldInjection) {
+            // Field injection: qualifier is on the inject function itself
+            function.qualifierAnnotation()
+          } else {
+            // Setter/method injection: look up the actual member Parameters and extract qualifier
+            val sourceMemberParams =
+              sourceMemberParametersMap.value[memberName]
+                ?: reportCompilerBug(
+                  """
                   Could not find corresponding injected member '$memberName' in ${clazz.fqNameWhenAvailable} for inject method ${function.name}.
                 """
-                      .trimIndent()
-                  )
-              sourceMemberParams.regularParameters[index].typeKey.qualifier
-            }
-          } else {
-            // Metro injector, it has the qualifier on the parameter
-            param.qualifierAnnotation()
+                    .trimIndent()
+                )
+            sourceMemberParams.regularParameters[index].typeKey.qualifier
           }
+        } else {
+          // Metro injector, it has the qualifier on the parameter
+          param.qualifierAnnotation()
+        }
 
-        // Create the parameter with the determined qualifier
-        val contextKey =
-          param.type.asContextualTypeKey(
-            qualifierAnnotation = qualifier,
-            hasDefault = param.defaultValue != null,
-            patchMutableCollections = false,
-            declaration = param,
-          )
-
-        Parameter.member(
-          kind = param.kind,
-          name = uniqueName,
-          originalName = param.name,
-          contextualTypeKey = contextKey,
-          ir = param,
+      // Create the parameter with the determined qualifier
+      val contextKey =
+        param.type.asContextualTypeKey(
+          qualifierAnnotation = qualifier,
+          hasDefault = param.defaultValue != null,
+          patchMutableCollections = false,
+          declaration = param,
         )
-      }
+
+      Parameter.member(
+        kind = param.kind,
+        name = uniqueName,
+        originalName = param.name,
+        contextualTypeKey = contextKey,
+        ir = param,
+      )
+    }
 
     return Parameters(
       callableId = callableId,

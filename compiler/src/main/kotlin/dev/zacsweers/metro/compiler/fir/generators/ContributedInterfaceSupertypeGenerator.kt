@@ -127,26 +127,21 @@ internal class ContributedInterfaceSupertypeGenerator(
           scopeHintFqName.shortName(),
         )
 
-      val filteredFunctions =
-        functionsInPackage.filter {
-          when (it.visibility) {
-            Visibilities.Internal -> {
-              it.moduleData == session.moduleData ||
-                @OptIn(SymbolInternals::class)
-                session.moduleVisibilityChecker?.isInFriendModule(it.fir) == true
-            }
-            else -> true
+      val filteredFunctions = functionsInPackage.filter {
+        when (it.visibility) {
+          Visibilities.Internal -> {
+            it.moduleData == session.moduleData ||
+              @OptIn(SymbolInternals::class)
+              session.moduleVisibilityChecker?.isInFriendModule(it.fir) == true
           }
+          else -> true
         }
+      }
 
-      val contributingClasses =
-        filteredFunctions.mapNotNull { contribution ->
-          // This is the single value param
-          contribution.valueParameterSymbols
-            .single()
-            .resolvedReturnType
-            .toRegularClassSymbol(session)
-        }
+      val contributingClasses = filteredFunctions.mapNotNull { contribution ->
+        // This is the single value param
+        contribution.valueParameterSymbols.single().resolvedReturnType.toRegularClassSymbol(session)
+      }
 
       session.metroFirBuiltIns.writeDiagnostic(
         "discovered-hints-fir",

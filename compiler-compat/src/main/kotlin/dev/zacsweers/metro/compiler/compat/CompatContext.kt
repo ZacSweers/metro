@@ -105,8 +105,9 @@ public interface CompatContext {
     ): Factory? {
       // If current version is DEV, try DEV track factories first
       if (currentVersion.isDev) {
-        val devFactories =
-          factoryDataList.filter { KotlinToolingVersion(it.factory.minVersion).isDev }
+        val devFactories = factoryDataList.filter {
+          KotlinToolingVersion(it.factory.minVersion).isDev
+        }
         val devMatch = findHighestCompatibleFactory(currentVersion, devFactories)
         if (devMatch != null) {
           return devMatch
@@ -117,8 +118,9 @@ public interface CompatContext {
         // 2.2.20-dev-5812 is a dev build OF 2.2.20 and should match the 2.2.20 factory,
         // but KotlinToolingVersion ordering puts DEV < STABLE so the comparison would
         // otherwise exclude it.
-        val nonDevFactories =
-          factoryDataList.filter { !KotlinToolingVersion(it.factory.minVersion).isDev }
+        val nonDevFactories = factoryDataList.filter {
+          !KotlinToolingVersion(it.factory.minVersion).isDev
+        }
         val baseVersion =
           KotlinToolingVersion(
             currentVersion.major,
@@ -130,8 +132,9 @@ public interface CompatContext {
       }
 
       // For non-DEV versions, only consider non-DEV factories
-      val nonDevFactories =
-        factoryDataList.filter { !KotlinToolingVersion(it.factory.minVersion).isDev }
+      val nonDevFactories = factoryDataList.filter {
+        !KotlinToolingVersion(it.factory.minVersion).isDev
+      }
       return findHighestCompatibleFactory(currentVersion, nonDevFactories)
     }
 

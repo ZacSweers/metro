@@ -1064,16 +1064,15 @@ internal fun FirAnnotation.resolvedReplacedClassIds(
   val replacesArgument =
     replacesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
       ?: return emptySet()
-  val replaced =
-    replacesArgument.mapNotNull { getClassCall ->
-      getClassCall.resolveClassId(typeResolver)?.let {
-        return@mapNotNull it
-      }
-
-      // Otherwise fall back to trying to parse from the reference
-      val reference = getClassCall.resolvedArgumentTypeRef() ?: return@mapNotNull null
-      typeResolver.resolveType(reference).classId
+  val replaced = replacesArgument.mapNotNull { getClassCall ->
+    getClassCall.resolveClassId(typeResolver)?.let {
+      return@mapNotNull it
     }
+
+    // Otherwise fall back to trying to parse from the reference
+    val reference = getClassCall.resolvedArgumentTypeRef() ?: return@mapNotNull null
+    typeResolver.resolveType(reference).classId
+  }
   return replaced.toSet()
 }
 

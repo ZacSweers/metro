@@ -350,13 +350,12 @@ internal class AssistedFactoryTransformer(
       constructorParams.regularParameters.filter { parameter -> parameter.isAssisted }
 
     // Apply substitutions when creating assisted parameter keys
-    val assistedParameterKeys =
-      assistedParameters.map { parameter ->
-        val substitutedTypeKey = parameter.typeKey.remapTypes(remapper)
-        parameter
-          .copy(contextualTypeKey = parameter.contextualTypeKey.withIrTypeKey(substitutedTypeKey))
-          .assistedParameterKey
-      }
+    val assistedParameterKeys = assistedParameters.map { parameter ->
+      val substitutedTypeKey = parameter.typeKey.remapTypes(remapper)
+      parameter
+        .copy(contextualTypeKey = parameter.contextualTypeKey.withIrTypeKey(substitutedTypeKey))
+        .assistedParameterKey
+    }
 
     val ctor = implClass.primaryConstructor!!
     val delegateFactoryField = assignConstructorParamsToFields(ctor, implClass).values.single()
@@ -371,19 +370,18 @@ internal class AssistedFactoryTransformer(
         pluginContext.createIrBuilder(symbol).run {
           // We call the @Inject constructor. Therefore, find for each assisted
           // parameter the function parameter where the keys match.
-          val argumentList =
-            assistedParameterKeys.map { assistedParameterKey ->
-              val param =
-                functionParams[assistedParameterKey]
-                  ?: reportCompilerBug(
-                    "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${
+          val argumentList = assistedParameterKeys.map { assistedParameterKey ->
+            val param =
+              functionParams[assistedParameterKey]
+                ?: reportCompilerBug(
+                  "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${
                         functionParams.keys.joinToString(
                           "\n"
                         )
                       }"
-                  )
-              irGet(param)
-            }
+                )
+            irGet(param)
+          }
 
           irExprBodySafe(
             irInvoke(

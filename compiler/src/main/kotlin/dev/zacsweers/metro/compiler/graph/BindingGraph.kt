@@ -119,7 +119,8 @@ internal open class MutableBindingGraph<
         roots: Map<ContextualTypeKey, BindingStackEntry>,
         adjacency: GraphAdjacency<TypeKey>,
       ) -> Unit =
-      { _, _, _, _ -> /* noop */
+      { _, _, _, _ ->
+        /* noop */
       },
   ): GraphTopology<TypeKey> {
     val stack = newBindingStack()

@@ -1170,21 +1170,20 @@ internal class IrGraphGenerator(
 
     val targetThisReceiver = shard.shardClass.thisReceiverOrFail
 
-    val initFunctionsToCall =
-      chunks.map { statementsChunk ->
-        val initName = shardFunctionNameAllocator.newName("init")
-        shard.shardClass
-          .addFunction(initName, irBuiltIns.unitType, visibility = DescriptorVisibilities.PRIVATE)
-          .apply {
-            val localReceiver = targetThisReceiver.copyTo(this)
-            setDispatchReceiver(localReceiver)
-            buildBlockBody {
-              for (statement in statementsChunk) {
-                +statement(localReceiver)
-              }
+    val initFunctionsToCall = chunks.map { statementsChunk ->
+      val initName = shardFunctionNameAllocator.newName("init")
+      shard.shardClass
+        .addFunction(initName, irBuiltIns.unitType, visibility = DescriptorVisibilities.PRIVATE)
+        .apply {
+          val localReceiver = targetThisReceiver.copyTo(this)
+          setDispatchReceiver(localReceiver)
+          buildBlockBody {
+            for (statement in statementsChunk) {
+              +statement(localReceiver)
             }
           }
-      }
+        }
+    }
 
     if (shard.isGraphAsShard) {
       // For graph-as-shard, add init calls to main constructor

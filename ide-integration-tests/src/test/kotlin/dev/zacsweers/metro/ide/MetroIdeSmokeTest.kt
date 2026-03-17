@@ -238,28 +238,26 @@ class MetroIdeSmokeTest {
 
         // Collect highlights
         val highlights = getHighlights(document, project)
-        collectedHighlights +=
-          highlights.map {
-            HighlightData(it.getSeverity().getName(), it.getDescription(), it.getText())
-          }
+        collectedHighlights += highlights.map {
+          HighlightData(it.getSeverity().getName(), it.getDescription(), it.getText())
+        }
 
         // Collect inlays (both inline and block)
         val inlayModel = cast(editor.getInlayModel(), InlayModelWithBlocks::class)
         val docLength = document.getText().length
-        fun collectInlays(inlays: List<Inlay>, isBlock: Boolean) =
-          inlays.map { inlay ->
-            val text =
-              if (isBlock) {
-                // We can't really get much out of these
-                inlay.getRenderer().toString()
-              } else {
-                cast(inlay.getRenderer(), DeclarativeInlayRenderer::class)
-                  .getPresentationList()
-                  .getEntries()
-                  .joinToString("") { it.getText() }
-              }
-            InlayData(offset = inlay.getOffset(), text = text, isBlock = isBlock)
-          }
+        fun collectInlays(inlays: List<Inlay>, isBlock: Boolean) = inlays.map { inlay ->
+          val text =
+            if (isBlock) {
+              // We can't really get much out of these
+              inlay.getRenderer().toString()
+            } else {
+              cast(inlay.getRenderer(), DeclarativeInlayRenderer::class)
+                .getPresentationList()
+                .getEntries()
+                .joinToString("") { it.getText() }
+            }
+          InlayData(offset = inlay.getOffset(), text = text, isBlock = isBlock)
+        }
         val inlineInlays =
           collectInlays(inlayModel.getInlineElementsInRange(0, docLength), isBlock = false)
         val blockInlays =
@@ -339,11 +337,10 @@ class MetroIdeSmokeTest {
     }
 
     // Check for unexpected ERROR diagnostics (e.g., UNRESOLVED_REFERENCE)
-    val unexpectedErrors =
-      collectedHighlights.filter { h ->
-        h.severity == "ERROR" &&
-          expectedDiagnostics.none { expected -> highlightMatchesDiagnostic(h, expected) }
-      }
+    val unexpectedErrors = collectedHighlights.filter { h ->
+      h.severity == "ERROR" &&
+        expectedDiagnostics.none { expected -> highlightMatchesDiagnostic(h, expected) }
+    }
     for (unexpected in unexpectedErrors) {
       errors += "Unexpected ERROR: ${unexpected.description}"
     }

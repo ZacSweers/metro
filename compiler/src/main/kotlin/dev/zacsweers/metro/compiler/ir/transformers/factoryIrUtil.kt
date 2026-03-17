@@ -160,8 +160,9 @@ private fun transformStaticCreateFunction(
   createFunction.apply {
     if (patchCreationParams) {
       val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
-      val valueParamsToPatch =
-        nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
+      val valueParamsToPatch = nonDispatchParameters.filter {
+        it.origin == Origins.RegularParameter
+      }
       copyParameterDefaultValues(
         providerFunction = providerFunction,
         sourceMetroParameters = parameters,
@@ -289,8 +290,9 @@ private fun transformStaticNewInstanceFunction(
 ) {
   newInstanceFunction.apply {
     val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
-    val valueParametersToMap =
-      nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
+    val valueParametersToMap = nonDispatchParameters.filter {
+      it.origin == Origins.RegularParameter
+    }
     // TODO move to function creation
     copyParameterDefaultValues(
       providerFunction = targetFunction,

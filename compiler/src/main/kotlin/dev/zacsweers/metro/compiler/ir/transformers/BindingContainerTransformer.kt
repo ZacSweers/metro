@@ -881,23 +881,21 @@ internal class BindingContainer(
    * TypedBindings<String>`).
    */
   fun withTypeSubstitution(remapper: TypeRemapper): BindingContainer {
-    val remappedFactories =
-      providerFactories.mapValues { (_, factory) ->
-        when (factory) {
-          is ProviderFactory.Metro -> factory.withRemappedTypes(remapper)
-          is ProviderFactory.Dagger -> factory.withRemappedTypes(remapper)
-        }
+    val remappedFactories = providerFactories.mapValues { (_, factory) ->
+      when (factory) {
+        is ProviderFactory.Metro -> factory.withRemappedTypes(remapper)
+        is ProviderFactory.Dagger -> factory.withRemappedTypes(remapper)
       }
-    val remappedBindsMirror =
-      bindsMirror?.let { mirror ->
-        BindsMirror(
-          ir = mirror.ir,
-          bindsCallables = mirror.bindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
-          multibindsCallables =
-            mirror.multibindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
-          optionalKeys = mirror.optionalKeys.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
-        )
-      }
+    }
+    val remappedBindsMirror = bindsMirror?.let { mirror ->
+      BindsMirror(
+        ir = mirror.ir,
+        bindsCallables = mirror.bindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
+        multibindsCallables =
+          mirror.multibindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
+        optionalKeys = mirror.optionalKeys.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
+      )
+    }
     return BindingContainer(
       isGraph = isGraph,
       ir = ir,
