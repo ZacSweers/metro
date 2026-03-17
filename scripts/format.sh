@@ -30,6 +30,12 @@ GREEN='\033[0;32m'
 NC='\033[0m'
 FAILURES=0
 
+# Detect faster tool alternatives
+HAS_RG=false
+HAS_SD=false
+command -v rg &>/dev/null && HAS_RG=true
+command -v sd &>/dev/null && HAS_SD=true
+
 fail() {
   echo -e "${RED}$1${NC}" >&2
   FAILURES=$((FAILURES + 1))
@@ -44,7 +50,11 @@ ok() {
 load_excludes() {
   local file="$REPO_ROOT/config/$1"
   if [[ -f "$file" ]]; then
-    grep -v '^#' "$file" | grep -v '^$' || true
+    if $HAS_RG; then
+      rg -v '^(#|$)' "$file" || true
+    else
+      grep -v '^#' "$file" | grep -v '^$' || true
+    fi
   fi
 }
 
@@ -85,34 +95,25 @@ is_excluded() {
 
 # --- File collection ---
 
-# Only collect files matching expected source patterns, excluding build dirs.
-is_valid_file() {
-  local file="$1"
-  # Exclude build directories
-  case "$file" in build/* | */build/*) return 1 ;; esac
-
-  # Exclude test data directories (test fixtures, not real source)
-  case "$file" in */src/test/data/* | */src/*/test/data/*) return 1 ;; esac
-
-  case "$file" in
-    # Kotlin/Java source files must be in a src/ directory
-    */src/*.kt | */src/*.java | src/*.kt | src/*.java) return 0 ;;
-    # Gradle kts files at any level
-    *.gradle.kts | *.main.kts) return 0 ;;
-    *) return 1 ;;
-  esac
-}
+# Git pathspecs for source files, excluding build and test data dirs.
+GIT_PATHSPECS=(
+  ':(glob)**/src/**/*.kt'
+  ':(glob)**/src/**/*.java'
+  ':(glob)src/**/*.kt'
+  ':(glob)src/**/*.java'
+  ':(glob)**/*.gradle.kts'
+  ':(glob)**/*.main.kts'
+  ':(exclude)**/build/**'
+  ':(exclude)**/src/test/data/**'
+  ':(exclude)**/src/*/test/data/**'
+)
 
 collect_files() {
-  local raw_files
   if $ALL_FILES; then
-    raw_files=$(git -C "$REPO_ROOT" ls-files)
+    git -C "$REPO_ROOT" ls-files -- "${GIT_PATHSPECS[@]}"
   else
-    raw_files=$(git -C "$REPO_ROOT" diff --cached --name-only --diff-filter=ACMR)
+    git -C "$REPO_ROOT" diff --cached --name-only --diff-filter=ACMR -- "${GIT_PATHSPECS[@]}"
   fi
-  while IFS= read -r f; do
-    [[ -n "$f" ]] && is_valid_file "$f" && echo "$f"
-  done <<< "$raw_files"
 }
 
 src_kt_files=()
@@ -130,10 +131,6 @@ done < <(collect_files)
 
 # --- License headers ---
 
-has_header() {
-  head -5 "$1" | grep -q "SPDX-License-Identifier: Apache-2.0"
-}
-
 header_delimiter() {
   local file="$1"
   case "$file" in
@@ -150,7 +147,11 @@ add_header() {
   local tmp
   tmp="$(mktemp)"
   local line_num
-  line_num=$(grep -n -m1 -E "$delimiter" "$file" | cut -d: -f1) || true
+  if $HAS_RG; then
+    line_num=$(rg -n -m1 "$delimiter" "$file" | cut -d: -f1) || true
+  else
+    line_num=$(grep -n -m1 -E "$delimiter" "$file" | cut -d: -f1) || true
+  fi
 
   printf '// Copyright (C) %s Zac Sweers\n// SPDX-License-Identifier: Apache-2.0\n' "$CURRENT_YEAR" > "$tmp"
   if [[ -n "$line_num" ]]; then
@@ -164,19 +165,40 @@ add_header() {
 echo "==> License headers"
 license_files=("${src_kt_files[@]}" "${kts_files[@]}" "${src_java_files[@]}")
 header_count=0
-for file in "${license_files[@]}"; do
-  [[ -f "$REPO_ROOT/$file" ]] || continue
 
-  if ! has_header "$REPO_ROOT/$file"; then
+# Build absolute paths for existing files
+abs_license_files=()
+for file in "${license_files[@]}"; do
+  [[ -f "$REPO_ROOT/$file" ]] && abs_license_files+=("$REPO_ROOT/$file")
+done
+
+if [[ ${#abs_license_files[@]} -gt 0 ]]; then
+  # Batch: find all files missing the header in one call
+  missing_header_files=()
+  if $HAS_RG; then
+    while IFS= read -r f; do
+      [[ -n "$f" ]] && missing_header_files+=("$f")
+    done < <(rg --files-without-match "SPDX-License-Identifier: Apache-2.0" "${abs_license_files[@]}")
+  else
+    for f in "${abs_license_files[@]}"; do
+      if ! head -5 "$f" | grep -q "SPDX-License-Identifier: Apache-2.0"; then
+        missing_header_files+=("$f")
+      fi
+    done
+  fi
+
+  for abs_file in "${missing_header_files[@]}"; do
+    rel_file="${abs_file#"$REPO_ROOT/"}"
     if $CHECK_ONLY; then
-      fail "Missing license header: $file"
+      fail "Missing license header: $rel_file"
     else
-      add_header "$REPO_ROOT/$file"
-      echo "  Added: $file"
+      add_header "$abs_file"
+      echo "  Added: $rel_file"
       header_count=$((header_count + 1))
     fi
-  fi
-done
+  done
+fi
+
 if ! $CHECK_ONLY; then
   [[ $header_count -eq 0 ]] && ok "  All files have headers" || ok "  Added $header_count headers"
 fi
@@ -252,32 +274,55 @@ all_source_files=("${src_kt_files[@]}" "${kts_files[@]}" "${src_java_files[@]}")
 if [[ ${#all_source_files[@]} -gt 0 ]]; then
   echo "==> Trailing whitespace"
   ws_count=0
+
+  # Build absolute paths
+  abs_ws_files=()
   for file in "${all_source_files[@]}"; do
-    local_file="$REPO_ROOT/$file"
-    [[ -f "$local_file" ]] || continue
-
-    if grep -qE '[[:space:]]+$' "$local_file"; then
-      if $CHECK_ONLY; then
-        fail "Trailing whitespace: $file"
-      else
-        # Remove trailing whitespace (cross-platform sed -i)
-        local tmp
-        tmp="$(mktemp)"
-        sed 's/[[:space:]]*$//' "$local_file" > "$tmp" && mv "$tmp" "$local_file"
-        ws_count=$((ws_count + 1))
-      fi
-    fi
-
-    # Check end with newline
-    if [[ -s "$local_file" ]] && [[ "$(tail -c 1 "$local_file" | xxd -p)" != "0a" ]]; then
-      if $CHECK_ONLY; then
-        fail "Missing trailing newline: $file"
-      else
-        printf '\n' >> "$local_file"
-        ws_count=$((ws_count + 1))
-      fi
-    fi
+    [[ -f "$REPO_ROOT/$file" ]] && abs_ws_files+=("$REPO_ROOT/$file")
   done
+
+  if [[ ${#abs_ws_files[@]} -gt 0 ]]; then
+    # Batch: find all files with trailing whitespace in one call, store in a tmpfile
+    trailing_ws_list="$(mktemp)"
+    trap "rm -f '$trailing_ws_list'" EXIT
+    if $HAS_RG; then
+      rg -l '[[:space:]]+$' "${abs_ws_files[@]}" > "$trailing_ws_list" 2>/dev/null || true
+    else
+      for f in "${abs_ws_files[@]}"; do
+        grep -qE '[[:space:]]+$' "$f" && echo "$f"
+      done > "$trailing_ws_list"
+    fi
+
+    for local_file in "${abs_ws_files[@]}"; do
+      file="${local_file#"$REPO_ROOT/"}"
+
+      if grep -qxF "$local_file" "$trailing_ws_list"; then
+        if $CHECK_ONLY; then
+          fail "Trailing whitespace: $file"
+        else
+          if $HAS_SD; then
+            sd '[[:space:]]+$' '' "$local_file"
+          else
+            tmp="$(mktemp)"
+            sed 's/[[:space:]]*$//' "$local_file" > "$tmp" && mv "$tmp" "$local_file"
+          fi
+          ws_count=$((ws_count + 1))
+        fi
+      fi
+
+      # Check end with newline (read last byte directly, avoids piping through xxd)
+      if [[ -s "$local_file" ]] && [[ "$(tail -c1 "$local_file" | wc -l)" -eq 0 ]]; then
+        if $CHECK_ONLY; then
+          fail "Missing trailing newline: $file"
+        else
+          printf '\n' >> "$local_file"
+          ws_count=$((ws_count + 1))
+        fi
+      fi
+    done
+    rm -f "$trailing_ws_list"
+  fi
+
   if ! $CHECK_ONLY; then
     [[ $ws_count -eq 0 ]] && ok "  Clean" || ok "  Fixed $ws_count files"
   fi
