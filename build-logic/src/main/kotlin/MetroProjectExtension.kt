@@ -85,10 +85,12 @@ constructor(private val project: Project, objects: ObjectFactory) {
           browser {}
         }
 
-        @OptIn(ExperimentalWasmDsl::class)
-        wasmWasi {
-          binaries.executable()
-          nodejs()
+        if (!isComposeTarget) {
+          @OptIn(ExperimentalWasmDsl::class)
+          wasmWasi {
+            binaries.executable()
+            nodejs()
+          }
         }
 
         /////// Native targets
@@ -132,12 +134,16 @@ constructor(private val project: Project, objects: ObjectFactory) {
           common {
             group("wasm") {
               withWasmJs()
-              withWasmWasi()
+              if (!isComposeTarget) {
+                withWasmWasi()
+              }
             }
             group("web") {
               withJs()
               withWasmJs()
-              withWasmWasi()
+              if (!isComposeTarget) {
+                withWasmWasi()
+              }
             }
             group("nonWeb") {
               withJvm()
