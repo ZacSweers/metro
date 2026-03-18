@@ -391,16 +391,9 @@ constructor(
   public val useAssistedParamNamesAsIdentifiers: Property<Boolean> =
     objects.booleanProperty("metro.useAssistedParamNamesAsIdentifiers", true)
 
-  /**
-   * Controls the diagnostic severity when explicit `@Assisted("value")` identifiers are used on
-   * Metro's native `@Assisted` annotation _where the value differs from the parameter name_.
-   *
-   * This is an initial step toward deprecating explicit assisted identifiers in favor of parameter
-   * names. Only meaningful when [useAssistedParamNamesAsIdentifiers] is `true`.
-   *
-   * Set to [DiagnosticSeverity.WARN] by default. Eventually it will become a proper deprecation
-   * warning, then error, then removed.
-   */
+  @Deprecated(
+    "The `Assisted.value` property is now formally deprecated and this control no longer does anything."
+  )
   public val assistedIdentifierSeverity: Property<DiagnosticSeverity> =
     objects.enumProperty<DiagnosticSeverity>("assistedIdentifierSeverity", DiagnosticSeverity.WARN)
 

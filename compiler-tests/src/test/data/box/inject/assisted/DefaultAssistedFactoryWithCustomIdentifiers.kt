@@ -1,5 +1,6 @@
 // GENERATE_ASSISTED_FACTORIES
 // ASSISTED_IDENTIFIER_SEVERITY: NONE
+@Suppress("DEPRECATION")
 @AssistedInject
 class ExampleClass(
   @Assisted("1") val count1: Int,

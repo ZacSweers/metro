@@ -3,6 +3,7 @@
 interface AssistedInjectGraphWithCustomAssistedKeys {
   val factory: ExampleClass.Factory
 
+  @Suppress("DEPRECATION")
   @AssistedInject
   class ExampleClass(@Assisted("1") val intValue1: Int, @Assisted("2") val intValue2: Int) {
     @AssistedFactory

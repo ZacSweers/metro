@@ -201,6 +201,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
+        @Suppress("DEPRECATION")
         class ExampleClass @AssistedInject constructor(
           @Assisted("count") val count: String,
         ) {
@@ -216,7 +217,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
+        e: ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
           Missing from factory: kotlin.String (count)
           Missing from constructor: kotlin.Int (notcount)
         """
@@ -230,6 +231,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
+        @Suppress("DEPRECATION")
         class ExampleClass @AssistedInject constructor(
           @Assisted("count") val count: String,
         ) {
@@ -245,7 +247,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
+        e: ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
           Missing from factory: kotlin.String (count)
           Missing from constructor: kotlin.Int (count)
         """

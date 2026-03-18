@@ -376,7 +376,6 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.useAssistedParamNamesAsIdentifiers,
             )
           )
-          add(lazyOption("assisted-identifier-severity", extension.assistedIdentifierSeverity))
           add(lazyOption("parallel-threads", extension.parallelThreads))
           add(lazyOption("enable-function-providers", extension.enableFunctionProviders))
           // Track whether we ordered the plugin before compose-compiler
