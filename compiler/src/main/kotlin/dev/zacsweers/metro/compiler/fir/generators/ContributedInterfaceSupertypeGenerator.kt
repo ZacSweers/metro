@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeOutrankedBindings
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
@@ -321,7 +322,7 @@ internal class ContributedInterfaceSupertypeGenerator(
       TreeMap<ClassId, ConeKotlinType>(compareBy(ClassId::asString)).apply {
         for (contribution in contributionClassLikes) {
           // This is always the `MetroContribution`, the contribution is its parent
-          val classId = contribution.classId?.parentClassId ?: continue
+          val classId = contribution.expectAs<ConeKotlinType>().classId?.parentClassId ?: continue
           put(classId, contribution)
         }
       }
