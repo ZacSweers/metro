@@ -311,7 +311,17 @@ internal class IrGraphGenerator(
       if (!graphClass.origin.isSyntheticGeneratedGraph) {
         trace("Generate Metro metadata") {
           // Finally, generate metadata
-          val graphProto = node.toProto(bindingGraph = bindingGraph)
+          // Use only the graph's own provider factories (not those from binding containers)
+          // for metadata. Binding container factories are resolved independently by consumers.
+          val ownProviderFactories =
+            metroDeclarations
+              .findBindingContainer(node.sourceGraph)
+              ?.providerFactories
+              ?.values
+              .orEmpty()
+              .toSet()
+          val graphProto =
+            node.toProto(bindingGraph = bindingGraph, ownProviderFactories = ownProviderFactories)
           graphMetadataReporter.write(node, bindingGraph)
           val metroMetadata = createMetroMetadata(dependency_graph = graphProto)
 
