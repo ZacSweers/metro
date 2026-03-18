@@ -1002,6 +1002,7 @@ class DependencyGraphProcessingTest {
   }
 
   @Singleton
+  @Suppress("Metro/SuspiciousUnusedMultibinding") // Irrelevant to this test
   @DependencyGraph(AppScope::class)
   abstract class GraphWithMultipleScopes {
     private var intCounter = 0
