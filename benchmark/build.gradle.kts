@@ -16,6 +16,7 @@ plugins {
   alias(libs.plugins.metro) apply false
   alias(libs.plugins.anvil) apply false
   alias(libs.plugins.mavenPublish) apply false // wat
+  id("metro.base") apply false
 }
 
 subprojects { apply(plugin = "metro.base") }
