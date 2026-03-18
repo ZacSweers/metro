@@ -467,7 +467,8 @@ internal class ContributedInterfaceSupertypeGenerator(
     contributionClassLikes
       .mapNotNull {
         val symbol = it.toClassSymbol(session)
-        if (contributionMappingsByClassId[it.classId] == true) {
+        // TODO remove expectAs in 2.3.20
+        if (contributionMappingsByClassId[it.expectAs<ConeKotlinType>().classId] == true) {
           // It's a binding container, use as-is
           symbol
         } else {
