@@ -16,6 +16,7 @@ Changelog
 
 ### Changes
 
+- `@Assisted.value` is formally deprecated now. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#assisted-injection) on why in case you missed this! TL;DR, Metro matches by parameter names going forward.
 - Metro's main branch now builds with Kotlin `2.3.20` but still targets Kotlin 2.2 for its runtime artifacts and supports 2.2.20 all to 2.4.0 dev builds in its compiler.
 
 ### Contributors
