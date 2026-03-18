@@ -1490,6 +1490,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/inject/ReusedMultiInjectRespectsProviderCalls.kt");
     }
 
+    @Test
+    @TestMetadata("TopLevelInjectedFunctionSharesNameWithPrivateOverload.kt")
+    public void testTopLevelInjectedFunctionSharesNameWithPrivateOverload() {
+      runTest("compiler-tests/src/test/data/box/inject/TopLevelInjectedFunctionSharesNameWithPrivateOverload.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/inject/assisted")
     @TestDataPath("$PROJECT_ROOT")

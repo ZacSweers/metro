@@ -507,7 +507,10 @@ internal class InjectedClassTransformer(
     if (injectedFunctionClass != null) {
       val callableName = injectedFunctionClass.getAnnotationStringValue()!!.asName()
       val callableId = CallableId(declaration.packageFqName!!, callableName)
-      var targetCallable = pluginContext.referenceFunctions(callableId).single()
+      var targetCallable =
+        pluginContext.referenceFunctions(callableId).single {
+          it.owner.isAnnotatedWithAny(metroSymbols.classIds.injectAnnotations)
+        }
 
       // Assign fields
       val constructorParametersToFields =
