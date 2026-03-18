@@ -76,7 +76,10 @@ internal var IrClass.metroMetadata: MetroMetadata?
     context.metadataDeclarationRegistrar.addCustomMetadataExtension(this, PLUGIN_ID, value.encode())
   }
 
-internal fun GraphNode.toProto(bindingGraph: IrBindingGraph): DependencyGraphProto {
+internal fun GraphNode.toProto(
+  bindingGraph: IrBindingGraph,
+  ownProviderFactories: Set<ProviderFactory>,
+): DependencyGraphProto {
   var multibindingAccessors = BitField()
   val accessorNames =
     accessors
@@ -92,7 +95,7 @@ internal fun GraphNode.toProto(bindingGraph: IrBindingGraph): DependencyGraphPro
 
   return createGraphProto(
     isGraph = true,
-    providerFactories = providerFactories.values.flatten(),
+    providerFactories = ownProviderFactories,
     accessorNames = accessorNames,
     multibindingAccessorIndices = multibindingAccessors.toIntList(),
   )

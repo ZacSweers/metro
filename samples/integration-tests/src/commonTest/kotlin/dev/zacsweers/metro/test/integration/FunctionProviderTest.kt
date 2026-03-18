@@ -86,6 +86,7 @@ class FunctionProviderTest {
     assertEquals(4, lazyInt.value)
   }
 
+  @Suppress("Metro/SuspiciousUnusedMultibinding") // Irrelevant to this test
   @DependencyGraph(AppScope::class)
   abstract class ScopedFunctionProviderGraph {
     var counter = 0

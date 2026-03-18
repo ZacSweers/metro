@@ -962,6 +962,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MultibindsDoNotReportAsDupes.kt")
+      public void testMultibindsDoNotReportAsDupes() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/MultibindsDoNotReportAsDupes.kt");
+      }
+
+      @Test
       @TestMetadata("ReplacingBindingContainers.kt")
       public void testReplacingBindingContainers() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/ReplacingBindingContainers.kt");
