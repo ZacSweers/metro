@@ -8,6 +8,11 @@ Changelog
 
 - **[IR]**: Fix `IllegalArgumentException` thrown when there are multiple top-level functions with the same name but only one is annotated with `@Inject`.
 
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@ChristianKatzmann](https://github.com/ChristianKatzmann)
 
 0.11.4
 ------
