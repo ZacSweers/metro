@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
 import dev.zacsweers.metro.compiler.isPlatformType
@@ -1265,7 +1266,7 @@ internal fun FirClass.implements(supertype: ClassId, session: FirSession): Boole
       useSiteSession = session,
       substituteTypes = true,
     )
-    .any { it.classId?.let { it == supertype } == true }
+    .any { it.expectAs<ConeKotlinType>().classId?.let { it == supertype } == true }
 }
 
 internal fun FirClassSymbol<*>.isOrImplements(supertype: ClassId, session: FirSession): Boolean {
@@ -1281,7 +1282,8 @@ internal fun FirClassSymbol<*>.implements(supertype: ClassId, session: FirSessio
       useSiteSession = session,
       substituteTypes = true,
     )
-    .any { it.classId?.let { it == supertype } == true }
+    // TODO remove expectAs in 2.3.20
+    .any { it.expectAs<ConeKotlinType>().classId?.let { it == supertype } == true }
 }
 
 internal fun FirClassLikeSymbol<*>.isBindingContainer(session: FirSession): Boolean {
@@ -1414,7 +1416,8 @@ private fun buildSubstitutionMapInner(
   while (currentClass != null) {
     val superType =
       currentClass.resolvedSuperTypes.firstOrNull {
-        it.classId != session.builtinTypes.anyType.coneType.classId
+        // TODO remove expectAs in 2.3.20
+        it.classId != session.builtinTypes.anyType.coneType.expectAs<ConeKotlinType>().classId
       }
 
     if (superType is ConeClassLikeType && superType.typeArguments.isNotEmpty()) {

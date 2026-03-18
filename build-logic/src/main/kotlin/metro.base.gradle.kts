@@ -74,7 +74,6 @@ plugins.withType<KotlinBasePlugin> {
             "-Xcontext-parameters",
             "-Xreturn-value-checker=full",
             "-Xcontext-sensitive-resolution",
-            "-Xdata-flow-based-exhaustiveness",
             //  "-Xallow-contracts-on-more-functions",
             //  "-Xallow-condition-implies-returns-contracts",
             //  "-Xallow-holdsin-contract",
@@ -83,7 +82,7 @@ plugins.withType<KotlinBasePlugin> {
             // TODO Kotlin 2.3.0
             //  "-Xexplicit-backing-fields",
           )
-          if (project.name != "compiler-tests") {
+          if (project.path.contains("compiler")) {
             optIn.addAll(
               "kotlin.contracts.ExperimentalContracts",
               "kotlin.contracts.ExperimentalExtendedContracts",

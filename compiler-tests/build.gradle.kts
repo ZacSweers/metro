@@ -10,15 +10,10 @@ plugins {
   java
 }
 
-kotlin {
-  compilerOptions { optIn.add("org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI") }
-}
-
 sourceSets {
   register("generator220")
   register("generator230")
   register("generator2320")
-  register("generator2320RC")
 }
 
 val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVersion")
@@ -26,6 +21,8 @@ val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVe
 val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
 
 val testKotlinVersion = KotlinToolingVersion(testCompilerVersion)
+
+val kotlin23 = KotlinToolingVersion(KotlinVersion(2, 3))
 
 buildConfig {
   generateAtSync = true
@@ -69,21 +66,17 @@ var compilerTestFrameworkVersion: String
 var reflectVersion: String
 var generatorConfigToUse: String
 
-if (testKotlinVersion >= KotlinToolingVersion(KotlinVersion(2, 3))) {
+if (testKotlinVersion >= kotlin23) {
   generatorConfigToUse =
     if (testKotlinVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)) {
-      if (testKotlinVersion < KotlinToolingVersion(2, 3, 20, "RC")) {
-        "generator2320"
-      } else {
-        "generator2320RC"
-      }
+      "generator2320"
     } else {
       "generator230"
     }
   compilerTestFrameworkVersion = testCompilerVersion
   reflectVersion =
     if (testKotlinVersion.minor == 3 && testKotlinVersion.isDev) {
-      "2.3.20-Beta1"
+      "2.3.20"
     } else {
       testCompilerVersion
     }
@@ -99,12 +92,7 @@ dependencies {
   "generator230CompileOnly"(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
   )
-  "generator2320CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20-dev-5437"
-  )
-  "generator2320RCCompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20-RC"
-  )
+  "generator2320CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20")
 
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
   testImplementation(

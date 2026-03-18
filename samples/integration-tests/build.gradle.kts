@@ -1,5 +1,8 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import dev.zacsweers.metro.gradle.DelicateMetroGradleApi
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
+import dev.zacsweers.metro.gradle.RequiresIdeSupport
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -16,7 +19,14 @@ android {
   buildFeatures { viewBinding = true }
 }
 
-metro { enableFunctionProviders.set(true) }
+@OptIn(ExperimentalMetroGradleApi::class, DelicateMetroGradleApi::class, RequiresIdeSupport::class)
+metro {
+  enableFunctionProviders.set(true)
+  // Until it's possible to disable JS IC
+  // https://youtrack.jetbrains.com/issue/KT-82989
+  enableTopLevelFunctionInjection.set(false)
+  generateContributionHintsInFir.set(false)
+}
 
 @OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
 kotlin {
