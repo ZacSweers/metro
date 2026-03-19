@@ -134,7 +134,7 @@ javaxInject = "javax.inject:javax.inject:1"
 jakartaInject = "jakarta.inject:jakarta.inject-api:2.0.1"
 
 jetbrains-lifecycle-viewmodel = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.10.0"
-jetbrains-lifecycle-viewmodel-compose = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.9.6"
+jetbrains-lifecycle-viewmodel-compose = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0"
 jetbrains-lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "jetbrains-lifecycle-navigation3" }
 jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "jetbrains-navigation3" }
 
