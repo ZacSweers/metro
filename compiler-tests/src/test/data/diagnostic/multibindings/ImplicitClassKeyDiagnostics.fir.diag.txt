@@ -1,0 +1,11 @@
+/ImplicitClassKeyDiagnostics.kt:(232,246): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
+
+/ImplicitClassKeyDiagnostics.kt:(531,545): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
+
+/ImplicitClassKeyDiagnostics.kt:(690,713): warning: Explicit class key value 'RedundantKeyImpl::class' is the same as the implicit class key and can be omitted.
+
+/ImplicitClassKeyDiagnostics.kt:(1245,1259): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
+
+/ImplicitClassKeyDiagnostics.kt:(1379,1409): warning: Explicit class key value 'BindingRedundantKeyImpl::class' is the same as the implicit class key and can be omitted.
+
+/ImplicitClassKeyDiagnostics.kt:(1760,1774): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
