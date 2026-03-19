@@ -344,6 +344,16 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             }
           }
         resolvedKey ?: return false
+
+        // Check implicit class key usage
+        checkImplicitClassKeyUsage(
+          session,
+          resolvedKey,
+          implicitType = declaration.symbol.classId,
+          source = declaration.source,
+        )
+
+        resolvedKey
       } else {
         null
       }
