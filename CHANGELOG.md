@@ -10,6 +10,10 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Add diagnostic to ensure map key annotations support `FUNCTION` targets if they have a `@Target` annotation.
+
+### Fixes
+
 - **[IR]** Fix `IllegalArgumentException` thrown when there are multiple top-level functions with the same name but only one is annotated with `@Inject`.
 - **[IR]** Only store a given binding container's own provider factories in metro metadata. This resolves a bug where we could end up duplicate-processing upstream providers in dynamic factories.
 - **[IR]** Fix a severity conversion compat function call for Kotlin 2.3.20+.

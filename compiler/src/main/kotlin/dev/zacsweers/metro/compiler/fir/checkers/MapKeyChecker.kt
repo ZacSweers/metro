@@ -37,6 +37,30 @@ internal object MapKeyChecker : FirClassChecker(MppCheckerKind.Common) {
       )
     }
 
+    // Must support FUNCTION targets (Metro copies map key annotations onto generated binds
+    // functions).
+    // If no @Target is declared, default targets include FUNCTION, so only check explicit ones.
+    declaration.annotations
+      .firstOrNull { it.toAnnotationClassIdSafe(session) == StandardClassIds.Annotations.Target }
+      ?.let { targetAnno ->
+        val hasFunctionTarget =
+          targetAnno.argumentMapping.mapping.values
+            .filterIsInstance<FirVarargArgumentsExpression>()
+            .flatMap { it.arguments }
+            .filterIsInstance<FirPropertyAccessExpression>()
+            .any {
+              it.calleeReference.toResolvedCallableSymbol()?.callableId?.callableName?.asString() ==
+                "FUNCTION"
+            }
+        if (!hasFunctionTarget) {
+          reporter.reportOn(
+            targetAnno.source,
+            MAP_KEY_ERROR,
+            "Map key annotations must support at least FUNCTION targets.",
+          )
+        }
+      }
+
     val ctor = declaration.primaryConstructorIfAny(session)
     if (ctor == null || ctor.valueParameterSymbols.isEmpty()) {
       reporter.reportOn(
