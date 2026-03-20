@@ -20,7 +20,7 @@ class HomeViewModel : ViewModel()
 
 For classes, the implicit type is the annotated class. For `@Binds` declarations, the receiver or single parameter are the implicit type.
 
-You may still specify an explicit type. The compiler will warn you if you specify a redundant one.
+You may still specify an explicit type. The compiler will warn you if you specify a redundant one. If you need to suppress this diagnostic temporarily to ease migration, you can add `-Xwarning-level=MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY:disabled` to your compiler arguments.
 
 The compiler will also error if you attempt to do this on `@Provides` declarations, as those cannot be inferred.
 
