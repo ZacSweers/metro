@@ -16,7 +16,7 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.android.ActivityKey
 
 @ContributesIntoMap(AppScope::class, binding<Activity>())
-@ActivityKey(MainActivity::class)
+@ActivityKey
 @Inject
 class MainActivity(private val fragmentFactory: FragmentFactory) :
   AppCompatActivity(R.layout.activity_main) {

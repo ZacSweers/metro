@@ -26,6 +26,7 @@ metro {
   // https://youtrack.jetbrains.com/issue/KT-82989
   enableTopLevelFunctionInjection.set(false)
   generateContributionHintsInFir.set(false)
+  generateContributionHints.set(false)
 }
 
 @OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
