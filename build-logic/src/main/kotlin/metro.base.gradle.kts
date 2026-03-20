@@ -74,11 +74,10 @@ plugins.withType<KotlinBasePlugin> {
             "-Xcontext-parameters",
             "-Xreturn-value-checker=full",
             "-Xcontext-sensitive-resolution",
+            "-Xwhen-expressions=indy",
             //  "-Xallow-contracts-on-more-functions",
             //  "-Xallow-condition-implies-returns-contracts",
             //  "-Xallow-holdsin-contract",
-            // TODO next minor release
-            //  "-Xwhen-expressions=indy",
             // TODO Kotlin 2.3.0
             //  "-Xexplicit-backing-fields",
           )
