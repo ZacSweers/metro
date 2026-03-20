@@ -45,7 +45,7 @@ annotation class ViewModelKey(val value: KClass<out ViewModel> = Nothing::class)
 - **[IR]** Only store a given binding container's own provider factories in metro metadata. This resolves a bug where we could end up duplicate-processing upstream providers in dynamic factories.
 - **[IR]** Fix a severity conversion compat function call for Kotlin 2.3.20+.
 - **[IR]** Ensure stable sort of output `SuspiciousUnusedMultibinding` locations.
-- **[Runtime]** `IntoSet` and `IntoMap` no longer have an `AnnotationTarget.CLASS`
+- **[Runtime]** `IntoSet` and `IntoMap` no longer have a `Target` of `AnnotationTarget.CLASS`
 
 ### Changes
 
