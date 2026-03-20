@@ -16,8 +16,10 @@ import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.isImplicitClassKeySentinel
 import dev.zacsweers.metro.compiler.ir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.ir.populateImplicitClassKey
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
@@ -30,6 +32,7 @@ import dev.zacsweers.metro.compiler.reserveName
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
+import java.util.Objects
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -216,6 +219,20 @@ internal class ContributionTransformer(
 
           val mapKey = explicitBindingType?.mapKeyAnnotation() ?: annotatedType.mapKeyAnnotation()
 
+          // For map key hashing, use the effective key value. For implicit class keys
+          // (sentinel Nothing::class), incorporate the annotated type's class ID instead
+          // so that different classes get unique function names.
+          val mapKeyHash =
+            if (
+              mapKey != null &&
+                this@BindingContribution is ContributesIntoMapBinding &&
+                isImplicitClassKeySentinel(mapKey.ir)
+            ) {
+              Objects.hash(mapKey.hashCode(), annotatedType.classId).toUInt()
+            } else {
+              mapKey?.hashCode()?.toUInt()
+            }
+
           val suffix = buildString {
             append("As")
             if (bindingType.isMarkedNullable()) {
@@ -228,7 +245,7 @@ internal class ContributionTransformer(
               .shortClassName
               .let(::append)
             qualifier?.hashCode()?.toUInt()?.let(::append)
-            mapKey?.hashCode()?.toUInt()?.let(::append)
+            mapKeyHash?.let(::append)
           }
 
           // We need a unique name because addFakeOverrides() doesn't handle overloads with
@@ -248,7 +265,13 @@ internal class ContributionTransformer(
               }
               qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
               if (this@BindingContribution is ContributesIntoMapBinding) {
-                mapKey?.let { annotations += it.ir.deepCopyWithSymbols() }
+                mapKey?.let { mk ->
+                  val copied = mk.ir.deepCopyWithSymbols()
+                  if (isImplicitClassKeySentinel(copied)) {
+                    populateImplicitClassKey(copied, annotatedType.defaultType)
+                  }
+                  annotations += copied
+                }
               }
               pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
             }

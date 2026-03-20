@@ -126,6 +126,7 @@ public final class dev/zacsweers/metro/LambdaProvider : dev/zacsweers/metro/Prov
 }
 
 public abstract interface annotation class dev/zacsweers/metro/MapKey : java/lang/annotation/Annotation {
+	public abstract fun implicitClassKey ()Z
 	public abstract fun unwrapValue ()Z
 }
 

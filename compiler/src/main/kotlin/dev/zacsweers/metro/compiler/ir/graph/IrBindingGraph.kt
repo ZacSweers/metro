@@ -334,11 +334,21 @@ internal class IrBindingGraph(
                   "Did you possibly bind them to the wrong type or contribute them to the wrong scope?"
               )
               appendLine()
-              for (source in unusedSources.take(MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT)) {
+              val examples = mutableListOf<Pair<String, String?>>()
+              for (source in unusedSources) {
                 val binding = bindingLookup[source] ?: continue
                 val location = binding.renderLocationDiagnostic()
-                appendLine("  ${location.location}")
-                location.description?.let { appendLine(it.prependIndent("    ")) }
+                val locString = "  ${location.location}"
+                val desc = location.description?.prependIndent("    ")
+                examples += locString to desc
+              }
+              // Stable sort
+              for ((locString, desc) in
+                examples
+                  .sortedBy { it.first }
+                  .take(MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT)) {
+                appendLine(locString)
+                desc?.let(::appendLine)
               }
               if (unusedSources.size > MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT) {
                 appendLine(

@@ -41,7 +41,7 @@ interface FeatureGraph {
 }
 
 @ContributesIntoMap(FeatureScope::class)
-@ClassKey(FeatureViewModel::class)
+@ClassKey
 class FeatureViewModel @Inject constructor(
     val logger: Logger
 ) : ViewModel

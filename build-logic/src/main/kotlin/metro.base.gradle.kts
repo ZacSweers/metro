@@ -74,22 +74,19 @@ plugins.withType<KotlinBasePlugin> {
             "-Xcontext-parameters",
             "-Xreturn-value-checker=full",
             "-Xcontext-sensitive-resolution",
+            "-Xwhen-expressions=indy",
             //  "-Xallow-contracts-on-more-functions",
             //  "-Xallow-condition-implies-returns-contracts",
             //  "-Xallow-holdsin-contract",
-            // TODO next minor release
-            //  "-Xwhen-expressions=indy",
             // TODO Kotlin 2.3.0
             //  "-Xexplicit-backing-fields",
           )
-          if (project.path.contains("compiler")) {
-            optIn.addAll(
-              "kotlin.contracts.ExperimentalContracts",
-              "kotlin.contracts.ExperimentalExtendedContracts",
-              "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
-              "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-            )
-          }
+          optIn.addAll(
+            "kotlin.contracts.ExperimentalContracts",
+            "kotlin.contracts.ExperimentalExtendedContracts",
+            "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
+            "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
+          )
         }
       }
     }

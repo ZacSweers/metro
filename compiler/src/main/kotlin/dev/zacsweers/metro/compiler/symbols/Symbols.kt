@@ -230,6 +230,7 @@ internal class Symbols(
     val subcomponents = "subcomponents".asName()
     val scope = StringNames.SCOPE.asName()
     val unwrapValue = "unwrapValue".asName()
+    val implicitClassKey = "implicitClassKey".asName()
   }
 
   private val metroRuntime: IrPackageFragment by lazy {

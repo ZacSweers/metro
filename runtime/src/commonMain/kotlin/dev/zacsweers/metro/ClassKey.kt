@@ -22,6 +22,8 @@ import kotlin.reflect.KClass
  *
  * If your map's keys can be constrained, consider using a custom annotation instead, with a member
  * whose type is `KClass<out Something>`.
+ *
+ * This map key supports [MapKey.implicitClassKey].
  */
 @MustBeDocumented
 @Target(
@@ -33,5 +35,5 @@ import kotlin.reflect.KClass
   AnnotationTarget.TYPE,
 )
 @Retention(AnnotationRetention.RUNTIME)
-@MapKey
-public annotation class ClassKey(val value: KClass<*>)
+@MapKey(implicitClassKey = true)
+public annotation class ClassKey(val value: KClass<*> = Nothing::class)

@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.evaluateAs
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
+import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.getTargetType
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
@@ -713,6 +714,28 @@ internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAn
 
 internal fun List<FirAnnotation>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   asSequence().annotationAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
+
+/**
+ * Checks if the given [mapKeyAnnotation]'s `@MapKey` meta-annotation has `implicitClassKey = true`.
+ */
+internal fun MetroFirAnnotation.hasImplicitClassKey(session: FirSession): Boolean {
+  val annotationClassId = fir.toAnnotationClassIdSafe(session) ?: return false
+  val annotationClassSymbol =
+    session.symbolProvider.getClassLikeSymbolByClassId(annotationClassId) ?: return false
+  val mapKeyAnno =
+    annotationClassSymbol.resolvedCompilerAnnotationsWithClassIds
+      .annotationsIn(session, session.classIds.mapKeyAnnotations)
+      .firstOrNull() ?: return false
+  return mapKeyAnno.getBooleanArgument(Symbols.Names.implicitClassKey, session) == true
+}
+
+/**
+ * Returns the [FirGetClassCall] of the value argument of this map key annotation, if it was
+ * explicitly provided. Returns null if the value uses the default.
+ */
+internal fun MetroFirAnnotation.mapKeyClassValueExpression(): FirGetClassCall? {
+  return fir.arguments.firstOrNull()?.expectAsOrNull<FirGetClassCall>()
+}
 
 // TODO use FirExpression extensions
 //  fun FirExpression.extractClassesFromArgument(session: FirSession): List<FirRegularClassSymbol>
