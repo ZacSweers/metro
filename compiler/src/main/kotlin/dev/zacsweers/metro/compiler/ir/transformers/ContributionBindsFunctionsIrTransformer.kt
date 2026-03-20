@@ -16,8 +16,10 @@ import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.isImplicitClassKeySentinel
 import dev.zacsweers.metro.compiler.ir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.ir.populateImplicitClassKey
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
@@ -248,7 +250,14 @@ internal class ContributionTransformer(
               }
               qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
               if (this@BindingContribution is ContributesIntoMapBinding) {
-                mapKey?.let { annotations += it.ir.deepCopyWithSymbols() }
+                mapKey?.let { mk ->
+                  val copied = mk.ir.deepCopyWithSymbols()
+                  // Auto-populate implicit class key if using the sentinel value
+                  if (isImplicitClassKeySentinel(copied)) {
+                    populateImplicitClassKey(copied, annotatedType.defaultType)
+                  }
+                  annotations += copied
+                }
               }
               pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
             }
