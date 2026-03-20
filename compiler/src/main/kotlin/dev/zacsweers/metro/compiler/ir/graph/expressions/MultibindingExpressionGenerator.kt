@@ -268,16 +268,29 @@ internal class MultibindingExpressionGenerator(
   }
 
   /**
-   * Resolves the implicit class type for a binding with an implicit class key. Only supported for
-   * injected class bindings where the class itself is the natural key.
+   * Resolves the implicit class type for a binding with an implicit class key. For injected class
+   * bindings, this is the class itself. For provided/binds bindings, this is the input parameter
+   * type (which should already be populated during contribution code gen for contributions).
    */
   private fun resolveImplicitClassKeyType(binding: IrBinding): IrType {
     return when (binding) {
       is IrBinding.ConstructorInjected -> binding.type.defaultType
       is IrBinding.ObjectClass -> binding.type.defaultType
+      is IrBinding.Alias -> binding.aliasedType.type.rawType().defaultType
+      is IrBinding.Provided -> {
+        // For @Binds, the implicit type is the single value parameter type
+        val function = binding.providerFactory.function
+        val paramType =
+          function.extensionReceiverParameterCompat?.type
+            ?: function.regularParameters.firstOrNull()?.type
+        paramType?.rawType()?.defaultType
+          ?: reportCompilerBug(
+            "Cannot resolve implicit class key type for Provided binding $binding"
+          )
+      }
       else ->
         reportCompilerBug(
-          "Implicit class keys are only supported on class bindings, not ${binding::class}"
+          "Implicit class keys are only supported on class, binds, or provided bindings, not ${binding::class}"
         )
     }
   }

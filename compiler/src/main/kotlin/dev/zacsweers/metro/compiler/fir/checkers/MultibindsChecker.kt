@@ -22,7 +22,9 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.fullyExpandedClassId
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
@@ -219,7 +221,17 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
 
     // Check implicit class key usage on @IntoMap declarations
     if (isIntoMap && annotations.mapKey != null) {
-      checkImplicitClassKeyUsage(session, annotations.mapKey, implicitType = null, source)
+      // For @Binds, the implicit type is the input type (receiver or value param)
+      val implicitType =
+        if (annotations.isBinds) {
+          val inputTypeRef =
+            declaration.receiverParameter?.typeRef
+              ?: (declaration as? FirFunction)?.valueParameters?.firstOrNull()?.returnTypeRef
+          inputTypeRef?.coneTypeOrNull?.fullyExpandedClassId(session)
+        } else {
+          null
+        }
+      checkImplicitClassKeyUsage(session, annotations.mapKey, implicitType, source)
     }
 
     // @IntoSet, @IntoMap, and @ElementsIntoSet must also be provides/binds
