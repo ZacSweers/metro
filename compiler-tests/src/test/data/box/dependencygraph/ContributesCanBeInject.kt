@@ -9,15 +9,15 @@ class Impl1 : Base
 @ContributesIntoSet(AppScope::class)
 class Impl2 : Base
 
-@ClassKey(Impl3::class)
+@ClassKey
 @ContributesIntoMap(AppScope::class)
 class Impl3 : Base
 
-@ClassKey(Impl4::class)
+@ClassKey
 @ContributesIntoMap(AppScope::class)
 object Impl4 : Base
 
-@ClassKey(Impl5::class)
+@ClassKey
 @ContributesIntoMap(AppScope::class)
 class Impl5(val defaultValue: Int) : Base {
   // Ensure that inject constructors are still picked up even though the class is implicitly annotated

@@ -1,11 +1,15 @@
-/ImplicitClassKeyDiagnostics.kt:(232,246): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
+/ImplicitClassKeyDiagnostics.kt:(240,254): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
 
-/ImplicitClassKeyDiagnostics.kt:(531,545): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
+/ImplicitClassKeyDiagnostics.kt:(561,575): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
 
-/ImplicitClassKeyDiagnostics.kt:(690,713): warning: Explicit class key value 'RedundantKeyImpl::class' is the same as the implicit class key and can be omitted.
+/ImplicitClassKeyDiagnostics.kt:(721,734): warning: Explicit class key value 'kotlin.String::class' is the same as the implicit class key and can be omitted.
 
-/ImplicitClassKeyDiagnostics.kt:(1245,1259): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
+/ImplicitClassKeyDiagnostics.kt:(1031,1045): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
 
-/ImplicitClassKeyDiagnostics.kt:(1379,1409): warning: Explicit class key value 'BindingRedundantKeyImpl::class' is the same as the implicit class key and can be omitted.
+/ImplicitClassKeyDiagnostics.kt:(1190,1213): warning: Explicit class key value 'RedundantKeyImpl::class' is the same as the implicit class key and can be omitted.
 
-/ImplicitClassKeyDiagnostics.kt:(1760,1774): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
+/ImplicitClassKeyDiagnostics.kt:(1745,1759): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.
+
+/ImplicitClassKeyDiagnostics.kt:(1879,1909): warning: Explicit class key value 'BindingRedundantKeyImpl::class' is the same as the implicit class key and can be omitted.
+
+/ImplicitClassKeyDiagnostics.kt:(2260,2274): error: `Nothing::class` is a reserved "unset" sentinel value for implicit class keys and cannot be used as an explicit map key value.

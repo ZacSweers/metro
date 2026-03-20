@@ -6,18 +6,39 @@ interface Base
 // Provides/Binds functions
 
 @BindingContainer
-object Bindings {
+object ProvidesBindings {
   // Error - cannot use explicit Nothing::class
   @ClassKey(<!MAP_KEY_IMPLICIT_CLASS_KEY_ERROR!>Nothing::class<!>)
   @Provides
   @IntoMap
   fun provideNothing(): String = "hello"
 
-  // ok - explicit value and is required
+  // ok - explicit value and is required on provides
   @ClassKey(String::class)
   @Provides
   @IntoMap
   fun provideString(): String = "hello"
+}
+
+@BindingContainer
+interface BindsBindings {
+  // Error - Nothing::class on @Binds
+  @ClassKey(<!MAP_KEY_IMPLICIT_CLASS_KEY_ERROR!>Nothing::class<!>)
+  @Binds
+  @IntoMap
+  val String.bindNothing: CharSequence
+
+  // Warning - redundant explicit key on @Binds (matches receiver type)
+  @ClassKey(<!MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY!>String::class<!>)
+  @Binds
+  @IntoMap
+  val String.bindRedundant: CharSequence
+
+  // ok - explicit value differs from receiver type on @Binds
+  @ClassKey(Int::class)
+  @Binds
+  @IntoMap
+  val String.bindExplicit: CharSequence
 }
 
 ///// Contribution class cases

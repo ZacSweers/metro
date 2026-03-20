@@ -54,10 +54,10 @@ class ViewModelFactory constructor(
 
 @Inject
 @ContributesIntoMap(AppScope::class)
-@ClassKey(AViewModel::class)
+@ClassKey
 class AViewModel : ViewModel()
 
 @Inject
 @ContributesIntoMap(AppScope::class)
-@ClassKey(BViewModel::class)
+@ClassKey
 class BViewModel : ViewModel()

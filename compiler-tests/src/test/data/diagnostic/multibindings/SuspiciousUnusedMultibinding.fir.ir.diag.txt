@@ -3,11 +3,11 @@
   SuspiciousUnusedMultibinding.kt:21:1
     Impl2 contributes a binding of BaseViewModel
                                    ~~~~~~~~~~~~~
-  SuspiciousUnusedMultibinding.kt:31:1
-    Impl4 contributes a binding of BaseViewModel
-                                   ~~~~~~~~~~~~~
   SuspiciousUnusedMultibinding.kt:26:1
     Impl3 contributes a binding of BaseViewModel
+                                   ~~~~~~~~~~~~~
+  SuspiciousUnusedMultibinding.kt:31:1
+    Impl4 contributes a binding of BaseViewModel
                                    ~~~~~~~~~~~~~
   ...and 1 more
 

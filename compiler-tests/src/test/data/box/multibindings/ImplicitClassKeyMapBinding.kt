@@ -48,10 +48,19 @@ class CustomExplicit : OtherBase
 @MapKey(unwrapValue = false)
 annotation class WrappedKey(val name: String, val id: Int)
 
+// Binds with implicit class key
+
+interface CharSequenceBase
+
+@Inject class StringImpl : CharSequenceBase
+
 @DependencyGraph(AppScope::class)
 interface ExampleGraph {
   // Explicit provides with ClassKey (explicit value required on callables)
   @Provides @IntoMap @ClassKey(String::class) fun provideStringEntry(): Base = object : Base {}
+
+  // @Binds with implicit class key (receiver type is the implicit key)
+  @Binds @IntoMap @ClassKey val StringImpl.bindImplicit: CharSequenceBase
 
   // Explicit provides with wrapped key
   @Provides @IntoMap @WrappedKey(name = "a", id = 1) fun provideWrappedA(): Base = object : Base {}
@@ -59,6 +68,7 @@ interface ExampleGraph {
 
   val classKeyMap: Map<KClass<*>, Base>
   val customKeyMap: Map<KClass<out OtherBase>, OtherBase>
+  val bindsKeyMap: Map<KClass<*>, CharSequenceBase>
   val wrappedKeyMap: Map<WrappedKey, Base>
 }
 
@@ -79,6 +89,11 @@ fun box(): String {
   assertNotNull(customKeyMap[CustomImplicit1::class])
   assertNotNull(customKeyMap[CustomImplicit2::class])
   assertNotNull(customKeyMap[OtherBase::class])
+
+  // Binds key map: implicit key resolves to the receiver type
+  val bindsKeyMap = graph.bindsKeyMap
+  assertEquals(1, bindsKeyMap.size)
+  assertNotNull(bindsKeyMap[StringImpl::class])
 
   // Wrapped key map: no implicit class key, uses annotation itself as key
   val wrappedKeyMap = graph.wrappedKeyMap
