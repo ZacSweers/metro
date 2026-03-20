@@ -67,6 +67,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ImplicitClassKeyPopulatedOnCopy.kt")
+    public void testImplicitClassKeyPopulatedOnCopy() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ImplicitClassKeyPopulatedOnCopy.kt");
+    }
+
+    @Test
     @TestMetadata("MultipleContributionsOnlyProduceOneHintFile.kt")
     public void testMultipleContributionsOnlyProduceOneHintFile() {
       runTest("compiler-tests/src/test/data/dump/ir/aggregation/MultipleContributionsOnlyProduceOneHintFile.kt");
