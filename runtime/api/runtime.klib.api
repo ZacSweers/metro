@@ -38,7 +38,7 @@ open annotation class dev.zacsweers.metro/Binds : kotlin/Annotation { // dev.zac
 }
 
 open annotation class dev.zacsweers.metro/ClassKey : kotlin/Annotation { // dev.zacsweers.metro/ClassKey|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/ClassKey.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
+    constructor <init>(kotlin.reflect/KClass<*> = ...) // dev.zacsweers.metro/ClassKey.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
 
     final val value // dev.zacsweers.metro/ClassKey.value|{}value[0]
         final fun <get-value>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ClassKey.value.<get-value>|<get-value>(){}[0]
@@ -163,8 +163,10 @@ open annotation class dev.zacsweers.metro/IntoSet : kotlin/Annotation { // dev.z
 }
 
 open annotation class dev.zacsweers.metro/MapKey : kotlin/Annotation { // dev.zacsweers.metro/MapKey|null[0]
-    constructor <init>(kotlin/Boolean = ...) // dev.zacsweers.metro/MapKey.<init>|<init>(kotlin.Boolean){}[0]
+    constructor <init>(kotlin/Boolean = ..., kotlin/Boolean = ...) // dev.zacsweers.metro/MapKey.<init>|<init>(kotlin.Boolean;kotlin.Boolean){}[0]
 
+    final val implicitClassKey // dev.zacsweers.metro/MapKey.implicitClassKey|{}implicitClassKey[0]
+        final fun <get-implicitClassKey>(): kotlin/Boolean // dev.zacsweers.metro/MapKey.implicitClassKey.<get-implicitClassKey>|<get-implicitClassKey>(){}[0]
     final val unwrapValue // dev.zacsweers.metro/MapKey.unwrapValue|{}unwrapValue[0]
         final fun <get-unwrapValue>(): kotlin/Boolean // dev.zacsweers.metro/MapKey.unwrapValue.<get-unwrapValue>|<get-unwrapValue>(){}[0]
 }
