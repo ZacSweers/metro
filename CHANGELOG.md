@@ -11,6 +11,7 @@ Changelog
 ### Fixes
 
 - **[FIR]** Add diagnostic to ensure map key annotations support `FUNCTION` targets if they have a `@Target` annotation.
+- **[IR]** Ensure stable sort of output `SuspiciousUnusedMultibinding` locations.
 
 ### Fixes
 
