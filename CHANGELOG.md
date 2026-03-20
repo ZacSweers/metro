@@ -17,6 +17,9 @@ Changelog
 ### Changes
 
 - The Metro compiler now requires JVM 21+. Note that the runtime JVM artifacts still target 11 unless otherwise documented.
+- The Metro Gradle plugin now requires JVM 21+.
+- The Metro Gradle plugin now requires Gradle 9+.
+- The Metro Gradle plugin now targets Kotlin 2.2.
 - `@Assisted.value` is formally deprecated now. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#assisted-injection) on why in case you missed this! TL;DR, Metro matches by parameter names going forward.
 - Metro's main branch now builds with Kotlin `2.3.20` but still targets Kotlin 2.2 for its runtime artifacts and supports 2.2.20 all to 2.4.0 dev builds in its compiler.
 

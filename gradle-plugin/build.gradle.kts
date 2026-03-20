@@ -19,13 +19,11 @@ plugins {
 }
 
 metroProject {
+  jvmTarget.set(libs.versions.compilerJvmTarget)
   // Lower version for Gradle compat
   // https://docs.gradle.org/current/userguide/compatibility.html#kotlin
-  // TODO for Gradle 9+
-  //  move to 2.2
-  //  move to JVM 17
-  @Suppress("DEPRECATION") languageVersion.set(KotlinVersion.KOTLIN_2_0)
-  @Suppress("DEPRECATION") apiVersion.set(KotlinVersion.KOTLIN_2_0)
+  languageVersion.set(KotlinVersion.KOTLIN_2_2)
+  apiVersion.set(KotlinVersion.KOTLIN_2_2)
 }
 
 // Gradle continues to have the most obvious APIs
@@ -144,6 +142,7 @@ dependencies {
   functionalTestImplementation(libs.kotlin.test)
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)
+  // TODO really only here for extensions tests
   functionalTestRuntimeOnly(project(":compiler"))
   functionalTestRuntimeOnly(project(":runtime"))
   functionalTestRuntimeOnly(project(":interop-dagger"))
