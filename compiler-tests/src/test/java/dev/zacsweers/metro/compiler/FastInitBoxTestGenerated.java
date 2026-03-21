@@ -914,6 +914,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("DynamicGraphCanReplaceScopedBindings.kt")
+      public void testDynamicGraphCanReplaceScopedBindings() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphCanReplaceScopedBindings.kt");
+      }
+
+      @Test
       @TestMetadata("DynamicGraphReplacesExtensionBindingFromClass.kt")
       public void testDynamicGraphReplacesExtensionBindingFromClass() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphReplacesExtensionBindingFromClass.kt");
