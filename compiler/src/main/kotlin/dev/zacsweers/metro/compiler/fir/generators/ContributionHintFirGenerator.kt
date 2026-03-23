@@ -78,7 +78,7 @@ internal class ContributionHintFirGenerator(
         val typeResolver = typeResolverFactory.create(contributingClass) ?: continue
 
         val contributionScopes: Set<ClassId> = contributions.mapNotNullToSet { annotation ->
-          annotation.scopeArgument()?.let { getClassCall ->
+          annotation.scopeArgument(session)?.let { getClassCall ->
             val reference = getClassCall.resolvedArgumentTypeRef() ?: return@let null
             typeResolver.resolveType(typeRef = reference).classId ?: return@let null
           }

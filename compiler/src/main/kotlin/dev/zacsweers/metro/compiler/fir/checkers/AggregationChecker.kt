@@ -79,7 +79,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       if (!annotation.isResolved) continue
       val classId = annotation.toAnnotationClassId(session) ?: continue
       if (classId in classIds.allContributesAnnotations) {
-        val scope = annotation.resolvedScopeClassId() ?: continue
+        val scope = annotation.resolvedScopeClassId(session) ?: continue
 
         // Check if the target looks suspicious
         // - If it's a `@Scope` annotation class that's prolly not right
@@ -88,7 +88,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         if (scopeClass.classKind == ClassKind.ANNOTATION_CLASS) {
           scopeClass.annotationsIn(session, classIds.scopeAnnotations).firstOrNull()?.let {
             reporter.reportOn(
-              annotation.scopeArgument()?.source ?: annotation.source,
+              annotation.scopeArgument(session)?.source ?: annotation.source,
               MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
               "Suspicious aggregation scope '${scope.asFqNameString()}' is a concrete `@Scope` annotation type, and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
             )
@@ -97,7 +97,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           for (graphLikeAnno in scopeClass.annotationsIn(session, classIds.graphLikeAnnotations)) {
             if (graphLikeAnno !is FirAnnotationCall) continue
             reporter.reportOn(
-              annotation.scopeArgument()?.source ?: annotation.source,
+              annotation.scopeArgument(session)?.source ?: annotation.source,
               MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
               "Suspicious aggregation scope '${scope.asFqNameString()}' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
             )
@@ -158,7 +158,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           }
 
           in classIds.contributesBindingAnnotations -> {
-            if (annotation.isKiaIntoMultibinding()) {
+            if (annotation.isKiaIntoMultibinding(session)) {
               if (!checkIntoSet) {
                 return
               }

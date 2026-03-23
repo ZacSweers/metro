@@ -75,7 +75,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         // It'll try to use the fully name if possible, but because we really just need these to be
         // disambiguated we can just safely fall back to the short name in the worst case
         contributionAnnotations
-          .mapNotNull { it.scopeArgument() }
+          .mapNotNull { it.scopeArgument(session) }
           .distinctBy { it.scopeName(session) }
           .forEach { scopeArgument ->
             val nestedContributionName =
@@ -156,7 +156,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         }
         in contributesBindingAnnotations -> {
           contributions +=
-            if (annotation.isKiaIntoMultibinding()) {
+            if (annotation.isKiaIntoMultibinding(session)) {
               Contribution.ContributesIntoSetBinding(contributingSymbol, annotation) {
                 listOf(buildIntoSetAnnotation(), buildBindsAnnotation())
               }

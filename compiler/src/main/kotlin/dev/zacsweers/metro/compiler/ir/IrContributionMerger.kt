@@ -279,9 +279,9 @@ internal class IrContributionMerger(
                   .flatMap { annotation -> annotation.replacedClasses() }
                   .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
               },
-              firBody = { _, annotations ->
+              firBody = { session, annotations ->
                 annotations
-                  .flatMap { it.replacesArgument()?.argumentList?.arguments.orEmpty() }
+                  .flatMap { it.replacesArgument(session)?.argumentList?.arguments.orEmpty() }
                   .mapNotNull {
                     it.expectAsOrNull<FirGetClassCall>()?.coneTypeIfResolved()?.classId
                   }

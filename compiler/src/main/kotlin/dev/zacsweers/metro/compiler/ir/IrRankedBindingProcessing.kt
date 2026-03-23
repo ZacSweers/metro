@@ -104,7 +104,8 @@ internal object IrRankedBindingProcessing {
   ): ContributedBinding<IrClass, IrTypeKey>? {
     // Use the FIR-specific scope resolution approach that handles external annotations correctly
     val scope =
-      annotation.scopeArgument()?.resolveClassId(MetroFirTypeResolver.forIrUse()) ?: return null
+      annotation.scopeArgument(session)?.resolveClassId(MetroFirTypeResolver.forIrUse())
+        ?: return null
     if (scope !in allScopes) return null
 
     val bindingConeType = annotation.resolvedBindingArgument(session)?.coneTypeOrNull
@@ -121,7 +122,7 @@ internal object IrRankedBindingProcessing {
     return ContributedBinding(
       contributingType = contributingType,
       typeKey = IrTypeKey(boundType, contributingType.qualifierAnnotation()),
-      rank = annotation.rankValue(),
+      rank = annotation.rankValue(session),
     )
   }
 

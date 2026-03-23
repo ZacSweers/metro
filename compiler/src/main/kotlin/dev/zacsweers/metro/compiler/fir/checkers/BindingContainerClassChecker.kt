@@ -137,9 +137,10 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
     }
 
     val includesToCheck =
-      bindingContainerAnno?.resolvedIncludesClassIds()
+      bindingContainerAnno?.resolvedIncludesClassIds(session)
         ?: graphLikeAnno?.resolvedBindingContainersClassIds(
-          includeModulesArg = session.metroFirBuiltIns.options.enableDaggerRuntimeInterop
+          session,
+          includeModulesArg = session.metroFirBuiltIns.options.enableDaggerRuntimeInterop,
         )
         ?: emptyList()
     val seen = mutableMapOf<ClassId, FirGetClassCall>()
