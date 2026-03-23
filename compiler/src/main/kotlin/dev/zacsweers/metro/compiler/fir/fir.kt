@@ -39,7 +39,6 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
-import org.jetbrains.kotlin.fir.declarations.evaluateAs
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
@@ -48,6 +47,7 @@ import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isFinal
@@ -381,42 +381,54 @@ private fun renderAnnotationArgument(
   arg: FirExpression,
   typeResolver: TypeResolveService?,
 ): Any? {
-  return when (arg) {
-    is FirLiteralExpression -> arg.value
-    is FirGetClassCall -> {
-      typeResolver?.let { arg.resolvedArgumentConeKotlinType(it)?.classId }
-        ?: run {
-          val argument = arg.argument
-          if (argument is FirResolvedQualifier) {
-            argument.classId
-          } else {
-            argument.resolvedType.classId
+  val compatContext = session.compatContext
+  return with(compatContext) {
+    when (arg) {
+      is FirLiteralExpression -> arg.value
+      is FirGetClassCall -> {
+        typeResolver?.let { arg.resolvedArgumentConeKotlinType(it)?.classId }
+          ?: run {
+            val argument = arg.argument
+            if (argument is FirResolvedQualifier) {
+              argument.classId
+            } else {
+              argument.resolvedType.classId
+            }
           }
+      }
+
+      // Enum entry reference or const val reference.
+      // Use toResolvedCallableSymbol() (not toResolvedPropertySymbol()) because
+      // enum entries are FirEnumEntrySymbol, not FirPropertySymbol.
+      is FirPropertyAccessExpression -> {
+        arg.calleeReference.toResolvedCallableSymbol()?.callableId
+      }
+
+      is FirFunctionCall -> {
+        // This is some constant-able expression like "foo" + "bar" in an annotation arg, which
+        // is legal
+        val evaluated = arg.evaluateAsCompat(session, FirElement::class)
+        return if (evaluated is FirLiteralExpression) {
+          evaluated.value
+        } else {
+          // May have been something like a GetClass expression, which can fall through here in 2.4+ but isn't
+          // "evaluatable"
+          null
         }
-    }
+      }
 
-    // Enum entry reference or const val reference.
-    // Use toResolvedCallableSymbol() (not toResolvedPropertySymbol()) because
-    // enum entries are FirEnumEntrySymbol, not FirPropertySymbol.
-    is FirPropertyAccessExpression -> {
-      arg.calleeReference.toResolvedCallableSymbol()?.callableId
-    }
+      is FirCall -> {
+        // Could be FirArrayLiteral on <2.3.20
+        // Could be FirCollectionLiteral on 2.3.20+
+        // This is an array of some type
+        arg.arguments.map { renderAnnotationArgument(session, it, typeResolver) }
+      }
 
-    is FirFunctionCall -> {
-      // This is some constant-able expression like "foo" + "bar" in an annotation arg, which
-      // is legal
-      arg.evaluateAs<FirLiteralExpression>(session)?.value
-    }
-
-    is FirCall -> {
-      // Could be FirArrayLiteral on <2.3.20
-      // Could be FirCollectionLiteral on 2.3.20+
-      // This is an array of some type
-      arg.arguments.map { renderAnnotationArgument(session, it, typeResolver) }
-    }
-
-    else -> {
-      reportCompilerBug("Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}")
+      else -> {
+        reportCompilerBug(
+          "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"
+        )
+      }
     }
   }
 }
@@ -1027,8 +1039,10 @@ internal fun FirAnnotation.getAnnotationKClassArgument(
   typeResolver: TypeResolveService? = null,
 ): ConeKotlinType? {
   val argument = findArgumentByNameSafe(name) ?: return null
-  return argument.evaluateAs<FirGetClassCall>(session)?.getTargetType()
-    ?: typeResolver?.let { (argument as FirGetClassCall).resolvedArgumentConeKotlinType(it) }
+  return with(session.compatContext) {
+    argument.evaluateAsCompat(session, FirGetClassCall::class)?.getTargetType()
+      ?: typeResolver?.let { (argument as FirGetClassCall).resolvedArgumentConeKotlinType(it) }
+  }
 }
 
 internal fun FirAnnotation.resolvedScopeClassId() = scopeArgument()?.resolvedClassId()
@@ -1088,15 +1102,16 @@ internal fun FirAnnotation.resolvedReplacedClassIds(
   val replacesArgument =
     replacesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
       ?: return emptySet()
-  val replaced = replacesArgument.mapNotNull { getClassCall ->
-    getClassCall.resolveClassId(typeResolver)?.let {
-      return@mapNotNull it
-    }
+  val replaced =
+    replacesArgument.mapNotNull { getClassCall ->
+      getClassCall.resolveClassId(typeResolver)?.let {
+        return@mapNotNull it
+      }
 
-    // Otherwise fall back to trying to parse from the reference
-    val reference = getClassCall.resolvedArgumentTypeRef() ?: return@mapNotNull null
-    typeResolver.resolveType(reference).classId
-  }
+      // Otherwise fall back to trying to parse from the reference
+      val reference = getClassCall.resolvedArgumentTypeRef() ?: return@mapNotNull null
+      typeResolver.resolveType(reference).classId
+    }
   return replaced.toSet()
 }
 
