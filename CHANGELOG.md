@@ -63,9 +63,12 @@ annotation class ViewModelKey(val value: KClass<out ViewModel> = Nothing::class)
 
 Special thanks to the following contributors for contributing to this release!
 
+- [@Asapha](https://github.com/Asapha)
 - [@ChristianKatzmann](https://github.com/ChristianKatzmann)
 - [@grandstaish](https://github.com/grandstaish)
 - [@jonamireh](https://github.com/jonamireh)
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@svenjacobs](https://github.com/svenjacobs)
 
 0.11.4
 ------
