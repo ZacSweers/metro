@@ -64,6 +64,7 @@ Special thanks to the following contributors for contributing to this release!
 
 - [@ChristianKatzmann](https://github.com/ChristianKatzmann)
 - [@grandstaish](https://github.com/grandstaish)
+- [@jonamireh](https://github.com/jonamireh)
 
 0.11.4
 ------
