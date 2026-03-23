@@ -107,20 +107,33 @@ class MetroIdeSmokeTest {
         .readLines()
         .filter { it.isNotBlank() && !it.startsWith("#") }
         .map { line ->
-          val parts = line.split(":")
-          Arguments.of(parts[0], parts[1])
+          // Strip inline comments
+          val stripped = line.substringBefore("#").trim()
+          val parts = stripped.split(":")
+          // parts: [product, version, extra?]
+          // IU extra = build type (rc, eap); AS extra = filename prefix
+          Arguments.of(parts[0], parts[1], parts.getOrElse(2) { "" })
         }
   }
 
   @ParameterizedTest
   @MethodSource("ideVersions")
-  fun check(product: String, version: String) {
-    // IU uses marketing version (e.g., "2025.3.2") with RELEASE buildType
+  fun check(product: String, version: String, extra: String) {
+    // IU uses marketing version (e.g., "2025.3.2") with a build type (release, rc, eap)
     // AS uses build number (e.g., "2024.2.1.11") directly
     // NOTE: Run ./download-ides.sh first
     val ideProduct =
       when (product) {
-        "IU" -> IdeProductProvider.IU.copy(version = version, buildType = BuildType.RELEASE.type)
+        "IU" -> {
+          // IDE Starter has no BuildType.RC, use EAP for both rc and eap prereleases
+          val buildType =
+            when (extra) {
+              "rc",
+              "eap" -> BuildType.EAP.type
+              else -> BuildType.RELEASE.type
+            }
+          IdeProductProvider.IU.copy(version = version, buildType = buildType)
+        }
         "AS" -> IdeProductProvider.AI.copy(buildNumber = version)
         else -> error("Unknown product: $product")
       }

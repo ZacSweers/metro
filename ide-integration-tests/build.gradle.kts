@@ -21,7 +21,14 @@ dependencies {
     intellijIdeaUltimate(
       // Source this from the first IU version in ide-versions.txt
       providers.fileContents(layout.projectDirectory.file("ide-versions.txt")).asText.map { text ->
-        text.lineSequence().firstOrNull { it.startsWith("IU") }?.removePrefix("IU:")
+        text
+          .lineSequence()
+          .firstOrNull { it.startsWith("IU") }
+          ?.removePrefix("IU:")
+          // Strip build type or inline comment, keep just the version
+          ?.substringBefore(":")
+          ?.substringBefore("#")
+          ?.trim()
           // Just cover for CI where we may run with only one IDE in the file
           ?: "2025.3.2"
       }
