@@ -127,7 +127,7 @@ dependencies {
   add(embedded.name, libs.kotlinx.serialization.json)
   add(embedded.name, project(":compiler-compat"))
   rootProject.isolated.projectDirectory.dir("compiler-compat").asFile.listFiles()!!.forEach {
-    if (it.isDirectory && it.name.startsWith("k")) {
+    if (it.isDirectory && it.name.startsWith("k") && File(it, "version.txt").exists()) {
       add(embedded.name, project(":compiler-compat:${it.name}"))
     }
   }
