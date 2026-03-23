@@ -42,6 +42,7 @@ import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.config.LanguageFeature
+import org.jetbrains.kotlin.config.LanguageVersion
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
@@ -60,6 +61,7 @@ import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
+import org.jetbrains.kotlin.ir.builders.irAnnotation
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -158,6 +160,7 @@ import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.hasEqualFqName
 import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
@@ -175,7 +178,9 @@ import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.library.KOTLIN_JS_STDLIB_NAME
 import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.platform.TargetPlatform
 import org.jetbrains.kotlin.platform.isJs
@@ -263,6 +268,27 @@ internal fun IrType.rawTypeOrNull(): IrClass? {
     is IrTypeParameterSymbol -> null
     else -> null
   }
+}
+
+// Compat copies because of IrAnnotation in 2.4.0
+internal fun IrAnnotationContainer.getAnnotation(name: FqName): IrConstructorCall? =
+  annotations.find {
+    it.isAnnotationWithEqualFqName(name)
+  }
+
+private fun IrConstructorCall.isAnnotationWithEqualFqName(fqName: FqName): Boolean =
+  if (symbol.isBound) {
+    annotationClass.hasEqualFqName(fqName)
+  } else {
+    symbol.hasEqualFqName(fqName.child(SpecialNames.INIT))
+  }
+
+internal fun IrConstructorCall.getAnnotationStringValue() =
+  (arguments[0] as? IrConst)?.value as String?
+
+internal fun IrConstructorCall.getAnnotationStringValue(name: String): String {
+  val parameter = symbol.owner.parameters.single { it.name.asString() == name }
+  return (arguments[parameter.indexInParameters] as IrConst).value as String
 }
 
 internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>): Boolean {
@@ -1378,7 +1404,11 @@ internal fun buildAnnotation(
   body: IrBuilderWithScope.(IrConstructorCall) -> Unit = {},
 ): IrConstructorCall {
   return context.createIrBuilder(symbol).run {
-    irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
+    if (context.languageVersionSettings.languageVersion >= LanguageVersion.KOTLIN_2_4) {
+      irAnnotation(callee, typeArguments = emptyList()).also { body(it) }
+    } else {
+      irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
+    }
   }
 }
 

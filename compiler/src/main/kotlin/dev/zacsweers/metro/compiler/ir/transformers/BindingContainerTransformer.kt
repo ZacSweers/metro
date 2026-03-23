@@ -299,7 +299,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
           isOperator = true
         }
 
-    metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(invokeFunction)
+    metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(invokeFunction)
 
     val sourceParameters =
       reference.parameters.copy(

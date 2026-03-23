@@ -502,7 +502,7 @@ internal class GraphNodes(
         // metadata anyway
         graphDeclaration.annotations += inheritedScopes
       } else {
-        pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+        metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
           graphDeclaration,
           inheritedScopes,
         )

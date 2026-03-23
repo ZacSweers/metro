@@ -108,7 +108,7 @@ internal fun generateStaticCreateFunction(
           copyQualifiers = true,
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
-        context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
+        context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
       }
   transformStaticCreateFunction(
     factoryClass = factoryClass,
@@ -181,10 +181,12 @@ private fun transformStaticCreateFunction(
       for ((i, param) in regularParameters.withIndex()) {
         val sourceParam = parameters.regularParameters[i]
         sourceParam.typeKey.qualifier?.let { qualifier ->
-          context.pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
-            param,
-            qualifier.ir.deepCopyWithSymbols(),
-          )
+          with(context) {
+            metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
+              param,
+              listOf(qualifier.ir.deepCopyWithSymbols()),
+            )
+          }
         }
       }
     }
@@ -248,7 +250,7 @@ internal fun generateStaticNewInstanceFunction(
           copyQualifiers = true,
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
-        context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
+        context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
       }
   transformStaticNewInstanceFunction(
     sourceMetroParameters = sourceMetroParameters,
@@ -378,7 +380,7 @@ internal fun generateMetadataVisibleMirrorFunction(
         // this for
         body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
       }
-  context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
+  context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
   return function
 }
 

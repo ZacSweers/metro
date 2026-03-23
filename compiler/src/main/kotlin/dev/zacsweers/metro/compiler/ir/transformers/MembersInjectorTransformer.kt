@@ -312,9 +312,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext) :
         regularParameters.drop(1).forEachIndexed { i, param ->
           val injectedParam = params.regularParameters[i]
           injectedParam.typeKey.qualifier?.let { qualifier ->
-            pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+            metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
               param,
-              qualifier.ir.deepCopyWithSymbols(),
+              listOf(qualifier.ir.deepCopyWithSymbols()),
             )
           }
         }

@@ -273,7 +273,7 @@ internal class ContributionTransformer(
                   annotations += copied
                 }
               }
-              pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
+              metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
             }
         }
     }

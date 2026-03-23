@@ -125,7 +125,7 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
         .also { it.metadata = FirMetadataSource.File(firFile) }
     moduleFragment.addFile(hintFile)
     hintFile.addChild(function)
-    pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
+    metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
     // Link the hint back to the source class so source class changes in IC also mark this hint
     // https://github.com/ZacSweers/metro/pull/1349
     trackClassLookup(function, sourceClass)

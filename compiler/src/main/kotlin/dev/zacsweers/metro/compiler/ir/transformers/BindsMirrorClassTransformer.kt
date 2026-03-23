@@ -214,6 +214,6 @@ private fun generateMirrorFunction(
   mirrorFunction.annotations += callableMetadata
 
   // Register as metadata visible
-  context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(mirrorFunction)
+  context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(mirrorFunction)
   return metroFunctionOf(mirrorFunction)
 }

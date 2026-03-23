@@ -43,37 +43,43 @@ internal fun createMetroMetadata(
 context(context: IrMetroContext)
 internal var IrClass.metroMetadata: MetroMetadata?
   get() {
-    return context.metadataDeclarationRegistrar.getCustomMetadataExtension(this, PLUGIN_ID)?.let {
-      val metadata =
-        try {
-          MetroMetadata.ADAPTER.decode(it)
-        } catch (e: Exception) {
+    return context.metadataDeclarationRegistrarCompat
+      .getCustomMetadataExtension(this, PLUGIN_ID)
+      ?.let {
+        val metadata =
+          try {
+            MetroMetadata.ADAPTER.decode(it)
+          } catch (e: Exception) {
+            context.reportCompat(
+              this,
+              MetroDiagnostics.METRO_ERROR,
+              "Failed to decode Metro metadata for '${classIdOrFail}'. " +
+                "The metadata format may be incompatible with this Metro version. " +
+                "Please recompile the upstream module with a compatible Metro version. " +
+                "Error: ${e.message}",
+            )
+            return null
+          }
+        if (metadata.version != METADATA_VERSION) {
           context.reportCompat(
             this,
             MetroDiagnostics.METRO_ERROR,
-            "Failed to decode Metro metadata for '${classIdOrFail}'. " +
-              "The metadata format may be incompatible with this Metro version. " +
-              "Please recompile the upstream module with a compatible Metro version. " +
-              "Error: ${e.message}",
+            "Metro metadata version mismatch for '${classIdOrFail}'. " +
+              "Metadata was generated with version ${metadata.version}, " +
+              "but the current compiler expects version $METADATA_VERSION. " +
+              "Please recompile the upstream module with a compatible Metro version.",
           )
-          return null
         }
-      if (metadata.version != METADATA_VERSION) {
-        context.reportCompat(
-          this,
-          MetroDiagnostics.METRO_ERROR,
-          "Metro metadata version mismatch for '${classIdOrFail}'. " +
-            "Metadata was generated with version ${metadata.version}, " +
-            "but the current compiler expects version $METADATA_VERSION. " +
-            "Please recompile the upstream module with a compatible Metro version.",
-        )
+        metadata
       }
-      metadata
-    }
   }
   set(value) {
     if (value == null) return
-    context.metadataDeclarationRegistrar.addCustomMetadataExtension(this, PLUGIN_ID, value.encode())
+    context.metadataDeclarationRegistrarCompat.addCustomMetadataExtension(
+      this,
+      PLUGIN_ID,
+      value.encode(),
+    )
   }
 
 internal fun GraphNode.toProto(
