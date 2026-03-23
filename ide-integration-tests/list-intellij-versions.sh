@@ -59,7 +59,8 @@ for r in releases:
     if [[ "$type" == "release" ]]; then
       echo "    ide-versions.txt: IU:$version"
     else
-      echo "    ide-versions.txt: IU:$version:$type"
+      # Prereleases use build number since they're not in the IntelliJ release repos
+      echo "    ide-versions.txt: IU:$build:$type # $version $(echo "$type" | tr '[:lower:]' '[:upper:]')"
     fi
     echo ""
   done <<< "$items"

@@ -132,24 +132,27 @@ get_as_download_info() {
 # Get IntelliJ IDEA download info
 # IDE Starter uses build numbers in filenames, so we query the JetBrains API
 # to map marketing version (2025.3.2) -> build number (253.30387.90)
-# For prereleases (rc, eap), download URLs also use build numbers.
+# For prereleases (rc, eap), the version field IS the build number already.
 get_iu_download_info() {
   local version="$1"
   local build_type="${2:-release}"
 
-  # Query JetBrains API to get build number for this version
-  local api_url="https://data.services.jetbrains.com/products/releases?code=IU&type=${build_type}"
-  local api_response
-  api_response=$(curl -sL "$api_url") || return 1
-
-  # Extract build number for this version (format: "build": "253.30387.90")
-  # The API returns releases sorted by version, find our version
   local build_number
-  build_number=$(echo "$api_response" | grep -o "\"version\":\"${version}\"[^}]*\"build\":\"[^\"]*\"" | grep -o '"build":"[^"]*"' | cut -d'"' -f4 | head -1)
+  if [[ "$build_type" != "release" ]]; then
+    # Prereleases use build number directly as the version field
+    build_number="$version"
+  else
+    # Stable releases use marketing version — query API to get build number
+    local api_url="https://data.services.jetbrains.com/products/releases?code=IU&type=release"
+    local api_response
+    api_response=$(curl -sL "$api_url") || return 1
 
-  if [[ -z "$build_number" ]]; then
-    echo "Warning: Could not find build number for IU $version (type=$build_type)" >&2
-    return 1
+    build_number=$(echo "$api_response" | grep -o "\"version\":\"${version}\"[^}]*\"build\":\"[^\"]*\"" | grep -o '"build":"[^"]*"' | cut -d'"' -f4 | head -1)
+
+    if [[ -z "$build_number" ]]; then
+      echo "Warning: Could not find build number for IU $version" >&2
+      return 1
+    fi
   fi
 
   # IDE Starter expects: ideaIU-{buildNumber}-{platform}.dmg
