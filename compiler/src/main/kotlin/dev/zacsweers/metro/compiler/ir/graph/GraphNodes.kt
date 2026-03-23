@@ -978,14 +978,8 @@ internal class GraphNodes(
         // binding containers).
         if (node is GraphNode.Local) {
           for ((key, callables) in node.dynamicTypeKeys) {
-            // Only propagate non-scoped dynamic callables to child extensions. (Scoped bindings are
-            // accessed via the parent.)
-            val nonScopedCallables =
-              callables.filterTo(mutableSetOf()) { callable ->
-                callable !is ProviderFactory || !callable.annotations.isScoped
-              }
-            if (nonScopedCallables.isNotEmpty()) {
-              dynamicTypeKeys.getOrInit(key).addAll(nonScopedCallables)
+            if (callables.isNotEmpty()) {
+              dynamicTypeKeys.getOrInit(key).addAll(callables)
             }
           }
         }

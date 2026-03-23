@@ -45,6 +45,7 @@ annotation class ViewModelKey(val value: KClass<out ViewModel> = Nothing::class)
 - **[IR]** Only store a given binding container's own provider factories in metro metadata. This resolves a bug where we could end up duplicate-processing upstream providers in dynamic factories.
 - **[IR]** Fix a severity conversion compat function call for Kotlin 2.3.20+.
 - **[IR]** Ensure stable sort of output `SuspiciousUnusedMultibinding` locations.
+- **[IR]** Don't skip dynamic keys inherited from parent graphs when working with dynamic graphs.
 
 ### Changes
 
@@ -61,6 +62,7 @@ annotation class ViewModelKey(val value: KClass<out ViewModel> = Nothing::class)
 Special thanks to the following contributors for contributing to this release!
 
 - [@ChristianKatzmann](https://github.com/ChristianKatzmann)
+- [@grandstaish](https://github.com/grandstaish)
 
 0.11.4
 ------

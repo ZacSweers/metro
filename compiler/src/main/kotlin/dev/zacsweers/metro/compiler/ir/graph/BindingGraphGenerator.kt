@@ -630,9 +630,6 @@ internal class BindingGraphGenerator(
             // check and continue if we see them
             if (key == node.typeKey) continue
             if (key == node.metroGraph?.generatedGraphExtensionData?.typeKey) continue
-            // Skip if there's a dynamic replacement for this key
-            if (key in node.dynamicTypeKeys) continue
-
             // Use bindingLookup as the source of truth. graph.findBinding() only reflects keys
             // added through graph.addBinding(), which is disabled when full graph validation is
             // off.
