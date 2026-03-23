@@ -1,4 +1,5 @@
 // CONTRIBUTES_AS_INJECT
+// COMPILER_VERSION: 2.4
 
 interface Base
 

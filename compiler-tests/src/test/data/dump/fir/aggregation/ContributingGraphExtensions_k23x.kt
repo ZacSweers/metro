@@ -1,3 +1,5 @@
+// COMPILER_VERSION: 2.3
+
 abstract class LoggedInScope
 
 @GraphExtension(LoggedInScope::class)
