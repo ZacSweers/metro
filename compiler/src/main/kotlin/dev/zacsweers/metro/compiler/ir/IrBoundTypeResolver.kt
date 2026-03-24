@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
  */
 internal class IrBoundTypeResolver(
   private val pluginContext: IrPluginContext,
-  private val defaultBindingLookup: ((IrClass) -> IrType?)? = null,
+  private val defaultBindingLookup: (IrClass) -> IrType?,
 ) {
 
   private val implicitBoundTypeCache = mutableMapOf<ClassId, Optional<IrType>>()
@@ -87,7 +87,7 @@ internal class IrBoundTypeResolver(
 
   /** Finds the first supertype with a `@DefaultBinding`. Ambiguity is checked in FIR. */
   private fun resolveDefaultBinding(supertypes: Map<IrType, IrClass>): IrType? {
-    val lookup = defaultBindingLookup ?: return null
+    val lookup = defaultBindingLookup
     for ((_, supertypeClass) in supertypes) {
       val bindingType = lookup(supertypeClass) ?: continue
       return bindingType
