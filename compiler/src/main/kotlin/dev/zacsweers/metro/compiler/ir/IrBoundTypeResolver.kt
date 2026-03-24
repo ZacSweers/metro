@@ -32,8 +32,11 @@ internal class IrBoundTypeResolver(
   /**
    * Resolves the bound type for [contributingClass] given its contributing [annotation].
    *
-   * Returns the resolved type and whether the qualifier should be ignored (Anvil interop), or null
-   * if no bound type could be resolved.
+   * Handles explicit binding parameters, implicit single supertypes, and `@DefaultBinding`
+   * fallback. Returns null if no bound type could be resolved.
+   *
+   * @param contributingClass The class annotated with a contributing annotation.
+   * @param annotation The contributing annotation (e.g., `@ContributesBinding`).
    */
   fun resolveBoundType(
     contributingClass: IrClass,
@@ -44,15 +47,23 @@ internal class IrBoundTypeResolver(
 
     val boundType =
       explicitBindingType ?: resolveImplicitBoundType(contributingClass) ?: return null
-    return BoundTypeResult(boundType, ignoreQualifier)
+    return BoundTypeResult(
+      type = boundType,
+      explicitBindingType = explicitBindingType,
+      ignoreQualifier = ignoreQualifier,
+    )
   }
 
   /**
-   * Resolves the implicit bound type for [clazz] by checking:
-   * 1. Single supertype (excluding `Any`)
-   * 2. `@DefaultBinding` on a supertype
+   * Resolves the bound type for [contributingClass] with an already-resolved [explicitBindingType]
+   * (e.g., from FIR annotation processing). Falls back to implicit resolution if
+   * [explicitBindingType] is null.
    */
-  fun resolveImplicitBoundType(clazz: IrClass): IrType? {
+  fun resolveBoundType(contributingClass: IrClass, explicitBindingType: IrType?): IrType? {
+    return explicitBindingType ?: resolveImplicitBoundType(contributingClass)
+  }
+
+  private fun resolveImplicitBoundType(clazz: IrClass): IrType? {
     return implicitBoundTypeCache
       .getOrPut(clazz.classIdOrFail) {
         val supertypesExcludingAny =
@@ -84,5 +95,15 @@ internal class IrBoundTypeResolver(
     return null
   }
 
-  data class BoundTypeResult(val type: IrType, val ignoreQualifier: Boolean)
+  /**
+   * @property type The resolved bound type.
+   * @property explicitBindingType The explicit binding type from the annotation's `binding`
+   *   parameter, or null if the type was implicitly resolved.
+   * @property ignoreQualifier Whether the qualifier should be ignored (Anvil interop).
+   */
+  data class BoundTypeResult(
+    val type: IrType,
+    val explicitBindingType: IrType?,
+    val ignoreQualifier: Boolean,
+  )
 }
