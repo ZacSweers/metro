@@ -121,6 +121,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("DefaultBinding_NearestSupertypeWins.kt")
+    public void testDefaultBinding_NearestSupertypeWins() {
+      runTest("compiler-tests/src/test/data/box/aggregation/DefaultBinding_NearestSupertypeWins.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultBinding_WithGenericType.kt")
     public void testDefaultBinding_WithGenericType() {
       runTest("compiler-tests/src/test/data/box/aggregation/DefaultBinding_WithGenericType.kt");
