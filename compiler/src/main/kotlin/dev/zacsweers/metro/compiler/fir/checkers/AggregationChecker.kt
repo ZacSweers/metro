@@ -313,8 +313,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           return false
         } else if (supertypesExcludingAny.size != 1) {
           // Multiple supertypes - check for @DefaultBinding on supertypes
-          val result = resolveDefaultBindingFromSupertypes(session, supertypesExcludingAny)
-          when (result) {
+          when (val result = resolveDefaultBindingFromSupertypes(session, supertypesExcludingAny)) {
             is DefaultBindingResult.Ambiguous -> {
               reporter.reportOn(
                 annotation.source,
