@@ -2998,7 +2998,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           source(
             """
             @DefaultBinding<BaseFactory<*>>
-            interface BaseFactory<T : BaseFactory<*>> : RawFactory
+            interface BaseFactory<T : BaseFactory<T>> : RawFactory
             interface RawFactory
             """
           )
@@ -3008,7 +3008,7 @@ class ICTests : BaseIncrementalCompilationTest() {
             """
             @ContributesBinding(Unit::class)
             @Inject
-            class Impl : BaseFactory<Impl>, Other
+            class Impl : BaseFactory<Impl>
             """
           )
 
@@ -3017,7 +3017,7 @@ class ICTests : BaseIncrementalCompilationTest() {
             """
             @DependencyGraph(Unit::class)
             interface AppGraph {
-              val base: Base
+              val base: BaseFactory<*>
             }
             """
           )
@@ -3035,7 +3035,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       fixture.baseInterface,
       """
       @DefaultBinding<RawFactory>
-      interface BaseFactory<T : BaseFactory<*>> : RawFactory
+      interface BaseFactory<T : BaseFactory<T>> : RawFactory
       interface RawFactory
       """
         .trimIndent(),
