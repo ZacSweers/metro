@@ -6,6 +6,7 @@ import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.classId
@@ -24,7 +25,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
  */
 internal class IrBoundTypeResolver(
   private val pluginContext: IrPluginContext,
-  private val defaultBindingLookup: (IrClass) -> IrType?,
+  private val defaultBindingLookup: (IrDeclarationWithName, IrClass) -> IrType?,
 ) {
 
   private val implicitBoundTypeCache = mutableMapOf<ClassId, Optional<IrType>>()
@@ -79,17 +80,19 @@ internal class IrBoundTypeResolver(
             .associate { it }
         val result =
           supertypesExcludingAny.keys.singleOrNull()
-            ?: resolveDefaultBinding(supertypesExcludingAny)
+            ?: resolveDefaultBinding(clazz, supertypesExcludingAny)
         Optional.ofNullable(result)
       }
       .getOrNull()
   }
 
   /** Finds the first supertype with a `@DefaultBinding`. Ambiguity is checked in FIR. */
-  private fun resolveDefaultBinding(supertypes: Map<IrType, IrClass>): IrType? {
-    val lookup = defaultBindingLookup
+  private fun resolveDefaultBinding(
+    caller: IrDeclarationWithName,
+    supertypes: Map<IrType, IrClass>,
+  ): IrType? {
     for ((_, supertypeClass) in supertypes) {
-      val bindingType = lookup(supertypeClass) ?: continue
+      val bindingType = defaultBindingLookup(caller, supertypeClass) ?: continue
       return bindingType
     }
     return null
