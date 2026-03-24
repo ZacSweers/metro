@@ -48,6 +48,7 @@ annotation class ViewModelKey(val value: KClass<out ViewModel> = Nothing::class)
 - **[IR]** Ensure stable sort of output `SuspiciousUnusedMultibinding` locations.
 - **[IR]** Don't skip dynamic keys inherited from parent graphs when working with dynamic graphs.
 - **[IR]** Propagate `@OptionalBinding` annotations to generated static factory creators if present.
+- **[IR]** Preserve nullability when remapping parameters with generic layers.
 - **[Runtime]** `IntoSet` and `IntoMap` no longer have a `Target` of `AnnotationTarget.CLASS`
 
 ### Changes

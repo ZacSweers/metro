@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 public class FirDumpTestGenerated extends AbstractFirDumpTest {
   @Test
   public void testAllFilesPresentInFir() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!240\\b)\\w+\\.kt(s)?$"), true);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir"), Pattern.compile("^(.+)\\.kt$"), null, true);
   }
 
   @Test
@@ -57,7 +57,7 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
   public class Aggregation {
     @Test
     public void testAllFilesPresentInAggregation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/aggregation"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!240\\b)\\w+\\.kt(s)?$"), true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -115,7 +115,7 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
   public class Private_provides_status_transformation {
     @Test
     public void testAllFilesPresentInPrivate_provides_status_transformation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!240\\b)\\w+\\.kt(s)?$"), true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
