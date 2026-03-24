@@ -1229,6 +1229,11 @@ internal fun <T : Any> FirAnnotation.argumentAsOrNull(
     }
   }
 
+  // When argumentMapping is populated, it contains all resolved arguments and is the source of
+  // truth. Since our name was not found in it above, the argument is absent. The positional
+  // fallback below is only needed for external/compiled declarations where mapping isn't available.
+  if (argumentMapping.mapping.isNotEmpty()) return null
+
   // Fallback: resolve constructor params to map positional args back to names
   val classSymbol = toAnnotationClassLikeSymbol(session) as? FirRegularClassSymbol
   val ctorParams = classSymbol?.primaryConstructorIfAny(session)?.valueParameterSymbols

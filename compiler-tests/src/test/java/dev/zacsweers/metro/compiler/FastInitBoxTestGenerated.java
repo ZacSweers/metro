@@ -115,6 +115,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ExcludeContributedGraphExtension.kt")
+    public void testExcludeContributedGraphExtension() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ExcludeContributedGraphExtension.kt");
+    }
+
+    @Test
     @TestMetadata("ExcludedBindingContainerReplacesEffectIgnored.kt")
     public void testExcludedBindingContainerReplacesEffectIgnored() {
       runTest("compiler-tests/src/test/data/box/aggregation/ExcludedBindingContainerReplacesEffectIgnored.kt");
@@ -235,6 +241,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("ContributedGraphBindingContainerExclusions.kt")
       public void testContributedGraphBindingContainerExclusions() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphBindingContainerExclusions.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphExtensionGetsExcluded.kt")
+      public void testContributedGraphExtensionGetsExcluded() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphExtensionGetsExcluded.kt");
       }
 
       @Test
