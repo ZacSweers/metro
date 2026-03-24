@@ -12,15 +12,18 @@ import com.intellij.driver.sdk.getHighlights
 import com.intellij.driver.sdk.openFile
 import com.intellij.driver.sdk.singleProject
 import com.intellij.driver.sdk.waitForIndicators
+import com.intellij.ide.starter.community.IdeByLinkDownloader
 import com.intellij.ide.starter.community.model.BuildType
 import com.intellij.ide.starter.driver.engine.runIdeWithDriver
 import com.intellij.ide.starter.ide.IdeProductProvider
+import com.intellij.ide.starter.ide.installer.StandardInstaller
 import com.intellij.ide.starter.junit5.hyphenateWithClass
 import com.intellij.ide.starter.models.TestCase
 import com.intellij.ide.starter.project.LocalProjectInfo
 import com.intellij.ide.starter.report.ErrorReporterToCI
 import com.intellij.ide.starter.runner.CurrentTestMethod
 import com.intellij.ide.starter.runner.Starter
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
@@ -119,20 +122,32 @@ class MetroIdeSmokeTest {
   @ParameterizedTest
   @MethodSource("ideVersions")
   fun check(product: String, version: String, extra: String) {
-    // IU uses marketing version (e.g., "2025.3.2") with a build type (release, rc, eap)
+    // IU stable uses marketing version (e.g., "2025.3.2")
+    // IU prereleases use build number (e.g., "261.22158.182") + type (rc, eap)
     // AS uses build number (e.g., "2024.2.1.11") directly
     // NOTE: Run ./download-ides.sh first
     val ideProduct =
       when (product) {
         "IU" -> {
-          // IDE Starter has no BuildType.RC, use EAP for both rc and eap prereleases
-          val buildType =
-            when (extra) {
-              "rc",
-              "eap" -> BuildType.EAP.type
-              else -> BuildType.RELEASE.type
-            }
-          IdeProductProvider.IU.copy(version = version, buildType = buildType)
+          if (extra == "rc" || extra == "eap") {
+            // Prereleases: version field is the build number. Use IdeByLinkDownloader
+            // to bypass PublicIdeDownloader's API query (no BuildType.RC exists, and
+            // the file is already pre-downloaded by download-ides.sh).
+            val buildNumber = version
+            IdeProductProvider.IU.copy(
+              buildNumber = buildNumber,
+              buildType = extra,
+              // downloadURI is required by IdeByLinkDownloader but won't be used since
+              // the installer file already exists at the expected path.
+              downloadURI =
+                URI(
+                  "https://download.jetbrains.com/idea/idea-$buildNumber${IdeProductProvider.IU.installerFileExt}"
+                ),
+              getInstaller = { StandardInstaller(IdeByLinkDownloader) },
+            )
+          } else {
+            IdeProductProvider.IU.copy(version = version, buildType = BuildType.RELEASE.type)
+          }
         }
         "AS" -> IdeProductProvider.AI.copy(buildNumber = version)
         else -> error("Unknown product: $product")
