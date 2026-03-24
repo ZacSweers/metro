@@ -67,6 +67,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("DefaultBindingMirror.kt")
+    public void testDefaultBindingMirror() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/DefaultBindingMirror.kt");
+    }
+
+    @Test
     @TestMetadata("ImplicitClassKeyPopulatedOnCopy.kt")
     public void testImplicitClassKeyPopulatedOnCopy() {
       runTest("compiler-tests/src/test/data/dump/ir/aggregation/ImplicitClassKeyPopulatedOnCopy.kt");
