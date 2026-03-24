@@ -1650,6 +1650,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("PreserveNullabilityForGenericsLayering.kt")
+      public void testPreserveNullabilityForGenericsLayering() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/PreserveNullabilityForGenericsLayering.kt");
+      }
+
+      @Test
       @TestMetadata("PreserveNullabilityInRemapping.kt")
       public void testPreserveNullabilityInRemapping() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/PreserveNullabilityInRemapping.kt");
