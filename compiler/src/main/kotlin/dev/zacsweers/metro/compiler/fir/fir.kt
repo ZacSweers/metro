@@ -1639,8 +1639,8 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): C
     if (annotation !is FirAnnotationCall) return null
     val typeArg = annotation.typeArguments.firstOrNull() ?: return null
     return when (typeArg) {
-      is FirPlaceholderProjection -> null // TODO what?
-      is FirStarProjection -> null // TODO report in checker
+      is FirPlaceholderProjection,
+      is FirStarProjection -> null // Checked separately
       is FirTypeProjectionWithVariance -> typeArg.typeRef.coneTypeOrNull
     }
   }
