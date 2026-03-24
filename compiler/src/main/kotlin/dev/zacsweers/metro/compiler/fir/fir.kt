@@ -1633,6 +1633,7 @@ internal fun ConeClassLikeLookupTag.toSymbolCompat(s: FirSession): FirClassLikeS
  *
  * Returns the [ConeKotlinType] of the default binding, or null if none found.
  */
+// TODO lookup tracking?
 internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): ConeKotlinType? {
   // Try to read from @DefaultBinding annotation directly (same-module)
   getAnnotationByClassId(session.classIds.defaultBindingAnnotation, session)?.let { annotation ->
