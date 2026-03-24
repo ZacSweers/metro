@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
+import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
@@ -110,12 +111,13 @@ internal class DependencyGraphTransformer(
   private val forkJoinPool: ForkJoinPool?,
   private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
+  private val boundTypeResolver: IrBoundTypeResolver,
 ) : IrMetroContext by context, TraceScope by traceScope {
 
   private val bindingLookupCache = BindingLookupCache()
 
   private val contributionMerger: IrContributionMerger =
-    IrContributionMerger(this, contributionData)
+    IrContributionMerger(this, contributionData, boundTypeResolver)
 
   private val graphNodes =
     GraphNodes(this, metroDeclarations, bindingContainerResolver, contributionMerger)
@@ -238,6 +240,7 @@ internal class DependencyGraphTransformer(
             contributionData,
             parentContextReader,
             bindingLookupCache,
+            boundTypeResolver,
           )
           .generate()
       }
