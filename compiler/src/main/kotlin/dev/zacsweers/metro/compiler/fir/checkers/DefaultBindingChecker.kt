@@ -5,12 +5,14 @@ package dev.zacsweers.metro.compiler.fir.checkers
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.utils.isFinal
 import org.jetbrains.kotlin.fir.types.FirPlaceholderProjection
 import org.jetbrains.kotlin.fir.types.FirStarProjection
 
@@ -25,6 +27,19 @@ internal object DefaultBindingChecker : FirClassChecker(MppCheckerKind.Common) {
       declaration
         .annotationsIn(session, setOf(session.classIds.defaultBindingAnnotation))
         .firstOrNull() ?: return
+
+    // Must be an interface or abstract class (i.e. subclassable)
+    val isSubclassable =
+      declaration.classKind == ClassKind.INTERFACE ||
+        (declaration.classKind == ClassKind.CLASS && !declaration.isFinal)
+    if (!isSubclassable) {
+      reporter.reportOn(
+        annotation.source ?: declaration.source,
+        MetroDiagnostics.DEFAULT_BINDING_ERROR,
+        "`@DefaultBinding` is only applicable to interfaces and abstract classes.",
+      )
+      return
+    }
 
     val typeArg = annotation.typeArguments.firstOrNull()
     if (typeArg == null) {
@@ -51,7 +66,6 @@ internal object DefaultBindingChecker : FirClassChecker(MppCheckerKind.Common) {
           "`@DefaultBinding` type argument must not be a placeholder (`_`).",
         )
       }
-
       else -> {
         // No issues
       }

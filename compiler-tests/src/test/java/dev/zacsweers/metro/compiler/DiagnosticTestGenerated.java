@@ -55,6 +55,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DefaultBinding_MustBeSubclassable.kt")
+    public void testDefaultBinding_MustBeSubclassable() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_MustBeSubclassable.kt");
+    }
+
+    @Test
     @TestMetadata("InternalContributionMissingHint.kt")
     public void testInternalContributionMissingHint() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalContributionMissingHint.kt");
