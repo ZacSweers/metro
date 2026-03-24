@@ -1652,7 +1652,8 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): C
 
   // Read the return type of the defaultBinding() function
   val holderFunction =
-    mirrorSymbol.declaredFunctions(session).firstOrNull { it.name == Symbols.Names.defaultBinding }
-      ?: return null
+    mirrorSymbol.declaredFunctions(session).firstOrNull {
+      it.name == Symbols.Names.defaultBindingFunction
+    } ?: return null
   return holderFunction.resolvedReturnType
 }
