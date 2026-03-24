@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -14,7 +15,6 @@ import java.util.EnumSet
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
-import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -98,7 +98,7 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
     }
 
     // Check if this class has @DefaultBinding annotation
-    if (classSymbol.hasAnnotation(session.classIds.defaultBindingAnnotation, session)) {
+    if (classSymbol.isAnnotatedWithAny(session, setOf(session.classIds.defaultBindingAnnotation))) {
       mirrorClassesToGenerate +=
         classSymbol.classId.createNestedClassId(Symbols.Names.DefaultBindingMirrorClass)
       result += Symbols.Names.DefaultBindingMirrorClass
