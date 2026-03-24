@@ -311,19 +311,24 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
           )
           return false
-        } else if (supertypesExcludingAny.size != 1) {
-          // Multiple supertypes - check for @DefaultBinding on supertypes
-          when (val result = resolveDefaultBindingFromSupertypes(session, supertypesExcludingAny)) {
-            is DefaultBindingResult.Ambiguous -> {
-              reporter.reportOn(
-                annotation.source,
-                MetroDiagnostics.AGGREGATION_ERROR,
-                "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `binding` type but ambiguously has multiple supertypes that declare a `@DefaultBinding` (${result.types.joinToString { it.classId!!.asFqNameString() }}). You must define an explicit bound type in this scenario.",
-              )
-              return false
-            }
-            is DefaultBindingResult.Found -> FirTypeKey(result.type, classQualifier)
-            DefaultBindingResult.None -> {
+        }
+
+        // Check @DefaultBinding first — it takes priority over implicit single-supertype
+        // resolution (e.g., @DefaultBinding<Factory<*>> on Factory<T> binds as Factory<*>).
+        when (val result = resolveDefaultBindingFromSupertypes(session, supertypesExcludingAny)) {
+          is DefaultBindingResult.Ambiguous -> {
+            reporter.reportOn(
+              annotation.source,
+              MetroDiagnostics.AGGREGATION_ERROR,
+              "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `binding` type but ambiguously has multiple supertypes that declare a `@DefaultBinding` (${result.types.joinToString { it.classId!!.asFqNameString() }}). You must define an explicit bound type in this scenario.",
+            )
+            return false
+          }
+          is DefaultBindingResult.Found -> FirTypeKey(result.type, classQualifier)
+          DefaultBindingResult.None -> {
+            if (supertypesExcludingAny.size == 1) {
+              FirTypeKey(supertypesExcludingAny[0].coneType, classQualifier)
+            } else {
               reporter.reportOn(
                 annotation.source,
                 MetroDiagnostics.AGGREGATION_ERROR,
@@ -332,9 +337,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
               return false
             }
           }
-        } else {
-          val implicitBindingType = supertypesExcludingAny[0]
-          FirTypeKey(implicitBindingType.coneType, classQualifier)
         }
       }
 

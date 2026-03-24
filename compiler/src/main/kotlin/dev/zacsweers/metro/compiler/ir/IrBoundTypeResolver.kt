@@ -78,9 +78,11 @@ internal class IrBoundTypeResolver(
               }
             }
             .associate { it }
+        // Check @DefaultBinding first — it takes priority over implicit single-supertype
+        // resolution and establishes IC links. Fall back to single supertype if no default found.
         val result =
-          supertypesExcludingAny.keys.singleOrNull()
-            ?: resolveDefaultBinding(clazz, supertypesExcludingAny)
+          resolveDefaultBinding(clazz, supertypesExcludingAny)
+            ?: supertypesExcludingAny.keys.singleOrNull()
         Optional.ofNullable(result)
       }
       .getOrNull()
