@@ -12,7 +12,6 @@ import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
-import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -98,19 +97,18 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
       return it
     }
 
-    val bindingType = defaultBindingAnnotation.typeArguments.single() // Checked in FIR
+    val bindingType = defaultBindingAnnotation.typeArguments.single()!! // Checked in FIR
 
     checkNotLocked()
 
     // Generate the defaultBinding() function in the mirror class
     return mirrorClass
-      .addFunction {
-        name = Symbols.Names.defaultBindingFunction
-        visibility = DescriptorVisibilities.PUBLIC
-        returnType = bindingType
-        origin = Origins.Default
-        modality = Modality.ABSTRACT
-      }
+      .addFunction(
+        Symbols.Names.defaultBindingFunction.asString(),
+        returnType = bindingType,
+        modality = Modality.ABSTRACT,
+        origin = Origins.Default,
+      )
       .apply {
         // Register as metadata visible
         metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
