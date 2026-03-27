@@ -2120,8 +2120,8 @@ internal fun IrType.requireSimpleType(
   // This can happen if an upstream factory exposes a type that is not visible in the public API
   if (hasErrorTypes()) {
     val isExternalStub =
-      declaration?.origin == IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB ||
-        declaration?.origin == IrDeclarationOrigin.IR_EXTERNAL_JAVA_DECLARATION_STUB
+      declaration?.origin == Origins.FirstParty.IR_EXTERNAL_DECLARATION_STUB ||
+        declaration?.origin == Origins.FirstParty.IR_EXTERNAL_JAVA_DECLARATION_STUB
     val message =
       buildString {
           appendLine(

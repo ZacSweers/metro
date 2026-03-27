@@ -4,7 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import dev.zacsweers.metro.compiler.Origins
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.name.CallableId
@@ -30,7 +30,7 @@ internal val MetroSimpleFunction.isAccessorCandidate: Boolean
   get() {
     return ir.visibility.isVisibleOutside() &&
       ir.regularParameters.isEmpty() &&
-      ir.origin != IrDeclarationOrigin.GENERATED_DATA_CLASS_MEMBER &&
+      ir.origin != Origins.FirstParty.GENERATED_DATA_CLASS_MEMBER &&
       !annotations.isBinds &&
       !annotations.isProvides &&
       !annotations.isMultibinds
