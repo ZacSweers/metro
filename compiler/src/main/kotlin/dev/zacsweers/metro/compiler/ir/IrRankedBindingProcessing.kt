@@ -35,15 +35,22 @@ internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundT
   internal fun processRankBasedReplacements(
     allScopes: Set<ClassId>,
     contributions: Map<ClassId, List<IrType>>,
+    bindingContainers: Map<ClassId, IrClass>,
   ): Set<ClassId> {
     // Get the parent classes of each MetroContribution hint.
     // Use parentAsClass to navigate the IR tree directly, which preserves the Fir2IrLazyClass
     // type for external classes (needed for the FIR annotation path).
-    val irContributions =
-      contributions.values
-        .flatten()
-        .map { it.rawType().parentAsClass }
-        .distinctBy { it.classIdOrFail }
+    // Also include binding containers which may have @Origin pointing to contributing classes.
+    val contributionParents = contributions.values.flatten().map { it.rawType().parentAsClass }
+
+    // For binding containers, resolve @Origin to find the contributing class
+    val containerOrigins =
+      bindingContainers.values.mapNotNull { container ->
+        val originClassId = container.originClassId() ?: return@mapNotNull null
+        context.referenceClass(originClassId)?.owner
+      }
+
+    val irContributions = (contributionParents + containerOrigins).distinctBy { it.classIdOrFail }
 
     val rankedBindings = irContributions.flatMap { contributingType ->
       contributingType.repeatableAnnotationsIn(

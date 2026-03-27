@@ -19,6 +19,10 @@ interface BaseFactory<T : BaseFactory<T>>
 class HomeFactory(...) : BaseFactory<HomeFactory>
 ```
 
+### Fixes
+
+- **[IR]** Consider Anvil's `rank` parameter when processing contributed binding containers.
+
 0.12.0
 ------
 

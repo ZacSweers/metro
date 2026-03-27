@@ -332,9 +332,27 @@ internal class IrContributionMerger(
         trace("Process ranked replacements") {
           val unmatchedRankReplacements = mutableSetOf<ClassId>()
           val rankReplacements =
-            rankedBindingProcessing.processRankBasedReplacements(allScopes, mutableAllContributions)
+            rankedBindingProcessing.processRankBasedReplacements(
+              allScopes,
+              mutableAllContributions,
+              mutableContributedBindingContainers,
+            )
+
           for (replacedClassId in rankReplacements) {
-            if (mutableAllContributions.remove(replacedClassId) == null) {
+            val removedContribution = mutableAllContributions.remove(replacedClassId)
+            val removedContainer = mutableContributedBindingContainers.remove(replacedClassId)
+
+            // Also remove contributions that have @Origin pointing to the replaced class
+            originToContributions[replacedClassId]?.forEach { contributionId ->
+              mutableAllContributions.remove(contributionId)
+              mutableContributedBindingContainers.remove(contributionId)
+            }
+
+            val wasNotMatched =
+              removedContribution == null &&
+                removedContainer == null &&
+                originToContributions[replacedClassId] == null
+            if (wasNotMatched) {
               unmatchedRankReplacements += replacedClassId
             }
           }
