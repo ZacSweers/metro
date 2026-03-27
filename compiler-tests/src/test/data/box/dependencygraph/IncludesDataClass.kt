@@ -1,32 +1,22 @@
-// Repro for a bug where using @Includes on an injected class is fine, but not injected data class.
-@Inject
+// Repro for a bug where using @Includes on a class is fine, but not a data class.
 data class ExternalDependencies(
   val int: Int,
 )
 
 @DependencyGraph
 interface AppGraph {
-  val dependencies: ExternalDependencies
-
-  @Provides
-  fun provideInt(): Int = 3
-}
-
-@DependencyGraph
-interface FeatureGraph {
   val int: Int
 
   @DependencyGraph.Factory
   fun interface Factory {
     fun create(
       @Includes dependencies: ExternalDependencies
-    ): FeatureGraph
+    ): AppGraph
   }
 }
 
 fun box(): String {
-  val appGraph = createGraph<AppGraph>()
-  val featureGraph = createGraphFactory<FeatureGraph.Factory>().create(appGraph.dependencies)
-  assertEquals(3, featureGraph.int)
+  val appGraph = createGraphFactory<AppGraph.Factory>().create(ExternalDependencies(3))
+  assertEquals(3, appGraph.int)
   return "OK"
 }
