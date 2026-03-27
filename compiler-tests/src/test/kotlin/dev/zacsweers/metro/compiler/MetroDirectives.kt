@@ -92,6 +92,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val ENABLE_FUNCTION_PROVIDERS by directive("Enable () -> T as a provider type.")
   val ENABLE_KCLASS_TO_CLASS_INTEROP by
     directive("Enable KClass/Class interop for multibinding map keys.")
+  val GENERATE_CONTRIBUTION_PROVIDERS by
+    directive(
+      "Generate top-level contribution provider classes with @Provides functions instead of nested @Binds interfaces."
+    )
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
