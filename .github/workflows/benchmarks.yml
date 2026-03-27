@@ -89,7 +89,7 @@ jobs:
   # Shared job to validate inputs and build modes string
   validate:
     name: "Validate inputs"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       modes: ${{ steps.modes.outputs.modes }}
       is_single_ref: ${{ steps.check_mode.outputs.is_single_ref }}
