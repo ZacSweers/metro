@@ -19,6 +19,10 @@ interface BaseFactory<T : BaseFactory<T>>
 class HomeFactory(...) : BaseFactory<HomeFactory>
 ```
 
+### Fixes
+
+- **[IR]** Excludes generated data class members from accessor candidates
+
 0.12.0
 ------
 
