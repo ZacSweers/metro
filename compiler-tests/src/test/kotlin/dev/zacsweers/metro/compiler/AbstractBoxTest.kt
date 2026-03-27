@@ -75,3 +75,11 @@ open class AbstractFastInitBoxTest : AbstractBoxTest() {
     with(builder) { defaultDirectives { MetroDirectives.ENABLE_SWITCHING_PROVIDERS.with(true) } }
   }
 }
+
+open class AbstractContributionProvidersBoxTest : AbstractBoxTest() {
+  override fun configure(builder: TestConfigurationBuilder) {
+    super.configure(builder)
+
+    with(builder) { defaultDirectives { +MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS } }
+  }
+}
