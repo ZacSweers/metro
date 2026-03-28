@@ -320,6 +320,7 @@ internal fun generateMetadataVisibleMirrorFunction(
   target: IrFunction?,
   backingField: IrField?,
   annotations: MetroAnnotations<IrAnnotation>,
+  registerAsMetadataVisible: Boolean = true,
 ): IrSimpleFunction {
   val returnType =
     target?.returnType
@@ -381,7 +382,9 @@ internal fun generateMetadataVisibleMirrorFunction(
         // this for
         body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
       }
-  context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
+  if (registerAsMetadataVisible) {
+    context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
+  }
   return function
 }
 
