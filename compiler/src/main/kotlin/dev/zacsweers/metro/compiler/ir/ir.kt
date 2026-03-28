@@ -528,6 +528,7 @@ internal fun IrClass.declaredCallableMembers(
 context(context: IrMetroContext)
 internal fun IrClass.allCallableMembers(
   excludeAnyFunctions: Boolean = true,
+  excludeGeneratedDataClassMembers: Boolean = true,
   excludeInheritedMembers: Boolean = false,
   excludeCompanionObjectMembers: Boolean = false,
   functionFilter: (IrSimpleFunction) -> Boolean = { true },
@@ -536,6 +537,9 @@ internal fun IrClass.allCallableMembers(
   return functions
     .letIf(excludeAnyFunctions) {
       it.filterNot { function -> function.isInheritedFromAny(context.irBuiltIns) }
+    }
+    .letIf(excludeGeneratedDataClassMembers) {
+      it.filterNot { function -> function.origin == Origins.FirstParty.GENERATED_DATA_CLASS_MEMBER }
     }
     .filter(functionFilter)
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
@@ -548,8 +552,9 @@ internal fun IrClass.allCallableMembers(
         companionObject()?.let { companionObject ->
           asFunctions +
             companionObject.allCallableMembers(
-              excludeAnyFunctions,
-              excludeInheritedMembers,
+              excludeAnyFunctions = excludeAnyFunctions,
+              excludeGeneratedDataClassMembers = excludeGeneratedDataClassMembers,
+              excludeInheritedMembers = excludeInheritedMembers,
               excludeCompanionObjectMembers = false,
             )
         } ?: asFunctions
