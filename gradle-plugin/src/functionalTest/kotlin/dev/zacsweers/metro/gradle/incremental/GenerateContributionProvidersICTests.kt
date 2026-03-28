@@ -4,10 +4,13 @@ package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.gradle.Dependency.Companion.implementation
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.gradle.FileSnapshot
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.invokeMain
+import dev.zacsweers.metro.gradle.snapshot
 import dev.zacsweers.metro.gradle.source
+import java.io.File
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Test
 
@@ -117,14 +120,32 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    // Second build: lib should recompile, but root should be UP_TO_DATE
-    // because Impl is internal and the contribution provider hides it
+    // Snapshot root project class file identity before the second build.
+    // We track both the file key (inode) and last modified time to detect if files were
+    // deleted and recreated (same content/timestamp but different inode).
+    val rootClassesDir = project.rootDir.resolve("build/classes/kotlin/main")
+    val classSnapshotsBefore = rootClassesDir.classFileSnapshot()
+
+    // Second build: lib should recompile. The Kotlin compiler's IC should determine
+    // that no root project source files need recompilation (only internal class changed).
+    // Gradle may still run the task (classpath snapshot path changed), but no actual
+    // source recompilation should happen.
     val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":lib:compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.UP_TO_DATE)
+
+    // Verify no root project class files were recompiled by checking inode + timestamp
+    val classSnapshotsAfter = rootClassesDir.classFileSnapshot()
+    assertThat(classSnapshotsAfter).isEqualTo(classSnapshotsBefore)
 
     // Verify second build still runs correctly with the modified impl
     val secondOutput = project.invokeMain<String>()
     assertThat(secondOutput).isEqualTo("modified42")
+  }
+
+  private fun File.classFileSnapshot(): Map<String, FileSnapshot> {
+    val root = this
+    return walkTopDown()
+      .filter { it.isFile && it.extension == "class" }
+      .associate { it.relativeTo(root).path to it.toPath().snapshot }
   }
 }
