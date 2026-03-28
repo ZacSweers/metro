@@ -19,6 +19,10 @@ interface BaseFactory<T : BaseFactory<T>>
 class HomeFactory(...) : BaseFactory<HomeFactory>
 ```
 
+### Changes
+
+- Update shaded `androidx.tracing` to 2.0.0-alpha04.
+
 0.12.0
 ------
 
