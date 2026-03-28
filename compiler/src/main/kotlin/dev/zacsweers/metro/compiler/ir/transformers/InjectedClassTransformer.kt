@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
+import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
@@ -90,13 +91,19 @@ internal class InjectedClassTransformer(
 
   fun visitClass(declaration: IrClass): Boolean {
     val injectableConstructor =
-      declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
-    return if (injectableConstructor != null) {
-      val _ = getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
-      true
-    } else {
-      false
+      declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false) ?: return false
+
+    // Skip factory generation when generateContributionProviders is enabled and the class
+    // has binding contributions — the contribution provider handles construction.
+    if (
+      options.generateContributionProviders &&
+        declaration.annotationsIn(metroSymbols.classIds.allContributesAnnotations).any()
+    ) {
+      return false
     }
+
+    val _ = getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
+    return true
   }
 
   fun getOrGenerateFactory(

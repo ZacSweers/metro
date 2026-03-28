@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.allSessions
+import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
@@ -432,7 +433,17 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       val declaredInjectedMembers = injectedClass.populateDeclaredMemberInjections(session)
 
       val classesToGenerate = mutableSetOf<Name>()
-      if (injectedClass.isConstructorInjected) {
+
+      // Skip factory generation when generateContributionProviders is enabled and the class
+      // has binding contributions — the contribution provider generates its own provides function
+      // and factory. The inject factory would be redundant and leak internal types.
+      val skipFactory =
+        session.metroFirBuiltIns.options.generateContributionProviders &&
+          classSymbol.resolvedCompilerAnnotationsWithClassIds
+            .annotationsIn(session, session.classIds.allContributesAnnotations)
+            .any()
+
+      if (injectedClass.isConstructorInjected && !skipFactory) {
         val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroFactory)
         injectFactoryClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
