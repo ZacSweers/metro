@@ -1,6 +1,7 @@
 // GENERATE_CONTRIBUTION_PROVIDERS
 // GENERATE_CONTRIBUTION_HINTS: true
 // GENERATE_CONTRIBUTION_HINTS_IN_FIR
+// COMPILER_VERSION: 2.3.20
 
 // Verify the synthetic scoped provider pattern for multiple bindings from a scoped class.
 
