@@ -5,7 +5,27 @@
 @SingleIn(scope = AppScope::class)
 @Inject
 internal class Impl : Bar, Foo {
-  constructor() /* primary */ {
+  val string: String
+    field = string
+    get
+
+  val longProvider: Provider<Long>
+    field = longProvider
+    get
+
+  val longFun: Function0<Long>
+    field = longFun
+    get
+
+  val lazyBool: Lazy<Boolean>
+    field = lazyBool
+    get
+
+  val providerOfLazyDouble: Provider<Lazy<Double>>
+    field = providerOfLazyDouble
+    get
+
+  constructor(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -100,28 +120,41 @@ abstract class ImplContributions {
 
     }
 
-    object ProvideScopedInstanceImplMetroFactory : Factory<Any?> {
-      private constructor() /* primary */ {
+    class ProvideScopedInstanceImplMetroFactory : Factory<Any?> {
+      private /* final field */ val string: Provider<String> = string
+      private /* final field */ val longProvider: Provider<Long> = longProvider
+      private /* final field */ val lazyBool: Provider<Boolean> = lazyBool
+      private /* final field */ val providerOfLazyDouble: Provider<Double> = providerOfLazyDouble
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Any?> {
+          return ProvideScopedInstanceImplMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
+        }
+
+        fun provideScopedInstanceImpl(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
+          return ToAppScope.provideScopedInstanceImpl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
+        }
+
+      }
+
+      private constructor(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
       }
 
-      fun create(): Factory<Any?> {
-        return ProvideScopedInstanceImplMetroFactory
-      }
-
-      fun provideScopedInstanceImpl(): Any? {
-        return ToAppScope.provideScopedInstanceImpl()
-      }
-
       override operator fun invoke(): Any? {
-        return ProvideScopedInstanceImplMetroFactory.provideScopedInstanceImpl()
+        return Companion.provideScopedInstanceImpl(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = Companion.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = Companion.create<Double>(provider = <this>.#providerOfLazyDouble))
       }
 
       @SingleIn(scope = AppScope::class)
       @Named(name = "metro_scoped_Impl")
-      fun mirrorFunction(): Any? {
+      fun mirrorFunction(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
         return error(message = "Never called")
       }
 
@@ -146,8 +179,8 @@ abstract class ImplContributions {
     @Provides
     @SingleIn(scope = AppScope::class)
     @Named(name = "metro_scoped_Impl")
-    fun provideScopedInstanceImpl(): Any? {
-      return Impl()
+    fun provideScopedInstanceImpl(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
+      return Impl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
     }
 
   }
@@ -167,3 +200,4 @@ package metro.hints
 fun AppScope(contributed: ToAppScope) {
   return error(message = "Never called")
 }
+

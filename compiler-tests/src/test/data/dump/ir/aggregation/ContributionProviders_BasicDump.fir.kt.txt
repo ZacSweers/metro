@@ -3,11 +3,27 @@
 @ContributesBinding(scope = AppScope::class)
 @Inject
 internal class Impl : Base {
-  val input: String
-    field = input
+  val string: String
+    field = string
     get
 
-  constructor(input: String) /* primary */ {
+  val longProvider: Provider<Long>
+    field = longProvider
+    get
+
+  val longFun: Function0<Long>
+    field = longFun
+    get
+
+  val lazyBool: Lazy<Boolean>
+    field = lazyBool
+    get
+
+  val providerOfLazyDouble: Provider<Lazy<Double>>
+    field = providerOfLazyDouble
+    get
+
+  constructor(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -30,7 +46,10 @@ abstract class ImplContributions {
   @ContributesTo(scope = AppScope::class)
   object ToAppScope {
     class ProvideImplAsBaseMetroFactory : Factory<Base> {
-      private /* final field */ val input: Provider<String> = input
+      private /* final field */ val string: Provider<String> = string
+      private /* final field */ val longProvider: Provider<Long> = longProvider
+      private /* final field */ val lazyBool: Provider<Boolean> = lazyBool
+      private /* final field */ val providerOfLazyDouble: Provider<Double> = providerOfLazyDouble
       companion object Companion {
         constructor() /* primary */ {
           super/*Any*/()
@@ -38,27 +57,27 @@ abstract class ImplContributions {
 
         }
 
-        fun create(input: Provider<String>): Factory<Base> {
-          return ProvideImplAsBaseMetroFactory(input = input)
+        fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Base> {
+          return ProvideImplAsBaseMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
-        fun provideImplAsBase(input: String): Base {
-          return ToAppScope.provideImplAsBase(input = input)
+        fun provideImplAsBase(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Base {
+          return ToAppScope.provideImplAsBase(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
       }
 
-      private constructor(input: Provider<String>) /* primary */ {
+      private constructor(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
       }
 
       override operator fun invoke(): Base {
-        return Companion.provideImplAsBase(input = <this>.#input.invoke())
+        return Companion.provideImplAsBase(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = Companion.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = Companion.create<Double>(provider = <this>.#providerOfLazyDouble))
       }
 
-      fun mirrorFunction(input: String): Base {
+      fun mirrorFunction(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Base {
         return error(message = "Never called")
       }
 
@@ -71,8 +90,8 @@ abstract class ImplContributions {
     }
 
     @Provides
-    fun provideImplAsBase(input: String): Base {
-      return Impl(input = input)
+    fun provideImplAsBase(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Base {
+      return Impl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
     }
 
   }
@@ -92,3 +111,4 @@ package metro.hints
 fun AppScope(contributed: ToAppScope) {
   return error(message = "Never called")
 }
+
