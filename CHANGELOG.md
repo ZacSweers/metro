@@ -6,6 +6,28 @@ Changelog
 
 ### New
 
+- New `generateContributionProviders` API (Kotlin 2.3.20+) to optimize behavior with contributed APIs.
+
+Up to now, Metro's aggregation APIs (i.e. `@Contributes*` binding annotations) have worked similar to Anvil, where the ultimately just generate `@Binds` declarations as simple shorthands for the consuming graphs. This comes with the caveat that the injected class _must_ be publicly visible if it's used outside of that module.
+
+Now, if you enable the new `generateContributionProviders` feature, Metro will instead generate top-level `@Provides` declarations that mirror the injected class's inputs but only return its _bound type_. This means the annotated class can remain `internal`, which both helps encapsulation and incremental compilation.
+
+```
+interface Base
+
+@ContributesBinding(AppScope::class)
+@Inject
+internal class Impl : Base
+
+// Works across modules!
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  val base: Base
+}
+```
+
+The tradeoff is that `Impl` is no longer available directly on the graph.
+
 #### [**[MEEP-1776]**](https://github.com/ZacSweers/metro/discussions/1776) `@DefaultBinding`
 
 This release introduces a new `@DefaultBinding` annotation that allows for setting a default binding on _supertypes_ of contributed classes. This is useful for common base classes with generics that would otherwise require repetitive (or error-prone) explicit `binding<T>()` declarations in subtypes.
