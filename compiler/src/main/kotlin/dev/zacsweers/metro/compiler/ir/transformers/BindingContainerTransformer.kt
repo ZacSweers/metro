@@ -908,6 +908,14 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         registerAsMetadataVisible = false,
       )
 
+    // Add creator functions to the stub so IrMetroFactory can find them
+    generateStubCreatorFunctions(
+      factoryClass = stub,
+      callableName = entry.callable_name,
+      returnType = providesFunction.returnType,
+      sourceFunction = providesFunction,
+    )
+
     val callableId = CallableId(container.classIdOrFail, Name.identifier(entry.callable_name))
     val callableMetadata =
       IrCallableMetadata(
