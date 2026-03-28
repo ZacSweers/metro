@@ -1,0 +1,169 @@
+// FILE: ContributionProviders_ScopedMultipleBindings.kt
+
+@ContributesBinding(scope = AppScope::class, binding = binding<Foo>())
+@ContributesBinding(scope = AppScope::class, binding = binding<Bar>())
+@SingleIn(scope = AppScope::class)
+@Inject
+internal class Impl : Bar, Foo {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+interface Bar {
+}
+
+interface Foo {
+}
+
+// FILE: ImplContributions.kt
+
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class ImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = Impl::class)
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    class ProvideImplAsBarMetroFactory : Factory<Bar> {
+      private /* final field */ val instance: Provider<Any?> = instance
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Bar> {
+          return ProvideImplAsBarMetroFactory(instance = instance)
+        }
+
+        fun provideImplAsBar(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
+          return ToAppScope.provideImplAsBar(instance = instance)
+        }
+
+      }
+
+      private constructor(instance: Provider<Any?>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override operator fun invoke(): Bar {
+        return Companion.provideImplAsBar(instance = <this>.#instance.invoke())
+      }
+
+      fun mirrorFunction(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
+        return error(message = "Never called")
+      }
+
+    }
+
+    class ProvideImplAsFooMetroFactory : Factory<Foo> {
+      private /* final field */ val instance: Provider<Any?> = instance
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Foo> {
+          return ProvideImplAsFooMetroFactory(instance = instance)
+        }
+
+        fun provideImplAsFoo(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
+          return ToAppScope.provideImplAsFoo(instance = instance)
+        }
+
+      }
+
+      private constructor(instance: Provider<Any?>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override operator fun invoke(): Foo {
+        return Companion.provideImplAsFoo(instance = <this>.#instance.invoke())
+      }
+
+      fun mirrorFunction(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
+        return error(message = "Never called")
+      }
+
+    }
+
+    object ProvideScopedInstanceImplMetroFactory : Factory<Any?> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(): Factory<Any?> {
+        return ProvideScopedInstanceImplMetroFactory
+      }
+
+      fun provideScopedInstanceImpl(): Any? {
+        return ToAppScope.provideScopedInstanceImpl()
+      }
+
+      override operator fun invoke(): Any? {
+        return ProvideScopedInstanceImplMetroFactory.provideScopedInstanceImpl()
+      }
+
+      @SingleIn(scope = AppScope::class)
+      @Named(name = "metro_scoped_Impl")
+      fun mirrorFunction(): Any? {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    fun provideImplAsBar(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
+      return instance /*as Bar */
+    }
+
+    @Provides
+    fun provideImplAsFoo(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
+      return instance /*as Foo */
+    }
+
+    @Provides
+    @SingleIn(scope = AppScope::class)
+    @Named(name = "metro_scoped_Impl")
+    fun provideScopedInstanceImpl(): Any? {
+      return Impl()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: implContributionsToAppScopeAppScope.kt
+package metro.hints
+
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+fun AppScope(contributed: ToAppScope) {
+  return error(message = "Never called")
+}

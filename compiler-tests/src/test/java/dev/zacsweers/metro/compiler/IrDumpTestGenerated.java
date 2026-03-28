@@ -55,6 +55,18 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ContributionProviders_BasicDump.kt")
+    public void testContributionProviders_BasicDump() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributionProviders_BasicDump.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionProviders_ScopedMultipleBindings.kt")
+    public void testContributionProviders_ScopedMultipleBindings() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributionProviders_ScopedMultipleBindings.kt");
+    }
+
+    @Test
     @TestMetadata("ContributorsWithSameSimpleNames.kt")
     public void testContributorsWithSameSimpleNames() {
       runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributorsWithSameSimpleNames.kt");
