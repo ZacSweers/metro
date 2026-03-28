@@ -1,16 +1,13 @@
 // Verify that Provider<T> and Lazy<T> wrapping works correctly with contribution providers.
 
+// MODULE: common
 interface Dependency
 
-@ContributesBinding(AppScope::class)
-@Inject
-class DependencyImpl : Dependency
+// MODULE: lib(common)
+@ContributesBinding(AppScope::class) @Inject class DependencyImpl : Dependency
 
-@Inject
-class Consumer(
-  val provider: Provider<Dependency>,
-  val lazy: Lazy<Dependency>,
-)
+// MODULE: main(lib, common)
+@Inject class Consumer(val provider: Provider<Dependency>, val lazy: Lazy<Dependency>)
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
