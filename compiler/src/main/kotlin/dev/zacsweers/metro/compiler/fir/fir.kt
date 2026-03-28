@@ -1067,6 +1067,14 @@ internal fun FirAnnotation.resolvedScopeClassId(session: FirSession) =
 
 internal fun FirAnnotation.resolvedScopeClassId(
   session: FirSession,
+  typeResolver: MetroFirTypeResolver,
+): ClassId? {
+  val scopeArgument = scopeArgument(session) ?: return null
+  return scopeArgument.resolveClassId(typeResolver)
+}
+
+internal fun FirAnnotation.resolvedScopeClassId(
+  session: FirSession,
   typeResolver: TypeResolveService,
 ): ClassId? {
   val scopeArgument = scopeArgument(session) ?: return null
