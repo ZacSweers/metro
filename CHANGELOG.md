@@ -26,7 +26,7 @@ interface AppGraph {
 }
 ```
 
-The tradeoff is that `Impl` is no longer available directly on the graph.
+The tradeoff is that `Impl` is no longer available directly on the graph. If you had any explicit code usages of `Impl`, you would have to remove those too in favor of purely the bound type.
 
 #### [**[MEEP-1776]**](https://github.com/ZacSweers/metro/discussions/1776) `@DefaultBinding`
 
