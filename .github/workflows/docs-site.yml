@@ -138,14 +138,10 @@ jobs:
       - name: Deploy SNAPSHOT Docs with mike
         if: ${{ success() && contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
         run: mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} snapshot
-        env:
-          SITE_URL: https://zacsweers.github.io/metro/
 
       - name: Deploy Release Docs with mike
         if: ${{ success() && !contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
         run: mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} latest
-        env:
-          SITE_URL: https://zacsweers.github.io/metro/
 
       - name: Delete old doc versions
         run: |
