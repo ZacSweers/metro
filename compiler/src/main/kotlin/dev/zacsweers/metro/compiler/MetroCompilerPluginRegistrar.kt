@@ -116,6 +116,20 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
+    val contributionProvidersAreEnabledWithoutFirHintGen =
+      options.generateContributionProviders &&
+        options.generateContributionHints &&
+        !options.generateContributionHintsInFir
+
+    if (contributionProvidersAreEnabledWithoutFirHintGen) {
+      messageCollector.report(
+        CompilerMessageSeverity.ERROR,
+        "generateContributionProviders with generateContributionHints requires " +
+          "generateContributionHintsInFir to also be enabled.",
+      )
+      return
+    }
+
     with(compatContext) {
       registerFirExtensionCompat(
         MetroFirExtensionRegistrar(classIds, options, isIde, compatContext)
