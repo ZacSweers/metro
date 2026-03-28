@@ -24,7 +24,7 @@ public annotation class ViewModelKey(val value: KClass<out ViewModel> = Nothing:
  * A [MapKey] annotation for binding [assisted ViewModel factories][ViewModelAssistedFactory] in a
  * multibinding map.
  */
-@MapKey(implicitClassKey = true)
+@MapKey
 @Target(
   AnnotationTarget.FUNCTION,
   AnnotationTarget.FIELD,
@@ -34,9 +34,7 @@ public annotation class ViewModelKey(val value: KClass<out ViewModel> = Nothing:
   AnnotationTarget.TYPE,
 )
 @Retention(AnnotationRetention.RUNTIME)
-public annotation class ViewModelAssistedFactoryKey(
-  val value: KClass<out ViewModel> = Nothing::class
-)
+public annotation class ViewModelAssistedFactoryKey(val value: KClass<out ViewModel>)
 
 /**
  * A [MapKey] annotation for binding
