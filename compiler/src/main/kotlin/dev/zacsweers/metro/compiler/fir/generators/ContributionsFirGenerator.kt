@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
+import dev.zacsweers.metro.compiler.fir.buildClassReference
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSimpleValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -30,7 +31,6 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
-import dev.zacsweers.metro.compiler.fir.replacesArgument
 import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingType
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
@@ -50,15 +50,10 @@ import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.expressions.FirCall
-import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
-import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
-import org.jetbrains.kotlin.fir.expressions.builder.buildGetClassCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
-import org.jetbrains.kotlin.fir.expressions.builder.buildResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.toReference
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
@@ -81,9 +76,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.coneType
-import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
 import org.jetbrains.kotlin.fir.types.isMarkedNullable
-import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -708,9 +701,6 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       }
       val scopeArg = matchingAnnotations.firstNotNullOfOrNull { it.scopeArgument(session) }
 
-      // Collect replaces from all matching annotations for this scope
-      val replacesArg = matchingAnnotations.firstNotNullOfOrNull { it.replacesArgument(session) }
-
       return createNestedClass(
           owner,
           name = name,
@@ -737,8 +727,9 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
             add(buildBindingContainerAnnotation())
             // @IROnlyFactories — provider factories are generated in IR, not FIR
             add(buildIROnlyFactoriesAnnotation())
-            // @ContributesTo(scope, replaces) — propagate replaces from the original annotations
-            add(buildContributesToAnnotation(scopeArg, replacesArg))
+            // @ContributesTo(scope) — replaces are resolved from @Origin in IR via the
+            // original contributing class's @ContributesBinding annotations
+            add(buildContributesToAnnotation(scopeArg))
           }
           replaceAnnotations(annotations + allAnnotations)
         }
@@ -835,22 +826,15 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     }
   }
 
-  private fun buildContributesToAnnotation(
-    scopeArg: FirGetClassCall?,
-    replacesArg: FirCall? = null,
-  ): FirAnnotation {
+  private fun buildContributesToAnnotation(scopeArg: FirGetClassCall?): FirAnnotation {
     val classId = ClassId(Symbols.FqNames.metroRuntimePackage, Name.identifier("ContributesTo"))
     return buildSimpleAnnotation {
         session.symbolProvider.getClassLikeSymbolByClassId(classId) as FirRegularClassSymbol
       }
       .apply {
-        if (scopeArg != null || replacesArg != null) {
+        if (scopeArg != null) {
           replaceArgumentMapping(
-            buildAnnotationArgumentMapping {
-              scopeArg?.let { this.mapping[Symbols.Names.scope] = it }
-              @Suppress("UNCHECKED_CAST")
-              replacesArg?.let { this.mapping[Symbols.Names.replaces] = it as FirExpression }
-            }
+            buildAnnotationArgumentMapping { this.mapping[Symbols.Names.scope] = scopeArg }
           )
         }
       }
@@ -860,32 +844,12 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     val originAnnotationSymbol =
       session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroOrigin)
         as FirRegularClassSymbol
-    val originClassSymbol =
-      session.symbolProvider.getClassLikeSymbolByClassId(originClassId) as FirRegularClassSymbol
-    val originType = originClassSymbol.defaultType()
-
     return buildSimpleAnnotation { originAnnotationSymbol }
       .apply {
         replaceArgumentMapping(
           buildAnnotationArgumentMapping {
-            mapping[StandardNames.DEFAULT_VALUE_PARAMETER] = buildGetClassCall {
-              argumentList = buildArgumentList {
-                arguments += buildResolvedQualifier {
-                  packageFqName = originClassId.packageFqName
-                  relativeClassFqName = originClassId.relativeClassName
-                  symbol = originClassSymbol
-                  resolvedToCompanionObject = false
-                  isFullyQualified = true
-                  coneTypeOrNull = originType
-                }
-              }
-              coneTypeOrNull =
-                ConeClassLikeTypeImpl(
-                  StandardClassIds.KClass.toLookupTag(),
-                  arrayOf(originType),
-                  isMarkedNullable = false,
-                )
-            }
+            mapping[StandardNames.DEFAULT_VALUE_PARAMETER] =
+              buildClassReference(session, originClassId)
           }
         )
       }

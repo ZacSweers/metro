@@ -270,6 +270,14 @@ internal class IrContributionMerger(
         }
         // Binding containers (only remaining ones after exclusions)
         yieldAll(mutableContributedBindingContainers.values)
+
+        // For binding containers with @Origin (contribution providers), also scan the
+        // origin class for @ContributesBinding(replaces=...) annotations
+        for (container in mutableContributedBindingContainers.values) {
+          val originClassId = container.originClassId() ?: continue
+          val originClass = pluginContext.referenceClass(originClassId)?.owner ?: continue
+          yield(originClass)
+        }
       }
 
       trace("Process replacements") {

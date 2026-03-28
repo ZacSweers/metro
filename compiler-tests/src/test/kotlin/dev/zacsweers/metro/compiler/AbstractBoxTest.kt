@@ -80,6 +80,12 @@ open class AbstractContributionProvidersBoxTest : AbstractBoxTest() {
   override fun configure(builder: TestConfigurationBuilder) {
     super.configure(builder)
 
-    with(builder) { defaultDirectives { +MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS } }
+    with(builder) {
+      defaultDirectives {
+        MetroDirectives.GENERATE_CONTRIBUTION_HINTS.with(true)
+        +MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR
+        +MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS
+      }
+    }
   }
 }
