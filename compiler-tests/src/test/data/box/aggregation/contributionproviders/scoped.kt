@@ -8,13 +8,16 @@ interface Repository
 @ContributesBinding(AppScope::class)
 @SingleIn(AppScope::class)
 @Inject
-class RepositoryImpl : Repository
+class RepositoryImpl(val id: String) : Repository
 
 // MODULE: main(lib, common)
 @DependencyGraph(AppScope::class)
 interface AppGraph {
   val repo1: Repository
   val repo2: Repository
+
+  @Provides
+  fun provideString(): String = "Hello"
 }
 
 fun box(): String {
