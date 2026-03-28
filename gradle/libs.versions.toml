@@ -40,7 +40,7 @@ kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.10.0"
 ksp = "2.3.6"
 ktfmt = "0.62"
-ktor = "3.4.1"
+ktor = "3.4.2"
 okhttp = "5.3.2"
 okio = "3.17.0"
 pluginId = "dev.zacsweers.metro.compiler"
@@ -99,7 +99,7 @@ androidx-test-uiautomator = "androidx.test.uiautomator:uiautomator:2.3.0"
 androidx-benchmark-macro = "androidx.benchmark:benchmark-macro-junit4:1.4.1"
 androidx-benchmark-micro = "androidx.benchmark:benchmark-junit4:1.4.1"
 androidx-profileinstaller = "androidx.profileinstaller:profileinstaller:1.4.1"
-androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha03"
+androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha04"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }

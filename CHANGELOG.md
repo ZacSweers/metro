@@ -23,6 +23,10 @@ class HomeFactory(...) : BaseFactory<HomeFactory>
 
 - **[IR]** Consider Anvil's `rank` parameter when processing contributed binding containers.
 
+### Changes
+
+- Update shaded `androidx.tracing` to 2.0.0-alpha04.
+
 0.12.0
 ------
 

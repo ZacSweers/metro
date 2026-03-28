@@ -15,7 +15,7 @@ pluginManagement {
   }
   plugins {
     id("com.gradle.develocity") version "4.4.0"
-    id("com.android.settings") version "8.13.2"
+    id("com.android.settings") version "9.1.0"
   }
 }
 
