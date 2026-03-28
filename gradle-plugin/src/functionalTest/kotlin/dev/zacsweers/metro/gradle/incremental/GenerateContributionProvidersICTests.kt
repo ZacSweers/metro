@@ -7,11 +7,14 @@ import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.FileSnapshot
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
+import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.snapshot
 import dev.zacsweers.metro.gradle.source
+import dev.zacsweers.metro.gradle.toKotlinVersion
 import java.io.File
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
@@ -30,6 +33,8 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
    */
   @Test
   fun contributionProvidersAllowInternalImplWithoutDownstreamRecompilation() {
+    // Requires FIR hint generation which is available in Kotlin 2.3.20+
+    assumeTrue(getTestCompilerVersion().toKotlinVersion() >= KotlinVersion(2, 3, 20))
     val fixture =
       object :
         MetroProject(metroOptions = MetroOptionOverrides(generateContributionProviders = true)) {
