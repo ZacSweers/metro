@@ -220,14 +220,6 @@ constructor(
       .property(OptionalBindingBehavior::class.java)
       .convention(OptionalBindingBehavior.DEFAULT)
 
-  /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
-  @Deprecated(
-    "Transforming providers to private is deprecated as it results in less efficient code generation",
-    level = DeprecationLevel.ERROR,
-  )
-  public val transformProvidersToPrivate: Property<Boolean> =
-    objects.booleanProperty("metro.transformProvidersToPrivate", false)
-
   @Deprecated(
     "This is just a proxy to publicScopedProviderSeverity now",
     replaceWith = ReplaceWith("publicScopedProviderSeverity"),

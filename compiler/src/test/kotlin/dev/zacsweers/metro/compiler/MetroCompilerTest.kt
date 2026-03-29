@@ -110,8 +110,6 @@ abstract class MetroCompilerTest {
                   entry.raw.cliOption,
                   this@toPluginOptions.generateContributionHintsInFir,
                 )
-              TRANSFORM_PROVIDERS_TO_PRIVATE ->
-                processor.option(entry.raw.cliOption, transformProvidersToPrivate)
               SHRINK_UNUSED_BINDINGS -> processor.option(entry.raw.cliOption, shrinkUnusedBindings)
               STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
               ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)

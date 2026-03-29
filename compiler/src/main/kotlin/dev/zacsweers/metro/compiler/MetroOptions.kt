@@ -177,16 +177,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  TRANSFORM_PROVIDERS_TO_PRIVATE(
-    RawMetroOption.boolean(
-      name = "transform-providers-to-private",
-      defaultValue = false,
-      valueDescription = "<true | false>",
-      description = "Enable/disable automatic transformation of providers to be private.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   SHRINK_UNUSED_BINDINGS(
     RawMetroOption.boolean(
       name = "shrink-unused-bindings",
@@ -898,8 +888,6 @@ public data class MetroOptions(
     MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
   public val generateContributionHintsInFir: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
-  public val transformProvidersToPrivate: Boolean =
-    MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   public val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
   public val statementsPerInitFun: Int =
@@ -910,12 +898,8 @@ public data class MetroOptions(
   public val enableSwitchingProviders: Boolean =
     MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
   public val publicScopedProviderSeverity: DiagnosticSeverity =
-    if (transformProvidersToPrivate) {
-      DiagnosticSeverity.NONE
-    } else {
-      MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
-        DiagnosticSeverity.valueOf(it)
-      }
+    MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
     },
   public val nonPublicContributionSeverity: DiagnosticSeverity =
     MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY.raw.defaultValue.expectAs<String>().let {
@@ -1081,7 +1065,6 @@ public data class MetroOptions(
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
     public var generateContributionHints: Boolean = base.generateContributionHints
     public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
-    public var transformProvidersToPrivate: Boolean = base.transformProvidersToPrivate
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
@@ -1287,7 +1270,6 @@ public data class MetroOptions(
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
         generateContributionHints = generateContributionHints,
         generateContributionHintsInFir = generateContributionHintsInFir,
-        transformProvidersToPrivate = transformProvidersToPrivate,
         shrinkUnusedBindings = shrinkUnusedBindings,
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
@@ -1428,9 +1410,6 @@ public data class MetroOptions(
               configuration.getAsBoolean(entry).also { enabled ->
                 validateKotlinJsIC(enabled, "generateContributionHintsInFir", configuration)
               }
-
-          TRANSFORM_PROVIDERS_TO_PRIVATE ->
-            transformProvidersToPrivate = configuration.getAsBoolean(entry)
 
           SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = configuration.getAsBoolean(entry)
 

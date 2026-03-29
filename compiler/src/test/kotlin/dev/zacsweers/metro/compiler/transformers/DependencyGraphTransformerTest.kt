@@ -450,7 +450,6 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
-        options = metroOptions.copy(transformProvidersToPrivate = false),
       )
 
     result.assertDiagnostics(
