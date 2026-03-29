@@ -1401,7 +1401,16 @@ public data class MetroOptions(
     if (!validateKotlinJsIC(compilerVersion, configuration, onError)) {
       valid = false
     }
-    // Future validations go here
+
+    val contributionProvidersAreEnabledWithoutFirHintGen =
+      generateContributionProviders && generateContributionHints && !generateContributionHintsInFir
+    if (contributionProvidersAreEnabledWithoutFirHintGen) {
+      onError(
+        "generateContributionProviders with generateContributionHints requires " +
+          "generateContributionHintsInFir to also be enabled."
+      )
+      valid = false
+    }
     return valid
   }
 
