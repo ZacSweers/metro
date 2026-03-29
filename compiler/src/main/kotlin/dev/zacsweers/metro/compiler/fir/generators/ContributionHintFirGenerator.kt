@@ -58,8 +58,8 @@ internal class ContributionHintFirGenerator(
     return (injectedClasses + contributedClasses).filterIsInstance<FirClassSymbol<*>>()
   }
 
-  private val allSessions = session.allSessions
-  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
+  private val allSessions by lazy { session.allSessions }
+  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session, allSessions) }
 
   private val contributedClassesByScope:
     FirCache<Unit, Map<CallableId, Set<FirClassSymbol<*>>>, Unit> =

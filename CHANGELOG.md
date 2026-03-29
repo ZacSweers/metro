@@ -23,6 +23,10 @@ class HomeFactory(...) : BaseFactory<HomeFactory>
 
 - Support top-level FIR gen (contribution hints, function inject, etc) in Kotlin/JS on `2.3.21`+ and `2.4.0-Beta2`+.
 
+### Fixes
+
+- **[FIR]** Make `allSessions` lookup lazy to avoid lockups in the IDE.
+
 ### Changes
 
 - Update shaded `androidx.tracing` to 2.0.0-alpha04.
