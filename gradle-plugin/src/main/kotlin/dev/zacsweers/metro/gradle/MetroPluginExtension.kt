@@ -371,12 +371,6 @@ constructor(
   public val useAssistedParamNamesAsIdentifiers: Property<Boolean> =
     objects.booleanProperty("metro.useAssistedParamNamesAsIdentifiers", true)
 
-  @Deprecated(
-    "The `Assisted.value` property is now formally deprecated and this control no longer does anything."
-  )
-  public val assistedIdentifierSeverity: Property<DiagnosticSeverity> =
-    objects.enumProperty<DiagnosticSeverity>("assistedIdentifierSeverity", DiagnosticSeverity.WARN)
-
   /**
    * Compiler version aliases mapping fake IDE versions to their real compiler versions.
    *
