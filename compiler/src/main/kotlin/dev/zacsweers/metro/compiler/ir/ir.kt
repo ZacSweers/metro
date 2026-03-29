@@ -528,7 +528,6 @@ internal fun IrClass.declaredCallableMembers(
 context(context: IrMetroContext)
 internal fun IrClass.allCallableMembers(
   excludeAnyFunctions: Boolean = true,
-  excludeGeneratedDataClassMembers: Boolean = true,
   excludeInheritedMembers: Boolean = false,
   excludeCompanionObjectMembers: Boolean = false,
   functionFilter: (IrSimpleFunction) -> Boolean = { true },
@@ -537,9 +536,6 @@ internal fun IrClass.allCallableMembers(
   return functions
     .letIf(excludeAnyFunctions) {
       it.filterNot { function -> function.isInheritedFromAny(context.irBuiltIns) }
-    }
-    .letIf(excludeGeneratedDataClassMembers) {
-      it.filterNot { function -> function.origin == Origins.FirstParty.GENERATED_DATA_CLASS_MEMBER }
     }
     .filter(functionFilter)
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
@@ -553,7 +549,6 @@ internal fun IrClass.allCallableMembers(
           asFunctions +
             companionObject.allCallableMembers(
               excludeAnyFunctions = excludeAnyFunctions,
-              excludeGeneratedDataClassMembers = excludeGeneratedDataClassMembers,
               excludeInheritedMembers = excludeInheritedMembers,
               excludeCompanionObjectMembers = false,
             )
@@ -2125,8 +2120,8 @@ internal fun IrType.requireSimpleType(
   // This can happen if an upstream factory exposes a type that is not visible in the public API
   if (hasErrorTypes()) {
     val isExternalStub =
-      declaration?.origin == Origins.FirstParty.IR_EXTERNAL_DECLARATION_STUB ||
-        declaration?.origin == Origins.FirstParty.IR_EXTERNAL_JAVA_DECLARATION_STUB
+      declaration?.origin == IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB ||
+        declaration?.origin == IrDeclarationOrigin.IR_EXTERNAL_JAVA_DECLARATION_STUB
     val message =
       buildString {
           appendLine(
