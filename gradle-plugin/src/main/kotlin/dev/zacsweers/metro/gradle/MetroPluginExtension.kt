@@ -180,11 +180,6 @@ constructor(
   public val shrinkUnusedBindings: Property<Boolean> =
     objects.booleanProperty("metro.shrinkUnusedBindings", true)
 
-  /** Enable/disable chunking of field initializers. Enabled by default. */
-  @Deprecated("This is the default and the option will be removed", level = DeprecationLevel.ERROR)
-  public val chunkFieldInits: Property<Boolean> =
-    objects.booleanProperty("metro.chunkFieldInits", true)
-
   /**
    * Maximum number of statements per init function when chunking field initializers. Default is 25,
    * must be > 0.

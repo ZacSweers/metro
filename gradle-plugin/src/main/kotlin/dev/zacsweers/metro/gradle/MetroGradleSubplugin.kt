@@ -326,8 +326,6 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           @Suppress("DEPRECATION_ERROR")
           add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
           add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
-          @Suppress("DEPRECATION_ERROR")
-          add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
           add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
           add(lazyOption("enable-graph-sharding", extension.enableGraphSharding))
           add(lazyOption("keys-per-graph-shard", extension.keysPerGraphShard))

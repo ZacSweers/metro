@@ -1091,8 +1091,7 @@ internal class IrGraphGenerator(
     thisReceiverParameter: IrValueParameter,
     constructorStatements: MutableList<InitStatement>,
   ) {
-    val mustChunkInits =
-      options.chunkFieldInits && shardPropertyInitializers.size > options.statementsPerInitFun
+    val mustChunkInits = shardPropertyInitializers.size > options.statementsPerInitFun
 
     // Create name allocator for init functions on this shard
     val shardFunctionNameAllocator =
