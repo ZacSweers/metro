@@ -116,6 +116,14 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
+    if (version != null) {
+      val valid =
+        options.validate(version, configuration) { error ->
+          messageCollector.report(CompilerMessageSeverity.ERROR, error)
+        }
+      if (!valid) return
+    }
+
     with(compatContext) {
       registerFirExtensionCompat(
         MetroFirExtensionRegistrar(classIds, options, isIde, compatContext)
