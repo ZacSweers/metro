@@ -454,6 +454,19 @@ constructor(
     objects.booleanProperty("metro.enableKClassToClassMapKeyInterop", false)
 
   /**
+   * When enabled, generates top-level contribution provider classes with `@Provides` functions
+   * instead of nested `@Binds` interfaces for `@ContributesBinding`, `@ContributesIntoSet`, and
+   * `@ContributesIntoMap`. This allows implementation classes to remain `internal` or `private`
+   * since the generated provider directly constructs them (which in turn allows for finer grained
+   * IC).
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val generateContributionProviders: Property<Boolean> =
+    objects.booleanProperty("metro.generateContributionProviders", false)
+
+  /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
    * graphs to the given destination. Outputs are per-compilation granularity (i.e.
    * `build/metro/main/...`).

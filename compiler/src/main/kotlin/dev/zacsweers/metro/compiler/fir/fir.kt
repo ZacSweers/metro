@@ -74,8 +74,11 @@ import org.jetbrains.kotlin.fir.expressions.UnresolvedExpressionTypeAccess
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
+import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildEnumEntryDeserializedAccessExpression
+import org.jetbrains.kotlin.fir.expressions.builder.buildGetClassCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.builder.buildResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.unexpandedClassId
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
@@ -133,7 +136,9 @@ import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
 import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -1067,6 +1072,14 @@ internal fun FirAnnotation.resolvedScopeClassId(session: FirSession) =
 
 internal fun FirAnnotation.resolvedScopeClassId(
   session: FirSession,
+  typeResolver: MetroFirTypeResolver,
+): ClassId? {
+  val scopeArgument = scopeArgument(session) ?: return null
+  return scopeArgument.resolveClassId(typeResolver)
+}
+
+internal fun FirAnnotation.resolvedScopeClassId(
+  session: FirSession,
   typeResolver: TypeResolveService,
 ): ClassId? {
   val scopeArgument = scopeArgument(session) ?: return null
@@ -1662,4 +1675,29 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): C
       it.name == Symbols.Names.defaultBindingFunction
     } ?: return null
   return holderFunction.resolvedReturnType
+}
+
+/** Builds a resolved FirGetClassCall for a given ClassId. */
+internal fun buildClassReference(session: FirSession, classId: ClassId): FirGetClassCall {
+  val classSymbol =
+    session.symbolProvider.getClassLikeSymbolByClassId(classId) as FirRegularClassSymbol
+  val classType = classSymbol.defaultType()
+  return buildGetClassCall {
+    argumentList = buildArgumentList {
+      arguments += buildResolvedQualifier {
+        packageFqName = classId.packageFqName
+        relativeClassFqName = classId.relativeClassName
+        symbol = classSymbol
+        resolvedToCompanionObject = false
+        isFullyQualified = true
+        coneTypeOrNull = classType
+      }
+    }
+    coneTypeOrNull =
+      ConeClassLikeTypeImpl(
+        StandardClassIds.KClass.toLookupTag(),
+        arrayOf(classType),
+        isMarkedNullable = false,
+      )
+  }
 }

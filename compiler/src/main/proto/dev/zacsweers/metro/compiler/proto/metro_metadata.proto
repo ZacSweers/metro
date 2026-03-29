@@ -9,9 +9,9 @@ message DependencyGraphProto {
   // Required boolean "isGraph"
   bool is_graph = 1;
 
-  // Required map of ClassIds (as strings) of provider factory classes
+  // Provider factory entries with extended metadata
   // If is_graph is true, this includes _all_ inherited classes' factories too
-  repeated string provider_factory_classes = 2;
+  repeated ProviderFactoryProto provider_factories = 2;
 
   // Set of accessor callable names (strings)
   repeated string accessor_callable_names = 3;
@@ -22,6 +22,24 @@ message DependencyGraphProto {
 
   // Set of all transitively included binding container class IDs (strings)
   repeated string included_binding_containers = 5;
+}
+
+// Extended provider factory entry with visibility metadata.
+// Used for IR-only factories that are not visible in Kotlin metadata.
+message ProviderFactoryProto {
+  // ClassId of the factory class
+  string class_id = 1;
+  // If true, the factory is IR-generated only and not visible in Kotlin metadata.
+  // Consuming modules must synthesize a stub to link against.
+  bool invisible = 2;
+  // Whether the factory is an object (true) or a class (false)
+  bool is_object = 3;
+  // The callable name of the source @Provides function
+  string callable_name = 4;
+  // Property name (empty string for non-property providers)
+  string property_name = 5;
+  // The newInstance function name
+  string new_instance_name = 6;
 }
 
 message AssistedFactoryImplProto {

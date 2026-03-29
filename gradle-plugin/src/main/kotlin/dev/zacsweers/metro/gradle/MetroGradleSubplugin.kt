@@ -378,6 +378,9 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           )
           add(lazyOption("parallel-threads", extension.parallelThreads))
           add(lazyOption("enable-function-providers", extension.enableFunctionProviders))
+          add(
+            lazyOption("generate-contribution-providers", extension.generateContributionProviders)
+          )
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
           reportsDir.orNull

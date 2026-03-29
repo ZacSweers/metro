@@ -558,7 +558,7 @@ jobs:
     # Only run on push to main, after both benchmark jobs complete
     if: github.event_name == 'push'
     needs: [benchmark, build-benchmark]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
 
     steps:
       - name: Checkout gh-pages

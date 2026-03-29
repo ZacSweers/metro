@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.fir.generators.isContributionProviderWrapper
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -12,17 +13,21 @@ import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
+import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.findAnnotations
+import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isImplicitClassKeySentinel
 import dev.zacsweers.metro.compiler.ir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.ir.originClassId
 import dev.zacsweers.metro.compiler.ir.populateImplicitClassKey
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireScope
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
@@ -37,6 +42,10 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irImplicitCast
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -49,7 +58,10 @@ import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isLocal
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.name.ClassId
 
@@ -100,7 +112,22 @@ internal class ContributionTransformer(
             val metroContributionAnno =
               declaration.findAnnotations(Symbols.ClassIds.metroContribution).first()
             val scope = metroContributionAnno.requireScope()
-            trace("Transform class") { transformContributionClass(declaration, scope) }
+
+            val isContributionProviderNested =
+              context.options.generateContributionProviders &&
+                declaration.parentClassOrNull?.origin ==
+                  Origins.ContributionProviderHolderDeclaration
+
+            if (isContributionProviderNested) {
+              // Contribution interface inside a provider holder class: @Provides functions are
+              // already declared in FIR, just need to add bodies
+              trace("Transform contribution provider") {
+                transformTopLevelContributionProvider(declaration)
+              }
+            } else {
+              // Nested contribution: generate @Binds functions
+              trace("Transform class") { transformContributionClass(declaration, scope) }
+            }
             trace("Collect contribution data") {
               collectContributionDataFromContribution(declaration, data, scope, isBindingContainer)
             }
@@ -162,6 +189,59 @@ internal class ContributionTransformer(
       }
       declaration.dumpToMetroLog()
     }
+    transformedContributions += classId
+  }
+
+  /**
+   * Transforms a top-level contribution provider class by adding bodies to its `@Provides`
+   * functions. The function reads `@Origin` to find the contributing class, then generates a
+   * constructor call body for each provides function.
+   */
+  private fun transformTopLevelContributionProvider(declaration: IrClass) {
+    val classId = declaration.classIdOrFail
+    if (classId in transformedContributions) return
+
+    // @Origin is on the nested contribution interface itself
+    val originClassId = declaration.originClassId() ?: return
+    val originClass = context.referenceClass(originClassId)?.owner ?: return
+
+    // Find the primary constructor of the origin class
+    val injectConstructor = originClass.primaryConstructor ?: return
+
+    // Add bodies to all @Provides functions
+    for (function in declaration.functions) {
+      if (!function.isAnnotatedWithAny(metroSymbols.classIds.providesAnnotations)) continue
+      if (function.body != null) continue
+
+      // Check if this is a wrapper function via FIR attribute
+      val isWrapper = function.isContributionProviderWrapper
+
+      function.body =
+        context.createIrBuilder(function.symbol).run {
+          if (isWrapper) {
+            // Wrapper: cast the instance parameter to the return type
+            val instanceParam = function.regularParameters.single()
+            irExprBodySafe(irImplicitCast(irGet(instanceParam), function.returnType))
+          } else if (originClass.isObject) {
+            // Object: just reference the singleton instance
+            irExprBodySafe(irGetObject(originClass.symbol))
+          } else {
+            // Constructor call (synthetic scoped or direct)
+            val constructorCall =
+              irCallConstructor(injectConstructor.symbol, emptyList()).apply {
+                val functionParams = function.regularParameters
+                for ((index, param) in functionParams.withIndex()) {
+                  if (index < injectConstructor.regularParameters.size) {
+                    arguments[index] = irGet(param)
+                  }
+                }
+              }
+            irExprBodySafe(constructorCall)
+          }
+        }
+    }
+
+    declaration.dumpToMetroLog()
     transformedContributions += classId
   }
 

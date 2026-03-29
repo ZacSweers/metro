@@ -4,9 +4,11 @@ package dev.zacsweers.metro.compiler.api.fir
 
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.joinSimpleNamesAndTruncate
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -17,6 +19,8 @@ import org.jetbrains.kotlin.name.Name
  * [MetroContributionExtension] implementations that need to provide contribution metadata.
  */
 public object MetroContributions {
+
+  private const val CONTRIBUTIONS_SUFFIX = "Contributions"
 
   /**
    * Computes the [ClassId] of the `MetroContribution` nested class that Metro will generate for a
@@ -86,5 +90,37 @@ public object MetroContributions {
       .asSingleFqName()
       .pathSegments()
       .joinToString(separator = "") { it.identifier.decapitalizeUS() }
+  }
+
+  /**
+   * Computes the [ClassId] of the contribution provider holder class for a given contributing
+   * class. The holder is a top-level abstract class named `<ClassName>Contributions`.
+   */
+  internal fun holderClassId(contributingClassId: ClassId): ClassId {
+    val holderName =
+      Name.identifier(
+        contributingClassId
+          .joinSimpleNames(separator = "", camelCase = false)
+          .shortClassName
+          .asString() + CONTRIBUTIONS_SUFFIX
+      )
+    return ClassId(contributingClassId.packageFqName, holderName)
+  }
+
+  /**
+   * Computes the [ClassId] of a per-scope container object inside the holder class. The container
+   * name is `To<ScopeShortName>`.
+   */
+  internal fun containerObjectClassId(
+    contributingClassId: ClassId,
+    scopeClassId: ClassId,
+  ): ClassId {
+    val holder = holderClassId(contributingClassId)
+    val scopeShortName = scopeClassId.shortClassName.asString()
+    return ClassId(
+      holder.packageFqName,
+      FqName("${holder.shortClassName.asString()}.To$scopeShortName"),
+      isLocal = false,
+    )
   }
 }

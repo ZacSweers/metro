@@ -353,6 +353,12 @@ abstract class MetroCompilerTest {
                   this@toPluginOptions.enableKClassToClassInterop,
                 )
               }
+              GENERATE_CONTRIBUTION_PROVIDERS -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.generateContributionProviders,
+                )
+              }
             }
           yield(option)
         }

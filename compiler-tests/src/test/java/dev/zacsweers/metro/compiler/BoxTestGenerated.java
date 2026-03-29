@@ -253,6 +253,58 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/aggregation/contributionproviders")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Contributionproviders {
+      @Test
+      public void testAllFilesPresentInContributionproviders() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/contributionproviders"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("basic.kt")
+      public void testBasic() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/basic.kt");
+      }
+
+      @Test
+      @TestMetadata("intoMap.kt")
+      public void testIntoMap() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/intoMap.kt");
+      }
+
+      @Test
+      @TestMetadata("intoSet.kt")
+      public void testIntoSet() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/intoSet.kt");
+      }
+
+      @Test
+      @TestMetadata("multipleBindings.kt")
+      public void testMultipleBindings() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/multipleBindings.kt");
+      }
+
+      @Test
+      @TestMetadata("objectBinding.kt")
+      public void testObjectBinding() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/objectBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("providerAndLazy.kt")
+      public void testProviderAndLazy() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/providerAndLazy.kt");
+      }
+
+      @Test
+      @TestMetadata("scoped.kt")
+      public void testScoped() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/scoped.kt");
+      }
+    }
+
+    @Nested
     @TestMetadata("compiler-tests/src/test/data/box/aggregation/interop")
     @TestDataPath("$PROJECT_ROOT")
     public class Interop {

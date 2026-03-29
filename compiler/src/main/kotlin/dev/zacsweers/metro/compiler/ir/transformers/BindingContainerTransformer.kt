@@ -60,6 +60,7 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
+import dev.zacsweers.metro.compiler.proto.ProviderFactoryProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -73,6 +74,7 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -91,10 +93,13 @@ import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
+import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -106,6 +111,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
@@ -157,6 +163,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
     val isGraph = graphAnnotation != null
 
     declaration.declarations
+      .toList() // Defensive copy as we may add to this list if we generate provider factories
       .asSequence()
       // Skip (fake) overrides, we care only about the original declaration because those have
       // default values
@@ -282,9 +289,18 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
       reference.parent.owner.nestedClasses.singleOrNull {
         it.origin == Origins.ProviderFactoryClassDeclaration && it.classIdOrFail == generatedClassId
       }
-        ?: reportCompilerBug(
-          "No expected factory class generated for ${reference.callableId}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
-        )
+        ?: run {
+          // For @IROnlyFactories-annotated containers, factory classes are not generated in FIR.
+          // Create the factory class entirely in IR.
+          val parentClass = reference.parent.owner
+          if (parentClass.hasAnnotation(Symbols.ClassIds.irOnlyFactories)) {
+            createContributionProviderFactory(parentClass, generatedClassId, reference)
+          } else {
+            reportCompilerBug(
+              "No expected factory class generated for ${reference.callableId}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
+            )
+          }
+        }
 
     // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to read
     // directly since we'll read the mirror function to get the target type
@@ -338,27 +354,34 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
       // If it's got no parameters we'll generate it in FIR as an object
       ctor = factoryCls.primaryConstructor!!
     } else {
-      // Add constructor
-      // Doesn't have to be metadata-visible
+      // For @IROnlyFactories containers, the factory stub already has a no-arg primary
+      // constructor shell. Reuse it. For FIR-generated factories, add a new constructor.
+      val isIROnlyFactory =
+        factoryCls.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) == true
+
       ctor =
-        factoryCls
-          .addConstructor {
+        if (isIROnlyFactory) {
+          factoryCls.primaryConstructor!!
+        } else {
+          factoryCls.addConstructor {
             visibility = DescriptorVisibilities.PRIVATE
             isPrimary = true
           }
-          .apply {
-            val ownerClass = reference.parent.owner
-            val typeRemapper = ownerClass.deepRemapperFor(factoryCls.defaultType)
-            addParameters(
-              params = dedupedSourceParameters.allParameters,
-              wrapInProvider = true,
-              stubDefaults = false,
-              typeRemapper = { type -> typeRemapper.remapType(type) },
-            ) { typeKey, irParam ->
-              typeKeyToField[typeKey] = irParam.addBackingFieldTo(factoryCls)
-            }
-            body = generateDefaultConstructorBody()
-          }
+        }
+
+      ctor.apply {
+        val ownerClass = reference.parent.owner
+        val typeRemapper = ownerClass.deepRemapperFor(factoryCls.defaultType)
+        addParameters(
+          params = dedupedSourceParameters.allParameters,
+          wrapInProvider = true,
+          stubDefaults = false,
+          typeRemapper = { type -> typeRemapper.remapType(type) },
+        ) { typeKey, irParam ->
+          typeKeyToField[typeKey] = irParam.addBackingFieldTo(factoryCls)
+        }
+        body = generateDefaultConstructorBody()
+      }
     }
 
     val bytecodeFunction =
@@ -824,13 +847,20 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
 
     // Add any provider factories
     val providerFactories =
-      graphProto.provider_factory_classes
-        .map { ClassId.fromString(it) }
-        .associate { classId ->
-          val factoryClass = pluginContext.referenceClass(classId)!!.owner
-          val providerFactory = externalProviderFactoryFor(factoryClass)
-          providerFactory.callableId to providerFactory
+      graphProto.provider_factories
+        .mapNotNull { entry ->
+          val classId = ClassId.fromString(entry.class_id)
+          if (entry.invisible) {
+            val providerFactory =
+              loadInvisibleProviderFactory(declaration, classId, entry) ?: return@mapNotNull null
+            providerFactory.callableId to providerFactory
+          } else {
+            val factoryClass = pluginContext.referenceClass(classId)!!.owner
+            val providerFactory = externalProviderFactoryFor(factoryClass)
+            providerFactory.callableId to providerFactory
+          }
         }
+        .toMap()
 
     // Add any binds callables
     val bindsMirror = bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
@@ -851,6 +881,146 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
     generatedFactories.putAll(providerFactories)
 
     return container
+  }
+
+  /**
+   * Loads an invisible provider factory from proto metadata. Creates a stub class with a mirror
+   * function and builds a [ProviderFactory] from proto values without needing a `@CallableMetadata`
+   * annotation.
+   */
+  private fun loadInvisibleProviderFactory(
+    container: IrClass,
+    classId: ClassId,
+    entry: ProviderFactoryProto,
+  ): ProviderFactory.Metro? {
+    val providesFunction =
+      findProvidesForInvisibleFactory(container, entry.callable_name) ?: return null
+
+    val stub = createContributionProviderFactoryStub(container, classId, isObject = entry.is_object)
+    val sourceAnnotations = providesFunction.metroAnnotations(metroSymbols.classIds)
+
+    val mirrorFunction =
+      generateMetadataVisibleMirrorFunction(
+        factoryClass = stub,
+        target = providesFunction,
+        backingField = null,
+        annotations = sourceAnnotations,
+        registerAsMetadataVisible = false,
+      )
+
+    // Add creator functions to the stub so IrMetroFactory can find them
+    generateStubCreatorFunctions(
+      factoryClass = stub,
+      callableName = entry.callable_name,
+      returnType = providesFunction.returnType,
+      sourceFunction = providesFunction,
+    )
+
+    val callableId = CallableId(container.classIdOrFail, Name.identifier(entry.callable_name))
+    val callableMetadata =
+      IrCallableMetadata(
+        callableId = callableId,
+        mirrorCallableId = mirrorFunction.callableId,
+        annotations = sourceAnnotations,
+        isPropertyAccessor = entry.property_name.isNotEmpty(),
+        newInstanceName = Name.identifier(entry.new_instance_name),
+        function = providesFunction,
+        mirrorFunction = mirrorFunction,
+      )
+
+    return ProviderFactory(
+      contextKey = IrContextualTypeKey.from(mirrorFunction),
+      clazz = stub,
+      mirrorFunction = mirrorFunction,
+      sourceAnnotations = sourceAnnotations,
+      callableMetadata = callableMetadata,
+      realDeclaration = providesFunction,
+    )
+  }
+
+  /**
+   * Creates a provider factory class stub in IR for contribution provider objects. The stub has its
+   * parent set but is NOT added as a child declaration. Used for both in-compilation (where the
+   * caller adds it) and external (where it's a phantom).
+   */
+  private fun createContributionProviderFactoryStub(
+    parentClass: IrClass,
+    classId: ClassId,
+    isObject: Boolean,
+  ): IrClass {
+    val classKind = if (isObject) ClassKind.OBJECT else ClassKind.CLASS
+
+    return pluginContext.irFactory
+      .buildClass {
+        name = classId.shortClassName
+        kind = classKind
+        visibility = DescriptorVisibilities.PUBLIC
+        origin = Origins.ProviderFactoryClassDeclaration
+      }
+      .apply {
+        // Set parent but do NOT add as child — caller decides
+        this.parent = parentClass
+        createThisReceiverParameter()
+
+        // Add a no-arg primary constructor shell. For objects this is the final constructor.
+        // For non-objects, getOrLookupProviderFactory will add parameters and fields to it.
+        addSimpleDelegatingConstructor(
+            irBuiltIns.anyClass.owner.primaryConstructor!!,
+            irBuiltIns,
+            isPrimary = true,
+          )
+          .apply { visibility = DescriptorVisibilities.PRIVATE }
+
+        if (!isObject) {
+          // Non-objects need a companion for create()/newInstance() static methods
+          val factoryCls = this
+          pluginContext.irFactory
+            .buildClass {
+              name = org.jetbrains.kotlin.name.SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT
+              kind = ClassKind.OBJECT
+              visibility = DescriptorVisibilities.PUBLIC
+              isCompanion = true
+            }
+            .apply {
+              factoryCls.addChild(this)
+              createThisReceiverParameter()
+              addSimpleDelegatingConstructor(
+                irBuiltIns.anyClass.owner.primaryConstructor!!,
+                irBuiltIns,
+                isPrimary = true,
+              )
+            }
+        }
+      }
+  }
+
+  /**
+   * Creates a provider factory class for an in-compilation contribution provider object. The class
+   * is created and added as a child of the parent.
+   */
+  private fun createContributionProviderFactory(
+    parentClass: IrClass,
+    generatedClassId: ClassId,
+    reference: CallableReference,
+  ): IrClass {
+    val isObject = reference.parameters.allParameters.isEmpty()
+    return createContributionProviderFactoryStub(parentClass, generatedClassId, isObject).also {
+      parentClass.declarations.add(it)
+    }
+  }
+
+  /**
+   * Finds the `@Provides` function on the binding container that corresponds to an invisible
+   * factory. The factory ClassId encodes the callable name (e.g., `ProvideImplMetroFactory`
+   * corresponds to `provideImpl`).
+   */
+  private fun findProvidesForInvisibleFactory(
+    container: IrClass,
+    callableName: String,
+  ): IrSimpleFunction? {
+    return container.declarations.filterIsInstance<IrSimpleFunction>().find {
+      it.name.asString() == callableName
+    }
   }
 }
 
