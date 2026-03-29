@@ -220,13 +220,6 @@ constructor(
       .property(OptionalBindingBehavior::class.java)
       .convention(OptionalBindingBehavior.DEFAULT)
 
-  @Deprecated(
-    "This is just a proxy to publicScopedProviderSeverity now",
-    replaceWith = ReplaceWith("publicScopedProviderSeverity"),
-  )
-  public val publicProviderSeverity: Property<DiagnosticSeverity>
-    get() = publicScopedProviderSeverity
-
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
    * **scoped** `public` provider callables. See the kdoc on `Provides` for more details.
