@@ -10,6 +10,7 @@ import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
+import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest
@@ -19,6 +20,7 @@ val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named
 val jdkVersion = catalog.findVersion("jdk").get().requiredVersion
 val jvmTargetVersion = catalog.findVersion("jvmTarget").get().requiredVersion
 val compilerJvmTargetVersion = catalog.findVersion("compilerJvmTarget").get().requiredVersion
+val kotlinPublished = catalog.findVersion("kotlinPublished").get().requiredVersion
 
 val metroExtension =
   project.extensions.create<MetroProjectExtension>("metroProject").apply {
@@ -112,6 +114,7 @@ pluginManager.withPlugin("metro.publish") {
       }
     }
   }
+  the<KotlinProjectExtension>().coreLibrariesVersion = kotlinPublished
 
   val isNotCompiler = project.path != ":compiler" && !project.path.startsWith(":compiler-compat")
 
