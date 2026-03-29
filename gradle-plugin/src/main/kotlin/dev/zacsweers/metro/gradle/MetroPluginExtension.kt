@@ -55,9 +55,6 @@ constructor(
   public val generateAssistedFactories: Property<Boolean> =
     objects.booleanProperty("metro.generateAssistedFactories", false)
 
-  @Deprecated("This does not do anything anymore and will be removed")
-  public abstract val generateThrowsAnnotations: Property<Boolean>
-
   /**
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
    * `Inject` for more details.
