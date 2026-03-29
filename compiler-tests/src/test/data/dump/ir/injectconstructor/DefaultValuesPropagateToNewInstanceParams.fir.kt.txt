@@ -30,7 +30,7 @@ class ValueHolder {
     }
 
     override operator fun invoke(): ValueHolder {
-      return Companion.newInstance(stringValue = <this>.#stringValue.invoke())
+      return MetroFactory/* companion */.newInstance(stringValue = <this>.#stringValue.invoke())
     }
 
     fun mirrorFunction(stringValue: String? = error(message = "Never called")): ValueHolder {
@@ -46,3 +46,4 @@ class ValueHolder {
   }
 
 }
+

@@ -15,7 +15,7 @@ interface AppGraph {
 
     override val int: Int
       override get(): Int {
-        return Companion.provideInt(instance = <this>.#thisGraphInstance)
+        return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#thisGraphInstance)
       }
 
   }
@@ -62,7 +62,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     fun mirrorFunction(): Int {
@@ -99,7 +99,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)

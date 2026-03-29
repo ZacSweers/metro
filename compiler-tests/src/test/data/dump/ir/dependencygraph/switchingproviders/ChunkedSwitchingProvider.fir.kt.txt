@@ -249,17 +249,17 @@ interface AppGraph {
     }
 
     private fun init() {
-      <this>.#classAProvider = Companion.provider<Provider<ClassA>, ClassA>(delegate = SwitchingProvider<ClassA>(graph = <this>, id = 4))
-      <this>.#classBProvider = Companion.provider<Provider<ClassB>, ClassB>(delegate = SwitchingProvider<ClassB>(graph = <this>, id = 3))
+      <this>.#classAProvider = DoubleCheck/* companion */.provider<Provider<ClassA>, ClassA>(delegate = SwitchingProvider<ClassA>(graph = <this>, id = 4))
+      <this>.#classBProvider = DoubleCheck/* companion */.provider<Provider<ClassB>, ClassB>(delegate = SwitchingProvider<ClassB>(graph = <this>, id = 3))
     }
 
     private fun init2() {
-      <this>.#classCProvider = Companion.provider<Provider<ClassC>, ClassC>(delegate = SwitchingProvider<ClassC>(graph = <this>, id = 2))
-      <this>.#classDProvider = Companion.provider<Provider<ClassD>, ClassD>(delegate = SwitchingProvider<ClassD>(graph = <this>, id = 1))
+      <this>.#classCProvider = DoubleCheck/* companion */.provider<Provider<ClassC>, ClassC>(delegate = SwitchingProvider<ClassC>(graph = <this>, id = 2))
+      <this>.#classDProvider = DoubleCheck/* companion */.provider<Provider<ClassD>, ClassD>(delegate = SwitchingProvider<ClassD>(graph = <this>, id = 1))
     }
 
     private fun init3() {
-      <this>.#classEProvider = Companion.provider<Provider<ClassE>, ClassE>(delegate = SwitchingProvider<ClassE>(graph = <this>, id = 0))
+      <this>.#classEProvider = DoubleCheck/* companion */.provider<Provider<ClassE>, ClassE>(delegate = SwitchingProvider<ClassE>(graph = <this>, id = 0))
     }
 
     override val a: ClassA
@@ -319,3 +319,4 @@ interface AppGraph {
     abstract get
 
 }
+

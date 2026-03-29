@@ -67,7 +67,7 @@ class Reused {
     }
 
     override operator fun invoke(): Reused {
-      return Companion.newInstance(nonReused = <this>.#nonReused.invoke())
+      return MetroFactory/* companion */.newInstance(nonReused = <this>.#nonReused.invoke())
     }
 
     fun mirrorFunction(nonReused: NonReused): Reused {
@@ -168,7 +168,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): Double {
-      return Companion.provideDouble(instance = <this>.#instance, long = <this>.#long.invoke(), long2 = <this>.#long.invoke())
+      return ProvideDoubleMetroFactory/* companion */.provideDouble(instance = <this>.#instance, long = <this>.#long.invoke(), long2 = <this>.#long.invoke())
     }
 
     fun mirrorFunction(long: Long, long2: Long): Double {
@@ -205,7 +205,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     fun mirrorFunction(): Int {
@@ -243,7 +243,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): Long {
-      return Companion.provideLong(instance = <this>.#instance, int = <this>.#int.invoke(), int2 = <this>.#int.invoke())
+      return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance, int = <this>.#int.invoke(), int2 = <this>.#int.invoke())
     }
 
     fun mirrorFunction(int: Int, int2: Int): Long {

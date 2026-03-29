@@ -1,4 +1,5 @@
 **/src/test/data/**
+**/betterDumpKotlinLike.kt
 **/AbstractMapFactory.kt
 **/Assisted.kt
 **/AssistedFactory.kt
@@ -25,6 +26,7 @@
 **/MapProviderLazyFactory.kt
 **/MembersInjector.kt
 **/MemoizedSequence.kt
+**/MetroIrPrettyKotlinDumpHandler.kt
 **/Multibinds.kt
 **/NameAllocator.kt
 **/NameAllocatorTest.kt

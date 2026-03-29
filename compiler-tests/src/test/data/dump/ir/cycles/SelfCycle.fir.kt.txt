@@ -36,9 +36,9 @@ class S {
     }
 
     override operator fun invoke(): S {
-      val tmp_0: S = Companion.newInstance(sProvider = <this>.#sProvider)
-      Companion.injectSLazy(instance = tmp_0, sLazy = Companion.lazy<Provider<S>, S>(provider = <this>.#sProvider))
-      return tmp_0
+      val tmp0: S = S.MetroFactory/* companion */.newInstance(sProvider = <this>.#sProvider)
+      MetroMembersInjector/* companion */.injectSLazy(instance = tmp0, sLazy = DoubleCheck/* companion */.lazy<Provider<S>, S>(provider = <this>.#sProvider))
+      return tmp0
     }
 
     fun mirrorFunction(sProvider: Provider<S>): S {
@@ -74,7 +74,7 @@ class S {
     }
 
     override fun injectMembers(instance: S) {
-      Companion.injectSLazy(instance = instance, sLazy = Companion.lazy<Provider<S>, S>(provider = <this>.#sLazy))
+      MetroMembersInjector/* companion */.injectSLazy(instance = instance, sLazy = DoubleCheck/* companion */.lazy<Provider<S>, S>(provider = <this>.#sLazy))
     }
 
   }
@@ -99,7 +99,7 @@ interface SelfCycleGraph {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<S>(delegateFactory = <this>.#sProvider, delegate = Companion.create(sProvider = <this>.#sProvider))
+      DelegateFactory/* companion */.setDelegate<S>(delegateFactory = <this>.#sProvider, delegate = S.MetroFactory/* companion */.create(sProvider = <this>.#sProvider))
     }
 
     override fun s(): S {

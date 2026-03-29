@@ -71,7 +71,7 @@ abstract class AppGraph : BaseGraph {
     }
 
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     fun mirrorFunction(): String {
@@ -131,7 +131,7 @@ open class BaseGraph {
     }
 
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     fun mirrorFunction(): Int {

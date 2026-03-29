@@ -45,10 +45,10 @@ interface AppGraph {
       field = <this>
 
     private val scopedClassProvider: Provider<ScopedClass>
-      field = Companion.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 1))
+      field = DoubleCheck/* companion */.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 1))
 
     private val provideStringProvider: Provider<String>
-      field = Companion.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
+      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
       private val graph: Impl
@@ -149,7 +149,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)

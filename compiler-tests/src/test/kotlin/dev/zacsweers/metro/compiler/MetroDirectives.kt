@@ -147,6 +147,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
         "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir/test/AppGraph'. " +
         "Expected files should be named '<testFile>/<diagnosticKey>/<path>/<reportName>.txt'."
     )
+  val METRO_DUMP_KT_IR by
+    directive("Like DUMP_KT_IR but uses betterDumpKotlinLike() for nested class name rendering.")
 
   fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
     return WITH_DAGGER in directives ||

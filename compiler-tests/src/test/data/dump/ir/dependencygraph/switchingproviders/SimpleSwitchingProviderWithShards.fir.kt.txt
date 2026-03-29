@@ -75,7 +75,7 @@ interface AppGraph {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#scopedClassProvider = Companion.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 2))
+        <this>.#scopedClassProvider = DoubleCheck/* companion */.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 2))
       }
 
     }
@@ -141,7 +141,7 @@ interface AppGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#provideStringProvider = Companion.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
+        <this>.#provideStringProvider = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
       }
 
     }
@@ -219,7 +219,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): Int {
-      return Companion.provideReusedInt(instance = <this>.#instance)
+      return ProvideReusedIntMetroFactory/* companion */.provideReusedInt(instance = <this>.#instance)
     }
 
     fun mirrorFunction(): Int {
@@ -256,7 +256,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)

@@ -39,7 +39,6 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 
 internal interface IrMetroContext : IrPluginContext, CompatContext {
@@ -121,7 +120,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   fun IrElement.dumpToMetroLog(name: String) {
     loggerFor(MetroLogger.Type.GeneratedFactories).log {
-      val irSrc = dumpKotlinLike()
+      val irSrc = betterDumpKotlinLike()
       buildString {
         append("IR source dump for ")
         appendLine(name)
