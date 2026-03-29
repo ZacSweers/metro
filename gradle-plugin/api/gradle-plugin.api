@@ -35,9 +35,7 @@ public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrai
 
 public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public fun <init> (Lorg/gradle/api/provider/Provider;Lorg/gradle/api/file/ProjectLayout;Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
-	public final fun getAssistedIdentifierSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getAutomaticallyAddRuntimeDependencies ()Lorg/gradle/api/provider/Property;
-	public final fun getChunkFieldInits ()Lorg/gradle/api/provider/Property;
 	public final fun getCompilerVersion ()Lorg/gradle/api/provider/Property;
 	public final fun getCompilerVersionAliases ()Lorg/gradle/api/provider/MapProperty;
 	public final fun getContributesAsInject ()Lorg/gradle/api/provider/Property;
@@ -53,20 +51,17 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getForceEnableFirInIde ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateAssistedFactories ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateContributionHints ()Lorg/gradle/api/provider/Property;
-	public abstract fun getGenerateThrowsAnnotations ()Lorg/gradle/api/provider/Property;
 	public final fun getInterop ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;
 	public final fun getInteropAnnotationsNamedArgSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getKeysPerGraphShard ()Lorg/gradle/api/provider/Property;
 	public final fun getMaxIrErrors ()Lorg/gradle/api/provider/Property;
 	public final fun getNonPublicContributionSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getOptionalBindingBehavior ()Lorg/gradle/api/provider/Property;
-	public final fun getPublicProviderSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getPublicScopedProviderSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getReportsDestination ()Lorg/gradle/api/file/DirectoryProperty;
 	public final fun getShrinkUnusedBindings ()Lorg/gradle/api/provider/Property;
 	public final fun getStatementsPerInitFun ()Lorg/gradle/api/provider/Property;
 	public final fun getTraceDestination ()Lorg/gradle/api/file/DirectoryProperty;
-	public final fun getTransformProvidersToPrivate ()Lorg/gradle/api/provider/Property;
 	public final fun getUnusedGraphInputsSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getUseAssistedParamNamesAsIdentifiers ()Lorg/gradle/api/provider/Property;
 	public final fun getWarnOnInjectAnnotationPlacement ()Lorg/gradle/api/provider/Property;
