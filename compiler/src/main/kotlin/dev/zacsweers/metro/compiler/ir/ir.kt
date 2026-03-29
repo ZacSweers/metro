@@ -1544,7 +1544,11 @@ internal val IrFunction.regularParameters: List<IrValueParameter>
   }
 
 internal fun IrFunction.isInheritedFromAny(irBuiltIns: IrBuiltIns): Boolean {
-  return isEqualsOnAny(irBuiltIns) || isHashCodeOnAny() || isToStringOnAny()
+  return isEqualsOnAny(irBuiltIns) ||
+    isHashCodeOnAny() ||
+    isToStringOnAny() ||
+    isCopyOnAny() ||
+    isComponentNOnAny()
 }
 
 internal fun IrFunction.isEqualsOnAny(irBuiltIns: IrBuiltIns): Boolean {
@@ -1563,6 +1567,15 @@ internal fun IrFunction.isHashCodeOnAny(): Boolean {
 
 internal fun IrFunction.isToStringOnAny(): Boolean {
   return name == StandardNames.TO_STRING_NAME &&
+    hasShape(dispatchReceiver = true, regularParameters = 0)
+}
+
+internal fun IrFunction.isCopyOnAny(): Boolean {
+  return name == StandardNames.DATA_CLASS_COPY
+}
+
+internal fun IrFunction.isComponentNOnAny(): Boolean {
+  return name.asString().startsWith(StandardNames.DATA_CLASS_COMPONENT_PREFIX) &&
     hasShape(dispatchReceiver = true, regularParameters = 0)
 }
 
