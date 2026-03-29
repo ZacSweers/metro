@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Locale
@@ -9,7 +10,6 @@ import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
@@ -1377,31 +1377,92 @@ public data class MetroOptions(
     }
   }
 
+  internal fun validate(
+    compilerVersion: KotlinToolingVersion,
+    configuration: CompilerConfiguration,
+    onError: (String) -> Unit,
+  ): Boolean {
+    var valid = true
+    if (!validateKotlinJsIC(compilerVersion, configuration, onError)) {
+      valid = false
+    }
+    // Future validations go here
+    return valid
+  }
+
+  private fun validateKotlinJsIC(
+    compilerVersion: KotlinToolingVersion,
+    configuration: CompilerConfiguration,
+    onError: (String) -> Unit,
+  ): Boolean {
+    val supportJsIc =
+      !configuration.jsIncrementalCompilationEnabled ||
+        configuration.wasmCompilation ||
+        kotlinVersionSupportsJsIC(compilerVersion)
+    if (supportJsIc) {
+      return true
+    }
+
+    val jsICOptions = buildList {
+      if (enableTopLevelFunctionInjection) {
+        add("enableTopLevelFunctionInjection")
+      }
+      if (generateContributionHints) {
+        add("generateContributionHints")
+      }
+      if (generateContributionHintsInFir) {
+        add("generateContributionHintsInFir")
+      }
+    }
+
+    if (jsICOptions.isNotEmpty()) {
+      onError(
+        "Kotlin/JS does not support generating top-level declarations with incremental compilation enabled. " +
+          "See https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989. " +
+          "Either disable ${jsICOptions.joinToString()} for JS targets or disable JS IC."
+      )
+      return false
+    }
+    return true
+  }
+
   public object SystemProperties {
     public val SHORTEN_LOCATIONS: Boolean =
       System.getProperty("metro.shortLocations", "false").toBoolean()
   }
 
   public companion object {
-    public fun buildOptions(body: Builder.() -> Unit): MetroOptions {
-      return Builder().apply(body).build()
+    /** Minimum Kotlin version on the 2.3.x line that supports JS IC with top-level declarations. */
+    private val MIN_KOTLIN_2_3_JS_IC = KotlinToolingVersion("2.3.21-RC")
+
+    /**
+     * Minimum Kotlin dev version on the 2.4.x line that supports JS IC with top-level declarations.
+     */
+    private val MIN_KOTLIN_2_4_DEV_JS_IC = KotlinToolingVersion("2.4.0-dev-8064")
+
+    /**
+     * Minimum Kotlin non-dev version on the 2.4.x line that supports JS IC with top-level
+     * declarations.
+     */
+    private val MIN_KOTLIN_2_4_JS_IC = KotlinToolingVersion("2.4.0-Beta2")
+
+    private fun kotlinVersionSupportsJsIC(version: KotlinToolingVersion): Boolean {
+      if (version.major > 2) return true // ... if K3 ever happens
+      return when (version.minor) {
+        in 0..2 -> false
+        3 -> version >= MIN_KOTLIN_2_3_JS_IC
+        4 ->
+          if (version.maturity == KotlinToolingVersion.Maturity.DEV) {
+            version >= MIN_KOTLIN_2_4_DEV_JS_IC
+          } else {
+            version >= MIN_KOTLIN_2_4_JS_IC
+          }
+        else -> true // 2.5+
+      }
     }
 
-    private fun validateKotlinJsIC(
-      enabled: Boolean,
-      optionName: String,
-      configuration: CompilerConfiguration,
-    ) {
-      if (
-        enabled && configuration.jsIncrementalCompilationEnabled && !configuration.wasmCompilation
-      ) {
-        configuration.messageCollector.report(
-          CompilerMessageSeverity.ERROR,
-          "Kotlin/JS does not support generating top-level declarations with incremental compilation enabled. " +
-            "See https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989. " +
-            "Either disable $optionName for JS targets or disable JS IC.",
-        )
-      }
+    public fun buildOptions(body: Builder.() -> Unit): MetroOptions {
+      return Builder().apply(body).build()
     }
 
     internal fun load(configuration: CompilerConfiguration): MetroOptions = buildOptions {
@@ -1425,22 +1486,13 @@ public data class MetroOptions(
             generateAssistedFactories = configuration.getAsBoolean(entry)
 
           ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
-            enableTopLevelFunctionInjection =
-              configuration.getAsBoolean(entry).also { enabled ->
-                validateKotlinJsIC(enabled, "enableTopLevelFunctionInjection", configuration)
-              }
+            enableTopLevelFunctionInjection = configuration.getAsBoolean(entry)
 
           GENERATE_CONTRIBUTION_HINTS ->
-            generateContributionHints =
-              configuration.getAsBoolean(entry).also { enabled ->
-                validateKotlinJsIC(enabled, "generateContributionHints", configuration)
-              }
+            generateContributionHints = configuration.getAsBoolean(entry)
 
           GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
-            generateContributionHintsInFir =
-              configuration.getAsBoolean(entry).also { enabled ->
-                validateKotlinJsIC(enabled, "generateContributionHintsInFir", configuration)
-              }
+            generateContributionHintsInFir = configuration.getAsBoolean(entry)
 
           TRANSFORM_PROVIDERS_TO_PRIVATE ->
             transformProvidersToPrivate = configuration.getAsBoolean(entry)

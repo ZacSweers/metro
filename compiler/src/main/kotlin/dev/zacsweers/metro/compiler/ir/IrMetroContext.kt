@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import androidx.tracing.TraceDriver
+import androidx.tracing.AbstractTraceDriver
 import androidx.tracing.wire.TraceDriver as WireTraceDriver
 import androidx.tracing.wire.TraceSink
 import dev.zacsweers.metro.compiler.LOG_PREFIX
@@ -61,7 +61,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   val reportsDir: Path?
 
-  val traceDriver: TraceDriver
+  val traceDriver: AbstractTraceDriver
 
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
@@ -211,7 +211,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
         }
       }
 
-      override val traceDriver: TraceDriver by lazy {
+      override val traceDriver: AbstractTraceDriver by lazy {
         val tracePath = options.traceDir.value
         val sink =
           if (tracePath == null) {
