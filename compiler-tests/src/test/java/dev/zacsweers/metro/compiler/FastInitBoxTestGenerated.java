@@ -727,6 +727,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("IncludesDataClassFromExternalModule.kt")
+    public void testIncludesDataClassFromExternalModule() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/IncludesDataClassFromExternalModule.kt");
+    }
+
+    @Test
     @TestMetadata("IncludesDeepInheritedInterfacesWork.kt")
     public void testIncludesDeepInheritedInterfacesWork() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/IncludesDeepInheritedInterfacesWork.kt");
