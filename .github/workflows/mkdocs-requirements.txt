@@ -1,8 +1,9 @@
 # Zensical - used for local dev and CI validation builds
 # https://zensical.org/
-zensical==0.0.29
+zensical==0.0.30
 
-# MkDocs + Material + mike - still needed for versioned deployments via mike
+# MkDocs + Material - transitive dependencies of the mike fork (not used directly)
+# Can be removed once zensical ships native versioning and the mike fork is dropped
 # See docs/zensical-migration.md for details
 click==8.3.1
 future==1.0.0
@@ -11,7 +12,10 @@ livereload==2.7.1
 lunr==0.8.0
 Markdown==3.10.2
 MarkupSafe==3.0.3
-mike==2.1.4
+# Mike (Zensical fork by squidfunk) - versioned docs deployment to gh-pages
+# https://zensical.org/docs/setup/versioning/
+# NOTE: Not published to PyPI, must install from GitHub
+mike @ git+https://github.com/squidfunk/mike.git
 mkdocs==1.6.1
 mkdocs-get-deps==0.2.2
 mkdocs-macros-plugin==1.5.0
