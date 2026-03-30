@@ -535,7 +535,7 @@ internal fun IrClass.allCallableMembers(
 ): Sequence<MetroSimpleFunction> {
   return functions
     .letIf(excludeAnyFunctions) {
-      it.filterNot { function -> function.isInheritedFromAny(context.irBuiltIns) }
+      it.filterNot { function -> function.isCompilerIntrinsicOrAny(context.irBuiltIns, isData) }
     }
     .filter(functionFilter)
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
@@ -548,8 +548,8 @@ internal fun IrClass.allCallableMembers(
         companionObject()?.let { companionObject ->
           asFunctions +
             companionObject.allCallableMembers(
-              excludeAnyFunctions,
-              excludeInheritedMembers,
+              excludeAnyFunctions = excludeAnyFunctions,
+              excludeInheritedMembers = excludeInheritedMembers,
               excludeCompanionObjectMembers = false,
             )
         } ?: asFunctions
@@ -1543,8 +1543,15 @@ internal val IrFunction.regularParameters: List<IrValueParameter>
     return parameters.filter { it.kind == IrParameterKind.Regular }
   }
 
-internal fun IrFunction.isInheritedFromAny(irBuiltIns: IrBuiltIns): Boolean {
-  return isEqualsOnAny(irBuiltIns) || isHashCodeOnAny() || isToStringOnAny()
+internal fun IrFunction.isCompilerIntrinsicOrAny(
+  irBuiltIns: IrBuiltIns,
+  isDataClass: Boolean,
+): Boolean {
+  return isEqualsOnAny(irBuiltIns) ||
+    isHashCodeOnAny() ||
+    isToStringOnAny() ||
+    isComponentOperator ||
+    (isDataClass && isNamedCopy)
 }
 
 internal fun IrFunction.isEqualsOnAny(irBuiltIns: IrBuiltIns): Boolean {
@@ -1565,6 +1572,19 @@ internal fun IrFunction.isToStringOnAny(): Boolean {
   return name == StandardNames.TO_STRING_NAME &&
     hasShape(dispatchReceiver = true, regularParameters = 0)
 }
+
+internal val IrFunction.isNamedCopy: Boolean
+  get() = name == StandardNames.DATA_CLASS_COPY
+
+private val COMPONENT_FUNCTION_REGEX = Regex(StandardNames.DATA_CLASS_COMPONENT_PREFIX + "[0-9]*")
+
+internal val IrFunction.isComponentOperator: Boolean
+  get() {
+    return this is IrSimpleFunction &&
+      isOperator &&
+      COMPONENT_FUNCTION_REGEX.matches(name.asString()) &&
+      hasShape(dispatchReceiver = true, regularParameters = 0)
+  }
 
 internal val NOOP_TYPE_REMAPPER =
   object : TypeRemapper {

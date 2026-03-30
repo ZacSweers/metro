@@ -36,8 +36,8 @@ import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
+import dev.zacsweers.metro.compiler.ir.isCompilerIntrinsicOrAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
-import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
@@ -82,7 +82,6 @@ import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
-import org.jetbrains.kotlin.ir.interpreter.hasAnnotation
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrFail
@@ -514,7 +513,11 @@ internal class GraphNodes(
           if (declaration !is IrOverridableDeclaration<*>) continue
           if (!declaration.isFakeOverride) continue
           if (
-            declaration is IrFunction && declaration.isInheritedFromAny(pluginContext.irBuiltIns)
+            declaration is IrFunction &&
+              declaration.isCompilerIntrinsicOrAny(
+                pluginContext.irBuiltIns,
+                nonNullMetroGraph.isData,
+              )
           ) {
             continue
           }
