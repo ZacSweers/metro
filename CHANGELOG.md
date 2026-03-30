@@ -6,7 +6,9 @@ Changelog
 
 ### New
 
-- New `generateContributionProviders` API (Kotlin 2.3.20+) to optimize behavior with contributed APIs.
+#### `generateContributionProviders`
+
+This release introduces a new `generateContributionProviders` API (Kotlin 2.3.20+) to optimize behavior with contributed APIs.
 
 Up to now, Metro's aggregation APIs (i.e. `@Contributes*` binding annotations) have worked similar to Anvil, where the ultimately just generate `@Binds` declarations as simple shorthands for the consuming graphs. This comes with the caveat that the injected class _must_ be publicly visible if it's used outside of that module.
 
