@@ -7,6 +7,7 @@ Changelog
 ### Enhancements
 
 - Support top-level FIR gen (contribution hints, function inject, etc) in Kotlin/JS on `2.3.21`+ and `2.4.0-Beta2`+.
+- Support generic (top-level) function injection.
 
 ### Fixes
 
