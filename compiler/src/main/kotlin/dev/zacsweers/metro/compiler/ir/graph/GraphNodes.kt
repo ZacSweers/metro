@@ -514,7 +514,8 @@ internal class GraphNodes(
           if (declaration !is IrOverridableDeclaration<*>) continue
           if (!declaration.isFakeOverride) continue
           if (
-            declaration is IrFunction && declaration.isInheritedFromAny(pluginContext.irBuiltIns)
+            declaration is IrFunction &&
+              declaration.isInheritedFromAny(pluginContext.irBuiltIns, graphDeclaration.isData)
           ) {
             continue
           }
