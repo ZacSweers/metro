@@ -535,7 +535,7 @@ internal fun IrClass.allCallableMembers(
 ): Sequence<MetroSimpleFunction> {
   return functions
     .letIf(excludeAnyFunctions) {
-      it.filterNot { function -> function.isInheritedFromAny(context.irBuiltIns) }
+      it.filterNot { function -> function.isInheritedFromAny(context.irBuiltIns, isData) }
     }
     .filter(functionFilter)
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
@@ -548,8 +548,8 @@ internal fun IrClass.allCallableMembers(
         companionObject()?.let { companionObject ->
           asFunctions +
             companionObject.allCallableMembers(
-              excludeAnyFunctions,
-              excludeInheritedMembers,
+              excludeAnyFunctions = excludeAnyFunctions,
+              excludeInheritedMembers = excludeInheritedMembers,
               excludeCompanionObjectMembers = false,
             )
         } ?: asFunctions
@@ -1543,8 +1543,11 @@ internal val IrFunction.regularParameters: List<IrValueParameter>
     return parameters.filter { it.kind == IrParameterKind.Regular }
   }
 
-internal fun IrFunction.isInheritedFromAny(irBuiltIns: IrBuiltIns): Boolean {
-  return isEqualsOnAny(irBuiltIns) || isHashCodeOnAny() || isToStringOnAny()
+internal fun IrFunction.isInheritedFromAny(irBuiltIns: IrBuiltIns, isDataClass: Boolean): Boolean {
+  return isEqualsOnAny(irBuiltIns) ||
+    isHashCodeOnAny() ||
+    isToStringOnAny() ||
+    (isDataClass && (isCopyOnAny() || isComponentNOnAny()))
 }
 
 internal fun IrFunction.isEqualsOnAny(irBuiltIns: IrBuiltIns): Boolean {
@@ -1564,6 +1567,17 @@ internal fun IrFunction.isHashCodeOnAny(): Boolean {
 internal fun IrFunction.isToStringOnAny(): Boolean {
   return name == StandardNames.TO_STRING_NAME &&
     hasShape(dispatchReceiver = true, regularParameters = 0)
+}
+
+internal fun IrFunction.isCopyOnAny(): Boolean {
+  return name == StandardNames.DATA_CLASS_COPY
+}
+
+internal fun IrFunction.isComponentNOnAny(): Boolean {
+  return name.asString().startsWith(StandardNames.DATA_CLASS_COMPONENT_PREFIX) &&
+    hasShape(dispatchReceiver = true, regularParameters = 0) &&
+    this is IrSimpleFunction &&
+    isOperator
 }
 
 internal val NOOP_TYPE_REMAPPER =
