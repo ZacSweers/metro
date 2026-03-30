@@ -4,21 +4,6 @@ Changelog
 **Unreleased**
 --------------
 
-### New
-
-#### [**[MEEP-1776]**](https://github.com/ZacSweers/metro/discussions/1776) `@DefaultBinding`
-
-This release introduces a new `@DefaultBinding` annotation that allows for setting a default binding on _supertypes_ of contributed classes. This is useful for common base classes with generics that would otherwise require repetitive (or error-prone) explicit `binding<T>()` declarations in subtypes.
-
-```kotlin
-@DefaultBinding<BaseFactory<*>>
-interface BaseFactory<T : BaseFactory<T>>
-
-@ContributesIntoSet(AppScope::class) // now implicitly contributed as BaseFactory<*>
-@Inject
-class HomeFactory(...) : BaseFactory<HomeFactory>
-```
-
 ### Enhancements
 
 - Support top-level FIR gen (contribution hints, function inject, etc) in Kotlin/JS on `2.3.21`+ and `2.4.0-Beta2`+.
@@ -108,13 +93,13 @@ annotation class ViewModelKey(val value: KClass<out ViewModel> = Nothing::class)
 
 Special thanks to the following contributors for contributing to this release!
 
-- @Asapha
-- @ChristianKatzmann
-- @grandstaish
-- @jonamireh
-- @kevinguitar
-- @svenjacobs
-- @vRallev
+- [@Asapha](https://github.com/Asapha)
+- [@ChristianKatzmann](https://github.com/ChristianKatzmann)
+- [@grandstaish](https://github.com/grandstaish)
+- [@jonamireh](https://github.com/jonamireh)
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@svenjacobs](https://github.com/svenjacobs)
+- [@vRallev](https://github.com/vRallev)
 
 0.11.4
 ------
