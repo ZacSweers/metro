@@ -123,8 +123,6 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, nonPublicContributionSeverity)
               USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS ->
                 processor.option(entry.raw.cliOption, useAssistedParamNamesAsIdentifiers)
-              ASSISTED_IDENTIFIER_SEVERITY ->
-                processor.option(entry.raw.cliOption, assistedIdentifierSeverity)
               WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->

@@ -83,10 +83,6 @@ object MetroDirectives : SimpleDirectivesContainer() {
     ) {
       it.toBoolean()
     }
-  val ASSISTED_IDENTIFIER_SEVERITY by
-    enumDirective<MetroOptions.DiagnosticSeverity>(
-      "Control diagnostic severity when explicit @Assisted(\"value\") identifiers are used."
-    )
   val PARALLEL_THREADS by
     valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
   val ENABLE_FUNCTION_PROVIDERS by directive("Enable () -> T as a provider type.")

@@ -130,9 +130,6 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       module.directives
         .singleOrZeroValue(MetroDirectives.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS)
         ?.let { useAssistedParamNamesAsIdentifiers = it }
-      module.directives.singleOrZeroValue(MetroDirectives.ASSISTED_IDENTIFIER_SEVERITY)?.let {
-        assistedIdentifierSeverity = it
-      }
       module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
         parallelThreads = it
       }
