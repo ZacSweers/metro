@@ -5,12 +5,12 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -63,6 +63,7 @@ import org.jetbrains.kotlin.name.ClassId
 internal class ContributionTransformer(
   private val context: IrMetroContext,
   traceScope: TraceScope,
+  private val boundTypeResolver: IrBoundTypeResolver,
 ) : IrTransformer<IrContributionData>(), IrMetroContext by context, TraceScope by traceScope {
 
   private val transformedContributions = mutableSetOf<ClassId>()
@@ -154,7 +155,8 @@ internal class ContributionTransformer(
         for (contribution in contributions) {
           if (contribution !is Contribution.BindingContribution) continue
           with(contribution) {
-            bindsFunctions += declaration.generateBindingFunction(metroContext, nameAllocator)
+            bindsFunctions +=
+              declaration.generateBindingFunction(metroContext, nameAllocator, boundTypeResolver)
           }
         }
       }
@@ -204,14 +206,19 @@ internal class ContributionTransformer(
       fun IrClass.generateBindingFunction(
         metroContext: IrMetroContext,
         nameAllocator: NameAllocator,
+        boundTypeResolver: IrBoundTypeResolver,
       ): IrSimpleFunction =
         with(metroContext) {
-          val (explicitBindingType, ignoreQualifier) = annotation.bindingTypeOrNull()
-          val bindingType =
-            explicitBindingType ?: annotatedType.superTypes.single() // Checked in FIR
+          val result =
+            boundTypeResolver.resolveBoundType(annotatedType, annotation)
+              ?: error(
+                "Could not resolve bound type for ${annotatedType.classIdOrFail}. This should have been caught in FIR."
+              )
+          val bindingType = result.type
+          val explicitBindingType = result.explicitBindingType
 
           val qualifier =
-            if (!ignoreQualifier) {
+            if (!result.ignoreQualifier) {
               explicitBindingType?.qualifierAnnotation() ?: annotatedType.qualifierAnnotation()
             } else {
               null

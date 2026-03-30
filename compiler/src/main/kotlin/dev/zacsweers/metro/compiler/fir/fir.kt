@@ -39,7 +39,9 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
+import org.jetbrains.kotlin.fir.declarations.declaredFunctions
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
+import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.getTargetType
@@ -120,6 +122,8 @@ import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
+import org.jetbrains.kotlin.fir.types.FirPlaceholderProjection
+import org.jetbrains.kotlin.fir.types.FirStarProjection
 import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
@@ -1623,4 +1627,39 @@ internal fun ConeKotlinType.toClassSymbolCompat(s: FirSession): FirClassSymbol<*
 
 internal fun ConeClassLikeLookupTag.toSymbolCompat(s: FirSession): FirClassLikeSymbol<*>? {
   return toSymbol(s)
+}
+
+/**
+ * Resolves the default binding type from a supertype's `@DefaultBinding<T>` annotation.
+ *
+ * For same-module classes, reads the type argument from the annotation directly. For cross-module
+ * classes, reads the return type of the `defaultBinding()` function in the `DefaultBindingMirror`
+ * nested class.
+ *
+ * Returns the [ConeKotlinType] of the default binding, or null if none found.
+ */
+// TODO lookup tracking?
+internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): ConeKotlinType? {
+  // Try to read from @DefaultBinding annotation directly (same-module)
+  getAnnotationByClassId(session.classIds.defaultBindingAnnotation, session)?.let { annotation ->
+    if (annotation !is FirAnnotationCall) return null
+    val typeArg = annotation.typeArguments.firstOrNull() ?: return null
+    return when (typeArg) {
+      is FirPlaceholderProjection,
+      is FirStarProjection -> null // Checked separately
+      is FirTypeProjectionWithVariance -> typeArg.typeRef.coneTypeOrNull
+    }
+  }
+
+  // Fall back to DefaultBindingMirror for cross-module resolution
+  val mirrorSymbol =
+    nestedClasses(session).firstOrNull { it.name == Symbols.Names.DefaultBindingMirrorClass }
+      ?: return null
+
+  // Read the return type of the defaultBinding() function
+  val holderFunction =
+    mirrorSymbol.declaredFunctions(session).firstOrNull {
+      it.name == Symbols.Names.defaultBindingFunction
+    } ?: return null
+  return holderFunction.resolvedReturnType
 }

@@ -103,6 +103,36 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("DefaultBinding_Basic.kt")
+    public void testDefaultBinding_Basic() {
+      runTest("compiler-tests/src/test/data/box/aggregation/DefaultBinding_Basic.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBinding_ExplicitOverride.kt")
+    public void testDefaultBinding_ExplicitOverride() {
+      runTest("compiler-tests/src/test/data/box/aggregation/DefaultBinding_ExplicitOverride.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBinding_IntoSet.kt")
+    public void testDefaultBinding_IntoSet() {
+      runTest("compiler-tests/src/test/data/box/aggregation/DefaultBinding_IntoSet.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBinding_NearestSupertypeWins.kt")
+    public void testDefaultBinding_NearestSupertypeWins() {
+      runTest("compiler-tests/src/test/data/box/aggregation/DefaultBinding_NearestSupertypeWins.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBinding_WithGenericType.kt")
+    public void testDefaultBinding_WithGenericType() {
+      runTest("compiler-tests/src/test/data/box/aggregation/DefaultBinding_WithGenericType.kt");
+    }
+
+    @Test
     @TestMetadata("ExcludeBindingContainerWithOrigin.kt")
     public void testExcludeBindingContainerWithOrigin() {
       runTest("compiler-tests/src/test/data/box/aggregation/ExcludeBindingContainerWithOrigin.kt");

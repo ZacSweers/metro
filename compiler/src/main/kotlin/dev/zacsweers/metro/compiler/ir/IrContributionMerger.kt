@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.name.ClassId
 internal class IrContributionMerger(
   metroContext: IrMetroContext,
   private val contributionData: IrContributionData,
+  boundTypeResolver: IrBoundTypeResolver,
 ) : IrMetroContext by metroContext {
 
   // Cache for scope-based contributions (before exclusions/replacements).
@@ -40,6 +41,8 @@ internal class IrContributionMerger(
   // Cache for parent exclusions by starting class - avoids recomputing hierarchy walks.
   // Thread-safe for concurrent access during parallel graph validation.
   private val parentExcludedCache = ConcurrentHashMap<ClassId, Set<ClassId>>()
+
+  private val rankedBindingProcessing = IrRankedBindingProcessing(boundTypeResolver)
 
   private data class ScopedContributions(
     val allContributions: Map<ClassId, List<IrType>>,
@@ -328,7 +331,8 @@ internal class IrContributionMerger(
       if (options.enableDaggerAnvilInterop) {
         trace("Process ranked replacements") {
           val unmatchedRankReplacements = mutableSetOf<ClassId>()
-          val rankReplacements = processRankBasedReplacements(allScopes, mutableAllContributions)
+          val rankReplacements =
+            rankedBindingProcessing.processRankBasedReplacements(allScopes, mutableAllContributions)
           for (replacedClassId in rankReplacements) {
             if (mutableAllContributions.remove(replacedClassId) == null) {
               unmatchedRankReplacements += replacedClassId
@@ -360,17 +364,6 @@ internal class IrContributionMerger(
       mergedContributionsCache[cacheKey] = result
       return@trace result
     }
-
-  /**
-   * This provides `ContributesBinding.rank` interop for users migrating from Dagger-Anvil to make
-   * the migration to Metro more feasible.
-   *
-   * @return The bindings which have been outranked and should not be included in the merged graph.
-   */
-  private fun processRankBasedReplacements(
-    allScopes: Set<ClassId>,
-    contributions: Map<ClassId, List<IrType>>,
-  ): Set<ClassId> = IrRankedBindingProcessing.processRankBasedReplacements(allScopes, contributions)
 }
 
 internal data class IrContributions(

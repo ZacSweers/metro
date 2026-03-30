@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.ContributionHintIrTransforme
 import dev.zacsweers.metro.compiler.ir.transformers.ContributionTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.CoreTransformers
 import dev.zacsweers.metro.compiler.ir.transformers.CreateGraphTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.DefaultBindingMirrorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.ir.transformers.InjectedClassTransformer
@@ -109,7 +110,17 @@ public class MetroIrGenerationExtension(
             ContributionHintIrTransformer(metroContext, hintGenerator)
           }
 
-          val contributionMerger = IrContributionMerger(metroContext, contributionData)
+          val defaultBindingMirrorTransformer = DefaultBindingMirrorTransformer(metroContext)
+
+          val boundTypeResolver =
+            IrBoundTypeResolver(
+              metroContext.pluginContext,
+              defaultBindingMirrorTransformer::getOrComputeDefaultBindingType,
+            )
+
+          val contributionMerger =
+            IrContributionMerger(metroContext, contributionData, boundTypeResolver)
+
           val bindingContainerResolver = IrBindingContainerResolver(bindingContainerTransformer)
           val syntheticGraphs = mutableListOf<GraphToProcess>()
           val dynamicGraphGenerator =
@@ -131,13 +142,14 @@ public class MetroIrGenerationExtension(
                 metroContext,
                 this,
                 data,
-                ContributionTransformer(metroContext, this),
+                ContributionTransformer(metroContext, this, boundTypeResolver),
                 membersInjectorTransformer,
                 injectedClassTransformer,
                 assistedFactoryTransformer,
                 bindingContainerTransformer,
                 contributionHintIrTransformer,
                 createGraphTransformer,
+                defaultBindingMirrorTransformer,
               ),
               null,
             )
@@ -147,6 +159,7 @@ public class MetroIrGenerationExtension(
           injectedClassTransformer.lock()
           assistedFactoryTransformer.lock()
           bindingContainerTransformer.lock()
+          defaultBindingMirrorTransformer.lock()
 
           // Eagerly populate contribution caches for all known graph scopes
           // so that lookups are O(1) during (possibly parallel) graph validation.
@@ -181,6 +194,7 @@ public class MetroIrGenerationExtension(
               forkJoinPool,
               metroDeclarations,
               bindingContainerResolver,
+              boundTypeResolver,
             )
 
           // Second - transform the dependency graphs

@@ -41,6 +41,7 @@ internal class CoreTransformers(
   private val bindingContainerTransformer: BindingContainerTransformer,
   private val contributionHintIrTransformer: Lazy<ContributionHintIrTransformer>,
   private val createGraphTransformer: CreateGraphTransformer,
+  private val defaultBindingMirrorTransformer: DefaultBindingMirrorTransformer,
 ) :
   IrElementTransformerVoidWithContext(),
   TransformerContextAccess,
@@ -111,6 +112,9 @@ internal class CoreTransformers(
     }
 
     log("Reading ${declaration.kotlinFqName}")
+
+    // Populate DefaultBindingMirror for classes with @DefaultBinding (for cross-module use)
+    defaultBindingMirrorTransformer.visitClass(declaration)
 
     contributionTransformer.visitClass(declaration, data.contributionData)
 

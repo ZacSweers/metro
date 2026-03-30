@@ -16,12 +16,12 @@ import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
+import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -79,6 +79,7 @@ internal class IrBindingGraph(
   // TODO improve this cleanup
   bindingLookup: BindingLookup,
   private val contributionData: IrContributionData,
+  private val boundTypeResolver: IrBoundTypeResolver,
 ) : IrMetroContext by metroContext {
   private var hasErrors = false
 
@@ -723,9 +724,9 @@ internal class IrBindingGraph(
             val bindsKey =
               contribution
                 .annotationsIn(metroContext.metroSymbols.classIds.allContributesAnnotations)
-                .any {
-                  val boundType = it.bindingTypeOrNull().first?.rawTypeOrNull()?.classId
-                  boundType == null || boundType == klass.classId
+                .any { annotation ->
+                  val result = boundTypeResolver.resolveBoundType(contribution, annotation)
+                  result == null || result.type.rawTypeOrNull()?.classId == klass.classId
                 }
             implementsKey && bindsKey
           }

@@ -117,6 +117,10 @@ internal object Keys {
     override fun toString() = "BindingMirrorClassDeclaration"
   }
 
+  data object DefaultBindingMirrorClassDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "DefaultBindingMirrorClassDeclaration"
+  }
+
   data object GeneratedDynamicGraph : GeneratedDeclarationKey() {
     override fun toString() = "GeneratedDynamicGraph"
   }

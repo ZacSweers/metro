@@ -43,6 +43,24 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DefaultBinding_Ambiguous.kt")
+    public void testDefaultBinding_Ambiguous() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_Ambiguous.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBinding_InvalidTypeArg.kt")
+    public void testDefaultBinding_InvalidTypeArg() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_InvalidTypeArg.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBinding_MustBeSubclassable.kt")
+    public void testDefaultBinding_MustBeSubclassable() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_MustBeSubclassable.kt");
+    }
+
+    @Test
     @TestMetadata("InternalContributionMissingHint.kt")
     public void testInternalContributionMissingHint() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalContributionMissingHint.kt");
