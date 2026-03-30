@@ -25,7 +25,7 @@ class HomeFactory(...) : BaseFactory<HomeFactory>
 - Remove deprecated compiler options and Gradle extension properties.
     - `chunkFieldInits`
     - `transformProvidersToPrivate`
-    - `publicProviderSeverity`
+    - `publicProviderSeverity` (use `publicScopedProviderSeverity`)
     - `assistedIdentifierSeverity`
     - `generateThrowsAnnotation`
 
