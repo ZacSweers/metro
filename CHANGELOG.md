@@ -41,6 +41,10 @@ interface BaseFactory<T : BaseFactory<T>>
 class HomeFactory(...) : BaseFactory<HomeFactory>
 ```
 
+### Fixes
+
+- **[IR]** Consider Anvil's `rank` parameter when processing contributed binding containers.
+
 0.12.1
 ------
 
@@ -56,10 +60,6 @@ _2026-03-30_
 - **[FIR]** Make `allSessions` lookup lazy to avoid lockups in the IDE.
 - **[IR]** Exclude generated data class `copy` functions from `@Includes` accessor candidates.
 - **[IR]** Exclude destructuring component functions from `@Includes` accessor candidates.
-
-### Fixes
-
-- **[IR]** Consider Anvil's `rank` parameter when processing contributed binding containers.
 
 ### Changes
 
