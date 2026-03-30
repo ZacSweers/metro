@@ -64,6 +64,7 @@ import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
@@ -139,7 +140,29 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     if (!session.metroFirBuiltIns.options.enableTopLevelFunctionInjection) return null
     val function = symbols.getValue(Unit, null).getValue(classId)
     val annotations = function.metroAnnotations(session)
-    return createTopLevelClass(classId, Keys.TopLevelInjectFunctionClass)
+    return createTopLevelClass(classId, Keys.TopLevelInjectFunctionClass) {
+        if (function.typeParameterSymbols.isNotEmpty()) {
+          for (typeParameter in function.typeParameterSymbols) {
+            typeParameter(typeParameter.name, typeParameter.variance, false) {
+              for (bound in typeParameter.resolvedBounds) {
+                bound { typeParameterRefs ->
+                  val boundType = bound.coneType
+                  if (typeParameterRefs.isEmpty()) {
+                    boundType
+                  } else {
+                    val substitution = typeParameterRefs.associate { ref ->
+                      function.typeParameterSymbols.first { it.name == ref.symbol.name } to
+                        ref.symbol.constructType()
+                    }
+                    val substitutor = substitutorByMap(substitution, session)
+                    substitutor.substituteOrSelf(boundType)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
       .apply {
         replaceAnnotationsSafe(
           buildList {
@@ -579,6 +602,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           .plus(function.valueParameterSymbols)
           .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
           .map { MetroFirValueParameter(session, it) }
+      val typeParamSubstitutor = typeParameterSubstitutor(function, context.owner)
       return createConstructor(
           context.owner,
           Keys.Default,
@@ -590,9 +614,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             valueParameter(
               param.name,
               typeProvider = {
-                param.contextKey.typeKey.type
-                  // TODO need to remap these
-                  //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
+                typeParamSubstitutor
+                  .substituteOrSelf(param.contextKey.typeKey.type)
                   .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
               },
               key = Keys.RegularParameter,
@@ -642,14 +665,13 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     if (nonNullContext.owner.hasOrigin(Keys.TopLevelInjectFunctionClass)) {
       check(callableId.callableName == Symbols.Names.invoke)
       val function = symbols.getValue(Unit, null).getValue(context.owner.classId)
+      val typeParamSubstitutor = typeParameterSubstitutor(function, nonNullContext.owner)
       return createMemberFunction(
           nonNullContext.owner,
           Keys.TopLevelInjectFunctionClassFunction,
           callableId.callableName,
           returnTypeProvider = {
-            function.resolvedReturnType
-            // TODO need to remap these
-            //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
+            typeParamSubstitutor.substituteOrSelf(function.resolvedReturnType)
           },
         ) {
           status {
@@ -664,11 +686,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             }
             valueParameter(
               param.name,
-              typeProvider = {
-                param.resolvedReturnType
-                // TODO need to remap these
-                //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
-              },
+              typeProvider = { typeParamSubstitutor.substituteOrSelf(param.resolvedReturnType) },
               key = Keys.RegularParameter,
               hasDefaultValue = param.hasDefaultValue,
             )
@@ -801,6 +819,25 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         }
     }
     return functions
+  }
+
+  /**
+   * Creates a substitutor that remaps type parameter references from the original [function] to the
+   * generated [classSymbol]'s type parameters (matched by name).
+   */
+  private fun typeParameterSubstitutor(
+    function: FirNamedFunctionSymbol,
+    classSymbol: FirClassSymbol<*>,
+  ): ConeSubstitutor {
+    val functionTypeParams = function.typeParameterSymbols
+    if (functionTypeParams.isEmpty()) return ConeSubstitutor.Empty
+    val classTypeParamsByName = classSymbol.typeParameterSymbols.associateBy { it.name }
+    return substitutorByMap(
+      functionTypeParams.associate { funcTypeParam ->
+        funcTypeParam to classTypeParamsByName.getValue(funcTypeParam.name).constructType()
+      },
+      session,
+    )
   }
 
   private fun functionFor(classId: ClassId) =

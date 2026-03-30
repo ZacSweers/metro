@@ -19,9 +19,15 @@ interface BaseFactory<T : BaseFactory<T>>
 class HomeFactory(...) : BaseFactory<HomeFactory>
 ```
 
+0.12.1
+------
+
+_2026-03-30_
+
 ### Enhancements
 
 - Support top-level FIR gen (contribution hints, function inject, etc) in Kotlin/JS on `2.3.21`+ and `2.4.0-Beta2`+.
+- Support generic (top-level) function injection.
 
 ### Fixes
 
@@ -32,6 +38,7 @@ class HomeFactory(...) : BaseFactory<HomeFactory>
 ### Changes
 
 - Update shaded `androidx.tracing` to 2.0.0-alpha04.
+- Update shaded Wire dependency to 6.2.0.
 
 ### Contributors
 
