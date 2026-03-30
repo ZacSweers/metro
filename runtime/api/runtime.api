@@ -2,7 +2,6 @@ public abstract class dev/zacsweers/metro/AppScope {
 }
 
 public abstract interface annotation class dev/zacsweers/metro/Assisted : java/lang/annotation/Annotation {
-	public abstract fun value ()Ljava/lang/String;
 }
 
 public abstract interface annotation class dev/zacsweers/metro/AssistedFactory : java/lang/annotation/Annotation {

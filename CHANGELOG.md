@@ -47,6 +47,16 @@ class HomeFactory(...) : BaseFactory<HomeFactory>
 
 - **[IR]** Consider Anvil's `rank` parameter when processing contributed binding containers.
 
+### Changes
+
+- Removed `@Assisted.value`. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#assisted-injection) on why in case you missed this! TL;DR, Metro matches by parameter names going forward.
+- Remove deprecated compiler options and Gradle extension properties.
+    - `chunkFieldInits`
+    - `transformProvidersToPrivate`
+    - `publicProviderSeverity` (use `publicScopedProviderSeverity`)
+    - `assistedIdentifierSeverity`
+    - `generateThrowsAnnotation`
+
 0.12.1
 ------
 

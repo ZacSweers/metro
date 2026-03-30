@@ -177,32 +177,12 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  TRANSFORM_PROVIDERS_TO_PRIVATE(
-    RawMetroOption.boolean(
-      name = "transform-providers-to-private",
-      defaultValue = false,
-      valueDescription = "<true | false>",
-      description = "Enable/disable automatic transformation of providers to be private.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   SHRINK_UNUSED_BINDINGS(
     RawMetroOption.boolean(
       name = "shrink-unused-bindings",
       defaultValue = true,
       valueDescription = "<true | false>",
       description = "Enable/disable shrinking of unused bindings from binding graphs.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
-  CHUNK_FIELD_INITS(
-    RawMetroOption.boolean(
-      name = "chunk-field-inits",
-      defaultValue = true,
-      valueDescription = "<true | false>",
-      description = "Enable/disable chunking of field initializers in binding graphs.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -342,18 +322,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
         "When enabled, Metro's native @Assisted annotation uses the parameter name as the default identifier. When disabled, defaults to an empty string (legacy Dagger behavior). Only affects Metro's own @Assisted annotation, not custom/interop annotations.",
       required = false,
       allowMultipleOccurrences = false,
-    )
-  ),
-  ASSISTED_IDENTIFIER_SEVERITY(
-    RawMetroOption(
-      name = "assisted-identifier-severity",
-      defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
-      valueDescription = "NONE|WARN|ERROR",
-      description =
-        "Control diagnostic severity when explicit @Assisted(\"value\") identifiers are used on Metro's native @Assisted annotation. Only meaningful when use-assisted-param-names-as-identifiers is true.",
-      required = false,
-      allowMultipleOccurrences = false,
-      valueMapper = { it },
     )
   ),
   CUSTOM_PROVIDER(
@@ -919,11 +887,8 @@ public data class MetroOptions(
     MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
   public val generateContributionHintsInFir: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
-  public val transformProvidersToPrivate: Boolean =
-    MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   public val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
-  public val chunkFieldInits: Boolean = MetroOption.CHUNK_FIELD_INITS.raw.defaultValue.expectAs(),
   public val statementsPerInitFun: Int =
     MetroOption.STATEMENTS_PER_INIT_FUN.raw.defaultValue.expectAs(),
   public val enableGraphSharding: Boolean =
@@ -932,12 +897,8 @@ public data class MetroOptions(
   public val enableSwitchingProviders: Boolean =
     MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
   public val publicScopedProviderSeverity: DiagnosticSeverity =
-    if (transformProvidersToPrivate) {
-      DiagnosticSeverity.NONE
-    } else {
-      MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
-        DiagnosticSeverity.valueOf(it)
-      }
+    MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
     },
   public val nonPublicContributionSeverity: DiagnosticSeverity =
     MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY.raw.defaultValue.expectAs<String>().let {
@@ -968,10 +929,6 @@ public data class MetroOptions(
     },
   public val useAssistedParamNamesAsIdentifiers: Boolean =
     MetroOption.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS.raw.defaultValue.expectAs(),
-  public val assistedIdentifierSeverity: DiagnosticSeverity =
-    MetroOption.ASSISTED_IDENTIFIER_SEVERITY.raw.defaultValue.expectAs<String>().let {
-      DiagnosticSeverity.valueOf(it)
-    },
   public val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -1105,9 +1062,7 @@ public data class MetroOptions(
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
     public var generateContributionHints: Boolean = base.generateContributionHints
     public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
-    public var transformProvidersToPrivate: Boolean = base.transformProvidersToPrivate
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
-    public var chunkFieldInits: Boolean = base.chunkFieldInits
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
@@ -1117,7 +1072,6 @@ public data class MetroOptions(
       base.nonPublicContributionSeverity
     public var optionalBindingBehavior: OptionalBindingBehavior = base.optionalBindingBehavior
     public var useAssistedParamNamesAsIdentifiers: Boolean = base.useAssistedParamNamesAsIdentifiers
-    public var assistedIdentifierSeverity: DiagnosticSeverity = base.assistedIdentifierSeverity
     public var warnOnInjectAnnotationPlacement: Boolean = base.warnOnInjectAnnotationPlacement
     public var interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
       base.interopAnnotationsNamedArgSeverity
@@ -1313,9 +1267,7 @@ public data class MetroOptions(
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
         generateContributionHints = generateContributionHints,
         generateContributionHintsInFir = generateContributionHintsInFir,
-        transformProvidersToPrivate = transformProvidersToPrivate,
         shrinkUnusedBindings = shrinkUnusedBindings,
-        chunkFieldInits = chunkFieldInits,
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
@@ -1324,7 +1276,6 @@ public data class MetroOptions(
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
         useAssistedParamNamesAsIdentifiers = useAssistedParamNamesAsIdentifiers,
-        assistedIdentifierSeverity = assistedIdentifierSeverity,
         warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement,
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
         unusedGraphInputsSeverity = unusedGraphInputsSeverity,
@@ -1518,12 +1469,7 @@ public data class MetroOptions(
           GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
             generateContributionHintsInFir = configuration.getAsBoolean(entry)
 
-          TRANSFORM_PROVIDERS_TO_PRIVATE ->
-            transformProvidersToPrivate = configuration.getAsBoolean(entry)
-
           SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = configuration.getAsBoolean(entry)
-
-          CHUNK_FIELD_INITS -> chunkFieldInits = configuration.getAsBoolean(entry)
 
           STATEMENTS_PER_INIT_FUN -> statementsPerInitFun = configuration.getAsInt(entry)
 
@@ -1575,12 +1521,6 @@ public data class MetroOptions(
 
           USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS ->
             useAssistedParamNamesAsIdentifiers = configuration.getAsBoolean(entry)
-
-          ASSISTED_IDENTIFIER_SEVERITY ->
-            assistedIdentifierSeverity =
-              configuration.getAsString(entry).let {
-                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
-              }
 
           // Intrinsics
           CUSTOM_PROVIDER -> customProviderTypes.addAll(configuration.getAsSet(entry))

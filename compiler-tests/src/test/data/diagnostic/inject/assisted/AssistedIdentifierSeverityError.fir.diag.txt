@@ -1,3 +1,0 @@
-/AssistedIdentifierSeverityError.kt:(153,163): error: Explicit @Assisted identifiers are deprecated. Use matching parameter names instead.
-
-/AssistedIdentifierSeverityError.kt:(250,260): error: Explicit @Assisted identifiers are deprecated. Use matching parameter names instead.

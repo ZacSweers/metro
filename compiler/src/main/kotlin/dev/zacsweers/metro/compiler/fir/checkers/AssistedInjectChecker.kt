@@ -3,11 +3,9 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
-import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_WARNING
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker.FirAssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -29,7 +27,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.resolve.firClassLike
@@ -265,24 +262,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
           assistedAnnotation
             ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
             ?.takeUnless { it.isBlank() }
-
-        if (
-          useParamNames &&
-            explicitIdentifier != null &&
-            options.assistedIdentifierSeverity.isEnabled
-        ) {
-          val rawArg = assistedAnnotation.findArgumentByName(StandardNames.DEFAULT_VALUE_PARAMETER)
-          val diagnostic =
-            when (options.assistedIdentifierSeverity) {
-              MetroOptions.DiagnosticSeverity.ERROR -> ASSISTED_INJECTION_ERROR
-              else -> ASSISTED_INJECTION_WARNING
-            }
-          reporter.reportOn(
-            rawArg?.source,
-            diagnostic,
-            "Explicit @Assisted identifiers are deprecated. Use matching parameter names instead.",
-          )
-        }
 
         val defaultIdentifier = if (useParamNames) paramName else ""
         return FirAssistedParameterKey(typeKey, explicitIdentifier ?: defaultIdentifier)

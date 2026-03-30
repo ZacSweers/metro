@@ -12,10 +12,7 @@ open annotation class <#A: kotlin/Any?> dev.zacsweers.metro/binding : kotlin/Ann
 }
 
 open annotation class dev.zacsweers.metro/Assisted : kotlin/Annotation { // dev.zacsweers.metro/Assisted|null[0]
-    constructor <init>(kotlin/String = ...) // dev.zacsweers.metro/Assisted.<init>|<init>(kotlin.String){}[0]
-
-    final val value // dev.zacsweers.metro/Assisted.value|{}value[0]
-        final fun <get-value>(): kotlin/String // dev.zacsweers.metro/Assisted.value.<get-value>|<get-value>(){}[0]
+    constructor <init>() // dev.zacsweers.metro/Assisted.<init>|<init>(){}[0]
 }
 
 open annotation class dev.zacsweers.metro/AssistedFactory : kotlin/Annotation { // dev.zacsweers.metro/AssistedFactory|null[0]
