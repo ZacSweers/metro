@@ -108,20 +108,4 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
       runTest("compiler-tests/src/test/data/dump/fir/aggregation/FirHintGenerationWorks_k23x.kt");
     }
   }
-
-  @Nested
-  @TestMetadata("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation")
-  @TestDataPath("$PROJECT_ROOT")
-  public class Private_provides_status_transformation {
-    @Test
-    public void testAllFilesPresentInPrivate_provides_status_transformation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation"), Pattern.compile("^(.+)\\.kt$"), null, true);
-    }
-
-    @Test
-    @TestMetadata("ProvidersAreMadePrivate.kt")
-    public void testProvidersAreMadePrivate() {
-      runTest("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation/ProvidersAreMadePrivate.kt");
-    }
-  }
 }

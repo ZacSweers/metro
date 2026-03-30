@@ -62,16 +62,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       // Set non-annotation properties (only when directive is present or value is non-default)
       enabled = MetroDirectives.DISABLE_METRO !in module.directives
       generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
-      module.directives.singleOrZeroValue(MetroDirectives.TRANSFORM_PROVIDERS_TO_PRIVATE)?.let {
-        transformProvidersToPrivate = it
-      }
       enableTopLevelFunctionInjection =
         MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives
       module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)?.let {
         shrinkUnusedBindings = it
-      }
-      module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS)?.let {
-        chunkFieldInits = it
       }
       module.directives.singleOrZeroValue(MetroDirectives.STATEMENTS_PER_INIT_FUN)?.let {
         statementsPerInitFun = it
@@ -93,12 +87,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
       generateContributionHintsInFir =
         MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
-      if (transformProvidersToPrivate) {
-        publicScopedProviderSeverity = MetroOptions.DiagnosticSeverity.NONE
-      } else {
-        module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
-          publicScopedProviderSeverity = it
-        }
+      module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
+        publicScopedProviderSeverity = it
       }
       module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)?.let {
         optionalBindingBehavior = it
