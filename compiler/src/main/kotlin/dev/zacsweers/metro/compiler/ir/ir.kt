@@ -535,7 +535,7 @@ internal fun IrClass.allCallableMembers(
 ): Sequence<MetroSimpleFunction> {
   return functions
     .letIf(excludeAnyFunctions) {
-      it.filterNot { function -> function.isInheritedFromAny(context.irBuiltIns, isData) }
+      it.filterNot { function -> function.isCompilerIntrinsicOrAny(context.irBuiltIns, isData) }
     }
     .filter(functionFilter)
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
@@ -1543,11 +1543,15 @@ internal val IrFunction.regularParameters: List<IrValueParameter>
     return parameters.filter { it.kind == IrParameterKind.Regular }
   }
 
-internal fun IrFunction.isInheritedFromAny(irBuiltIns: IrBuiltIns, isDataClass: Boolean): Boolean {
+internal fun IrFunction.isCompilerIntrinsicOrAny(
+  irBuiltIns: IrBuiltIns,
+  isDataClass: Boolean,
+): Boolean {
   return isEqualsOnAny(irBuiltIns) ||
     isHashCodeOnAny() ||
     isToStringOnAny() ||
-    (isDataClass && (isCopyOnAny() || isComponentNOnAny()))
+    isComponentOperator ||
+    (isDataClass && isNamedCopy)
 }
 
 internal fun IrFunction.isEqualsOnAny(irBuiltIns: IrBuiltIns): Boolean {
@@ -1569,16 +1573,18 @@ internal fun IrFunction.isToStringOnAny(): Boolean {
     hasShape(dispatchReceiver = true, regularParameters = 0)
 }
 
-internal fun IrFunction.isCopyOnAny(): Boolean {
-  return name == StandardNames.DATA_CLASS_COPY
-}
+internal val IrFunction.isNamedCopy: Boolean
+  get() = name == StandardNames.DATA_CLASS_COPY
 
-internal fun IrFunction.isComponentNOnAny(): Boolean {
-  return name.asString().startsWith(StandardNames.DATA_CLASS_COMPONENT_PREFIX) &&
-    hasShape(dispatchReceiver = true, regularParameters = 0) &&
-    this is IrSimpleFunction &&
-    isOperator
-}
+private val COMPONENT_FUNCTION_REGEX = Regex(StandardNames.DATA_CLASS_COMPONENT_PREFIX + "[0-9]*")
+
+internal val IrFunction.isComponentOperator: Boolean
+  get() {
+    return this is IrSimpleFunction &&
+      isOperator &&
+      COMPONENT_FUNCTION_REGEX.matches(name.asString()) &&
+      hasShape(dispatchReceiver = true, regularParameters = 0)
+  }
 
 internal val NOOP_TYPE_REMAPPER =
   object : TypeRemapper {

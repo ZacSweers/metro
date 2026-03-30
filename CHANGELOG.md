@@ -26,7 +26,8 @@ class HomeFactory(...) : BaseFactory<HomeFactory>
 ### Fixes
 
 - **[FIR]** Make `allSessions` lookup lazy to avoid lockups in the IDE.
-- **[IR]** Excludes generated data class members from accessor candidates
+- **[IR]** Exclude generated data class `copy` functions from `@Includes` accessor candidates.
+- **[IR]** Exclude destructuring component functions from `@Includes` accessor candidates.
 
 ### Changes
 
