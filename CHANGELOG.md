@@ -22,6 +22,7 @@ class HomeFactory(...) : BaseFactory<HomeFactory>
 ### Enhancements
 
 - Support top-level FIR gen (contribution hints, function inject, etc) in Kotlin/JS on `2.3.21`+ and `2.4.0-Beta2`+.
+- JS runtime targets now only require Kotlin stdlib `2.2.20` again.
 
 ### Fixes
 
