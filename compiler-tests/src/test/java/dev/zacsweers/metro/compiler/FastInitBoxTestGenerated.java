@@ -1526,12 +1526,6 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       runTest("compiler-tests/src/test/data/box/inject/ReusedMultiInjectRespectsProviderCalls.kt");
     }
 
-    @Test
-    @TestMetadata("TopLevelInjectedFunctionSharesNameWithPrivateOverload.kt")
-    public void testTopLevelInjectedFunctionSharesNameWithPrivateOverload() {
-      runTest("compiler-tests/src/test/data/box/inject/TopLevelInjectedFunctionSharesNameWithPrivateOverload.kt");
-    }
-
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/inject/assisted")
     @TestDataPath("$PROJECT_ROOT")
@@ -1671,6 +1665,52 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("PreserveNullabilityInRemapping.kt")
       public void testPreserveNullabilityInRemapping() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/PreserveNullabilityInRemapping.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/inject/function")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Function {
+      @Test
+      public void testAllFilesPresentInFunction() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/function"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("FunctionSharesNameWithPrivateOverload.kt")
+      public void testFunctionSharesNameWithPrivateOverload() {
+        runTest("compiler-tests/src/test/data/box/inject/function/FunctionSharesNameWithPrivateOverload.kt");
+      }
+
+      @Test
+      @TestMetadata("Generic.kt")
+      public void testGeneric() {
+        runTest("compiler-tests/src/test/data/box/inject/function/Generic.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericAndAssisted.kt")
+      public void testGenericAndAssisted() {
+        runTest("compiler-tests/src/test/data/box/inject/function/GenericAndAssisted.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericAndLazy.kt")
+      public void testGenericAndLazy() {
+        runTest("compiler-tests/src/test/data/box/inject/function/GenericAndLazy.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericAndProvider.kt")
+      public void testGenericAndProvider() {
+        runTest("compiler-tests/src/test/data/box/inject/function/GenericAndProvider.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericWithDependentTypeParams.kt")
+      public void testGenericWithDependentTypeParams() {
+        runTest("compiler-tests/src/test/data/box/inject/function/GenericWithDependentTypeParams.kt");
       }
     }
 
