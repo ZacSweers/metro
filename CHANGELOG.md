@@ -33,6 +33,12 @@ class HomeFactory(...) : BaseFactory<HomeFactory>
 
 - Update shaded `androidx.tracing` to 2.0.0-alpha04.
 
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@KevinGuitar](https://github.com/KevinGuitar)
+
 0.12.0
 ------
 
