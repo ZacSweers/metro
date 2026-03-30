@@ -19,6 +19,15 @@ interface BaseFactory<T : BaseFactory<T>>
 class HomeFactory(...) : BaseFactory<HomeFactory>
 ```
 
+### Changes
+
+- Remove deprecated compiler options and Gradle extension properties.
+    - `chunkFieldInits`
+    - `transformProvidersToPrivate`
+    - `publicProviderSeverity`
+    - `assistedIdentifierSeverity`
+    - `generateThrowsAnnotation`
+
 0.12.1
 ------
 
