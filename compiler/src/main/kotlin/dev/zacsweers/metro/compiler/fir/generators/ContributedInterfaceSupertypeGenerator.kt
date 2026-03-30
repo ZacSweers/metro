@@ -90,8 +90,8 @@ internal class ContributedInterfaceSupertypeGenerator(
     loadExternalContributionExtensions(session, options)
   }
 
-  private val allSessions = session.allSessions
-  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
+  private val allSessions by lazy { session.allSessions }
+  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session, allSessions) }
 
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
