@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_VARARG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
@@ -176,6 +177,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val DAGGER_REUSABLE_ERROR by error0<KtElement>(NAME_IDENTIFIER)
   val DAGGER_LAZY_CLASS_KEY_ERROR by error0<KtElement>(NAME_IDENTIFIER)
   val FUNCTION_INJECT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val FUNCTION_INJECT_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
   val BINDING_CONTAINER_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val PRIVATE_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
 
@@ -315,6 +317,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING, "{0}", STRING)
         put(PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE, "{0}", STRING)
         put(FUNCTION_INJECT_ERROR, "{0}", STRING)
+        put(FUNCTION_INJECT_TYPE_PARAMETERS_ERROR, "{0}", STRING)
         put(BINDING_CONTAINER_ERROR, "{0}", STRING)
         put(PRIVATE_BINDING_ERROR, "{0}", STRING)
         put(OPTIONAL_BINDING_WARNING, "{0}", STRING)

@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -39,6 +40,18 @@ internal object FunctionInjectionChecker : FirCallableDeclarationChecker(MppChec
 
     if (declaration.dispatchReceiverType != null) return // Instance function, setter injection
     if (!declaration.isAnnotatedWithAny(session, classIds.injectAnnotations)) return
+
+    if (declaration.typeParameters.isNotEmpty()) {
+      for (tp in declaration.typeParameters) {
+        if (tp.symbol.isReified) {
+          reporter.reportOn(
+            source,
+            FUNCTION_INJECT_TYPE_PARAMETERS_ERROR,
+            "Injected functions cannot have reified generics.",
+          )
+        }
+      }
+    }
 
     declaration.symbol.receiverParameterSymbol?.let { param ->
       reporter.reportOn(

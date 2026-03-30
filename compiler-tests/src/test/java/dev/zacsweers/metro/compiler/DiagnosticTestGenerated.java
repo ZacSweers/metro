@@ -563,9 +563,9 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("CannotHaveTypeArgs.kt")
-    public void testCannotHaveTypeArgs() {
-      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveTypeArgs.kt");
+    @TestMetadata("CannotHaveReifiedTypeArgs.kt")
+    public void testCannotHaveReifiedTypeArgs() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveReifiedTypeArgs.kt");
     }
 
     @Test
