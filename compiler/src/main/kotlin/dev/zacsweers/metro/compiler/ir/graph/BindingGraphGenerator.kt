@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsLikeCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
-import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -52,7 +51,6 @@ internal class BindingGraphGenerator(
   private val contributionData: IrContributionData,
   private val parentContext: ParentContextReader?,
   private val bindingLookupCache: BindingLookupCache,
-  private val boundTypeResolver: IrBoundTypeResolver,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
 
   private val ProviderFactory.isDynamic: Boolean
@@ -87,7 +85,6 @@ internal class BindingGraphGenerator(
         },
         bindingLookup = bindingLookup,
         contributionData = contributionData,
-        boundTypeResolver = boundTypeResolver,
       )
 
     val bindingStack =

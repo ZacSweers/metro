@@ -1989,6 +1989,13 @@ internal fun Collection<IrClass>.toIrVararg() = ifNotEmpty {
   scope.irVararg(first().defaultType, map { value -> scope.kClassReference(value.symbol) })
 }
 
+context(context: IrPluginContext)
+internal fun IrClass.implicitBoundTypeOrNull(): IrType? {
+  return superTypes
+    .filterNot { it.rawType().classId == context.irBuiltIns.anyClass.owner.classId }
+    .singleOrNull()
+}
+
 // Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
 // checks for non-interop
 context(context: IrPluginContext)

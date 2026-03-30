@@ -1,1 +1,0 @@
-/DefaultBinding_Ambiguous.kt:(227,263): error: `@ContributesBinding`-annotated class @dev.zacsweers.metro.ContributesBinding doesn't declare an explicit `binding` type but ambiguously has multiple supertypes that declare a `@DefaultBinding` (Base1, Base2). You must define an explicit bound type in this scenario.

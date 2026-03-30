@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.ClassId
 
 /** @see [repeatableAnnotationsIn] for docs on why this necessary. */
-internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundTypeResolver) {
+internal object IrRankedBindingProcessing {
 
   /**
    * Provides `ContributesBinding.rank` interop for Dagger-Anvil.
@@ -50,7 +50,7 @@ internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundT
         context.metroSymbols.classIds.contributesBindingAnnotationsWithContainers,
         irBody = { irAnnotations ->
           irAnnotations.mapNotNull { annotation ->
-            processIrAnnotation(annotation, contributingType, allScopes, boundTypeResolver)
+            processIrAnnotation(annotation, contributingType, allScopes)
           }
         },
         firBody = firBody@{ session, firAnnotations ->
@@ -58,14 +58,7 @@ internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundT
             // binding types to IrTypes
             val components = contributingType as? Fir2IrComponents ?: return@firBody emptySequence()
             firAnnotations.mapNotNull { annotation ->
-              processFirAnnotation(
-                session,
-                components,
-                annotation,
-                contributingType,
-                allScopes,
-                boundTypeResolver,
-              )
+              processFirAnnotation(session, components, annotation, contributingType, allScopes)
             }
           },
       )
@@ -84,20 +77,19 @@ internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundT
     annotation: IrConstructorCall,
     contributingType: IrClass,
     allScopes: Set<ClassId>,
-    boundTypeResolver: IrBoundTypeResolver,
   ): ContributedBinding<IrClass, IrTypeKey>? {
     val scope = annotation.scopeOrNull() ?: return null
     if (scope !in allScopes) return null
 
-    val result = boundTypeResolver.resolveBoundType(contributingType, annotation) ?: return null
+    val (explicitBindingType, ignoreQualifier) =
+      with(context.pluginContext) { annotation.bindingTypeOrNull() }
+
+    val boundType = explicitBindingType ?: contributingType.implicitBoundTypeOrNull() ?: return null
 
     return ContributedBinding(
       contributingType = contributingType,
       typeKey =
-        IrTypeKey(
-          result.type,
-          if (result.ignoreQualifier) null else contributingType.qualifierAnnotation(),
-        ),
+        IrTypeKey(boundType, if (ignoreQualifier) null else contributingType.qualifierAnnotation()),
       rank = annotation.rankValue(),
     )
   }
@@ -109,7 +101,6 @@ internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundT
     annotation: FirAnnotation,
     contributingType: IrClass,
     allScopes: Set<ClassId>,
-    boundTypeResolver: IrBoundTypeResolver,
   ): ContributedBinding<IrClass, IrTypeKey>? {
     // Use the FIR-specific scope resolution approach that handles external annotations correctly
     val scope =
@@ -117,13 +108,16 @@ internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundT
         ?: return null
     if (scope !in allScopes) return null
 
-    val explicitBindingType =
-      annotation.resolvedBindingArgument(session)?.coneTypeOrNull?.let {
-        with(fir2IrComponents) { it.toIrType() }
-      }
+    val bindingConeType = annotation.resolvedBindingArgument(session)?.coneTypeOrNull
 
     val boundType =
-      boundTypeResolver.resolveBoundType(contributingType, explicitBindingType) ?: return null
+      if (bindingConeType != null) {
+        // Look up the IR type from the ClassId
+        with(fir2IrComponents) { bindingConeType.toIrType() }
+      } else {
+        // Fall back to implicit bound type
+        contributingType.implicitBoundTypeOrNull()
+      } ?: return null
 
     return ContributedBinding(
       contributingType = contributingType,

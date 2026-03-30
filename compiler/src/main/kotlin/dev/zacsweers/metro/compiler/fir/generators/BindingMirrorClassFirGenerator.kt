@@ -5,8 +5,6 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
-import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -29,10 +27,7 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
-/**
- * Generates mirror class declarations for `@Binds` and `@Multibinds`-annotated members, as well as
- * `@DefaultBinding`-annotated classes.
- */
+/** Generates mirror class declarations for `@Binds` and `@Multibinds`-annotated members. */
 internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext: CompatContext) :
   FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
@@ -40,7 +35,6 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
     register(session.predicates.bindsAnnotationPredicate)
     register(session.predicates.multibindsAnnotationPredicate)
     register(session.predicates.bindsOptionalOfAnnotationPredicate)
-    register(session.predicates.defaultBindingAnnotationPredicate)
   }
 
   // TODO probably not needed?
@@ -72,8 +66,6 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
-    val result = mutableSetOf<Name>()
-
     // Check if this class has any @Binds or @Multibinds members or is a contribution class decl
     val hasBindingMembers =
       classSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().any { callable ->
@@ -90,21 +82,14 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
         annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
       }
 
-    if (hasBindingMembers) {
+    return if (hasBindingMembers) {
       mirrorClassesToGenerate.add(
         classSymbol.classId.createNestedClassId(Symbols.Names.BindsMirrorClass)
       )
-      result += Symbols.Names.BindsMirrorClass
+      setOf(Symbols.Names.BindsMirrorClass)
+    } else {
+      emptySet()
     }
-
-    // Check if this class has @DefaultBinding annotation
-    if (classSymbol.isAnnotatedWithAny(session, setOf(session.classIds.defaultBindingAnnotation))) {
-      mirrorClassesToGenerate +=
-        classSymbol.classId.createNestedClassId(Symbols.Names.DefaultBindingMirrorClass)
-      result += Symbols.Names.DefaultBindingMirrorClass
-    }
-
-    return result
   }
 
   override fun generateNestedClassLikeDeclaration(
@@ -112,22 +97,14 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
     name: Name,
     context: NestedClassGenerationContext,
   ): FirClassLikeSymbol<*>? {
-    return when (name) {
-      Symbols.Names.BindsMirrorClass -> {
-        createNestedClass(owner, name, Keys.BindingMirrorClassDeclaration) {
-            modality = Modality.ABSTRACT
-          }
-          .apply { markAsDeprecatedHidden(session) }
-          .symbol
-      }
-      Symbols.Names.DefaultBindingMirrorClass -> {
-        createNestedClass(owner, name, Keys.DefaultBindingMirrorClassDeclaration) {
-            modality = Modality.ABSTRACT
-          }
-          .apply { markAsDeprecatedHidden(session) }
-          .symbol
-      }
-      else -> null
+    return if (name == Symbols.Names.BindsMirrorClass) {
+      createNestedClass(owner, name, Keys.BindingMirrorClassDeclaration) {
+          modality = Modality.ABSTRACT
+        }
+        .apply { markAsDeprecatedHidden(session) }
+        .symbol
+    } else {
+      null
     }
   }
 }

@@ -20,7 +20,6 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ER
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_LAZY_CLASS_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEFAULT_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
@@ -158,7 +157,6 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val BINDS_OPTIONAL_OF_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPICIOUS_SET_INTO_SET by warning1<KtElement, String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
-  val DEFAULT_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val NON_PUBLIC_CONTRIBUTION_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val NON_PUBLIC_CONTRIBUTION_WARNING by warning1<KtElement, String>(VISIBILITY_MODIFIER)
   val CREATE_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -292,7 +290,6 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(CONFLICTING_PROVIDES_SCOPE, "{0}", STRING)
         put(SUSPICIOUS_AGGREGATION_SCOPE, "{0}", STRING)
         put(AGGREGATION_ERROR, "{0}", STRING)
-        put(DEFAULT_BINDING_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_WARNING, "{0}", STRING)
         put(CREATE_GRAPH_ERROR, "{0}", STRING)

@@ -483,6 +483,8 @@ class AnvilInteropTest : MetroCompilerTest() {
     }
   }
 
+  // Technically this is an error even without rank, but it will get hit early by rank processing
+  // when a rank is involved.
   @Test
   fun `a ranked binding must have exactly one supertype if no binding type is specified`() {
     compile(
@@ -491,7 +493,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         interface ContributedInterface
         interface ContributedInterface2
 
-        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100, boundType = ContributedInterface::class)
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
         object Impl1 : ContributedInterface, ContributedInterface2
 
         @DependencyGraph(scope = AppScope::class)
@@ -502,7 +504,16 @@ class AnvilInteropTest : MetroCompilerTest() {
           .trimIndent()
       ),
       options = metroOptions.withAnvilInterop(),
-    )
+      expectedExitCode = ExitCode.INTERNAL_ERROR,
+    ) {
+      assertThat(messages)
+        .contains(
+          """
+          test.Impl1 has a ranked binding with no explicit bound type and 2 supertypes (test.ContributedInterface, test.ContributedInterface2). There must be exactly one supertype or an explicit bound type.
+          """
+            .trimIndent()
+        )
+    }
   }
 
   // https://github.com/ZacSweers/metro/issues/388

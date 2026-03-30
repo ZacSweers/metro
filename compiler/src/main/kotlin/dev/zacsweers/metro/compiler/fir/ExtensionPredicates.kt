@@ -62,7 +62,4 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val bindsOptionalOfAnnotationPredicate =
     annotated(DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF.asSingleFqName())
-
-  internal val defaultBindingAnnotationPredicate =
-    annotated(classIds.defaultBindingAnnotation.asSingleFqName())
 }
