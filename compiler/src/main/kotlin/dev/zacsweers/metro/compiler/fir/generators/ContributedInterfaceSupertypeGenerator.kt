@@ -464,36 +464,40 @@ internal class ContributedInterfaceSupertypeGenerator(
 
     // Process replacements from native contributions
     val unmatchedReplacements = mutableSetOf<ClassId>()
-    sequence {
-        yieldAll(
-          contributionClassLikes.mapNotNull {
-            val symbol = it.toClassSymbol(session)
-            // TODO remove expectAs in 2.3.20
-            if (contributionMappingsByClassId[it.expectAs<ConeKotlinType>().classId] == true) {
-              // It's a binding container, use as-is
-              symbol
-            } else {
-              // It's a contribution, get its original parent
-              symbol?.getContainingClassSymbol()
-            }
-          }
-        )
 
+    contributionClassLikes
+      .mapNotNull {
+        val symbol = it.toClassSymbol(session)
+        // TODO remove expectAs in 2.3.20
+        if (contributionMappingsByClassId[it.expectAs<ConeKotlinType>().classId] == true) {
+          // It's a binding container, use as-is
+          symbol
+        } else {
+          // It's a contribution, get its original parent
+          symbol?.getContainingClassSymbol()
+        }
+      }
+      .plus(
         // When generateContributionProviders is enabled, binding contributions are represented by
         // provider-holder binding containers that only carry @Origin. Scan the origin class too so
         // its original @ContributesBinding(replaces = ...) annotations still participate in FIR
         // merging, matching the IR fallback logic.
-        for ((containerClassId, isBindingContainer) in contributionMappingsByClassId) {
-          if (!isBindingContainer) continue
+        contributionMappingsByClassId.toList().mapNotNull { (containerClassId, isBindingContainer)
+          ->
+          if (!isBindingContainer) return@mapNotNull null
+
           val containerSymbol =
-            containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>() ?: continue
-          val localTypeResolver = typeResolverFor(containerSymbol) ?: continue
-          val originClassId = containerSymbol.originClassId(session, localTypeResolver) ?: continue
+            containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+              ?: return@mapNotNull null
+          val localTypeResolver = typeResolverFor(containerSymbol) ?: return@mapNotNull null
+          val originClassId =
+            containerSymbol.originClassId(session, localTypeResolver) ?: return@mapNotNull null
           val originClass =
-            originClassId.toSymbol(session)?.expectAsOrNull<FirClassSymbol<*>>() ?: continue
-          yield(originClass)
+            originClassId.toSymbol(session)?.expectAsOrNull<FirClassSymbol<*>>()
+              ?: return@mapNotNull null
+          originClass
         }
-      }
+      )
       .flatMap { contributingType ->
         val localTypeResolver = typeResolverFor(contributingType) ?: return@flatMap emptySequence()
 
