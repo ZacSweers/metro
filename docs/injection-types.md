@@ -202,7 +202,7 @@ To do this, Metro’s FIR plugin will generate a concrete type that acts as a br
 
 ```kotlin
 @Inject
-class AppClass(
+class App(
   private val message: Provider<String>
 ) {
   operator fun invoke() {
@@ -216,12 +216,12 @@ Because it’s generated in FIR, this type will be user-visible in the IDE and c
 *Note that this feature requires enabling third party FIR plugins in the IDE to fully work. It will compile without it, but generated wrapper classes will be red/missing in the IDE.*
 
 !!! note
-    The generated class is called `<function name>` + `Class` because of a limitation in the Kotlin compiler. TODO Link issue?
+    The generated class uses the same name as the function, capitalized as a class name.
 
 ```kotlin
 @DependencyGraph
 interface AppGraph {
-  val app: AppClass
+  val app: App
 
   @DependencyGraph.Factory
   fun interface Factory {
@@ -248,7 +248,7 @@ fun App(@Assisted message: String) {
 
 // Generates...
 @Inject
-class AppClass {
+class App {
   operator fun invoke(message: String) {
     App(message)
   }
@@ -273,7 +273,7 @@ fun App(@Assisted message: String) {
 
 // Generates...
 @Inject
-class AppClass {
+class App {
   @Composable
   operator fun invoke(message: String) {
     App(message)

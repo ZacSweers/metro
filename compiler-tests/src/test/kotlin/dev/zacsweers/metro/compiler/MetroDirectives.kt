@@ -17,10 +17,6 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive("Generate custom test data files per compiler version")
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
-  val TRANSFORM_PROVIDERS_TO_PRIVATE by
-    valueDirective("Controls automatic transformation of providers to be private.") {
-      it.toBoolean()
-    }
   val GENERATE_CONTRIBUTION_HINTS by
     valueDirective("Enable/disable generation of contribution hint generation.") { it.toBoolean() }
   val GENERATE_CONTRIBUTION_HINTS_IN_FIR by
@@ -31,8 +27,6 @@ object MetroDirectives : SimpleDirectivesContainer() {
     )
   val SHRINK_UNUSED_BINDINGS by
     valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
-  val CHUNK_FIELD_INITS by
-    valueDirective("Enable/disable chunking of field initializers.") { it.toBoolean() }
   val STATEMENTS_PER_INIT_FUN by
     valueDirective("Maximum statements per init function when chunking is enabled.") { it.toInt() }
   val ENABLE_GRAPH_SHARDING by
@@ -83,15 +77,15 @@ object MetroDirectives : SimpleDirectivesContainer() {
     ) {
       it.toBoolean()
     }
-  val ASSISTED_IDENTIFIER_SEVERITY by
-    enumDirective<MetroOptions.DiagnosticSeverity>(
-      "Control diagnostic severity when explicit @Assisted(\"value\") identifiers are used."
-    )
   val PARALLEL_THREADS by
     valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
   val ENABLE_FUNCTION_PROVIDERS by directive("Enable () -> T as a provider type.")
   val ENABLE_KCLASS_TO_CLASS_INTEROP by
     directive("Enable KClass/Class interop for multibinding map keys.")
+  val GENERATE_CONTRIBUTION_PROVIDERS by
+    directive(
+      "Generate top-level contribution provider classes with @Provides functions instead of nested @Binds interfaces."
+    )
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

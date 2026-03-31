@@ -323,11 +323,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.enableGraphImplClassAsReturnType.orElse(false),
             )
           )
-          @Suppress("DEPRECATION_ERROR")
-          add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
           add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
-          @Suppress("DEPRECATION_ERROR")
-          add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
           add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
           add(lazyOption("enable-graph-sharding", extension.enableGraphSharding))
           add(lazyOption("keys-per-graph-shard", extension.keysPerGraphShard))
@@ -376,9 +372,11 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.useAssistedParamNamesAsIdentifiers,
             )
           )
-          add(lazyOption("assisted-identifier-severity", extension.assistedIdentifierSeverity))
           add(lazyOption("parallel-threads", extension.parallelThreads))
           add(lazyOption("enable-function-providers", extension.enableFunctionProviders))
+          add(
+            lazyOption("generate-contribution-providers", extension.generateContributionProviders)
+          )
           add(lazyOption("enable-circuit-codegen", extension.enableCircuitCodegen))
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))

@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ER
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_LAZY_CLASS_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEFAULT_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
@@ -35,6 +36,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_IMPLICIT_CLASS_KEY_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_TYPE_PARAM_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_RETURN_TYPE_WARNING
@@ -155,6 +158,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val BINDS_OPTIONAL_OF_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPICIOUS_SET_INTO_SET by warning1<KtElement, String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val DEFAULT_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val NON_PUBLIC_CONTRIBUTION_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val NON_PUBLIC_CONTRIBUTION_WARNING by warning1<KtElement, String>(VISIBILITY_MODIFIER)
   val CREATE_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -165,6 +169,8 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val SUSPICIOUS_UNUSED_MULTIBINDING by warning1<KtElement, String>(OVERRIDE_MODIFIER)
   val MAP_KEY_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MAP_KEY_TYPE_PARAM_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
+  val MAP_KEY_IMPLICIT_CLASS_KEY_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY by warning1<KtElement, String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_STATUS_ERROR by error1<KtElement, String>(MODALITY_MODIFIER)
   val MEMBERS_INJECT_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -286,6 +292,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(CONFLICTING_PROVIDES_SCOPE, "{0}", STRING)
         put(SUSPICIOUS_AGGREGATION_SCOPE, "{0}", STRING)
         put(AGGREGATION_ERROR, "{0}", STRING)
+        put(DEFAULT_BINDING_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_WARNING, "{0}", STRING)
         put(CREATE_GRAPH_ERROR, "{0}", STRING)
@@ -306,6 +313,8 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(SUSPICIOUS_UNUSED_MULTIBINDING, "{0}", STRING)
         put(MAP_KEY_ERROR, "{0}", STRING)
         put(MAP_KEY_TYPE_PARAM_ERROR, "{0}", STRING)
+        put(MAP_KEY_IMPLICIT_CLASS_KEY_ERROR, "{0}", STRING)
+        put(MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY, "{0}", STRING)
         put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)
         put(SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR, "{0}", STRING)
         put(SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING, "{0}", STRING)

@@ -18,9 +18,9 @@ androidx-lifecycle = "2.10.0"
 androidx-lint-gradle = "1.0.0-alpha05"
 annotation = "1.9.1"
 anvil = "0.5.3"
-circuit = "0.32.0"
-compose-jb = "1.10.2"
-jetbrains-lifecycle-navigation3 = "2.10.0-beta01"
+circuit = "0.33.1"
+compose-jb = "1.10.3"
+jetbrains-lifecycle-navigation3 = "2.10.0"
 jetbrains-navigation3 = "1.0.0-alpha06"
 dagger = "2.59.2"
 gjf = "1.35.0"
@@ -28,25 +28,24 @@ jdk = "24"
 robolectric = "4.16.1"
 junit-jupiter = "6.0.3"
 jvmTarget = "11"
-compilerJvmTarget = "11"
+compilerJvmTarget = "21"
 kct = "0.12.1"
-kotlin = "2.3.0"
+kotlin = "2.3.20"
 kotlinPublished = "2.2.20"
 kotlinInject = "0.9.0"
-metro = "0.11.2"
-metro-runtime-languageVersion = "2.2"
+metro = "0.12.1"
 kotlinInject-anvil = "0.1.7"
 kotlinx-benchmark = "0.4.16"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.10.0"
 ksp = "2.3.6"
-ktfmt = "0.61"
-ktor = "3.4.1"
+ktfmt = "0.62"
+ktor = "3.4.2"
 okhttp = "5.3.2"
-okio = "3.16.4"
+okio = "3.17.0"
 pluginId = "dev.zacsweers.metro.compiler"
-poko = "0.21.3"
-wire = "5.5.1"
+poko = "0.22.0"
+wire = "6.2.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -58,9 +57,9 @@ benchmark = { id = "androidx.benchmark", version = "1.4.1" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
 buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.9" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
-dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
+dokka = { id = "org.jetbrains.dokka", version = "2.2.0" }
 gradleTestRetry = { id = "org.gradle.test-retry", version = "1.6.4" }
-intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.12.0" }
+intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.13.1" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
@@ -74,25 +73,24 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
-shadow = { id = "com.gradleup.shadow", version = "9.3.2" }
-spotless = { id = "com.diffplug.spotless", version = "8.3.0" }
+shadow = { id = "com.gradleup.shadow", version = "9.4.1" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.17" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
 android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 
-androidx-activity = "androidx.activity:activity-compose:1.12.4"
+androidx-activity = "androidx.activity:activity-compose:1.13.0"
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
-androidx-collection = "androidx.collection:collection:1.6.0-rc01"
-androidx-core = "androidx.core:core-ktx:1.17.0"
+androidx-collection = "androidx.collection:collection:1.6.0"
+androidx-core = "androidx.core:core-ktx:1.18.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
 androidx-material3 = "com.google.android.material:material:1.13.0"
 androidx-viewmodelKtx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle" }
-androidx-work = "androidx.work:work-runtime:2.11.1"
+androidx-work = "androidx.work:work-runtime:2.11.2"
 androidx-test = "androidx.test:core-ktx:1.7.0"
 androidx-test-runner = "androidx.test:runner:1.7.0"
 androidx-test-rules = "androidx.test:rules:1.7.0"
@@ -101,7 +99,7 @@ androidx-test-uiautomator = "androidx.test.uiautomator:uiautomator:2.3.0"
 androidx-benchmark-macro = "androidx.benchmark:benchmark-macro-junit4:1.4.1"
 androidx-benchmark-micro = "androidx.benchmark:benchmark-junit4:1.4.1"
 androidx-profileinstaller = "androidx.profileinstaller:profileinstaller:1.4.1"
-androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha02"
+androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha04"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
@@ -137,8 +135,8 @@ guice-assistedInject = "com.google.inject.extensions:guice-assistedinject:7.0.0"
 javaxInject = "javax.inject:javax.inject:1"
 jakartaInject = "jakarta.inject:jakarta.inject-api:2.0.1"
 
-jetbrains-lifecycle-viewmodel = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.9.6"
-jetbrains-lifecycle-viewmodel-compose = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.9.6"
+jetbrains-lifecycle-viewmodel = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.10.0"
+jetbrains-lifecycle-viewmodel-compose = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0"
 jetbrains-lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "jetbrains-lifecycle-navigation3" }
 jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "jetbrains-navigation3" }
 
@@ -166,8 +164,8 @@ kotlinx-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.7.1"
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 
 # Only present to trigger automatic renovate updates
-ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "gjf" }
+ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 
 graphSupport = "com.autonomousapps:graph-support:0.9.0"
 
@@ -187,7 +185,7 @@ picnic = "com.jakewharton.picnic:picnic:0.7.0"
 
 poko-annotations = { module = "dev.drewhamilton.poko:poko-annotations", version.ref = "poko" }
 
-r8 = "com.android.tools:r8:9.0.32"
+r8 = "com.android.tools:r8:9.1.31"
 
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 

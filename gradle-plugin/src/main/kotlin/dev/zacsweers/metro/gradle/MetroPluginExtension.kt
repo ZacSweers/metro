@@ -55,9 +55,6 @@ constructor(
   public val generateAssistedFactories: Property<Boolean> =
     objects.booleanProperty("metro.generateAssistedFactories", false)
 
-  @Deprecated("This does not do anything anymore and will be removed")
-  public abstract val generateThrowsAnnotations: Property<Boolean>
-
   /**
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
    * `Inject` for more details.
@@ -180,11 +177,6 @@ constructor(
   public val shrinkUnusedBindings: Property<Boolean> =
     objects.booleanProperty("metro.shrinkUnusedBindings", true)
 
-  /** Enable/disable chunking of field initializers. Enabled by default. */
-  @Deprecated("This is the default and the option will be removed", level = DeprecationLevel.ERROR)
-  public val chunkFieldInits: Property<Boolean> =
-    objects.booleanProperty("metro.chunkFieldInits", true)
-
   /**
    * Maximum number of statements per init function when chunking field initializers. Default is 25,
    * must be > 0.
@@ -224,21 +216,6 @@ constructor(
     objects
       .property(OptionalBindingBehavior::class.java)
       .convention(OptionalBindingBehavior.DEFAULT)
-
-  /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
-  @Deprecated(
-    "Transforming providers to private is deprecated as it results in less efficient code generation",
-    level = DeprecationLevel.ERROR,
-  )
-  public val transformProvidersToPrivate: Property<Boolean> =
-    objects.booleanProperty("metro.transformProvidersToPrivate", false)
-
-  @Deprecated(
-    "This is just a proxy to publicScopedProviderSeverity now",
-    replaceWith = ReplaceWith("publicScopedProviderSeverity"),
-  )
-  public val publicProviderSeverity: Property<DiagnosticSeverity>
-    get() = publicScopedProviderSeverity
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
@@ -392,19 +369,6 @@ constructor(
     objects.booleanProperty("metro.useAssistedParamNamesAsIdentifiers", true)
 
   /**
-   * Controls the diagnostic severity when explicit `@Assisted("value")` identifiers are used on
-   * Metro's native `@Assisted` annotation _where the value differs from the parameter name_.
-   *
-   * This is an initial step toward deprecating explicit assisted identifiers in favor of parameter
-   * names. Only meaningful when [useAssistedParamNamesAsIdentifiers] is `true`.
-   *
-   * Set to [DiagnosticSeverity.WARN] by default. Eventually it will become a proper deprecation
-   * warning, then error, then removed.
-   */
-  public val assistedIdentifierSeverity: Property<DiagnosticSeverity> =
-    objects.enumProperty<DiagnosticSeverity>("assistedIdentifierSeverity", DiagnosticSeverity.WARN)
-
-  /**
    * Compiler version aliases mapping fake IDE versions to their real compiler versions.
    *
    * This is useful for IDE builds (e.g., Android Studio canary) that report a fake Kotlin compiler
@@ -459,6 +423,19 @@ constructor(
    */
   public val enableKClassToClassMapKeyInterop: Property<Boolean> =
     objects.booleanProperty("metro.enableKClassToClassMapKeyInterop", false)
+
+  /**
+   * When enabled, generates top-level contribution provider classes with `@Provides` functions
+   * instead of nested `@Binds` interfaces for `@ContributesBinding`, `@ContributesIntoSet`, and
+   * `@ContributesIntoMap`. This allows implementation classes to remain `internal` or `private`
+   * since the generated provider directly constructs them (which in turn allows for finer grained
+   * IC).
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val generateContributionProviders: Property<Boolean> =
+    objects.booleanProperty("metro.generateContributionProviders", false)
 
   /**
    * Enable/disable Metro-native Circuit code generation. When enabled, Metro will generate

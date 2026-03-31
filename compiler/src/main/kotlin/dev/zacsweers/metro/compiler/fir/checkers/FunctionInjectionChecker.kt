@@ -42,11 +42,15 @@ internal object FunctionInjectionChecker : FirCallableDeclarationChecker(MppChec
     if (!declaration.isAnnotatedWithAny(session, classIds.injectAnnotations)) return
 
     if (declaration.typeParameters.isNotEmpty()) {
-      reporter.reportOn(
-        source,
-        FUNCTION_INJECT_TYPE_PARAMETERS_ERROR,
-        "Injected functions cannot be generic.",
-      )
+      for (tp in declaration.typeParameters) {
+        if (tp.symbol.isReified) {
+          reporter.reportOn(
+            source,
+            FUNCTION_INJECT_TYPE_PARAMETERS_ERROR,
+            "Injected functions cannot have reified generics.",
+          )
+        }
+      }
     }
 
     declaration.symbol.receiverParameterSymbol?.let { param ->

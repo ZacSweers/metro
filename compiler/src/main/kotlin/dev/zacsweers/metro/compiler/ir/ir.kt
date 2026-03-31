@@ -42,6 +42,7 @@ import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.config.LanguageFeature
+import org.jetbrains.kotlin.config.LanguageVersion
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
@@ -60,6 +61,7 @@ import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
+import org.jetbrains.kotlin.ir.builders.irAnnotation
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -158,6 +160,7 @@ import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.hasEqualFqName
 import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
@@ -175,7 +178,9 @@ import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.library.KOTLIN_JS_STDLIB_NAME
 import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.platform.TargetPlatform
 import org.jetbrains.kotlin.platform.isJs
@@ -263,6 +268,27 @@ internal fun IrType.rawTypeOrNull(): IrClass? {
     is IrTypeParameterSymbol -> null
     else -> null
   }
+}
+
+// Compat copies because of IrAnnotation in 2.4.0
+internal fun IrAnnotationContainer.getAnnotation(name: FqName): IrConstructorCall? =
+  annotations.find {
+    it.isAnnotationWithEqualFqName(name)
+  }
+
+private fun IrConstructorCall.isAnnotationWithEqualFqName(fqName: FqName): Boolean =
+  if (symbol.isBound) {
+    annotationClass.hasEqualFqName(fqName)
+  } else {
+    symbol.hasEqualFqName(fqName.child(SpecialNames.INIT))
+  }
+
+internal fun IrConstructorCall.getAnnotationStringValue() =
+  (arguments[0] as? IrConst)?.value as String?
+
+internal fun IrConstructorCall.getAnnotationStringValue(name: String): String {
+  val parameter = symbol.owner.parameters.single { it.name.asString() == name }
+  return (arguments[parameter.indexInParameters] as IrConst).value as String
 }
 
 internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>): Boolean {
@@ -509,7 +535,7 @@ internal fun IrClass.allCallableMembers(
 ): Sequence<MetroSimpleFunction> {
   return functions
     .letIf(excludeAnyFunctions) {
-      it.filterNot { function -> function.isInheritedFromAny(context.irBuiltIns) }
+      it.filterNot { function -> function.isCompilerIntrinsicOrAny(context.irBuiltIns, isData) }
     }
     .filter(functionFilter)
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
@@ -522,8 +548,8 @@ internal fun IrClass.allCallableMembers(
         companionObject()?.let { companionObject ->
           asFunctions +
             companionObject.allCallableMembers(
-              excludeAnyFunctions,
-              excludeInheritedMembers,
+              excludeAnyFunctions = excludeAnyFunctions,
+              excludeInheritedMembers = excludeInheritedMembers,
               excludeCompanionObjectMembers = false,
             )
         } ?: asFunctions
@@ -659,15 +685,13 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 ): IrExpression {
   val symbols = context.metroSymbols
 
-  // If KClass/Class interop is enabled and the consumer declared Map<Class<*>, V>,
-  // convert the canonical Map<KClass<*>, V> to Map<Class<*>, V> via `mapKeys { it.key.java }`
-  val convertedBindingCode = maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
-
-  val irType = convertedBindingCode.type
+  val irType = bindingCode.type
 
   if (!irType.implementsLazyType() && !irType.implementsProviderType()) {
     // Not a provider, nothing else to do here!
-    return convertedBindingCode
+    // If KClass/Class interop is enabled and the consumer declared Map<Class<*>, V>,
+    // convert the canonical Map<KClass<*>, V> to Map<Class<*>, V> via `mapKeys { it.key.java }`
+    return maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
   }
 
   val providerTypeConverter = symbols.providerTypeConverter
@@ -696,9 +720,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
             valueParameters = emptyList(),
             returnType = lazyType,
           ) {
-            +irReturn(
-              with(providerTypeConverter) { convertedBindingCode.convertTo(lazyContextKey) }
-            )
+            +irReturn(with(providerTypeConverter) { bindingCode.convertTo(lazyContextKey) })
           }
         } else {
           // ProviderOfLazy.create(provider) returns Provider<Lazy<T>>
@@ -707,14 +729,14 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
             dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
             callee = symbols.providerOfLazyCreate,
             typeArgs = listOf(contextKey.typeKey.type),
-            args = listOf(convertedBindingCode),
+            args = listOf(bindingCode),
             typeHint =
               contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
           )
         }
       }
 
-      else -> with(providerTypeConverter) { convertedBindingCode.convertTo(contextKey) }
+      else -> with(providerTypeConverter) { bindingCode.convertTo(contextKey) }
     }
 
   // Determine whether we need to invoke the provider to get the value.
@@ -733,11 +755,16 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 
   return if (shouldInvoke) {
     // provider.invoke()
-    irInvoke(
-      dispatchReceiver = metroProviderExpression,
-      callee = symbols.providerInvoke,
-      typeHint = contextKey.typeKey.type,
-    )
+    val invoked =
+      irInvoke(
+        dispatchReceiver = metroProviderExpression,
+        callee = symbols.providerInvoke,
+        typeHint = contextKey.typeKey.type,
+      )
+    // If KClass/Class interop is enabled and the consumer declared Map<Class<*>, V>,
+    // convert the canonical Map<KClass<*>, V> to Map<Class<*>, V> via `mapKeys { it.key.java }`.
+    // This must happen after invoking the provider, since the binding code is Provider<Map<...>>.
+    maybeConvertMapKeysToJavaClass(invoked, contextKey)
   } else {
     metroProviderExpression
   }
@@ -771,12 +798,30 @@ private fun maybeConvertMapKeysToJavaClass(
   val rawKeyClassId = keyType.rawType().classId
   if (rawKeyClassId != Symbols.ClassIds.JavaLangClass) return bindingCode
 
+  val rawKeyTypeProjection = rawType.arguments[0] as? IrTypeProjection ?: return bindingCode
+  val kclassKeyType =
+    makeTypeProjection(
+      rawKeyTypeProjection.type.normalizeToKClassIfJavaClass(),
+      rawKeyTypeProjection.variance,
+    )
+  val valueType = rawType.arguments[1]
+
   // The consumer declared Map<Class<*>, V>, convert map keys from KClass to Class
-  return convertClassMapToKClassMap(keyType, bindingCode)
+  return convertClassMapToKClassMap(
+    keyType = keyType,
+    kclassKeyType = kclassKeyType,
+    valueType = valueType,
+    bindingCode = bindingCode,
+  )
 }
 
 context(context: IrMetroContext, scope: IrBuilderWithScope)
-private fun convertClassMapToKClassMap(keyType: IrType, bindingCode: IrExpression): IrExpression {
+private fun convertClassMapToKClassMap(
+  keyType: IrType,
+  kclassKeyType: IrTypeArgument,
+  valueType: IrTypeArgument,
+  bindingCode: IrExpression,
+): IrExpression {
   val mapKeysFunction = context.metroSymbols.mapKeysFunction
   val mapEntryKeyGetter = context.metroSymbols.mapEntryKeyGetter
   val kClassJavaGetter =
@@ -784,11 +829,6 @@ private fun convertClassMapToKClassMap(keyType: IrType, bindingCode: IrExpressio
       ?: reportCompilerBug(
         "KClass.java property getter not found but enableKClassClassInterop is enabled"
       )
-
-  // Extract types from the binding's canonical map type: Map<KClass<*>, V>
-  val mapType = bindingCode.type.requireSimpleType()
-  val kclassKeyType = mapType.arguments[0]
-  val valueType = mapType.arguments[1]
 
   // Build Map.Entry<KClass<*>, V> type for the lambda parameter
   val entryType =
@@ -1364,7 +1404,11 @@ internal fun buildAnnotation(
   body: IrBuilderWithScope.(IrConstructorCall) -> Unit = {},
 ): IrConstructorCall {
   return context.createIrBuilder(symbol).run {
-    irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
+    if (context.languageVersionSettings.languageVersion >= LanguageVersion.KOTLIN_2_4) {
+      irAnnotation(callee, typeArguments = emptyList()).also { body(it) }
+    } else {
+      irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
+    }
   }
 }
 
@@ -1499,8 +1543,15 @@ internal val IrFunction.regularParameters: List<IrValueParameter>
     return parameters.filter { it.kind == IrParameterKind.Regular }
   }
 
-internal fun IrFunction.isInheritedFromAny(irBuiltIns: IrBuiltIns): Boolean {
-  return isEqualsOnAny(irBuiltIns) || isHashCodeOnAny() || isToStringOnAny()
+internal fun IrFunction.isCompilerIntrinsicOrAny(
+  irBuiltIns: IrBuiltIns,
+  isDataClass: Boolean,
+): Boolean {
+  return isEqualsOnAny(irBuiltIns) ||
+    isHashCodeOnAny() ||
+    isToStringOnAny() ||
+    isComponentOperator ||
+    (isDataClass && isNamedCopy)
 }
 
 internal fun IrFunction.isEqualsOnAny(irBuiltIns: IrBuiltIns): Boolean {
@@ -1521,6 +1572,19 @@ internal fun IrFunction.isToStringOnAny(): Boolean {
   return name == StandardNames.TO_STRING_NAME &&
     hasShape(dispatchReceiver = true, regularParameters = 0)
 }
+
+internal val IrFunction.isNamedCopy: Boolean
+  get() = name == StandardNames.DATA_CLASS_COPY
+
+private val COMPONENT_FUNCTION_REGEX = Regex(StandardNames.DATA_CLASS_COMPONENT_PREFIX + "[0-9]*")
+
+internal val IrFunction.isComponentOperator: Boolean
+  get() {
+    return this is IrSimpleFunction &&
+      isOperator &&
+      COMPONENT_FUNCTION_REGEX.matches(name.asString()) &&
+      hasShape(dispatchReceiver = true, regularParameters = 0)
+  }
 
 internal val NOOP_TYPE_REMAPPER =
   object : TypeRemapper {
@@ -1925,13 +1989,6 @@ internal fun Collection<IrClass>.toIrVararg() = ifNotEmpty {
   scope.irVararg(first().defaultType, map { value -> scope.kClassReference(value.symbol) })
 }
 
-context(context: IrPluginContext)
-internal fun IrClass.implicitBoundTypeOrNull(): IrType? {
-  return superTypes
-    .filterNot { it.rawType().classId == context.irBuiltIns.anyClass.owner.classId }
-    .singleOrNull()
-}
-
 // Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
 // checks for non-interop
 context(context: IrPluginContext)
@@ -1960,6 +2017,9 @@ internal fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
 internal fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {
   return getConstBooleanArgumentOrNull(Symbols.Names.ignoreQualifier) ?: false
 }
+
+internal fun IrConstructorCall.isKiaIntoMultibinding(): Boolean =
+  getConstBooleanArgumentOrNull(Symbols.Names.multibinding) ?: false
 
 // public for test extension use
 context(context: IrPluginContext)

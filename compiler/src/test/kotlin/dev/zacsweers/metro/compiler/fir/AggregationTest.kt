@@ -635,7 +635,7 @@ class AggregationTest : MetroCompilerTest() {
         """
         interface ContributedInterface
 
-        @ClassKey(Impl::class)
+        @ClassKey
         @ContributesIntoMap(AppScope::class)
         @Inject
         class Impl : ContributedInterface
@@ -665,7 +665,7 @@ class AggregationTest : MetroCompilerTest() {
         """
         interface ContributedInterface
 
-        @ClassKey(Impl::class)
+        @ClassKey
         @ContributesIntoMap(AppScope::class)
         object Impl : ContributedInterface
 
@@ -695,7 +695,7 @@ class AggregationTest : MetroCompilerTest() {
           """
           interface ContributedInterface
 
-          @ClassKey(Impl::class)
+          @ClassKey
           @ContributesIntoMap(AppScope::class)
           @Inject
           class Impl : ContributedInterface
@@ -733,7 +733,7 @@ class AggregationTest : MetroCompilerTest() {
         """
         interface ContributedInterface
 
-        @ClassKey(Impl::class)
+        @ClassKey
         @Named("named")
         @ContributesIntoMap(AppScope::class)
         @Inject
@@ -766,7 +766,7 @@ class AggregationTest : MetroCompilerTest() {
 
         @ContributesIntoMap(
           AppScope::class,
-          binding<@ClassKey(Impl::class) ContributedInterface>()
+          binding<@ClassKey ContributedInterface>()
         )
         @Inject
         class Impl : ContributedInterface, AnotherInterface
@@ -798,7 +798,7 @@ class AggregationTest : MetroCompilerTest() {
 
         @ContributesIntoMap(
           AppScope::class,
-          binding<@ClassKey(Impl::class) @Named("hello") ContributedInterface>()
+          binding<@ClassKey @Named("hello") ContributedInterface>()
         )
         @Inject
         class Impl : ContributedInterface, AnotherInterface
@@ -830,7 +830,7 @@ class AggregationTest : MetroCompilerTest() {
 
         @ContributesIntoMap(
           AppScope::class,
-          binding<@ClassKey(Impl::class) ContributedInterface<String>>()
+          binding<@ClassKey ContributedInterface<String>>()
         )
         @Inject
         class Impl : ContributedInterface<String>
@@ -862,7 +862,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoMap(
             AppScope::class,
-            binding<@ClassKey(Impl::class) @Named("named") ContributedInterface<String>>()
+            binding<@ClassKey @Named("named") ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -2250,7 +2250,7 @@ class AggregationTest : MetroCompilerTest() {
 
         @ContributesIntoMap(AppScope::class)
         @ContributesIntoMap(AppScope::class)
-        @ClassKey(Impl::class)
+        @ClassKey
         @Inject
         class Impl : ContributedInterface
         """
@@ -2275,8 +2275,8 @@ class AggregationTest : MetroCompilerTest() {
         """
         interface ContributedInterface
 
-        @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
-        @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey ContributedInterface>())
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey ContributedInterface>())
         @Inject
         class Impl : ContributedInterface
         """
@@ -2301,8 +2301,8 @@ class AggregationTest : MetroCompilerTest() {
         """
         interface ContributedInterface
 
-        @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
-        @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey @Named("1") ContributedInterface>())
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey @Named("1") ContributedInterface>())
         @Inject
         class Impl : ContributedInterface
         """
@@ -2327,8 +2327,8 @@ class AggregationTest : MetroCompilerTest() {
         """
         interface ContributedInterface
 
-        @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
-        @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey @Named("1") ContributedInterface>())
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey @Named("2") ContributedInterface>())
         @Inject
         class Impl : ContributedInterface
 
@@ -2363,9 +2363,9 @@ class AggregationTest : MetroCompilerTest() {
         interface ContributedInterface
 
         @ContributesIntoMap(AppScope::class)
-        @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey @Named("2") ContributedInterface>())
         @Named("1")
-        @ClassKey(Impl::class)
+        @ClassKey
         @Inject
         class Impl : ContributedInterface
 
@@ -2401,7 +2401,7 @@ class AggregationTest : MetroCompilerTest() {
 
         @ContributesIntoMap(AppScope::class)
         @Named("1")
-        @ClassKey(Impl::class)
+        @ClassKey
         @Inject
         class Impl : ContributedInterface
 
@@ -2429,7 +2429,7 @@ class AggregationTest : MetroCompilerTest() {
         """
         interface ContributedInterface
 
-        @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey ContributedInterface>())
         @Named("1")
         @Inject
         class Impl : ContributedInterface
@@ -2458,7 +2458,7 @@ class AggregationTest : MetroCompilerTest() {
         interface ContributedInterface
 
         @ContributesIntoMap(AppScope::class, binding<ContributedInterface>())
-        @ClassKey(Impl::class) // Class key is ignored if bound is explicit
+        @ClassKey // Class key is ignored if bound is explicit
         @Inject
         class Impl : ContributedInterface
         """
@@ -2516,9 +2516,9 @@ class AggregationTest : MetroCompilerTest() {
         """
         interface ContributedInterface
 
-        @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey ContributedInterface>())
         @ContributesIntoMap(AppScope::class)
-        @ClassKey(Impl::class)
+        @ClassKey
         @Inject
         class Impl : ContributedInterface
         """
@@ -2544,7 +2544,7 @@ class AggregationTest : MetroCompilerTest() {
         interface ContributedInterface
 
         @ContributesIntoMap(AppScope::class, binding<Nothing>())
-        @ClassKey(Impl::class)
+        @ClassKey
         @Inject
         class Impl : ContributedInterface
         """
@@ -2565,8 +2565,8 @@ class AggregationTest : MetroCompilerTest() {
         """
         interface ContributedInterface
 
-        @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) Any>())
-        @ClassKey(Impl::class)
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey Any>())
+        @ClassKey
         @Inject
         class Impl : ContributedInterface
         """
@@ -2583,7 +2583,7 @@ class AggregationTest : MetroCompilerTest() {
         interface ContributedInterface
 
         @ContributesIntoMap(AppScope::class, binding<Unit>())
-        @ClassKey(Impl::class)
+        @ClassKey
         @Inject
         class Impl : ContributedInterface
         """
@@ -2606,7 +2606,7 @@ class AggregationTest : MetroCompilerTest() {
 
         interface ContributedInterface : BaseContributedInterface
 
-        @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) BaseContributedInterface>())
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey BaseContributedInterface>())
         @Inject
         class Impl : ContributedInterface
 
@@ -2706,7 +2706,7 @@ class AggregationTest : MetroCompilerTest() {
         interface ContributedInterface
 
         @ContributesIntoMap(AppScope::class, binding<Impl>())
-        @ClassKey(Impl::class)
+        @ClassKey
         @Inject
         class Impl : ContributedInterface
         """
@@ -2726,7 +2726,7 @@ class AggregationTest : MetroCompilerTest() {
       source(
         """
         @ContributesIntoMap(AppScope::class, binding<Impl>())
-        @ClassKey(Impl::class)
+        @ClassKey
         @Inject
         class Impl
         """

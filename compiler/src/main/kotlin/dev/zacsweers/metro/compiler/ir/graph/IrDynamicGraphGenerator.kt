@@ -53,17 +53,16 @@ internal class IrDynamicGraphGenerator(
   ): IrClass {
     val targetClass = targetType.rawType()
 
-    val containerTypeKeys =
-      containerTypes.mapToSet {
-        it
-          .asContextualTypeKey(
-            qualifierAnnotation = null,
-            hasDefault = false,
-            patchMutableCollections = false,
-            declaration = null,
-          )
-          .typeKey
-      }
+    val containerTypeKeys = containerTypes.mapToSet {
+      it
+        .asContextualTypeKey(
+          qualifierAnnotation = null,
+          hasDefault = false,
+          patchMutableCollections = false,
+          declaration = null,
+        )
+        .typeKey
+    }
 
     val cacheKey =
       CacheKey(targetGraphClassId = targetClass.classIdOrFail, containerKeys = containerTypeKeys)
@@ -128,14 +127,13 @@ internal class IrDynamicGraphGenerator(
     // Extend the target type (graph interface or factory interface)
     val supertype = factorySamFunction?.returnType ?: targetType
 
-    val storedParams =
-      containerClasses.mapIndexed { index, containerClass ->
-        SyntheticGraphParameter(
-          name = "container$index",
-          type = containerClass.symbol.defaultType,
-          origin = Origins.DynamicContainerParam,
-        )
-      }
+    val storedParams = containerClasses.mapIndexed { index, containerClass ->
+      SyntheticGraphParameter(
+        name = "container$index",
+        type = containerClass.symbol.defaultType,
+        origin = Origins.DynamicContainerParam,
+      )
+    }
 
     val (newGraphAnno, graphImpl, factoryImpl) =
       syntheticGraphGenerator.generateImpl(

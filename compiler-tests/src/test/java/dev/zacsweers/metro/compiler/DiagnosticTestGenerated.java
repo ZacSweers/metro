@@ -43,6 +43,24 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DefaultBinding_Ambiguous.kt")
+    public void testDefaultBinding_Ambiguous() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_Ambiguous.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBinding_InvalidTypeArg.kt")
+    public void testDefaultBinding_InvalidTypeArg() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_InvalidTypeArg.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBinding_MustBeSubclassable.kt")
+    public void testDefaultBinding_MustBeSubclassable() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_MustBeSubclassable.kt");
+    }
+
+    @Test
     @TestMetadata("InternalContributionMissingHint.kt")
     public void testInternalContributionMissingHint() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalContributionMissingHint.kt");
@@ -563,9 +581,9 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("CannotHaveTypeArgs.kt")
-    public void testCannotHaveTypeArgs() {
-      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveTypeArgs.kt");
+    @TestMetadata("CannotHaveReifiedTypeArgs.kt")
+    public void testCannotHaveReifiedTypeArgs() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveReifiedTypeArgs.kt");
     }
 
     @Test
@@ -724,12 +742,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
-      @TestMetadata("AssistedIdentifierSeverityError.kt")
-      public void testAssistedIdentifierSeverityError() {
-        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/AssistedIdentifierSeverityError.kt");
-      }
-
-      @Test
       @TestMetadata("InjectingAssistedInjectClassesIsAnError.kt")
       public void testInjectingAssistedInjectClassesIsAnError() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/InjectingAssistedInjectClassesIsAnError.kt");
@@ -739,12 +751,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("LazyAssistedFactoryInjection.kt")
       public void testLazyAssistedFactoryInjection() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/LazyAssistedFactoryInjection.kt");
-      }
-
-      @Test
-      @TestMetadata("RedundantAssistedNamesAreWarned.kt")
-      public void testRedundantAssistedNamesAreWarned() {
-        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/RedundantAssistedNamesAreWarned.kt");
       }
     }
 
@@ -922,6 +928,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("ElementsIntoSetMustHaveTypeArg.kt")
     public void testElementsIntoSetMustHaveTypeArg() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/ElementsIntoSetMustHaveTypeArg.kt");
+    }
+
+    @Test
+    @TestMetadata("ImplicitClassKeyDiagnostics.kt")
+    public void testImplicitClassKeyDiagnostics() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/ImplicitClassKeyDiagnostics.kt");
     }
 
     @Test

@@ -74,23 +74,19 @@ plugins.withType<KotlinBasePlugin> {
             "-Xcontext-parameters",
             "-Xreturn-value-checker=full",
             "-Xcontext-sensitive-resolution",
-            "-Xdata-flow-based-exhaustiveness",
+            "-Xwhen-expressions=indy",
             //  "-Xallow-contracts-on-more-functions",
             //  "-Xallow-condition-implies-returns-contracts",
             //  "-Xallow-holdsin-contract",
-            // TODO next minor release
-            //  "-Xwhen-expressions=indy",
             // TODO Kotlin 2.3.0
             //  "-Xexplicit-backing-fields",
           )
-          if (project.name != "compiler-tests") {
-            optIn.addAll(
-              "kotlin.contracts.ExperimentalContracts",
-              "kotlin.contracts.ExperimentalExtendedContracts",
-              "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
-              "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-            )
-          }
+          optIn.addAll(
+            "kotlin.contracts.ExperimentalContracts",
+            "kotlin.contracts.ExperimentalExtendedContracts",
+            "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
+            "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
+          )
         }
       }
     }
@@ -121,7 +117,7 @@ pluginManager.withPlugin("metro.publish") {
 
   if (isNotCompiler) {
     val metroRuntimeLanguageVersion =
-      catalog.findVersion("metro-runtime-languageVersion").get().requiredVersion
+      catalog.findVersion("kotlinPublished").get().requiredVersion.take(3) // Take 2.2 out of 2.2.20
     val runtimeKotlinVersion = KotlinVersion.fromVersion(metroRuntimeLanguageVersion)
     metroExtension.languageVersion.convention(runtimeKotlinVersion)
     metroExtension.apiVersion.convention(runtimeKotlinVersion)

@@ -5,18 +5,26 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Objects
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.name.StandardClassIds
 
 context(context: IrMetroContext)
 internal fun IrTypeKey.transformIfIntoMultibinding(
@@ -112,6 +120,45 @@ internal fun shouldUnwrapMapKeyValues(mapKey: IrConstructorCall): Boolean {
   val mapKeyMapKeyAnnotation = mapKey.annotationClass.explicitMapKeyAnnotation()!!.ir
   val unwrapValue = mapKeyMapKeyAnnotation.getSingleConstBooleanArgumentOrNull() != false
   return unwrapValue
+}
+
+/**
+ * Checks if the given map key annotation's `@MapKey` meta-annotation has `implicitClassKey = true`.
+ */
+context(context: IrMetroContext)
+internal fun hasImplicitClassKey(mapKey: IrConstructorCall): Boolean {
+  val mapKeyMapKeyAnnotation = mapKey.annotationClass.explicitMapKeyAnnotation()?.ir ?: return false
+  return mapKeyMapKeyAnnotation.getConstBooleanArgumentOrNull(Symbols.Names.implicitClassKey) ==
+    true
+}
+
+/**
+ * Checks if the given map key annotation's value is the `Nothing::class` sentinel, indicating it
+ * should use the implicit class key.
+ */
+context(context: IrMetroContext)
+internal fun isImplicitClassKeySentinel(mapKey: IrConstructorCall): Boolean {
+  if (!hasImplicitClassKey(mapKey)) return false
+  val valueArg = mapKey.arguments[0] ?: return true // No value → use implicit
+  val classRef = valueArg as? IrClassReference ?: return false
+  return classRef.classType.classOrNull?.owner?.classId == StandardClassIds.Nothing
+}
+
+/**
+ * Populates an implicit class key annotation's value argument with a class reference to the given
+ * [implicitType]. This replaces the `Nothing::class` sentinel with the actual class reference.
+ */
+context(context: IrMetroContext)
+internal fun populateImplicitClassKey(mapKey: IrConstructorCall, implicitType: IrType) {
+  val kClassType = context.irBuiltIns.kClassClass.typeWith(implicitType)
+  mapKey.arguments[0] =
+    IrClassReferenceImpl(
+      startOffset = UNDEFINED_OFFSET,
+      endOffset = UNDEFINED_OFFSET,
+      type = kClassType,
+      symbol = implicitType.classOrNull ?: return,
+      classType = implicitType,
+    )
 }
 
 context(context: IrMetroContext)

@@ -1,0 +1,203 @@
+// FILE: ContributionProviders_ScopedMultipleBindings.kt
+
+@ContributesBinding(scope = AppScope::class, binding = binding<Foo>())
+@ContributesBinding(scope = AppScope::class, binding = binding<Bar>())
+@SingleIn(scope = AppScope::class)
+@Inject
+internal class Impl : Bar, Foo {
+  val string: String
+    field = string
+    get
+
+  val longProvider: Provider<Long>
+    field = longProvider
+    get
+
+  val longFun: Function0<Long>
+    field = longFun
+    get
+
+  val lazyBool: Lazy<Boolean>
+    field = lazyBool
+    get
+
+  val providerOfLazyDouble: Provider<Lazy<Double>>
+    field = providerOfLazyDouble
+    get
+
+  constructor(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+interface Bar {
+}
+
+interface Foo {
+}
+
+// FILE: ImplContributions.kt
+
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class ImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = Impl::class)
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    class ProvideImplAsBarMetroFactory : Factory<Bar> {
+      private /* final field */ val instance: Provider<Any?> = instance
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Bar> {
+          return ProvideImplAsBarMetroFactory(instance = instance)
+        }
+
+        fun provideImplAsBar(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
+          return ToAppScope.provideImplAsBar(instance = instance)
+        }
+
+      }
+
+      private constructor(instance: Provider<Any?>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override operator fun invoke(): Bar {
+        return Companion.provideImplAsBar(instance = <this>.#instance.invoke())
+      }
+
+      fun mirrorFunction(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
+        return error(message = "Never called")
+      }
+
+    }
+
+    class ProvideImplAsFooMetroFactory : Factory<Foo> {
+      private /* final field */ val instance: Provider<Any?> = instance
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Foo> {
+          return ProvideImplAsFooMetroFactory(instance = instance)
+        }
+
+        fun provideImplAsFoo(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
+          return ToAppScope.provideImplAsFoo(instance = instance)
+        }
+
+      }
+
+      private constructor(instance: Provider<Any?>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override operator fun invoke(): Foo {
+        return Companion.provideImplAsFoo(instance = <this>.#instance.invoke())
+      }
+
+      fun mirrorFunction(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
+        return error(message = "Never called")
+      }
+
+    }
+
+    class ProvideScopedInstanceImplMetroFactory : Factory<Any?> {
+      private /* final field */ val string: Provider<String> = string
+      private /* final field */ val longProvider: Provider<Long> = longProvider
+      private /* final field */ val lazyBool: Provider<Boolean> = lazyBool
+      private /* final field */ val providerOfLazyDouble: Provider<Double> = providerOfLazyDouble
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Any?> {
+          return ProvideScopedInstanceImplMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
+        }
+
+        fun provideScopedInstanceImpl(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
+          return ToAppScope.provideScopedInstanceImpl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
+        }
+
+      }
+
+      private constructor(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override operator fun invoke(): Any? {
+        return Companion.provideScopedInstanceImpl(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = Companion.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = Companion.create<Double>(provider = <this>.#providerOfLazyDouble))
+      }
+
+      @SingleIn(scope = AppScope::class)
+      @Named(name = "metro_scoped_Impl")
+      fun mirrorFunction(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    fun provideImplAsBar(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
+      return instance /*as Bar */
+    }
+
+    @Provides
+    fun provideImplAsFoo(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
+      return instance /*as Foo */
+    }
+
+    @Provides
+    @SingleIn(scope = AppScope::class)
+    @Named(name = "metro_scoped_Impl")
+    fun provideScopedInstanceImpl(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
+      return Impl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: implContributionsToAppScopeAppScope.kt
+package metro.hints
+
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+fun AppScope(contributed: ToAppScope) {
+  return error(message = "Never called")
+}
+

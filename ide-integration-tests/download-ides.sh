@@ -132,22 +132,27 @@ get_as_download_info() {
 # Get IntelliJ IDEA download info
 # IDE Starter uses build numbers in filenames, so we query the JetBrains API
 # to map marketing version (2025.3.2) -> build number (253.30387.90)
+# For prereleases (rc, eap), the version field IS the build number already.
 get_iu_download_info() {
   local version="$1"
+  local build_type="${2:-release}"
 
-  # Query JetBrains API to get build number for this version
-  local api_url="https://data.services.jetbrains.com/products/releases?code=IU&type=release"
-  local api_response
-  api_response=$(curl -sL "$api_url") || return 1
-
-  # Extract build number for this version (format: "build": "253.30387.90")
-  # The API returns releases sorted by version, find our version
   local build_number
-  build_number=$(echo "$api_response" | grep -o "\"version\":\"${version}\"[^}]*\"build\":\"[^\"]*\"" | grep -o '"build":"[^"]*"' | cut -d'"' -f4 | head -1)
+  if [[ "$build_type" != "release" ]]; then
+    # Prereleases use build number directly as the version field
+    build_number="$version"
+  else
+    # Stable releases use marketing version — query API to get build number
+    local api_url="https://data.services.jetbrains.com/products/releases?code=IU&type=release"
+    local api_response
+    api_response=$(curl -sL "$api_url") || return 1
 
-  if [[ -z "$build_number" ]]; then
-    echo "Warning: Could not find build number for IU $version" >&2
-    return 1
+    build_number=$(echo "$api_response" | grep -o "\"version\":\"${version}\"[^}]*\"build\":\"[^\"]*\"" | grep -o '"build":"[^"]*"' | cut -d'"' -f4 | head -1)
+
+    if [[ -z "$build_number" ]]; then
+      echo "Warning: Could not find build number for IU $version" >&2
+      return 1
+    fi
   fi
 
   # IDE Starter expects: ideaIU-{buildNumber}-{platform}.dmg
@@ -160,10 +165,19 @@ get_iu_download_info() {
     return 1
   fi
 
-  # Download URL uses marketing version: idea-{version}-{platform}.dmg
-  local url="https://download.jetbrains.com/idea/idea-${version}${IU_PLATFORM_SUFFIX}"
+  local url
+  if [[ "$build_type" == "release" ]]; then
+    # Stable releases use marketing version in download URL
+    url="https://download.jetbrains.com/idea/idea-${version}${IU_PLATFORM_SUFFIX}"
+  else
+    # RC/EAP use build number in download URL
+    url="https://download.jetbrains.com/idea/idea-${build_number}${IU_PLATFORM_SUFFIX}"
+  fi
 
-  echo "${url}|${IU_CACHE_DIR}|${filename}|IntelliJ IDEA ${version}"
+  local display_suffix=""
+  [[ "$build_type" != "release" ]] && display_suffix=" ($(echo "$build_type" | tr '[:lower:]' '[:upper:]'))"
+
+  echo "${url}|${IU_CACHE_DIR}|${filename}|IntelliJ IDEA ${version}${display_suffix}"
 }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -249,7 +263,9 @@ main() {
         }
         ;;
       IU)
-        info=$(get_iu_download_info "$version") || {
+        # For IU, the third field is the build type (release, rc, eap). Default: release
+        local iu_build_type="${filename_prefix:-release}"
+        info=$(get_iu_download_info "$version" "$iu_build_type") || {
           already_cached=$((already_cached + 1))
           $QUIET || echo -e "  ${DIM}✓ IntelliJ IDEA $version (cached)${RESET}"
           continue

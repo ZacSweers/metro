@@ -60,7 +60,9 @@ metro {
 
 `@DependencyGraph` is replaceable but your mileage may vary if you use Anvil or modules, since Metro’s annotation unifies Anvil’s `@MergeComponent` functionality and doesn’t support modules.
 
-Similarly, `@ContributesBinding` is replaceable but there are not direct analogues for Anvil’s `@ContributesMultibinding` or kotlin-inject-anvil’s `@ContributesBinding(multibinding = …)` as these annotations are implemented as `@ContributesInto*` annotations in Metro.
+Anvil’s `@ContributesMultibinding` is supported as `@ContributesInto*` in Metro and interpreted accordingly for Set/Map scenarios.
+
+kotlin-inject-anvil’s `@ContributesBinding(multibinding = true)` is supported and automatically routed through as a `@ContributesIntoSet` contribution.
 
 `binding` in Metro uses a more flexible mechanism to support generics, but interop with Anvil's `boundType: KClass<*>` property is supported.
 

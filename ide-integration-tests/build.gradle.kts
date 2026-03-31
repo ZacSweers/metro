@@ -7,7 +7,6 @@ plugins {
   alias(libs.plugins.intellijPlatform)
   alias(libs.plugins.gradleTestRetry)
   id("metro.base")
-  id("metro.spotless")
 }
 
 metroProject { jvmTarget.set("21") }
@@ -20,9 +19,18 @@ repositories {
 dependencies {
   intellijPlatform {
     intellijIdeaUltimate(
-      // Source this from the first IU version in ide-versions.txt
+      // Source this from the first IU version in ide-versions.txt.
+      // Stable entries use marketing version (e.g., 2025.3.2), resolved from releases repo.
+      // Prerelease entries use build number (e.g., 261.22158.182), resolved from snapshots repo.
       providers.fileContents(layout.projectDirectory.file("ide-versions.txt")).asText.map { text ->
-        text.lineSequence().firstOrNull { it.startsWith("IU") }?.removePrefix("IU:")
+        text
+          .lineSequence()
+          .firstOrNull { it.startsWith("IU") }
+          ?.removePrefix("IU:")
+          // Strip build type or inline comment, keep just the version/build number
+          ?.substringBefore(":")
+          ?.substringBefore("#")
+          ?.trim()
           // Just cover for CI where we may run with only one IDE in the file
           ?: "2025.3.2"
       }

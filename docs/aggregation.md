@@ -296,6 +296,39 @@ interface TestAppGraph {
 }
 ```
 
+## `@DefaultBinding`
+
+The `@DefaultBinding` annotation allows for setting a default binding on _supertypes_ of contributed classes. This is useful for common base classes with generics that would otherwise require repetitive (or error-prone) explicit `binding<T>()` declarations in subtypes.
+
+```kotlin
+@DefaultBinding<BaseFactory<*>>
+interface BaseFactory<T : BaseFactory<T>>
+
+@ContributesIntoSet(AppScope::class) // now implicitly contributed as BaseFactory<*>
+@Inject
+class HomeFactory(...) : BaseFactory<HomeFactory>
+```
+
+## `generateContributionProviders`
+
+If you enable the new `generateContributionProviders` feature, Metro will instead generate top-level `@Provides` declarations that mirror the injected class's inputs but only return its _bound type_. This means the annotated class can remain `internal`, which both helps encapsulation and incremental compilation.
+
+```
+interface Base
+
+@ContributesBinding(AppScope::class)
+@Inject
+internal class Impl : Base
+
+// Works across modules!
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  val base: Base
+}
+```
+
+The tradeoff is that `Impl` is no longer available directly on the graph.
+
 ## Implementation notes
 
 This leans on Kotlin’s ability to put generic type parameters on annotations. That in turn allows for both generic bound types and to contribute map bindings to multiple map keys.

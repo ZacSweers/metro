@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
+import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
@@ -21,6 +22,8 @@ import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
+import dev.zacsweers.metro.compiler.ir.getAnnotation
+import dev.zacsweers.metro.compiler.ir.getAnnotationStringValue
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -68,8 +71,6 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.getAnnotation
-import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -90,13 +91,19 @@ internal class InjectedClassTransformer(
 
   fun visitClass(declaration: IrClass): Boolean {
     val injectableConstructor =
-      declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
-    return if (injectableConstructor != null) {
-      val _ = getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
-      true
-    } else {
-      false
+      declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false) ?: return false
+
+    // Skip factory generation when generateContributionProviders is enabled and the class
+    // has binding contributions — the contribution provider handles construction.
+    if (
+      options.generateContributionProviders &&
+        declaration.annotationsIn(metroSymbols.classIds.allContributesAnnotations).any()
+    ) {
+      return false
     }
+
+    val _ = getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
+    return true
   }
 
   fun getOrGenerateFactory(
@@ -268,13 +275,17 @@ internal class InjectedClassTransformer(
           if (!isAssistedInject) {
             overriddenSymbols = listOf(metroSymbols.providerInvoke)
           } else {
+            val assistedInvokeParamTypeRemapper =
+              declaration.deepRemapperFor(factoryCls.defaultType)
             // Add assisted params
             for (param in constructorParameters.allParameters.filter { it.isAssisted }) {
-              addValueParameter(param.name, param.type)
+              val assistedParamType =
+                assistedInvokeParamTypeRemapper.remapType(param.contextualTypeKey.toIrType())
+              addValueParameter(param.name, assistedParamType)
             }
           }
         }
-    metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(invokeFunction)
+    metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(invokeFunction)
 
     val allParameters =
       buildList {
@@ -314,6 +325,7 @@ internal class InjectedClassTransformer(
             addParameters(
               params = dedupedParameters,
               wrapInProvider = true,
+              stubDefaults = false,
               typeRemapper = { type -> typeRemapper.remapType(type) },
             ) { typeKey, irParam ->
               typeKeyToField[typeKey] = irParam.addBackingFieldTo(factoryCls)
@@ -502,7 +514,10 @@ internal class InjectedClassTransformer(
     if (injectedFunctionClass != null) {
       val callableName = injectedFunctionClass.getAnnotationStringValue()!!.asName()
       val callableId = CallableId(declaration.packageFqName!!, callableName)
-      var targetCallable = pluginContext.referenceFunctions(callableId).single()
+      var targetCallable =
+        pluginContext.referenceFunctions(callableId).single {
+          it.owner.isAnnotatedWithAny(metroSymbols.classIds.injectAnnotations)
+        }
 
       // Assign fields
       val constructorParametersToFields =
@@ -653,8 +668,9 @@ internal class InjectedClassTransformer(
         factoryCls.companionObject()!!
       }
 
-    val mergedParameters =
-      allParameters.reduce { current, next -> current.mergeValueParametersWithUntyped(next) }
+    val mergedParameters = allParameters.reduce { current, next ->
+      current.mergeValueParametersWithUntyped(next)
+    }
 
     // Deduplicate to match the FIR-generated create() function signature
     val dedupedMerged =

@@ -1,18 +1,23 @@
-# Format: <product>:<version>[:<filename_prefix>] [# Display Name]
+# Format: <product>:<version>[:<extra>] [# Display Name]
 # Products: IU (IntelliJ Ultimate), AS (Android Studio)
 #
-# IU uses marketing version (e.g., 2025.3.2)
+# IU:
+#   Stable: marketing version (e.g., IU:2025.3.2)
+#   Preview: build number + type (e.g., IU:261.22158.182:rc)
+#     Build numbers are used because prereleases aren't in the IntelliJ release repos.
+#   To find versions: ./list-intellij-versions.sh [--all]
 #
 # AS uses 4-component build number from https://jb.gg/android-studio-releases-list.xml
 #   Stable: "2025.2.3" -> "2025.2.3.1", version only (standard filename pattern)
 #   Preview: RC/Canary need explicit filename_prefix since filenames differ from version
 #            e.g., "2025.3.1 RC 1" has version "2025.3.1.6" but filename "android-studio-panda1-rc1"
+#   To find versions: ./list-android-studio-versions.sh [--all]
 #
-# To find AS versions in this format: ./list-android-studio-versions.sh
 # To find preview filenames: check https://jb.gg/android-studio-releases-list.xml
 #
 # IntelliJ Stable
 IU:2025.3.2
+IU:261.22158.182:rc # 2026.1 RC
 # AS stable
 AS:2025.3.1.8:android-studio-panda1-patch1 # Panda 1 Patch 1
 AS:2025.3.2.6:android-studio-panda2 # Panda 2

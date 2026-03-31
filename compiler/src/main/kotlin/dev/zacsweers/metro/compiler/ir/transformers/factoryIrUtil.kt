@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.annotationClass
+import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -18,7 +19,9 @@ import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.setExtensionReceiver
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
@@ -46,6 +49,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
@@ -108,7 +112,7 @@ internal fun generateStaticCreateFunction(
           copyQualifiers = true,
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
-        context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
+        context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
       }
   transformStaticCreateFunction(
     factoryClass = factoryClass,
@@ -160,8 +164,9 @@ private fun transformStaticCreateFunction(
   createFunction.apply {
     if (patchCreationParams) {
       val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
-      val valueParamsToPatch =
-        nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
+      val valueParamsToPatch = nonDispatchParameters.filter {
+        it.origin == Origins.RegularParameter
+      }
       copyParameterDefaultValues(
         providerFunction = providerFunction,
         sourceMetroParameters = parameters,
@@ -180,10 +185,12 @@ private fun transformStaticCreateFunction(
       for ((i, param) in regularParameters.withIndex()) {
         val sourceParam = parameters.regularParameters[i]
         sourceParam.typeKey.qualifier?.let { qualifier ->
-          context.pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
-            param,
-            qualifier.ir.deepCopyWithSymbols(),
-          )
+          with(context) {
+            metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
+              param,
+              listOf(qualifier.ir.deepCopyWithSymbols()),
+            )
+          }
         }
       }
     }
@@ -247,7 +254,7 @@ internal fun generateStaticNewInstanceFunction(
           copyQualifiers = true,
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
-        context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
+        context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
       }
   transformStaticNewInstanceFunction(
     sourceMetroParameters = sourceMetroParameters,
@@ -289,8 +296,9 @@ private fun transformStaticNewInstanceFunction(
 ) {
   newInstanceFunction.apply {
     val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
-    val valueParametersToMap =
-      nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
+    val valueParametersToMap = nonDispatchParameters.filter {
+      it.origin == Origins.RegularParameter
+    }
     // TODO move to function creation
     copyParameterDefaultValues(
       providerFunction = targetFunction,
@@ -315,6 +323,7 @@ internal fun generateMetadataVisibleMirrorFunction(
   target: IrFunction?,
   backingField: IrField?,
   annotations: MetroAnnotations<IrAnnotation>,
+  registerAsMetadataVisible: Boolean = true,
 ): IrSimpleFunction {
   val returnType =
     target?.returnType
@@ -376,8 +385,46 @@ internal fun generateMetadataVisibleMirrorFunction(
         // this for
         body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
       }
-  context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
+  if (registerAsMetadataVisible) {
+    context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
+  }
   return function
+}
+
+/**
+ * Adds stub `create()` and named creator functions to a factory class for cross-module invisible
+ * factory stubs. These are phantom functions that the consuming module can reference, at runtime
+ * the real factory class from the producing module provides the actual implementation.
+ *
+ * For object factories, the functions are added directly to the object. For class factories, the
+ * functions are added to the companion object.
+ */
+context(context: IrMetroContext)
+internal fun generateStubCreatorFunctions(
+  factoryClass: IrClass,
+  callableName: String,
+  returnType: IrType,
+  sourceFunction: IrSimpleFunction,
+) {
+  val creatorClass = factoryClass.requireStaticIshDeclarationContainer()
+
+  val params = sourceFunction.parameters().regularParameters
+
+  // create() function, parameters are Provider-wrapped
+  creatorClass
+    .addFunction(Symbols.StringNames.CREATE, context.metroSymbols.metroFactory.typeWith(returnType))
+    .apply {
+      setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
+      addParameters(params, wrapInProvider = true)
+      body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+    }
+
+  // Named function (e.g., "provideImplAsBase")
+  creatorClass.addFunction(callableName, returnType).apply {
+    setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
+    addParameters(params, wrapInProvider = false)
+    body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+  }
 }
 
 context(context: IrMetroContext)
@@ -386,6 +433,7 @@ internal fun IrFunction.addParameters(
   wrapInProvider: Boolean,
   copyQualifiers: Boolean = false,
   typeRemapper: ((IrType) -> IrType)? = null,
+  stubDefaults: Boolean = true,
   onParam: (IrTypeKey, IrValueParameter) -> Unit = { _, _ -> },
 ) {
   for (param in params) {
@@ -417,8 +465,23 @@ internal fun IrFunction.addParameters(
             Origins.RegularParameter
           },
       )
-      .applyIf(copyQualifiers) {
-        param.typeKey.qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
+      .applyIf(stubDefaults) {
+        // Set a stub default value so that metadata registration (which may happen before
+        // copyParameterDefaultValues runs) records hasDefaultValue = true for this parameter.
+        // The real default expression is set later by copyParameterDefaultValues.
+        if (param.hasDefault) {
+          defaultValue = context.createIrBuilder(symbol).run { irExprBody(stubExpression()) }
+        }
+      }
+      .apply {
+        // Propagate @OptionalBinding if present
+        param.asValueParameter
+          .annotationsIn(context.metroSymbols.classIds.optionalBindingAnnotations)
+          .firstOrNull()
+          ?.let { annotations += it.deepCopyWithSymbols() }
+        if (copyQualifiers) {
+          param.typeKey.qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
+        }
       }
       .also { onParam(param.typeKey, it) }
   }

@@ -13,26 +13,26 @@ interface <!SUSPICIOUS_UNUSED_MULTIBINDING!>AppGraph<!> {
 }
 
 @ContributesIntoMap(AppScope::class, binding = binding<ViewModel>())
-@ClassKey(Impl::class)
+@ClassKey
 @Inject
 class Impl : BaseViewModel
 
 @ContributesIntoMap(AppScope::class)
-@ClassKey(Impl2::class)
+@ClassKey
 @Inject
 class Impl2 : BaseViewModel
 
 @ContributesIntoMap(AppScope::class)
-@ClassKey(Impl3::class)
+@ClassKey
 @Inject
 class Impl3 : BaseViewModel
 
 @ContributesIntoMap(AppScope::class)
-@ClassKey(Impl4::class)
+@ClassKey
 @Inject
 class Impl4 : BaseViewModel
 
 @ContributesIntoMap(AppScope::class)
-@ClassKey(Impl5::class)
+@ClassKey
 @Inject
 class Impl5 : BaseViewModel

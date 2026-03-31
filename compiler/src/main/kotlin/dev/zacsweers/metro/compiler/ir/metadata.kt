@@ -14,8 +14,13 @@ import dev.zacsweers.metro.compiler.proto.AssistedFactoryImplProto
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.proto.ProviderFactoryProto
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -43,40 +48,49 @@ internal fun createMetroMetadata(
 context(context: IrMetroContext)
 internal var IrClass.metroMetadata: MetroMetadata?
   get() {
-    return context.metadataDeclarationRegistrar.getCustomMetadataExtension(this, PLUGIN_ID)?.let {
-      val metadata =
-        try {
-          MetroMetadata.ADAPTER.decode(it)
-        } catch (e: Exception) {
+    return context.metadataDeclarationRegistrarCompat
+      .getCustomMetadataExtension(this, PLUGIN_ID)
+      ?.let {
+        val metadata =
+          try {
+            MetroMetadata.ADAPTER.decode(it)
+          } catch (e: Exception) {
+            context.reportCompat(
+              this,
+              MetroDiagnostics.METRO_ERROR,
+              "Failed to decode Metro metadata for '${classIdOrFail}'. " +
+                "The metadata format may be incompatible with this Metro version. " +
+                "Please recompile the upstream module with a compatible Metro version. " +
+                "Error: ${e.message}",
+            )
+            return null
+          }
+        if (metadata.version != METADATA_VERSION) {
           context.reportCompat(
             this,
             MetroDiagnostics.METRO_ERROR,
-            "Failed to decode Metro metadata for '${classIdOrFail}'. " +
-              "The metadata format may be incompatible with this Metro version. " +
-              "Please recompile the upstream module with a compatible Metro version. " +
-              "Error: ${e.message}",
+            "Metro metadata version mismatch for '${classIdOrFail}'. " +
+              "Metadata was generated with version ${metadata.version}, " +
+              "but the current compiler expects version $METADATA_VERSION. " +
+              "Please recompile the upstream module with a compatible Metro version.",
           )
-          return null
         }
-      if (metadata.version != METADATA_VERSION) {
-        context.reportCompat(
-          this,
-          MetroDiagnostics.METRO_ERROR,
-          "Metro metadata version mismatch for '${classIdOrFail}'. " +
-            "Metadata was generated with version ${metadata.version}, " +
-            "but the current compiler expects version $METADATA_VERSION. " +
-            "Please recompile the upstream module with a compatible Metro version.",
-        )
+        metadata
       }
-      metadata
-    }
   }
   set(value) {
     if (value == null) return
-    context.metadataDeclarationRegistrar.addCustomMetadataExtension(this, PLUGIN_ID, value.encode())
+    context.metadataDeclarationRegistrarCompat.addCustomMetadataExtension(
+      this,
+      PLUGIN_ID,
+      value.encode(),
+    )
   }
 
-internal fun GraphNode.toProto(bindingGraph: IrBindingGraph): DependencyGraphProto {
+internal fun GraphNode.toProto(
+  bindingGraph: IrBindingGraph,
+  ownProviderFactories: Set<ProviderFactory>,
+): DependencyGraphProto {
   var multibindingAccessors = BitField()
   val accessorNames =
     accessors
@@ -92,7 +106,7 @@ internal fun GraphNode.toProto(bindingGraph: IrBindingGraph): DependencyGraphPro
 
   return createGraphProto(
     isGraph = true,
-    providerFactories = providerFactories.values.flatten(),
+    providerFactories = ownProviderFactories,
     accessorNames = accessorNames,
     multibindingAccessorIndices = multibindingAccessors.toIntList(),
   )
@@ -117,8 +131,23 @@ private fun createGraphProto(
 ): DependencyGraphProto {
   return DependencyGraphProto(
     is_graph = isGraph,
-    provider_factory_classes =
-      providerFactories.map { factory -> factory.factoryClass.classIdOrFail.protoString }.sorted(),
+    provider_factories =
+      providerFactories
+        .map { factory ->
+          val factoryClass = factory.factoryClass
+          val isInvisible =
+            factoryClass.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) == true
+          ProviderFactoryProto(
+            class_id = factoryClass.classIdOrFail.protoString,
+            invisible = isInvisible,
+            is_object = factoryClass.isObject,
+            callable_name = factory.callableId.callableName.asString(),
+            property_name =
+              if (factory.isPropertyAccessor) factory.callableId.callableName.asString() else "",
+            new_instance_name = factory.newInstanceName.asString(),
+          )
+        }
+        .sortedBy { it.class_id },
     accessor_callable_names = accessorNames.sorted(),
     multibinding_accessor_indices = multibindingAccessorIndices,
     included_binding_containers = includedBindingContainers.sorted(),

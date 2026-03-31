@@ -74,7 +74,7 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Install MkDocs dependencies
+      - name: Install docs dependencies
         run: |
           pip install --requirement .github/workflows/mkdocs-requirements.txt
 
@@ -100,7 +100,7 @@ jobs:
         run: |
           TAG_NAME="${{ inputs.tag_name }}"
           IS_LATEST="${{ inputs.is_latest_release }}"
-          
+
           if [[ "$IS_LATEST" == "true" ]]; then
             echo "Deploying docs for tag: $TAG_NAME (marking as latest)"
             mike deploy --update-aliases --push "$TAG_NAME" latest
@@ -108,8 +108,10 @@ jobs:
             echo "Deploying docs for tag: $TAG_NAME (not marking as latest)"
             mike deploy --push "$TAG_NAME"
           fi
-          
+
           echo "✅ Successfully deployed docs for tag: $TAG_NAME"
+        env:
+          SITE_URL: https://zacsweers.github.io/metro/
 
       - name: Show updated mike versions
         run: |

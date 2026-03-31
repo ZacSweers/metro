@@ -71,9 +71,6 @@ public class MetroFirExtensionRegistrar(
         )
       }
     }
-    if (options.transformProvidersToPrivate) {
-      +{ session: FirSession -> FirProvidesStatusTransformer(session, compatContext) }
-    }
 
     // Register the composite declaration generator that includes external extensions
     +compositeDeclarationGenerator()

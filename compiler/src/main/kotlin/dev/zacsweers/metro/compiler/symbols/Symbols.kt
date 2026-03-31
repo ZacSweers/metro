@@ -80,6 +80,7 @@ internal class Symbols(
     const val IMPL = "Impl"
     const val INVOKE = "invoke"
     const val METRO_CONTRIBUTION = "MetroContribution"
+    const val MULTIBINDING = "multibinding"
     const val METRO_CONTRIBUTION_NAME_PREFIX = "MetroContribution"
     const val METRO_FACTORY = "MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
@@ -168,6 +169,7 @@ internal class Symbols(
     val metroIntoMap = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_MAP.asName())
     val metroIntoSet = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_SET.asName())
     val metroImplMarker = ClassId(FqNames.metroRuntimeInternalPackage, "MetroImplMarker".asName())
+    val irOnlyFactories = ClassId(FqNames.metroRuntimeInternalPackage, "IROnlyFactories".asName())
     val metroOrigin = ClassId(FqNames.metroRuntimePackage, "Origin".asName())
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
     val metroProvides = ClassId(FqNames.metroRuntimePackage, StringNames.PROVIDES.asName())
@@ -184,6 +186,8 @@ internal class Symbols(
     val Assisted = StringNames.ASSISTED.asName()
     val Binds = "Binds".asName()
     val BindsMirrorClass = "BindsMirror".asName()
+    val DefaultBinding = "DefaultBinding".asName()
+    val DefaultBindingMirrorClass = "DefaultBindingMirror".asName()
     val Container = "Container".asName()
     val FactoryClass = "Factory".asName()
     val MetroContributionNamePrefix = StringNames.METRO_CONTRIBUTION_NAME_PREFIX.asName()
@@ -206,6 +210,7 @@ internal class Symbols(
     val createGraphFactory = StringNames.CREATE_GRAPH_FACTORY.asName()
     val createDynamicGraph = StringNames.CREATE_DYNAMIC_GRAPH.asName()
     val createDynamicGraphFactory = StringNames.CREATE_DYNAMIC_GRAPH_FACTORY.asName()
+    val defaultBindingFunction = "defaultBinding".asName()
     val delegateFactory = "delegateFactory".asName()
     val error = StringNames.ERROR.asName()
     val exclude = StringNames.EXCLUDE.asName()
@@ -219,6 +224,7 @@ internal class Symbols(
     val invoke = StringNames.INVOKE.asName()
     val membersInjector = "MembersInjector".asName()
     val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
+    val multibinding = StringNames.MULTIBINDING.asName()
     val modules = "modules".asName()
     val newInstance = StringNames.NEW_INSTANCE.asName()
     val provider = StringNames.PROVIDER.asName()
@@ -228,6 +234,7 @@ internal class Symbols(
     val subcomponents = "subcomponents".asName()
     val scope = StringNames.SCOPE.asName()
     val unwrapValue = "unwrapValue".asName()
+    val implicitClassKey = "implicitClassKey".asName()
   }
 
   private val metroRuntime: IrPackageFragment by lazy {

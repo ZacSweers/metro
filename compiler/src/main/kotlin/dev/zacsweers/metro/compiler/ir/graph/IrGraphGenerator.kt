@@ -311,7 +311,17 @@ internal class IrGraphGenerator(
       if (!graphClass.origin.isSyntheticGeneratedGraph) {
         trace("Generate Metro metadata") {
           // Finally, generate metadata
-          val graphProto = node.toProto(bindingGraph = bindingGraph)
+          // Use only the graph's own provider factories (not those from binding containers)
+          // for metadata. Binding container factories are resolved independently by consumers.
+          val ownProviderFactories =
+            metroDeclarations
+              .findBindingContainer(node.sourceGraph)
+              ?.providerFactories
+              ?.values
+              .orEmpty()
+              .toSet()
+          val graphProto =
+            node.toProto(bindingGraph = bindingGraph, ownProviderFactories = ownProviderFactories)
           graphMetadataReporter.write(node, bindingGraph)
           val metroMetadata = createMetroMetadata(dependency_graph = graphProto)
 
@@ -1081,8 +1091,7 @@ internal class IrGraphGenerator(
     thisReceiverParameter: IrValueParameter,
     constructorStatements: MutableList<InitStatement>,
   ) {
-    val mustChunkInits =
-      options.chunkFieldInits && shardPropertyInitializers.size > options.statementsPerInitFun
+    val mustChunkInits = shardPropertyInitializers.size > options.statementsPerInitFun
 
     // Create name allocator for init functions on this shard
     val shardFunctionNameAllocator =
@@ -1170,21 +1179,20 @@ internal class IrGraphGenerator(
 
     val targetThisReceiver = shard.shardClass.thisReceiverOrFail
 
-    val initFunctionsToCall =
-      chunks.map { statementsChunk ->
-        val initName = shardFunctionNameAllocator.newName("init")
-        shard.shardClass
-          .addFunction(initName, irBuiltIns.unitType, visibility = DescriptorVisibilities.PRIVATE)
-          .apply {
-            val localReceiver = targetThisReceiver.copyTo(this)
-            setDispatchReceiver(localReceiver)
-            buildBlockBody {
-              for (statement in statementsChunk) {
-                +statement(localReceiver)
-              }
+    val initFunctionsToCall = chunks.map { statementsChunk ->
+      val initName = shardFunctionNameAllocator.newName("init")
+      shard.shardClass
+        .addFunction(initName, irBuiltIns.unitType, visibility = DescriptorVisibilities.PRIVATE)
+        .apply {
+          val localReceiver = targetThisReceiver.copyTo(this)
+          setDispatchReceiver(localReceiver)
+          buildBlockBody {
+            for (statement in statementsChunk) {
+              +statement(localReceiver)
             }
           }
-      }
+        }
+    }
 
     if (shard.isGraphAsShard) {
       // For graph-as-shard, add init calls to main constructor

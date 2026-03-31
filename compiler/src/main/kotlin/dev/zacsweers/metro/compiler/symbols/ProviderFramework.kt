@@ -234,7 +234,7 @@ internal class MetroProviderFramework(
     }
   }
 
-  context(_: IrMetroContext, scope: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.toLazy(targetKey: IrContextualTypeKey): IrExpression =
     with(scope) {
       val provider = this@toLazy
@@ -255,7 +255,7 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
     return classId == JavaxSymbols.ClassIds.JAVAX_PROVIDER_CLASS_ID
   }
 
-  context(_: IrMetroContext, _: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.handleSameFramework(
     targetKey: IrContextualTypeKey,
     sourceClassId: ClassId?,
@@ -265,7 +265,7 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
     return this
   }
 
-  context(_: IrMetroContext, scope: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
@@ -279,7 +279,7 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
       )
     }
 
-  context(_: IrMetroContext, scope: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.toMetroProvider(
     providerType: IrType,
     sourceClassId: ClassId?,
@@ -300,7 +300,7 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
       )
     }
 
-  context(_: IrMetroContext, _: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.toLazy(targetKey: IrContextualTypeKey): IrExpression {
     // Javax has no Lazy concept, this should be handled by another interop
     reportCompilerBug(
@@ -317,7 +317,7 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
     return classId == JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID
   }
 
-  context(_: IrMetroContext, _: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.handleSameFramework(
     targetKey: IrContextualTypeKey,
     sourceClassId: ClassId?,
@@ -327,7 +327,7 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
     return this
   }
 
-  context(_: IrMetroContext, scope: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
@@ -341,7 +341,7 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
       )
     }
 
-  context(_: IrMetroContext, scope: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.toMetroProvider(
     providerType: IrType,
     sourceClassId: ClassId?,
@@ -362,7 +362,7 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
       )
     }
 
-  context(_: IrMetroContext, _: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.toLazy(targetKey: IrContextualTypeKey): IrExpression {
     // Javax has no Lazy concept, this should be handled by another interop
     reportCompilerBug(
@@ -396,7 +396,7 @@ internal class GuiceProviderFramework(
     return classId == GuiceSymbols.ClassIds.provider
   }
 
-  context(_: IrMetroContext, _: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.handleSameFramework(
     targetKey: IrContextualTypeKey,
     sourceClassId: ClassId?,
@@ -406,7 +406,7 @@ internal class GuiceProviderFramework(
     return this
   }
 
-  context(_: IrMetroContext, scope: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
@@ -426,7 +426,7 @@ internal class GuiceProviderFramework(
       return super.fromMetroProvider(provider, targetKey, targetClassId)
     }
 
-  context(_: IrMetroContext, scope: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.toMetroProvider(
     providerType: IrType,
     sourceClassId: ClassId?,
@@ -447,7 +447,7 @@ internal class GuiceProviderFramework(
       )
     }
 
-  context(_: IrMetroContext, scope: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.toLazy(targetKey: IrContextualTypeKey): IrExpression =
     with(scope) {
       val provider = this@toLazy
@@ -493,7 +493,7 @@ internal abstract class BaseDelegatingProviderFramework(
    * Default implementation that delegates to one of the delegate frameworks. Subclasses should
    * handle their own types first, then call super for delegation.
    */
-  context(_: IrMetroContext, scope: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
@@ -547,7 +547,7 @@ internal class DaggerProviderFramework(
     return classId in symbols.primitives
   }
 
-  context(_: IrMetroContext, _: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.handleSameFramework(
     targetKey: IrContextualTypeKey,
     sourceClassId: ClassId?,
@@ -571,7 +571,7 @@ internal class DaggerProviderFramework(
     )
   }
 
-  context(_: IrMetroContext, scope: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun fromMetroProvider(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
@@ -634,7 +634,7 @@ internal class DaggerProviderFramework(
       }
     }
 
-  context(_: IrMetroContext, scope: IrBuilderWithScope)
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
   override fun IrExpression.toLazy(targetKey: IrContextualTypeKey): IrExpression =
     with(scope) {
       val provider = this@toLazy

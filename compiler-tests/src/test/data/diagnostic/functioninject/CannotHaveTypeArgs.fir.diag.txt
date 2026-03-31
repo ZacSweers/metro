@@ -1,1 +1,0 @@
-/CannotHaveTypeArgs.kt:(112,115): error: Injected functions cannot be generic.

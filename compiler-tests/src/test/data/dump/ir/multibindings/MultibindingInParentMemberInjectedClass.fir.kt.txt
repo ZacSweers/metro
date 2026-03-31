@@ -129,7 +129,7 @@ class AFragmentInjector : Injector {
 
 @Inject
 @ContributesIntoMap(scope = AppScope::class)
-@ClassKey(value = AViewModel::class)
+@ClassKey
 class AViewModel : ViewModel {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   object MetroFactory : Factory<AViewModel> {
@@ -172,8 +172,8 @@ class AViewModel : ViewModel {
       @Binds
       @IntoMap
       @ClassKey(value = AViewModel::class)
-      @CallableMetadata(callableName = "bindIntoMapAsViewModel4203417713", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsViewModel42034177134203417713_intomap(instance: AViewModel): ViewModel
+      @CallableMetadata(callableName = "bindIntoMapAsViewModel2182965618", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindIntoMapAsViewModel21829656184203417713_intomap(instance: AViewModel): ViewModel
 
     }
 
@@ -181,7 +181,7 @@ class AViewModel : ViewModel {
     @Binds
     @ClassKey(value = AViewModel::class)
     @ComptimeOnly
-    abstract fun bindIntoMapAsViewModel4203417713(instance: AViewModel): ViewModel {
+    abstract fun bindIntoMapAsViewModel2182965618(instance: AViewModel): ViewModel {
       return error(message = "Never called")
     }
 
@@ -333,7 +333,7 @@ class BFragmentInjector : Injector {
 
 @Inject
 @ContributesIntoMap(scope = AppScope::class)
-@ClassKey(value = BViewModel::class)
+@ClassKey
 class BViewModel : ViewModel {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   object MetroFactory : Factory<BViewModel> {
@@ -376,8 +376,8 @@ class BViewModel : ViewModel {
       @Binds
       @IntoMap
       @ClassKey(value = BViewModel::class)
-      @CallableMetadata(callableName = "bindIntoMapAsViewModel2406466354", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsViewModel24064663542406466354_intomap(instance: BViewModel): ViewModel
+      @CallableMetadata(callableName = "bindIntoMapAsViewModel386014259", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindIntoMapAsViewModel3860142592406466354_intomap(instance: BViewModel): ViewModel
 
     }
 
@@ -385,7 +385,7 @@ class BViewModel : ViewModel {
     @Binds
     @ClassKey(value = BViewModel::class)
     @ComptimeOnly
-    abstract fun bindIntoMapAsViewModel2406466354(instance: BViewModel): ViewModel {
+    abstract fun bindIntoMapAsViewModel386014259(instance: BViewModel): ViewModel {
       return error(message = "Never called")
     }
 

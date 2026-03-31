@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Zac Sweers
+// Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.generators.dsl.junit5.generateTestGroupSuiteWithJUni
 inline fun <
   reified Box,
   reified FastInitBox,
+  reified ContributionProvidersBox,
   reified Diagnostic,
   reified FirDump,
   reified IrDump,
@@ -24,6 +25,7 @@ inline fun <
       }
       testClass<Box> { commonModel("box") }
       testClass<FastInitBox> { commonModel("box") }
+      testClass<ContributionProvidersBox> { commonModel("box/aggregation") }
       testClass<Diagnostic> { commonModel("diagnostic") }
       testClass<FirDump> { commonModel("dump/fir") }
       testClass<IrDump> { commonModel("dump/ir") }

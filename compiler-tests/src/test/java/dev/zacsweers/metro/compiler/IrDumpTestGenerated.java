@@ -55,6 +55,18 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ContributionProviders_BasicDump.kt")
+    public void testContributionProviders_BasicDump() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributionProviders_BasicDump.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionProviders_ScopedMultipleBindings.kt")
+    public void testContributionProviders_ScopedMultipleBindings() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributionProviders_ScopedMultipleBindings.kt");
+    }
+
+    @Test
     @TestMetadata("ContributorsWithSameSimpleNames.kt")
     public void testContributorsWithSameSimpleNames() {
       runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributorsWithSameSimpleNames.kt");
@@ -64,6 +76,18 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("ContributorsWithSameSimpleNamesSameOrigin.kt")
     public void testContributorsWithSameSimpleNamesSameOrigin() {
       runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributorsWithSameSimpleNamesSameOrigin.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBindingMirror.kt")
+    public void testDefaultBindingMirror() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/DefaultBindingMirror.kt");
+    }
+
+    @Test
+    @TestMetadata("ImplicitClassKeyPopulatedOnCopy.kt")
+    public void testImplicitClassKeyPopulatedOnCopy() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ImplicitClassKeyPopulatedOnCopy.kt");
     }
 
     @Test

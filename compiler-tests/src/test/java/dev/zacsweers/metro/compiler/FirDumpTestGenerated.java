@@ -22,9 +22,15 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
   }
 
   @Test
-  @TestMetadata("InjectCtorAlwaysUsedEvenIfClassAnnotated.kt")
-  public void testInjectCtorAlwaysUsedEvenIfClassAnnotated() {
-    runTest("compiler-tests/src/test/data/dump/fir/InjectCtorAlwaysUsedEvenIfClassAnnotated.kt");
+  @TestMetadata("InjectCtorAlwaysUsedEvenIfClassAnnotated_k23x.kt")
+  public void testInjectCtorAlwaysUsedEvenIfClassAnnotated_k23x() {
+    runTest("compiler-tests/src/test/data/dump/fir/InjectCtorAlwaysUsedEvenIfClassAnnotated_k23x.kt");
+  }
+
+  @Test
+  @TestMetadata("InjectCtorAlwaysUsedEvenIfClassAnnotated_k24x.kt")
+  public void testInjectCtorAlwaysUsedEvenIfClassAnnotated_k24x() {
+    runTest("compiler-tests/src/test/data/dump/fir/InjectCtorAlwaysUsedEvenIfClassAnnotated_k24x.kt");
   }
 
   @Test
@@ -55,21 +61,39 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     }
 
     @Test
-    @TestMetadata("ContributingGraphExtensions.kt")
-    public void testContributingGraphExtensions() {
-      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingGraphExtensions.kt");
+    @TestMetadata("ContributingGraphExtensions_k23x.kt")
+    public void testContributingGraphExtensions_k23x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingGraphExtensions_k23x.kt");
     }
 
     @Test
-    @TestMetadata("ContributingTypes.kt")
-    public void testContributingTypes() {
-      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypes.kt");
+    @TestMetadata("ContributingGraphExtensions_k24x.kt")
+    public void testContributingGraphExtensions_k24x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingGraphExtensions_k24x.kt");
     }
 
     @Test
-    @TestMetadata("ContributingTypesDependency.kt")
-    public void testContributingTypesDependency() {
-      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypesDependency.kt");
+    @TestMetadata("ContributingTypesDependency_k23x.kt")
+    public void testContributingTypesDependency_k23x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypesDependency_k23x.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributingTypesDependency_k24x.kt")
+    public void testContributingTypesDependency_k24x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypesDependency_k24x.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributingTypes_k23x.kt")
+    public void testContributingTypes_k23x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypes_k23x.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributingTypes_k24x.kt")
+    public void testContributingTypes_k24x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypes_k24x.kt");
     }
 
     @Test
@@ -82,22 +106,6 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     @TestMetadata("FirHintGenerationWorks_k23x.kt")
     public void testFirHintGenerationWorks_k23x() {
       runTest("compiler-tests/src/test/data/dump/fir/aggregation/FirHintGenerationWorks_k23x.kt");
-    }
-  }
-
-  @Nested
-  @TestMetadata("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation")
-  @TestDataPath("$PROJECT_ROOT")
-  public class Private_provides_status_transformation {
-    @Test
-    public void testAllFilesPresentInPrivate_provides_status_transformation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation"), Pattern.compile("^(.+)\\.kt$"), null, true);
-    }
-
-    @Test
-    @TestMetadata("ProvidersAreMadePrivate.kt")
-    public void testProvidersAreMadePrivate() {
-      runTest("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation/ProvidersAreMadePrivate.kt");
     }
   }
 }
