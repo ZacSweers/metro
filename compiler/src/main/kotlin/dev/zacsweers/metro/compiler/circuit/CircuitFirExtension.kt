@@ -347,8 +347,9 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
     // First arg is screen, second is scope
     val screenArg =
-      annotation.argumentAsOrNull<FirGetClassCall>("screen".asName(), 0) ?: return null
-    val scopeArg = annotation.argumentAsOrNull<FirGetClassCall>("scope".asName(), 1) ?: return null
+      annotation.argumentAsOrNull<FirGetClassCall>(session, "screen".asName(), 0) ?: return null
+    val scopeArg =
+      annotation.argumentAsOrNull<FirGetClassCall>(session, "scope".asName(), 1) ?: return null
 
     val screenType = screenArg.resolveClassId(typeResolver) ?: return null
     val scopeType = scopeArg.resolveClassId(typeResolver) ?: return null

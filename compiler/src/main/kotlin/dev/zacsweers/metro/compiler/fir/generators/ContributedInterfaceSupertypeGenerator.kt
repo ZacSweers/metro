@@ -90,7 +90,9 @@ internal class ContributedInterfaceSupertypeGenerator(
   }
 
   private val allSessions by lazy { session.allSessions }
-  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session, allSessions).caching() }
+  private val typeResolverFactory by lazy {
+    MetroFirTypeResolver.Factory(session, allSessions).caching()
+  }
 
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
@@ -480,7 +482,8 @@ internal class ContributedInterfaceSupertypeGenerator(
           val containerSymbol =
             containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
               ?: return@mapNotNull null
-          val localTypeResolver = typeResolverFor(containerSymbol) ?: return@mapNotNull null
+          val localTypeResolver =
+            typeResolverFactory.create(containerSymbol) ?: return@mapNotNull null
           val originClassId =
             containerSymbol.originClassId(session, localTypeResolver) ?: return@mapNotNull null
           val originClass =

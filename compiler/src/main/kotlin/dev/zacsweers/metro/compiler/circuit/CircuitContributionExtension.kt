@@ -154,7 +154,9 @@ public class CircuitContributionExtension(
   ): ClassId? {
     if (annotation !is FirAnnotationCall) return null
     // Second arg is scope
-    return annotation.classArgument(Symbols.Names.scope, index = 1)?.resolveClassId(typeResolver)
+    return annotation
+      .classArgument(session, Symbols.Names.scope, index = 1)
+      ?.resolveClassId(typeResolver)
   }
 
   public class Factory : MetroContributionExtension.Factory {
