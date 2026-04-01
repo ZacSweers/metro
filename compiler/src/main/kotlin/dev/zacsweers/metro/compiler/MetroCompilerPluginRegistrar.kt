@@ -139,6 +139,10 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
           ExpectActualTracker.DoNothing,
         )
       with(compatContext) {
+        // Register Circuit IR extension if enabled first
+        if (options.enableCircuitCodegen) {
+          registerIrExtensionCompat(CircuitIrExtension())
+        }
         registerIrExtensionCompat(
           MetroIrGenerationExtension(
             messageCollector = configuration.messageCollector,
@@ -149,10 +153,6 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             compatContext = compatContext,
           )
         )
-        // Register Circuit IR extension if enabled
-        if (options.enableCircuitCodegen) {
-          registerIrExtensionCompat(CircuitIrExtension())
-        }
       }
     }
   }
