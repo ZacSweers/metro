@@ -584,7 +584,7 @@ internal class DependencyGraphTransformer(
         }
       }
       unusedBinding.irElement?.let { irElement ->
-        diagnosticReporter.at(irElement, graphDeclaration.file).report(diagnosticFactory, message)
+        diagnosticReporter.reportAt(irElement, graphDeclaration.file, diagnosticFactory, message)
         continue
       }
 

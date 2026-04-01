@@ -811,9 +811,14 @@ internal class IrBindingGraph(
     if (element is IrDeclaration) {
       onError(message, element)
     } else {
-      metroContext.diagnosticReporter
-        .at(element, node.metroGraphOrFail.file)
-        .report(MetroDiagnostics.METRO_ERROR, message)
+      with(metroContext) {
+        metroContext.diagnosticReporter.reportAt(
+          element,
+          node.metroGraphOrFail.file,
+          MetroDiagnostics.METRO_ERROR,
+          message,
+        )
+      }
     }
   }
 
