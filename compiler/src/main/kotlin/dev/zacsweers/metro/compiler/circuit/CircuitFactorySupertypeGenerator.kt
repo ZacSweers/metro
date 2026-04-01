@@ -79,7 +79,9 @@ internal class CircuitFactorySupertypeGenerator(session: FirSession, compatConte
     declaration: FirClass,
     typeResolver: TypeResolveService,
   ): FactoryType? {
-    // Happy path for top-level factories — factoryType is stored in the origin key
+    // Happy path: factoryType is stored in the origin key. This handles:
+    // - Top-level function factories (set during class creation)
+    // - Assisted factory classes (resolved from containing class in CircuitFirExtension)
     declaration.symbol.origin
       .expectAsOrNull<FirDeclarationOrigin.Plugin>()
       ?.key
@@ -92,9 +94,26 @@ internal class CircuitFactorySupertypeGenerator(session: FirSession, compatConte
     // For nested factories, BFS through the parent class's supertypes
     val parent =
       declaration.getContainingClassSymbol()?.expectAs<FirClassSymbol<FirClass>>() ?: return null
+    bfsForFactoryType(parent.fir, typeResolver)?.let {
+      return it
+    }
+
+    // If parent BFS didn't find Presenter/Ui, the parent may be an @AssistedFactory
+    // nested inside the actual Presenter/Ui class. Try the grandparent.
+    val grandparent = parent.getContainingClassSymbol()?.expectAs<FirClassSymbol<FirClass>>()
+    if (grandparent != null) {
+      return bfsForFactoryType(grandparent.fir, typeResolver)
+    }
+
+    return null
+  }
+
+  /** BFS through [root]'s supertypes looking for [FactoryType.PRESENTER] or [FactoryType.UI]. */
+  @OptIn(SymbolInternals::class)
+  private fun bfsForFactoryType(root: FirClass, typeResolver: TypeResolveService): FactoryType? {
     val queue = ArrayDeque<FirClass>()
     val seen = mutableSetOf<ClassId>()
-    queue.add(parent.fir)
+    queue.add(root)
     while (queue.isNotEmpty()) {
       val clazz = queue.removeFirst()
       if (clazz.classId in seen) continue
@@ -109,18 +128,14 @@ internal class CircuitFactorySupertypeGenerator(session: FirSession, compatConte
           }
         val coneType = supertype.coneType
         val classId = coneType.classId ?: continue
-        if (coneType.classId in seen) continue
+        if (classId in seen) continue
         when (classId) {
           FactoryType.PRESENTER.classId -> return FactoryType.PRESENTER
           FactoryType.UI.classId -> return FactoryType.UI
-          else -> {
-            // Unrecognized, add the class to our queue
-            coneType.toClassSymbol(session)?.let { queue.add(it.fir) }
-          }
+          else -> coneType.toClassSymbol(session)?.let { queue.add(it.fir) }
         }
       }
     }
-
     return null
   }
 }

@@ -70,9 +70,6 @@ private class CircuitIrTransformer(
     ) {
       // Find the target info from the factory class annotations
       val circuitTargetInfo = declaration.circuitFactoryTargetData!!
-      if (circuitTargetInfo.factoryType == null) {
-        error("Unresolved factory type")
-      }
       val screenClass = pluginContext.referenceClass(circuitTargetInfo.screenType)!!
 
       // Add an @Origin annotation, because we can't add this in FIR safely

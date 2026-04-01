@@ -98,6 +98,56 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/api")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Api {
+    @Test
+    public void testAllFilesPresentInApi() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/api"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/api/circuit")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Circuit {
+      @Test
+      public void testAllFilesPresentInCircuit() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/api/circuit"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("InvalidAssistedInjection.kt")
+      public void testInvalidAssistedInjection() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/InvalidAssistedInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("InvalidAssistedInjectionMissingFactory.kt")
+      public void testInvalidAssistedInjectionMissingFactory() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/InvalidAssistedInjectionMissingFactory.kt");
+      }
+
+      @Test
+      @TestMetadata("InvalidSupertypes.kt")
+      public void testInvalidSupertypes() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/InvalidSupertypes.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionMissingReturn.kt")
+      public void testPresenterFunctionMissingReturn() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionMissingReturn.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionMissingModifier.kt")
+      public void testUiFunctionMissingModifier() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/UiFunctionMissingModifier.kt");
+      }
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/bindingcontainer")
   @TestDataPath("$PROJECT_ROOT")
   public class Bindingcontainer {

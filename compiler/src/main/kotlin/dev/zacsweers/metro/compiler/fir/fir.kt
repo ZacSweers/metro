@@ -1322,6 +1322,10 @@ internal fun FirClass.isOrImplements(supertype: ClassId, session: FirSession): B
 }
 
 internal fun FirClass.implements(supertype: ClassId, session: FirSession): Boolean {
+  return implementsAny(session, setOf(supertype))
+}
+
+internal fun FirClass.implementsAny(session: FirSession, supertypes: Set<ClassId>): Boolean {
   return lookupSuperTypes(
       klass = this,
       lookupInterfaces = true,
@@ -1329,7 +1333,7 @@ internal fun FirClass.implements(supertype: ClassId, session: FirSession): Boole
       useSiteSession = session,
       substituteTypes = true,
     )
-    .any { it.expectAs<ConeKotlinType>().classId?.let { it == supertype } == true }
+    .any { it.expectAs<ConeKotlinType>().classId?.let { it in supertypes } == true }
 }
 
 internal fun FirClassSymbol<*>.isOrImplements(supertype: ClassId, session: FirSession): Boolean {

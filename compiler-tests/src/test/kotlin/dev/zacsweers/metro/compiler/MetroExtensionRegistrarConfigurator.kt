@@ -3,11 +3,15 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionExtension
+import dev.zacsweers.metro.compiler.api.GenerateBindsContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
+import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
 import dev.zacsweers.metro.compiler.circuit.configureCircuit
@@ -159,15 +163,15 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         enableDaggerRuntimeInterop = true
       }
 
-        // Override enableGuiceRuntimeInterop if needed
-        if (MetroDirectives.enableGuiceInterop(module.directives)) {
-          enableGuiceRuntimeInterop = true
-        }
-
-        if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
-          enableCircuitCodegen = true
-        }
+      // Override enableGuiceRuntimeInterop if needed
+      if (MetroDirectives.enableGuiceInterop(module.directives)) {
+        enableGuiceRuntimeInterop = true
       }
+
+      if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
+        enableCircuitCodegen = true
+      }
+    }
 
     if (!options.enabled) return
 
@@ -192,6 +196,22 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
             if (options.enableCircuitCodegen) {
               add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
+            }
+          }
+        },
+        loadExternalContributionExtensions = { session, options, compatContext ->
+          buildList {
+            add(GenerateImplContributionExtension.Factory().create(session, options, compatContext))
+            add(
+              GenerateProvidesContributionMetroExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            add(
+              GenerateBindsContributionMetroExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            if (options.enableCircuitCodegen) {
+              add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
             }
           }
         },
