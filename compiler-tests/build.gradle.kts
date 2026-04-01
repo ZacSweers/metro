@@ -14,6 +14,7 @@ sourceSets {
   register("generator220")
   register("generator230")
   register("generator2320")
+  register("generator240")
 }
 
 val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVersion")
@@ -23,6 +24,8 @@ val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotli
 val testKotlinVersion = KotlinToolingVersion(testCompilerVersion)
 
 val kotlin23 = KotlinToolingVersion(KotlinVersion(2, 3))
+
+val kotlin24Beta1 = KotlinToolingVersion(KotlinVersion(2, 4), "Beta1")
 
 buildConfig {
   generateAtSync = true
@@ -59,6 +62,12 @@ val daggerInteropClasspath: Configuration by configurations.creating { isTransit
 val guiceClasspath: Configuration by configurations.creating {}
 val javaxInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 val jakartaInteropClasspath: Configuration by configurations.creating { isTransitive = false }
+val wasmKlibClasspath: Configuration by configurations.creating {
+  isTransitive = false
+  attributes {
+    attribute(Attribute.of("org.jetbrains.kotlin.platform.type", String::class.java), "wasm")
+  }
+}
 
 // IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
 // needed for those tests
@@ -68,7 +77,9 @@ var generatorConfigToUse: String
 
 if (testKotlinVersion >= kotlin23) {
   generatorConfigToUse =
-    if (testKotlinVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)) {
+    if (testKotlinVersion >= kotlin24Beta1) {
+      "generator240"
+    } else if (testKotlinVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)) {
       "generator2320"
     } else {
       "generator230"
@@ -93,6 +104,10 @@ dependencies {
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
   )
   "generator2320CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20")
+  "generator240CompileOnly"(
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta1"
+  )
+  "generator240CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.4.0-Beta1")
 
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
   testImplementation(
@@ -121,6 +136,11 @@ dependencies {
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
   daggerRuntimeClasspath(libs.dagger.runtime)
   kiAnvilRuntimeClasspath(libs.kotlinInject.anvil.runtime)
+
+  wasmKlibClasspath("org.jetbrains.kotlin:kotlin-stdlib-wasm-js:$testCompilerVersion")
+  wasmKlibClasspath("org.jetbrains.kotlin:kotlin-stdlib-wasm-wasi:$testCompilerVersion")
+  wasmKlibClasspath("org.jetbrains.kotlin:kotlin-test-wasm-js:$testCompilerVersion")
+  wasmKlibClasspath("org.jetbrains.kotlin:kotlin-test-wasm-wasi:$testCompilerVersion")
 
   // Anvil KSP processors, only needs to be on the classpath at runtime since they're loaded via
   // ServiceLoader
@@ -179,6 +199,7 @@ tasks.withType<Test> {
   dependsOn(guiceClasspath)
   dependsOn(javaxInteropClasspath)
   dependsOn(jakartaInteropClasspath)
+  dependsOn(wasmKlibClasspath)
   inputs
     .dir(layout.projectDirectory.dir("src/test/data"))
     .withPropertyName("testData")
@@ -221,12 +242,56 @@ tasks.withType<Test> {
     filter { excludeTestsMatching("*StressTest*") }
   }
 
-  setLibraryProperty("kotlin.minimal.stdlib.path", "kotlin-stdlib")
-  setLibraryProperty("kotlin.full.stdlib.path", "kotlin-stdlib-jdk8")
-  setLibraryProperty("kotlin.reflect.jar.path", "kotlin-reflect")
-  setLibraryProperty("kotlin.test.jar.path", "kotlin-test")
-  setLibraryProperty("kotlin.script.runtime.path", "kotlin-script-runtime")
-  setLibraryProperty("kotlin.annotations.path", "kotlin-annotations-jvm")
+  val testRuntimeClasspath = project.configurations.testRuntimeClasspath.get()
+  setLibraryProperty("kotlin.minimal.stdlib.path", "kotlin-stdlib", "jar", testRuntimeClasspath)
+  setLibraryProperty("kotlin.full.stdlib.path", "kotlin-stdlib-jdk8", "jar", testRuntimeClasspath)
+  setLibraryProperty("kotlin.reflect.jar.path", "kotlin-reflect", "jar", testRuntimeClasspath)
+  setLibraryProperty("kotlin.test.jar.path", "kotlin-test", "jar", testRuntimeClasspath)
+  setLibraryProperty(
+    "kotlin.script.runtime.path",
+    "kotlin-script-runtime",
+    "jar",
+    testRuntimeClasspath,
+  )
+  setLibraryProperty(
+    "kotlin.annotations.path",
+    "kotlin-annotations-jvm",
+    "jar",
+    testRuntimeClasspath,
+  )
+  setLibraryProperty("kotlin.js.stdlib.path", "kotlin-stdlib-js", "jar", testRuntimeClasspath)
+  setLibraryProperty("kotlin.js.test.path", "kotlin-test-js", "jar", testRuntimeClasspath)
+  setLibraryProperty(
+    "kotlin.common.stdlib.path",
+    "kotlin-common-stdlib",
+    "jar",
+    testRuntimeClasspath,
+  )
+  setLibraryProperty("kotlin.web.stdlib.path", "kotlin-stdlib-web", "jar", testRuntimeClasspath)
+  setLibraryProperty(
+    "kotlin.wasm.stdlib.wasm-js.path",
+    "kotlin-stdlib-wasm-js",
+    "klib",
+    wasmKlibClasspath,
+  )
+  setLibraryProperty(
+    "kotlin.wasm.stdlib.wasm-wasi.path",
+    "kotlin-stdlib-wasm-wasi",
+    "klib",
+    wasmKlibClasspath,
+  )
+  setLibraryProperty(
+    "kotlin.wasm.test.wasm-js.path",
+    "kotlin-test-wasm-js",
+    "klib",
+    wasmKlibClasspath,
+  )
+  setLibraryProperty(
+    "kotlin.wasm.test.wasm-wasi.path",
+    "kotlin-test-wasm-wasi",
+    "klib",
+    wasmKlibClasspath,
+  )
 
   systemProperty("metro.shortLocations", "true")
 
@@ -245,12 +310,13 @@ tasks.withType<Test> {
   systemProperty("idea.home.path", rootDir)
 }
 
-fun Test.setLibraryProperty(propName: String, jarName: String) {
-  val path =
-    project.configurations.testRuntimeClasspath
-      .get()
-      .files
-      .find { """$jarName-\d.*jar""".toRegex().matches(it.name) }
-      ?.absolutePath ?: return
+fun Test.setLibraryProperty(
+  propName: String,
+  jarName: String,
+  extension: String,
+  configuration: Configuration,
+) {
+  val regex = "$jarName-\\d.*$extension".toRegex()
+  val path = configuration.files.find { regex.matches(it.name) }?.absolutePath ?: return
   systemProperty(propName, path)
 }
