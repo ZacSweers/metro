@@ -5,22 +5,15 @@ import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import dev.zacsweers.metro.gradle.RequiresIdeSupport
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
-import org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
   alias(libs.plugins.compose)
   alias(libs.plugins.kotlin.plugin.compose)
   id("dev.zacsweers.metro")
-//  alias(libs.plugins.ksp)
 }
 
-metro {
-  enableCircuitCodegen.set(true)
-}
-
-//ksp { arg("circuit.codegen.mode", "metro") }
+metro { enableCircuitCodegen.set(true) }
 
 @OptIn(ExperimentalMetroGradleApi::class, DelicateMetroGradleApi::class, RequiresIdeSupport::class)
 metro {
@@ -73,9 +66,9 @@ kotlin {
   }
 }
 
-//dependencies { add("kspCommonMainMetadata", libs.circuit.codegen) }
+// dependencies { add("kspCommonMainMetadata", libs.circuit.codegen) }
 
-//tasks.withType<KotlinCompilationTask<*>>().configureEach {
+// tasks.withType<KotlinCompilationTask<*>>().configureEach {
 //  if (this is AbstractKotlinCompile<*>) {
 //    // Disable incremental in this project because we're generating top-level declarations
 //    // TODO remove after Soon™️ (2.2?)
@@ -83,4 +76,4 @@ kotlin {
 //  }
 //
 //  dependsOn("kspCommonMainKotlinMetadata")
-//}
+// }
