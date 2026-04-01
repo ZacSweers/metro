@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
+import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classArgument
 import dev.zacsweers.metro.compiler.fir.resolveClassId
@@ -34,9 +35,9 @@ public class CircuitContributionExtension(
 ) : MetroContributionExtension, CompatContext by compatContext {
 
   private val annotatedSymbols by lazy {
-    session.predicateBasedProvider
-      .getSymbolsByPredicate(CircuitSymbols.circuitInjectPredicate)
-      .toList()
+    session.allSessions.flatMap {
+      it.predicateBasedProvider.getSymbolsByPredicate(CircuitSymbols.circuitInjectPredicate)
+    }
   }
 
   private val annotatedClasses by lazy {
