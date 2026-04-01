@@ -77,6 +77,7 @@ _2026-03-30_
 
 - Update shaded `androidx.tracing` to 2.0.0-alpha04.
 - Update shaded Wire dependency to 6.2.0.
+- Test Kotlin `2.4.0-Beta1`.
 
 ### Contributors
 
