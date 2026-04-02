@@ -135,6 +135,15 @@ internal sealed interface CircuitSymbols {
         ?: error("Could not find ${CircuitClassIds.PresenterFactory}")
     }
 
+    val modifier: IrClassSymbol by lazy {
+      pluginContext.referenceClass(CircuitClassIds.Modifier)
+        ?: error("Could not find ${CircuitClassIds.Modifier}")
+    }
+
+    val composableAnnotationCtor: IrConstructorSymbol by lazy {
+      pluginContext.referenceClass(Symbols.ClassIds.Composable)!!.constructors.first()
+    }
+
     val presenterOfFun: IrSimpleFunctionSymbol by lazy {
       pluginContext.referenceFunctions(CircuitCallableIds.presenterOf).singleOrNull()
         ?: error("Could not find ${CircuitCallableIds.presenterOf}")

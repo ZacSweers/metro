@@ -163,10 +163,6 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     return generateFactoryClass(target, null, key, factoryType)
   }
 
-  // ===================
-  // Nested class generation (for classes)
-  // ===================
-
   override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
@@ -309,6 +305,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
         screenType = screenType,
         scopeClassId = scopeType,
         classSymbol = null,
+        originalFunctionSymbol = function,
       )
       .apply { populateForFunction(returnType, factoryType) }
   }
@@ -463,6 +460,8 @@ internal class CircuitFactoryTarget(
   val scopeClassId: ClassId,
   /** Stored for deferred population. Null for function targets. */
   private val classSymbol: FirClassSymbol<*>?,
+  /** The original function symbol. Only set for function-based factories. */
+  val originalFunctionSymbol: FirFunctionSymbol<*>? = null,
 ) {
   /** The target type (class type for CLASS instantiation, return type for FUNCTION). */
   var targetType: ConeKotlinType? = null
