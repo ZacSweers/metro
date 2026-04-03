@@ -134,9 +134,39 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("PresenterClassInvalidParams.kt")
+      public void testPresenterClassInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterClassInvalidParams.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionInvalidParams.kt")
+      public void testPresenterFunctionInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionInvalidParams.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionInvalidReturn.kt")
+      public void testPresenterFunctionInvalidReturn() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionInvalidReturn.kt");
+      }
+
+      @Test
       @TestMetadata("PresenterFunctionMissingReturn.kt")
       public void testPresenterFunctionMissingReturn() {
         runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionMissingReturn.kt");
+      }
+
+      @Test
+      @TestMetadata("UiClassInvalidParams.kt")
+      public void testUiClassInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/UiClassInvalidParams.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionInvalidParams.kt")
+      public void testUiFunctionInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/UiFunctionInvalidParams.kt");
       }
 
       @Test
