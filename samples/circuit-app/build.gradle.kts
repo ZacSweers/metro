@@ -4,9 +4,6 @@ import dev.zacsweers.metro.gradle.DelicateMetroGradleApi
 import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import dev.zacsweers.metro.gradle.RequiresIdeSupport
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
-import org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
@@ -25,12 +22,12 @@ kotlin {
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
     mainRun { mainClass.set("dev.zacsweers.metro.sample.circuit.MainKt") }
   }
-  @OptIn(ExperimentalWasmDsl::class)
-  wasmJs {
-    outputModuleName.set("counterApp")
-    browser { commonWebpackConfig { outputFileName = "counterApp.js" } }
-    binaries.executable()
-  }
+  //  @OptIn(ExperimentalWasmDsl::class)
+  //  wasmJs {
+  //    outputModuleName.set("counterApp")
+  //    browser { commonWebpackConfig { outputFileName = "counterApp.js" } }
+  //    binaries.executable()
+  //  }
   // TODO others?
   //  macosArm64()
   sourceSets {
@@ -50,14 +47,6 @@ kotlin {
     }
     commonTest { dependencies { implementation(libs.kotlin.test) } }
     jvmMain { dependencies { implementation(compose.desktop.currentOs) } }
-    wasmJsMain { dependencies { implementation(libs.compose.components.resources) } }
-  }
-}
-
-tasks.withType<KotlinCompilationTask<*>>().configureEach {
-  if (this is AbstractKotlinCompile<*>) {
-    // Disable incremental in this project because we're generating top-level declarations
-    // TODO remove after Soon™️ (2.2?)
-    incremental = false
+    //    wasmJsMain { dependencies { implementation(libs.compose.components.resources) } }
   }
 }
