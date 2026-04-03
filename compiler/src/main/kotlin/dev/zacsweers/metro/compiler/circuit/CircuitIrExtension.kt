@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.circuit
 
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.abstractFunctions
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
@@ -416,7 +417,7 @@ private class CircuitIrTransformer(
         .buildFun {
           startOffset = SYNTHETIC_OFFSET
           endOffset = SYNTHETIC_OFFSET
-          origin = IrDeclarationOrigin.LOCAL_FUNCTION_FOR_LAMBDA
+          origin = Origins.FirstParty.LOCAL_FUNCTION_FOR_LAMBDA
           name = Name.special("<anonymous>")
           visibility = DescriptorVisibilities.LOCAL
           this.returnType = returnType
