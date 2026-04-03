@@ -42,13 +42,17 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.ir.IrDiagnosticReporter
+import org.jetbrains.kotlin.ir.builders.IrBuilder
 import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.name.CallableId
@@ -523,6 +527,18 @@ public interface CompatContext {
     return IrConstructorCallIrGeneratedDeclarationsRegistrarCompat(
       pluginContext.metadataDeclarationRegistrar
     )
+  }
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 introduced IrAnnotation for IrConstructorCall",
+  )
+  fun IrBuilder.irAnnotationCompat(
+    callee: IrConstructorSymbol,
+    typeArguments: List<IrType>,
+  ): IrConstructorCall {
+    return irCallConstructor(callee, typeArguments)
   }
 
   @CompatApi(

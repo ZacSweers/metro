@@ -141,7 +141,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       with(compatContext) {
         // Register Circuit IR extension if enabled first
         if (options.enableCircuitCodegen) {
-          registerIrExtensionCompat(CircuitIrExtension())
+          registerIrExtensionCompat(CircuitIrExtension(compatContext))
         }
         registerIrExtensionCompat(
           MetroIrGenerationExtension(

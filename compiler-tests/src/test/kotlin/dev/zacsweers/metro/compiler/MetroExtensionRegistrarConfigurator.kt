@@ -221,7 +221,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     )
     if (options.enableCircuitCodegen) {
       FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
-      IrGenerationExtension.registerExtension(CircuitIrExtension())
+      IrGenerationExtension.registerExtension(CircuitIrExtension(compatContext))
     }
     IrGenerationExtension.registerExtension(GenerateImplIrExtension())
     IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())

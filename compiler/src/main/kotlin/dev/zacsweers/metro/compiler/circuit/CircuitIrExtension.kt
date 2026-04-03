@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler.circuit
 
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.abstractFunctions
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
@@ -28,7 +30,6 @@ import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irBranch
 import org.jetbrains.kotlin.ir.builders.irCall
-import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irElseBranch
 import org.jetbrains.kotlin.ir.builders.irEqeqeq
 import org.jetbrains.kotlin.ir.builders.irExprBody
@@ -75,17 +76,24 @@ import org.jetbrains.kotlin.name.Name
  *
  * This extension should run after the Compose compiler IR plugin.
  */
-public class CircuitIrExtension : IrGenerationExtension {
+public class CircuitIrExtension(private val compatContext: CompatContext) : IrGenerationExtension {
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
     val symbols = CircuitSymbols.Ir(pluginContext)
-    moduleFragment.transformChildrenVoid(CircuitIrTransformer(pluginContext, symbols))
+    moduleFragment.transformChildrenVoid(
+      CircuitIrTransformer(pluginContext, symbols, compatContext)
+    )
   }
 }
 
 private class CircuitIrTransformer(
   private val pluginContext: IrPluginContext,
   private val symbols: CircuitSymbols.Ir,
-) : IrElementTransformerVoid() {
+  private val compatContext: CompatContext,
+) : IrElementTransformerVoid(), CompatContext by compatContext {
+
+  private val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat by lazy {
+    compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
+  }
 
   override fun visitClass(declaration: IrClass): IrStatement {
     if (
@@ -98,7 +106,7 @@ private class CircuitIrTransformer(
 
       // Add an @Origin annotation, because we can't add this in FIR safely due to phase issues
       circuitTargetInfo.originClassId?.let { originClassId ->
-        pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+        metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
           declaration,
           context(pluginContext) {
             buildAnnotation(declaration.symbol, symbols.originAnnotationCtor) {
@@ -429,7 +437,7 @@ private class CircuitIrTransformer(
           annotations =
             listOf(
               pluginContext.createIrBuilder(symbol).run {
-                irCallConstructor(symbols.composableAnnotationCtor, typeArguments = emptyList())
+                irAnnotationCompat(symbols.composableAnnotationCtor, typeArguments = emptyList())
               }
             )
 
