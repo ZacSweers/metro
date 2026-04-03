@@ -12,8 +12,6 @@ plugins {
   id("dev.zacsweers.metro")
 }
 
-metro { enableCircuitCodegen.set(true) }
-
 @OptIn(ExperimentalMetroGradleApi::class, DelicateMetroGradleApi::class, RequiresIdeSupport::class)
 metro { enableCircuitCodegen.set(true) }
 
