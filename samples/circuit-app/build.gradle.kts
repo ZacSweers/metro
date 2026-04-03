@@ -1,8 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-import dev.zacsweers.metro.gradle.DelicateMetroGradleApi
 import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
-import dev.zacsweers.metro.gradle.RequiresIdeSupport
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
@@ -12,8 +10,7 @@ plugins {
   id("dev.zacsweers.metro")
 }
 
-@OptIn(ExperimentalMetroGradleApi::class, DelicateMetroGradleApi::class, RequiresIdeSupport::class)
-metro { enableCircuitCodegen.set(true) }
+@OptIn(ExperimentalMetroGradleApi::class) metro { enableCircuitCodegen.set(true) }
 
 kotlin {
   jvm {
