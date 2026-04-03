@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.circuit
 
 import dev.zacsweers.metro.compiler.circuit.CircuitDiagnostics.CIRCUIT_INJECT_ERROR
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -23,6 +24,7 @@ import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneType
@@ -141,12 +143,16 @@ internal object CircuitInjectClassChecker : FirClassChecker(MppCheckerKind.Commo
     // Determine site type for param validation
     var siteType: CircuitInjectSiteType? = null
     for (supertype in declaration.symbol.getSuperTypes(session)) {
-      if (supertype.classId == CircuitClassIds.Ui) {
-        siteType = CircuitInjectSiteType.UI
-        break
-      } else if (supertype.classId == CircuitClassIds.Presenter) {
-        siteType = CircuitInjectSiteType.PRESENTER
-        break
+      // TODO remove expectAs after 2.3.20
+      when (supertype.expectAs<ConeKotlinType>().classId) {
+        CircuitClassIds.Ui -> {
+          siteType = CircuitInjectSiteType.UI
+          break
+        }
+        CircuitClassIds.Presenter -> {
+          siteType = CircuitInjectSiteType.PRESENTER
+          break
+        }
       }
     }
 

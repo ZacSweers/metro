@@ -1,4 +1,5 @@
 // ENABLE_CIRCUIT
+// GENERATE_CONTRIBUTION_HINTS_IN_FIR
 
 import androidx.compose.runtime.Composable
 import com.slack.circuit.codegen.annotations.CircuitInject
