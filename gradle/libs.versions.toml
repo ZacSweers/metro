@@ -149,6 +149,7 @@ kotlinInject-runtime = { module = "me.tatarka.inject:kotlin-inject-runtime", ver
 kotlin-annotationsJvm = { module = "org.jetbrains.kotlin:kotlin-annotations-jvm", version.ref = "kotlin" }
 kotlin-aptEmbeddable = { module = "org.jetbrains.kotlin:kotlin-annotation-processing-embeddable", version.ref = "kotlin" }
 kotlin-compiler = { module = "org.jetbrains.kotlin:kotlin-compiler", version.ref = "kotlin" }
+kotlin-composeCompiler = { module = "org.jetbrains.kotlin:kotlin-compose-compiler-plugin", version.ref = "kotlin" }
 kotlin-compilerTestFramework = { module = "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework", version.ref = "kotlin" }
 kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlin-gradlePlugin-api = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin-api", version.ref = "kotlin" }
