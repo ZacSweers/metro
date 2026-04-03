@@ -110,6 +110,7 @@ dependencies {
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
   )
   testImplementation("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
+  testImplementation("org.jetbrains.kotlin:kotlin-compose-compiler-plugin:$testCompilerVersion")
 
   testImplementation(project(":compiler"))
   testImplementation(project(":compiler-compat"))

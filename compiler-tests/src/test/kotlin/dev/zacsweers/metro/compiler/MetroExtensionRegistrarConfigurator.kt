@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import androidx.compose.compiler.plugins.kotlin.ComposePluginRegistrar
+import androidx.compose.compiler.plugins.kotlin.k2.ComposeFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
@@ -217,6 +219,12 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         },
       )
     )
+    if (options.enableCircuitCodegen) {
+      FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
+      IrGenerationExtension.registerExtension(CircuitIrExtension())
+    }
+    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
+    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector = configuration.messageCollector,
@@ -228,10 +236,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         compatContext = compatContext,
       )
     )
-    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
-    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
     if (options.enableCircuitCodegen) {
-      IrGenerationExtension.registerExtension(CircuitIrExtension())
+      IrGenerationExtension.registerExtension(
+        ComposePluginRegistrar.createComposeIrExtension(configuration)
+      )
     }
   }
 }
