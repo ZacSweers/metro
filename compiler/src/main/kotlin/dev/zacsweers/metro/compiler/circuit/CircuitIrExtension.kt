@@ -6,8 +6,10 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.abstractFunctions
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.kClassReference
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.wasm.ir2wasm.allSuperInterfaces
@@ -18,26 +20,31 @@ import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
+import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irBranch
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irElseBranch
 import org.jetbrains.kotlin.ir.builders.irEqeqeq
+import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irIs
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.builders.irTemporary
 import org.jetbrains.kotlin.ir.builders.irWhen
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -54,7 +61,7 @@ import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.fields
+import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
@@ -88,7 +95,7 @@ private class CircuitIrTransformer(
       val circuitTargetInfo = declaration.circuitFactoryTargetData!!
       val screenClass = pluginContext.referenceClass(circuitTargetInfo.screenType)!!
 
-      // Add an @Origin annotation, because we can't add this in FIR safely
+      // Add an @Origin annotation, because we can't add this in FIR safely due to phase issues
       circuitTargetInfo.originClassId?.let { originClassId ->
         pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
           declaration,
@@ -100,10 +107,14 @@ private class CircuitIrTransformer(
         )
       }
 
+      val fieldsByName = addBackingFieldsForConstructorParams(declaration)
+
       val createFunction = declaration.abstractFunctions().first { it.name.asString() == "create" }
-      createFunction.isFakeOverride = false
+
+      // Properly finalize the fake override with a dispatch receiver scoped to this function
+      createFunction.finalizeFakeOverride(declaration.thisReceiver!!)
       createFunction.modality = Modality.FINAL
-      createFunction.body = generateCreateFunctionBody(createFunction, screenClass)
+      createFunction.body = generateCreateFunctionBody(createFunction, screenClass, fieldsByName)
     }
     return super.visitClass(declaration)
   }
@@ -111,6 +122,7 @@ private class CircuitIrTransformer(
   private fun generateCreateFunctionBody(
     function: IrSimpleFunction,
     screenClass: IrClassSymbol,
+    fieldsByName: Map<Name, IrField>,
   ): IrBody {
     val factoryClass = function.parentAsClass
     val factoryType = determineFactoryType(factoryClass)
@@ -130,12 +142,10 @@ private class CircuitIrTransformer(
           returnType,
           branches =
             listOf(
-              // Main branch: when screen matches
               irBranch(
                 generateScreenMatchCondition(screenParam, targetInfo),
-                generateInstantiationExpression(function, factoryClass, targetInfo),
+                generateInstantiationExpression(function, factoryClass, targetInfo, fieldsByName),
               ),
-              // Else branch: return null
               irElseBranch(irNull()),
             ),
         )
@@ -162,12 +172,12 @@ private class CircuitIrTransformer(
     function: IrSimpleFunction,
     factoryClass: IrClass,
     targetInfo: TargetInfo,
+    fieldsByName: Map<Name, IrField>,
   ): IrExpression {
-    // For now, generate a simple provider() call if there's a provider field
-    // or return null for more complex cases that need more implementation
+    val providerField = fieldsByName[CircuitNames.provider]
+    val factoryField = fieldsByName[CircuitNames.factoryField]
 
-    val providerField = factoryClass.fields.find { it.name == CircuitNames.provider }
-    val factoryField = factoryClass.fields.find { it.name == CircuitNames.factoryField }
+    val circuitTargetInfo = factoryClass.circuitFactoryTargetData!!
 
     return when {
       providerField != null -> {
@@ -178,14 +188,23 @@ private class CircuitIrTransformer(
         // factory.create(...) - call the assisted factory
         generateAssistedFactoryCall(function, factoryField, targetInfo)
       }
-      else -> {
-        // Function-based factory: build a nested Presenter/Ui impl class inside the factory
-        val circuitTargetInfo = factoryClass.circuitFactoryTargetData!!
+      circuitTargetInfo.instantiationType == InstantiationType.FUNCTION -> {
+        // Function-based factory: call presenterOf{}/ui{}
         val firFunctionSymbol =
           circuitTargetInfo.originalFunctionSymbol
             ?: error("Function-based factory missing original function symbol")
         val factoryType = determineFactoryType(factoryClass)
-        generateFunctionFactoryCall(function, factoryType, firFunctionSymbol)
+        generateFunctionFactoryCall(function, factoryType, firFunctionSymbol, fieldsByName)
+      }
+      else -> {
+        // Class-based factory with no constructor params (e.g., no-injection presenter/ui).
+        // Instantiate the target class directly.
+        val targetClassId =
+          circuitTargetInfo.originClassId ?: error("Class-based factory missing origin class ID")
+        val targetClass =
+          pluginContext.referenceClass(targetClassId)
+            ?: error("Could not find target class: $targetClassId")
+        irCall(targetClass.constructors.first())
       }
     }
   }
@@ -228,15 +247,35 @@ private class CircuitIrTransformer(
     return irCall(createFunction).apply {
       dispatchReceiver = factoryGet
 
-      // Pass through screen, navigator, context as needed
-      var argIndex = 0
+      // Pass through screen, navigator, context as needed, using indexInParameters
+      // to correctly skip the dispatch receiver slot
       for (param in createFunction.regularParameters) {
         val matchingParam = function.regularParameters.find { it.name == param.name }
         if (matchingParam != null) {
-          arguments[argIndex++] = irGet(matchingParam)
+          arguments[param.indexInParameters] = irGet(matchingParam)
         }
       }
     }
+  }
+
+  /**
+   * For function-based factories, the FIR extension generates constructor params (Provider<T>) for
+   * injected dependencies but doesn't create backing fields. We add them here so the lambda body in
+   * `create()` can read the values via `irGetField`.
+   */
+  private fun addBackingFieldsForConstructorParams(factoryClass: IrClass): Map<Name, IrField> {
+    val constructor = factoryClass.constructors.firstOrNull() ?: return emptyMap()
+    val constructorParams = constructor.regularParameters
+    if (constructorParams.isEmpty()) return emptyMap()
+
+    val result = mutableMapOf<Name, IrField>()
+    for (param in constructorParams) {
+      val field = factoryClass.addField(param.name, param.type)
+      field.initializer =
+        pluginContext.createIrBuilder(field.symbol).run { irExprBody(irGet(param)) }
+      result[param.name] = field
+    }
+    return result
   }
 
   /**
@@ -249,6 +288,7 @@ private class CircuitIrTransformer(
     createFunction: IrSimpleFunction,
     factoryType: FactoryType,
     firFunctionSymbol: FirFunctionSymbol<*>,
+    fieldsByName: Map<Name, IrField>,
   ): IrExpression {
     val matchingFunctions = pluginContext.referenceFunctions(firFunctionSymbol.callableId)
     val originalFunctionSymbol =
@@ -257,9 +297,6 @@ private class CircuitIrTransformer(
           (irSymbol.owner.metadata as? FirMetadataSource.Function)?.fir?.symbol == firFunctionSymbol
         }
         .let { original ->
-          // If the target function is an `expect`, we need to resolve this to the final `actual`
-          // function for compose-compiler to work correctly as it doesn't expect to encounter
-          // `expect` functions in the IR phase
           if (original.owner.isExpect) {
             when (matchingFunctions.size) {
               1 -> error("Missing an actual function for $firFunctionSymbol")
@@ -267,7 +304,6 @@ private class CircuitIrTransformer(
               else -> {
                 val originalOwner = original.owner
                 val originalParameters = originalOwner.parameters.map { it.type }
-                // get the actual function from our matches
                 matchingFunctions.first {
                   it != original &&
                     it.owner.returnType == originalOwner &&
@@ -279,57 +315,111 @@ private class CircuitIrTransformer(
             original
           }
         }
+
     val originalFunction = originalFunctionSymbol.owner
-
-    return when (factoryType) {
-      FactoryType.PRESENTER -> {
-        val stateType = originalFunction.returnType
-        irCall(symbols.presenterOfFun).apply {
-          typeArguments[0] = stateType
-          arguments[0] =
-            buildComposableLambda(
-              createFunction = createFunction,
-              originalFunction = originalFunction,
-              originalFunctionSymbol = originalFunctionSymbol,
-              returnType = stateType,
-              lambdaParamTypes = emptyList(),
-            )
-        }
+    // Build parameter mapping from create() params
+    val availableValueParams = buildMap {
+      for (param in createFunction.regularParameters) {
+        put(param.name, param)
       }
-      FactoryType.UI -> {
-        val stateType =
-          originalFunction.regularParameters
-            .firstOrNull { param ->
-              param.type.classOrNull?.owner?.superTypes?.any {
-                it.classOrNull?.owner?.name?.asString() == "CircuitUiState"
-              } == true
+    }
+
+    // Resolve injected dependencies from factory fields. For plain Provider<T> fields,
+    // extract the value via .invoke() outside the composable lambda to avoid recomputation
+    // on every recomposition. For types already wrapped in Provider/Lazy/Function (which the
+    // original function expects as-is), pass the field value directly to the lambda.
+    return irBlock {
+      val resolvedLocals = mutableMapOf<Name, IrValueDeclaration>()
+      for (param in originalFunction.regularParameters) {
+        if (param.name in availableValueParams) continue
+        val field = fieldsByName[param.name] ?: continue
+        val fieldGet = irGetField(irGet(createFunction.dispatchReceiverParameter!!), field)
+
+        // Check if the original function param type is already Provider/Lazy/Function.
+        // If so, the field type matches and we pass it through without invoking.
+        val paramType = param.type
+        val paramClassId = paramType.classOrNull?.owner?.classId
+        val isAlreadyWrapped =
+          paramClassId != null &&
+            (paramClassId in Symbols.ClassIds.commonMetroProviders ||
+              paramClassId == Symbols.ClassIds.Lazy ||
+              paramClassId == Symbols.ClassIds.function0)
+
+        val localVar =
+          if (isAlreadyWrapped) {
+            // Pass through as-is (the field type already matches the param type)
+            irTemporary(fieldGet, nameHint = param.name.asString())
+          } else {
+            // Provider<T> field — extract via .invoke() once
+            val providerClass = field.type.classOrNull?.owner ?: continue
+            val invokeFunction =
+              providerClass.functions.find { it.name.asString() == "invoke" } ?: continue
+            val invokedValue = irCall(invokeFunction).apply { dispatchReceiver = fieldGet }
+            irTemporary(invokedValue, nameHint = param.name.asString())
+          }
+        resolvedLocals[param.name] = localVar
+      }
+
+      // Merge all available params: create() params + resolved locals
+      val allAvailableParams = buildMap {
+        putAll(availableValueParams)
+        putAll(resolvedLocals)
+      }
+
+      val factoryCall =
+        when (factoryType) {
+          FactoryType.PRESENTER -> {
+            val stateType = originalFunction.returnType
+            irCall(symbols.presenterOfFun).apply {
+              typeArguments[0] = stateType
+              arguments[0] =
+                buildComposableLambda(
+                  createFunction = createFunction,
+                  originalFunction = originalFunction,
+                  originalFunctionSymbol = originalFunctionSymbol,
+                  returnType = stateType,
+                  lambdaParamTypes = emptyList(),
+                  capturedParams = allAvailableParams,
+                )
             }
-            ?.type ?: pluginContext.irBuiltIns.anyNType
+          }
+          FactoryType.UI -> {
+            val stateType =
+              originalFunction.regularParameters
+                .firstOrNull { param ->
+                  param.type.classOrNull?.owner?.superTypes?.any {
+                    it.classOrNull?.owner?.name?.asString() == "CircuitUiState"
+                  } == true
+                }
+                ?.type ?: pluginContext.irBuiltIns.anyNType
 
-        irCall(symbols.uiFun).apply {
-          typeArguments[0] = stateType
-          arguments[0] =
-            buildComposableLambda(
-              createFunction = createFunction,
-              originalFunction = originalFunction,
-              originalFunctionSymbol = originalFunctionSymbol,
-              returnType = pluginContext.irBuiltIns.unitType,
-              lambdaParamTypes =
-                listOf(
-                  CircuitNames.state to stateType,
-                  CircuitNames.modifier to symbols.modifier.defaultType,
-                ),
-            )
+            irCall(symbols.uiFun).apply {
+              typeArguments[0] = stateType
+              arguments[0] =
+                buildComposableLambda(
+                  createFunction = createFunction,
+                  originalFunction = originalFunction,
+                  originalFunctionSymbol = originalFunctionSymbol,
+                  returnType = pluginContext.irBuiltIns.unitType,
+                  lambdaParamTypes =
+                    listOf(
+                      CircuitNames.state to stateType,
+                      CircuitNames.modifier to symbols.modifier.defaultType,
+                    ),
+                  capturedParams = allAvailableParams,
+                )
+            }
+          }
         }
-      }
+      +factoryCall
     }
   }
 
   /**
-   * Builds a `@Composable` lambda that calls [originalFunction] with params matched by name from
-   * both the lambda's own params and [createFunction]'s params.
-   *
-   * Uses the same pattern as Metro's `irLambda` helper but adds `@Composable` annotation.
+   * Builds a `@Composable` lambda that calls [originalFunction] with params matched by name from:
+   * 1. The lambda's own params (e.g., state, modifier for UI)
+   * 2. [capturedParams] — pre-resolved values from the `create()` scope (create() params + provider
+   *    locals extracted before the lambda)
    */
   private fun buildComposableLambda(
     createFunction: IrSimpleFunction,
@@ -337,6 +427,7 @@ private class CircuitIrTransformer(
     originalFunctionSymbol: IrSimpleFunctionSymbol,
     returnType: IrType,
     lambdaParamTypes: List<Pair<Name, IrType>>,
+    capturedParams: Map<Name, IrValueDeclaration>,
   ): IrFunctionExpression {
     // TODO irLambda
     val lambda =
@@ -364,12 +455,10 @@ private class CircuitIrTransformer(
             addValueParameter(paramName.asString(), paramType)
           }
 
-          // Build parameter mapping: lambda params + create() params
-          val availableParams = buildMap {
+          // Merge all available params: captured from create() scope + lambda's own params
+          val allParams = buildMap {
+            putAll(capturedParams)
             for (param in regularParameters) {
-              put(param.name, param)
-            }
-            for (param in createFunction.regularParameters) {
               put(param.name, param)
             }
           }
@@ -380,7 +469,7 @@ private class CircuitIrTransformer(
                 irCall(originalFunctionSymbol).apply {
                   var argIndex = 0
                   for (param in originalFunction.regularParameters) {
-                    arguments[argIndex++] = availableParams[param.name]?.let { irGet(it) }
+                    arguments[argIndex++] = allParams[param.name]?.let { irGet(it) }
                   }
                 }
               if (returnType == pluginContext.irBuiltIns.unitType) {

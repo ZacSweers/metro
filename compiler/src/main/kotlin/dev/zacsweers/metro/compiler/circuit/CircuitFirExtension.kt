@@ -8,10 +8,10 @@ import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtensi
 import dev.zacsweers.metro.compiler.api.fir.MetroOriginData
 import dev.zacsweers.metro.compiler.api.fir.metroGeneratedInjectClassData
 import dev.zacsweers.metro.compiler.api.fir.metroOriginData
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.fir.FirContextualTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -23,10 +23,12 @@ import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
+import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.FirMetadataSource
@@ -60,6 +62,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
@@ -89,7 +92,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
 public class CircuitFirExtension(session: FirSession, compatContext: CompatContext) :
   MetroFirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
-  private val symbols by lazy { CircuitSymbols.Fir(session) }
+  private val symbols by lazy { session.circuitFirSymbols }
 
   // Caches for discovered @CircuitInject-annotated elements
   private val annotatedSymbols by lazy {
@@ -159,8 +162,14 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     val target =
       computeFactoryTarget(function, classId, typeResolver, factoryType, returnType) ?: return null
     computedTargets[classId] = target
-    val key = CircuitOrigins.FactoryClass(factoryType)
-    return generateFactoryClass(target, null, key, factoryType)
+    return generateFactoryClass(
+      target,
+      null,
+      CircuitOrigins.FactoryClass(factoryType),
+      factoryType,
+      // We don't know hasConstructorParams yet, for now always generate as CLASS
+      hasConstructorParams = true,
+    )
   }
 
   override fun getNestedClassifiersNames(
@@ -185,9 +194,15 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     val factoryClassId = owner.classId.createNestedClassId(CircuitNames.Factory)
     computedTargets[factoryClassId] = target
     // factoryType is null here — resolved by CircuitFactorySupertypeGenerator during
-    // the SUPERTYPES phase, either from the origin key or via BFS
-    val key = CircuitOrigins.FactoryClass(null)
-    return generateFactoryClass(target, owner, key, factoryType = null)
+    // the supertypes phase, either from the origin key or via BFS
+    // Class-based factories always have constructor params (provider or assisted factory)
+    return generateFactoryClass(
+      target,
+      owner,
+      CircuitOrigins.FactoryClass(null),
+      factoryType = null,
+      hasConstructorParams = true,
+    )
   }
 
   override fun getCallableNamesForClass(
@@ -195,7 +210,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     context: MemberGenerationContext,
   ): Set<Name> {
     if (classSymbol.classId !in generatedFactoryClassIds) return emptySet()
-    return setOf(SpecialNames.INIT) // Create will be handled by fakeOverride gen from supertype
+    return setOf(SpecialNames.INIT) // Create will be handled by fakeOverride IR gen from supertype
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
@@ -221,16 +236,60 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
             valueParameter(CircuitNames.provider, providerType)
           }
           target.isAssisted -> {
-            // Inject the assisted factory
-            // For now, inject the assisted factory type directly
-            // This will be the @AssistedFactory-annotated interface
+            // Inject the assisted factory type directly
             target.assistedFactoryType?.let { factoryType ->
               valueParameter(CircuitNames.factoryField, factoryType)
             }
           }
-        // For simple function factories, no constructor parameters needed
+          target.instantiationType == InstantiationType.FUNCTION -> {
+            // For function-based factories, add constructor params for injected dependencies
+            // (params _not_ circuit-provided at create()/lambda time).
+            // Plain types are wrapped in Provider<T> to avoid recomputation in composition.
+            // Types already wrapped in Provider/Lazy/Function are passed through as-is.
+            val functionSymbol = target.originalFunctionSymbol ?: return@createConstructor
+            val factoryType = target.factoryType ?: return@createConstructor
+            for (param in functionSymbol.valueParameterSymbols) {
+              if (!isCircuitProvidedParam(param, factoryType)) {
+                val paramType =
+                  typeResolverFactory
+                    .create(functionSymbol)
+                    ?.resolveType(param.resolvedReturnTypeRef) ?: continue
+
+                val paramContextKey = FirContextualTypeKey.from(session, param, paramType)
+                val isAlreadyWrapped = !paramContextKey.isCanonical
+                val constructorParamType =
+                  if (isAlreadyWrapped) {
+                    paramType
+                  } else {
+                    Symbols.ClassIds.metroProvider.constructClassLikeType(arrayOf(paramType))
+                  }
+                valueParameter(param.name, constructorParamType)
+              }
+            }
+          }
         }
       }
+
+    // Copy qualifier annotations from original function params to generated constructor params.
+    // This ensures Metro resolves the correct qualified bindings.
+    if (target.instantiationType == InstantiationType.FUNCTION) {
+      val functionSymbol = target.originalFunctionSymbol
+      if (functionSymbol != null) {
+        val originalParamsByName = functionSymbol.valueParameterSymbols.associateBy { it.name }
+        @OptIn(SymbolInternals::class)
+        for (constructorParam in constructor.symbol.valueParameterSymbols) {
+          val originalParam = originalParamsByName[constructorParam.name] ?: continue
+          val qualifier = originalParam.qualifierAnnotation(session)
+          if (qualifier != null) {
+            context(session.compatContext) {
+              constructorParam.fir.replaceAnnotationsSafe(
+                constructorParam.annotations + qualifier.fir
+              )
+            }
+          }
+        }
+      }
+    }
 
     return listOf(constructor.symbol)
   }
@@ -244,26 +303,22 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
      * do not pass through [CircuitFactorySupertypeGenerator] anyway.
      */
     factoryType: FactoryType?,
+    // TODO not currently able to fully implement this
+    hasConstructorParams: Boolean,
   ): FirClassLikeSymbol<*> {
-    // Supertypes (Ui.Factory/Presenter.Factory) are contributed by
-    // CircuitFactorySupertypeGenerator via BFS through the parent class's supertypes if factoryType
-    // isn't specified
+    val classKind = if (hasConstructorParams) ClassKind.CLASS else ClassKind.OBJECT
+
     val factoryClass =
       if (owner != null) {
-        // Nested class: supertype is contributed by CircuitFactorySupertypeGenerator
-        // which reads the factoryType from the origin key
-        createNestedClass(owner, CircuitNames.Factory, key) {}
+        createNestedClass(owner, CircuitNames.Factory, key, classKind = classKind) {}
       } else {
-        // Top-level class: supertype must be added directly as these don't pass through
-        // CircuitFactorySupertypeGenerator
-        createTopLevelClass(target.factoryClassId, key) {
+        createTopLevelClass(target.factoryClassId, key, classKind = classKind) {
           factoryType?.factoryClassId?.let { superType(it.constructClassLikeType()) }
         }
       }
 
-    // Metadata for metro's later factory gen
     factoryClass.metroGeneratedInjectClassData =
-      GeneratedInjectClassData(hasConstructorParams = true)
+      GeneratedInjectClassData(hasConstructorParams = hasConstructorParams)
 
     factoryClass.circuitFactoryTargetData = target
     target.originClassId?.let { originClassId ->
@@ -345,14 +400,48 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
     // First arg is screen, second is scope
     val screenArg =
-      annotation.argumentAsOrNull<FirGetClassCall>(session, "screen".asName(), 0) ?: return null
+      annotation.argumentAsOrNull<FirGetClassCall>(session, CircuitNames.screen, 0) ?: return null
     val scopeArg =
-      annotation.argumentAsOrNull<FirGetClassCall>(session, "scope".asName(), 1) ?: return null
+      annotation.argumentAsOrNull<FirGetClassCall>(session, CircuitNames.scope, 1) ?: return null
 
     val screenType = screenArg.resolveClassId(typeResolver) ?: return null
     val scopeType = scopeArg.resolveClassId(typeResolver) ?: return null
 
     return screenType to scopeType
+  }
+
+  /**
+   * Returns true if the parameter is provided by Circuit at runtime rather than needing constructor
+   * injection.
+   *
+   * Both UI and Presenter: Screen subtypes Presenter only: Navigator UI only: CircuitUiState
+   * subtypes, Modifier
+   *
+   * Note: CircuitContext is intentionally excluded — it's for factory-level use, not for
+   * consumption in actual presenters/UIs.
+   */
+  private fun isCircuitProvidedParam(
+    param: FirValueParameterSymbol,
+    factoryType: FactoryType,
+  ): Boolean {
+    val s = symbols ?: return false
+    val classId = param.resolvedReturnTypeRef.coneType.classId ?: return false
+
+    // Both UI and Presenter: Screen subtypes
+    if (s.isScreenType(classId)) return true
+
+    // Presenter only: Navigator
+    if (factoryType == FactoryType.PRESENTER) {
+      if (s.isNavigatorType(classId)) return true
+    }
+
+    // UI only: CircuitUiState subtypes, Modifier
+    if (factoryType == FactoryType.UI) {
+      if (s.isModifierType(classId)) return true
+      if (s.isUiStateType(classId)) return true
+    }
+
+    return false
   }
 
   internal companion object {

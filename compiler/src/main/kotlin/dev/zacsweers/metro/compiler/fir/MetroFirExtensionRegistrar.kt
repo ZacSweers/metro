@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtensi
 import dev.zacsweers.metro.compiler.circuit.CircuitDiagnostics
 import dev.zacsweers.metro.compiler.circuit.CircuitFactorySupertypeGenerator
 import dev.zacsweers.metro.compiler.circuit.CircuitFirCheckers
+import dev.zacsweers.metro.compiler.circuit.CircuitSymbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator
@@ -75,6 +76,7 @@ public class MetroFirExtensionRegistrar(
     }
 
     if (options.enableCircuitCodegen) {
+      +CircuitSymbols.Fir.getFactory()
       +::CircuitFirCheckers
       registerDiagnosticContainers(CircuitDiagnostics)
     }

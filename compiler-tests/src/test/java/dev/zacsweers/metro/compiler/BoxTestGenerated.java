@@ -502,6 +502,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("PresenterFunctionQualifiedInjection.kt")
+      public void testPresenterFunctionQualifiedInjection() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionQualifiedInjection.kt");
+      }
+
+      @Test
       @TestMetadata("UiClassNoInjection.kt")
       public void testUiClassNoInjection() {
         runTest("compiler-tests/src/test/data/box/api/circuit/UiClassNoInjection.kt");

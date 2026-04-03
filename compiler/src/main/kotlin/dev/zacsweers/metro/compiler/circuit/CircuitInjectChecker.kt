@@ -5,11 +5,8 @@ package dev.zacsweers.metro.compiler.circuit
 import dev.zacsweers.metro.compiler.circuit.CircuitDiagnostics.CIRCUIT_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
-import dev.zacsweers.metro.compiler.fir.implements
-import dev.zacsweers.metro.compiler.fir.implementsAny
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
-import dev.zacsweers.metro.compiler.memoize
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -21,19 +18,82 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
+import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isUnit
 
+/** Whether the `@CircuitInject` site is a Presenter or UI. */
+private enum class CircuitInjectSiteType {
+  PRESENTER,
+  UI,
+}
+
 /**
- * FIR checker for `@CircuitInject` annotation usage on classes. Validates:
- * - Classes with `@CircuitInject` must implement `Presenter` or `Ui`
- * - `@AssistedInject` classes must place `@CircuitInject` on the `@AssistedFactory`, not the class
- * - `@AssistedFactory + @CircuitInject` must be nested inside the target class
+ * Validates parameters for a `@CircuitInject` site (function or class constructor).
+ *
+ * Rules:
+ * - CircuitContext is never allowed (it's factory-level only)
+ * - Navigator is presenter-only
+ * - Modifier and CircuitUiState subtypes are UI-only
  */
+context(context: CheckerContext, reporter: DiagnosticReporter)
+private fun validateCircuitInjectParams(
+  siteType: CircuitInjectSiteType?,
+  params: List<FirValueParameter>,
+  fallbackSource: KtSourceElement,
+  circuitSymbols: CircuitSymbols.Fir,
+  siteLabel: String,
+) {
+  for (param in params) {
+    val paramClassId = param.returnTypeRef.coneType.classId ?: continue
+
+    // CircuitContext is factory-level only — never allowed
+    if (circuitSymbols.isCircuitContextType(paramClassId)) {
+      reporter.reportOn(
+        param.source ?: fallbackSource,
+        CIRCUIT_INJECT_ERROR,
+        "@CircuitInject $siteLabel cannot have a CircuitContext parameter. CircuitContext is only available at the factory level.",
+      )
+    }
+
+    if (siteType == null) continue
+
+    // Navigator is presenter-only
+    if (siteType == CircuitInjectSiteType.UI && circuitSymbols.isNavigatorType(paramClassId)) {
+      reporter.reportOn(
+        param.source ?: fallbackSource,
+        CIRCUIT_INJECT_ERROR,
+        "@CircuitInject UI $siteLabel cannot have a Navigator parameter. Navigator is only for presenters.",
+      )
+    }
+
+    // Modifier and CircuitUiState are UI-only
+    if (siteType == CircuitInjectSiteType.PRESENTER) {
+      if (circuitSymbols.isModifierType(paramClassId)) {
+        reporter.reportOn(
+          param.source ?: fallbackSource,
+          CIRCUIT_INJECT_ERROR,
+          "@CircuitInject Presenter $siteLabel cannot have a Modifier parameter. Modifier is only for UI.",
+        )
+      }
+      if (circuitSymbols.isUiStateType(paramClassId)) {
+        reporter.reportOn(
+          param.source ?: fallbackSource,
+          CIRCUIT_INJECT_ERROR,
+          "@CircuitInject Presenter $siteLabel cannot have a CircuitUiState parameter. State parameters are only for UI.",
+        )
+      }
+    }
+  }
+}
+
+/** FIR checker for `@CircuitInject` annotation usage on classes. */
 internal object CircuitInjectClassChecker : FirClassChecker(MppCheckerKind.Common) {
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -46,6 +106,7 @@ internal object CircuitInjectClassChecker : FirClassChecker(MppCheckerKind.Commo
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
+    val circuitSymbols = session.circuitFirSymbols ?: return
 
     if (!declaration.hasAnnotation(CircuitClassIds.CircuitInject, session)) return
 
@@ -59,7 +120,6 @@ internal object CircuitInjectClassChecker : FirClassChecker(MppCheckerKind.Commo
           "@CircuitInject with @AssistedInject must be placed on the nested @AssistedFactory interface, not the class itself.",
         )
       } else {
-        // @AssistedInject + @CircuitInject but no nested @AssistedFactory
         reporter.reportOn(
           source,
           CIRCUIT_INJECT_ERROR,
@@ -68,7 +128,6 @@ internal object CircuitInjectClassChecker : FirClassChecker(MppCheckerKind.Commo
       }
       return
     } else if (declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)) {
-      // @AssistedFactory + @CircuitInject must be nested inside the target Presenter/Ui class
       if (declaration.symbol.classId.outerClassId == null) {
         reporter.reportOn(
           source,
@@ -79,15 +138,35 @@ internal object CircuitInjectClassChecker : FirClassChecker(MppCheckerKind.Commo
       return
     }
 
-    // For non-assisted classes, validate supertypes
-    val isPresenterOrUi by memoize {
-      declaration.implementsAny(session, setOf(CircuitClassIds.Presenter, CircuitClassIds.Ui))
+    // Determine site type for param validation
+    var siteType: CircuitInjectSiteType? = null
+    for (supertype in declaration.symbol.getSuperTypes(session)) {
+      if (supertype.classId == CircuitClassIds.Ui) {
+        siteType = CircuitInjectSiteType.UI
+        break
+      } else if (supertype.classId == CircuitClassIds.Presenter) {
+        siteType = CircuitInjectSiteType.PRESENTER
+        break
+      }
     }
-    if (declaration.classKind != ClassKind.OBJECT && !isPresenterOrUi) {
+
+    // For non-assisted classes, validate supertypes
+    if (declaration.classKind != ClassKind.OBJECT && (siteType == null)) {
       reporter.reportOn(
         source,
         CIRCUIT_INJECT_ERROR,
         "@CircuitInject-annotated class must implement Presenter or Ui.",
+      )
+    }
+
+    @OptIn(DirectDeclarationsAccess::class)
+    for (constructor in declaration.declarations.filterIsInstance<FirConstructor>()) {
+      validateCircuitInjectParams(
+        siteType,
+        constructor.valueParameters,
+        source,
+        circuitSymbols,
+        "classes",
       )
     }
   }
@@ -100,11 +179,7 @@ internal object CircuitInjectClassChecker : FirClassChecker(MppCheckerKind.Commo
   }
 }
 
-/**
- * FIR checker for `@CircuitInject`-annotated functions. Validates:
- * - Presenter functions (non-Unit return) must return a `CircuitUiState` subtype
- * - UI functions (Unit return) must have a `Modifier` parameter
- */
+/** FIR checker for `@CircuitInject`-annotated functions. */
 internal object CircuitInjectCallableChecker :
   FirCallableDeclarationChecker(MppCheckerKind.Common) {
 
@@ -112,18 +187,20 @@ internal object CircuitInjectCallableChecker :
   override fun check(declaration: FirCallableDeclaration) {
     val source = declaration.source ?: return
     val session = context.session
+    val circuitSymbols = session.circuitFirSymbols ?: return
 
     if (declaration !is FirFunction) return
     if (!declaration.hasAnnotation(CircuitClassIds.CircuitInject, session)) return
 
     val returnType = declaration.returnTypeRef.coneType
 
+    val siteType: CircuitInjectSiteType?
     if (returnType.isUnit) {
-      // Unit return: either a UI function (needs Modifier) or a presenter missing its return type
+      siteType = CircuitInjectSiteType.UI
       val hasModifier =
         declaration.valueParameters.any { param ->
-          val paramClassId = param.returnTypeRef.coneType.classId
-          paramClassId == CircuitClassIds.Modifier
+          val paramClassId = param.returnTypeRef.coneType.classId ?: return@any false
+          circuitSymbols.isModifierType(paramClassId)
         }
       if (!hasModifier) {
         reporter.reportOn(
@@ -134,10 +211,10 @@ internal object CircuitInjectCallableChecker :
         )
       }
     } else {
-      // Presenter function must return a CircuitUiState subtype
-      returnType.classLikeLookupTagIfAny?.toClassSymbolCompat(session)?.let { returnClassSymbol ->
-        val isUiState = returnClassSymbol.implements(CircuitClassIds.CircuitUiState, session)
-        if (!isUiState) {
+      siteType = CircuitInjectSiteType.PRESENTER
+      returnType.classLikeLookupTagIfAny?.let { tag ->
+        val returnClassId = tag.classId
+        if (!circuitSymbols.isUiStateType(returnClassId)) {
           reporter.reportOn(
             source,
             CIRCUIT_INJECT_ERROR,
@@ -146,5 +223,13 @@ internal object CircuitInjectCallableChecker :
         }
       }
     }
+
+    validateCircuitInjectParams(
+      siteType,
+      declaration.valueParameters,
+      source,
+      circuitSymbols,
+      "functions",
+    )
   }
 }

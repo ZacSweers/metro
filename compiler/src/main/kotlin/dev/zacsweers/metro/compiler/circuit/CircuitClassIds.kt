@@ -51,6 +51,7 @@ internal object CircuitNames {
   val Factory = Name.identifier("CircuitFactory")
   val create = Name.identifier("create")
   val screen = Name.identifier("screen")
+  val scope = Name.identifier("scope")
   val navigator = Name.identifier("navigator")
   val context = Name.identifier("context")
   val state = Name.identifier("state")

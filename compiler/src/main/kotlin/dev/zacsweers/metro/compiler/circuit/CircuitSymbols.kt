@@ -7,9 +7,10 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
+import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent.Factory
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
-import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -23,50 +24,40 @@ internal sealed interface CircuitSymbols {
     val circuitInjectPredicate = annotated(CircuitClassIds.CircuitInject.asSingleFqName())
   }
 
-  class Fir
-  private constructor(
-    private val session: FirSession,
-    // Core runtime types (required)
-    val circuitInject: FirClassLikeSymbol<*>,
-    val screen: FirClassLikeSymbol<*>,
-    val navigator: FirClassLikeSymbol<*>,
-    val circuitContext: FirClassLikeSymbol<*>,
-    val circuitUiState: FirClassLikeSymbol<*>,
+  class Fir(session: FirSession) : FirExtensionSessionComponent(session) {
+
+    private fun require(classId: ClassId) =
+      session.symbolProvider.getClassLikeSymbolByClassId(classId)
+        ?: error(
+          "Circuit codegen is enabled but ${classId.asFqNameString()} was not found on the classpath."
+        )
+
+    // Core runtime types (required — lazily resolved)
+    val circuitInject by lazy { require(CircuitClassIds.CircuitInject) }
+    val screen by lazy { require(CircuitClassIds.Screen) }
+    val navigator by lazy { require(CircuitClassIds.Navigator) }
+    val circuitContext by lazy { require(CircuitClassIds.CircuitContext) }
+    val circuitUiState by lazy { require(CircuitClassIds.CircuitUiState) }
+
     // UI types (optional — separate artifact, may not be on classpath for presenter-only modules)
-    val modifier: FirClassLikeSymbol<*>?,
-    val ui: FirClassLikeSymbol<*>?,
-    val uiFactory: FirClassLikeSymbol<*>?,
+    val modifier by lazy {
+      session.symbolProvider.getClassLikeSymbolByClassId(CircuitClassIds.Modifier)
+    }
+    val ui by lazy { session.symbolProvider.getClassLikeSymbolByClassId(CircuitClassIds.Ui) }
+    val uiFactory by lazy {
+      session.symbolProvider.getClassLikeSymbolByClassId(CircuitClassIds.UiFactory)
+    }
+
     // Presenter types (optional — separate artifact, may not be on classpath for UI-only modules)
-    val presenter: FirClassLikeSymbol<*>?,
-    val presenterFactory: FirClassLikeSymbol<*>?,
-  ) : CircuitSymbols {
+    val presenter by lazy {
+      session.symbolProvider.getClassLikeSymbolByClassId(CircuitClassIds.Presenter)
+    }
+    val presenterFactory by lazy {
+      session.symbolProvider.getClassLikeSymbolByClassId(CircuitClassIds.PresenterFactory)
+    }
 
     companion object {
-      /**
-       * Returns null if required core Circuit types can't be found on the classpath. UI and
-       * Presenter types are optional (separate artifacts).
-       */
-      operator fun invoke(session: FirSession): Fir? {
-        val sp = session.symbolProvider
-        return Fir(
-          session = session,
-          // Required
-          circuitInject =
-            sp.getClassLikeSymbolByClassId(CircuitClassIds.CircuitInject) ?: return null,
-          screen = sp.getClassLikeSymbolByClassId(CircuitClassIds.Screen) ?: return null,
-          navigator = sp.getClassLikeSymbolByClassId(CircuitClassIds.Navigator) ?: return null,
-          circuitContext =
-            sp.getClassLikeSymbolByClassId(CircuitClassIds.CircuitContext) ?: return null,
-          circuitUiState =
-            sp.getClassLikeSymbolByClassId(CircuitClassIds.CircuitUiState) ?: return null,
-          // Optional
-          modifier = sp.getClassLikeSymbolByClassId(CircuitClassIds.Modifier),
-          ui = sp.getClassLikeSymbolByClassId(CircuitClassIds.Ui),
-          uiFactory = sp.getClassLikeSymbolByClassId(CircuitClassIds.UiFactory),
-          presenter = sp.getClassLikeSymbolByClassId(CircuitClassIds.Presenter),
-          presenterFactory = sp.getClassLikeSymbolByClassId(CircuitClassIds.PresenterFactory),
-        )
-      }
+      fun getFactory(): Factory = Factory { session -> Fir(session) }
     }
 
     fun isUiType(clazz: FirClass): Boolean {
@@ -185,3 +176,9 @@ internal sealed interface CircuitSymbols {
     }
   }
 }
+
+/**
+ * Session accessor for [CircuitSymbols.Fir]. Null if Circuit runtime types aren't on the classpath.
+ */
+internal val FirSession.circuitFirSymbols: CircuitSymbols.Fir? by
+  FirSession.sessionComponentAccessor<CircuitSymbols.Fir>()
