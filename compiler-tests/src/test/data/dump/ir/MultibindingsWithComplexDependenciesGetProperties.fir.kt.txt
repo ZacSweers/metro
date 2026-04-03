@@ -67,7 +67,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance, string = <this>.#string.invoke())
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance, string = <this>.#string.invoke())
     }
 
     @IntoSet
@@ -105,7 +105,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     fun mirrorFunction(): String {

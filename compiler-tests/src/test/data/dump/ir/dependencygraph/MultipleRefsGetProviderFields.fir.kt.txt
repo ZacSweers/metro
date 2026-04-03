@@ -107,7 +107,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): Long {
-      return Companion.provideLong(instance = <this>.#instance, holder = <this>.#holder.invoke())
+      return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance, holder = <this>.#holder.invoke())
     }
 
     fun mirrorFunction(holder: IntHolder): Long {
@@ -145,7 +145,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance, holder = <this>.#holder.invoke())
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance, holder = <this>.#holder.invoke())
     }
 
     fun mirrorFunction(holder: IntHolder): String {

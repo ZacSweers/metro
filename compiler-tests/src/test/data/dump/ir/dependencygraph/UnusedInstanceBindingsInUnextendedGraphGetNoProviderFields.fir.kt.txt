@@ -15,7 +15,7 @@ interface AppGraph {
 
     override val int: Int
       override get(): Int {
-        return Companion.provideInt(instance = <this>.#thisGraphInstance)
+        return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#thisGraphInstance)
       }
 
   }
@@ -62,7 +62,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     fun mirrorFunction(): Int {
@@ -71,7 +71,7 @@ interface AppGraph {
 
   }
 
-  @Factory
+  @DependencyGraph.Factory
   interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @MetroImplMarker

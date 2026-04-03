@@ -55,7 +55,7 @@ class Entry {
     }
 
     override operator fun invoke(): Entry {
-      return Companion.newInstance(a1 = <this>.#a1.invoke(), a2 = <this>.#a2.invoke(), b1 = <this>.#b1.invoke(), b2 = <this>.#b2.invoke())
+      return MetroFactory/* companion */.newInstance(a1 = <this>.#a1.invoke(), a2 = <this>.#a2.invoke(), b1 = <this>.#b1.invoke(), b2 = <this>.#b2.invoke())
     }
 
     fun mirrorFunction(a1: WrapperA1, a2: WrapperA2, b1: WrapperB1, b2: WrapperB2): Entry {
@@ -105,7 +105,7 @@ class SetConsumerA {
     }
 
     override operator fun invoke(): SetConsumerA {
-      return Companion.newInstance(set = <this>.#set.invoke())
+      return MetroFactory/* companion */.newInstance(set = <this>.#set.invoke())
     }
 
     fun mirrorFunction(set: Set<Int>): SetConsumerA {
@@ -155,7 +155,7 @@ class SetConsumerB {
     }
 
     override operator fun invoke(): SetConsumerB {
-      return Companion.newInstance(set = <this>.#set.invoke())
+      return MetroFactory/* companion */.newInstance(set = <this>.#set.invoke())
     }
 
     fun mirrorFunction(set: Set<Int>): SetConsumerB {
@@ -205,7 +205,7 @@ class WrapperA1 {
     }
 
     override operator fun invoke(): WrapperA1 {
-      return Companion.newInstance(consumer = <this>.#consumer)
+      return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
     }
 
     fun mirrorFunction(consumer: Provider<SetConsumerA>): WrapperA1 {
@@ -255,7 +255,7 @@ class WrapperA2 {
     }
 
     override operator fun invoke(): WrapperA2 {
-      return Companion.newInstance(consumer = <this>.#consumer)
+      return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
     }
 
     fun mirrorFunction(consumer: Provider<SetConsumerA>): WrapperA2 {
@@ -305,7 +305,7 @@ class WrapperB1 {
     }
 
     override operator fun invoke(): WrapperB1 {
-      return Companion.newInstance(consumer = <this>.#consumer)
+      return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
     }
 
     fun mirrorFunction(consumer: Provider<SetConsumerB>): WrapperB1 {
@@ -355,7 +355,7 @@ class WrapperB2 {
     }
 
     override operator fun invoke(): WrapperB2 {
-      return Companion.newInstance(consumer = <this>.#consumer)
+      return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
     }
 
     fun mirrorFunction(consumer: Provider<SetConsumerB>): WrapperB2 {
@@ -381,13 +381,13 @@ interface TestGraph {
       field = <this>
 
     private val provideBaseProvider: Provider<Base>
-      field = Companion.create(instance = <this>.#thisGraphInstance)
+      field = ProvideBaseMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance)
 
     private val setConsumerAProvider: Provider<SetConsumerA>
-      field = Companion.create(set = <this>.<get-setOfIntProvider>())
+      field = SetConsumerA.MetroFactory/* companion */.create(set = <this>.<get-setOfIntProvider>())
 
     private val setConsumerBProvider: Provider<SetConsumerB>
-      field = Companion.create(set = <this>.<get-setOfIntProvider>())
+      field = SetConsumerB.MetroFactory/* companion */.create(set = <this>.<get-setOfIntProvider>())
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -403,10 +403,10 @@ interface TestGraph {
     private val setOfIntProvider: Provider<Set<Int>>
       private get(): Provider<Set<Int>> {
         return { // BLOCK
-          val tmp_0: Builder<Int> = Companion.builder<Int>(individualProviderSize = 2, collectionProviderSize = 0)
-          tmp_0.addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider))
-          tmp_0.addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider))
-          tmp_0.build()
+          val tmp0_builder: SetFactory.Builder<Int> = SetFactory/* companion */.builder<Int>(individualProviderSize = 2, collectionProviderSize = 0)
+          tmp0_builder.addProvider(individualProvider = ProvideInt2MetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider))
+          tmp0_builder.addProvider(individualProvider = ProvideInt1MetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider))
+          tmp0_builder.build()
         }
       }
 
@@ -454,7 +454,7 @@ interface TestGraph {
     }
 
     override operator fun invoke(): Base {
-      return Companion.provideBase(instance = <this>.#instance)
+      return ProvideBaseMetroFactory/* companion */.provideBase(instance = <this>.#instance)
     }
 
     fun mirrorFunction(): Base {
@@ -492,7 +492,7 @@ interface TestGraph {
     }
 
     override operator fun invoke(): Int {
-      return Companion.provideInt1(instance = <this>.#instance, base = <this>.#base.invoke())
+      return ProvideInt1MetroFactory/* companion */.provideInt1(instance = <this>.#instance, base = <this>.#base.invoke())
     }
 
     @IntoSet
@@ -531,7 +531,7 @@ interface TestGraph {
     }
 
     override operator fun invoke(): Int {
-      return Companion.provideInt2(instance = <this>.#instance, base = <this>.#base.invoke())
+      return ProvideInt2MetroFactory/* companion */.provideInt2(instance = <this>.#instance, base = <this>.#base.invoke())
     }
 
     @IntoSet

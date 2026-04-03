@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.ProviderFactory.Companion.lookupRealDecla
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.betterDumpKotlinLike
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -102,7 +103,6 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isObject
@@ -453,7 +453,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
       } ?: factoryCls.kotlinFqName.asString()
 
     // Relative path example: provider-factories/dev/zac/feature/Outer.Inner$$Factory.kt
-    writeDiagnostic("provider-factories", "$factoryPath.kt") { factoryCls.dumpKotlinLike() }
+    writeDiagnostic("provider-factories", "$factoryPath.kt") { factoryCls.betterDumpKotlinLike() }
 
     generatedFactories[reference.callableId] = providerFactory
     return providerFactory

@@ -7,7 +7,7 @@ interface AppGraph {
       field = <this>
 
     private val provideStringProvider: Provider<String>
-      field = Companion.provider<Provider<String>, String>(delegate = Companion.create(instance = <this>.#thisGraphInstance))
+      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
 
     private val optionalStringProvider: Provider<Optional<String>>
       field = provider<Optional<String>>(provider = local fun <anonymous>(): Optional<String> {
@@ -83,7 +83,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     fun mirrorFunction(): Int {
@@ -120,7 +120,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)

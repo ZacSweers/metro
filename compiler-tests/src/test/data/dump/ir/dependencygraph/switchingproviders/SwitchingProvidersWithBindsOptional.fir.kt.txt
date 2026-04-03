@@ -7,7 +7,7 @@ interface AppGraph {
       field = <this>
 
     private val provideIntProvider: Provider<Int>
-      field = Companion.provider<Provider<Int>, Int>(delegate = SwitchingProvider<Int>(graph = <this>, id = 1))
+      field = DoubleCheck/* companion */.provider<Provider<Int>, Int>(delegate = SwitchingProvider<Int>(graph = <this>, id = 1))
 
     private val optionalIntProvider: Provider<Optional<Int>>
       field = SwitchingProvider<Optional<Int>>(graph = <this>, id = 0)
@@ -93,7 +93,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)

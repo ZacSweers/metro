@@ -19,7 +19,7 @@ abstract class AppGraph {
 
     override val string: String
       override get(): String {
-        return Companion.stringField(instance = <this>.#thisGraphInstance)
+        return StringFieldMetroFactory/* companion */.stringField(instance = <this>.#thisGraphInstance)
       }
 
   }
@@ -66,7 +66,7 @@ abstract class AppGraph {
     }
 
     override operator fun invoke(): String {
-      return Companion.stringField(instance = <this>.#instance)
+      return StringFieldMetroFactory/* companion */.stringField(instance = <this>.#instance)
     }
 
     fun mirrorFunction(): String {

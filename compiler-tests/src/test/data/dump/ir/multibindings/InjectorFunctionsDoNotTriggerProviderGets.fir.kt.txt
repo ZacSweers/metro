@@ -30,7 +30,7 @@ class Target {
     }
 
     override fun injectMembers(instance: Target) {
-      Companion.injectStrings(instance = instance, strings = <this>.#strings.invoke())
+      MetroMembersInjector/* companion */.injectStrings(instance = instance, strings = <this>.#strings.invoke())
     }
 
   }
@@ -72,7 +72,7 @@ interface Bindings {
     }
 
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     @IntoMap
@@ -107,13 +107,13 @@ interface TestGraph1 : Bindings {
     }
 
     override fun inject(target: Target) {
-      Companion.injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
+      Target.MetroMembersInjector/* companion */.injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
     }
 
     private val mapOfIntToString: Map<Int, Provider<String>>
       private get(): Map<Int, Provider<String>> {
         return buildMap<Int, Provider<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = Companion.create(instance = <this>.#thisGraphInstance))
+          $receiver.put(key = 1, value = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
         }
 )
       }
@@ -153,15 +153,15 @@ interface TestGraph2 : Bindings {
     }
 
     override fun inject(target: Target) {
-      Companion.injectStrings(instance = target, strings = <this>.<get-mapOfIntToStringProvider>().invoke())
+      Target.MetroMembersInjector/* companion */.injectStrings(instance = target, strings = <this>.<get-mapOfIntToStringProvider>().invoke())
     }
 
     private val mapOfIntToStringProvider: Provider<Map<Int, Provider<String>>>
       private get(): Provider<Map<Int, Provider<String>>> {
         return { // BLOCK
-          val tmp_0: Builder<Int, String> = Companion.builder<Int, String>(size = 1)
-          tmp_0.put(key = 1, providerOfValue = Companion.create(instance = <this>.#thisGraphInstance))
-          tmp_0.build()
+          val tmp0_builder: MapProviderFactory.Builder<Int, String> = MapProviderFactory/* companion */.builder<Int, String>(size = 1)
+          tmp0_builder.put(key = 1, providerOfValue = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
+          tmp0_builder.build()
         }
       }
 
@@ -208,13 +208,13 @@ interface TestGraph3 : Bindings {
     }
 
     override fun inject(target: Target) {
-      Companion.injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
+      Target.MetroMembersInjector/* companion */.injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
     }
 
     private val mapOfIntToString: Map<Int, Provider<String>>
       private get(): Map<Int, Provider<String>> {
         return buildMap<Int, Provider<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = Companion.create(instance = <this>.#thisGraphInstance))
+          $receiver.put(key = 1, value = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
         }
 )
       }
@@ -264,9 +264,9 @@ interface TestGraph4 : Bindings {
     private val mapOfIntToStringProvider: Provider<Map<Int, Provider<String>>>
       private get(): Provider<Map<Int, Provider<String>>> {
         return { // BLOCK
-          val tmp_1: Builder<Int, String> = Companion.builder<Int, String>(size = 1)
-          tmp_1.put(key = 1, providerOfValue = Companion.create(instance = <this>.#thisGraphInstance))
-          tmp_1.build()
+          val tmp0_builder: MapProviderFactory.Builder<Int, String> = MapProviderFactory/* companion */.builder<Int, String>(size = 1)
+          tmp0_builder.put(key = 1, providerOfValue = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
+          tmp0_builder.build()
         }
       }
 
@@ -313,7 +313,7 @@ interface TestGraph5 : Bindings {
     private val mapOfIntToString: Map<Int, Provider<String>>
       private get(): Map<Int, Provider<String>> {
         return buildMap<Int, Provider<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = Companion.create(instance = <this>.#thisGraphInstance))
+          $receiver.put(key = 1, value = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
         }
 )
       }
