@@ -25,7 +25,6 @@ kotlin {
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
     mainRun { mainClass.set("dev.zacsweers.metro.sample.circuit.MainKt") }
   }
-  // Second target for KSP's commonMain gen to work
   @OptIn(ExperimentalWasmDsl::class)
   wasmJs {
     outputModuleName.set("counterApp")
@@ -36,10 +35,6 @@ kotlin {
   //  macosArm64()
   sourceSets {
     commonMain {
-      kotlin {
-        // needed so that common sources are picked up
-        srcDir("build/generated/ksp/metadata/commonMain/kotlin")
-      }
       dependencies {
         // Circuit dependencies
         implementation(libs.circuit.foundation)
