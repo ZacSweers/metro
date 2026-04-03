@@ -442,10 +442,13 @@ constructor(
    * `Ui.Factory` and `Presenter.Factory` implementations for `@CircuitInject`-annotated classes and
    * functions.
    *
+   * Note this will eventually move to a separate plugin.
+   *
    * Disabled by default.
    */
+  @ExperimentalMetroGradleApi
   public val enableCircuitCodegen: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.booleanProperty("metro.enableCircuitCodegen", false)
 
   /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
