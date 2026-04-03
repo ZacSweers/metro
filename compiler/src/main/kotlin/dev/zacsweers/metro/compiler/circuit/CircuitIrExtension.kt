@@ -290,31 +290,12 @@ private class CircuitIrTransformer(
     firFunctionSymbol: FirFunctionSymbol<*>,
     fieldsByName: Map<Name, IrField>,
   ): IrExpression {
-    val matchingFunctions = pluginContext.referenceFunctions(firFunctionSymbol.callableId)
+    // Look up the IR function by matching against the FIR symbol stored in the target.
+    // We filter out `expect` declarations in FIR, so we should only see actual functions here.
     val originalFunctionSymbol =
-      matchingFunctions
-        .first { irSymbol ->
-          (irSymbol.owner.metadata as? FirMetadataSource.Function)?.fir?.symbol == firFunctionSymbol
-        }
-        .let { original ->
-          if (original.owner.isExpect) {
-            when (matchingFunctions.size) {
-              1 -> error("Missing an actual function for $firFunctionSymbol")
-              2 -> matchingFunctions.first { it != original }
-              else -> {
-                val originalOwner = original.owner
-                val originalParameters = originalOwner.parameters.map { it.type }
-                matchingFunctions.first {
-                  it != original &&
-                    it.owner.returnType == originalOwner &&
-                    it.owner.parameters.map { it.type } == originalParameters
-                }
-              }
-            }
-          } else {
-            original
-          }
-        }
+      pluginContext.referenceFunctions(firFunctionSymbol.callableId).first { irSymbol ->
+        (irSymbol.owner.metadata as? FirMetadataSource.Function)?.fir?.symbol == firFunctionSymbol
+      }
 
     val originalFunction = originalFunctionSymbol.owner
     // Build parameter mapping from create() params

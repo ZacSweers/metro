@@ -102,13 +102,18 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   }
 
   private val annotatedClasses by lazy {
-    annotatedSymbols.filterIsInstance<FirRegularClassSymbol>().toSet()
+    annotatedSymbols
+      .filterIsInstance<FirRegularClassSymbol>()
+      // Only read actual declarations to avoid duplicate, plus that's what IR sees
+      .filterNot { it.rawStatus.isExpect }
+      .toSet()
   }
 
   private val annotatedFunctions by lazy {
     annotatedSymbols
       .filterIsInstance<FirNamedFunctionSymbol>()
       .filter { it.callableId.classId == null } // Only top-level functions
+      .filterNot { it.rawStatus.isExpect }
       .toList()
   }
 
