@@ -40,7 +40,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
     private const val COMPILER_VERSION_OVERRIDE = "metro.compilerVersionOverride"
     private const val COMPILER_VERSION_OVERRIDE_PROPERTY = "metroCompilerVersionOverride"
     private const val CIRCUIT_ANNOTATIONS_DEP =
-      "com.slack.circuit:circuit-codegen-annotations:0.27.0"
+      "com.slack.circuit:circuit-codegen-annotations:0.33.0"
   }
 
   private val problemReporter = problems.reporter
