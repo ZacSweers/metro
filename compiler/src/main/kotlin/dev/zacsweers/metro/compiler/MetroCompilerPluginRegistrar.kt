@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
@@ -138,6 +139,10 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
           ExpectActualTracker.DoNothing,
         )
       with(compatContext) {
+        // Register Circuit IR extension if enabled first
+        if (options.enableCircuitCodegen) {
+          registerIrExtensionCompat(CircuitIrExtension(compatContext))
+        }
         registerIrExtensionCompat(
           MetroIrGenerationExtension(
             messageCollector = configuration.messageCollector,

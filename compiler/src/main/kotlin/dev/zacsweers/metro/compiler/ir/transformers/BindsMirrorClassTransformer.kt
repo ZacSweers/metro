@@ -44,7 +44,7 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
   IrMetroContext by context, Lockable by Lockable() {
   private val cache = mutableMapOf<ClassId, Optional<BindsMirror>>()
 
-  // When we generate binds/providers we need to genreate a mirror class too
+  // When we generate binds/providers we need to generate a mirror class too
   fun getOrComputeBindsMirror(declaration: IrClass): BindsMirror? {
     return cache
       .getOrPut(declaration.classIdOrFail) {

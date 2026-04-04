@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import androidx.compose.compiler.plugins.kotlin.ComposePluginRegistrar
+import androidx.compose.compiler.plugins.kotlin.k2.ComposeFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
@@ -11,6 +13,10 @@ import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
+import dev.zacsweers.metro.compiler.circuit.configureCircuit
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
@@ -47,6 +53,7 @@ fun TestConfigurationBuilder.configurePlugin() {
   configureDaggerAnnotations()
   configureDaggerInterop()
   configureGuiceInterop()
+  configureCircuit()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
   useAfterAnalysisCheckers(::MetroReportsChecker)
 }
@@ -162,6 +169,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       if (MetroDirectives.enableGuiceInterop(module.directives)) {
         enableGuiceRuntimeInterop = true
       }
+
+      if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
+        enableCircuitCodegen = true
+      }
     }
 
     if (!options.enabled) return
@@ -174,22 +185,46 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         options = options,
         isIde = false,
         compatContext = compatContext,
-        loadExternalDeclarationExtensions = { session, options ->
-          listOf(
-            GenerateImplExtension.Factory().create(session, options),
-            GenerateProvidesContributionExtension.Factory().create(session, options),
-            GenerateBindsContributionExtension.Factory().create(session, options),
-            GenerateDependencyGraphExtension.Factory().create(session, options),
-          )
+        loadExternalDeclarationExtensions = { session, options, compatContext ->
+          buildList {
+            add(GenerateImplExtension.Factory().create(session, options, compatContext))
+            add(
+              GenerateProvidesContributionExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            add(
+              GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
+            )
+            add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
+            if (options.enableCircuitCodegen) {
+              add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
+            }
+          }
         },
-      ) { session, options ->
-        listOf(
-          GenerateImplContributionExtension.Factory().create(session, options),
-          GenerateProvidesContributionMetroExtension.Factory().create(session, options),
-          GenerateBindsContributionMetroExtension.Factory().create(session, options),
-        )
-      }
+        loadExternalContributionExtensions = { session, options, compatContext ->
+          buildList {
+            add(GenerateImplContributionExtension.Factory().create(session, options, compatContext))
+            add(
+              GenerateProvidesContributionMetroExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            add(
+              GenerateBindsContributionMetroExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            if (options.enableCircuitCodegen) {
+              add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
+            }
+          }
+        },
+      )
     )
+    if (options.enableCircuitCodegen) {
+      FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
+      IrGenerationExtension.registerExtension(CircuitIrExtension(compatContext))
+    }
+    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
+    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector = configuration.messageCollector,
@@ -201,7 +236,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         compatContext = compatContext,
       )
     )
-    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
-    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
+    if (options.enableCircuitCodegen) {
+      IrGenerationExtension.registerExtension(
+        ComposePluginRegistrar.createComposeIrExtension(configuration)
+      )
+    }
   }
 }

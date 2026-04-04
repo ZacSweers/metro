@@ -1,5 +1,7 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import org.gradle.kotlin.dsl.sourceSets
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 import org.jetbrains.kotlin.tooling.core.isDev
 import org.jetbrains.kotlin.tooling.core.toKotlinVersion
@@ -55,6 +57,15 @@ buildConfig {
 val metroRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 val anvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 val kiAnvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
+// include transitive in this case to grab compose and circuit runtimes
+val circuitRuntimeClasspath: Configuration by configurations.creating {
+  attributes {
+    // Force JVM variants
+    // TODO in future non-jvm tests we need others
+    attribute(KotlinPlatformType.attribute, KotlinPlatformType.jvm)
+  }
+}
+
 // include transitive in this case to grab jakarta and javax
 val daggerRuntimeClasspath: Configuration by configurations.creating {}
 val daggerInteropClasspath: Configuration by configurations.creating { isTransitive = false }
@@ -114,6 +125,7 @@ dependencies {
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
   )
   testImplementation("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
+  testImplementation("org.jetbrains.kotlin:kotlin-compose-compiler-plugin:$testCompilerVersion")
 
   testImplementation(project(":compiler"))
   testImplementation(project(":compiler-compat"))
@@ -136,6 +148,9 @@ dependencies {
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
   daggerRuntimeClasspath(libs.dagger.runtime)
   kiAnvilRuntimeClasspath(libs.kotlinInject.anvil.runtime)
+  circuitRuntimeClasspath(libs.circuit.runtime.presenter)
+  circuitRuntimeClasspath(libs.circuit.runtime.ui)
+  circuitRuntimeClasspath(libs.circuit.codegenAnnotations)
 
   wasmKlibClasspath("org.jetbrains.kotlin:kotlin-stdlib-wasm-js:$testCompilerVersion")
   wasmKlibClasspath("org.jetbrains.kotlin:kotlin-stdlib-wasm-wasi:$testCompilerVersion")
@@ -303,6 +318,7 @@ tasks.withType<Test> {
   systemProperty("guice.classpath", guiceClasspath.asPath)
   systemProperty("javaxInterop.classpath", javaxInteropClasspath.asPath)
   systemProperty("jakartaInterop.classpath", jakartaInteropClasspath.asPath)
+  systemProperty("circuit.classpath", circuitRuntimeClasspath.asPath)
   systemProperty("ksp.testRuntimeClasspath", configurations.testRuntimeClasspath.get().asPath)
 
   // Properties required to run the internal test framework.

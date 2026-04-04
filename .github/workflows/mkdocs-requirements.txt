@@ -4,7 +4,7 @@ zensical==0.0.29
 
 # MkDocs + Material + mike - still needed for versioned deployments via mike
 # See docs/zensical-migration.md for details
-click==8.3.1
+click==8.3.2
 future==1.0.0
 Jinja2==3.1.6
 livereload==2.7.1
@@ -31,4 +31,4 @@ tornado==6.5.5
 # Imaging dependencies for mkdocs-material social plugin
 # https://squidfunk.github.io/mkdocs-material/plugins/requirements/image-processing/
 cairosvg==2.9.0
-pillow==12.1.1
+pillow==12.2.0

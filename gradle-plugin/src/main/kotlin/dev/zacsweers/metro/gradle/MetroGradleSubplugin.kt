@@ -39,6 +39,8 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
 
     private const val COMPILER_VERSION_OVERRIDE = "metro.compilerVersionOverride"
     private const val COMPILER_VERSION_OVERRIDE_PROPERTY = "metroCompilerVersionOverride"
+    private const val CIRCUIT_ANNOTATIONS_DEP =
+      "com.slack.circuit:circuit-codegen-annotations:0.33.0"
   }
 
   private val problemReporter = problems.reporter
@@ -233,29 +235,26 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
         kotlinCompilation.target.platformType == KotlinPlatformType.androidJvm
 
     if (extension.automaticallyAddRuntimeDependencies.get()) {
-      project.dependencies.add(
-        kotlinCompilation.defaultSourceSet.implementationConfigurationName,
-        "dev.zacsweers.metro:runtime:$VERSION",
-      )
-      if (
-        kotlinCompilation.defaultSourceSet.implementationConfigurationName ==
-          "metadataCompilationImplementation"
-      ) {
+      val implConfig = kotlinCompilation.defaultSourceSet.implementationConfigurationName
+      val circuitEnabled = extension.enableCircuitCodegen.getOrElse(false)
+      project.dependencies.add(implConfig, "dev.zacsweers.metro:runtime:$VERSION")
+      if (circuitEnabled) {
+        project.dependencies.add(implConfig, CIRCUIT_ANNOTATIONS_DEP)
+      }
+
+      if (implConfig == "metadataCompilationImplementation") {
         project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
+        if (circuitEnabled) {
+          project.dependencies.add("commonMainImplementation", CIRCUIT_ANNOTATIONS_DEP)
+        }
       }
 
       if (isJvmTarget) {
         if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
-          project.dependencies.add(
-            kotlinCompilation.defaultSourceSet.implementationConfigurationName,
-            "dev.zacsweers.metro:interop-dagger:$VERSION",
-          )
+          project.dependencies.add(implConfig, "dev.zacsweers.metro:interop-dagger:$VERSION")
         }
         if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
-          project.dependencies.add(
-            kotlinCompilation.defaultSourceSet.implementationConfigurationName,
-            "dev.zacsweers.metro:interop-guice:$VERSION",
-          )
+          project.dependencies.add(implConfig, "dev.zacsweers.metro:interop-guice:$VERSION")
         }
       }
     }
@@ -377,6 +376,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           add(
             lazyOption("generate-contribution-providers", extension.generateContributionProviders)
           )
+          add(lazyOption("enable-circuit-codegen", extension.enableCircuitCodegen))
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
           reportsDir.orNull

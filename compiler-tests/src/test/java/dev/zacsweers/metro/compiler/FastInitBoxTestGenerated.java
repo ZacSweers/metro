@@ -437,6 +437,112 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public void testProvidesInGeneratedContributesTo_SeparateCompilation() {
       runTest("compiler-tests/src/test/data/box/api/ProvidesInGeneratedContributesTo_SeparateCompilation.kt");
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/api/circuit")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Circuit {
+      @Test
+      public void testAllFilesPresentInCircuit() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api/circuit"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("ParameterOrderDoesNotMatter.kt")
+      public void testParameterOrderDoesNotMatter() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/ParameterOrderDoesNotMatter.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassAssistedInjection.kt")
+      public void testPresenterClassAssistedInjection() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassAssistedInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassAssistedInjectionWithComplexSupertype.kt")
+      public void testPresenterClassAssistedInjectionWithComplexSupertype() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassAssistedInjectionWithComplexSupertype.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassAssistedInjectionWithSupertype.kt")
+      public void testPresenterClassAssistedInjectionWithSupertype() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassAssistedInjectionWithSupertype.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassNoInjection.kt")
+      public void testPresenterClassNoInjection() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassNoInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassSimpleInjection.kt")
+      public void testPresenterClassSimpleInjection() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassSimpleInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionClassScreen.kt")
+      public void testPresenterFunctionClassScreen() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionClassScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionInjectedScreen.kt")
+      public void testPresenterFunctionInjectedScreen() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionInjectedScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionObjectScreen.kt")
+      public void testPresenterFunctionObjectScreen() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionObjectScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionQualifiedInjection.kt")
+      public void testPresenterFunctionQualifiedInjection() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionQualifiedInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("UiClassNoInjection.kt")
+      public void testUiClassNoInjection() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/UiClassNoInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("UiClassSimpleInjection.kt")
+      public void testUiClassSimpleInjection() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/UiClassSimpleInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionClassScreenWithState.kt")
+      public void testUiFunctionClassScreenWithState() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/UiFunctionClassScreenWithState.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionInjectedScreen.kt")
+      public void testUiFunctionInjectedScreen() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/UiFunctionInjectedScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionObjectScreenNoState.kt")
+      public void testUiFunctionObjectScreenNoState() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/UiFunctionObjectScreenNoState.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionObjectScreenWithState.kt")
+      public void testUiFunctionObjectScreenWithState() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/UiFunctionObjectScreenWithState.kt");
+      }
+    }
   }
 
   @Nested

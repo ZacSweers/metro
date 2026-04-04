@@ -859,6 +859,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  ENABLE_CIRCUIT_CODEGEN(
+    RawMetroOption.boolean(
+      name = "enable-circuit-codegen",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable Metro-native Circuit code generation for @CircuitInject-annotated classes and functions.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -1023,6 +1034,7 @@ public data class MetroOptions(
     MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP.raw.defaultValue.expectAs(),
   public val generateContributionProviders: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_PROVIDERS.raw.defaultValue.expectAs(),
+  val enableCircuitCodegen: Boolean = MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1143,6 +1155,7 @@ public data class MetroOptions(
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
     public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
     public var generateContributionProviders: Boolean = base.generateContributionProviders
+    public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1323,6 +1336,7 @@ public data class MetroOptions(
         enableFunctionProviders = enableFunctionProviders,
         enableKClassToClassInterop = enableKClassToClassInterop,
         generateContributionProviders = generateContributionProviders,
+        enableCircuitCodegen = enableCircuitCodegen,
       )
     }
 
@@ -1624,6 +1638,8 @@ public data class MetroOptions(
             enableKClassToClassInterop = configuration.getAsBoolean(entry)
           GENERATE_CONTRIBUTION_PROVIDERS ->
             generateContributionProviders = configuration.getAsBoolean(entry)
+          MetroOption.ENABLE_CIRCUIT_CODEGEN ->
+            enableCircuitCodegen = configuration.getAsBoolean(entry)
         }
       }
     }

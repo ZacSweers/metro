@@ -141,6 +141,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
         "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir/test/AppGraph'. " +
         "Expected files should be named '<testFile>/<diagnosticKey>/<path>/<reportName>.txt'."
     )
+  val ENABLE_CIRCUIT by directive("Enables Circuit code gen.")
 
   fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
     return WITH_DAGGER in directives ||

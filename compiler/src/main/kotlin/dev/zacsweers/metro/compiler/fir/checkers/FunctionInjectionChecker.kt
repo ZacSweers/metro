@@ -102,12 +102,12 @@ internal object FunctionInjectionChecker : FirCallableDeclarationChecker(MppChec
         )
       if (annotations.isAssisted) continue
       validateInjectionSiteType(
-        session,
-        param.returnTypeRef,
-        annotations.qualifier,
-        param.source ?: source,
-        annotations.isOptionalBinding,
-        param.symbol.hasDefaultValue,
+        session = session,
+        typeRef = param.returnTypeRef,
+        qualifier = annotations.qualifier,
+        source = param.source ?: source,
+        isAccessor = annotations.isOptionalBinding,
+        hasDefault = param.symbol.hasDefaultValue,
       )
     }
   }

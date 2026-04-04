@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
+import dev.zacsweers.metro.compiler.fir.caching
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
@@ -33,9 +34,7 @@ import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import java.util.Optional
 import java.util.TreeMap
-import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
@@ -81,17 +80,19 @@ internal class ContributedInterfaceSupertypeGenerator(
   session: FirSession,
   compatContext: CompatContext,
   private val loadExternalContributionExtensions:
-    (FirSession, MetroOptions) -> List<MetroContributionExtension>,
+    (FirSession, MetroOptions, CompatContext) -> List<MetroContributionExtension>,
 ) : FirSupertypeGenerationExtension(session), CompatContext by compatContext {
 
   /** External contribution extensions loaded via ServiceLoader. */
   private val externalContributionExtensions: List<MetroContributionExtension> by lazy {
     val options = session.metroFirBuiltIns.options
-    loadExternalContributionExtensions(session, options)
+    loadExternalContributionExtensions(session, options, this)
   }
 
   private val allSessions by lazy { session.allSessions }
-  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session, allSessions) }
+  private val typeResolverFactory by lazy {
+    MetroFirTypeResolver.Factory(session, allSessions).caching()
+  }
 
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
@@ -332,7 +333,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     val externalContributions = mutableListOf<MetroContributionExtension.Contribution>()
     for (scopeClassId in scopes) {
       for (extension in externalContributionExtensions) {
-        externalContributions.addAll(extension.getContributions(scopeClassId))
+        externalContributions.addAll(extension.getContributions(scopeClassId, typeResolverFactory))
       }
     }
 
@@ -366,14 +367,6 @@ internal class ContributedInterfaceSupertypeGenerator(
       }
     }
 
-    val typeResolverCache = mutableMapOf<FirClassLikeSymbol<*>, Optional<MetroFirTypeResolver>>()
-
-    fun typeResolverFor(symbol: FirClassLikeSymbol<*>): MetroFirTypeResolver? {
-      return typeResolverCache
-        .getOrPut(symbol) { Optional.ofNullable(typeResolverFactory.create(symbol)) }
-        .getOrNull()
-    }
-
     // Build a cache of origin class -> contribution classes mappings upfront
     // This maps from an origin class to all contributions that have @Origin pointing to it
     // TODO make this lazily computed?
@@ -383,7 +376,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     for ((parentClassId, _) in contributions) {
       val parentSymbol = parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
       if (parentSymbol != null) {
-        val localTypeResolver = typeResolverFor(parentSymbol) ?: continue
+        val localTypeResolver = typeResolverFactory.create(parentSymbol) ?: continue
 
         parentSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
           originToContributions.getAndAdd(originClassId, parentClassId)
@@ -397,7 +390,7 @@ internal class ContributedInterfaceSupertypeGenerator(
         val containerSymbol =
           containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
         if (containerSymbol != null) {
-          val localTypeResolver = typeResolverFor(containerSymbol) ?: continue
+          val localTypeResolver = typeResolverFactory.create(containerSymbol) ?: continue
 
           containerSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
             originToContributions.getAndAdd(originClassId, containerClassId)
@@ -489,7 +482,8 @@ internal class ContributedInterfaceSupertypeGenerator(
           val containerSymbol =
             containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
               ?: return@mapNotNull null
-          val localTypeResolver = typeResolverFor(containerSymbol) ?: return@mapNotNull null
+          val localTypeResolver =
+            typeResolverFactory.create(containerSymbol) ?: return@mapNotNull null
           val originClassId =
             containerSymbol.originClassId(session, localTypeResolver) ?: return@mapNotNull null
           val originClass =
@@ -499,7 +493,8 @@ internal class ContributedInterfaceSupertypeGenerator(
         }
       )
       .flatMap { contributingType ->
-        val localTypeResolver = typeResolverFor(contributingType) ?: return@flatMap emptySequence()
+        val localTypeResolver =
+          typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
 
         contributingType
           .annotationsIn(session, session.classIds.allContributesAnnotationsWithContainers)
