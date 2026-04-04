@@ -6,6 +6,10 @@ Changelog
 
 ### New
 
+#### Circuit codegen
+
+Metro now includes built-in support for [Circuit](https://slackhq.github.io/circuit/), a Compose-first architecture for building kotlin apps. See the [docs](https://zacsweers.github.io/metro/latest/extensions/circuit/) for more details.
+
 #### `generateContributionProviders`
 
 This release introduces a new `generateContributionProviders` API (Kotlin 2.3.20+) to optimize behavior with contributed APIs.
