@@ -9,9 +9,9 @@ class Foo3
 
 @Inject
 class InjectedThing(
-  <!METRO_ERROR!>foo1: Foo1<!>,
-  <!METRO_ERROR!>foo2: Foo2<!>,
-  <!METRO_ERROR!>foo3: Foo3<!>,
+  <!MISSING_BINDING!>foo1: Foo1<!>,
+  <!MISSING_BINDING!>foo2: Foo2<!>,
+  <!MISSING_BINDING!>foo3: Foo3<!>,
 )
 
 @DependencyGraph

@@ -8,7 +8,7 @@ Changelog
 
 #### Circuit codegen
 
-Metro now includes built-in support for [Circuit](https://slackhq.github.io/circuit/), a Compose-first architecture for building kotlin apps. See the [docs](https://zacsweers.github.io/metro/latest/extensions/circuit/) for more details.
+Metro now includes built-in support for [Circuit](https://slackhq.github.io/circuit/), a Compose-first architecture for building kotlin apps. See the [docs](https://zacsweers.github.io/metro/latest/circuit/) for more details.
 
 #### `generateContributionProviders`
 
@@ -47,12 +47,18 @@ interface BaseFactory<T : BaseFactory<T>>
 class HomeFactory(...) : BaseFactory<HomeFactory>
 ```
 
+### Enhancements
+
+- **[IR]** Use more unique diagnostic names in IR diagnostics (previously just used `METRO_ERROR` for a general catch-all in a lot of places).
+
 ### Fixes
 
 - **[IR]** Consider Anvil's `rank` parameter when processing contributed binding containers.
+- **[IR]** When reporting qualifier mismatches, if a qualifier is absent on one declaration then the message will now say "absent" rather than the vague "null".
 
 ### Changes
 
+- Support Kotlin `2.4.0-Beta1`
 - Removed `@Assisted.value`. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#assisted-injection) on why in case you missed this! TL;DR, Metro matches by parameter names going forward.
 - Remove deprecated compiler options and Gradle extension properties.
     - `chunkFieldInits`

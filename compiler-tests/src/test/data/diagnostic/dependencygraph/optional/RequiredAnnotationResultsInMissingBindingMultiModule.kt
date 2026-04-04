@@ -15,6 +15,6 @@ interface Base {
 
 // MODULE: main(lib)
 @DependencyGraph
-interface <!METRO_ERROR!>AppGraph<!> : Base {
+interface <!MISSING_BINDING!>AppGraph<!> : Base {
   val example: Example
 }

@@ -18,7 +18,7 @@ interface SubscopeMultibindingModule {
   @IntoMap
   @ClassKey(ClassWithoutMembersInjector::class)
   @ForScope(AppSubscope::class)
-  fun bindClassWithoutMembersInjector(<!METRO_ERROR!>instance: MembersInjector<ClassWithoutMembersInjector><!>): MembersInjector<*>
+  fun bindClassWithoutMembersInjector(<!MISSING_BINDING!>instance: MembersInjector<ClassWithoutMembersInjector><!>): MembersInjector<*>
 }
 
 @GraphExtension(AppSubscope::class)

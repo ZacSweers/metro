@@ -323,17 +323,59 @@ internal class SyntheticGraphGenerator(
   // https://github.com/ZacSweers/metro/issues/904
   private fun IrClass.validateOverrides() {
     val sourceGraphName = superTypes.firstOrNull()?.rawTypeOrNull()?.kotlinFqName
+    val typeClashes = mutableListOf<String>()
+    val annotationClashes = mutableListOf<String>()
 
     // Check all fake override properties
     for (property in properties) {
       if (!property.isFakeOverride) continue
-      property.checkOverrideCompatibility(sourceGraphName)
+      property.checkOverrideCompatibility(sourceGraphName, typeClashes, annotationClashes)
     }
 
     // Check all fake override functions
     for (function in functions) {
       if (!function.isFakeOverride) continue
-      function.checkOverrideCompatibility(sourceGraphName)
+      function.checkOverrideCompatibility(sourceGraphName, typeClashes, annotationClashes)
+    }
+
+    // Flush collected clashes
+    if (typeClashes.isNotEmpty()) {
+      val message =
+        if (typeClashes.size == 1) {
+          typeClashes[0]
+        } else {
+          buildString {
+            appendLine(
+              "[Metro/IncompatibleReturnTypes] ${typeClashes.size} incompatible return type clashes found:"
+            )
+            for (clash in typeClashes) {
+              appendLine()
+              appendLine(clash)
+            }
+          }
+        }
+      metroContext.reportCompat(
+        originDeclaration,
+        MetroDiagnostics.INCOMPATIBLE_RETURN_TYPES,
+        message,
+      )
+    }
+    if (annotationClashes.isNotEmpty()) {
+      val message =
+        if (annotationClashes.size == 1) {
+          annotationClashes[0]
+        } else {
+          buildString {
+            appendLine(
+              "[Metro/IncompatibleOverrides] ${annotationClashes.size} annotation clashes found:"
+            )
+            for (clash in annotationClashes) {
+              appendLine()
+              appendLine(clash)
+            }
+          }
+        }
+      metroContext.reportCompat(originDeclaration, MetroDiagnostics.INCOMPATIBLE_OVERRIDES, message)
     }
   }
 
@@ -361,7 +403,9 @@ internal class SyntheticGraphGenerator(
   // https://github.com/ZacSweers/metro/issues/904
   // https://github.com/ZacSweers/metro/pull/1810
   private fun <S : IrSymbol> IrOverridableDeclaration<S>.checkOverrideCompatibility(
-    sourceGraphName: FqName?
+    sourceGraphName: FqName?,
+    typeClashes: MutableList<String>,
+    annotationClashes: MutableList<String>,
   ) {
     val overriddenSymbols = overriddenSymbols.toList()
     if (overriddenSymbols.size < 2) return
@@ -407,8 +451,8 @@ internal class SyntheticGraphGenerator(
             !info1.returnType.isSubtypeOf(info2.returnType, irTypeSystemContext) &&
             !info2.returnType.isSubtypeOf(info1.returnType, irTypeSystemContext)
         ) {
-          reportTypeClash(info1.decl, info1.returnType, info2.decl, info2.returnType)
-          return // Report only the first clash
+          typeClashes += formatTypeClash(info1.decl, info1.returnType, info2.decl, info2.returnType)
+          return // Report only the first clash per declaration
         }
 
         // Check annotation compatibility
@@ -422,20 +466,22 @@ internal class SyntheticGraphGenerator(
             anno1.isOptionalBinding != anno2.isOptionalBinding ||
             anno1.qualifier != anno2.qualifier
         ) {
-          reportAnnotationClash(sourceGraphName, info1.decl, anno1, info2.decl, anno2)
-          return // Report only the first clash
+          annotationClashes +=
+            formatAnnotationClash(sourceGraphName, info1.decl, anno1, info2.decl, anno2)
+          // Report only the first clash per declaration
+          return
         }
       }
     }
   }
 
-  private fun reportAnnotationClash(
+  private fun formatAnnotationClash(
     sourceGraphName: FqName?,
     decl1: IrOverridableDeclaration<*>,
     anno1: MetroAnnotations<IrAnnotation>,
     decl2: IrOverridableDeclaration<*>,
     anno2: MetroAnnotations<IrAnnotation>,
-  ) {
+  ): String {
     val loc1 = decl1.renderLocationDiagnostic(annotations = anno1)
     val loc2 = decl2.renderLocationDiagnostic(annotations = anno2)
     val parent1 = decl1.parentAsClass.originIfContribution.kotlinFqName
@@ -443,7 +489,7 @@ internal class SyntheticGraphGenerator(
 
     val graphName = sourceGraphName ?: "graph"
 
-    val message = buildString {
+    return buildString {
       appendLine(
         "The following declarations clash with each other when merging supertypes into a generated `$graphName` graph impl class:"
       )
@@ -460,16 +506,14 @@ internal class SyntheticGraphGenerator(
           "disambiguate them."
       )
     }
-
-    metroContext.reportCompat(originDeclaration, MetroDiagnostics.INCOMPATIBLE_OVERRIDES, message)
   }
 
-  private fun reportTypeClash(
+  private fun formatTypeClash(
     decl1: IrOverridableDeclaration<*>,
     type1: IrType,
     decl2: IrOverridableDeclaration<*>,
     type2: IrType,
-  ) {
+  ): String {
     val loc1 = decl1.renderLocationDiagnostic()
     val loc2 = decl2.renderLocationDiagnostic()
     val parent1 = decl1.parentAsClass.originIfContribution.kotlinFqName
@@ -477,7 +521,7 @@ internal class SyntheticGraphGenerator(
     val type1Str = type1.render(short = false)
     val type2Str = type2.render(short = false)
 
-    val message = buildString {
+    return buildString {
       appendLine("Incompatible return types: '$type1Str' vs '$type2Str'")
       appendLine()
       appendLine("  ${loc1.location}")
@@ -496,8 +540,6 @@ internal class SyntheticGraphGenerator(
         )
       }
     }
-
-    metroContext.reportCompat(originDeclaration, MetroDiagnostics.METRO_ERROR, message)
   }
 
   private val IrClass.originIfContribution: IrClass

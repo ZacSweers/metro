@@ -427,6 +427,18 @@ internal class GraphNodes(
       }
     }
 
+    private data class QualifierMismatchEntry(
+      val type: String,
+      val declarationFqName: String,
+      /** The qualifier on the final/overriding declaration (may be absent). */
+      val actualQualifier: String,
+      val overriddenSymbolFqName: String,
+      /** The qualifier on the overridden declaration. */
+      val expectedQualifier: String,
+    )
+
+    private val qualifierMismatches = mutableListOf<QualifierMismatchEntry>()
+
     private fun reportQualifierMismatch(
       declaration: IrOverridableDeclaration<*>,
       expectedQualifier: IrAnnotation?,
@@ -448,21 +460,46 @@ internal class GraphNodes(
             overriddenDeclaration.propertyIfAccessor.expectAs<IrDeclarationWithName>()
           is IrProperty -> overriddenDeclaration as IrDeclarationWithName
         }
+
+      qualifierMismatches +=
+        QualifierMismatchEntry(
+          type = type,
+          declarationFqName = "${declaration.fqNameWhenAvailable}",
+          actualQualifier = expectedQualifier?.let { "'$it'" } ?: "absent",
+          overriddenSymbolFqName = "${declWithName.fqNameWhenAvailable}",
+          expectedQualifier = overriddenQualifier?.let { "'$it'" } ?: "none",
+        )
+      hasErrors = true
+    }
+
+    private fun flushQualifierMismatchErrors() {
+      if (qualifierMismatches.isEmpty()) return
+      val bold = metroContext.messageRenderer::bold
       val message =
-        "[Metro/QualifierOverrideMismatch] Overridden $type '${declaration.fqNameWhenAvailable}' must have the same qualifier annotations as the overridden $type. However, the final $type qualifier is '${expectedQualifier}' but overridden symbol ${declWithName.fqNameWhenAvailable} has '${overriddenQualifier}'.'"
-
-      val errorDecl =
-        when (declaration) {
-          is IrSimpleFunction -> declaration.propertyIfAccessor
-          is IrProperty -> declaration
+        if (qualifierMismatches.size == 1) {
+          val e = qualifierMismatches[0]
+          "[Metro/QualifierOverrideMismatch] Overridden ${e.type} '${e.declarationFqName}' must have the same qualifier annotations as the overridden ${e.type}. However, the final ${e.type} qualifier is ${bold(e.actualQualifier)} but overridden symbol ${e.overriddenSymbolFqName} has ${bold(e.expectedQualifier)}."
+        } else {
+          buildString {
+            appendLine(
+              "[Metro/QualifierOverrideMismatch] Overridden declarations must have matching qualifier annotations:"
+            )
+            for (e in qualifierMismatches) {
+              appendLine()
+              appendLine("  ${e.type} '${bold(e.declarationFqName)}'")
+              appendLine(
+                "    expected: ${bold(e.expectedQualifier)} (from ${e.overriddenSymbolFqName})"
+              )
+              appendLine("    actual:   ${bold(e.actualQualifier)}")
+            }
+          }
         }
-
       reportCompat(
-        sequenceOf(errorDecl, graphDeclaration.sourceGraphIfMetroGraph),
-        MetroDiagnostics.METRO_ERROR,
+        sequenceOf(graphDeclaration.sourceGraphIfMetroGraph),
+        MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH,
         message,
       )
-      hasErrors = true
+      qualifierMismatches.clear()
     }
 
     context(traceScope: TraceScope)
@@ -1195,6 +1232,9 @@ internal class GraphNodes(
         )
         exitProcessing()
       }
+
+      // Flush any batched qualifier mismatch errors
+      flushQualifierMismatchErrors()
 
       // Exit after collecting all errors
       if (hasErrors) {

@@ -21,6 +21,6 @@ class FakeA(b: B, realA: RealA) : A {
 }
 
 @DependencyGraph(Unit::class)
-interface <!METRO_ERROR!>CycleGraph<!> {
+interface <!GRAPH_DEPENDENCY_CYCLE!>CycleGraph<!> {
   val a: A
 }

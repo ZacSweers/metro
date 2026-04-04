@@ -6,6 +6,7 @@ import androidx.tracing.AbstractTraceDriver
 import androidx.tracing.wire.TraceDriver as WireTraceDriver
 import androidx.tracing.wire.TraceSink
 import dev.zacsweers.metro.compiler.LOG_PREFIX
+import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -56,6 +57,8 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   val lookupTracker: LookupTracker?
   val expectActualTracker: ExpectActualTracker
+
+  val messageRenderer: MessageRenderer
 
   val irTypeSystemContext: IrTypeSystemContext
 
@@ -193,6 +196,8 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
         } else {
           expectActualTracker
         }
+
+      override val messageRenderer: MessageRenderer = MessageRenderer()
 
       override val irTypeSystemContext: IrTypeSystemContext =
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)

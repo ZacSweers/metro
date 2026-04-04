@@ -36,6 +36,14 @@ internal interface BindingGraph<
   fun TypeKey.dependsOn(other: TypeKey): Boolean
 }
 
+/** Kind of diagnostic error from the binding graph, used to select the appropriate factory. */
+internal enum class BindingGraphDiagnosticKind {
+  MISSING_BINDING,
+  DUPLICATE_BINDING,
+  DEPENDENCY_CYCLE,
+  GENERIC,
+}
+
 // TODO instead of implementing BindingGraph, maybe just make this a builder and have build()
 //  produce one?
 internal open class MutableBindingGraph<
@@ -67,8 +75,14 @@ internal open class MutableBindingGraph<
     { _, _, _ ->
       emptySet()
     },
-  private val onError: (String, BindingStack) -> Unit = { message, _ -> error(message) },
-  private val onHardError: (String, BindingStack) -> Nothing = { message, _ -> error(message) },
+  private val onError: (String, BindingStack, BindingGraphDiagnosticKind) -> Unit =
+    { message, _, _ ->
+      error(message)
+    },
+  private val onHardError: (String, BindingStack, BindingGraphDiagnosticKind) -> Nothing =
+    { message, _, _ ->
+      error(message)
+    },
   private val missingBindingHints: (key: TypeKey) -> MissingBindingHints<Type, TypeKey> = {
     MissingBindingHints()
   },
@@ -417,7 +431,7 @@ internal open class MutableBindingGraph<
         short = false,
       )
     }
-    onHardError(message, stack)
+    onHardError(message, stack, BindingGraphDiagnosticKind.DEPENDENCY_CYCLE)
   }
 
   fun replace(binding: Binding) {
@@ -475,7 +489,7 @@ internal open class MutableBindingGraph<
       extraContent()
       appendBindingStack(bindingStack)
     }
-    onError(message, bindingStack)
+    onError(message, bindingStack, BindingGraphDiagnosticKind.DUPLICATE_BINDING)
   }
 
   override operator fun get(key: TypeKey): Binding? = bindings[key]
@@ -522,7 +536,7 @@ internal open class MutableBindingGraph<
         extraContent()
       }
 
-      onError(message, bindingStack)
+      onError(message, bindingStack, BindingGraphDiagnosticKind.MISSING_BINDING)
     }
   }
 }

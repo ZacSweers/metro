@@ -39,6 +39,7 @@ buildConfig {
 tasks.test {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
+  systemProperty("metro.richDiagnostics", "false")
 }
 
 wire { kotlin { javaInterop = false } }

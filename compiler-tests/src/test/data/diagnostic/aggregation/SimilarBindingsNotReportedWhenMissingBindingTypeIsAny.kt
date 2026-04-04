@@ -3,7 +3,7 @@
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val <!METRO_ERROR!>any<!>: Any
+  val <!MISSING_BINDING!>any<!>: Any
 
   @Provides fun int(): Int = 3
   @Provides fun str(): String = "string"

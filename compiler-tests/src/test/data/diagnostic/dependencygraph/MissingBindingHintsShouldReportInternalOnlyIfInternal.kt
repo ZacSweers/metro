@@ -14,7 +14,7 @@ class FooImpl : Base
 // MODULE: main(lib1 core)
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val <!METRO_ERROR!>base<!>: Base
+  val <!MISSING_BINDING!>base<!>: Base
 
   val stringGraph: StringGraph
 }
