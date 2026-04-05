@@ -281,7 +281,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   UNUSED_GRAPH_INPUTS_SEVERITY(
     RawMetroOption(
       name = "unused-graph-inputs-severity",
-      defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
+      defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
       valueDescription = "NONE|WARN|ERROR",
       description =
         "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph).",
@@ -647,7 +647,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   CONTRIBUTES_AS_INJECT(
     RawMetroOption.boolean(
       name = "contributes-as-inject",
-      defaultValue = false,
+      defaultValue = true,
       valueDescription = "<true | false>",
       description =
         "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations",
@@ -680,7 +680,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   PATCH_KLIB_PARAMS(
     RawMetroOption.boolean(
       name = "patch-klib-params",
-      defaultValue = false,
+      defaultValue = true,
       valueDescription = "<true | false>",
       description =
         "Enable/disable patching of klib parameter qualifiers to work around kotlinc bug. Only applies when enable-klib-params-check is also enabled.",
@@ -870,6 +870,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  RICH_DIAGNOSTICS(
+    RawMetroOption.boolean(
+      name = "rich-diagnostics",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable rich diagnostic formatting (ANSI bold, colors, etc.) in error messages. The metro.richDiagnostics system property takes priority over this option if set.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -1034,7 +1045,9 @@ public data class MetroOptions(
     MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP.raw.defaultValue.expectAs(),
   public val generateContributionProviders: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_PROVIDERS.raw.defaultValue.expectAs(),
-  val enableCircuitCodegen: Boolean = MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
+  val enableCircuitCodegen: Boolean =
+    MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
+  public val richDiagnostics: Boolean = MetroOption.RICH_DIAGNOSTICS.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1156,6 +1169,7 @@ public data class MetroOptions(
     public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
     public var generateContributionProviders: Boolean = base.generateContributionProviders
     public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
+    public var richDiagnostics: Boolean = base.richDiagnostics
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1337,6 +1351,7 @@ public data class MetroOptions(
         enableKClassToClassInterop = enableKClassToClassInterop,
         generateContributionProviders = generateContributionProviders,
         enableCircuitCodegen = enableCircuitCodegen,
+        richDiagnostics = richDiagnostics,
       )
     }
 
@@ -1640,6 +1655,7 @@ public data class MetroOptions(
             generateContributionProviders = configuration.getAsBoolean(entry)
           MetroOption.ENABLE_CIRCUIT_CODEGEN ->
             enableCircuitCodegen = configuration.getAsBoolean(entry)
+          RICH_DIAGNOSTICS -> richDiagnostics = configuration.getAsBoolean(entry)
         }
       }
     }
