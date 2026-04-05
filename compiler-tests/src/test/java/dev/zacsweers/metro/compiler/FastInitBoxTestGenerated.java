@@ -472,6 +472,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("PresenterClassMultiModule.kt")
+      public void testPresenterClassMultiModule() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassMultiModule.kt");
+      }
+
+      @Test
       @TestMetadata("PresenterClassNoInjection.kt")
       public void testPresenterClassNoInjection() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassNoInjection.kt");

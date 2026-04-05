@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR]** Fix Circuit code gen not reporting contribution hints for downstream compilations.
+
 0.13.0
 ------
 
