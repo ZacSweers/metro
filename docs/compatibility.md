@@ -64,6 +64,7 @@ The following Kotlin versions are tested via CI:
 | Kotlin Version |
 |----------------|
 | 2.4.0-dev-2124 |
+| 2.4.0-Beta1    |
 | 2.3.20         |
 | 2.3.10         |
 | 2.3.0          |
