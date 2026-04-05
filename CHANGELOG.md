@@ -4,9 +4,15 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- Add a `@ExposeImplBinding` annotation to disable `generateContributionProviders` behavior on a per-class basis.
+- **[FIR]** Warn if injecting an impl type when `generateContributionProviders` and the class isn't annotated `@ExposeImplBinding`.
+
 ### Fixes
 
 - **[FIR]** Fix Circuit code gen not reporting contribution hints for downstream compilations.
+- **[IR]** Fix default parameter expressions not being copied when `generateContributionProviders` is enabled.
 
 0.13.0
 ------

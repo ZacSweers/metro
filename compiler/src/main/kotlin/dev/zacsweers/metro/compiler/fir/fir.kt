@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
 import dev.zacsweers.metro.compiler.expectAs
@@ -152,6 +153,21 @@ internal val FirExpression.isResolved: Boolean
 
 internal fun FirBasedSymbol<*>.isAnnotatedInject(session: FirSession): Boolean {
   return isAnnotatedWithAny(session, session.classIds.injectAnnotations)
+}
+
+/**
+ * Returns `true` if factory generation should be skipped for this class because
+ * [generateContributionProviders][MetroOptions.generateContributionProviders] is enabled and the
+ * class has `@Contributes*` annotations — unless the class is annotated with `@ExposeImplBinding`,
+ * which opts out of the skip.
+ */
+internal fun FirBasedSymbol<*>.shouldSkipFactoryForContributionProvider(
+  session: FirSession
+): Boolean {
+  if (!session.metroFirBuiltIns.options.generateContributionProviders) return false
+  if (isAnnotatedWithAny(session, setOf(session.classIds.exposeImplBindingAnnotation))) return false
+  if (!isAnnotatedWithAny(session, session.classIds.allContributesAnnotations)) return false
+  return true
 }
 
 internal fun FirBasedSymbol<*>.isBinds(session: FirSession): Boolean {

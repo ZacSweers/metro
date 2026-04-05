@@ -53,6 +53,9 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
   internal val hasMemberInjectionsAnnotationPredicate =
     annotated(Symbols.ClassIds.HasMemberInjections.asSingleFqName())
 
+  internal val exposeImplBindingPredicate =
+    annotated(Symbols.ClassIds.ExposeImplBinding.asSingleFqName())
+
   internal val assistedFactoryAnnotationPredicate =
     annotated(classIds.assistedFactoryAnnotations.asFqNames())
 

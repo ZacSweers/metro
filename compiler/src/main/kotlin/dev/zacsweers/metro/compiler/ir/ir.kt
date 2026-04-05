@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
@@ -293,6 +294,22 @@ internal fun IrConstructorCall.getAnnotationStringValue(name: String): String {
 
 internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>): Boolean {
   return names.any { hasAnnotation(it) }
+}
+
+/**
+ * Returns `true` if factory generation should be skipped for this class because
+ * [generateContributionProviders][MetroOptions.generateContributionProviders] is enabled and the
+ * class has `@Contributes*` annotations — unless the class is annotated with `@ExposeImplBinding`,
+ * which opts out of the skip.
+ */
+internal fun IrAnnotationContainer.shouldSkipFactoryForContributionProvider(
+  options: MetroOptions,
+  classIds: ClassIds,
+): Boolean {
+  if (!options.generateContributionProviders) return false
+  if (hasAnnotation(classIds.exposeImplBindingAnnotation)) return false
+  if (!annotationsIn(classIds.allContributesAnnotations).any()) return false
+  return true
 }
 
 internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<IrConstructorCall> {

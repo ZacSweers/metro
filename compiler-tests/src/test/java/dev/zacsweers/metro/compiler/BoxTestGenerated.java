@@ -268,6 +268,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("defaultParameters.kt")
+      public void testDefaultParameters() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/defaultParameters.kt");
+      }
+
+      @Test
+      @TestMetadata("exposeImplBinding.kt")
+      public void testExposeImplBinding() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/exposeImplBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("implTypeNotDirectlyAccessible.kt")
+      public void testImplTypeNotDirectlyAccessible() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/implTypeNotDirectlyAccessible.kt");
+      }
+
+      @Test
       @TestMetadata("intoMap.kt")
       public void testIntoMap() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/intoMap.kt");

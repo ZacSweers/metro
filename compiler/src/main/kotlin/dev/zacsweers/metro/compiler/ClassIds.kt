@@ -118,6 +118,8 @@ public class ClassIds(
   internal val graphPrivateAnnotation =
     Symbols.FqNames.metroRuntimePackage.classIdOf("GraphPrivate")
 
+  internal val exposeImplBindingAnnotation = Symbols.ClassIds.ExposeImplBinding
+
   internal val optionalBindingAnnotations =
     setOf(
       Symbols.FqNames.metroRuntimePackage.classIdOf("OptionalBinding"),
