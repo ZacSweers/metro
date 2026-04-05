@@ -75,14 +75,7 @@ internal open class MutableBindingGraph<
     { _, _, _ ->
       emptySet()
     },
-  private val onError: (String, BindingStack, BindingGraphDiagnosticKind) -> Unit =
-    { message, _, _ ->
-      error(message)
-    },
-  private val onHardError: (String, BindingStack, BindingGraphDiagnosticKind) -> Nothing =
-    { message, _, _ ->
-      error(message)
-    },
+  private val errorReporter: ErrorReporter<BindingStack> = ErrorReporter.throwing(),
   private val missingBindingHints: (key: TypeKey) -> MissingBindingHints<Type, TypeKey> = {
     MissingBindingHints()
   },
@@ -431,7 +424,7 @@ internal open class MutableBindingGraph<
         short = false,
       )
     }
-    onHardError(message, stack, BindingGraphDiagnosticKind.DEPENDENCY_CYCLE)
+    errorReporter.reportFatal(BindingGraphDiagnosticKind.DEPENDENCY_CYCLE, message, stack)
   }
 
   fun replace(binding: Binding) {
@@ -489,7 +482,7 @@ internal open class MutableBindingGraph<
       extraContent()
       appendBindingStack(bindingStack)
     }
-    onError(message, bindingStack, BindingGraphDiagnosticKind.DUPLICATE_BINDING)
+    errorReporter.report(BindingGraphDiagnosticKind.DUPLICATE_BINDING, message, bindingStack)
   }
 
   override operator fun get(key: TypeKey): Binding? = bindings[key]
@@ -536,7 +529,7 @@ internal open class MutableBindingGraph<
         extraContent()
       }
 
-      onError(message, bindingStack, BindingGraphDiagnosticKind.MISSING_BINDING)
+      errorReporter.report(BindingGraphDiagnosticKind.MISSING_BINDING, message, bindingStack)
     }
   }
 }

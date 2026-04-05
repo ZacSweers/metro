@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.graph.BindingGraphDiagnosticKind
+import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
@@ -90,7 +91,7 @@ internal class IrBindingGraph(
   bindingLookup: BindingLookup,
   private val contributionData: IrContributionData,
   private val boundTypeResolver: IrBoundTypeResolver,
-) : IrMetroContext by metroContext {
+) : IrMetroContext by metroContext, ErrorReporter<IrBindingStack> {
   private var hasErrors = false
 
   private data class PendingError(
@@ -110,12 +111,30 @@ internal class IrBindingGraph(
     pendingErrors += PendingError(factory, declaration, message)
   }
 
+  override fun report(kind: BindingGraphDiagnosticKind, message: String, stack: IrBindingStack) {
+    val factory = kind.toDiagnosticFactory()
+    val element =
+      stack.lastEntryOrGraph?.originalDeclarationIfOverride()
+        ?: node.reportableSourceGraphDeclaration
+    onError(message, element, factory)
+  }
+
+  override fun reportFatal(
+    kind: BindingGraphDiagnosticKind,
+    message: String,
+    stack: IrBindingStack,
+  ): Nothing {
+    report(kind, message, stack)
+    flush()
+    exitProcessing()
+  }
+
   /**
    * Flushes collected errors, grouping by (factory, declaration) to batch multiple messages
    * targeting the same diagnostic slot into a single report. This avoids kotlinc's diagnostic
    * deduplication which drops subsequent reports with the same factory on the same source element.
    */
-  private fun flushErrors() {
+  override fun flush() {
     pendingErrors
       .groupBy { it.factory to it.declaration }
       .forEach { (key, errors) ->
@@ -166,22 +185,7 @@ internal class IrBindingGraph(
           reportDuplicateBindings(key, bindings, stack)
         }
       },
-      onError = { message, stack, kind ->
-        val factory = kind.toDiagnosticFactory()
-        val element =
-          stack.lastEntryOrGraph?.originalDeclarationIfOverride()
-            ?: node.reportableSourceGraphDeclaration
-        onError(message, element, factory)
-      },
-      onHardError = { message, stack, kind ->
-        val factory = kind.toDiagnosticFactory()
-        val element =
-          stack.lastEntryOrGraph?.originalDeclarationIfOverride()
-            ?: node.reportableSourceGraphDeclaration
-        onError(message, element, factory)
-        flushErrors()
-        exitProcessing()
-      },
+      errorReporter = this,
       missingBindingHints = { key ->
         MissingBindingHints(
           missingBindingHints(key),
@@ -355,7 +359,7 @@ internal class IrBindingGraph(
 
     if (hasErrors) {
       // Flush any collected errors before returning
-      flushErrors()
+      flush()
       // Clear out the binding lookup now that we're done
       _bindingLookup = null
       return BindingGraphResult.ERROR
@@ -495,7 +499,7 @@ internal class IrBindingGraph(
       }
 
     // Flush any remaining collected errors
-    flushErrors()
+    flush()
 
     // Clear out the binding lookup now that we're done
     _bindingLookup = null
