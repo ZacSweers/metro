@@ -4,6 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+### Changes
+
+- Test Android Studio Panda 3 stable.
+- Test Android Studio Panda 4 canaries.
+
 0.13.0
 ------
 
@@ -66,8 +71,6 @@ class HomeFactory(...) : BaseFactory<HomeFactory>
 ### Changes
 
 - Support Kotlin `2.4.0-Beta1`.
-- Test Android Studio Panda 3 stable.
-- Test Android Studio Panda 4 canaries.
 - Removed `@Assisted.value`. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#assisted-injection) on why in case you missed this! TL;DR, Metro matches by parameter names going forward.
 - Remove deprecated compiler options and Gradle extension properties.
     - `chunkFieldInits`
