@@ -51,6 +51,7 @@ import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.renderDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
@@ -407,10 +408,12 @@ internal class GraphNodes(
     ) {
       if (bindingStack.entryFor(graphTypeKey) != null) {
         // TODO dagger doesn't appear to error for this case to model off of
-        val message = buildString {
+        val message = renderDiagnostic {
           if (bindingStack.entries.size == 1) {
             // If there's just one entry, specify that it's a self-referencing cycle for clarity
-            appendLine("Graph dependency cycle detected! The below graph depends on itself.")
+            appendLine(
+              "Graph dependency cycle detected! The below graph ${bold("depends on itself")}."
+            )
           } else {
             appendLine("Graph dependency cycle detected!")
           }
@@ -474,13 +477,16 @@ internal class GraphNodes(
 
     private fun flushQualifierMismatchErrors() {
       if (qualifierMismatches.isEmpty()) return
-      val bold = metroContext.messageRenderer::bold
       val message =
         if (qualifierMismatches.size == 1) {
           val e = qualifierMismatches[0]
-          "[Metro/QualifierOverrideMismatch] Overridden ${e.type} '${e.declarationFqName}' must have the same qualifier annotations as the overridden ${e.type}. However, the final ${e.type} qualifier is ${bold(e.actualQualifier)} but overridden symbol ${e.overriddenSymbolFqName} has ${bold(e.expectedQualifier)}."
+          renderDiagnostic {
+            append(
+              "[Metro/QualifierOverrideMismatch] Overridden ${e.type} '${bold(e.declarationFqName)}' must have the same qualifier annotations as the overridden ${e.type}. However, the final ${e.type} qualifier is ${red(e.actualQualifier)} but overridden symbol ${e.overriddenSymbolFqName} has ${green(e.expectedQualifier)}."
+            )
+          }
         } else {
-          buildString {
+          renderDiagnostic {
             appendLine(
               "[Metro/QualifierOverrideMismatch] Overridden declarations must have matching qualifier annotations:"
             )
@@ -488,9 +494,9 @@ internal class GraphNodes(
               appendLine()
               appendLine("  ${e.type} '${bold(e.declarationFqName)}'")
               appendLine(
-                "    expected: ${bold(e.expectedQualifier)} (from ${e.overriddenSymbolFqName})"
+                "    expected: ${green(e.expectedQualifier)} (from ${e.overriddenSymbolFqName})"
               )
-              appendLine("    actual:   ${bold(e.actualQualifier)}")
+              appendLine("    actual:   ${red(e.actualQualifier)}")
             }
           }
         }

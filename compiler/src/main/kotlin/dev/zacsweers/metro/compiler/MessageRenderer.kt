@@ -60,6 +60,28 @@ internal class MessageRenderer(val richOutput: Boolean = RICH_OUTPUT_ENABLED) {
   class MessageBuilder(private val renderer: MessageRenderer) : Appendable {
     private val sb = StringBuilder()
 
+    fun bold(text: String): String = renderer.bold(text)
+
+    fun italic(text: String): String = renderer.italic(text)
+
+    fun red(text: String): String = renderer.red(text)
+
+    fun green(text: String): String = renderer.green(text)
+
+    fun yellow(text: String): String = renderer.yellow(text)
+
+    fun underline(text: String): String = renderer.underline(text)
+
+    fun curlyUnderline(text: String): String = renderer.curlyUnderline(text)
+
+    fun strikethrough(text: String): String = renderer.strikethrough(text)
+
+    fun dim(text: String): String = renderer.dim(text)
+
+    fun code(text: String): String = renderer.code(text)
+
+    fun codeBlock(text: String, indent: String = "    "): String = renderer.codeBlock(text, indent)
+
     fun append(text: String) = apply { sb.append(text) }
 
     override fun append(csq: CharSequence?): MessageBuilder = apply { sb.append(csq) }
@@ -94,6 +116,19 @@ internal class MessageRenderer(val richOutput: Boolean = RICH_OUTPUT_ENABLED) {
 
     fun appendCodeBlock(text: String, indent: String = "    ") = apply {
       sb.append(renderer.codeBlock(text, indent))
+    }
+
+    fun appendLineWithUnderlinedContent(
+      content: String,
+      target: String = content,
+      char: Char = '~',
+    ) = apply {
+      sb.appendLine(content)
+      val lines = sb.lines()
+      val index = lines[lines.lastIndex - 1].lastIndexOf(target)
+      if (index == -1) return@apply
+      repeat(index) { sb.append(' ') }
+      repeat(target.length) { sb.append(char) }
     }
 
     override fun toString(): String = sb.toString()

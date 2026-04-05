@@ -186,6 +186,7 @@ internal class IrBindingGraph(
         }
       },
       errorReporter = this,
+      messageRenderer = messageRenderer,
       missingBindingHints = { key ->
         MissingBindingHints(
           missingBindingHints(key),

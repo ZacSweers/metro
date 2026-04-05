@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.graph
 import androidx.collection.MutableObjectIntMap
 import androidx.collection.MutableScatterMap
 import androidx.collection.ScatterMap
+import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.allElementsAreEqual
 import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.ir.graph.appendBindingStack
@@ -79,6 +80,7 @@ internal open class MutableBindingGraph<
   private val missingBindingHints: (key: TypeKey) -> MissingBindingHints<Type, TypeKey> = {
     MissingBindingHints()
   },
+  protected val messageRenderer: MessageRenderer = MessageRenderer(),
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   override val bindings = MutableScatterMap<TypeKey, Binding>(256)
@@ -366,18 +368,17 @@ internal open class MutableBindingGraph<
   }
 
   private fun reportCycle(fullCycle: List<BindingStackEntry>, stack: BindingStack): Nothing {
-    val message = buildString {
+    val message = messageRenderer.buildMessage {
       appendLine(
-        "[Metro/DependencyCycle] Found a dependency cycle while processing '${stack.graphFqName.asString()}'."
+        "[Metro/DependencyCycle] Found a dependency cycle while processing ${bold("'${stack.graphFqName.asString()}'")}."
       )
       // Print a simple diagram of the cycle first
       val indent = "    "
       appendLine("Cycle:")
       if (fullCycle.size == 2) {
         val key = fullCycle[0].contextKey.typeKey
-        append(
-          "$indent${key.render(short = true)} <--> ${key.render(short = true)} (depends on itself)"
-        )
+        val rendered = bold(key.render(short = true))
+        append("$indent$rendered <--> $rendered (depends on itself)")
       } else {
         val singleLine = fullCycle.size < 5
         fullCycle.joinWithDynamicSeparatorTo(
@@ -392,7 +393,7 @@ internal open class MutableBindingGraph<
               }
               val prevBinding = bindings.getValue(prev.typeKey)
               if (prevBinding.isAlias) {
-                append("~~>")
+                append(dim("~~>"))
               } else {
                 append("-->")
               }
@@ -401,7 +402,7 @@ internal open class MutableBindingGraph<
           },
           prefix = indent,
         ) {
-          it.contextKey.render(short = true)
+          bold(it.contextKey.render(short = true))
         }
       }
 
@@ -453,10 +454,10 @@ internal open class MutableBindingGraph<
     reportDuplicateBindings(key, bindings.map { it.renderLocationDiagnostic() }, bindingStack) {
       if (bindings.distinctBy { System.identityHashCode(it) }.size == 1) {
         appendLine()
-        appendLine("(Hint) Bindings are all the same instance")
+        appendLine(dim("(Hint) Bindings are all the same instance"))
       } else if (bindings.allElementsAreEqual()) {
         appendLine()
-        appendLine("(Hint) Bindings are all equal")
+        appendLine(dim("(Hint) Bindings are all equal"))
       }
     }
   }
@@ -465,14 +466,14 @@ internal open class MutableBindingGraph<
     key: TypeKey,
     locations: List<LocationDiagnostic>,
     bindingStack: BindingStack,
-    extraContent: StringBuilder.() -> Unit = {},
+    extraContent: MessageRenderer.MessageBuilder.() -> Unit = {},
   ) {
     if (locations.size < 2) {
       reportCompilerBug("Must have at least two locations to report duplicate bindings")
     }
-    val message = buildString {
+    val message = messageRenderer.buildMessage {
       appendLine(
-        "[Metro/DuplicateBinding] Multiple bindings found for ${key.render(short = false, includeQualifier = true)}"
+        "[Metro/DuplicateBinding] Multiple bindings found for ${bold(key.render(short = false, includeQualifier = true))}"
       )
       appendLine()
       for (location in locations) {
@@ -497,14 +498,14 @@ internal open class MutableBindingGraph<
   fun reportMissingBinding(
     typeKey: TypeKey,
     bindingStack: BindingStack,
-    extraContent: StringBuilder.() -> Unit = {},
+    extraContent: MessageRenderer.MessageBuilder.() -> Unit = {},
   ) {
     if (reportedMissingKeys.add(typeKey)) {
-      val message = buildString {
+      val message = messageRenderer.buildMessage {
         append(
           "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
         )
-        appendLine(typeKey.render(short = false))
+        appendLine(bold(typeKey.render(short = false)))
         appendLine()
         appendBindingStack(bindingStack, short = false)
         val hints = missingBindingHints(typeKey)
@@ -514,7 +515,7 @@ internal open class MutableBindingGraph<
         if (messages.isNotEmpty() || similarBindings.isNotEmpty()) {
           if (messages.isNotEmpty()) {
             appendLine()
-            appendLine("(Hint)")
+            appendLine(dim("(Hint)"))
             messages.joinTo(this, separator = "\n\n")
           }
 
@@ -522,7 +523,9 @@ internal open class MutableBindingGraph<
           if (similarBindings.isNotEmpty() && typeKey.render(short = false) != "kotlin.Any") {
             appendLine()
             appendLine("Similar bindings:")
-            similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
+            for (binding in similarBindings.values.map { "  - $it" }.sorted()) {
+              appendLine(binding)
+            }
           }
         }
 

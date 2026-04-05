@@ -197,7 +197,8 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
           expectActualTracker
         }
 
-      override val messageRenderer: MessageRenderer = MessageRenderer()
+      override val messageRenderer: MessageRenderer =
+        MessageRenderer(MessageRenderer.resolveRichOutput(options.richDiagnostics))
 
       override val irTypeSystemContext: IrTypeSystemContext =
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)
@@ -272,6 +273,11 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     }
   }
 }
+
+/** Builds a diagnostic message string using the [MessageRenderer.MessageBuilder] DSL. */
+internal inline fun IrMetroContext.renderDiagnostic(
+  body: MessageRenderer.MessageBuilder.() -> Unit
+): String = messageRenderer.buildMessage(body)
 
 /** See the other [writeDiagnostic] */
 context(context: IrMetroContext)

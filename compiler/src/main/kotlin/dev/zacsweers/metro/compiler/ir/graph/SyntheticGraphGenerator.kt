@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -29,6 +28,7 @@ import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
+import dev.zacsweers.metro.compiler.ir.renderDiagnostic
 import dev.zacsweers.metro.compiler.ir.renderLocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeClassOrNull
@@ -344,9 +344,9 @@ internal class SyntheticGraphGenerator(
         if (typeClashes.size == 1) {
           typeClashes[0]
         } else {
-          buildString {
+          renderDiagnostic {
             appendLine(
-              "[Metro/IncompatibleReturnTypes] ${typeClashes.size} incompatible return type clashes found:"
+              "[Metro/IncompatibleReturnTypes] ${bold("${typeClashes.size}")} incompatible return type clashes found:"
             )
             for (clash in typeClashes) {
               appendLine()
@@ -365,9 +365,9 @@ internal class SyntheticGraphGenerator(
         if (annotationClashes.size == 1) {
           annotationClashes[0]
         } else {
-          buildString {
+          renderDiagnostic {
             appendLine(
-              "[Metro/IncompatibleOverrides] ${annotationClashes.size} annotation clashes found:"
+              "[Metro/IncompatibleOverrides] ${bold("${annotationClashes.size}")} annotation clashes found:"
             )
             for (clash in annotationClashes) {
               appendLine()
@@ -489,15 +489,15 @@ internal class SyntheticGraphGenerator(
 
     val graphName = sourceGraphName ?: "graph"
 
-    return buildString {
+    return renderDiagnostic {
       appendLine(
-        "The following declarations clash with each other when merging supertypes into a generated `$graphName` graph impl class:"
+        "The following declarations clash with each other when merging supertypes into a generated ${bold("`$graphName`")} graph impl class:"
       )
       appendLine()
       appendLine("  ${loc1.location}")
-      loc1.description?.let { appendLine("    $it (defined in '$parent1')") }
+      loc1.description?.let { appendLine("    $it (defined in ${dim("'$parent1'")})") }
       appendLine("  ${loc2.location}")
-      loc2.description?.let { appendLine("    $it (defined in '$parent2')") }
+      loc2.description?.let { appendLine("    $it (defined in ${dim("'$parent2'")})") }
       appendLine()
       append(
         "Declarations with the same name and compatible return types must have compatible DI annotations too. " +
@@ -521,13 +521,13 @@ internal class SyntheticGraphGenerator(
     val type1Str = type1.render(short = false)
     val type2Str = type2.render(short = false)
 
-    return buildString {
-      appendLine("Incompatible return types: '$type1Str' vs '$type2Str'")
+    return renderDiagnostic {
+      appendLine("Incompatible return types: ${bold("'$type1Str'")} vs ${bold("'$type2Str'")}")
       appendLine()
       appendLine("  ${loc1.location}")
       loc1.description?.let {
         appendLineWithUnderlinedContent(
-          content = "    $it (defined in '$parent1')",
+          content = "    $it (defined in ${dim("'$parent1'")})",
           target = type1Str,
         )
       }
@@ -535,7 +535,7 @@ internal class SyntheticGraphGenerator(
       appendLine("  ${loc2.location}")
       loc2.description?.let {
         appendLineWithUnderlinedContent(
-          content = "    $it (defined in '$parent2')",
+          content = "    $it (defined in ${dim("'$parent2'")})",
           target = type2Str,
         )
       }
