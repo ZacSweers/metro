@@ -144,8 +144,13 @@ dependencies {
   testRuntimeOnly("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
   // Cover for https://github.com/tschuchortdev/kotlin-compile-testing/issues/274
   testImplementation(libs.kotlin.aptEmbeddable)
-  testImplementation(libs.kct)
-  testImplementation(libs.kct.ksp)
+  if (testCompilerVersion.startsWith("2.4")) {
+    testImplementation(libs.kct)
+    testImplementation(libs.kct.ksp)
+  } else {
+    testImplementation("dev.zacsweers.kctfork:core:0.13.0-alpha01")
+    testImplementation("dev.zacsweers.kctfork:ksp:0.13.0-alpha01")
+  }
   testImplementation(libs.okio)
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
