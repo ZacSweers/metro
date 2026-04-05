@@ -57,10 +57,18 @@ internal class MessageRenderer(val richOutput: Boolean = RICH_OUTPUT_ENABLED) {
     return MessageBuilder(this).apply(block).toString()
   }
 
-  class MessageBuilder(private val renderer: MessageRenderer) {
+  class MessageBuilder(private val renderer: MessageRenderer) : Appendable {
     private val sb = StringBuilder()
 
     fun append(text: String) = apply { sb.append(text) }
+
+    override fun append(csq: CharSequence?): MessageBuilder = apply { sb.append(csq) }
+
+    override fun append(csq: CharSequence?, start: Int, end: Int): MessageBuilder = apply {
+      sb.append(csq, start, end)
+    }
+
+    override fun append(c: Char): MessageBuilder = apply { sb.append(c) }
 
     fun appendLine(text: String = "") = apply { sb.appendLine(text) }
 
@@ -109,7 +117,15 @@ internal class MessageRenderer(val richOutput: Boolean = RICH_OUTPUT_ENABLED) {
     /** Strips all ANSI escape codes from [text]. */
     fun stripAnsi(text: String): String = text.replace(ANSI_PATTERN, "")
 
-    val RICH_OUTPUT_ENABLED: Boolean =
-      System.getProperty("metro.richDiagnostics", "true").toBoolean()
+    private val RICH_OUTPUT_SYSPROP: Boolean? =
+      System.getProperty("metro.richDiagnostics")?.toBoolean()
+
+    val RICH_OUTPUT_ENABLED: Boolean = RICH_OUTPUT_SYSPROP ?: true
+
+    /**
+     * Resolves whether rich output is enabled, with the system property taking priority over the
+     * compiler option.
+     */
+    fun resolveRichOutput(optionValue: Boolean): Boolean = RICH_OUTPUT_SYSPROP ?: optionValue
   }
 }
