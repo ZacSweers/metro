@@ -22,29 +22,47 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       return testServices.testInfo.methodName != singleTest
     }
 
-    // COMPILER_VERSION supersedes MIN/MAX_COMPILER_VERSION
-    targetKotlinVersion(testServices)?.let { (targetVersion, requiresFullMatch) ->
-      return !versionMatches(targetVersion, requiresFullMatch, COMPILER_VERSION)
-    }
-
-    // Min/max version checks use KotlinVersion which compares only major.minor.patch numerically,
-    // ignoring classifiers. This means dev builds like "2.4.0-dev-1234" are treated as equal to
-    // "2.4.0" for comparison purposes, so MIN_COMPILER_VERSION: 2.4 correctly includes dev builds.
     val directives = testServices.moduleStructure.allDirectives
+    return shouldSkipForCompilerVersion(
+      compilerVersion = COMPILER_VERSION,
+      targetVersion = directives[MetroDirectives.COMPILER_VERSION].firstOrNull(),
+      minVersion = directives[MetroDirectives.MIN_COMPILER_VERSION].firstOrNull(),
+      maxVersion = directives[MetroDirectives.MAX_COMPILER_VERSION].firstOrNull(),
+    )
+  }
 
-    val minVersion =
-      directives[MetroDirectives.MIN_COMPILER_VERSION].firstOrNull()?.let {
-        KotlinVersion.parse(it).first
+  companion object {
+    /**
+     * Determines whether a test should be skipped based on compiler version directives.
+     *
+     * [targetVersion] (from `COMPILER_VERSION`) supersedes [minVersion]/[maxVersion] — if set, the
+     * min/max directives are ignored.
+     *
+     * Version comparisons use [KotlinVersion] which compares only major.minor.patch numerically,
+     * ignoring classifiers. This means dev builds like "2.4.0-dev-1234" are treated as equal to
+     * "2.4.0" for comparison purposes, so `MIN_COMPILER_VERSION: 2.4` correctly includes dev
+     * builds.
+     */
+    fun shouldSkipForCompilerVersion(
+      compilerVersion: KotlinVersion,
+      targetVersion: String? = null,
+      minVersion: String? = null,
+      maxVersion: String? = null,
+    ): Boolean {
+      // COMPILER_VERSION supersedes MIN/MAX_COMPILER_VERSION
+      if (targetVersion != null) {
+        val (target, requiresFullMatch) = KotlinVersion.parse(targetVersion)
+        return !versionMatches(target, requiresFullMatch, compilerVersion)
       }
-    if (minVersion != null && COMPILER_VERSION < minVersion) return true
 
-    val maxVersion =
-      directives[MetroDirectives.MAX_COMPILER_VERSION].firstOrNull()?.let {
-        KotlinVersion.parse(it).first
-      }
-    if (maxVersion != null && COMPILER_VERSION > maxVersion) return true
+      val min = minVersion?.let { KotlinVersion.parse(it).first }
+      if (min != null && compilerVersion < min) return true
 
-    return false
+      val max = maxVersion?.let { KotlinVersion.parse(it).first }
+      if (max != null && compilerVersion > max) return true
+
+      return false
+    }
   }
 }
 
