@@ -1,5 +1,6 @@
 // ENABLE_CIRCUIT
 // GENERATE_CONTRIBUTION_HINTS_IN_FIR
+// MIN_COMPILER_VERSION: 2.3.20
 
 // Ensures multi-module contribution is wired up correctly
 

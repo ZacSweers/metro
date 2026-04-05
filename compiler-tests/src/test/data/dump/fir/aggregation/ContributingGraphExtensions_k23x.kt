@@ -1,4 +1,4 @@
-// COMPILER_VERSION: 2.3
+// MIN_COMPILER_VERSION: 2.3
 
 abstract class LoggedInScope
 

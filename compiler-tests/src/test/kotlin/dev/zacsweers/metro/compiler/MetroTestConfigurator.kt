@@ -22,8 +22,29 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       return testServices.testInfo.methodName != singleTest
     }
 
-    val (targetVersion, requiresFullMatch) = targetKotlinVersion(testServices) ?: return false
-    return !versionMatches(targetVersion, requiresFullMatch, COMPILER_VERSION)
+    // COMPILER_VERSION supersedes MIN/MAX_COMPILER_VERSION
+    targetKotlinVersion(testServices)?.let { (targetVersion, requiresFullMatch) ->
+      return !versionMatches(targetVersion, requiresFullMatch, COMPILER_VERSION)
+    }
+
+    // Min/max version checks use KotlinVersion which compares only major.minor.patch numerically,
+    // ignoring classifiers. This means dev builds like "2.4.0-dev-1234" are treated as equal to
+    // "2.4.0" for comparison purposes, so MIN_COMPILER_VERSION: 2.4 correctly includes dev builds.
+    val directives = testServices.moduleStructure.allDirectives
+
+    val minVersion =
+      directives[MetroDirectives.MIN_COMPILER_VERSION].firstOrNull()?.let {
+        KotlinVersion.parse(it).first
+      }
+    if (minVersion != null && COMPILER_VERSION < minVersion) return true
+
+    val maxVersion =
+      directives[MetroDirectives.MAX_COMPILER_VERSION].firstOrNull()?.let {
+        KotlinVersion.parse(it).first
+      }
+    if (maxVersion != null && COMPILER_VERSION > maxVersion) return true
+
+    return false
   }
 }
 
