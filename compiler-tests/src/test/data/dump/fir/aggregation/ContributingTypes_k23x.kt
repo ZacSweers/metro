@@ -1,4 +1,4 @@
-// MIN_COMPILER_VERSION: 2.3
+// COMPILER_VERSION: 2.3
 
 @ContributesTo(AppScope::class)
 interface ContributedInterface
