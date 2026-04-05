@@ -74,6 +74,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isMarkedNullable
@@ -373,6 +374,12 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       resolveBoundType(contributingClassSymbol, matchingContribution)
         ?: contributingClassSymbol.defaultType()
 
+    val isAssistedFactory =
+      contributingClassSymbol.isAnnotatedWithAny(
+        session,
+        session.classIds.assistedFactoryAnnotations,
+      )
+
     val function =
       if (useSyntheticScoped) {
         // Wrapper function: takes @Named("metro_scoped_...") Any? parameter, returns bound type
@@ -392,6 +399,22 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
                 .apply {
                   replaceAnnotationsSafe(annotations + listOf(buildNamedAnnotation(qualifierName)))
                 }
+            valueParameters += param
+          }
+          .also { it.isContributionProviderWrapper = true }
+      } else if (isAssistedFactory) {
+        generateMemberFunction(
+            owner = context.owner,
+            returnTypeProvider = { boundType },
+            callableId = callableId,
+            modality = Modality.FINAL,
+          ) {
+            val param =
+              buildSimpleValueParameter(
+                name = Symbols.Names.instance,
+                type = contributingClassSymbol.defaultType().toFirResolvedTypeRef(),
+                containingFunctionSymbol = this.symbol,
+              )
             valueParameters += param
           }
           .also { it.isContributionProviderWrapper = true }
