@@ -644,10 +644,8 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       // @ExposeImplBinding) fall through to the standard nested contribution path.
       val contributions = findContributions(classSymbol)
       val hasContributesTo = contributions?.any { it is Contribution.ContributesTo } == true
-      val isAssistedFactory =
-        classSymbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
-      return if (hasContributesTo || isAssistedFactory) {
-        // Still need the nested contribution classes for ContributesTo and AssistedFactories
+      // Still need the nested contribution classes for ContributesTo
+      return if (hasContributesTo) {
         contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
       } else {
         emptySet()

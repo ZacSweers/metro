@@ -171,9 +171,13 @@ internal fun FirBasedSymbol<*>.isAnnotatedInject(session: FirSession): Boolean {
 @OptIn(SymbolInternals::class)
 internal fun FirBasedSymbol<*>.usesContributionProviderPath(session: FirSession): Boolean {
   if (!session.metroFirBuiltIns.options.generateContributionProviders) return false
-  if (isAnnotatedWithAny(session, setOf(session.classIds.exposeImplBindingAnnotation))) return false
   if (this is FirClassSymbol<*> && fir.isExtensionGenerated == true) return false
-  if (!isAnnotatedWithAny(session, session.classIds.allContributesAnnotations)) return false
+  if (isAnnotatedWithAny(session, session.classIds.contributionProviderExclusionAnnotations))
+    return false
+  if (
+    !isAnnotatedWithAny(session, session.classIds.contributesBindingLikeAnnotationsWithContainers)
+  )
+    return false
   return true
 }
 
