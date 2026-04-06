@@ -286,6 +286,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("implicitClassKeyMapKey.kt")
+      public void testImplicitClassKeyMapKey() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/implicitClassKeyMapKey.kt");
+      }
+
+      @Test
       @TestMetadata("intoMap.kt")
       public void testIntoMap() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/intoMap.kt");
