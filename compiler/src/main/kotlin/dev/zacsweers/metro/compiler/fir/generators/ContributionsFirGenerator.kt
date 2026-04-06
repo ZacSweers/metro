@@ -181,6 +181,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     register(session.predicates.contributesAnnotationPredicate)
     register(session.predicates.bindingContainerPredicate)
     register(session.predicates.mapKeysPredicate)
+    register(session.predicates.assistedFactoryAnnotationPredicate)
   }
 
   /** Computes a deterministic holder ClassId from a contributing class. No scope resolution. */
@@ -199,6 +200,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       session.predicateBasedProvider
         .getSymbolsByPredicate(session.predicates.contributesAnnotationPredicate)
         .filterIsInstance<FirClassSymbol<*>>()
+        .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations) }
 
     for (contributingClass in contributingClasses) {
       val classId = holderClassId(contributingClass.classId)
@@ -635,8 +637,13 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       // (binding contributions are generated as top-level holder classes instead)
       val contributions = findContributions(classSymbol)
       val hasContributesTo = contributions?.any { it is Contribution.ContributesTo } == true
-      return if (hasContributesTo) {
-        // Still need the nested contribution classes for ContributesTo
+      val isAssistedFactory =
+        session.predicateBasedProvider.matches(
+          session.predicates.assistedFactoryAnnotationPredicate,
+          classSymbol,
+        )
+      return if (hasContributesTo || isAssistedFactory) {
+        // Still need the nested contribution classes for ContributesTo and AssistedFactories
         contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
       } else {
         emptySet()
