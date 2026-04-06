@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
-import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
@@ -40,6 +39,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -95,10 +95,11 @@ internal class InjectedClassTransformer(
 
     // Skip factory generation when generateContributionProviders is enabled and the class
     // has binding contributions — the contribution provider handles construction.
-    if (
-      options.generateContributionProviders &&
-        declaration.annotationsIn(metroSymbols.classIds.allContributesAnnotations).any()
-    ) {
+    // @ExposeImplBinding opts out of this skip.
+    if (declaration.usesContributionProviderPath(options, metroSymbols.classIds)) {
+      // Cache absence so later lookups (e.g., from BindingLookup) return null instead of
+      // attempting to generate after locking.
+      generatedFactories[declaration.classIdOrFail] = Optional.empty()
       return false
     }
 
@@ -112,8 +113,8 @@ internal class InjectedClassTransformer(
     doNotErrorOnMissing: Boolean,
   ): ClassFactory? {
     val injectedClassId: ClassId = declaration.classIdOrFail
-    generatedFactories[injectedClassId]?.getOrNull()?.let {
-      return it
+    generatedFactories[injectedClassId]?.let { cached ->
+      return cached.getOrNull()
     }
 
     val isExternal = declaration.isExternalParent

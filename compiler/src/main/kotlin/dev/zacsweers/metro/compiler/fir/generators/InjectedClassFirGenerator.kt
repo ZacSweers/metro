@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.allSessions
-import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
@@ -26,6 +25,7 @@ import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
+import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.memoize
@@ -96,6 +96,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     register(session.predicates.injectLikeAnnotationsPredicate)
     register(session.predicates.assistedAnnotationPredicate)
     register(session.predicates.hasMemberInjectionsAnnotationPredicate)
+    register(session.predicates.exposeImplBindingPredicate)
   }
 
   private val symbols: FirCache<Unit, Map<ClassId, FirNamedFunctionSymbol>, TypeResolveService?> =
@@ -461,11 +462,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       // Skip factory generation when generateContributionProviders is enabled and the class
       // has binding contributions — the contribution provider generates its own provides function
       // and factory. The inject factory would be redundant and leak internal types.
-      val skipFactory =
-        session.metroFirBuiltIns.options.generateContributionProviders &&
-          classSymbol.resolvedCompilerAnnotationsWithClassIds
-            .annotationsIn(session, session.classIds.allContributesAnnotations)
-            .any()
+      // @ExposeImplBinding opts out of this skip.
+      val skipFactory = classSymbol.usesContributionProviderPath(session)
 
       if (injectedClass.isConstructorInjected && !skipFactory) {
         val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroFactory)

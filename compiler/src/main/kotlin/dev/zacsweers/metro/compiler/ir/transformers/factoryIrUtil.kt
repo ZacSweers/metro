@@ -415,14 +415,14 @@ internal fun generateStubCreatorFunctions(
     .addFunction(Symbols.StringNames.CREATE, context.metroSymbols.metroFactory.typeWith(returnType))
     .apply {
       setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
-      addParameters(params, wrapInProvider = true)
+      addParameters(params, wrapInProvider = true, copyQualifiers = true)
       body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
     }
 
   // Named function (e.g., "provideImplAsBase")
   creatorClass.addFunction(callableName, returnType).apply {
     setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
-    addParameters(params, wrapInProvider = false)
+    addParameters(params, wrapInProvider = false, copyQualifiers = true)
     body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
   }
 }

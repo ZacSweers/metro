@@ -37,6 +37,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -192,17 +193,21 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
   override fun getTopLevelClassIds(): Set<ClassId> {
     if (!generateContributionProviders) return emptySet()
 
-    // Query predicate symbols WITHOUT calling findContributions() to avoid triggering
+    // Query predicate symbols without calling findContributions() to avoid triggering
     // FIR resolution that causes reentrancy. We generate holder classes for all
     // @Contributes*-annotated classes; binding contributions are resolved later in
     // getNestedClassifiersNames/generateFunctions when annotations are available.
     val contributingClasses =
       session.predicateBasedProvider
-        .getSymbolsByPredicate(session.predicates.contributesAnnotationPredicate)
+        .getSymbolsByPredicate(session.predicates.contributesBindingLikeAnnotationsPredicate)
         .filterIsInstance<FirClassSymbol<*>>()
         .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations) }
 
     for (contributingClass in contributingClasses) {
+      // Only generate holder classes for classes that use the contribution provider path.
+      // Classes with @ExposeImplBinding or extension-generated top-level classes use the
+      // standard nested MetroContribution path instead.
+      if (!contributingClass.usesContributionProviderPath(session)) continue
       val classId = holderClassId(contributingClass.classId)
       topLevelContributionHolders.computeIfAbsent(classId) {
         ContributionsHolder(
@@ -632,9 +637,11 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       return emptySet()
     }
 
-    if (generateContributionProviders) {
+    if (classSymbol.usesContributionProviderPath(session)) {
       // When generating contribution providers, only generate nested classes for ContributesTo
-      // (binding contributions are generated as top-level holder classes instead)
+      // (binding contributions are generated as top-level holder classes instead).
+      // Classes that don't skip factory (e.g. extension-generated top-level classes,
+      // @ExposeImplBinding) fall through to the standard nested contribution path.
       val contributions = findContributions(classSymbol)
       val hasContributesTo = contributions?.any { it is Contribution.ContributesTo } == true
       val isAssistedFactory =

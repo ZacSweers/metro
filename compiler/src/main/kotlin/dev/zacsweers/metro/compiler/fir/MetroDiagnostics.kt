@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DUPLICATE_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DUPLICATE_MAP_KEY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.EMPTY_MULTIBINDING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
@@ -58,6 +59,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MISSING_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.NON_EXPOSED_IMPL_TYPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJECTED
@@ -169,6 +171,9 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val DEFAULT_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val NON_PUBLIC_CONTRIBUTION_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val NON_PUBLIC_CONTRIBUTION_WARNING by warning1<KtElement, String>(VISIBILITY_MODIFIER)
+  val EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS by
+    warning1<KtElement, String>(VISIBILITY_MODIFIER)
+  val NON_EXPOSED_IMPL_TYPE by warning1<KtElement, String>(VISIBILITY_MODIFIER)
   val CREATE_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val CREATE_DYNAMIC_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val AS_CONTRIBUTION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -311,6 +316,8 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(DEFAULT_BINDING_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_WARNING, "{0}", STRING)
+        put(EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS, "{0}", STRING)
+        put(NON_EXPOSED_IMPL_TYPE, "{0}", STRING)
         put(CREATE_GRAPH_ERROR, "{0}", STRING)
         put(CREATE_DYNAMIC_GRAPH_ERROR, "{0}", STRING)
         put(AS_CONTRIBUTION_ERROR, "{0}", STRING)

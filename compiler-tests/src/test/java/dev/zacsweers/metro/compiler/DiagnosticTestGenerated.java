@@ -61,6 +61,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ExposeImplBindingWithoutContributionProviders.kt")
+    public void testExposeImplBindingWithoutContributionProviders() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ExposeImplBindingWithoutContributionProviders.kt");
+    }
+
+    @Test
     @TestMetadata("InternalContributionMissingHint.kt")
     public void testInternalContributionMissingHint() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalContributionMissingHint.kt");
@@ -714,6 +720,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("InjectingAPlainObjectIsSus.kt")
     public void testInjectingAPlainObjectIsSus() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingAPlainObjectIsSus.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectingContributesClassWithoutExposeImplBinding.kt")
+    public void testInjectingContributesClassWithoutExposeImplBinding() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingContributesClassWithoutExposeImplBinding.kt");
     }
 
     @Test
