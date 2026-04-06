@@ -316,6 +316,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("qualifiedBinding.kt")
+      public void testQualifiedBinding() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/qualifiedBinding.kt");
+      }
+
+      @Test
       @TestMetadata("scoped.kt")
       public void testScoped() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/scoped.kt");
