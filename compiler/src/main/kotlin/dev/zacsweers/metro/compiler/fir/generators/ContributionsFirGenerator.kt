@@ -54,6 +54,7 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationCallCopy
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.toReference
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
@@ -434,25 +435,32 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         is Contribution.ContributesIntoMapBinding -> {
           add(buildIntoMapAnnotation())
           // Copy map key annotation from contributing class
-          contributingClassSymbol.mapKeyAnnotation(session)?.fir?.let { add(it) }
+          contributingClassSymbol.mapKeyAnnotation(session)?.fir?.let {
+            add(buildAnnotationCallCopy(it) {})
+          }
         }
         is Contribution.ContributesBinding -> {}
       }
+
       // Scope annotation only on direct provides (not wrappers — the synthetic handles scoping)
       if (!useSyntheticScoped) {
         contributingClassSymbol.resolvedCompilerAnnotationsWithClassIds
           .scopeAnnotations(session)
           .firstOrNull()
           ?.fir
-          ?.let { add(it) }
+          ?.let { add(buildAnnotationCallCopy(it) {}) }
       }
+
       // Copy qualifier annotation from contributing class, unless ignoreQualifier is set
       val ignoreQualifier =
         matchingContribution.annotation
           .argumentAsOrNull<FirLiteralExpression>(session, Symbols.Names.ignoreQualifier, index = 4)
           ?.value as? Boolean ?: false
+
       if (!ignoreQualifier) {
-        contributingClassSymbol.qualifierAnnotation(session)?.fir?.let { add(it) }
+        contributingClassSymbol.qualifierAnnotation(session)?.fir?.let {
+          add(buildAnnotationCallCopy(it) {})
+        }
       }
     }
     function.replaceAnnotationsSafe(function.annotations + functionAnnotations)
@@ -500,7 +508,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         .scopeAnnotations(session)
         .firstOrNull()
         ?.fir
-        ?.let { add(it) }
+        ?.let { add(buildAnnotationCallCopy(it) {}) }
       // @Named qualifier for the synthetic binding
       add(buildNamedAnnotation(qualifierName))
     }
