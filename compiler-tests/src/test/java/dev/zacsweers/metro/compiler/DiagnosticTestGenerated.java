@@ -43,6 +43,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContributionProviderMissingBindingShowsOrigin.kt")
+    public void testContributionProviderMissingBindingShowsOrigin() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributionProviderMissingBindingShowsOrigin.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionProviderMissingBindingShowsOriginInternal.kt")
+    public void testContributionProviderMissingBindingShowsOriginInternal() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributionProviderMissingBindingShowsOriginInternal.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultBinding_Ambiguous.kt")
     public void testDefaultBinding_Ambiguous() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_Ambiguous.kt");

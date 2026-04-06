@@ -40,6 +40,11 @@ message ProviderFactoryProto {
   string property_name = 5;
   // The newInstance function name
   string new_instance_name = 6;
+  // Source offsets of the origin class (from @Origin) for diagnostic location reporting.
+  // Used to create a stub declaration with correct source location when the origin class
+  // is not resolvable (e.g., internal visibility across modules).
+  optional int32 origin_start_offset = 7;
+  optional int32 origin_end_offset = 8;
 }
 
 message AssistedFactoryImplProto {

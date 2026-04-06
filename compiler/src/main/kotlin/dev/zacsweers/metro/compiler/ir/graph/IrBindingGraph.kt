@@ -639,6 +639,22 @@ internal class IrBindingGraph(
 
   private fun missingBindingHints(key: IrTypeKey): List<String> {
     return buildList {
+      // Check if the missing binding is required by a contribution provider by looking
+      // for Provided bindings in the graph whose dependencies include the missing key
+      realGraph.bindings.forEachValue { binding ->
+        if (binding is IrBinding.Provided && key in binding.dependencies.map { it.typeKey }) {
+          val originName =
+            binding.originClass?.kotlinFqName?.asString()
+              ?: binding.originClassId?.asSingleFqName()?.asString()
+          if (originName != null) {
+            add(
+              "This dependency is required by $originName, contributed via a @Contributes-like annotation to the graph."
+            )
+            return@forEachValue
+          }
+        }
+      }
+
       if (key.type.hasErrorTypes()) {
         add(
           "Binding '${key.render(short = false, includeQualifier = true)}' is an error type and appears to be missing from the compile classpath."
@@ -1246,7 +1262,7 @@ internal class IrBindingGraph(
         append(")")
         binding?.let {
           append(". Type: ")
-          append(binding.javaClass.simpleName)
+          append(binding.diagnosticTypeName)
           append('.')
           binding.reportableDeclaration?.renderSourceLocation(short = short)?.let {
             append(" Source: ")
