@@ -25,7 +25,7 @@ import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
-import dev.zacsweers.metro.compiler.fir.shouldSkipFactoryForContributionProvider
+import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.memoize
@@ -463,7 +463,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       // has binding contributions — the contribution provider generates its own provides function
       // and factory. The inject factory would be redundant and leak internal types.
       // @ExposeImplBinding opts out of this skip.
-      val skipFactory = classSymbol.shouldSkipFactoryForContributionProvider(session)
+      val skipFactory = classSymbol.usesContributionProviderPath(session)
 
       if (injectedClass.isConstructorInjected && !skipFactory) {
         val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroFactory)

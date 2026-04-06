@@ -532,6 +532,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("PresenterFunctionWithContributionProviders.kt")
+      public void testPresenterFunctionWithContributionProviders() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionWithContributionProviders.kt");
+      }
+
+      @Test
       @TestMetadata("UiClassNoInjection.kt")
       public void testUiClassNoInjection() {
         runTest("compiler-tests/src/test/data/box/api/circuit/UiClassNoInjection.kt");

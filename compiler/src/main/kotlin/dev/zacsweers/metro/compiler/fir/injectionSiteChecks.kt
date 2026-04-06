@@ -156,7 +156,7 @@ internal fun validateInjectionSiteType(
           MetroDiagnostics.ASSISTED_INJECTION_ERROR,
           message,
         )
-      } else if (clazz.shouldSkipFactoryForContributionProvider(session)) {
+      } else if (clazz.usesContributionProviderPath(session)) {
         val fqName = clazz.classId.asFqNameString()
         reporter.reportOn(
           typeRef.source ?: source,

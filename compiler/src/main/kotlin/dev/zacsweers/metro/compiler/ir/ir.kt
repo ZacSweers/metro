@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.isExtensionGenerated
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -299,15 +300,16 @@ internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>
 /**
  * Returns `true` if factory generation should be skipped for this class because
  * [generateContributionProviders][MetroOptions.generateContributionProviders] is enabled and the
- * class has `@Contributes*` annotations — unless the class is annotated with `@ExposeImplBinding`,
- * which opts out of the skip.
+ * class has `@Contributes*` annotations (unless the class is annotated with `@ExposeImplBinding` or
+ * is an extension-generated top-level class, which opt out of the skip).
  */
-internal fun IrAnnotationContainer.shouldSkipFactoryForContributionProvider(
+internal fun IrClass.usesContributionProviderPath(
   options: MetroOptions,
   classIds: ClassIds,
 ): Boolean {
   if (!options.generateContributionProviders) return false
   if (hasAnnotation(classIds.exposeImplBindingAnnotation)) return false
+  if (isExtensionGenerated) return false
   if (!annotationsIn(classIds.allContributesAnnotations).any()) return false
   return true
 }

@@ -36,10 +36,10 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.shouldSkipFactoryForContributionProvider
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -96,7 +96,7 @@ internal class InjectedClassTransformer(
     // Skip factory generation when generateContributionProviders is enabled and the class
     // has binding contributions — the contribution provider handles construction.
     // @ExposeImplBinding opts out of this skip.
-    if (declaration.shouldSkipFactoryForContributionProvider(options, metroSymbols.classIds)) {
+    if (declaration.usesContributionProviderPath(options, metroSymbols.classIds)) {
       // Cache absence so later lookups (e.g., from BindingLookup) return null instead of
       // attempting to generate after locking.
       generatedFactories[declaration.classIdOrFail] = Optional.empty()
