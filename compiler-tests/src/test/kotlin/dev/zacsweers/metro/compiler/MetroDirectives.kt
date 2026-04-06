@@ -12,6 +12,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val METRO_IGNORE by directive("Ignores this test unless a given property is set to true")
   val DISABLE_METRO by directive("Disables metro entirely on this module compilation if present.")
   val COMPILER_VERSION by stringDirective("Target kotlin compiler version, if any")
+  val MIN_COMPILER_VERSION by stringDirective("Minimum kotlin compiler version (inclusive), if any")
+  val MAX_COMPILER_VERSION by stringDirective("Maximum kotlin compiler version (inclusive), if any")
   // TODO eventually support multiple outputs
   val CUSTOM_TEST_DATA_PER_COMPILER_VERSION by
     directive("Generate custom test data files per compiler version")

@@ -1,5 +1,5 @@
 // REPORTS_DESTINATION: metro/reports
-// COMPILER_VERSION: 2.3.20
+// MAX_COMPILER_VERSION: 2.3.20
 // TODO eventually enable this on 2.4.0+ again
 // Similar to https://github.com/ZacSweers/metro/issues/1303
 /**
