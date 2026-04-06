@@ -42,9 +42,11 @@ import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.fakeElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.native.interop.parentsWithSelf
 import org.jetbrains.kotlin.fir.caches.FirCache
@@ -436,7 +438,12 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           add(buildIntoMapAnnotation())
           // Copy map key annotation from contributing class
           contributingClassSymbol.mapKeyAnnotation(session)?.fir?.let {
-            add(buildAnnotationCallCopy(it) {})
+            add(
+              buildAnnotationCallCopy(it) {
+                source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                containingDeclarationSymbol = function.symbol
+              }
+            )
           }
         }
         is Contribution.ContributesBinding -> {}
@@ -448,7 +455,14 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           .scopeAnnotations(session)
           .firstOrNull()
           ?.fir
-          ?.let { add(buildAnnotationCallCopy(it) {}) }
+          ?.let {
+            add(
+              buildAnnotationCallCopy(it) {
+                source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                containingDeclarationSymbol = function.symbol
+              }
+            )
+          }
       }
 
       // Copy qualifier annotation from contributing class, unless ignoreQualifier is set
@@ -459,7 +473,12 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
 
       if (!ignoreQualifier) {
         contributingClassSymbol.qualifierAnnotation(session)?.fir?.let {
-          add(buildAnnotationCallCopy(it) {})
+          add(
+            buildAnnotationCallCopy(it) {
+              source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+              containingDeclarationSymbol = function.symbol
+            }
+          )
         }
       }
     }
@@ -508,7 +527,14 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         .scopeAnnotations(session)
         .firstOrNull()
         ?.fir
-        ?.let { add(buildAnnotationCallCopy(it) {}) }
+        ?.let {
+          add(
+            buildAnnotationCallCopy(it) {
+              source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+              containingDeclarationSymbol = function.symbol
+            }
+          )
+        }
       // @Named qualifier for the synthetic binding
       add(buildNamedAnnotation(qualifierName))
     }

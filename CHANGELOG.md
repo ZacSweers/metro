@@ -17,6 +17,7 @@ Changelog
 - **[FIR]** Better ensure `enableCircuitCodegen` and `generateContributionProviders` work together when both enabled.
 - **[IR]** Fix default parameter expressions not being copied when `generateContributionProviders` is enabled. This specifically affected scoped or private bindings.
 - **[IR]** Fix qualifier annotations not being copied when `generateContributionProviders` is enabled.
+- **[IR]** Don't link expect/actual declarations if the callee is a synthetic declaration. This avoid some non-obvious IC failures with `generateContributionProviders`.
 
 ### Contributors
 

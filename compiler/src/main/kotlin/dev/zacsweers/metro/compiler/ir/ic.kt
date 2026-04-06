@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import org.jetbrains.kotlin.backend.jvm.ir.fileParentOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getIoFile
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
+import org.jetbrains.kotlin.descriptors.SourceElement
 import org.jetbrains.kotlin.incremental.components.LocationInfo
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.incremental.components.Position
@@ -52,9 +53,21 @@ internal fun linkDeclarationsInCompilation(callingElement: IrElement, calleeDecl
 
 context(context: IrMetroContext)
 internal fun linkDeclarationsInCompilation(callingFile: IrFile?, calleeDeclaration: IrClass) {
-  val expectedFile = calleeDeclaration.fileOrNull?.getIoFile() ?: return
   val actualFile = callingFile?.getIoFile() ?: return
+  val expectedFile = calleeDeclaration.fileOrNull?.getIoFile() ?: return
   if (expectedFile == actualFile) return
+  if (calleeDeclaration.source == SourceElement.NO_SOURCE) {
+    // This is a synthetic declaration!
+    // Does it have an origin?
+    val origin = calleeDeclaration.originClassId()
+    if (origin != null) {
+      val originClass = context.referenceClass(origin)?.owner
+      if (originClass != null) {
+        linkDeclarationsInCompilation(callingFile = callingFile, calleeDeclaration = originClass)
+      }
+    }
+    return
+  }
   context.expectActualTracker.report(expectedFile = expectedFile, actualFile = actualFile)
 }
 
