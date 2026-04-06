@@ -18,6 +18,12 @@ Changelog
 - **[IR]** Fix default parameter expressions not being copied when `generateContributionProviders` is enabled. This specifically affected scoped or private bindings.
 - **[IR]** Fix qualifier annotations not being copied when `generateContributionProviders` is enabled.
 
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@kevinguitar](https://github.com/kevinguitar)
+
 0.13.0
 ------
 
