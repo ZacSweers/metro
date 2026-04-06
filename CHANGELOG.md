@@ -4,6 +4,14 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR/Circuit]** Add a diagnostic check for explicit return types for `@CircuitInject` presenter functions.
+
+### Fixes
+
+- **[FIR/Circuit]** Assume implicit return types for `@CircuitInject` functions are UI types.
+
 0.13.1
 ------
 
