@@ -317,6 +317,163 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     assertThat(output).isEqualTo("same")
   }
 
+  /**
+   * Tests that all contribution types (`@ContributesBinding`, `@ContributesIntoSet`,
+   * `@ContributesIntoMap`, `@ContributesTo`) work correctly with IC when
+   * `generateContributionProviders` is enabled. This is a regression test for a bug where generated
+   * top-level holder classes were incorrectly reported to the `ExpectActualTracker`, poisoning the
+   * complementary-files IC cache and causing compilation failures.
+   */
+  @Test
+  fun allContributionTypesWorkWithIC() {
+    val fixture =
+      object :
+        MetroProject(metroOptions = MetroOptionOverrides(generateContributionProviders = true)) {
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph, main)
+            dependencies(implementation(":common"), implementation(":lib"))
+          }
+          subproject("common") { sources(base, contributedInterface, moduleInterface) }
+          subproject("lib") {
+            sources(binding, intoSet, intoMap, contributesToModule)
+            dependencies(implementation(":common"))
+          }
+        }
+
+        val base =
+          source(
+            """
+            interface Base {
+              fun value(): String
+            }
+            """
+              .trimIndent()
+          )
+
+        val contributedInterface =
+          source(
+            """
+            interface ContributedInterface
+            """
+              .trimIndent()
+          )
+
+        val moduleInterface =
+          source(
+            """
+            interface ModuleInterface {
+              @Provides fun provideTag(): String = "from-module"
+            }
+            """
+              .trimIndent()
+          )
+
+        val binding =
+          source(
+            """
+            @ContributesBinding(AppScope::class)
+            @Inject
+            internal class Binding : Base {
+              override fun value(): String = "binding"
+            }
+            """
+              .trimIndent()
+          )
+
+        val intoSet =
+          source(
+            """
+            @ContributesIntoSet(AppScope::class)
+            @Inject
+            internal class IntoSet : ContributedInterface
+            """
+              .trimIndent()
+          )
+
+        val intoMap =
+          source(
+            """
+            @ContributesIntoMap(AppScope::class)
+            @StringKey("key1")
+            @Inject
+            internal class IntoMap : ContributedInterface
+            """
+              .trimIndent()
+          )
+
+        val contributesToModule =
+          source(
+            """
+            @ContributesTo(AppScope::class)
+            interface ContributesToModule : ModuleInterface
+            """
+              .trimIndent()
+          )
+
+        val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val base: Base
+              val set: Set<ContributedInterface>
+              val map: Map<String, ContributedInterface>
+              val tag: String
+            }
+            """
+              .trimIndent()
+          )
+
+        val main =
+          source(
+            """
+            fun main(): String {
+              val graph = createGraph<AppGraph>()
+              return listOf(
+                graph.base.value(),
+                graph.set.size.toString(),
+                graph.map.keys.first(),
+                graph.tag,
+              ).joinToString(",")
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    val firstOutput = project.invokeMain<String>()
+    assertThat(firstOutput).isEqualTo("binding,1,key1,from-module")
+
+    // Modify the binding impl — should trigger incremental recompilation without IC errors
+    libProject.modify(
+      project.rootDir,
+      fixture.binding,
+      """
+      @ContributesBinding(AppScope::class)
+      @Inject
+      internal class Binding : Base {
+        override fun value(): String = "modified"
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build should succeed (not fail with IC cache errors)
+    val secondBuildResult = project.compileKotlin()
+    assertThat(secondBuildResult.task(":lib:compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    val secondOutput = project.invokeMain<String>()
+    assertThat(secondOutput).isEqualTo("modified,1,key1,from-module")
+  }
+
   private fun File.classFileSnapshot(): Map<String, FileSnapshot> {
     val root = this
     return walkTopDown()
