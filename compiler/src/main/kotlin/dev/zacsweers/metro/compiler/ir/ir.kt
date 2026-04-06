@@ -308,9 +308,9 @@ internal fun IrClass.usesContributionProviderPath(
   classIds: ClassIds,
 ): Boolean {
   if (!options.generateContributionProviders) return false
-  if (hasAnnotation(classIds.exposeImplBindingAnnotation)) return false
   if (isExtensionGenerated) return false
-  if (!annotationsIn(classIds.allContributesAnnotations).any()) return false
+  if (annotationsIn(classIds.contributionProviderExclusionAnnotations).any()) return false
+  if (!annotationsIn(classIds.contributesBindingLikeAnnotationsWithContainers).any()) return false
   return true
 }
 

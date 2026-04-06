@@ -120,6 +120,13 @@ public class ClassIds(
 
   internal val exposeImplBindingAnnotation = Symbols.ClassIds.ExposeImplBinding
 
+  internal val contributionProviderExclusionAnnotations by memoize {
+    buildSet {
+      add(exposeImplBindingAnnotation)
+      addAll(assistedFactoryAnnotations)
+    }
+  }
+
   internal val optionalBindingAnnotations =
     setOf(
       Symbols.FqNames.metroRuntimePackage.classIdOf("OptionalBinding"),

@@ -12,7 +12,8 @@ Changelog
 ### Fixes
 
 - **[FIR]** Fix Circuit code gen not reporting contribution hints for downstream compilations.
-- **[FIR]** Don't generate contribution classes for `@ContributesTo` annotations when `generateContributionProviders` is enabled.
+- **[FIR]** Don't generate contribution classes for `@ContributesTo`-annotated classes when `generateContributionProviders` is enabled.
+- **[FIR]** Don't generate contribution classes for `@AssistedFactory`-annotated classes when `generateContributionProviders` is enabled.
 - **[FIR]** Better ensure `enableCircuitCodegen` and `generateContributionProviders` work together when both enabled.
 - **[IR]** Fix default parameter expressions not being copied when `generateContributionProviders` is enabled. This specifically affected scoped or private bindings.
 - **[IR]** Fix qualifier annotations not being copied when `generateContributionProviders` is enabled.

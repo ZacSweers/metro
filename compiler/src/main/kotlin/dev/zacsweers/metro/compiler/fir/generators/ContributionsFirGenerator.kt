@@ -182,6 +182,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     register(session.predicates.contributesAnnotationPredicate)
     register(session.predicates.bindingContainerPredicate)
     register(session.predicates.mapKeysPredicate)
+    register(session.predicates.assistedFactoryAnnotationPredicate)
   }
 
   /** Computes a deterministic holder ClassId from a contributing class. No scope resolution. */
@@ -200,6 +201,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       session.predicateBasedProvider
         .getSymbolsByPredicate(session.predicates.contributesBindingLikeAnnotationsPredicate)
         .filterIsInstance<FirClassSymbol<*>>()
+        .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations) }
 
     for (contributingClass in contributingClasses) {
       // Only generate holder classes for classes that use the contribution provider path.
@@ -642,8 +644,8 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       // @ExposeImplBinding) fall through to the standard nested contribution path.
       val contributions = findContributions(classSymbol)
       val hasContributesTo = contributions?.any { it is Contribution.ContributesTo } == true
+      // Still need the nested contribution classes for ContributesTo
       return if (hasContributesTo) {
-        // Still need the nested contribution classes for ContributesTo
         contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
       } else {
         emptySet()
