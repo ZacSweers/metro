@@ -20,12 +20,14 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
+import dev.zacsweers.metro.compiler.fir.hasImplicitClassKey
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.fir.mapKeyClassValueExpression
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -46,11 +48,11 @@ import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
-import org.jetbrains.kotlin.fakeElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.native.interop.parentsWithSelf
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -437,13 +439,47 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         is Contribution.ContributesIntoMapBinding -> {
           add(buildIntoMapAnnotation())
           // Copy map key annotation from contributing class
-          contributingClassSymbol.mapKeyAnnotation(session)?.fir?.let {
-            add(
-              buildAnnotationCallCopy(it) {
-                source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-                containingDeclarationSymbol = function.symbol
+          val mapKey = contributingClassSymbol.mapKeyAnnotation(session)
+          mapKey?.fir?.let { mapKeyFirAnnotation ->
+            // For implicit class keys (@MapKey(implicitClassKey = true)), the annotation
+            // value is Nothing::class (sentinel) or absent. Build a new annotation with the
+            // contributing class as the value instead of copying the sentinel.
+            var added = false
+            if (mapKey.hasImplicitClassKey(session)) {
+              val valueExpr = mapKey.mapKeyClassValueExpression()
+              val valueClassId = valueExpr?.resolvedClassId() ?: StandardClassIds.Nothing
+              if (valueClassId == StandardClassIds.Nothing) {
+                // It's the sentinel or omitted, so use the annotated class
+                mapKeyFirAnnotation.toAnnotationClass(session)?.let { mapKeyClass ->
+                  add(
+                    buildSimpleAnnotation { mapKeyClass.symbol }
+                      .apply {
+                        replaceArgumentMapping(
+                          buildAnnotationArgumentMapping {
+                            mapping[StandardNames.DEFAULT_VALUE_PARAMETER] =
+                              buildClassReference(session, contributingClassSymbol.classId)
+                          }
+                        )
+                      }
+                  )
+                  added = true
+                }
+              } else {
+                // Explicit value provided, just copy below
               }
-            )
+            } else {
+              // Regular map key, copy below
+            }
+
+            if (!added) {
+              add(
+                buildAnnotationCallCopy(mapKeyFirAnnotation) {
+                  source =
+                    mapKeyFirAnnotation.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                  containingDeclarationSymbol = function.symbol
+                }
+              )
+            }
           }
         }
         is Contribution.ContributesBinding -> {}

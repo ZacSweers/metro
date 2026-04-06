@@ -10,6 +10,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Fix map key generation for `generateContributionProviders` when the map key uses implicit class keys.
 - **[FIR/Circuit]** Assume implicit return types for `@CircuitInject` functions are UI types.
 
 0.13.1
