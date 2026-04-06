@@ -205,6 +205,9 @@ internal class ContributionTransformer(
     val originClassId = declaration.originClassId() ?: return
     val originClass = context.referenceClass(originClassId)?.owner ?: return
 
+    // Find the primary constructor of the origin class
+    val injectConstructor = originClass.primaryConstructor ?: return
+
     // Add bodies to all @Provides functions
     for (function in declaration.functions) {
       if (!function.isAnnotatedWithAny(metroSymbols.classIds.providesAnnotations)) continue
@@ -224,7 +227,6 @@ internal class ContributionTransformer(
             irExprBodySafe(irGetObject(originClass.symbol))
           } else {
             // Constructor call (synthetic scoped or direct)
-            val injectConstructor = originClass.primaryConstructor ?: return@run null
             val constructorCall =
               irCallConstructor(injectConstructor.symbol, emptyList()).apply {
                 val functionParams = function.regularParameters
