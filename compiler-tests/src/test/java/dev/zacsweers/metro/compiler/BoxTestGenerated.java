@@ -508,6 +508,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("PresenterClassWithContributionProviders.kt")
+      public void testPresenterClassWithContributionProviders() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassWithContributionProviders.kt");
+      }
+
+      @Test
       @TestMetadata("PresenterFunctionClassScreen.kt")
       public void testPresenterFunctionClassScreen() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionClassScreen.kt");

@@ -137,6 +137,7 @@ internal class CompositeMetroFirDeclarationGenerationExtension(
     return result
   }
 
+  @OptIn(SymbolInternals::class)
   override fun generateNestedClassLikeDeclaration(
     owner: FirClassSymbol<*>,
     name: Name,
@@ -144,8 +145,15 @@ internal class CompositeMetroFirDeclarationGenerationExtension(
   ): FirClassLikeSymbol<*>? {
     val owners = nestedClassOwners[NestedClassKey(owner.classId, name)] ?: return null
     for (extension in owners) {
-      extension.generateNestedClassLikeDeclaration(owner, name, context)?.let {
-        return it
+      val isExternal = extension in externalExtensions
+      extension.generateNestedClassLikeDeclaration(owner, name, context)?.let { symbol ->
+        if (isExternal) {
+          // Tag extension-generated nested classes so Metro knows not to use the
+          // contribution provider path for them (predicates can't see FIR-generated classes,
+          // so contribution provider holders would never be created).
+          (symbol.fir as? FirClass)?.isExtensionGenerated = true
+        }
+        return symbol
       }
     }
     return null
