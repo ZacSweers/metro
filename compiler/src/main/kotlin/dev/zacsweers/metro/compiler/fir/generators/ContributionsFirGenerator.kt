@@ -638,10 +638,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       val contributions = findContributions(classSymbol)
       val hasContributesTo = contributions?.any { it is Contribution.ContributesTo } == true
       val isAssistedFactory =
-        session.predicateBasedProvider.matches(
-          session.predicates.assistedFactoryAnnotationPredicate,
-          classSymbol,
-        )
+        classSymbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
       return if (hasContributesTo || isAssistedFactory) {
         // Still need the nested contribution classes for ContributesTo and AssistedFactories
         contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
