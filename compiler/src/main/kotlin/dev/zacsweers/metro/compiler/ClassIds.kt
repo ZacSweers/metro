@@ -194,6 +194,16 @@ public class ClassIds(
   internal val contributesBindingAnnotationsWithContainers =
     contributesBindingAnnotations + contributesBindingAnnotations.toContainerAnnotations()
 
+  /** All binding-like contributes annotations (everything except `@ContributesTo`). */
+  internal val contributesBindingLikeAnnotations =
+    contributesBindingAnnotations +
+      contributesIntoSetAnnotations +
+      contributesIntoMapAnnotations +
+      customContributesIntoSetAnnotations
+
+  internal val contributesBindingLikeAnnotationsWithContainers =
+    contributesBindingLikeAnnotations + contributesBindingLikeAnnotations.toContainerAnnotations()
+
   private fun Set<ClassId>.toContainerAnnotations() = mapToSet {
     it.createNestedClassId(Symbols.Names.Container)
   }

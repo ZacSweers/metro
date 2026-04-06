@@ -197,7 +197,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     // getNestedClassifiersNames/generateFunctions when annotations are available.
     val contributingClasses =
       session.predicateBasedProvider
-        .getSymbolsByPredicate(session.predicates.contributesBindingAnnotationsPredicate)
+        .getSymbolsByPredicate(session.predicates.contributesBindingLikeAnnotationsPredicate)
         .filterIsInstance<FirClassSymbol<*>>()
 
     for (contributingClass in contributingClasses) {

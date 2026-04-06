@@ -41,8 +41,8 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
   internal val contributesAnnotationPredicate =
     annotated(classIds.allContributesAnnotations.asFqNames())
 
-  internal val contributesBindingAnnotationsPredicate =
-    annotated(classIds.contributesBindingAnnotationsWithContainers.asFqNames())
+  internal val contributesBindingLikeAnnotationsPredicate =
+    annotated(classIds.contributesBindingLikeAnnotationsWithContainers.asFqNames())
 
   internal val providesAnnotationPredicate = annotated(classIds.providesAnnotations.asFqNames())
 
