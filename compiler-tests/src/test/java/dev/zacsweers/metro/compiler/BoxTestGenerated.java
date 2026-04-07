@@ -2595,6 +2595,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("MapKeyInBindingIsRespected.kt")
+    public void testMapKeyInBindingIsRespected() {
+      runTest("compiler-tests/src/test/data/box/multibindings/MapKeyInBindingIsRespected.kt");
+    }
+
+    @Test
     @TestMetadata("MapLazyValues.kt")
     public void testMapLazyValues() {
       runTest("compiler-tests/src/test/data/box/multibindings/MapLazyValues.kt");
