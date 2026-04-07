@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -342,6 +343,8 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     }
 
     context(session.compatContext) { factoryClass.replaceAnnotationsSafe(annotations) }
+
+    factoryClass.markAsDeprecatedHidden(session)
 
     generatedFactoryClassIds.add(factoryClass.symbol.classId)
 
