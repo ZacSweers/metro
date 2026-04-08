@@ -80,6 +80,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
@@ -263,6 +264,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           ?: return false
 
       return classSymbol.fir.superTypeRefs
+        .filterNot { it is FirUserTypeRef }
         .any {
           val resolved =
             if (it is FirResolvedTypeRef) {
