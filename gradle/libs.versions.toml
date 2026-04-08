@@ -16,7 +16,7 @@
 agp = "8.13.2"
 androidx-lifecycle = "2.10.0"
 androidx-lint-gradle = "1.0.0-alpha06"
-annotation = "1.9.1"
+annotation = "1.10.0"
 anvil = "0.5.3"
 circuit = "0.33.1"
 compose-jb = "1.10.3"
