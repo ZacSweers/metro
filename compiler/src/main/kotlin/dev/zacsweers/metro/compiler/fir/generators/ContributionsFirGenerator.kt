@@ -145,6 +145,13 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
   // needed).
   private val topLevelContributionHolders = mutableMapOf<ClassId, ContributionsHolder>()
 
+  /** Returns the holder for [classId] if it uses the contribution provider path, else null. */
+  private fun getHolder(classId: ClassId): ContributionsHolder? {
+    val holder = topLevelContributionHolders[classId] ?: return null
+    if (!holder.contributingClassSymbol.usesContributionProviderPath(session)) return null
+    return holder
+  }
+
   // For each contributing class, track its nested contribution classes and their scope arguments
   private val contributingClassToScopedContributions:
     FirCache<FirClassSymbol<*>, Map<Name, FirGetClassCall?>, Unit> =
@@ -198,21 +205,15 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
   override fun getTopLevelClassIds(): Set<ClassId> {
     if (!generateContributionProviders) return emptySet()
 
-    // Query predicate symbols without calling findContributions() to avoid triggering
-    // FIR resolution that causes reentrancy. We generate holder classes for all
-    // @Contributes*-annotated classes; binding contributions are resolved later in
-    // getNestedClassifiersNames/generateFunctions when annotations are available.
+    // Avoid annotation resolution here — in the IDE this runs during
+    // FirExtensionDeclarationsSymbolProvider's cache init and re-entering it causes a
+    // StackOverflowError. Filtering is handled in getHolder() at each usage site.
     val contributingClasses =
       session.predicateBasedProvider
         .getSymbolsByPredicate(session.predicates.contributesBindingLikeAnnotationsPredicate)
         .filterIsInstance<FirClassSymbol<*>>()
-        .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations) }
 
     for (contributingClass in contributingClasses) {
-      // Only generate holder classes for classes that use the contribution provider path.
-      // Classes with @ExposeImplBinding or extension-generated top-level classes use the
-      // standard nested MetroContribution path instead.
-      if (!contributingClass.usesContributionProviderPath(session)) continue
       val classId = holderClassId(contributingClass.classId)
       topLevelContributionHolders.computeIfAbsent(classId) {
         ContributionsHolder(
@@ -226,7 +227,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun generateTopLevelClassLikeDeclaration(classId: ClassId): FirClassLikeSymbol<*>? {
-    if (classId !in topLevelContributionHolders) return null
+    if (getHolder(classId) == null) return null
 
     return createTopLevelClass(classId, Keys.ContributionProviderHolderDeclaration) {
         modality = Modality.ABSTRACT
@@ -305,7 +306,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     }
 
     // Private constructor for holder classes
-    if (classSymbol.classId in topLevelContributionHolders) {
+    if (getHolder(classSymbol.classId) != null) {
       return setOf(SpecialNames.INIT)
     }
 
@@ -314,7 +315,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       generateContributionProviders && classSymbol.hasOrigin(Keys.MetroContributionClassDeclaration)
     ) {
       val holderClassId = classSymbol.classId.parentClassId ?: return emptySet()
-      val holderInfo = topLevelContributionHolders[holderClassId] ?: return emptySet()
+      val holderInfo = getHolder(holderClassId) ?: return emptySet()
       return buildSet {
         add(SpecialNames.INIT)
         // Add synthetic scoped provider function if needed
@@ -337,7 +338,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     }
 
     // Private constructor for holder classes
-    if (context.owner.classId in topLevelContributionHolders) {
+    if (getHolder(context.owner.classId) != null) {
       return listOf(createDefaultPrivateConstructor(context.owner, Keys.Default).symbol)
     }
 
@@ -345,7 +346,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     if (
       generateContributionProviders &&
         context.owner.hasOrigin(Keys.MetroContributionClassDeclaration) &&
-        context.owner.classId.parentClassId in topLevelContributionHolders
+        getHolder(context.owner.classId.parentClassId ?: return emptyList()) != null
     ) {
       return listOf(createDefaultPrivateConstructor(context.owner, Keys.Default).symbol)
     }
@@ -362,7 +363,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     if (!context.owner.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptyList()
 
     val holderClassId = context.owner.classId.parentClassId ?: return emptyList()
-    val holderInfo = topLevelContributionHolders[holderClassId] ?: return emptyList()
+    val holderInfo = getHolder(holderClassId) ?: return emptyList()
 
     val contributingClassSymbol = holderInfo.contributingClassSymbol
     val useSyntheticScoped = needsSyntheticScopedProvider(holderInfo)
@@ -659,7 +660,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     if (context.owner.hasOrigin(Keys.MetroContributionClassDeclaration)) {
       // Contribution provider objects inside holder classes don't need a binding mirror
       val parentClassId = classSymbol.classId.parentClassId
-      if (parentClassId != null && parentClassId in topLevelContributionHolders) {
+      if (parentClassId != null && getHolder(parentClassId) != null) {
         return emptySet()
       }
 
@@ -678,7 +679,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     }
 
     // Holder class: generate nested binding container objects per scope
-    val contributionHolder = topLevelContributionHolders[classSymbol.classId]
+    val contributionHolder = getHolder(classSymbol.classId)
 
     if (contributionHolder != null) {
       // Compute scope-dependent names using the short scope name which is available
@@ -751,8 +752,8 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     }
 
     // Generate nested contribution binding container objects inside holder classes
-    if (owner.classId in topLevelContributionHolders) {
-      val contributionHolder = topLevelContributionHolders[owner.classId]!!
+    val contributionHolder = getHolder(owner.classId)
+    if (contributionHolder != null) {
 
       // Find the matching scope argument by scope short class name
       // Name is "To<ScopeShortName>", extract the scope name
