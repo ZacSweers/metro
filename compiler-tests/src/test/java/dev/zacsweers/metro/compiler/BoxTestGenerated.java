@@ -257,6 +257,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestDataPath("$PROJECT_ROOT")
     public class Contributionproviders {
       @Test
+      @TestMetadata("abstractedAssistedFactoryIsAccessibleExternally.kt")
+      public void testAbstractedAssistedFactoryIsAccessibleExternally() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/abstractedAssistedFactoryIsAccessibleExternally.kt");
+      }
+
+      @Test
       public void testAllFilesPresentInContributionproviders() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/contributionproviders"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
