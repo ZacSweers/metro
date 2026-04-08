@@ -1,5 +1,3 @@
-// GENERATE_CONTRIBUTION_PROVIDERS
-// COMPILER_VERSION: 2.3.20
 interface Base {
   val string: String
 }

@@ -274,6 +274,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("explicitMultibindingType.kt")
+      public void testExplicitMultibindingType() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/explicitMultibindingType.kt");
+      }
+
+      @Test
       @TestMetadata("exposeImplBinding.kt")
       public void testExposeImplBinding() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/exposeImplBinding.kt");
@@ -2592,12 +2598,6 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("LazyMemberInjectedBindings.kt")
     public void testLazyMemberInjectedBindings() {
       runTest("compiler-tests/src/test/data/box/multibindings/LazyMemberInjectedBindings.kt");
-    }
-
-    @Test
-    @TestMetadata("MapKeyInBindingIsRespected.kt")
-    public void testMapKeyInBindingIsRespected() {
-      runTest("compiler-tests/src/test/data/box/multibindings/MapKeyInBindingIsRespected.kt");
     }
 
     @Test
