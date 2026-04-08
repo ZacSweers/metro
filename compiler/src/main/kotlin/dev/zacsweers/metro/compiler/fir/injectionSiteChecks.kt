@@ -156,6 +156,16 @@ internal fun validateInjectionSiteType(
           MetroDiagnostics.ASSISTED_INJECTION_ERROR,
           message,
         )
+      } else if (clazz.usesContributionProviderPath(session)) {
+        val fqName = clazz.classId.asFqNameString()
+        reporter.reportOn(
+          typeRef.source ?: source,
+          MetroDiagnostics.NON_EXPOSED_IMPL_TYPE,
+          "Directly injecting '$fqName' (which has one or more `@Contributes*` annotations) and will not be " +
+            "visible since `generateContributionProviders` is enabled. This is probably a bug! " +
+            "Inject the bound supertype instead, or annotate '$fqName' with `@ExposeImplBinding` " +
+            "to expose the underlying binding.",
+        )
       }
     }
   }

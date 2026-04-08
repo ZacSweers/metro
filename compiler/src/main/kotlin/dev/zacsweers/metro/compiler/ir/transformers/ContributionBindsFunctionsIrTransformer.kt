@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
+import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -23,6 +24,7 @@ import dev.zacsweers.metro.compiler.ir.isImplicitClassKeySentinel
 import dev.zacsweers.metro.compiler.ir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.ir.originClassId
+import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.populateImplicitClassKey
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
@@ -226,6 +228,15 @@ internal class ContributionTransformer(
             // Object: just reference the singleton instance
             irExprBodySafe(irGetObject(originClass.symbol))
           } else {
+            copyParameterDefaultValues(
+              providerFunction = injectConstructor,
+              sourceMetroParameters = Parameters.empty(),
+              sourceParameters = injectConstructor.regularParameters,
+              targetParameters = function.regularParameters,
+              containerParameter = null,
+              isTopLevelFunction = true,
+            )
+
             // Constructor call (synthetic scoped or direct)
             val constructorCall =
               irCallConstructor(injectConstructor.symbol, emptyList()).apply {

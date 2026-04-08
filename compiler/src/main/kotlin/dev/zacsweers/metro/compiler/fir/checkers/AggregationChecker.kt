@@ -216,6 +216,20 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         }
       }
     }
+
+    // Warn if @ExposeImplBinding is used but generateContributionProviders is not enabled
+    if (!session.metroFirBuiltIns.options.generateContributionProviders) {
+      declaration
+        .annotationsIn(session, setOf(classIds.exposeImplBindingAnnotation))
+        .firstOrNull()
+        ?.let { exposeAnnotation ->
+          reporter.reportOn(
+            exposeAnnotation.source,
+            MetroDiagnostics.EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS,
+            "`@ExposeImplBinding` has no effect when `generateContributionProviders` is not enabled.",
+          )
+        }
+    }
   }
 
   @OptIn(UnexpandedTypeCheck::class)

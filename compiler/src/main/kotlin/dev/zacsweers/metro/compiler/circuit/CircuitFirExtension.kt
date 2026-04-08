@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -64,6 +65,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.FirImplicitTypeRef
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
@@ -342,6 +344,8 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
     context(session.compatContext) { factoryClass.replaceAnnotationsSafe(annotations) }
 
+    factoryClass.markAsDeprecatedHidden(session)
+
     generatedFactoryClassIds.add(factoryClass.symbol.classId)
 
     return factoryClass.symbol
@@ -475,7 +479,14 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     return computedTargets.getOrPut(factoryClassId) {
       val function = functionFactoryClassIds[factoryClassId] ?: return@getOrPut null
       val typeResolver = typeResolverFactory.create(function) ?: return@getOrPut null
-      val returnType = typeResolver.resolveType(function.fir.returnTypeRef)
+      val returnTypeRef = function.fir.returnTypeRef
+      val returnType =
+        if (returnTypeRef is FirImplicitTypeRef) {
+          // Assume it's Unit/UI. Checker will validate otherwise later
+          session.builtinTypes.unitType.coneType
+        } else {
+          typeResolver.resolveType(returnTypeRef)
+        }
       val factoryType = if (returnType.isUnit) FactoryType.UI else FactoryType.PRESENTER
       computeFactoryTarget(function, factoryClassId, typeResolver, factoryType, returnType)
     }

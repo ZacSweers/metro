@@ -133,6 +133,7 @@ internal class Symbols(
 
   object ClassIds {
     val Composable = ClassId(FqNames.composeRuntime, StringNames.COMPOSABLE.asName())
+    val ExposeImplBinding = ClassId(FqNames.metroRuntimePackage, "ExposeImplBinding".asName())
     val HiddenFromObjC = ClassId(FqName("kotlin.native"), "HiddenFromObjC".asName())
     val GraphFactoryInvokeFunctionMarkerClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())

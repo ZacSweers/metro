@@ -22,6 +22,12 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
   }
 
   @Test
+  @TestMetadata("contributionProvidersShouldNotGenerateForContributesTo.kt")
+  public void testContributionProvidersShouldNotGenerateForContributesTo() {
+    runTest("compiler-tests/src/test/data/dump/fir/contributionProvidersShouldNotGenerateForContributesTo.kt");
+  }
+
+  @Test
   @TestMetadata("InjectCtorAlwaysUsedEvenIfClassAnnotated_k23x.kt")
   public void testInjectCtorAlwaysUsedEvenIfClassAnnotated_k23x() {
     runTest("compiler-tests/src/test/data/dump/fir/InjectCtorAlwaysUsedEvenIfClassAnnotated_k23x.kt");

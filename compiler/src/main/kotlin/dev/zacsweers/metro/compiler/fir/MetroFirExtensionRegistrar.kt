@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.fir.generators.LoggingFirDeclarationGenerati
 import dev.zacsweers.metro.compiler.fir.generators.LoggingFirSupertypeGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.kotlinOnly
+import dev.zacsweers.metro.compiler.letIf
 import java.util.ServiceLoader
 import kotlin.io.path.appendText
 import kotlin.io.path.createFile
@@ -100,7 +101,10 @@ public class MetroFirExtensionRegistrar(
       val isCli = session.isCli()
 
       // Load external extensions via ServiceLoader
-      val externalExtensions = loadExternalDeclarationExtensions(session, options, compatContext)
+      val externalExtensions =
+        loadExternalDeclarationExtensions(session, options, compatContext)
+          // If we're running in the IDE, only enable extensions that opt-in to that.
+          .letIf(!isCli) { extensions -> extensions.filter { it.enableFirInIde } }
 
       // Build list of native Metro generators
       val nativeExtensions = buildList {

@@ -7,6 +7,8 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.memoize
+import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -198,16 +200,34 @@ internal object CircuitInjectCallableChecker :
     if (declaration !is FirFunction) return
     if (!declaration.hasAnnotation(CircuitClassIds.CircuitInject, session)) return
 
-    val returnType = declaration.returnTypeRef.coneType
+    val returnTypeRef = declaration.returnTypeRef
+    val returnType = returnTypeRef.coneType
+
+    val hasModifier by memoize {
+      declaration.valueParameters.any { param ->
+        val paramClassId = param.returnTypeRef.coneType.classId ?: return@any false
+        circuitSymbols.isModifierType(paramClassId)
+      }
+    }
+
+    // Check for implicit return type on presenter functions.
+    // If the return type is implicit and there's a Modifier param, we can assume it's UI (Unit),
+    // so only flag when there's no Modifier param.
+    if (returnTypeRef.source?.kind is KtFakeSourceElementKind.ImplicitTypeRef) {
+      if (!hasModifier) {
+        reporter.reportOn(
+          source,
+          CIRCUIT_INJECT_ERROR,
+          "@CircuitInject presenter functions must have an explicit CircuitUiState subtype return " +
+            "type and cannot be implicit.",
+        )
+        return
+      }
+    }
 
     val siteType: CircuitInjectSiteType?
     if (returnType.isUnit) {
       siteType = CircuitInjectSiteType.UI
-      val hasModifier =
-        declaration.valueParameters.any { param ->
-          val paramClassId = param.returnTypeRef.coneType.classId ?: return@any false
-          circuitSymbols.isModifierType(paramClassId)
-        }
       if (!hasModifier) {
         reporter.reportOn(
           source,

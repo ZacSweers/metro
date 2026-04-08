@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
@@ -11,6 +12,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.isExtensionGenerated
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -293,6 +295,23 @@ internal fun IrConstructorCall.getAnnotationStringValue(name: String): String {
 
 internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>): Boolean {
   return names.any { hasAnnotation(it) }
+}
+
+/**
+ * Returns `true` if factory generation should be skipped for this class because
+ * [generateContributionProviders][MetroOptions.generateContributionProviders] is enabled and the
+ * class has `@Contributes*` annotations (unless the class is annotated with `@ExposeImplBinding` or
+ * is an extension-generated top-level class, which opt out of the skip).
+ */
+internal fun IrClass.usesContributionProviderPath(
+  options: MetroOptions,
+  classIds: ClassIds,
+): Boolean {
+  if (!options.generateContributionProviders) return false
+  if (isExtensionGenerated) return false
+  if (annotationsIn(classIds.contributionProviderExclusionAnnotations).any()) return false
+  if (!annotationsIn(classIds.contributesBindingLikeAnnotationsWithContainers).any()) return false
+  return true
 }
 
 internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<IrConstructorCall> {
