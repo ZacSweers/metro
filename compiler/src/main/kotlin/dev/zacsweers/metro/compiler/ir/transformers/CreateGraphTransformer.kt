@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -40,11 +43,17 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
  * Covers replacing `createGraph()` and `createGraphFactory()` compiler intrinsics with calls to the
  * real graphs or graph factories.
  */
+@AssistedInject
 internal class CreateGraphTransformer(
   metroContext: IrMetroContext,
   private val dynamicGraphGenerator: IrDynamicGraphGenerator,
-  traceScope: TraceScope,
+  @Assisted traceScope: TraceScope,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
+
+  @AssistedFactory
+  interface Factory {
+    fun create(traceScope: TraceScope): CreateGraphTransformer
+  }
 
   private val IrCall.targetGraphType: IrType
     get() = typeArguments[0] ?: reportCompilerBug("Missing type argument for ${symbol.owner.name}")

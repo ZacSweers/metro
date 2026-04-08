@@ -9,6 +9,7 @@ plugins {
   alias(libs.plugins.wire)
   alias(libs.plugins.shadow) apply false
   id("metro.publish")
+  alias(libs.plugins.metro)
 }
 
 buildConfig {

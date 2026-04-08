@@ -2,8 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.ir.DefaultBindingLookup
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
@@ -28,8 +35,12 @@ import org.jetbrains.kotlin.name.ClassId
  * Transforms DefaultBindingMirror classes generated in FIR by adding the `defaultBinding()` mirror
  * function whose return type encodes the default binding type from `@DefaultBinding<T>`.
  */
+@Inject
+@SingleIn(IrScope::class)
+@ContributesBinding(IrScope::class, binding<DefaultBindingLookup>())
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
 internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
-  IrMetroContext by context, Lockable by Lockable() {
+  IrMetroContext by context, Lockable by Lockable(), DefaultBindingLookup {
   private val cache = mutableMapOf<ClassId, Optional<IrType>>()
 
   /**
@@ -38,6 +49,10 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
    */
   fun visitClass(declaration: IrClass) {
     val _ = getOrComputeDefaultBindingType(null, declaration)
+  }
+
+  override fun lookupBinding(declaration: IrDeclarationWithName, clazz: IrClass): IrType? {
+    return getOrComputeDefaultBindingType(declaration, clazz)
   }
 
   /**

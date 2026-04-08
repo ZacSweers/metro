@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.GraphToProcess
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -30,23 +33,33 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
  * An [IrTransformer] that runs all of Metro's core transformers _before_ Graph validation. This
  * covers
  */
+@AssistedInject
 internal class CoreTransformers(
   private val context: IrMetroContext,
-  traceScope: TraceScope,
+  @Assisted traceScope: TraceScope,
   private val data: MutableMetroGraphData,
-  private val contributionTransformer: ContributionTransformer,
+  @Assisted private val contributionTransformer: ContributionTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val injectedClassTransformer: InjectedClassTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val bindingContainerTransformer: BindingContainerTransformer,
   private val contributionHintIrTransformer: Lazy<ContributionHintIrTransformer>,
-  private val createGraphTransformer: CreateGraphTransformer,
+  @Assisted private val createGraphTransformer: CreateGraphTransformer,
   private val defaultBindingMirrorTransformer: DefaultBindingMirrorTransformer,
 ) :
   IrElementTransformerVoidWithContext(),
   TransformerContextAccess,
   IrMetroContext by context,
   TraceScope by traceScope {
+
+  @AssistedFactory
+  interface Factory {
+    fun create(
+      traceScope: TraceScope,
+      contributionTransformer: ContributionTransformer,
+      createGraphTransformer: CreateGraphTransformer,
+    ): CoreTransformers
+  }
 
   override val currentFileAccess: IrFile
     get() = currentFile

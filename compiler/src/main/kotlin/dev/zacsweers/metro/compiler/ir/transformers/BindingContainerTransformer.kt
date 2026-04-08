@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
@@ -13,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrCallableMetadata
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
@@ -119,8 +124,13 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-internal class BindingContainerTransformer(context: IrMetroContext) :
-  IrMetroContext by context, Lockable by Lockable() {
+@Inject
+@SingleIn(IrScope::class)
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
+internal class BindingContainerTransformer(
+  context: IrMetroContext,
+  private val bindsMirrorClassTransformer: BindsMirrorClassTransformer,
+) : IrMetroContext by context, Lockable by Lockable() {
 
   // Thread-safe for concurrent access during parallel graph validation.
   private val references = ConcurrentHashMap<CallableId, CallableReference>()
@@ -133,8 +143,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
    * Thread-safe for concurrent access during parallel graph validation.
    */
   private val cache = ConcurrentHashMap<FqName, Optional<BindingContainer>>()
-
-  private val bindsMirrorClassTransformer = BindsMirrorClassTransformer(context)
 
   fun findContainer(
     declaration: IrClass,

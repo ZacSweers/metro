@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
@@ -105,15 +108,21 @@ private data class ExtensionValidationTask(
   val usedContextKeys: Set<IrContextualTypeKey>,
 )
 
+@AssistedInject
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
   private val contributionData: IrContributionData,
-  traceScope: TraceScope,
+  @Assisted traceScope: TraceScope,
   private val forkJoinPool: ForkJoinPool?,
   private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
   private val boundTypeResolver: IrBoundTypeResolver,
 ) : IrMetroContext by context, TraceScope by traceScope {
+
+  @AssistedFactory
+  interface Factory {
+    fun create(traceScope: TraceScope): DependencyGraphTransformer
+  }
 
   private val bindingLookupCache = BindingLookupCache()
 
