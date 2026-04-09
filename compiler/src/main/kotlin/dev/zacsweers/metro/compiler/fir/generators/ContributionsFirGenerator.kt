@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.FirRefTypeKey
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
@@ -34,7 +35,7 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
-import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingTypeRef
+import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingTypeKey
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
@@ -56,10 +57,12 @@ import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationCallCopy
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationCopy
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.toReference
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
@@ -147,6 +150,9 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
   // needed).
   private val topLevelContributionHolders = mutableMapOf<ClassId, ContributionsHolder>()
 
+  /** Cache for [resolveDefaultBindingTypeKey] results to avoid redundant resolution. */
+  private val defaultBindingTypeKeyCache = mutableMapOf<ClassId, FirRefTypeKey?>()
+
   /** Returns the holder for [classId] if it uses the contribution provider path, else null. */
   private fun getHolder(classId: ClassId): ContributionsHolder? {
     val holder = topLevelContributionHolders[classId] ?: return null
@@ -196,6 +202,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     register(session.predicates.contributesAnnotationPredicate)
     register(session.predicates.bindingContainerPredicate)
     register(session.predicates.mapKeysPredicate)
+    register(session.predicates.qualifiersPredicate)
     register(session.predicates.assistedFactoryAnnotationPredicate)
   }
 
@@ -397,8 +404,9 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
 
     // Resolve bound type for the return type
     val boundType =
-      resolveBoundTypeRef(contributingClassSymbol, matchingContribution.annotation)?.coneTypeOrNull
-        ?: contributingClassSymbol.defaultType()
+      resolveBoundTypeRef(contributingClassSymbol, matchingContribution.annotation)
+        .first
+        ?.coneTypeOrNull ?: contributingClassSymbol.defaultType()
 
     val function =
       if (useSyntheticScoped) {
@@ -455,7 +463,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           add(buildIntoMapAnnotation())
           // Copy map key annotation (already resolved on the contribution)
           val mapKey = matchingContribution.mapKey
-          mapKey?.fir?.let { mapKeyFirAnnotation ->
+          mapKey?.fir?.expectAsOrNull<FirAnnotationCall>()?.let { mapKeyFirAnnotation ->
             // For implicit class keys (@MapKey(implicitClassKey = true)), the annotation
             // value is Nothing::class (sentinel) or absent. Build a new annotation with the
             // contributing class as the value instead of copying the sentinel.
@@ -506,6 +514,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           .scopeAnnotations(session)
           .firstOrNull()
           ?.fir
+          ?.expectAsOrNull<FirAnnotationCall>()
           ?.let {
             add(
               buildAnnotationCallCopy(it) {
@@ -523,13 +532,20 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           ?.value as? Boolean ?: false
 
       if (!ignoreQualifier) {
-        matchingContribution.qualifier?.fir?.let {
-          add(
-            buildAnnotationCallCopy(it) {
-              source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-              containingDeclarationSymbol = function.symbol
+        matchingContribution.qualifier?.fir?.expectAsOrNull<FirAnnotation>()?.let {
+          val anno =
+            if (it is FirAnnotationCall) {
+              buildAnnotationCallCopy(it) {
+                source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                containingDeclarationSymbol = function.symbol
+              }
+            } else {
+              // External decl we're copying from
+              buildAnnotationCopy(it) {
+                source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+              }
             }
-          )
+          add(anno)
         }
       }
     }
@@ -578,6 +594,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         .scopeAnnotations(session)
         .firstOrNull()
         ?.fir
+        ?.expectAsOrNull<FirAnnotationCall>()
         ?.let {
           add(
             buildAnnotationCallCopy(it) {
@@ -607,7 +624,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
 
     // Resolve the bound type to disambiguate multiple bindings from the same class
     val boundType =
-      resolveBoundTypeRef(contributingClassSymbol, contribution.annotation)?.coneTypeOrNull
+      resolveBoundTypeRef(contributingClassSymbol, contribution.annotation).first?.coneTypeOrNull
     val boundSuffix =
       if (boundType != null) {
         val boundClassId = boundType.toRegularClassSymbol(session)?.classId
@@ -649,11 +666,14 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     contributingClassSymbol: FirClassSymbol<*>,
     annotation: FirAnnotation,
   ): Contribution.BindingAnnotations {
-    val boundTypeAnnotations = resolveBoundTypeRef(contributingClassSymbol, annotation)?.annotations
+    val (boundTypeRef, defaultBindingQualifier) =
+      resolveBoundTypeRef(contributingClassSymbol, annotation)
+    val boundTypeAnnotations = boundTypeRef?.annotations
     val classAnnotations = contributingClassSymbol.resolvedCompilerAnnotationsWithClassIds
     return Contribution.BindingAnnotations(
       qualifier =
         boundTypeAnnotations?.qualifierAnnotation(session)
+          ?: defaultBindingQualifier
           ?: classAnnotations.qualifierAnnotation(session),
       mapKey =
         boundTypeAnnotations?.mapKeyAnnotation(session)
@@ -664,19 +684,21 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
   /**
    * Resolve the bound type ref for a binding contribution. Returns a [FirTypeRef] so callers can
    * read both the type (via [FirTypeRef.coneType]) and any type annotations (qualifier, map key).
+   * Also returns any qualifier from a `@DefaultBinding` resolution (which may store the qualifier
+   * on the mirror function rather than the type ref).
    */
   private fun resolveBoundTypeRef(
     contributingClassSymbol: FirClassSymbol<*>,
     annotation: FirAnnotation,
-  ): FirTypeRef? {
+  ): Pair<FirTypeRef?, MetroFirAnnotation?> {
     // Try explicit binding argument (Metro's binding() API and Anvil's boundType KClass)
     annotation.resolvedBindingArgument(session, typeResolver = null)?.let {
-      return it
+      return it to null
     }
     // Also try Anvil's boundType directly via resolvedClassId for cases where
     // typeResolver = null can't resolve the KClass argument (no type annotations possible here)
     annotation.anvilKClassBoundTypeArgument(session)?.let {
-      return it
+      return it to null
     }
 
     // Collect non-Any supertypes
@@ -688,13 +710,18 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     // Check supertypes for @DefaultBinding — matches IR's resolveDefaultBinding behavior
     for (superTypeRef in supertypes) {
       val supertypeSymbol = superTypeRef.coneType.toRegularClassSymbol(session) ?: continue
-      supertypeSymbol.resolveDefaultBindingTypeRef(session)?.let {
-        return it
+      val classId = supertypeSymbol.classId
+      val result =
+        defaultBindingTypeKeyCache.getOrPut(classId) {
+          supertypeSymbol.resolveDefaultBindingTypeKey(session)
+        }
+      if (result != null) {
+        return result.typeRef to result.qualifier
       }
     }
 
     // Fall back to single non-Any supertype
-    return supertypes.singleOrNull()
+    return supertypes.singleOrNull() to null
   }
 
   override fun getNestedClassifiersNames(

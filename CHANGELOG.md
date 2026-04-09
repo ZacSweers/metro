@@ -10,7 +10,8 @@ Changelog
 - **[FIR]** Fix not propagating map keys and qualifiers if they're on the bound type arg rather than the class when `generateContributionProviders` is enabled.
 - **[FIR]** Gracefully handle unresolved generic supertype type args.
 - **[FIR]** Disable contribution providers on private constructors.
-- **[FIR]** Fix cross-module resolution of @DefaultBinding
+- **[FIR]** Fix cross-module resolution of `@DefaultBinding`.
+- **[FIR/IR]** Ensure qualifier annotations on explicit binding params are propagated to generated providers when `generateContributionProviders` is enabled.
 - **[FIR/IR/Circuit]** Fix support for `@CircuitInject` on non-`@Inject`-annotated classes.
 
 ### Changes

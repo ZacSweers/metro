@@ -3,10 +3,13 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
+import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -19,9 +22,11 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
-import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -30,7 +35,7 @@ import org.jetbrains.kotlin.name.ClassId
  */
 internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
   IrMetroContext by context, Lockable by Lockable() {
-  private val cache = mutableMapOf<ClassId, Optional<IrType>>()
+  private val cache = mutableMapOf<ClassId, Optional<IrTypeKey>>()
 
   /**
    * For a given class, returns the default binding type if it has a `@DefaultBinding` annotation
@@ -47,7 +52,7 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
   fun getOrComputeDefaultBindingType(
     caller: IrDeclarationWithName?,
     declaration: IrClass,
-  ): IrType? {
+  ): IrTypeKey? {
     return cache
       .getOrPut(declaration.classIdOrFail) {
         val defaultBindingAnnotation =
@@ -81,37 +86,48 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
     caller: IrDeclarationWithName?,
     mirrorClass: IrClass,
     defaultBindingAnnotation: IrConstructorCall,
-  ): IrType {
-    val function = resolveDefaultBindingFunction(mirrorClass, defaultBindingAnnotation)
+  ): IrTypeKey {
+    val (function, key) = resolveDefaultBindingFunction(mirrorClass, defaultBindingAnnotation)
     // IC for changes
     caller?.let { with(metroContext) { trackFunctionCall(caller, function) } }
-    return function.returnType
+    return key
   }
 
   private fun resolveDefaultBindingFunction(
     mirrorClass: IrClass,
     defaultBindingAnnotation: IrConstructorCall,
-  ): IrSimpleFunction {
+  ): Pair<IrSimpleFunction, IrTypeKey> {
     mirrorClass.getSimpleFunction(Symbols.Names.defaultBindingFunction.asString())?.owner?.let {
       // External or already generated
-      return it
+      return it to IrContextualTypeKey.from(it).typeKey
     }
 
     val bindingType = defaultBindingAnnotation.typeArguments.single()!! // Checked in FIR
 
     checkNotLocked()
 
-    // Generate the defaultBinding() function in the mirror class
-    return mirrorClass
-      .addFunction(
-        Symbols.Names.defaultBindingFunction.asString(),
-        returnType = bindingType,
-        modality = Modality.ABSTRACT,
-        origin = Origins.Default,
-      )
-      .apply {
-        // Register as metadata visible
-        metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
+    // Copy qualifier annotation from the type arg or the @DefaultBinding-annotated class
+    val qualifier =
+      with(metroContext) {
+        bindingType.qualifierAnnotation() ?: mirrorClass.parentAsClass.qualifierAnnotation()
       }
+    // Remove the qualifier if present here
+    val finalType = bindingType.removeAnnotations { anno -> anno == qualifier?.ir }
+
+    // Generate the defaultBinding() function in the mirror class
+    val function =
+      mirrorClass
+        .addFunction(
+          Symbols.Names.defaultBindingFunction.asString(),
+          returnType = finalType,
+          modality = Modality.ABSTRACT,
+          origin = Origins.Default,
+        )
+        .apply {
+          qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
+          // Register as metadata visible
+          metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
+        }
+    return function to IrTypeKey(finalType, qualifier)
   }
 }

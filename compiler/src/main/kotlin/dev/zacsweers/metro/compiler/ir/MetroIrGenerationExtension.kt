@@ -114,7 +114,7 @@ public class MetroIrGenerationExtension(
 
           val boundTypeResolver =
             IrBoundTypeResolver(
-              metroContext.pluginContext,
+              metroContext,
               defaultBindingMirrorTransformer::getOrComputeDefaultBindingType,
             )
 

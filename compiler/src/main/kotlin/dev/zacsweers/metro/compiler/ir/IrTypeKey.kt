@@ -21,6 +21,7 @@ private constructor(
   override val qualifier: IrAnnotation?,
   // TODO these extra properties are awkward. Should we make this a sealed class?
   val multibindingKeyData: MultibindingKeyData? = null,
+  val originalType: IrType,
 ) : BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
   val classId by memoize { type.rawTypeOrNull()?.classId }
@@ -144,6 +145,7 @@ private constructor(
         type.canonicalize(patchMutableCollections = false, context = null),
         qualifier,
         multibindingKeyData,
+        type,
       )
     }
   }

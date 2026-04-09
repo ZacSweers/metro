@@ -816,7 +816,7 @@ internal class IrBindingGraph(
                 .annotationsIn(metroContext.metroSymbols.classIds.allContributesAnnotations)
                 .any { annotation ->
                   val result = boundTypeResolver.resolveBoundType(contribution, annotation)
-                  result == null || result.type.rawTypeOrNull()?.classId == klass.classId
+                  result == null || result.typeKey.type.rawTypeOrNull()?.classId == klass.classId
                 }
             implementsKey && bindsKey
           }
