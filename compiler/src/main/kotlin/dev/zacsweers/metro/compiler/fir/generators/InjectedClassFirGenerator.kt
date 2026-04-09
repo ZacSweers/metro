@@ -268,7 +268,12 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             if (it is FirResolvedTypeRef) {
               it.coneType
             } else {
-              resolver.resolveType(it)
+              try {
+                resolver.resolveType(it)
+              } catch (_: Exception) {
+                // Generic type resolution may fail during IDE indexing
+                return@any false
+              }
             }
           val clazz = resolved.toRegularClassSymbol(session) ?: return@any false
           clazz.classKind == ClassKind.CLASS &&
