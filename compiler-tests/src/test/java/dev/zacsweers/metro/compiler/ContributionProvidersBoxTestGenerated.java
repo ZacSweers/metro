@@ -248,6 +248,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
   @TestDataPath("$PROJECT_ROOT")
   public class Contributionproviders {
     @Test
+    @TestMetadata("abstractedAssistedFactoryIsAccessibleExternally.kt")
+    public void testAbstractedAssistedFactoryIsAccessibleExternally() {
+      runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/abstractedAssistedFactoryIsAccessibleExternally.kt");
+    }
+
+    @Test
     public void testAllFilesPresentInContributionproviders() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/contributionproviders"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
@@ -262,6 +268,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("defaultParameters.kt")
     public void testDefaultParameters() {
       runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/defaultParameters.kt");
+    }
+
+    @Test
+    @TestMetadata("explicitMultibindingType.kt")
+    public void testExplicitMultibindingType() {
+      runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/explicitMultibindingType.kt");
     }
 
     @Test
@@ -304,6 +316,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("objectBinding.kt")
     public void testObjectBinding() {
       runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/objectBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("privateConstructorSkipped.kt")
+    public void testPrivateConstructorSkipped() {
+      runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/privateConstructorSkipped.kt");
     }
 
     @Test

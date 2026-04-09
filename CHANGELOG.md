@@ -4,9 +4,24 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR]** Fix missing contribution hints for assisted factories
+- **[FIR]** Fix not propagating map keys and qualifiers if they're on the bound type arg rather than the class when `generateContributionProviders` is enabled.
+- **[FIR]** Gracefully handle unresolved generic supertype type args.
+- **[FIR]** Disable contribution providers on private constructors.
+- **[FIR/IR/Circuit]** Fix support for `@CircuitInject` on non-`@Inject`-annotated classes.
+
 ### Changes
 
 - Mark generated Circuit factories as `@Deprecated(HIDDEN)` + disable them in IDE as they're not necessary there.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@Sultan1993](https://github.com/Sultan1993)
 
 0.13.2
 ------

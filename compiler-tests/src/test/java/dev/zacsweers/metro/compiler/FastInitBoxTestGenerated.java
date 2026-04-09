@@ -257,6 +257,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestDataPath("$PROJECT_ROOT")
     public class Contributionproviders {
       @Test
+      @TestMetadata("abstractedAssistedFactoryIsAccessibleExternally.kt")
+      public void testAbstractedAssistedFactoryIsAccessibleExternally() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/abstractedAssistedFactoryIsAccessibleExternally.kt");
+      }
+
+      @Test
       public void testAllFilesPresentInContributionproviders() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/contributionproviders"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
@@ -271,6 +277,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("defaultParameters.kt")
       public void testDefaultParameters() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/defaultParameters.kt");
+      }
+
+      @Test
+      @TestMetadata("explicitMultibindingType.kt")
+      public void testExplicitMultibindingType() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/explicitMultibindingType.kt");
       }
 
       @Test
@@ -313,6 +325,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("objectBinding.kt")
       public void testObjectBinding() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/objectBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("privateConstructorSkipped.kt")
+      public void testPrivateConstructorSkipped() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/privateConstructorSkipped.kt");
       }
 
       @Test
@@ -511,6 +529,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("PresenterClassNoInjection.kt")
       public void testPresenterClassNoInjection() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassNoInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassNoInjectionWithCircuitParams.kt")
+      public void testPresenterClassNoInjectionWithCircuitParams() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassNoInjectionWithCircuitParams.kt");
       }
 
       @Test
