@@ -8,6 +8,8 @@ Changelog
 
 - **[FIR]** Fix missing contribution hints for assisted factories
 - **[FIR]** Fix not propagating map keys and qualifiers if they're on the bound type arg rather than the class when `generateContributionProviders` is enabled.
+- **[FIR]** Gracefully handle unresolved generic supertype type args.
+- **[FIR]** Disable contribution providers on private constructors.
 - **[FIR/IR/Circuit]** Fix support for `@CircuitInject` on non-`@Inject`-annotated classes.
 
 ### Changes
