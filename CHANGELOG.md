@@ -4,6 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR]** Fix missing contribution hints for assisted factories
+- **[FIR/IR/Circuit]** Fix support for `@CircuitInject` on non-`@Inject`-annotated classes.
+
 ### Changes
 
 - Mark generated Circuit factories as `@Deprecated(HIDDEN)` + disable them in IDE as they're not necessary there.

@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irImplicitCast
 import org.jetbrains.kotlin.ir.builders.irIs
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irReturn
@@ -93,6 +94,15 @@ private class CircuitIrTransformer(
 
   private val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat by lazy {
     compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
+  }
+
+  /** Cached invoke() symbol for metro's Provider type. */
+  private val providerInvokeFunction: IrSimpleFunction by lazy {
+    pluginContext
+      .referenceClass(Symbols.ClassIds.metroProvider)!!
+      .functions
+      .first { it.owner.name.asString() == "invoke" }
+      .owner
   }
 
   override fun visitClass(declaration: IrClass): IrStatement {
@@ -183,16 +193,11 @@ private class CircuitIrTransformer(
     targetInfo: TargetInfo,
     fieldsByName: Map<Name, IrField>,
   ): IrExpression {
-    val providerField = fieldsByName[CircuitNames.provider]
     val factoryField = fieldsByName[CircuitNames.factoryField]
 
     val circuitTargetInfo = factoryClass.circuitFactoryTargetData!!
 
     return when {
-      providerField != null -> {
-        // provider() - call invoke on the provider
-        generateProviderCall(function, providerField)
-      }
       factoryField != null -> {
         // factory.create(...) - call the assisted factory
         generateAssistedFactoryCall(function, factoryField, targetInfo)
@@ -206,33 +211,129 @@ private class CircuitIrTransformer(
         generateFunctionFactoryCall(function, factoryType, firFunctionSymbol, fieldsByName)
       }
       else -> {
-        // Class-based factory with no constructor params (e.g., no-injection presenter/ui).
-        // Instantiate the target class directly.
-        val targetClassId =
-          circuitTargetInfo.originClassId ?: error("Class-based factory missing origin class ID")
-        val targetClass =
-          pluginContext.referenceClass(targetClassId)
-            ?: error("Could not find target class: $targetClassId")
-        irCall(targetClass.constructors.first())
+        // Class-based factory: instantiate the target class directly, wiring circuit-provided
+        // params from create() and injectable params from factory fields (Provider.invoke()).
+        val factoryType = determineFactoryType(factoryClass)
+        generateClassInstantiation(function, factoryClass, factoryType, fieldsByName)
       }
     }
   }
 
-  private fun IrBuilderWithScope.generateProviderCall(
-    function: IrSimpleFunction,
-    providerField: IrField,
+  /**
+   * Generates instantiation for class-based factories. Constructor params are wired from two
+   * sources:
+   * - Circuit-provided params (Screen, Navigator, etc.) are matched by type from `create()` params
+   * - Injectable params come from factory backing fields (`Provider<T>.invoke()`)
+   */
+  private fun IrBuilderWithScope.generateClassInstantiation(
+    createFunction: IrSimpleFunction,
+    factoryClass: IrClass,
+    factoryType: FactoryType,
+    fieldsByName: Map<Name, IrField>,
   ): IrExpression {
-    val thisReceiver = function.dispatchReceiverParameter ?: return irNull()
+    val circuitTargetInfo = factoryClass.circuitFactoryTargetData!!
+    val targetClassId =
+      circuitTargetInfo.originClassId ?: error("Class-based factory missing origin class ID")
+    val targetClass =
+      pluginContext.referenceClass(targetClassId)
+        ?: error("Could not find target class: $targetClassId")
+    val constructor = targetClass.constructors.first()
+    val ctorParams = constructor.owner.regularParameters
+    if (ctorParams.isEmpty()) {
+      return irCall(constructor)
+    }
 
-    // Get the provider field and call invoke()
-    val providerGet = irGetField(irGet(thisReceiver), providerField)
+    val thisReceiver = createFunction.dispatchReceiverParameter!!
+    val createParamsByName = createFunction.regularParameters.associateBy { it.name }
+    return irCall(constructor).apply {
+      for (ctorParam in ctorParams) {
+        val matchingCreateParam =
+          findMatchingCircuitParam(ctorParam, createParamsByName, factoryType)
+        if (matchingCreateParam != null) {
+          // Circuit-provided: pass from create() param, casting if needed
+          val value = irGet(matchingCreateParam)
+          arguments[ctorParam.indexInParameters] =
+            if (matchingCreateParam.type == ctorParam.type) {
+              value
+            } else {
+              irImplicitCast(value, ctorParam.type)
+            }
+        } else {
+          // Injectable: read from factory field and invoke Provider
+          val field = fieldsByName[ctorParam.name] ?: continue
+          val fieldGet = irGetField(irGet(thisReceiver), field)
+          val paramClassId = ctorParam.type.classOrNull?.owner?.classId
+          val isAlreadyWrapped =
+            paramClassId != null &&
+              (paramClassId in Symbols.ClassIds.commonMetroProviders ||
+                paramClassId == Symbols.ClassIds.Lazy ||
+                paramClassId == Symbols.ClassIds.function0)
+          arguments[ctorParam.indexInParameters] =
+            if (isAlreadyWrapped) {
+              fieldGet
+            } else {
+              irCall(providerInvokeFunction).apply { dispatchReceiver = fieldGet }
+            }
+        }
+      }
+    }
+  }
 
-    // Find the invoke function on Provider
-    val providerClass = providerField.type.classOrNull?.owner ?: return irNull()
-    val invokeFunction =
-      providerClass.functions.find { it.name.asString() == "invoke" } ?: return irNull()
+  /**
+   * Finds the `create()` parameter that matches a constructor parameter by type. Returns the
+   * matching create() param if the constructor param type is a circuit-provided type (Screen
+   * subtype, Navigator, Modifier, CircuitUiState subtype), or null if it's an injectable param.
+   */
+  private fun classifyCircuitType(paramClass: IrClass): CircuitProvidedType? {
+    return when (paramClass.classId) {
+      CircuitClassIds.Screen -> CircuitProvidedType.SCREEN
+      CircuitClassIds.Navigator -> CircuitProvidedType.NAVIGATOR
+      CircuitClassIds.Modifier -> CircuitProvidedType.MODIFIER
+      CircuitClassIds.CircuitUiState -> CircuitProvidedType.UI_STATE
+      else -> {
+        // Screen and CircuitUiState are always subtyped — single walk checking both
+        for (superInterface in paramClass.allSuperInterfaces()) {
+          when (superInterface.classId) {
+            CircuitClassIds.Screen -> return CircuitProvidedType.SCREEN
+            CircuitClassIds.CircuitUiState -> return CircuitProvidedType.UI_STATE
+          }
+        }
+        null
+      }
+    }
+  }
 
-    return irCall(invokeFunction).apply { dispatchReceiver = providerGet }
+  private fun findMatchingCircuitParam(
+    ctorParam: IrValueParameter,
+    createParamsByName: Map<Name, IrValueParameter>,
+    factoryType: FactoryType,
+  ): IrValueParameter? {
+    val paramClass = ctorParam.type.classOrNull?.owner ?: return null
+    val type = classifyCircuitType(paramClass) ?: return null
+
+    val name =
+      when (type) {
+        CircuitProvidedType.SCREEN -> CircuitNames.screen
+        CircuitProvidedType.NAVIGATOR ->
+          if (factoryType == FactoryType.PRESENTER) {
+            CircuitNames.navigator
+          } else {
+            return null
+          }
+        CircuitProvidedType.MODIFIER ->
+          if (factoryType == FactoryType.UI) {
+            CircuitNames.modifier
+          } else {
+            return null
+          }
+        CircuitProvidedType.UI_STATE ->
+          if (factoryType == FactoryType.UI) {
+            CircuitNames.state
+          } else {
+            return null
+          }
+      }
+    return createParamsByName[name]
   }
 
   private fun IrBuilderWithScope.generateAssistedFactoryCall(
@@ -341,10 +442,7 @@ private class CircuitIrTransformer(
             irTemporary(fieldGet, nameHint = param.name.asString())
           } else {
             // Provider<T> field — extract via .invoke() once
-            val providerClass = field.type.classOrNull?.owner ?: continue
-            val invokeFunction =
-              providerClass.functions.find { it.name.asString() == "invoke" } ?: continue
-            val invokedValue = irCall(invokeFunction).apply { dispatchReceiver = fieldGet }
+            val invokedValue = irCall(providerInvokeFunction).apply { dispatchReceiver = fieldGet }
             irTemporary(invokedValue, nameHint = param.name.asString())
           }
         resolvedLocals[param.name] = localVar

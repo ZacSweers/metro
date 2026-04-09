@@ -257,6 +257,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestDataPath("$PROJECT_ROOT")
     public class Contributionproviders {
       @Test
+      @TestMetadata("abstractedAssistedFactoryIsAccessibleExternally.kt")
+      public void testAbstractedAssistedFactoryIsAccessibleExternally() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/abstractedAssistedFactoryIsAccessibleExternally.kt");
+      }
+
+      @Test
       public void testAllFilesPresentInContributionproviders() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/contributionproviders"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
@@ -517,6 +523,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("PresenterClassNoInjection.kt")
       public void testPresenterClassNoInjection() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassNoInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassNoInjectionWithCircuitParams.kt")
+      public void testPresenterClassNoInjectionWithCircuitParams() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassNoInjectionWithCircuitParams.kt");
       }
 
       @Test
