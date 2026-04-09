@@ -61,13 +61,14 @@ private constructor(
   }
 
   override fun copy(type: IrType, qualifier: IrAnnotation?): IrTypeKey =
-    IrTypeKey(type, qualifier, multibindingKeyData)
+    copy(type, qualifier, multibindingKeyData, originalType)
 
   fun copy(
     type: IrType = this.type,
     qualifier: IrAnnotation? = this.qualifier,
     multibindingKeyData: MultibindingKeyData? = this.multibindingKeyData,
-  ): IrTypeKey = IrTypeKey(type, qualifier, multibindingKeyData)
+    originalType: IrType = this.originalType,
+  ): IrTypeKey = IrTypeKey(type, qualifier, multibindingKeyData, originalType)
 
   override fun render(short: Boolean, includeQualifier: Boolean): String =
     renderForDiagnostic(short, includeQualifier, false)
