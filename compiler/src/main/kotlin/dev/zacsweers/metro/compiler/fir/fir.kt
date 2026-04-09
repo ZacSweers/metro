@@ -749,6 +749,11 @@ internal fun FirBasedSymbol<*>.qualifierAnnotation(
 ): MetroFirAnnotation? =
   resolvedCompilerAnnotationsWithClassIds.qualifierAnnotation(session, typeResolver)
 
+internal fun FirAnnotationContainer.qualifierAnnotation(
+  session: FirSession,
+  typeResolver: TypeResolveService? = null,
+): MetroFirAnnotation? = annotations.qualifierAnnotation(session, typeResolver)
+
 internal fun List<FirAnnotation>.qualifierAnnotation(
   session: FirSession,
   typeResolver: TypeResolveService? = null,
@@ -762,6 +767,9 @@ internal fun List<FirAnnotation>.qualifierAnnotation(
 
 internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   resolvedCompilerAnnotationsWithClassIds.mapKeyAnnotation(session)
+
+internal fun FirAnnotationContainer.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
+  annotations.mapKeyAnnotation(session)
 
 internal fun List<FirAnnotation>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   asSequence().annotationAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
