@@ -15,12 +15,14 @@ Changelog
 ### Changes
 
 - Mark generated Circuit factories as `@Deprecated(HIDDEN)` + disable them in IDE as they're not necessary there.
+- Add back deprecated `macosX64()`, `tvosX64()`, and `watchosX64()` targets for now due to [KT-78660 (comment)](https://youtrack.jetbrains.com/issue/KT-78660#focus=Comments-27-13603171.0-0).
 
 ### Contributors
 
 Special thanks to the following contributors for contributing to this release!
 
 - [@kevinguitar](https://github.com/kevinguitar)
+- [@LionZXY](https://github.com/LionZXY)
 - [@Sultan1993](https://github.com/Sultan1993)
 
 0.13.2
