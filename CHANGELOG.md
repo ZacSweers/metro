@@ -7,6 +7,7 @@ Changelog
 ### Fixes
 
 - **[FIR]** Fix missing contribution hints for assisted factories
+- **[FIR]** Fix not propagating map keys and qualifiers if they're on the bound type arg rather than the class when `generateContributionProviders` is enabled.
 - **[FIR/IR/Circuit]** Fix support for `@CircuitInject` on non-`@Inject`-annotated classes.
 
 ### Changes

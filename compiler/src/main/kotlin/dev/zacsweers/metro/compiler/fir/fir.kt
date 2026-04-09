@@ -1691,7 +1691,14 @@ internal fun ConeClassLikeLookupTag.toSymbolCompat(s: FirSession): FirClassLikeS
  * Returns the [ConeKotlinType] of the default binding, or null if none found.
  */
 // TODO lookup tracking?
-internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): ConeKotlinType? {
+internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): ConeKotlinType? =
+  resolveDefaultBindingTypeRef(session)?.coneTypeOrNull
+
+/**
+ * Like [resolveDefaultBindingType] but returns the [FirTypeRef] so callers can also read type
+ * annotations (e.g., qualifier or map key annotations on the default binding type).
+ */
+internal fun FirClassSymbol<*>.resolveDefaultBindingTypeRef(session: FirSession): FirTypeRef? {
   // Try to read from @DefaultBinding annotation directly (same-module)
   getAnnotationByClassId(session.classIds.defaultBindingAnnotation, session)?.let { annotation ->
     if (annotation !is FirAnnotationCall) return null
@@ -1699,7 +1706,7 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): C
     return when (typeArg) {
       is FirPlaceholderProjection,
       is FirStarProjection -> null // Checked separately
-      is FirTypeProjectionWithVariance -> typeArg.typeRef.coneTypeOrNull
+      is FirTypeProjectionWithVariance -> typeArg.typeRef
     }
   }
 
@@ -1713,7 +1720,7 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): C
     mirrorSymbol.declaredFunctions(session).firstOrNull {
       it.name == Symbols.Names.defaultBindingFunction
     } ?: return null
-  return holderFunction.resolvedReturnType
+  return holderFunction.resolvedReturnTypeRef
 }
 
 /** Builds a resolved FirGetClassCall for a given ClassId. */
