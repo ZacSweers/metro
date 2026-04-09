@@ -14,6 +14,13 @@ Changelog
 
 - Mark generated Circuit factories as `@Deprecated(HIDDEN)` + disable them in IDE as they're not necessary there.
 
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@Sultan1993](https://github.com/Sultan1993)
+
 0.13.2
 ------
 
