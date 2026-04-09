@@ -28,6 +28,7 @@ import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -36,6 +37,7 @@ import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataKey
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataRegistry
+import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -208,7 +210,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
     val target = findTargetForFactory(context.owner.classId) ?: return emptyList()
-    target.populate(session)
+    target.populate(session, ::isCircuitProvidedType)
 
     val constructor =
       createConstructor(
@@ -221,13 +223,6 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
         // Add constructor parameters based on the target type
         when {
-          target.useProvider -> {
-            // Inject Provider<TargetClass>
-            val targetType = target.targetType ?: return@createConstructor
-            val providerType =
-              Symbols.ClassIds.metroProvider.constructClassLikeType(arrayOf(targetType))
-            valueParameter(CircuitNames.provider, providerType)
-          }
           target.isAssisted -> {
             // Inject the assisted factory type directly
             target.assistedFactoryType?.let { factoryType ->
@@ -243,48 +238,70 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
             val factoryType = target.factoryType ?: return@createConstructor
             for (param in functionSymbol.valueParameterSymbols) {
               if (!isCircuitProvidedParam(param, factoryType)) {
-                val paramType =
-                  typeResolverFactory
-                    .create(functionSymbol)
-                    ?.resolveType(param.resolvedReturnTypeRef) ?: continue
-
-                val paramContextKey = FirContextualTypeKey.from(session, param, paramType)
-                val isAlreadyWrapped = !paramContextKey.isCanonical
-                val constructorParamType =
-                  if (isAlreadyWrapped) {
-                    paramType
-                  } else {
-                    Symbols.ClassIds.metroProvider.constructClassLikeType(arrayOf(paramType))
-                  }
-                valueParameter(param.name, constructorParamType)
+                val type = resolveInjectableParamType(param, functionSymbol) ?: continue
+                valueParameter(param.name, type)
+              }
+            }
+          }
+          target.instantiationType == InstantiationType.CLASS -> {
+            // For class-based factories, add Provider<T> params only for injectable dependencies.
+            // Circuit-provided params (Screen, Navigator, etc.) are wired from create() in IR.
+            val (ctorParams, ctorOwner) = target.resolveConstructorParams(session)
+            if (ctorOwner != null) {
+              for (param in ctorParams) {
+                if (param.name in target.injectableParamNames) {
+                  val type = resolveInjectableParamType(param, ctorOwner) ?: continue
+                  valueParameter(param.name, type)
+                }
               }
             }
           }
         }
       }
 
-    // Copy qualifier annotations from original function params to generated constructor params.
+    // Copy qualifier annotations from original params to generated constructor params.
     // This ensures Metro resolves the correct qualified bindings.
-    if (target.instantiationType == InstantiationType.FUNCTION) {
-      val functionSymbol = target.originalFunctionSymbol
-      if (functionSymbol != null) {
-        val originalParamsByName = functionSymbol.valueParameterSymbols.associateBy { it.name }
-        @OptIn(SymbolInternals::class)
-        for (constructorParam in constructor.symbol.valueParameterSymbols) {
-          val originalParam = originalParamsByName[constructorParam.name] ?: continue
-          val qualifier = originalParam.qualifierAnnotation(session)
-          if (qualifier != null) {
-            context(session.compatContext) {
-              constructorParam.fir.replaceAnnotationsSafe(
-                constructorParam.annotations + qualifier.fir
-              )
-            }
+    val originalParamSource: List<FirValueParameterSymbol>? =
+      when (target.instantiationType) {
+        InstantiationType.FUNCTION -> target.originalFunctionSymbol?.valueParameterSymbols
+        InstantiationType.CLASS -> target.resolveConstructorParams(session).first
+      }
+    if (originalParamSource != null) {
+      val originalParamsByName = originalParamSource.associateBy { it.name }
+      for (constructorParam in constructor.valueParameters) {
+        val originalParam = originalParamsByName[constructorParam.name] ?: continue
+        val qualifier = originalParam.qualifierAnnotation(session)
+        if (qualifier != null) {
+          context(session.compatContext) {
+            constructorParam.replaceAnnotationsSafe(constructorParam.annotations + qualifier.fir)
           }
         }
       }
     }
 
     return listOf(constructor.symbol)
+  }
+
+  /**
+   * Resolves the factory constructor parameter type for an injectable (non-circuit-provided) param.
+   * Plain types are wrapped in `Provider<T>`. Types already wrapped in Provider/Lazy/Function are
+   * returned as-is.
+   */
+  private fun resolveInjectableParamType(
+    param: FirValueParameterSymbol,
+    paramOwner: FirFunctionSymbol<*>,
+  ): ConeKotlinType? {
+    val paramType =
+      typeResolverFactory.create(paramOwner)?.resolveType(param.resolvedReturnTypeRef)
+        ?: return null
+
+    val paramContextKey = FirContextualTypeKey.from(session, param, paramType)
+    val isAlreadyWrapped = !paramContextKey.isCanonical
+    return if (isAlreadyWrapped) {
+      paramType
+    } else {
+      Symbols.ClassIds.metroProvider.constructClassLikeType(arrayOf(paramType))
+    }
   }
 
   // Indicate where our generated contributing classes are. These are all the `@IntoSet` annotated
@@ -434,24 +451,40 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     param: FirValueParameterSymbol,
     factoryType: FactoryType,
   ): Boolean {
-    val s = symbols ?: return false
     val classId = param.resolvedReturnTypeRef.coneType.classId ?: return false
+    return isCircuitProvidedType(classId, factoryType)
+  }
 
-    // Both UI and Presenter: Screen subtypes
-    if (s.isScreenType(classId)) return true
-
-    // Presenter only: Navigator
-    if (factoryType == FactoryType.PRESENTER) {
-      if (s.isNavigatorType(classId)) return true
+  private fun isCircuitProvidedType(classId: ClassId, factoryType: FactoryType): Boolean {
+    val type = classifyCircuitType(classId) ?: return false
+    return when (type) {
+      CircuitProvidedType.SCREEN -> true
+      CircuitProvidedType.NAVIGATOR -> factoryType == FactoryType.PRESENTER
+      CircuitProvidedType.MODIFIER -> factoryType == FactoryType.UI
+      CircuitProvidedType.UI_STATE -> factoryType == FactoryType.UI
     }
+  }
 
-    // UI only: CircuitUiState subtypes, Modifier
-    if (factoryType == FactoryType.UI) {
-      if (s.isModifierType(classId)) return true
-      if (s.isUiStateType(classId)) return true
+  /**
+   * Classifies a ClassId as a circuit-provided type. Exact classId matches are checked first.
+   * Screen and CircuitUiState require supertype walks since they're always subtyped in practice.
+   * Navigator and Modifier are exact matches only.
+   */
+  private fun classifyCircuitType(classId: ClassId): CircuitProvidedType? {
+    return when (classId) {
+      CircuitClassIds.Screen -> CircuitProvidedType.SCREEN
+      CircuitClassIds.Navigator -> CircuitProvidedType.NAVIGATOR
+      CircuitClassIds.Modifier -> CircuitProvidedType.MODIFIER
+      CircuitClassIds.CircuitUiState -> CircuitProvidedType.UI_STATE
+      else -> {
+        val s = symbols ?: return null
+        when {
+          s.isScreenType(classId) -> CircuitProvidedType.SCREEN
+          s.isUiStateType(classId) -> CircuitProvidedType.UI_STATE
+          else -> null
+        }
+      }
     }
-
-    return false
   }
 
   internal companion object {
@@ -474,12 +507,11 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   }
 
   /** Gets or lazily computes and caches the factory target for a function-based factory. */
-  @OptIn(SymbolInternals::class)
   private fun getOrComputeFunctionTarget(factoryClassId: ClassId): CircuitFactoryTarget? {
     return computedTargets.getOrPut(factoryClassId) {
       val function = functionFactoryClassIds[factoryClassId] ?: return@getOrPut null
       val typeResolver = typeResolverFactory.create(function) ?: return@getOrPut null
-      val returnTypeRef = function.fir.returnTypeRef
+      @OptIn(SymbolInternals::class) val returnTypeRef = function.fir.returnTypeRef
       val returnType =
         if (returnTypeRef is FirImplicitTypeRef) {
           // Assume it's Unit/UI. Checker will validate otherwise later
@@ -558,6 +590,14 @@ internal enum class FactoryType(val classId: ClassId, val factoryClassId: ClassI
   PRESENTER(CircuitClassIds.Presenter, CircuitClassIds.PresenterFactory),
 }
 
+/** Classification of a circuit-provided parameter type. */
+internal enum class CircuitProvidedType {
+  SCREEN,
+  NAVIGATOR,
+  MODIFIER,
+  UI_STATE,
+}
+
 /** How the target is instantiated. */
 internal enum class InstantiationType {
   /** Target is a top-level composable function. */
@@ -571,10 +611,10 @@ internal enum class InstantiationType {
  * Holds all information needed to generate a Circuit factory.
  *
  * Early fields ([originClassId], [factoryClassId], [screenType], [scopeClassId]) are set at
- * construction during class generation. Deferred fields ([targetType], [useProvider], [isAssisted],
- * [assistedFactoryType], [factoryType]) are populated lazily via [populate] during member
- * generation (constructor/function generation), when type information (e.g., SAM function
- * resolution) is available.
+ * construction during class generation. Deferred fields ([targetType], [isAssisted],
+ * [assistedFactoryType], [factoryType], [injectableParamNames]) are populated lazily via [populate]
+ * during member generation (constructor/function generation), when type information (e.g., SAM
+ * function resolution) is available.
  */
 internal class CircuitFactoryTarget(
   /** The original class that the factory is for (used for @Origin annotation). */
@@ -586,7 +626,7 @@ internal class CircuitFactoryTarget(
   /** The scope ClassId from @CircuitInject. */
   val scopeClassId: ClassId,
   /** Stored for deferred population. Null for function targets. */
-  private val classSymbol: FirClassSymbol<*>?,
+  internal val classSymbol: FirClassSymbol<*>?,
   /** The original function symbol. Only set for function-based factories. */
   val originalFunctionSymbol: FirFunctionSymbol<*>? = null,
 ) {
@@ -598,10 +638,6 @@ internal class CircuitFactoryTarget(
   var instantiationType: InstantiationType = InstantiationType.CLASS
     private set
 
-  /** Whether to inject a Provider<TargetClass>. */
-  var useProvider: Boolean = false
-    private set
-
   /** Whether this uses assisted injection. */
   var isAssisted: Boolean = false
     private set
@@ -611,6 +647,13 @@ internal class CircuitFactoryTarget(
     private set
 
   var factoryType: FactoryType? = null
+    private set
+
+  /**
+   * Names of constructor params that need DI (not circuit-provided). For CLASS targets, the
+   * generated factory constructor will have `Provider<T>` params for each of these.
+   */
+  var injectableParamNames: Set<Name> = emptySet()
     private set
 
   private var populated = false
@@ -627,7 +670,10 @@ internal class CircuitFactoryTarget(
    * Lazily populate deferred fields for class-based targets. Called during member generation
    * (constructor/function generation) when type information (e.g., SAM functions) is available.
    */
-  fun populate(session: FirSession) {
+  fun populate(
+    session: FirSession,
+    isCircuitProvidedType: (ClassId, FactoryType) -> Boolean = { _, _ -> false },
+  ) {
     if (populated) return
     populated = true
     val classSymbol = classSymbol ?: return
@@ -648,24 +694,12 @@ internal class CircuitFactoryTarget(
       return
     }
 
-    val injectConstructor = classSymbol.findInjectLikeConstructors(session, true).firstOrNull()
-
-    val hasAssistedParams =
-      injectConstructor?.constructor?.valueParameterSymbols?.any {
-        it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-      } == true
-
-    useProvider = injectConstructor != null && !hasAssistedParams
-
-    val targetTypeClass: FirClassSymbol<*> = classSymbol
     val targetTypeLocal: ConeKotlinType = classSymbol.defaultType()
-
     targetType = targetTypeLocal
-    isAssisted = hasAssistedParams
     instantiationType = InstantiationType.CLASS
 
     factoryType =
-      targetTypeClass.getSuperTypes(session).firstNotNullOfOrNull { superType ->
+      classSymbol.getSuperTypes(session).firstNotNullOfOrNull { superType ->
         // TODO remove expectAs in 2.3.20
         when (superType.expectAs<ConeKotlinType>().classId) {
           FactoryType.PRESENTER.classId -> FactoryType.PRESENTER
@@ -673,6 +707,39 @@ internal class CircuitFactoryTarget(
           else -> null
         }
       }
+
+    // Classify constructor params into circuit-provided vs injectable.
+    // Circuit-provided params (Screen, Navigator, etc.) come from the factory's create() method.
+    // Injectable params need Provider<T> wrappers in the factory constructor.
+    val resolvedFactoryType = factoryType ?: return
+    val (constructorParams, _) = resolveConstructorParams(session)
+
+    isAssisted = constructorParams.any {
+      it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
+    }
+
+    injectableParamNames =
+      constructorParams
+        .filterNot { param ->
+          val classId = param.resolvedReturnTypeRef.coneType.classId ?: return@filterNot false
+          isCircuitProvidedType(classId, resolvedFactoryType)
+        }
+        .mapToSet { it.name }
+  }
+
+  /**
+   * Resolves the constructor params and their owning symbol for the target class. Prefers the
+   * `@Inject`-annotated constructor if available, otherwise falls back to the primary constructor.
+   */
+  fun resolveConstructorParams(
+    session: FirSession
+  ): Pair<List<FirValueParameterSymbol>, FirFunctionSymbol<*>?> {
+    val classSymbol = classSymbol ?: return emptyList<FirValueParameterSymbol>() to null
+    val injectConstructor = classSymbol.findInjectLikeConstructors(session, true).firstOrNull()
+    val constructor =
+      injectConstructor?.constructor ?: classSymbol.constructors(session).firstOrNull()
+    val params = constructor?.valueParameterSymbols ?: emptyList()
+    return params to constructor
   }
 
   object Attribute : FirDeclarationDataKey()
