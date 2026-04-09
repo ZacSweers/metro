@@ -311,6 +311,10 @@ internal fun IrClass.usesContributionProviderPath(
   if (isExtensionGenerated) return false
   if (annotationsIn(classIds.contributionProviderExclusionAnnotations).any()) return false
   if (!annotationsIn(classIds.contributesBindingLikeAnnotationsWithContainers).any()) return false
+  // Can't generate a contribution provider if the inject constructor is private
+  val injectCtor =
+    findInjectableConstructor(onlyUsePrimaryConstructor = false, classIds.injectLikeAnnotations)
+  if (injectCtor?.visibility == DescriptorVisibilities.PRIVATE) return false
   return true
 }
 

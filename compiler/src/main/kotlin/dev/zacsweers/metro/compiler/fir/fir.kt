@@ -172,12 +172,21 @@ internal fun FirBasedSymbol<*>.isAnnotatedInject(session: FirSession): Boolean {
 internal fun FirBasedSymbol<*>.usesContributionProviderPath(session: FirSession): Boolean {
   if (!session.metroFirBuiltIns.options.generateContributionProviders) return false
   if (this is FirClassSymbol<*> && fir.isExtensionGenerated == true) return false
-  if (isAnnotatedWithAny(session, session.classIds.contributionProviderExclusionAnnotations))
+  if (isAnnotatedWithAny(session, session.classIds.contributionProviderExclusionAnnotations)) {
     return false
+  }
   if (
     !isAnnotatedWithAny(session, session.classIds.contributesBindingLikeAnnotationsWithContainers)
-  )
+  ) {
     return false
+  }
+  // Can't generate a contribution provider if the inject constructor is private
+  if (this is FirClassSymbol<*>) {
+    val injectCtor = findInjectLikeConstructors(session).firstOrNull()
+    if (injectCtor?.constructor?.rawStatus?.visibility == Visibilities.Private) {
+      return false
+    }
+  }
   return true
 }
 
