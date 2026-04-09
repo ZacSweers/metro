@@ -520,6 +520,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("PresenterClassNoInjectionWithCircuitParams.kt")
+      public void testPresenterClassNoInjectionWithCircuitParams() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassNoInjectionWithCircuitParams.kt");
+      }
+
+      @Test
       @TestMetadata("PresenterClassSimpleInjection.kt")
       public void testPresenterClassSimpleInjection() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassSimpleInjection.kt");
