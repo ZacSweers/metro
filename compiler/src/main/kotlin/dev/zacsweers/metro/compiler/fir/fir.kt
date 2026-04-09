@@ -1710,7 +1710,7 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): C
 internal fun FirClassSymbol<*>.resolveDefaultBindingTypeRef(session: FirSession): FirTypeRef? {
   // Try to read from @DefaultBinding annotation directly (same-module)
   getAnnotationByClassId(session.classIds.defaultBindingAnnotation, session)?.let { annotation ->
-    if (annotation !is FirAnnotationCall) return null
+    if (annotation !is FirAnnotationCall) return@let
     val typeArg = annotation.typeArguments.firstOrNull() ?: return null
     return when (typeArg) {
       is FirPlaceholderProjection,
