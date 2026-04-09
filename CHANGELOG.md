@@ -7,6 +7,7 @@ Changelog
 ### Fixes
 
 - **[FIR]** Fix missing contribution hints for assisted factories
+- **[FIR/IR/Circuit]** Fix support for `@CircuitInject` on non-`@Inject`-annotated classes.
 
 ### Changes
 
