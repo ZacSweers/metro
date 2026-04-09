@@ -271,7 +271,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               try {
                 resolver.resolveType(it)
               } catch (_: Exception) {
-                // Generic type resolution may fail during IDE indexing
+                // Generic type resolution may fail during IDE indexing because
+                // this isn't a deep resolve
                 return@any false
               }
             }
