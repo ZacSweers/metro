@@ -1708,18 +1708,26 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): C
  * annotations (e.g., qualifier or map key annotations on the default binding type).
  */
 internal fun FirClassSymbol<*>.resolveDefaultBindingTypeRef(session: FirSession): FirTypeRef? {
-  // Try to read from @DefaultBinding annotation directly (same-module)
-  getAnnotationByClassId(session.classIds.defaultBindingAnnotation, session)?.let { annotation ->
-    if (annotation !is FirAnnotationCall) return@let
-    val typeArg = annotation.typeArguments.firstOrNull() ?: return null
-    return when (typeArg) {
-      is FirPlaceholderProjection,
-      is FirStarProjection -> null // Checked separately
-      is FirTypeProjectionWithVariance -> typeArg.typeRef
-    }
+  val annotation =
+    getAnnotationByClassId(session.classIds.defaultBindingAnnotation, session) ?: return null
+  if (origin is FirDeclarationOrigin.Library) {
+    // If it's external we need to read the mirror
+    return resolveExternalDefaultBindingTypeRef(session)
   }
 
-  // Fall back to DefaultBindingMirror for cross-module resolution
+  // Try to read from @DefaultBinding annotation directly (same-module)
+  if (annotation !is FirAnnotationCall) return null
+  val typeArg = annotation.typeArguments.firstOrNull() ?: return null
+  return when (typeArg) {
+    is FirPlaceholderProjection,
+    is FirStarProjection -> null // Checked separately
+    is FirTypeProjectionWithVariance -> typeArg.typeRef
+  }
+}
+
+internal fun FirClassSymbol<*>.resolveExternalDefaultBindingTypeRef(
+  session: FirSession
+): FirTypeRef? {
   val mirrorSymbol =
     nestedClasses(session).firstOrNull { it.name == Symbols.Names.DefaultBindingMirrorClass }
       ?: return null
