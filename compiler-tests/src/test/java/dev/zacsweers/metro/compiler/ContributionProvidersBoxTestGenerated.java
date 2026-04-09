@@ -271,6 +271,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("explicitMultibindingType.kt")
+    public void testExplicitMultibindingType() {
+      runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/explicitMultibindingType.kt");
+    }
+
+    @Test
     @TestMetadata("exposeImplBinding.kt")
     public void testExposeImplBinding() {
       runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/exposeImplBinding.kt");

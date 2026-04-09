@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.allSessions
@@ -33,7 +34,7 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
-import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingType
+import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingTypeRef
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
@@ -80,8 +81,9 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
-import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isMarkedNullable
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -250,37 +252,49 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           contributions += Contribution.ContributesTo(contributingSymbol.classId)
         }
         in contributesBindingAnnotations -> {
+          val resolve = { resolveBindingAnnotations(contributingSymbol, annotation) }
           contributions +=
             if (annotation.isKiaIntoMultibinding(session)) {
-              Contribution.ContributesIntoSetBinding(contributingSymbol, annotation) {
+              Contribution.ContributesIntoSetBinding(contributingSymbol, annotation, resolve) {
                 listOf(buildIntoSetAnnotation(), buildBindsAnnotation())
               }
             } else {
-              Contribution.ContributesBinding(contributingSymbol, annotation) {
+              Contribution.ContributesBinding(contributingSymbol, annotation, resolve) {
                 listOf(buildBindsAnnotation())
               }
             }
         }
         in contributesIntoSetAnnotations -> {
           contributions +=
-            Contribution.ContributesIntoSetBinding(contributingSymbol, annotation) {
+            Contribution.ContributesIntoSetBinding(
+              contributingSymbol,
+              annotation,
+              { resolveBindingAnnotations(contributingSymbol, annotation) },
+            ) {
               listOf(buildIntoSetAnnotation(), buildBindsAnnotation())
             }
         }
         in contributesIntoMapAnnotations -> {
           contributions +=
-            Contribution.ContributesIntoMapBinding(contributingSymbol, annotation) {
+            Contribution.ContributesIntoMapBinding(
+              contributingSymbol,
+              annotation,
+              { resolveBindingAnnotations(contributingSymbol, annotation) },
+            ) {
               listOf(buildIntoMapAnnotation(), buildBindsAnnotation())
             }
         }
         in session.classIds.customContributesIntoSetAnnotations -> {
+          // For custom contributes annotations, map key is always on the class (not on a
+          // binding type ref), so we can check it directly without full bound type resolution.
+          val resolve = { resolveBindingAnnotations(contributingSymbol, annotation) }
           contributions +=
             if (contributingSymbol.mapKeyAnnotation(session) != null) {
-              Contribution.ContributesIntoMapBinding(contributingSymbol, annotation) {
+              Contribution.ContributesIntoMapBinding(contributingSymbol, annotation, resolve) {
                 listOf(buildIntoMapAnnotation(), buildBindsAnnotation())
               }
             } else {
-              Contribution.ContributesIntoSetBinding(contributingSymbol, annotation) {
+              Contribution.ContributesIntoSetBinding(contributingSymbol, annotation, resolve) {
                 listOf(buildIntoSetAnnotation(), buildBindsAnnotation())
               }
             }
@@ -383,7 +397,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
 
     // Resolve bound type for the return type
     val boundType =
-      resolveBoundType(contributingClassSymbol, matchingContribution)
+      resolveBoundTypeRef(contributingClassSymbol, matchingContribution.annotation)?.coneTypeOrNull
         ?: contributingClassSymbol.defaultType()
 
     val function =
@@ -439,8 +453,8 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         is Contribution.ContributesIntoSetBinding -> add(buildIntoSetAnnotation())
         is Contribution.ContributesIntoMapBinding -> {
           add(buildIntoMapAnnotation())
-          // Copy map key annotation from contributing class
-          val mapKey = contributingClassSymbol.mapKeyAnnotation(session)
+          // Copy map key annotation (already resolved on the contribution)
+          val mapKey = matchingContribution.mapKey
           mapKey?.fir?.let { mapKeyFirAnnotation ->
             // For implicit class keys (@MapKey(implicitClassKey = true)), the annotation
             // value is Nothing::class (sentinel) or absent. Build a new annotation with the
@@ -509,7 +523,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           ?.value as? Boolean ?: false
 
       if (!ignoreQualifier) {
-        contributingClassSymbol.qualifierAnnotation(session)?.fir?.let {
+        matchingContribution.qualifier?.fir?.let {
           add(
             buildAnnotationCallCopy(it) {
               source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
@@ -592,7 +606,8 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         .asString()
 
     // Resolve the bound type to disambiguate multiple bindings from the same class
-    val boundType = resolveBoundType(contributingClassSymbol, contribution)
+    val boundType =
+      resolveBoundTypeRef(contributingClassSymbol, contribution.annotation)?.coneTypeOrNull
     val boundSuffix =
       if (boundType != null) {
         val boundClassId = boundType.toRegularClassSymbol(session)?.classId
@@ -615,36 +630,65 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         is Contribution.ContributesIntoMapBinding -> "provideIntoMap"
       }
 
-    return "$prefix$baseName$boundSuffix".asName()
+    // Include qualifier and map key hashes to disambiguate multiple contributions with the same
+    // bound type but different qualifiers or map keys (e.g., two @ContributesIntoSet with
+    // different @Named qualifiers on the explicit binding type).
+    val annotationSuffix = buildString {
+      contribution.qualifier?.hashCode()?.toUInt()?.let(::append)
+      contribution.mapKey?.hashCode()?.toUInt()?.let(::append)
+    }
+
+    return "$prefix$baseName$boundSuffix$annotationSuffix".asName()
   }
 
-  /** Resolve the bound type for a binding contribution. */
-  private fun resolveBoundType(
+  /**
+   * Resolves qualifier and map key annotations for a binding contribution, checking the explicit
+   * binding type ref first and falling back to the contributing class declaration.
+   */
+  private fun resolveBindingAnnotations(
     contributingClassSymbol: FirClassSymbol<*>,
-    contribution: Contribution.BindingContribution,
-  ): ConeKotlinType? {
+    annotation: FirAnnotation,
+  ): Contribution.BindingAnnotations {
+    val boundTypeAnnotations = resolveBoundTypeRef(contributingClassSymbol, annotation)?.annotations
+    val classAnnotations = contributingClassSymbol.resolvedCompilerAnnotationsWithClassIds
+    return Contribution.BindingAnnotations(
+      qualifier =
+        boundTypeAnnotations?.qualifierAnnotation(session)
+          ?: classAnnotations.qualifierAnnotation(session),
+      mapKey =
+        boundTypeAnnotations?.mapKeyAnnotation(session)
+          ?: classAnnotations.mapKeyAnnotation(session),
+    )
+  }
+
+  /**
+   * Resolve the bound type ref for a binding contribution. Returns a [FirTypeRef] so callers can
+   * read both the type (via [FirTypeRef.coneType]) and any type annotations (qualifier, map key).
+   */
+  private fun resolveBoundTypeRef(
+    contributingClassSymbol: FirClassSymbol<*>,
+    annotation: FirAnnotation,
+  ): FirTypeRef? {
     // Try explicit binding argument (Metro's binding() API and Anvil's boundType KClass)
-    contribution.annotation.resolvedBindingArgument(session, typeResolver = null)?.let {
-      return it.coneType
+    annotation.resolvedBindingArgument(session, typeResolver = null)?.let {
+      return it
     }
     // Also try Anvil's boundType directly via resolvedClassId for cases where
-    // typeResolver = null can't resolve the KClass argument
-    contribution.annotation.anvilKClassBoundTypeArgument(session)?.let {
-      return it.coneType
+    // typeResolver = null can't resolve the KClass argument (no type annotations possible here)
+    annotation.anvilKClassBoundTypeArgument(session)?.let {
+      return it
     }
 
     // Collect non-Any supertypes
     val supertypes =
-      contributingClassSymbol.resolvedSuperTypeRefs.mapNotNull {
-        it.coneType.takeIf { type ->
-          type.toRegularClassSymbol(session)?.classId != StandardClassIds.Any
-        }
+      contributingClassSymbol.resolvedSuperTypeRefs.filter {
+        it.coneType.toRegularClassSymbol(session)?.classId != StandardClassIds.Any
       }
 
     // Check supertypes for @DefaultBinding — matches IR's resolveDefaultBinding behavior
-    for (supertype in supertypes) {
-      val supertypeSymbol = supertype.toRegularClassSymbol(session) ?: continue
-      supertypeSymbol.resolveDefaultBindingType(session)?.let {
+    for (superTypeRef in supertypes) {
+      val supertypeSymbol = superTypeRef.coneType.toRegularClassSymbol(session) ?: continue
+      supertypeSymbol.resolveDefaultBindingTypeRef(session)?.let {
         return it
       }
     }
@@ -955,35 +999,70 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       val annotatedType: FirClassSymbol<*>
       val annotation: FirAnnotation
       val buildAnnotations: () -> List<FirAnnotation>
+
+      /** Resolved qualifier annotation, checking binding type ref first then class declaration. */
+      val qualifier: MetroFirAnnotation?
+
+      /** Resolved map key annotation, checking binding type ref first then class declaration. */
+      val mapKey: MetroFirAnnotation?
     }
 
     data class ContributesTo(override val origin: ClassId) : Contribution
 
-    data class ContributesBinding(
+    /**
+     * Qualifier and map key annotations resolved from the binding type ref or class declaration.
+     */
+    data class BindingAnnotations(
+      val qualifier: MetroFirAnnotation?,
+      val mapKey: MetroFirAnnotation?,
+    )
+
+    class ContributesBinding(
       override val annotatedType: FirClassSymbol<*>,
       override val annotation: FirAnnotation,
+      resolveBindingAnnotations: () -> BindingAnnotations,
       override val buildAnnotations: () -> List<FirAnnotation>,
     ) : Contribution, BindingContribution {
       override val origin: ClassId = annotatedType.classId
       override val callableName: String = "binds"
+      private val metaAnnotations by lazy(resolveBindingAnnotations)
+      override val qualifier: MetroFirAnnotation?
+        get() = metaAnnotations.qualifier
+
+      override val mapKey: MetroFirAnnotation?
+        get() = metaAnnotations.mapKey
     }
 
-    data class ContributesIntoSetBinding(
+    class ContributesIntoSetBinding(
       override val annotatedType: FirClassSymbol<*>,
       override val annotation: FirAnnotation,
+      resolveBindingAnnotations: () -> BindingAnnotations,
       override val buildAnnotations: () -> List<FirAnnotation>,
     ) : Contribution, BindingContribution {
       override val origin: ClassId = annotatedType.classId
       override val callableName: String = "bindIntoSet"
+      private val metaAnnotations by lazy(resolveBindingAnnotations)
+      override val qualifier: MetroFirAnnotation?
+        get() = metaAnnotations.qualifier
+
+      override val mapKey: MetroFirAnnotation?
+        get() = metaAnnotations.mapKey
     }
 
-    data class ContributesIntoMapBinding(
+    class ContributesIntoMapBinding(
       override val annotatedType: FirClassSymbol<*>,
       override val annotation: FirAnnotation,
+      resolveBindingAnnotations: () -> BindingAnnotations,
       override val buildAnnotations: () -> List<FirAnnotation>,
     ) : Contribution, BindingContribution {
       override val origin: ClassId = annotatedType.classId
       override val callableName: String = "bindIntoMap"
+      private val metaAnnotations by lazy(resolveBindingAnnotations)
+      override val qualifier: MetroFirAnnotation?
+        get() = metaAnnotations.qualifier
+
+      override val mapKey: MetroFirAnnotation?
+        get() = metaAnnotations.mapKey
     }
   }
 }
