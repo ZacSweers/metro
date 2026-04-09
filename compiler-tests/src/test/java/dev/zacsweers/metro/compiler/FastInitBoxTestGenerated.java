@@ -274,6 +274,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("defaultBinding.kt")
+      public void testDefaultBinding() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/defaultBinding.kt");
+      }
+
+      @Test
       @TestMetadata("defaultParameters.kt")
       public void testDefaultParameters() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/defaultParameters.kt");
