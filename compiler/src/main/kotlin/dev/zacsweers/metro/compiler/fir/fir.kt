@@ -410,13 +410,19 @@ internal inline fun FirClass.singleAbstractFunction(
  * Computes a hash key for this annotation instance composed of its underlying type and value
  * arguments.
  */
-internal fun FirAnnotationCall.computeAnnotationHash(
+internal fun FirAnnotation.computeAnnotationHash(
   session: FirSession,
   typeResolver: TypeResolveService? = null,
 ): Int {
+  val args =
+    if (this is FirAnnotationCall) {
+      arguments
+    } else {
+      argumentMapping.mapping.values
+    }
   return Objects.hash(
     toAnnotationClassIdSafe(session),
-    arguments
+    args
       .map { arg -> renderAnnotationArgument(session, arg, typeResolver) }
       .toTypedArray()
       .contentDeepHashCode(),
@@ -802,6 +808,7 @@ internal fun MetroFirAnnotation.hasImplicitClassKey(session: FirSession): Boolea
  * explicitly provided. Returns null if the value uses the default.
  */
 internal fun MetroFirAnnotation.mapKeyClassValueExpression(): FirGetClassCall? {
+  if (fir !is FirAnnotationCall) return null
   return fir.arguments.firstOrNull()?.expectAsOrNull<FirGetClassCall>()
 }
 
@@ -833,15 +840,11 @@ internal fun Sequence<FirAnnotation>.annotationsAnnotatedWithAny(
   typeResolver: TypeResolveService? = null,
 ): Sequence<MetroFirAnnotation> {
   return filter { it.isResolved }
-    .filterIsInstance<FirAnnotationCall>()
-    .filter { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
+    .filter { annotation -> annotation.isAnnotatedWithAny(session, names) }
     .map { MetroFirAnnotation(it, session, typeResolver) }
 }
 
-internal fun FirAnnotationCall.isAnnotatedWithAny(
-  session: FirSession,
-  names: Set<ClassId>,
-): Boolean {
+internal fun FirAnnotation.isAnnotatedWithAny(session: FirSession, names: Set<ClassId>): Boolean {
   val annotationType = resolvedType as? ConeClassLikeType ?: return false
   val annotationClass = annotationType.toClassSymbol(session) ?: return false
   return annotationClass.resolvedCompilerAnnotationsWithClassIds.isAnnotatedWithAny(session, names)
@@ -1691,6 +1694,15 @@ internal fun ConeClassLikeLookupTag.toSymbolCompat(s: FirSession): FirClassLikeS
 }
 
 /**
+ * Result of resolving a `@DefaultBinding<T>` annotation. Contains the resolved type ref and an
+ * optional qualifier annotation (which may come from the type argument or the annotated class).
+ */
+internal data class FirRefTypeKey(
+  val typeRef: FirTypeRef,
+  val qualifier: MetroFirAnnotation? = null,
+)
+
+/**
  * Resolves the default binding type from a supertype's `@DefaultBinding<T>` annotation.
  *
  * For same-module classes, reads the type argument from the annotation directly. For cross-module
@@ -1701,25 +1713,47 @@ internal fun ConeClassLikeLookupTag.toSymbolCompat(s: FirSession): FirClassLikeS
  */
 // TODO lookup tracking?
 internal fun FirClassSymbol<*>.resolveDefaultBindingType(session: FirSession): ConeKotlinType? =
-  resolveDefaultBindingTypeRef(session)?.coneTypeOrNull
+  resolveDefaultBindingTypeKey(session)?.typeRef?.coneTypeOrNull
 
 /**
  * Like [resolveDefaultBindingType] but returns the [FirTypeRef] so callers can also read type
  * annotations (e.g., qualifier or map key annotations on the default binding type).
  */
-internal fun FirClassSymbol<*>.resolveDefaultBindingTypeRef(session: FirSession): FirTypeRef? {
-  // Try to read from @DefaultBinding annotation directly (same-module)
-  getAnnotationByClassId(session.classIds.defaultBindingAnnotation, session)?.let { annotation ->
-    if (annotation !is FirAnnotationCall) return null
-    val typeArg = annotation.typeArguments.firstOrNull() ?: return null
-    return when (typeArg) {
-      is FirPlaceholderProjection,
-      is FirStarProjection -> null // Checked separately
-      is FirTypeProjectionWithVariance -> typeArg.typeRef
-    }
+internal fun FirClassSymbol<*>.resolveDefaultBindingTypeRef(session: FirSession): FirTypeRef? =
+  resolveDefaultBindingTypeKey(session)?.typeRef
+
+/**
+ * Like [resolveDefaultBindingTypeRef] but returns a [FirRefTypeKey] that includes both the type ref
+ * and an optional qualifier annotation. The qualifier may come from type annotations on the
+ * `@DefaultBinding<T>` type argument, or from the annotated class itself.
+ */
+internal fun FirClassSymbol<*>.resolveDefaultBindingTypeKey(session: FirSession): FirRefTypeKey? {
+  val annotation =
+    getAnnotationByClassId(session.classIds.defaultBindingAnnotation, session) ?: return null
+  if (origin is FirDeclarationOrigin.Library) {
+    // If it's external we need to read the mirror
+    return resolveExternalDefaultBindingTypeKey(session)
   }
 
-  // Fall back to DefaultBindingMirror for cross-module resolution
+  // Try to read from @DefaultBinding annotation directly (same-module)
+  if (annotation !is FirAnnotationCall) return null
+  val typeArg = annotation.typeArguments.firstOrNull() ?: return null
+  val typeRef =
+    when (typeArg) {
+      is FirPlaceholderProjection,
+      is FirStarProjection -> return null // Checked separately
+      is FirTypeProjectionWithVariance -> typeArg.typeRef
+    }
+  // Qualifier can be on the type arg or the @DefaultBinding-annotated class
+  val qualifier =
+    typeRef.annotations.qualifierAnnotation(session)
+      ?: resolvedCompilerAnnotationsWithClassIds.qualifierAnnotation(session)
+  return FirRefTypeKey(typeRef, qualifier)
+}
+
+internal fun FirClassSymbol<*>.resolveExternalDefaultBindingTypeKey(
+  session: FirSession
+): FirRefTypeKey? {
   val mirrorSymbol =
     nestedClasses(session).firstOrNull { it.name == Symbols.Names.DefaultBindingMirrorClass }
       ?: return null
@@ -1729,7 +1763,9 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingTypeRef(session: FirSession)
     mirrorSymbol.declaredFunctions(session).firstOrNull {
       it.name == Symbols.Names.defaultBindingFunction
     } ?: return null
-  return holderFunction.resolvedReturnTypeRef
+  // Qualifier is stored as an annotation on the mirror function
+  val qualifier = holderFunction.qualifierAnnotation(session)
+  return FirRefTypeKey(holderFunction.resolvedReturnTypeRef, qualifier)
 }
 
 /** Builds a resolved FirGetClassCall for a given ClassId. */

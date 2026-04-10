@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.appendIterableWith
 import dev.zacsweers.metro.compiler.md5base64
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -21,7 +22,7 @@ import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.types.ConstantValueKind
 
 internal class MetroFirAnnotation(
-  val fir: FirAnnotationCall,
+  val fir: FirAnnotation,
   session: FirSession,
   typeResolver: TypeResolveService? = null,
 ) {
@@ -48,7 +49,7 @@ internal class MetroFirAnnotation(
   override fun toString() = cachedToString
 }
 
-private fun StringBuilder.renderAsAnnotation(firAnnotation: FirAnnotationCall, simple: Boolean) {
+private fun StringBuilder.renderAsAnnotation(firAnnotation: FirAnnotation, simple: Boolean) {
   append('@')
   val annotationClassName =
     if (simple) {
@@ -60,15 +61,30 @@ private fun StringBuilder.renderAsAnnotation(firAnnotation: FirAnnotationCall, s
 
   // TODO type args not supported
 
-  if (firAnnotation.arguments.isEmpty()) return
+  if (firAnnotation is FirAnnotationCall) {
+    if (firAnnotation.arguments.isEmpty()) return
 
-  appendIterableWith(
-    0 until firAnnotation.arguments.size,
-    separator = ", ",
-    prefix = "(",
-    postfix = ")",
-  ) { index ->
-    renderAsAnnotationArgument(firAnnotation.arguments[index], simple)
+    appendIterableWith(
+      0 until firAnnotation.arguments.size,
+      separator = ", ",
+      prefix = "(",
+      postfix = ")",
+    ) { index ->
+      renderAsAnnotationArgument(firAnnotation.arguments[index], simple)
+    }
+  } else {
+    if (firAnnotation.argumentMapping.mapping.isEmpty()) return
+
+    appendIterableWith(
+      firAnnotation.argumentMapping.mapping.entries,
+      separator = ", ",
+      prefix = "(",
+      postfix = ")",
+    ) { (name, arg) ->
+      append(name)
+      append("=")
+      renderAsAnnotationArgument(arg, simple)
+    }
   }
 }
 
