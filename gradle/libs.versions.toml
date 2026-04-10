@@ -168,7 +168,7 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "gjf" }
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 
-graphSupport = "com.autonomousapps:graph-support:0.9.0"
+graphSupport = "com.autonomousapps:graph-support:0.10.0"
 
 guava = "com.google.guava:guava:33.5.0-jre"
 
