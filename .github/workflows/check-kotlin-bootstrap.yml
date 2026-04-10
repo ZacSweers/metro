@@ -39,7 +39,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Update issue and notify
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           BOOTSTRAP_VERSIONS: ${{ steps.fetch-bootstrap.outputs.versions }}
           INTELLIJ_VERSIONS: ${{ steps.fetch-intellij.outputs.versions }}
