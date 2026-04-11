@@ -855,7 +855,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "When enabled, generates top-level contribution provider classes with @Provides functions instead of nested @Binds interfaces. This allows implementation classes to remain internal/private.",
+        "When enabled, generates top-level contribution provider classes with @Provides functions instead of nested @Binds interfaces. This allows implementation classes to remain internal.",
       required = false,
       allowMultipleOccurrences = false,
     )
