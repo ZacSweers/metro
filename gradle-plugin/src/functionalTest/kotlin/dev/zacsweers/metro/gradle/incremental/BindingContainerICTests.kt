@@ -5,14 +5,16 @@
 package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.gradle.Dependency
-import com.autonomousapps.kit.gradle.Dependency.Companion.project
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.assertOutputContains
+import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
+import dev.zacsweers.metro.gradle.toKotlinVersion
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class BindingContainerICTests : BaseIncrementalCompilationTest() {
@@ -2160,120 +2162,121 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun contributesToScopeChangeWithInterfaceBindingMultimodule() {
+    // Requires FIR hint generation which is available in Kotlin 2.3.20+
+    assumeTrue(getTestCompilerVersion().toKotlinVersion() >= KotlinVersion(2, 3, 20))
+
     val fixture =
       object : MetroProject() {
         val userApi =
           source(
             """
-          interface UserApi {
+            interface UserApi {
               fun getCurrentUser(): String
-          }
-      """
+            }
+            """
+              .trimIndent()
           )
 
         val userService =
           source(
             """
-          interface UserService {
-           fun doWork(): String
-          }
-      """
+            interface UserService {
+              fun doWork(): String
+            }
+            """
+              .trimIndent()
           )
 
         val userServiceImpl =
           source(
             """
-          @ContributesBinding(AppScope::class)
-          class UserServiceImpl @Inject constructor(
+            @ContributesBinding(AppScope::class)
+            class UserServiceImpl @Inject constructor(
               private val userApi: UserApi
-          ) : UserService {
+            ) : UserService {
               override fun doWork() = userApi.getCurrentUser()
-          }
-      """
+            }
+            """
+              .trimIndent()
           )
 
         val bindingContainer =
           source(
             """
-          @BindingContainer
-          @ContributesTo(AppScope::class)
-          object UserApiModule {
+            @BindingContainer
+            @ContributesTo(AppScope::class)
+            object UserApiModule {
               @Provides
               fun provideUserApi(): UserApi = object : UserApi {
-                  override fun getCurrentUser() = "user"
+                override fun getCurrentUser() = "user"
               }
-          }
-      """
+            }
+            """
+              .trimIndent()
           )
 
         val appGraph =
           source(
             """
-          @DependencyGraph(AppScope::class)
-          interface AppGraph {
-           val userService: UserService
-          }
-      """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val userService: UserService
+            }
+            """
+              .trimIndent()
           )
 
         override fun sources() = listOf(appGraph)
 
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = sources()
-                  applyMetroDefault()
-                  dependencies(project("implementation", ":lib"))
-                }
-                withMetroSettings()
-              }
-              .withSubproject("lib") {
-                sources.addAll(listOf(userApi, userService, userServiceImpl, bindingContainer))
-                withBuildScript { applyMetroDefault() }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(userApi, userService, userServiceImpl, bindingContainer) }
+        }
       }
 
     val project = fixture.gradleProject
-    val libSubproject = project.subprojects.first { it.name == "lib" }
+    val libProject = project.subprojects.first { it.name == "lib" }
 
     project.compileKotlin()
 
     // Change UserApiModule to a different scope to trigger the change
     // This should break UserServiceImpl (which is in AppScope)
-    libSubproject.modify(
+    libProject.modify(
       project.rootDir,
       fixture.bindingContainer,
       """
       @BindingContainer
       @ContributesTo(Unit::class)
       object UserApiModule {
-          @Provides
-          fun provideUserApi(): UserApi = object : UserApi {
-              override fun getCurrentUser() = "user"
-          }
+        @Provides
+        fun provideUserApi(): UserApi = object : UserApi {
+          override fun getCurrentUser() = "user"
+        }
       }
-  """,
+      """
+        .trimIndent(),
     )
 
     // Expect failure: UserServiceImpl needs UserApi, but UserApi is now in Unit scope
     project.compileKotlinAndFail()
 
     // Remove @ContributesTo entirely
-    libSubproject.modify(
+    libProject.modify(
       project.rootDir,
       fixture.bindingContainer,
       """
       @BindingContainer
       object UserApiModule {
-          @Provides
-          fun provideUserApi(): UserApi = object : UserApi {
-              override fun getCurrentUser() = "user"
-          }
+        @Provides
+        fun provideUserApi(): UserApi = object : UserApi {
+          override fun getCurrentUser() = "user"
+        }
       }
-  """,
+      """
+        .trimIndent(),
     )
 
     // Expect failure: UserApi is not in any scope at all
