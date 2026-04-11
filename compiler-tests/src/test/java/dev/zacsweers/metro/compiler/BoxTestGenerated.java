@@ -1588,6 +1588,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DefaultValuesAlignToParameters.kt")
+      public void testDefaultValuesAlignToParameters() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/optional/DefaultValuesAlignToParameters.kt");
+      }
+
+      @Test
       @TestMetadata("DefaultWorksWithoutAnnotation.kt")
       public void testDefaultWorksWithoutAnnotation() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/optional/DefaultWorksWithoutAnnotation.kt");
