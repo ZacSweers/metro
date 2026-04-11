@@ -427,9 +427,8 @@ constructor(
   /**
    * When enabled, generates top-level contribution provider classes with `@Provides` functions
    * instead of nested `@Binds` interfaces for `@ContributesBinding`, `@ContributesIntoSet`, and
-   * `@ContributesIntoMap`. This allows implementation classes to remain `internal` or `private`
-   * since the generated provider directly constructs them (which in turn allows for finer grained
-   * IC).
+   * `@ContributesIntoMap`. This allows implementation classes to remain `internal` since the
+   * generated provider directly constructs them (which in turn allows for finer grained IC).
    *
    * Disabled by default.
    */
