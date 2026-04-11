@@ -13,7 +13,6 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.FirContextualTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
-import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.caching
@@ -132,8 +131,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   // recomputation.
   private val computedTargets = mutableMapOf<ClassId, CircuitFactoryTarget?>()
 
-  private val typeResolverFactory =
-    MetroFirTypeResolver.Factory(session, session.allSessions).caching()
+  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session).caching() }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(CircuitSymbols.circuitInjectPredicate)

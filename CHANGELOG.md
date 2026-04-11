@@ -11,6 +11,7 @@ Changelog
 - **[FIR]** Gracefully handle unresolved generic supertype type args.
 - **[FIR]** Disable contribution providers on private constructors.
 - **[FIR]** Fix cross-module resolution of `@DefaultBinding`.
+- **[FIR]** Fix another eager `allSessions` lookup to avoid lockups in the IDE.
 - **[FIR/IR]** Ensure qualifier annotations on explicit binding params are propagated to generated providers when `generateContributionProviders` is enabled.
 - **[FIR/IR/Circuit]** Fix support for `@CircuitInject` on non-`@Inject`-annotated classes.
 

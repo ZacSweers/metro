@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
-import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
@@ -21,6 +20,7 @@ import dev.zacsweers.metro.compiler.fir.hasMetroDefault
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isIde
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -258,9 +258,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       parentHasMemberInjections?.let {
         return it
       }
-      val resolver =
-        MetroFirTypeResolver.Factory(session, session.allSessions).create(classSymbol)
-          ?: return false
+      val resolver = MetroFirTypeResolver.Factory(session).create(classSymbol) ?: return false
 
       return classSymbol.fir.superTypeRefs
         .any {
@@ -268,12 +266,16 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             if (it is FirResolvedTypeRef) {
               it.coneType
             } else {
-              try {
+              if (session.isIde()) {
+                try {
+                  resolver.resolveType(it)
+                } catch (_: Exception) {
+                  // Generic type resolution may fail during IDE indexing because
+                  // this isn't a deep resolve
+                  return@any false
+                }
+              } else {
                 resolver.resolveType(it)
-              } catch (_: Exception) {
-                // Generic type resolution may fail during IDE indexing because
-                // this isn't a deep resolve
-                return@any false
               }
             }
           val clazz = resolved.toRegularClassSymbol(session) ?: return@any false
