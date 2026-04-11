@@ -140,16 +140,14 @@ val componentRuntimeClasspath =
 
 // Separate program classpath (project modules - included in output) from
 // library classpath (external deps like kotlin stdlib - used for analysis only)
-val programClasspath =
-  componentRuntimeClasspath.filter { file ->
-    // Project modules are under the benchmark root directory
-    file.absolutePath.startsWith(benchmarkRootPath)
-  }
-val libraryClasspath =
-  componentRuntimeClasspath.filter { file ->
-    // External dependencies are outside the benchmark root (e.g., in .gradle/caches)
-    !file.absolutePath.startsWith(benchmarkRootPath)
-  }
+val programClasspath = componentRuntimeClasspath.filter { file ->
+  // Project modules are under the benchmark root directory
+  file.absolutePath.startsWith(benchmarkRootPath)
+}
+val libraryClasspath = componentRuntimeClasspath.filter { file ->
+  // External dependencies are outside the benchmark root (e.g., in .gradle/caches)
+  !file.absolutePath.startsWith(benchmarkRootPath)
+}
 
 val r8RulesExtractTask =
   tasks.register<ExtractR8Rules>("extractR8Rules") {

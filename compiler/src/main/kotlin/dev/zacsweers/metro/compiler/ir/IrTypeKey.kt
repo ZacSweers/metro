@@ -21,6 +21,7 @@ private constructor(
   override val qualifier: IrAnnotation?,
   // TODO these extra properties are awkward. Should we make this a sealed class?
   val multibindingKeyData: MultibindingKeyData? = null,
+  val originalType: IrType,
 ) : BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
   val classId by memoize { type.rawTypeOrNull()?.classId }
@@ -60,17 +61,31 @@ private constructor(
   }
 
   override fun copy(type: IrType, qualifier: IrAnnotation?): IrTypeKey =
-    IrTypeKey(type, qualifier, multibindingKeyData)
+    copy(type, qualifier, multibindingKeyData, originalType)
 
   fun copy(
     type: IrType = this.type,
     qualifier: IrAnnotation? = this.qualifier,
     multibindingKeyData: MultibindingKeyData? = this.multibindingKeyData,
-  ): IrTypeKey = IrTypeKey(type, qualifier, multibindingKeyData)
+    originalType: IrType = this.originalType,
+  ): IrTypeKey = IrTypeKey(type, qualifier, multibindingKeyData, originalType)
 
-  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
+  override fun render(short: Boolean, includeQualifier: Boolean): String =
+    renderForDiagnostic(short, includeQualifier, false)
+
+  fun renderForDiagnostic(
+    short: Boolean,
+    includeQualifier: Boolean = true,
+    useOriginalQualifier: Boolean = includeQualifier,
+  ): String = buildString {
     if (includeQualifier) {
-      qualifier?.let {
+      var qualifierToRender = qualifier
+      if (useOriginalQualifier) {
+        // When rendering qualifiers, render the original qualifier rather than the synthetic
+        // MultibindingElement qualifier if one is present
+        multibindingKeyData?.multibindingTypeKey?.let { qualifierToRender = it.qualifier }
+      }
+      qualifierToRender?.let {
         append(it.render(short))
         append(" ")
       }
@@ -131,6 +146,7 @@ private constructor(
         type.canonicalize(patchMutableCollections = false, context = null),
         qualifier,
         multibindingKeyData,
+        type,
       )
     }
   }

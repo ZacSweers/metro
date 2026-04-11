@@ -71,7 +71,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:8:3 Graph accessor members cannot be scoped.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:8:3 Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?"
+    )
   }
 
   @Test
@@ -90,7 +92,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:8:3 Graph accessor members cannot be scoped.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:8:3 Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?"
+    )
   }
 
   @Test

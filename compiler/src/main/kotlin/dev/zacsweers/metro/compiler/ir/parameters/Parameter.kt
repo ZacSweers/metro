@@ -142,13 +142,24 @@ private constructor(
       fun IrValueParameter.toAssistedParameterKey(
         symbols: Symbols,
         typeKey: IrTypeKey,
+        useAssistedParamNamesAsIdentifiers: Boolean = true,
       ): AssistedParameterKey {
+        val assistedAnnotation = annotationsIn(symbols.assistedAnnotations).singleOrNull()
+        // Custom/interop annotations (e.g. Dagger's @Assisted) always use param names.
+        // For Metro's native @Assisted or no annotation (factory method params), the flag controls
+        // whether param names are used as identifiers.
+        val isNativeMetroAssisted =
+          assistedAnnotation != null &&
+            assistedAnnotation.symbol.owner.parentAsClass.classId == symbols.classIds.metroAssisted
+        val hasCustomAssistedAnnotation = assistedAnnotation != null && !isNativeMetroAssisted
+        val useParamNames =
+          if (hasCustomAssistedAnnotation) true else useAssistedParamNamesAsIdentifiers
+        val defaultIdentifier = if (useParamNames) name.asString() else ""
         return AssistedParameterKey(
-          typeKey,
-          annotationsIn(symbols.assistedAnnotations)
-            .singleOrNull()
-            ?.constArgumentOfTypeAt<String>(0)
-            .orEmpty(),
+          typeKey = typeKey,
+          assistedIdentifier =
+            assistedAnnotation?.constArgumentOfTypeAt<String>(0)?.takeUnless { it.isBlank() }
+              ?: defaultIdentifier,
         )
       }
     }
@@ -265,7 +276,23 @@ internal fun IrValueParameter.toConstructorParameter(
     }
   }
 
-  val assistedIdentifier = assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty()
+  val isNativeMetroAssisted =
+    assistedAnnotation != null &&
+      assistedAnnotation.symbol.owner.parentAsClass.classId ==
+        context.metroSymbols.classIds.metroAssisted
+  val hasCustomAssistedAnnotation = assistedAnnotation != null && !isNativeMetroAssisted
+
+  val useParamNames =
+    if (hasCustomAssistedAnnotation) {
+      true
+    } else {
+      context.options.useAssistedParamNamesAsIdentifiers
+    }
+
+  val defaultIdentifier = if (useParamNames) name.asString() else ""
+  val assistedIdentifier =
+    assistedAnnotation?.constArgumentOfTypeAt<String>(0)?.takeUnless { it.isBlank() }
+      ?: defaultIdentifier
 
   val adjustedName =
     name.letIf(kind == IrParameterKind.Context && name == UNDERSCORE_FOR_UNUSED_VAR) {
@@ -416,3 +443,20 @@ internal fun IrFunction.memberInjectParameters(
 
 internal fun Parameter.remapTypes(remapper: TypeRemapper): Parameter =
   copy(contextualTypeKey = contextualTypeKey.remapType(remapper))
+
+/**
+ * Deduplicates parameters by [IrTypeKey], keeping one parameter per unique key. Parameters that are
+ * always kept (never deduped):
+ * - Assisted parameters: each is a distinct caller-provided value
+ * - Parameters with [IrContextualTypeKey.hasDefault]: their defaults may differ
+ */
+internal fun List<Parameter>.dedupeParameters(): List<Parameter> {
+  val seenKeys = HashSet<IrTypeKey>(size)
+  return buildList {
+    for (param in this@dedupeParameters) {
+      if (param.isAssisted || param.hasDefault || seenKeys.add(param.typeKey)) {
+        add(param)
+      }
+    }
+  }
+}

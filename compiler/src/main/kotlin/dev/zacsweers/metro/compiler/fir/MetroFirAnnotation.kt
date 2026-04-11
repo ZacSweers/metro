@@ -6,20 +6,23 @@ import dev.zacsweers.metro.compiler.appendIterableWith
 import dev.zacsweers.metro.compiler.md5base64
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
+import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.types.renderReadable
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.types.ConstantValueKind
 
 internal class MetroFirAnnotation(
-  val fir: FirAnnotationCall,
+  val fir: FirAnnotation,
   session: FirSession,
   typeResolver: TypeResolveService? = null,
 ) {
@@ -36,7 +39,9 @@ internal class MetroFirAnnotation(
 
     other as MetroFirAnnotation
 
-    return cachedHashKey == other.cachedHashKey
+    // Fast fail with hash, authoritative check with rendered string
+    if (cachedHashKey != other.cachedHashKey) return false
+    return cachedToString == other.cachedToString
   }
 
   override fun hashCode(): Int = cachedHashKey
@@ -44,7 +49,7 @@ internal class MetroFirAnnotation(
   override fun toString() = cachedToString
 }
 
-private fun StringBuilder.renderAsAnnotation(firAnnotation: FirAnnotationCall, simple: Boolean) {
+private fun StringBuilder.renderAsAnnotation(firAnnotation: FirAnnotation, simple: Boolean) {
   append('@')
   val annotationClassName =
     if (simple) {
@@ -56,15 +61,30 @@ private fun StringBuilder.renderAsAnnotation(firAnnotation: FirAnnotationCall, s
 
   // TODO type args not supported
 
-  if (firAnnotation.arguments.isEmpty()) return
+  if (firAnnotation is FirAnnotationCall) {
+    if (firAnnotation.arguments.isEmpty()) return
 
-  appendIterableWith(
-    0 until firAnnotation.arguments.size,
-    separator = ", ",
-    prefix = "(",
-    postfix = ")",
-  ) { index ->
-    renderAsAnnotationArgument(firAnnotation.arguments[index], simple)
+    appendIterableWith(
+      0 until firAnnotation.arguments.size,
+      separator = ", ",
+      prefix = "(",
+      postfix = ")",
+    ) { index ->
+      renderAsAnnotationArgument(firAnnotation.arguments[index], simple)
+    }
+  } else {
+    if (firAnnotation.argumentMapping.mapping.isEmpty()) return
+
+    appendIterableWith(
+      firAnnotation.argumentMapping.mapping.entries,
+      separator = ", ",
+      prefix = "(",
+      postfix = ")",
+    ) { (name, arg) ->
+      append(name)
+      append("=")
+      renderAsAnnotationArgument(arg, simple)
+    }
   }
 }
 
@@ -79,6 +99,13 @@ private fun StringBuilder.renderAsAnnotationArgument(argument: FirExpression, si
         (argument.argument as? FirResolvedQualifier)?.symbol?.classId?.asSingleFqName() ?: "<Error>"
       append(id)
       append("::class")
+    }
+    is FirPropertyAccessExpression -> {
+      // Enum entry or const val reference.
+      // Use toResolvedCallableSymbol() (not toResolvedPropertySymbol()) because
+      // enum entries are FirEnumEntrySymbol, not FirPropertySymbol.
+      val symbol = argument.calleeReference.toResolvedCallableSymbol()
+      append(symbol?.callableId ?: "...")
     }
     // TODO
     //      is IrVararg -> {

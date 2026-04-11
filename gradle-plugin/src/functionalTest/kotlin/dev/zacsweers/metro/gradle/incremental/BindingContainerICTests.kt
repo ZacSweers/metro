@@ -4,8 +4,6 @@
 
 package dev.zacsweers.metro.gradle.incremental
 
-import com.autonomousapps.kit.GradleProject
-import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.gradle.Dependency
 import com.autonomousapps.kit.gradle.Dependency.Companion.project
 import com.google.common.truth.Truth.assertThat
@@ -612,25 +610,13 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
   fun multiModuleBindingContainerChanges() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = listOf(appGraph, featureGraph, target)
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = sources()
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib"))
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("lib") {
-                sources.add(bindingContainer)
-                withBuildScript { applyMetroDefault() }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph, featureGraph, target)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(bindingContainer) }
+        }
 
         private val appGraph =
           source(
@@ -1980,26 +1966,13 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
         val appModule = source(appModuleContent)
 
-        override fun sources() = throw IllegalStateException()
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = listOf(main, appGraph)
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib"))
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("lib") {
-                sources.add(multibindings)
-                sources.add(appModule)
-                withBuildScript { applyMetroDefault() }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(main, appGraph)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(multibindings, appModule) }
+        }
 
         private val appGraph =
           source(
@@ -2098,25 +2071,13 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
           """
             .trimIndent()
 
-        override fun sources() = error("Provided via gradleProject")
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = listOf(appGraph)
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib"))
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("lib") {
-                sources.add(bindingContainer)
-                withBuildScript { applyMetroDefault() }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(bindingContainer) }
+        }
       }
 
     val project = fixture.gradleProject
@@ -2174,25 +2135,13 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
           """
             .trimIndent()
 
-        override fun sources() = error("Provided via gradleProject")
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  sources = listOf(appGraph)
-                  applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib"))
-                }
-
-                withMetroSettings()
-              }
-              .withSubproject("lib") {
-                sources.add(bindingContainer)
-                withBuildScript { applyMetroDefault() }
-              }
-              .write()
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(bindingContainer) }
+        }
       }
 
     val project = fixture.gradleProject

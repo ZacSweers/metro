@@ -63,11 +63,13 @@ internal class MetroAnnotations<T>(
   val isComposable: Boolean = false,
   val isBindsOptionalOf: Boolean = false,
   val isOptionalBinding: Boolean = false,
+  val isGraphPrivate: Boolean = false,
   val multibinds: T? = null,
   val assisted: T? = null,
   val scope: T? = null,
   val qualifier: T? = null,
   val mapKey: T? = null,
+  val lazyClassKey: T? = null,
   // Only present for diagnostic reporting
   @Poko.Skip val scopes: Set<T> = emptySet(),
   @Poko.Skip val qualifiers: Set<T> = emptySet(),
@@ -88,6 +90,9 @@ internal class MetroAnnotations<T>(
   val isQualified
     get() = qualifier != null
 
+  val isLazyClassKey
+    get() = lazyClassKey != null
+
   val isIntoMultibinding
     get() = isIntoSet || isElementsIntoSet || isIntoMap || (mapKey != null)
 
@@ -106,11 +111,13 @@ internal class MetroAnnotations<T>(
     isComposable: Boolean = this.isComposable,
     isBindsOptionalOf: Boolean = this.isBindsOptionalOf,
     isOptionalBinding: Boolean = this.isOptionalBinding,
+    isGraphPrivate: Boolean = this.isGraphPrivate,
     multibinds: T? = this.multibinds,
     assisted: T? = this.assisted,
     scope: T? = this.scope,
     qualifier: T? = this.qualifier,
     mapKey: T? = this.mapKey,
+    lazyClassKey: T? = this.lazyClassKey,
   ): MetroAnnotations<T> {
     return MetroAnnotations(
       isDependencyGraph = isDependencyGraph,
@@ -127,11 +134,13 @@ internal class MetroAnnotations<T>(
       isComposable = isComposable,
       isBindsOptionalOf = isBindsOptionalOf,
       isOptionalBinding = isOptionalBinding,
+      isGraphPrivate = isGraphPrivate,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
       qualifier = qualifier,
       mapKey = mapKey,
+      lazyClassKey = lazyClassKey,
       symbol = symbol,
     )
   }
@@ -149,11 +158,13 @@ internal class MetroAnnotations<T>(
       isElementsIntoSet = isElementsIntoSet || other.isElementsIntoSet,
       isIntoMap = isIntoMap || other.isIntoMap,
       isAssistedFactory = isAssistedFactory || other.isAssistedFactory,
+      isGraphPrivate = isGraphPrivate || other.isGraphPrivate,
       multibinds = multibinds ?: other.multibinds,
       assisted = assisted ?: other.assisted,
       scope = scope ?: other.scope,
       qualifier = qualifier ?: other.qualifier,
       mapKey = mapKey ?: other.mapKey,
+      lazyClassKey = lazyClassKey ?: other.lazyClassKey,
     )
 
   enum class Kind {
@@ -176,6 +187,7 @@ internal class MetroAnnotations<T>(
     MapKey,
     BindsOptionalOf,
     OptionalBinding,
+    GraphPrivate,
   }
 
   companion object {
@@ -195,6 +207,7 @@ internal class MetroAnnotations<T>(
         isIntoMap = false,
         isAssistedFactory = false,
         isComposable = false,
+        isGraphPrivate = false,
         multibinds = null,
         assisted = false,
         scope = null,
@@ -251,6 +264,7 @@ private fun IrAnnotationContainer.metroAnnotations(
   var isComposable = false
   var isBindsOptionalOf = false
   var isOptionalBinding = false
+  var isGraphPrivate = false
   var multibinds: IrAnnotation? = null
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
@@ -275,6 +289,10 @@ private fun IrAnnotationContainer.metroAnnotations(
           }
           in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
             isOptionalBinding = true
+            continue
+          }
+          ids.graphPrivateAnnotation if (Kind.GraphPrivate in kinds) -> {
+            isGraphPrivate = true
             continue
           }
         }
@@ -318,6 +336,10 @@ private fun IrAnnotationContainer.metroAnnotations(
           }
           in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
             isOptionalBinding = true
+            continue
+          }
+          ids.graphPrivateAnnotation if (Kind.GraphPrivate in kinds) -> {
+            isGraphPrivate = true
             continue
           }
         }
@@ -400,6 +422,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       isComposable = isComposable,
       isBindsOptionalOf = isBindsOptionalOf,
       isOptionalBinding = isOptionalBinding,
+      isGraphPrivate = isGraphPrivate,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -517,8 +540,10 @@ private fun FirBasedSymbol<*>.metroAnnotations(
   var isComposable = false
   var isBindsOptionalOf = false
   var isOptionalBinding = false
+  var isGraphPrivate = false
   var multibinds: MetroFirAnnotation? = null
   var assisted: MetroFirAnnotation? = null
+  var lazyClassKey: MetroFirAnnotation? = null
   val scopes = mutableSetOf<MetroFirAnnotation>()
   val qualifiers = mutableSetOf<MetroFirAnnotation>()
   val mapKeys = mutableSetOf<MetroFirAnnotation>()
@@ -544,6 +569,10 @@ private fun FirBasedSymbol<*>.metroAnnotations(
           }
           in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
             isOptionalBinding = true
+            continue
+          }
+          ids.graphPrivateAnnotation if (Kind.GraphPrivate in kinds) -> {
+            isGraphPrivate = true
             continue
           }
         }
@@ -592,6 +621,14 @@ private fun FirBasedSymbol<*>.metroAnnotations(
           }
           in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
             isOptionalBinding = true
+            continue
+          }
+          ids.graphPrivateAnnotation if (Kind.GraphPrivate in kinds) -> {
+            isGraphPrivate = true
+            continue
+          }
+          DaggerSymbols.ClassIds.DAGGER_LAZY_CLASS_KEY -> {
+            lazyClassKey = MetroFirAnnotation(annotation, session)
             continue
           }
         }
@@ -659,6 +696,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       isComposable = isComposable,
       isBindsOptionalOf = isBindsOptionalOf,
       isOptionalBinding = isOptionalBinding,
+      isGraphPrivate = isGraphPrivate,
       multibinds = multibinds,
       assisted = assisted,
       scope = scopes.firstOrNull(),
@@ -667,6 +705,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       qualifiers = qualifiers,
       mapKey = mapKeys.firstOrNull(),
       mapKeys = mapKeys,
+      lazyClassKey = lazyClassKey,
       symbol = null,
     )
 

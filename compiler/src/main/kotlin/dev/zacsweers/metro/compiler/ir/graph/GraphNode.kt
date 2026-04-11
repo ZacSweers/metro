@@ -53,6 +53,27 @@ internal sealed class GraphNode {
   abstract val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>
   abstract val parentGraph: GraphNode?
   abstract val typeKey: IrTypeKey
+  abstract val graphPrivateKeys: Set<IrTypeKey>
+
+  /**
+   * Non-private `@Binds` result type keys whose source is `@GraphPrivate`. These are "published" to
+   * child graphs as parent-resolved dependencies, since the child can't inherit and re-resolve the
+   * `@Binds` (the private original binding wouldn't be available).
+   */
+  abstract val publishedBindsKeys: Set<IrTypeKey>
+
+  /**
+   * Set of all type keys directly provided by this node's own declarations (not inherited). Used to
+   * determine whether an inherited binding should be skipped because the child already has its own
+   * binding for the same key. Includes keys from `@Provides` (provider factories) and `@Binds`
+   * (binds callables).
+   */
+  open val directlyProvidedKeys: Set<IrTypeKey> by memoize {
+    buildSet {
+      addAll(providerFactories.keys)
+      addAll(bindsCallables.keys)
+    }
+  }
 
   val publicAccessors: Set<IrTypeKey> by memoize { accessors.mapToSet { it.contextKey.typeKey } }
 
@@ -142,6 +163,8 @@ internal sealed class GraphNode {
     override val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
     override val parentGraph: GraphNode?,
     override val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
+    override val graphPrivateKeys: Set<IrTypeKey> = emptySet(),
+    override val publishedBindsKeys: Set<IrTypeKey> = emptySet(),
   ) : GraphNode()
 
   /** A graph node for a graph being compiled in the current compilation unit. */
@@ -176,9 +199,23 @@ internal sealed class GraphNode {
     val originalCreator: Creator.Factory? = null,
     override val parentGraph: GraphNode?,
     override val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
+    override val graphPrivateKeys: Set<IrTypeKey> = emptySet(),
+    override val publishedBindsKeys: Set<IrTypeKey> = emptySet(),
     var proto: DependencyGraphProto? = null,
   ) : GraphNode() {
     val hasExtensions = graphExtensions.isNotEmpty()
+
+    override val directlyProvidedKeys: Set<IrTypeKey> by memoize {
+      buildSet {
+        addAll(providerFactories.keys)
+        addAll(bindsCallables.keys)
+        creator?.parameters?.regularParameters?.forEach { param ->
+          if (param.isBindsInstance) {
+            add(param.typeKey)
+          }
+        }
+      }
+    }
   }
 
   sealed class Creator {

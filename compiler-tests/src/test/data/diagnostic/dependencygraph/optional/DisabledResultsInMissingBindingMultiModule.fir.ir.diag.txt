@@ -1,4 +1,6 @@
-/module_main_DisabledResultsInMissingBindingMultiModule.kt:(92,100): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Long?
+/module_main_DisabledResultsInMissingBindingMultiModule.kt:(92,100): error: 2 errors:
+
+[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Long?
 
     kotlin.Long? is injected at
         [AppGraph] Base.provideInt(…, long)
@@ -6,9 +8,11 @@
         [AppGraph] AppGraph.int
 
 
-/module_main_DisabledResultsInMissingBindingMultiModule.kt:(92,100): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String?
+[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String?
 
     kotlin.String? is injected at
         [AppGraph] Example(…, value)
     Example is requested at
         [AppGraph] AppGraph.example
+
+

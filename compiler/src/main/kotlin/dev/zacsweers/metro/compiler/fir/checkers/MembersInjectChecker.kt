@@ -6,9 +6,11 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.hasMetroDefault
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -26,7 +28,6 @@ import org.jetbrains.kotlin.fir.declarations.utils.fromPrimaryConstructor
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isFinal
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirEnumEntrySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -131,6 +132,16 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             "Injected member functions cannot have type parameters.",
           )
         }
+
+        for (param in callable.valueParameterSymbols) {
+          if (param.hasMetroDefault(session)) {
+            reporter.reportOn(
+              param.defaultValueSource ?: param.source,
+              MetroDiagnostics.MEMBERS_INJECT_ERROR,
+              "Function member injection cannot have default values.",
+            )
+          }
+        }
       }
     }
 
@@ -143,7 +154,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       // Check if any superclass has @HasMemberInjections (indicating inherited member injections)
       fun ancestorHasMemberInjections(): Boolean {
         return declaration.symbol.resolvedSuperTypes.any { superType ->
-          superType.toClassSymbol(session)?.let { parent ->
+          superType.toClassSymbolCompat(session)?.let { parent ->
             parent.classKind.isClass &&
               parent.hasAnnotation(Symbols.ClassIds.HasMemberInjections, session)
           } ?: false

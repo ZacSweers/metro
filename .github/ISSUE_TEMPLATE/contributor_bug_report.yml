@@ -10,11 +10,14 @@ body:
 
         If you have a usage or debugging question, please use the [Q&A feature of the repo's Discussions section](https://github.com/ZacSweers/metro/discussions/new?category=q-a) instead of creating an issue.
 
-        IDE ABI issues are not currently accepted. This is unfortunately not unexpected until there is a more stable compiler plugin API.
-
         Provide a brief summary of the issue in the title above
         
-        When submitting, PLEASE USE CONVENTIONAL **MARKDOWN FORMATTING** AND **SYNTAX HIGHLIGHTING** for readability.
+        When submitting, DO
+        - Use conventional **markdown formatting**
+        - Use syntax highlighting for code blocks
+            ```kotlin
+            @Inject class Example(val input: String)
+            ```
         
         Issues with code blocks that do not use syntax highlighting are less likely to be prioritized.
   - type: textarea
@@ -31,11 +34,11 @@ body:
       description: |
         Provide a [minimal, self-contained example](https://en.wikipedia.org/wiki/Minimal_reproducible_example) that reproduces the issue.
         
-        Ideally, fork this repo and create a test case in integration or compiler unit tests that reproduces this and then link that here.
+        Ideally, fork this repo and create a test case in compiler-tests that reproduces this and then link that here. IC issues can be reproduced in `ICTests.kt` in the gradle-plugin project. If you can reproduce this in a test, you can skip writing this issue and just send a PR with the failing test directly.
         
-        A minimally reproducible project is also good, either as a link or attached here.
+        A minimally reproducible project is also good, either as a link or attached here. If linking a project, please include the relevant build commands and ensure it uses the latest stable versions of build+kotlin+metro dependencies (or explain why specific versions are necessary).
         
-        If you cannot supply a repro case, it may be difficult or impossible to help. In this event, be as detailed as you can.
+        If you cannot supply a repro case, it may be difficult or impossible to help. In this event, be as detailed as you can and what you've tried (if nothing else, at least acknowledge you could not create a repro).
         
         Please include any relevant stack traces as you can (formatted as code blocks).
     validations:
@@ -47,6 +50,20 @@ body:
       description: What version of Metro are you using? (e.g. `0.1.0`)
     validations:
       required: true
+  - type: input
+    id: metro-regression
+    attributes:
+      label: Previous working version
+      description: If this is a regression in an update, what version of Metro did it previously work in? If not applicable (new feature), write N/A
+    validations:
+      required: true
+  - type: input
+    id: ide-version
+    attributes:
+      label: IDE version
+      description: (For IDE issues) What version of the IDE are you using? (i.e., Android Studio Panda 1 2025.3.1, IntelliJ 2025.3.2, etc).
+    validations:
+      required: false
   - type: textarea
     id: context
     attributes:

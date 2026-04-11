@@ -7,17 +7,22 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
+import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
+import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingType
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
+import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -35,12 +40,18 @@ import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isAny
 import org.jetbrains.kotlin.fir.types.isNothing
+import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
@@ -73,7 +84,31 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       if (!annotation.isResolved) continue
       val classId = annotation.toAnnotationClassId(session) ?: continue
       if (classId in classIds.allContributesAnnotations) {
-        val scope = annotation.resolvedScopeClassId() ?: continue
+        val scope = annotation.resolvedScopeClassId(session) ?: continue
+
+        // Check if the target looks suspicious
+        // - If it's a `@Scope` annotation class that's prolly not right
+        // - If it's a graph class
+        val scopeClass = scope.toLookupTag().toClassSymbolCompat(session) ?: continue
+        if (scopeClass.classKind == ClassKind.ANNOTATION_CLASS) {
+          scopeClass.annotationsIn(session, classIds.scopeAnnotations).firstOrNull()?.let {
+            reporter.reportOn(
+              annotation.scopeArgument(session)?.source ?: annotation.source,
+              MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
+              "Suspicious aggregation scope '${scope.asFqNameString()}' is a concrete `@Scope` annotation type, and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+            )
+          }
+        } else {
+          for (graphLikeAnno in scopeClass.annotationsIn(session, classIds.graphLikeAnnotations)) {
+            if (graphLikeAnno !is FirAnnotationCall) continue
+            reporter.reportOn(
+              annotation.scopeArgument(session)?.source ?: annotation.source,
+              MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
+              "Suspicious aggregation scope '${scope.asFqNameString()}' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+            )
+          }
+        }
+
         val replaces = emptySet<ClassId>() // TODO implement
         val checkIntoSet by memoize {
           checkBindingContribution(
@@ -128,28 +163,34 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           }
 
           in classIds.contributesBindingAnnotations -> {
-            val valid =
-              checkBindingContribution(
-                session,
-                ContributionKind.CONTRIBUTES_BINDING,
-                declaration,
-                classQualifier,
-                annotation,
-                scope,
-                classId,
-                contributesBindingAnnotations,
-                isMapBinding = false,
-              ) { bindingType, _ ->
-                Contribution.ContributesBinding(
+            if (annotation.isKiaIntoMultibinding(session)) {
+              if (!checkIntoSet) {
+                return
+              }
+            } else {
+              val valid =
+                checkBindingContribution(
+                  session,
+                  ContributionKind.CONTRIBUTES_BINDING,
                   declaration,
+                  classQualifier,
                   annotation,
                   scope,
-                  replaces,
-                  bindingType,
-                )
+                  classId,
+                  contributesBindingAnnotations,
+                  isMapBinding = false,
+                ) { bindingType, _ ->
+                  Contribution.ContributesBinding(
+                    declaration,
+                    annotation,
+                    scope,
+                    replaces,
+                    bindingType,
+                  )
+                }
+              if (!valid) {
+                return
               }
-            if (!valid) {
-              return
             }
           }
 
@@ -174,6 +215,20 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           }
         }
       }
+    }
+
+    // Warn if @ExposeImplBinding is used but generateContributionProviders is not enabled
+    if (!session.metroFirBuiltIns.options.generateContributionProviders) {
+      declaration
+        .annotationsIn(session, setOf(classIds.exposeImplBindingAnnotation))
+        .firstOrNull()
+        ?.let { exposeAnnotation ->
+          reporter.reportOn(
+            exposeAnnotation.source,
+            MetroDiagnostics.EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS,
+            "`@ExposeImplBinding` has no effect when `generateContributionProviders` is not enabled.",
+          )
+        }
     }
   }
 
@@ -270,16 +325,33 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
           )
           return false
-        } else if (supertypesExcludingAny.size != 1) {
-          reporter.reportOn(
-            annotation.source,
-            MetroDiagnostics.AGGREGATION_ERROR,
-            "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `bindingType` but has multiple supertypes. You must define an explicit bound type in this scenario.",
-          )
-          return false
         }
-        val implicitBindingType = supertypesExcludingAny[0]
-        FirTypeKey(implicitBindingType.coneType, classQualifier)
+
+        // Check @DefaultBinding first — it takes priority over implicit single-supertype
+        // resolution (e.g., @DefaultBinding<Factory<*>> on Factory<T> binds as Factory<*>).
+        when (val result = resolveDefaultBindingFromSupertypes(session, supertypesExcludingAny)) {
+          is DefaultBindingResult.Ambiguous -> {
+            reporter.reportOn(
+              annotation.source,
+              MetroDiagnostics.AGGREGATION_ERROR,
+              "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `binding` type but ambiguously has multiple supertypes that declare a `@DefaultBinding` (${result.types.joinToString { it.classId!!.asFqNameString() }}). You must define an explicit bound type in this scenario.",
+            )
+            return false
+          }
+          is DefaultBindingResult.Found -> FirTypeKey(result.type, classQualifier)
+          DefaultBindingResult.None -> {
+            if (supertypesExcludingAny.size == 1) {
+              FirTypeKey(supertypesExcludingAny[0].coneType, classQualifier)
+            } else {
+              reporter.reportOn(
+                annotation.source,
+                MetroDiagnostics.AGGREGATION_ERROR,
+                "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `binding` type but has multiple supertypes. You must define an explicit bound type in this scenario.",
+              )
+              return false
+            }
+          }
+        }
       }
 
     val mapKey =
@@ -308,6 +380,16 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             }
           }
         resolvedKey ?: return false
+
+        // Check implicit class key usage
+        checkImplicitClassKeyUsage(
+          session,
+          resolvedKey,
+          implicitType = declaration.symbol.classId,
+          source = declaration.source,
+        )
+
+        resolvedKey
       } else {
         null
       }
@@ -438,6 +520,43 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         NONE -> return
       }
     reporter.reportOn(declaration.source, diagnosticFactory, message)
+  }
+
+  sealed interface DefaultBindingResult {
+    data class Found(val type: ConeKotlinType) : DefaultBindingResult
+
+    data class Ambiguous(val types: List<ConeKotlinType>) : DefaultBindingResult
+
+    data object None : DefaultBindingResult
+  }
+
+  /**
+   * Resolves the default binding type from supertypes annotated with `@DefaultBinding`.
+   *
+   * Returns the [ConeKotlinType] if exactly one supertype has a default binding, or null if none or
+   * ambiguous (multiple supertypes with `@DefaultBinding`).
+   */
+  private fun resolveDefaultBindingFromSupertypes(
+    session: FirSession,
+    supertypes: List<FirTypeRef>,
+  ): DefaultBindingResult {
+    val defaultBindingTypes = mutableListOf<ConeKotlinType>()
+
+    for (supertype in supertypes) {
+      val supertypeClassId = supertype.coneTypeOrNull?.fullyExpandedClassId(session) ?: continue
+      val supertypeSymbol =
+        session.symbolProvider.getClassLikeSymbolByClassId(supertypeClassId) as? FirClassSymbol<*>
+          ?: continue
+
+      val resolvedType = supertypeSymbol.resolveDefaultBindingType(session) ?: continue
+      defaultBindingTypes += resolvedType
+    }
+
+    return when (defaultBindingTypes.size) {
+      0 -> DefaultBindingResult.None
+      1 -> DefaultBindingResult.Found(defaultBindingTypes[0])
+      else -> DefaultBindingResult.Ambiguous(defaultBindingTypes)
+    }
   }
 
   sealed interface Contribution {

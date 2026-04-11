@@ -3,10 +3,10 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import androidx.collection.ScatterMap
-import dev.zacsweers.metro.compiler.alsoIf
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.ParentContext
+import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.allowEmpty
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.asMemberOf
@@ -39,9 +40,9 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
@@ -60,7 +61,8 @@ internal class BindingLookup(
   private val sourceGraph: IrClass,
   private val findClassFactory: (IrClass) -> ClassFactory?,
   private val findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
-  private val parentContext: ParentContext?,
+  private val parentContext: ParentContextReader?,
+  private val bindingLookupCache: BindingLookupCache,
 ) {
 
   // Single cache for all bindings, storing lists to track duplicates naturally
@@ -99,6 +101,17 @@ internal class BindingLookup(
   private val optionalBindingsCache = mutableMapOf<IrTypeKey, IrBinding.CustomWrapper>()
   // Keys explicitly declared in this graph (for unused key reporting)
   private val locallyDeclaredKeys = mutableSetOf<IrTypeKey>()
+
+  // Type keys for non-multibinding Map bindings, for targeted incompatible value type validation
+  private val _directMapTypeKeys = mutableSetOf<IrTypeKey>()
+  val directMapTypeKeys: Set<IrTypeKey>
+    get() = _directMapTypeKeys
+
+  // Tracks the actual requested contextual type when a direct Map binding is skipped
+  // (e.g., the Map<K, Provider<V>> that was requested but couldn't be satisfied)
+  private val _skippedDirectMapRequests = mutableMapOf<IrTypeKey, IrContextualTypeKey>()
+  val skippedDirectMapRequests: Map<IrTypeKey, IrContextualTypeKey>
+    get() = _skippedDirectMapRequests
 
   /** Information about a registered injector function for MembersInjected binding creation. */
   private data class InjectorFunctionInfo(
@@ -148,6 +161,14 @@ internal class BindingLookup(
       locallyDeclaredKeys += binding.typeKey
     }
 
+    // Track non-multibinding Map bindings for targeted validation.
+    // Direct Map<K, V> bindings cannot satisfy Map<K, Provider<V>> requests.
+    if (
+      binding !is IrBinding.Multibinding && binding.contextualTypeKey.wrappedType is WrappedType.Map
+    ) {
+      _directMapTypeKeys += binding.typeKey
+    }
+
     // If this is a multibinding contributor, register it
     when (binding) {
       is IrBinding.BindingWithAnnotations if binding.annotations.isIntoMultibinding -> {
@@ -159,18 +180,14 @@ internal class BindingLookup(
             is Alias ->
               binding.bindsCallable?.callableMetadata?.annotations?.qualifier to
                 binding.contextualTypeKey.typeKey.type
-
-            else -> null to null
           }
-        if (valueType != null) {
-          val multibindingTypeKey =
-            computeMultibindingTypeKey(
-              annotations = binding.annotations,
-              valueType = valueType,
-              qualifier = qualifier,
-            )
-          registerMultibindingContribution(multibindingTypeKey, binding.typeKey)
-        }
+        val multibindingTypeKey =
+          computeMultibindingTypeKey(
+            annotations = binding.annotations,
+            valueType = valueType,
+            qualifier = qualifier,
+          )
+        registerMultibindingContribution(multibindingTypeKey, binding.typeKey)
       }
 
       is IrBinding.MembersInjected -> {
@@ -201,6 +218,8 @@ internal class BindingLookup(
     optionalBindingDeclarations.clear()
     optionalBindingsCache.clear()
     locallyDeclaredKeys.clear()
+    _directMapTypeKeys.clear()
+    _skippedDirectMapRequests.clear()
     registeredInjectorFunctions.clear()
   }
 
@@ -224,6 +243,9 @@ internal class BindingLookup(
 
   /** Keys explicitly declared in this graph (used for unused key reporting). */
   fun getDeclaredKeys(): Set<IrTypeKey> = locallyDeclaredKeys
+
+  /** Returns the set of graph-private keys from parent graphs, for missing binding hints. */
+  fun getParentGraphPrivateKeys(): Set<IrTypeKey> = parentContext?.graphPrivateKeys() ?: emptySet()
 
   /** Tracks a key as locally declared without adding a binding to the cache. */
   fun trackDeclaredKey(typeKey: IrTypeKey) {
@@ -584,11 +606,37 @@ internal class BindingLookup(
 
       // First check cached bindings
       bindingsCache[key]?.let { binding ->
+        // Don't satisfy Map<K, Provider<V>>/Map<K, Lazy<V>> from a direct (non-multibinding)
+        // Map<K, V> binding. Only multibinding contributions can provide wrapped map values.
+        // However, a directly provided Map<K, Provider<V>> can satisfy Map<K, Provider<V>>
+        // requests since the Provider wrapping is explicit in the return type.
+        if ((contextKey.isMapProvider || contextKey.isMapLazy) && key in _directMapTypeKeys) {
+          val originallyWrapped =
+            when (binding) {
+              is Provided -> binding.providerFactory.contextualTypeKey.isDeferrable
+              is IrBinding.GraphDependency -> binding.contextualTypeKey.isDeferrable
+              else -> false
+            }
+          if (!originallyWrapped) {
+            _skippedDirectMapRequests[key] = contextKey
+            return@let // Fall through to missing binding
+          }
+        }
+
         // Report duplicates if there are multiple bindings
         duplicateBindings[key]?.let { onDuplicateBindings(key, it.toList()) }
 
-        // Check if this is available from parent and is scoped
-        if (binding.scope != null && parentContext?.contains(key) == true) {
+        // Check if this is available from parent and is scoped.
+        // Skip locally declared bindings, they're explicitly provided in this graph
+        // (e.g. via @Provides) and should not be delegated to a parent even if the
+        // parent has the same key under a different scope.
+        // "If graph A provides `Logger` and graph B also provides `Logger` (overriding A's),
+        // ensure graph C uses B's"
+        if (
+          binding.scope != null &&
+            key !in locallyDeclaredKeys &&
+            parentContext?.contains(key) == true
+        ) {
           val token = parentContext.mark(key, binding.scope!!)
           return setOf(createParentGraphDependency(key, token!!))
         }
@@ -780,21 +828,18 @@ internal class BindingLookup(
         }
 
         val binding =
-          irClass.cachedConstructorInjectedBinding.takeIf {
-            // Allow use of cached instances if no generics
-            remapper == NOOP_TYPE_REMAPPER
+          bindingLookupCache.getOrPutConstructorInjected(
+            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER }
+          ) {
+            IrBinding.ConstructorInjected(
+              type = irClass,
+              classFactory = mappedFactory,
+              annotations = classAnnotations,
+              typeKey = key,
+              injectedMembers =
+                membersInjectBindings.value.mapToSet { binding -> binding.contextualTypeKey },
+            )
           }
-            ?: IrBinding.ConstructorInjected(
-                type = irClass,
-                classFactory = mappedFactory,
-                annotations = classAnnotations,
-                typeKey = key,
-                injectedMembers =
-                  membersInjectBindings.value.mapToSet { binding -> binding.contextualTypeKey },
-              )
-              .alsoIf(remapper == NOOP_TYPE_REMAPPER) {
-                irClass.cachedConstructorInjectedBinding = it
-              }
 
         bindings += binding
 
@@ -819,45 +864,45 @@ internal class BindingLookup(
               return@getOrPut emptySet()
             }
 
+        // Record a lookup of the target's factory function in case its constructor params change
+        trackFunctionCall(sourceGraph, targetClassFactory.function)
+
         val targetKey = IrTypeKey(targetType)
         val targetAnnotations = targetClass.metroAnnotations(context.metroSymbols.classIds)
         val targetRemapper = targetClass.deepRemapperFor(targetType)
 
         // Create the target's ConstructorInjected binding (NOT added to graph)
         val targetBinding =
-          targetClass.cachedConstructorInjectedBinding.takeIf {
-            targetRemapper == NOOP_TYPE_REMAPPER
+          bindingLookupCache.getOrPutConstructorInjected(
+            targetClass.takeIf { targetRemapper == NOOP_TYPE_REMAPPER }
+          ) {
+            IrBinding.ConstructorInjected(
+              type = targetClass,
+              classFactory = targetClassFactory.remapTypes(targetRemapper),
+              annotations = targetAnnotations,
+              typeKey = targetKey,
+              // Assisted-inject classes don't have member injections in this context
+              injectedMembers = emptySet(),
+            )
           }
-            ?: IrBinding.ConstructorInjected(
-                type = targetClass,
-                classFactory = targetClassFactory.remapTypes(targetRemapper),
-                annotations = targetAnnotations,
-                typeKey = targetKey,
-                // Assisted-inject classes don't have member injections in this context
-                injectedMembers = emptySet(),
-              )
-              .alsoIf(targetRemapper == NOOP_TYPE_REMAPPER) {
-                targetClass.cachedConstructorInjectedBinding = it
-              }
 
         // Wrap target's dependencies in Provider for proper cycle detection
         val wrappedDependencies = targetBinding.dependencies.map { dep -> dep.wrapInProvider() }
 
         bindings +=
-          irClass.cacheAssistedFactoryBinding.takeIf {
-            // Allow use of cached instances if no generics
-            remapper == NOOP_TYPE_REMAPPER
+          bindingLookupCache.getOrPutAssistedFactory(
+            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER }
+          ) {
+            IrBinding.AssistedFactory(
+              type = irClass,
+              targetBinding = targetBinding,
+              function = function,
+              annotations = classAnnotations,
+              typeKey = key,
+              parameters = function.parameters(),
+              dependencies = wrappedDependencies,
+            )
           }
-            ?: IrBinding.AssistedFactory(
-                type = irClass,
-                targetBinding = targetBinding,
-                function = function,
-                annotations = classAnnotations,
-                typeKey = key,
-                parameters = function.parameters(),
-                dependencies = wrappedDependencies,
-              )
-              .alsoIf(remapper == NOOP_TYPE_REMAPPER) { irClass.cacheAssistedFactoryBinding = it }
       } else if (contextKey.hasDefault) {
         bindings += IrBinding.Absent(key)
       } else {
@@ -870,10 +915,29 @@ internal class BindingLookup(
   }
 }
 
-/** Cached [IrBinding.ConstructorInjected] binding for this class factory. */
-internal var IrClass.cachedConstructorInjectedBinding: IrBinding.ConstructorInjected? by
-  irAttribute(copyByDefault = false)
+/**
+ * Thread-safe cache for [IrBinding.ConstructorInjected] and [IrBinding.AssistedFactory] bindings
+ * keyed by [IrClass]. This replaces the previous `irAttribute`-based caching which is not safe for
+ * concurrent access during parallel graph extension validation.
+ */
+internal class BindingLookupCache {
+  private val constructorInjectedBindings =
+    ConcurrentHashMap<IrClass, IrBinding.ConstructorInjected>()
+  private val assistedFactoryBindings = ConcurrentHashMap<IrClass, IrBinding.AssistedFactory>()
 
-/** Cached [IrBinding.AssistedFactory] binding for this class factory. */
-internal var IrClass.cacheAssistedFactoryBinding: IrBinding.AssistedFactory? by
-  irAttribute(copyByDefault = false)
+  /** Returns a cached binding or computes and caches it. If [irClass] is null, just computes. */
+  fun getOrPutConstructorInjected(
+    irClass: IrClass?,
+    compute: () -> IrBinding.ConstructorInjected,
+  ): IrBinding.ConstructorInjected =
+    if (irClass != null) constructorInjectedBindings.computeIfAbsent(irClass) { compute() }
+    else compute()
+
+  /** Returns a cached binding or computes and caches it. If [irClass] is null, just computes. */
+  fun getOrPutAssistedFactory(
+    irClass: IrClass?,
+    compute: () -> IrBinding.AssistedFactory,
+  ): IrBinding.AssistedFactory =
+    if (irClass != null) assistedFactoryBindings.computeIfAbsent(irClass) { compute() }
+    else compute()
+}

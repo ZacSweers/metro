@@ -79,16 +79,17 @@ import org.jetbrains.kotlin.name.SpecialNames
 
 internal class AssistedFactoryTransformer(
   context: IrMetroContext,
-  private val injectConstructorTransformer: InjectConstructorTransformer,
-) : IrMetroContext by context {
+  private val injectedClassTransformer: InjectedClassTransformer,
+) : IrMetroContext by context, Lockable by Lockable() {
 
   private val implsCache = mutableMapOf<ClassId, AssistedFactoryImpl>()
 
-  fun visitClass(declaration: IrClass) {
+  fun visitClass(declaration: IrClass): Boolean {
     val isAssistedFactory = declaration.isAnnotatedWithAny(metroSymbols.assistedFactoryAnnotations)
     if (isAssistedFactory) {
       @Suppress("RETURN_VALUE_NOT_USED") getOrGenerateImplClass(declaration)
     }
+    return isAssistedFactory
   }
 
   internal fun getOrGenerateImplClass(declaration: IrClass): AssistedFactoryImpl {
@@ -150,6 +151,8 @@ internal class AssistedFactoryTransformer(
       }
       reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
     }
+
+    checkNotLocked()
 
     // Find the SAM function - for external use metadata as hint, for in-compilation get directly
     val samFunction = declaration.singleAbstractFunction()
@@ -336,7 +339,7 @@ internal class AssistedFactoryTransformer(
     val creatorFunction = samFunction.toAssistedFactoryFunction(implSamFunction, remapper)
 
     val generatedFactory =
-      injectConstructorTransformer.getOrGenerateFactory(
+      injectedClassTransformer.getOrGenerateFactory(
         targetType,
         injectConstructor,
         doNotErrorOnMissing = false,
@@ -347,13 +350,12 @@ internal class AssistedFactoryTransformer(
       constructorParams.regularParameters.filter { parameter -> parameter.isAssisted }
 
     // Apply substitutions when creating assisted parameter keys
-    val assistedParameterKeys =
-      assistedParameters.map { parameter ->
-        val substitutedTypeKey = parameter.typeKey.remapTypes(remapper)
-        parameter
-          .copy(contextualTypeKey = parameter.contextualTypeKey.withIrTypeKey(substitutedTypeKey))
-          .assistedParameterKey
-      }
+    val assistedParameterKeys = assistedParameters.map { parameter ->
+      val substitutedTypeKey = parameter.typeKey.remapTypes(remapper)
+      parameter
+        .copy(contextualTypeKey = parameter.contextualTypeKey.withIrTypeKey(substitutedTypeKey))
+        .assistedParameterKey
+    }
 
     val ctor = implClass.primaryConstructor!!
     val delegateFactoryField = assignConstructorParamsToFields(ctor, implClass).values.single()
@@ -368,19 +370,18 @@ internal class AssistedFactoryTransformer(
         pluginContext.createIrBuilder(symbol).run {
           // We call the @Inject constructor. Therefore, find for each assisted
           // parameter the function parameter where the keys match.
-          val argumentList =
-            assistedParameterKeys.map { assistedParameterKey ->
-              val param =
-                functionParams[assistedParameterKey]
-                  ?: reportCompilerBug(
-                    "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${
+          val argumentList = assistedParameterKeys.map { assistedParameterKey ->
+            val param =
+              functionParams[assistedParameterKey]
+                ?: reportCompilerBug(
+                  "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${
                         functionParams.keys.joinToString(
                           "\n"
                         )
                       }"
-                  )
-              irGet(param)
-            }
+                )
+            irGet(param)
+          }
 
           irExprBodySafe(
             irInvoke(
@@ -450,7 +451,12 @@ internal class AssistedFactoryTransformer(
             originalDeclaration.regularParameters.mapIndexed { index, param ->
               val baseTypeKey = params.regularParameters[index].typeKey
               val substitutedTypeKey = remapper?.let { baseTypeKey.remapTypes(it) } ?: baseTypeKey
-              param.toAssistedParameterKey(context.metroSymbols, substitutedTypeKey)
+              param.toAssistedParameterKey(
+                symbols = context.metroSymbols,
+                typeKey = substitutedTypeKey,
+                useAssistedParamNamesAsIdentifiers =
+                  context.options.useAssistedParamNamesAsIdentifiers,
+              )
             },
         )
       }

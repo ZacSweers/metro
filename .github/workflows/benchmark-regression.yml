@@ -32,8 +32,9 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
             # On push to main: compare HEAD~1 (baseline) vs HEAD (current)
-            echo "baseline_ref=HEAD~1" >> $GITHUB_OUTPUT
-            echo "current_ref=HEAD" >> $GITHUB_OUTPUT
+            # Resolve to absolute SHAs so refs remain valid after git checkout
+            echo "baseline_ref=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
+            echo "current_ref=${{ github.sha }}" >> $GITHUB_OUTPUT
             echo "baseline_name=main~1" >> $GITHUB_OUTPUT
             echo "current_name=main" >> $GITHUB_OUTPUT
           else
@@ -44,23 +45,11 @@ jobs:
             echo "current_name=PR #${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Limit the size of the cache entry.
-          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
-          gradle-home-cache-excludes: |
-            caches/jars-9
-            caches/transforms-3
 
       # Run baseline benchmark
       - name: Checkout baseline (${{ steps.refs.outputs.baseline_name }})
@@ -283,7 +272,7 @@ jobs:
 
       - name: Comment on PR if regression
         if: github.event_name == 'pull_request' && steps.compare.outputs.is_regression == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const baselineFields = '${{ steps.baseline.outputs.fields }}';
@@ -332,13 +321,17 @@ jobs:
             })
 
       - name: Upload results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: startup-benchmark-results
           path: |
             /tmp/benchmark-baseline/
             /tmp/benchmark-current/
           retention-days: 7
+
+      - name: Restore original checkout
+        if: always()
+        run: git checkout ${{ github.sha }}
 
   build-benchmark:
     name: "Build Time Benchmark"
@@ -356,8 +349,9 @@ jobs:
         id: refs
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            echo "baseline_ref=HEAD~1" >> $GITHUB_OUTPUT
-            echo "current_ref=HEAD" >> $GITHUB_OUTPUT
+            # Resolve to absolute SHAs so refs remain valid after git checkout
+            echo "baseline_ref=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
+            echo "current_ref=${{ github.sha }}" >> $GITHUB_OUTPUT
             echo "baseline_name=main~1" >> $GITHUB_OUTPUT
             echo "current_name=main" >> $GITHUB_OUTPUT
           else
@@ -367,23 +361,11 @@ jobs:
             echo "current_name=PR #${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Limit the size of the cache entry.
-          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
-          gradle-home-cache-excludes: |
-            caches/jars-9
-            caches/transforms-3
 
       - name: Get cache key for gradle-profiler
         id: gradle-profiler-cache-key
@@ -536,7 +518,7 @@ jobs:
 
       - name: Comment on PR if regression
         if: github.event_name == 'pull_request' && steps.compare.outputs.is_regression == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const baseline_s = (${{ steps.baseline.outputs.score }} / 1000).toFixed(2);
@@ -559,7 +541,7 @@ jobs:
             })
 
       - name: Upload results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: build-benchmark-results
           path: |
@@ -567,12 +549,16 @@ jobs:
             /tmp/build-benchmark-current/
           retention-days: 7
 
+      - name: Restore original checkout
+        if: always()
+        run: git checkout ${{ github.sha }}
+
   publish-benchmarks:
     name: "Publish Benchmark Results"
     # Only run on push to main, after both benchmark jobs complete
     if: github.event_name == 'push'
     needs: [benchmark, build-benchmark]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
 
     steps:
       - name: Checkout gh-pages
@@ -589,13 +575,13 @@ jobs:
           fetch-depth: 1
 
       - name: Download startup benchmark results
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: startup-benchmark-results
           path: /tmp/startup-results
 
       - name: Download build benchmark results
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: build-benchmark-results
           path: /tmp/build-results

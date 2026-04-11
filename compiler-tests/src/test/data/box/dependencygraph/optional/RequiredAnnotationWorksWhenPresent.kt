@@ -11,6 +11,7 @@ class Example2(@OptionalBinding val value: String? = null)
 @DependencyGraph
 interface AppGraph {
   val example: Example
+  val exampleFactory: Provider<Example>
   val example2: Example2
   val int: Int
 
@@ -21,6 +22,7 @@ interface AppGraph {
 fun box(): String {
   val graph = createGraph<AppGraph>()
   assertNull(null, graph.example.value)
+  assertNull(null, graph.exampleFactory().value)
   assertNull(null, graph.example2.value)
   assertEquals(3, graph.int)
   return "OK"

@@ -1,0 +1,91 @@
+// FILE: DefaultBindingMirror.kt
+
+@ContributesBinding(scope = AppScope::class)
+@Inject
+class Impl : Base<Impl>, Other {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Impl> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<Impl> {
+      return MetroFactory
+    }
+
+    fun newInstance(): Impl {
+      return Impl()
+    }
+
+    override operator fun invoke(): Impl {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): Impl {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface MetroContributionToAppScope {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
+    abstract class BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @Binds
+      @CallableMetadata(callableName = "bindsAsBase", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindsAsBase(instance: Impl): Base<*>
+
+    }
+
+    @Binds
+    @ComptimeOnly
+    abstract fun bindsAsBase(instance: Impl): Base<*> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DefaultBinding<Base<*>>()
+interface Base<T : Any?> {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class DefaultBindingMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    abstract fun defaultBinding(): Base<*>
+
+  }
+
+}
+
+interface Other {
+}
+
+// FILE: implAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: Impl) {
+  return error(message = "Never called")
+}
+

@@ -8,8 +8,7 @@ import dev.zacsweers.metro.compiler.graph.WrappedType.Provider
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.locationOrNull
-import dev.zacsweers.metro.compiler.ir.render
+import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.writeText
@@ -200,7 +199,7 @@ internal class GraphMetadataReporter(
       put("isSynthetic", JsonPrimitive(isSynthetic))
 
       binding.reportableDeclaration?.let { declaration ->
-        declaration.locationOrNull()?.render(short = true)?.let { location ->
+        declaration.renderSourceLocation(short = true)?.let { location ->
           put("origin", JsonPrimitive(location))
         }
         put("declaration", JsonPrimitive(declaration.name.asString()))

@@ -18,6 +18,8 @@ package dev.zacsweers.metro.compiler
 import androidx.collection.MutableScatterMap
 import androidx.collection.MutableScatterSet
 import androidx.collection.ScatterMap
+import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.ForkJoinTask
 
 internal fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
   return filterTo(mutableSetOf(), predicate)
@@ -107,4 +109,33 @@ internal inline fun <K, V> MutableScatterMap<K, MutableScatterSet<V>>.getAndAdd(
   value: V,
 ): MutableScatterSet<V> {
   return getOrPut(key, ::MutableScatterSet).also { it.add(value) }
+}
+
+/**
+ * Maps items in parallel using a [ForkJoinPool]. Each item is forked as a [ForkJoinTask], and the
+ * caller thread participates via [ForkJoinTask.join] which uses work-stealing rather than blocking.
+ * This means nested `parallelMap` calls (e.g. recursive graph extension validation) work correctly
+ * without thread starvation — a joining thread will execute other queued tasks while waiting,
+ * keeping the thread count bounded to the pool's parallelism.
+ *
+ * Results are returned in the same order as the input.
+ */
+internal fun <T, R> List<T>.parallelMap(
+  forkJoinPool: ForkJoinPool,
+  transform: (T) -> R,
+): List<R> {
+  if (size <= 1) return map(transform)
+
+  // Submit all items as ForkJoinTasks to our pool.
+  // If we're already on a ForkJoinPool worker thread (nested call), fork() submits to the
+  // current pool automatically via work-stealing. Otherwise, use pool.submit() explicitly.
+  val onPoolThread = ForkJoinTask.inForkJoinPool()
+  val tasks =
+    map { item ->
+      val task = ForkJoinTask.adapt<R> { transform(item) }
+      if (onPoolThread) task.fork() else forkJoinPool.submit(task)
+    }
+
+  // Join all tasks — work-stealing keeps the thread active while waiting
+  return tasks.map { it.join() }
 }

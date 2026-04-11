@@ -1,0 +1,27 @@
+Module: lib
+FILE: module_lib_ContributingTypesDependency_k24x.kt
+    @R|dev/zacsweers/metro/ContributesTo|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|) [evaluated = <getClass>(Q|dev/zacsweers/metro/AppScope|)]) public abstract interface ContributedInterface : R|kotlin/Any| {
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/MetroContribution|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface MetroContributionToAppScope : R|ContributedInterface| {
+        }
+
+    }
+Module: main
+FILE: module_main_ContributingTypesDependency_k24x.kt
+    @R|dev/zacsweers/metro/DependencyGraph|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|) [evaluated = <getClass>(Q|dev/zacsweers/metro/AppScope|)]) public abstract interface ExampleGraph : R|kotlin/Any|, R|ContributedInterface.MetroContributionToAppScope| {
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/MetroImplMarker|() public final class Impl : R|ExampleGraph| {
+            private constructor(): R|ExampleGraph.Impl| {
+                super<R|kotlin/Any|>()
+            }
+
+        }
+
+        public final companion object Companion : R|kotlin/Any| {
+            @R|dev/zacsweers/metro/internal/GraphFactoryInvokeFunctionMarker|() public final operator fun invoke(): R|ExampleGraph|
+
+            private constructor(): R|ExampleGraph.Companion| {
+                super<R|kotlin/Any|>()
+            }
+
+        }
+
+    }

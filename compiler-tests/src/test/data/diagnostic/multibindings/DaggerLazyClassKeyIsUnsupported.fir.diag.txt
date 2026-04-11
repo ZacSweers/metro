@@ -1,0 +1,3 @@
+/DaggerLazyClassKeyIsUnsupported.kt:(156,184): error: Dagger's `@LazyClassKey` is not supported in Metro. Use `@ClassKey` instead.
+
+/DaggerLazyClassKeyIsUnsupported.kt:(266,295): error: Dagger's `@LazyClassKey` is not supported in Metro. Use `@ClassKey` instead.

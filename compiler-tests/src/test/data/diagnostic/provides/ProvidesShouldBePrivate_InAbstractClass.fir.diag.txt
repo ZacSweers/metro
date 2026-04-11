@@ -1,1 +1,1 @@
-/ProvidesShouldBePrivate_InAbstractClass.kt:(238,251): warning: `@Provides` declarations should be private.
+/ProvidesShouldBePrivate_InAbstractClass.kt:(326,339): warning: Scoped @Provides declarations should be private.

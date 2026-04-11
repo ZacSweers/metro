@@ -2,13 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import androidx.tracing.TraceDriver
-import androidx.tracing.wire.TraceDriver
+import androidx.tracing.AbstractTraceDriver
+import androidx.tracing.wire.TraceDriver as WireTraceDriver
 import androidx.tracing.wire.TraceSink
 import dev.zacsweers.metro.compiler.LOG_PREFIX
+import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
+import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import dev.zacsweers.metro.compiler.ir.cache.IrCachesFactory
@@ -46,6 +49,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     get() = this
 
   val pluginContext: IrPluginContext
+  val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat
   val metroSymbols: Symbols
   val options: MetroOptions
   val debug: Boolean
@@ -54,11 +58,13 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   val lookupTracker: LookupTracker?
   val expectActualTracker: ExpectActualTracker
 
+  val messageRenderer: MessageRenderer
+
   val irTypeSystemContext: IrTypeSystemContext
 
   val reportsDir: Path?
 
-  val traceDriver: TraceDriver
+  val traceDriver: AbstractTraceDriver
 
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
@@ -163,6 +169,11 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     ) : IrMetroContext, IrPluginContext by pluginContext, CompatContext by compatContext {
       private var reportedErrors = 0
 
+      override val metadataDeclarationRegistrarCompat:
+        IrGeneratedDeclarationsRegistrarCompat by lazy {
+        compatContext.createIrGeneratedDeclarationsRegistrar(this)
+      }
+
       override fun onErrorReported() {
         reportedErrors++
         if (reportedErrors >= options.maxIrErrorsCount) {
@@ -171,14 +182,13 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
         }
       }
 
-      override val lookupTracker: LookupTracker? =
-        lookupTracker?.let {
-          if (options.reportsEnabled) {
-            RecordingLookupTracker(this, lookupTracker)
-          } else {
-            lookupTracker
-          }
+      override val lookupTracker: LookupTracker? = lookupTracker?.let {
+        if (options.reportsEnabled) {
+          RecordingLookupTracker(this, lookupTracker)
+        } else {
+          lookupTracker
         }
+      }
 
       override val expectActualTracker: ExpectActualTracker =
         if (options.reportsEnabled) {
@@ -186,6 +196,9 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
         } else {
           expectActualTracker
         }
+
+      override val messageRenderer: MessageRenderer =
+        MessageRenderer(MessageRenderer.resolveRichOutput(options.richDiagnostics))
 
       override val irTypeSystemContext: IrTypeSystemContext =
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)
@@ -204,7 +217,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
         }
       }
 
-      override val traceDriver: TraceDriver by lazy {
+      override val traceDriver: AbstractTraceDriver by lazy {
         val tracePath = options.traceDir.value
         val sink =
           if (tracePath == null) {
@@ -214,7 +227,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
             tracePath.createDirectories()
             TraceSink(sequenceId = 1, directory = tracePath.toFile())
           }
-        TraceDriver(sink = sink, isEnabled = tracePath != null)
+        WireTraceDriver(sink = sink, isEnabled = tracePath != null)
       }
 
       override val lookupFile: Path? by lazy {
@@ -261,15 +274,26 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   }
 }
 
+/** Builds a diagnostic message string using the [MessageRenderer.MessageBuilder] DSL. */
+internal inline fun IrMetroContext.renderDiagnostic(
+  body: MessageRenderer.MessageBuilder.() -> Unit
+): String = messageRenderer.buildMessage(body)
+
+/** See the other [writeDiagnostic] */
 context(context: IrMetroContext)
-internal fun writeDiagnostic(fileName: String, text: () -> String) {
-  writeDiagnostic({ fileName }, text)
+internal fun writeDiagnostic(diagnosticKey: String, fileName: String, text: () -> String) {
+  writeDiagnostic(diagnosticKey, { fileName }, text)
 }
 
+/**
+ * @param diagnosticKey A string identifier for the category of diagnostic being generated. This
+ *   will be treated as a prefix path segment. E.g. a key of "keys-populated" will result in
+ *   <reports-folder>/keys-populated/<fileName>
+ */
 context(context: IrMetroContext)
-internal fun writeDiagnostic(fileName: () -> String, text: () -> String) {
+internal fun writeDiagnostic(diagnosticKey: String, fileName: () -> String, text: () -> String) {
   context.reportsDir
-    ?.resolve(fileName())
+    ?.resolve(createDiagnosticReportPath(diagnosticKey, fileName()))
     ?.apply {
       // Ensure that the path leading up to the file has been created
       createParentDirectories()

@@ -450,7 +450,6 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
-        options = metroOptions.copy(transformProvidersToPrivate = false),
       )
 
     result.assertDiagnostics(
@@ -521,7 +520,6 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
       // Get its computed value to plug in below
       val providerValue = provideValueProvider()
-      assertThat(graph.javaClass.getDeclaredField("provideValueProvider"))
       assertThat(graph.callProperty<Int>("valueLengths")).isEqualTo(providerValue.length * 2)
     }
   }
@@ -2849,8 +2847,15 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.Impl.prop' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent1.prop has '@Named("qualified")'.'
-        e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.Impl.function' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent1.function has '@Named("qualified")'.'
+        e: Parent1.kt:11:28 [Metro/QualifierOverrideMismatch] Overridden declarations must have matching qualifier annotations:
+
+          accessor property 'test.AppGraph.Impl.prop'
+            expected: '@Named("qualified")' (from test.Parent1.prop)
+            actual:   absent
+
+          accessor function 'test.AppGraph.Impl.function'
+            expected: '@Named("qualified")' (from test.Parent1.function)
+            actual:   absent
         """
           .trimIndent()
       )
@@ -2878,7 +2883,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.Impl.string' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
+        e: Parent1.kt:14:28 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.Impl.string' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is absent but overridden symbol test.Parent2.string has '@Named("qualified")'.
         """
           .trimIndent()
       )
@@ -2906,7 +2911,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.Impl.string' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
+        e: Parent1.kt:14:28 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.Impl.string' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is absent but overridden symbol test.Parent2.string has '@Named("qualified")'.
         """
           .trimIndent()
       )
@@ -2938,7 +2943,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Thing.kt:18:1 [Metro/QualifierOverrideMismatch] Overridden injector function 'test.AppGraph.Impl.injectThing' must have the same qualifier annotations as the overridden injector function. However, the final injector function qualifier is 'null' but overridden symbol test.Parent2.injectThing has '@Named("qualified")'.'
+        e: Thing.kt:18:28 [Metro/QualifierOverrideMismatch] Overridden injector function 'test.AppGraph.Impl.injectThing' must have the same qualifier annotations as the overridden injector function. However, the final injector function qualifier is absent but overridden symbol test.Parent2.injectThing has '@Named("qualified")'.
         """
           .trimIndent()
       )

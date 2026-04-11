@@ -3,6 +3,7 @@
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.CommonExtension
 import com.android.build.api.dsl.LibraryExtension
+import com.android.build.api.variant.LibraryAndroidComponentsExtension
 
 val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
 val jvmTargetVersion = catalog.findVersion("jvmTarget").get().requiredVersion
@@ -23,6 +24,12 @@ fun CommonExtension<*, *, *, *, *, *>.configureCommonAndroid() {
 // Android Library configuration
 pluginManager.withPlugin("com.android.library") {
   extensions.configure<LibraryExtension> { configureCommonAndroid() }
+  configure<LibraryAndroidComponentsExtension> {
+    beforeVariants { variant ->
+      // Single-variant libraries
+      variant.enable = variant.buildType != "debug"
+    }
+  }
 }
 
 // Android Application configuration
@@ -30,5 +37,6 @@ pluginManager.withPlugin("com.android.application") {
   extensions.configure<ApplicationExtension> {
     configureCommonAndroid()
     defaultConfig { targetSdk = 36 }
+    buildTypes { maybeCreate("debug").apply { matchingFallbacks += listOf("release") } }
   }
 }

@@ -1,9 +1,11 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import dev.zacsweers.metro.gradle.DelicateMetroGradleApi
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
+import dev.zacsweers.metro.gradle.RequiresIdeSupport
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
@@ -17,12 +19,33 @@ android {
   buildFeatures { viewBinding = true }
 }
 
+@OptIn(ExperimentalMetroGradleApi::class, DelicateMetroGradleApi::class, RequiresIdeSupport::class)
+metro {
+  enableFunctionProviders.set(true)
+  // Until it's possible to disable JS IC
+  // https://youtrack.jetbrains.com/issue/KT-82989
+  enableTopLevelFunctionInjection.set(false)
+  generateContributionHintsInFir.set(false)
+  generateContributionHints.set(false)
+}
+
 @OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
 kotlin {
   androidTarget()
   jvm()
 
-  js { browser() }
+  js {
+    browser()
+    // https://youtrack.jetbrains.com/issue/KT-82989
+    compilations.configureEach {
+      compileTaskProvider.configure {
+        incremental = false
+        @Suppress("INVISIBLE_REFERENCE")
+        incrementalJsKlib = false
+      }
+    }
+  }
+
   wasmJs { browser() }
   wasmWasi { nodejs() }
 
@@ -56,19 +79,14 @@ kotlin {
   }
 
   targets.configureEach {
-    val target = this
     compilations.configureEach {
       compileTaskProvider.configure {
-        compilerOptions.freeCompilerArgs.add(
+        compilerOptions.freeCompilerArgs.addAll(
           // Big yikes in how this was rolled out as noisy compiler warnings
-          "-Xannotation-default-target=param-property"
+          "-Xannotation-default-target=param-property",
+          // This is irrelevant for these tests and creates a bit of noise
+          "-Xwarning-level=SUSPICIOUS_UNUSED_MULTIBINDING:disabled",
         )
-        if (target.platformType == KotlinPlatformType.js) {
-          compilerOptions.freeCompilerArgs.add(
-            // These are all read at compile-time
-            "-Xwarning-level=RUNTIME_ANNOTATION_NOT_SUPPORTED:disabled"
-          )
-        }
       }
     }
   }

@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
-import dev.zacsweers.metro.compiler.ir.addThrowsAnnotation
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
@@ -41,10 +40,11 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
  * Transforms binding mirror classes generated in FIR by adding mirror functions for `@Binds` and
  * `@Multibinds` declarations.
  */
-internal class BindsMirrorClassTransformer(context: IrMetroContext) : IrMetroContext by context {
+internal class BindsMirrorClassTransformer(context: IrMetroContext) :
+  IrMetroContext by context, Lockable by Lockable() {
   private val cache = mutableMapOf<ClassId, Optional<BindsMirror>>()
 
-  // When we generate binds/providers we need to genreate a mirror class too
+  // When we generate binds/providers we need to generate a mirror class too
   fun getOrComputeBindsMirror(declaration: IrClass): BindsMirror? {
     return cache
       .getOrPut(declaration.classIdOrFail) {
@@ -56,6 +56,9 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) : IrMetroCon
             //  metadata?
             return@getOrPut Optional.empty()
           } else {
+            if (!declaration.isExternalParent) {
+              checkNotLocked()
+            }
             transformBindingMirrorClass(declaration, mirrorClass)
           }
         Optional.ofNullable(mirror)
@@ -112,7 +115,6 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
           declaration.apply {
             body = stubExpressionBody()
             comptimeOnlyConstructor?.let { ctor -> annotations += buildAnnotation(symbol, ctor) }
-            addThrowsAnnotation(addToMetadata = true)
           }
         }
 
@@ -212,6 +214,6 @@ private fun generateMirrorFunction(
   mirrorFunction.annotations += callableMetadata
 
   // Register as metadata visible
-  context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(mirrorFunction)
+  context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(mirrorFunction)
   return metroFunctionOf(mirrorFunction)
 }

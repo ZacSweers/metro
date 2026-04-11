@@ -35,30 +35,15 @@ jobs:
     if: github.repository == 'zacsweers/metro' && github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
-
-      - name: Configure JDK
-        uses: actions/setup-java@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
+          fetch-depth: 0 # Full history needed for git-revision-date-localized plugin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
-          # Only save Gradle User Home state for builds on the 'main' branch.
-          # Builds on other branches will only read existing entries from the cache.
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-
-          # Don't reuse cache entries from any other Job.
-          gradle-home-cache-strict-match: true
-
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Limit the size of the cache entry.
-          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
-          gradle-home-cache-excludes: |
-            caches/jars-9
-            caches/transforms-3
 
       - name: Generate API docs
         # NOTE: The `dokkaPublications.html` task is pre-configured to generate HTML in `/docs/api`.
@@ -71,12 +56,15 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Install MkDocs dependencies
+      - name: Install docs dependencies
         run: |
           pip install --requirement .github/workflows/mkdocs-requirements.txt
 
       - name: Copy documentation files
         run: ./scripts/copy_docs_files.sh
+
+      - name: Validate documentation file mappings
+        run: ./scripts/copy_docs_files_mapping_validator.sh
 
       - name: Extract Metro version from gradle.properties
         id: version
@@ -120,25 +108,25 @@ jobs:
           echo "Current mike versions available:"
           mike list || echo "No docs site versions found (likely first deployment)"
 
-      - name: Validate mkdocs build
+      - name: Validate docs build with Zensical
         run: |
-          echo "Building docs for validation..."
-          mkdocs build --site-dir /tmp/docs-site-validation
-          
+          echo "Building docs for validation with Zensical..."
+          zensical build
+
           echo "Validating directory URL structure..."
           # Check that use_directory_urls: true is working correctly
           # This setting converts installation.md -> installation/index.html
           # enabling clean URLs like /installation/ instead of /installation.html
-          if [ -f "/tmp/docs-site-validation/installation/index.html" ]; then
+          if [ -f "site/installation/index.html" ]; then
             echo "✔ Directory URLs are working correctly (installation/index.html exists)"
           else
             echo "✖ Directory URLs validation failed - installation/index.html not found"
             echo "This suggests use_directory_urls: true is not working properly"
             exit 1
           fi
-          
-          echo "Cleaning up validation directory..."
-          rm -rf /tmp/docs-site-validation
+
+          echo "Cleaning up build directory..."
+          rm -rf site
           echo "Docs validation completed successfully"
 
       - name: Re-sync gh-pages branch before deployment
@@ -150,11 +138,14 @@ jobs:
       - name: Deploy SNAPSHOT Docs with mike
         if: ${{ success() && contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
         run: mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} snapshot
+        env:
+          SITE_URL: https://zacsweers.github.io/metro/
 
       - name: Deploy Release Docs with mike
         if: ${{ success() && !contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
-        run: |
-          mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} latest
+        run: mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} latest
+        env:
+          SITE_URL: https://zacsweers.github.io/metro/
 
       - name: Delete old doc versions
         run: |
@@ -167,25 +158,15 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
-
-      - name: Configure JDK
-        uses: actions/setup-java@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
+          fetch-depth: 0 # Full history needed for git-revision-date-localized plugin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: ./.github/actions/setup-gradle
         with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          gradle-home-cache-strict-match: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Limit the size of the cache entry.
-          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
-          gradle-home-cache-excludes: |
-            caches/jars-9
-            caches/transforms-3
 
       - name: Generate API docs
         run: ./scripts/generate_docs_dokka.sh
@@ -197,30 +178,32 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Install MkDocs dependencies
+      - name: Install docs dependencies
         run: |
           pip install --requirement .github/workflows/mkdocs-requirements.txt
 
       - name: Copy documentation files
         run: ./scripts/copy_docs_files.sh
 
-      - name: Build docs (dry run)
+      - name: Validate documentation file mappings
+        run: ./scripts/copy_docs_files_mapping_validator.sh
+
+      - name: Build docs (dry run with Zensical)
         run: |
           echo "Building docs as a dry run to verify requirements and other configs are working..."
-          # Build to a temporary directory for validation without side effects
-          mkdocs build --strict --site-dir /tmp/docs-site-validation
-          
+          zensical build
+
           echo "Validating directory URL structure..."
           # Verify that use_directory_urls: true configuration is effective
           # This creates installation/index.html from installation.md, enabling
           # clean URLs (/installation/) instead of file URLs (/installation.html)
-          if [ -f "/tmp/docs-site-validation/installation/index.html" ]; then
+          if [ -f "site/installation/index.html" ]; then
             echo "✔ Directory URLs are working correctly (installation/index.html exists)"
           else
             echo "✖ Directory URLs validation failed - installation/index.html not found"
             exit 1
           fi
-          
-          echo "Cleaning up validation directory..."
-          rm -rf /tmp/docs-site-validation
+
+          echo "Cleaning up build directory..."
+          rm -rf site
           echo "✔ Docs build and validation completed successfully!"

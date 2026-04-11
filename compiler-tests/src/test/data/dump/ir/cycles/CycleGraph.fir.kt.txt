@@ -121,8 +121,6 @@ class C {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<C> {
     private /* final field */ val aProvider: Provider<A> = aProvider
-    private /* final field */ val aLazy: Provider<A> = aLazy
-    private /* final field */ val aLazyProvider: Provider<A> = aLazyProvider
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -130,8 +128,8 @@ class C {
 
       }
 
-      fun create(aProvider: Provider<A>, aLazy: Provider<A>, aLazyProvider: Provider<A>): Factory<C> {
-        return MetroFactory(aProvider = aProvider, aLazy = aLazy, aLazyProvider = aLazyProvider)
+      fun create(aProvider: Provider<A>): Factory<C> {
+        return MetroFactory(aProvider = aProvider)
       }
 
       fun newInstance(aProvider: Provider<A>): C {
@@ -140,7 +138,7 @@ class C {
 
     }
 
-    private constructor(aProvider: Provider<A>, aLazy: Provider<A>, aLazyProvider: Provider<A>) /* primary */ {
+    private constructor(aProvider: Provider<A>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -148,8 +146,8 @@ class C {
 
     override operator fun invoke(): C {
       val tmp_0: C = Companion.newInstance(aProvider = <this>.#aProvider)
-      Companion.injectALazy(instance = tmp_0, aLazy = Companion.lazy<Provider<A>, A>(provider = <this>.#aLazy))
-      Companion.injectALazyProvider(instance = tmp_0, aLazyProvider = Companion.create<A>(provider = <this>.#aLazyProvider))
+      Companion.injectALazy(instance = tmp_0, aLazy = Companion.lazy<Provider<A>, A>(provider = <this>.#aProvider))
+      Companion.injectALazyProvider(instance = tmp_0, aLazyProvider = Companion.create<A>(provider = <this>.#aProvider))
       return tmp_0
     }
 
@@ -376,7 +374,7 @@ interface CycleGraph {
         super/*Any*/()
         /* <init>() */
 
-        Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
+        Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider))
         Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#cycleGraphImpl, obj = <this>.#provideObjectWithCycleProvider))
       }
 
@@ -396,7 +394,7 @@ interface CycleGraph {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
+      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider))
       Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
     }
 

@@ -27,7 +27,7 @@ class DependencyImpl : Dependency
 
 // FILE: ExampleGraph.kt
 @DependencyGraph(AppScope::class)
-interface <!METRO_ERROR!>ExampleGraph<!> {
+interface <!MISSING_BINDING!>ExampleGraph<!> {
   @Provides fun provideString(): String = "Hello"
   @Provides @javax.inject.Named("qualified") fun provideQualifiedString(): String = "Hello"
 

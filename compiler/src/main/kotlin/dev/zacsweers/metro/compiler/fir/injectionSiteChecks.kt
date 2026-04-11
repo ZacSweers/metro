@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
@@ -108,12 +107,12 @@ internal fun validateInjectionSiteType(
   if (contextKey.isWrappedInLazy) {
     checkLazyAssistedFactory(session, contextKey, typeRef, source)
   } else if (contextKey.isLazyWrappedInProvider) {
-    checkProviderOfLazy(contextKey, typeRef, source, isAccessor)
+    checkProviderOfLazy(session, contextKey, typeRef, source)
   }
 
   // Check if we're directly injecting a qualifier type
   if (qualifier == null) {
-    val clazz = type.classLikeLookupTagIfAny?.toClassSymbol(session) ?: return false
+    val clazz = type.classLikeLookupTagIfAny?.toClassSymbolCompat(session) ?: return false
 
     if (clazz.classKind.isObject) {
       // Injecting a plain object doesn't really make sense when it's a singleton
@@ -156,6 +155,16 @@ internal fun validateInjectionSiteType(
           typeRef.source ?: source,
           MetroDiagnostics.ASSISTED_INJECTION_ERROR,
           message,
+        )
+      } else if (clazz.usesContributionProviderPath(session)) {
+        val fqName = clazz.classId.asFqNameString()
+        reporter.reportOn(
+          typeRef.source ?: source,
+          MetroDiagnostics.NON_EXPOSED_IMPL_TYPE,
+          "Directly injecting '$fqName' (which has one or more `@Contributes*` annotations) and will not be " +
+            "visible since `generateContributionProviders` is enabled. This is probably a bug! " +
+            "Inject the bound supertype instead, or annotate '$fqName' with `@ExposeImplBinding` " +
+            "to expose the underlying binding.",
         )
       }
     }
@@ -222,7 +231,7 @@ private fun checkLazyAssistedFactory(
   source: KtSourceElement?,
 ) {
   val canonicalType = contextKey.typeKey.type
-  val canonicalClass = canonicalType.toClassSymbol(session)
+  val canonicalClass = canonicalType.toClassSymbolCompat(session)
 
   if (
     canonicalClass != null &&
@@ -239,18 +248,21 @@ private fun checkLazyAssistedFactory(
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
 private fun checkProviderOfLazy(
+  session: FirSession,
   contextKey: FirContextualTypeKey,
   typeRef: FirTypeRef,
   source: KtSourceElement?,
-  isAccessor: Boolean,
 ) {
   // Check if this is a non-metro provider + kotlin lazy. We only support either all dagger or all
   // metro
   val providerType = contextKey.wrappedType as WrappedType.Provider
   val lazyType = providerType.innerType as WrappedType.Lazy
-  val providerIsMetro = providerType.providerType == Symbols.ClassIds.metroProvider
+  val providerIsMetroOrFunction =
+    providerType.providerType == Symbols.ClassIds.metroProvider ||
+      (session.metroFirBuiltIns.options.enableFunctionProviders &&
+        providerType.providerType == Symbols.ClassIds.function0)
   val lazyIsStdLib = lazyType.lazyType == Symbols.ClassIds.Lazy
-  if (!providerIsMetro || !lazyIsStdLib) {
+  if (!providerIsMetroOrFunction || !lazyIsStdLib) {
     reporter.reportOn(
       typeRef.source ?: source,
       MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY,

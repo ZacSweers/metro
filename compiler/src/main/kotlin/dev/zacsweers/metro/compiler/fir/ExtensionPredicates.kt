@@ -13,18 +13,15 @@ import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderCont
 internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   // Lets us register and resolve any annotations that are qualifiers
-  internal val qualifiersPredicate =
-    DeclarationPredicate.create {
-      metaAnnotated(classIds.qualifierAnnotations.asFqNames(), includeItself = false)
-    }
-  internal val scopesPredicate =
-    DeclarationPredicate.create {
-      metaAnnotated(classIds.scopeAnnotations.asFqNames(), includeItself = false)
-    }
-  internal val mapKeysPredicate =
-    DeclarationPredicate.create {
-      metaAnnotated(classIds.mapKeyAnnotations.asFqNames(), includeItself = false)
-    }
+  internal val qualifiersPredicate = DeclarationPredicate.create {
+    metaAnnotated(classIds.qualifierAnnotations.asFqNames(), includeItself = false)
+  }
+  internal val scopesPredicate = DeclarationPredicate.create {
+    metaAnnotated(classIds.scopeAnnotations.asFqNames(), includeItself = false)
+  }
+  internal val mapKeysPredicate = DeclarationPredicate.create {
+    metaAnnotated(classIds.mapKeyAnnotations.asFqNames(), includeItself = false)
+  }
 
   internal val bindingContainerPredicate =
     annotated(classIds.bindingContainerAnnotations.asFqNames())
@@ -44,6 +41,9 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
   internal val contributesAnnotationPredicate =
     annotated(classIds.allContributesAnnotations.asFqNames())
 
+  internal val contributesBindingLikeAnnotationsPredicate =
+    annotated(classIds.contributesBindingLikeAnnotationsWithContainers.asFqNames())
+
   internal val providesAnnotationPredicate = annotated(classIds.providesAnnotations.asFqNames())
 
   internal val injectAnnotationPredicate = annotated(classIds.injectAnnotations.asFqNames())
@@ -56,6 +56,9 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
   internal val hasMemberInjectionsAnnotationPredicate =
     annotated(Symbols.ClassIds.HasMemberInjections.asSingleFqName())
 
+  internal val exposeImplBindingPredicate =
+    annotated(Symbols.ClassIds.ExposeImplBinding.asSingleFqName())
+
   internal val assistedFactoryAnnotationPredicate =
     annotated(classIds.assistedFactoryAnnotations.asFqNames())
 
@@ -65,4 +68,7 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val bindsOptionalOfAnnotationPredicate =
     annotated(DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF.asSingleFqName())
+
+  internal val defaultBindingAnnotationPredicate =
+    annotated(classIds.defaultBindingAnnotation.asSingleFqName())
 }

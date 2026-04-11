@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Locale
@@ -12,6 +13,8 @@ import kotlin.io.path.exists
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
+import org.jetbrains.kotlin.js.config.jsIncrementalCompilationEnabled
+import org.jetbrains.kotlin.js.config.wasmCompilation
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -122,16 +125,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  GENERATE_THROWS_ANNOTATIONS(
-    RawMetroOption.boolean(
-      name = "generate-throws-annotations",
-      defaultValue = false,
-      valueDescription = "<true | false>",
-      description = "Enable/disable generation of @Throws annotations on stubbed function bodies",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   ENABLE_TOP_LEVEL_FUNCTION_INJECTION(
     RawMetroOption.boolean(
       name = "enable-top-level-function-injection",
@@ -184,32 +177,12 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  TRANSFORM_PROVIDERS_TO_PRIVATE(
-    RawMetroOption.boolean(
-      name = "transform-providers-to-private",
-      defaultValue = false,
-      valueDescription = "<true | false>",
-      description = "Enable/disable automatic transformation of providers to be private.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   SHRINK_UNUSED_BINDINGS(
     RawMetroOption.boolean(
       name = "shrink-unused-bindings",
       defaultValue = true,
       valueDescription = "<true | false>",
       description = "Enable/disable shrinking of unused bindings from binding graphs.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
-  CHUNK_FIELD_INITS(
-    RawMetroOption.boolean(
-      name = "chunk-field-inits",
-      defaultValue = true,
-      valueDescription = "<true | false>",
-      description = "Enable/disable chunking of field initializers in binding graphs.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -229,7 +202,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   ENABLE_GRAPH_SHARDING(
     RawMetroOption.boolean(
       name = "enable-graph-sharding",
-      defaultValue = false,
+      defaultValue = true,
       valueDescription = "<true | false>",
       description = "Enable/disable graph sharding of binding graphs.",
       required = false,
@@ -258,13 +231,13 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  PUBLIC_PROVIDER_SEVERITY(
+  PUBLIC_SCOPED_PROVIDER_SEVERITY(
     RawMetroOption(
-      name = "public-provider-severity",
+      name = "public-scoped-provider-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
       valueDescription = "NONE|WARN|ERROR",
       description =
-        "Control diagnostic severity reporting of public providers. Only applies if `transform-providers-to-private` is false.",
+        "Control diagnostic severity reporting of public scoped providers. Only applies if `transform-providers-to-private` is false.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -308,7 +281,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   UNUSED_GRAPH_INPUTS_SEVERITY(
     RawMetroOption(
       name = "unused-graph-inputs-severity",
-      defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
+      defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
       valueDescription = "NONE|WARN|ERROR",
       description =
         "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph).",
@@ -338,6 +311,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.toInt() },
+    )
+  ),
+  USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS(
+    RawMetroOption.boolean(
+      name = "use-assisted-param-names-as-identifiers",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "When enabled, Metro's native @Assisted annotation uses the parameter name as the default identifier. When disabled, defaults to an empty string (legacy Dagger behavior). Only affects Metro's own @Assisted annotation, not custom/interop annotations.",
+      required = false,
+      allowMultipleOccurrences = false,
     )
   ),
   CUSTOM_PROVIDER(
@@ -663,10 +647,21 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   CONTRIBUTES_AS_INJECT(
     RawMetroOption.boolean(
       name = "contributes-as-inject",
-      defaultValue = false,
+      defaultValue = true,
       valueDescription = "<true | false>",
       description =
         "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  DEDUPLICATE_INJECTED_PARAMS(
+    RawMetroOption.boolean(
+      name = "deduplicate-injected-params",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable deduplication of injected parameters with the same type key in generated factories.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -685,7 +680,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   PATCH_KLIB_PARAMS(
     RawMetroOption.boolean(
       name = "patch-klib-params",
-      defaultValue = false,
+      defaultValue = true,
       valueDescription = "<true | false>",
       description =
         "Enable/disable patching of klib parameter qualifiers to work around kotlinc bug. Only applies when enable-klib-params-check is also enabled.",
@@ -799,6 +794,93 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
       valueMapper = { it },
     )
+  ),
+  COMPILER_VERSION_ALIASES(
+    RawMetroOption(
+      name = "compiler-version-aliases",
+      defaultValue = emptyMap(),
+      valueDescription = "<from1=to1:from2=to2>",
+      description =
+        "Compiler version aliases mapping fake IDE versions to real compiler versions. Format: from1=to1:from2=to2",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { value ->
+        if (value.isBlank()) {
+          emptyMap()
+        } else {
+          value.split(":").associate { entry ->
+            val (from, to) = entry.split("=", limit = 2)
+            from to to
+          }
+        }
+      },
+    )
+  ),
+  PARALLEL_THREADS(
+    RawMetroOption(
+      name = "parallel-threads",
+      defaultValue = 0,
+      valueDescription = "<count>",
+      description =
+        "Number of threads to use for parallel graph validation. 0 (default) disables parallelism.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.toInt() },
+    )
+  ),
+  ENABLE_FUNCTION_PROVIDERS(
+    RawMetroOption.boolean(
+      name = "enable-function-providers",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable/disable treating () -> T as a provider type.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  ENABLE_KCLASS_TO_CLASS_INTEROP(
+    RawMetroOption.boolean(
+      name = "enable-kclass-to-class-interop",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable KClass/Class interop for multibinding map keys. When enabled, java.lang.Class and kotlin.reflect.KClass are treated as interchangeable in map key types.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  GENERATE_CONTRIBUTION_PROVIDERS(
+    RawMetroOption.boolean(
+      name = "generate-contribution-providers",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "When enabled, generates top-level contribution provider classes with @Provides functions instead of nested @Binds interfaces. This allows implementation classes to remain internal.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  ENABLE_CIRCUIT_CODEGEN(
+    RawMetroOption.boolean(
+      name = "enable-circuit-codegen",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable Metro-native Circuit code generation for @CircuitInject-annotated classes and functions.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  RICH_DIAGNOSTICS(
+    RawMetroOption.boolean(
+      name = "rich-diagnostics",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable rich diagnostic formatting (ANSI bold, colors, etc.) in error messages. The metro.richDiagnostics system property takes priority over this option if set.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -821,19 +903,14 @@ public data class MetroOptions(
       ?.let(Paths::get),
   public val generateAssistedFactories: Boolean =
     MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
-  public val generateThrowsAnnotations: Boolean =
-    MetroOption.GENERATE_THROWS_ANNOTATIONS.raw.defaultValue.expectAs(),
   public val enableTopLevelFunctionInjection: Boolean =
     MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
   public val generateContributionHints: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
   public val generateContributionHintsInFir: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
-  public val transformProvidersToPrivate: Boolean =
-    MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   public val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
-  public val chunkFieldInits: Boolean = MetroOption.CHUNK_FIELD_INITS.raw.defaultValue.expectAs(),
   public val statementsPerInitFun: Int =
     MetroOption.STATEMENTS_PER_INIT_FUN.raw.defaultValue.expectAs(),
   public val enableGraphSharding: Boolean =
@@ -841,13 +918,9 @@ public data class MetroOptions(
   public val keysPerGraphShard: Int = MetroOption.KEYS_PER_GRAPH_SHARD.raw.defaultValue.expectAs(),
   public val enableSwitchingProviders: Boolean =
     MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
-  public val publicProviderSeverity: DiagnosticSeverity =
-    if (transformProvidersToPrivate) {
-      DiagnosticSeverity.NONE
-    } else {
-      MetroOption.PUBLIC_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
-        DiagnosticSeverity.valueOf(it)
-      }
+  public val publicScopedProviderSeverity: DiagnosticSeverity =
+    MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
     },
   public val nonPublicContributionSeverity: DiagnosticSeverity =
     MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY.raw.defaultValue.expectAs<String>().let {
@@ -876,6 +949,8 @@ public data class MetroOptions(
     MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
     },
+  public val useAssistedParamNamesAsIdentifiers: Boolean =
+    MetroOption.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS.raw.defaultValue.expectAs(),
   public val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -947,6 +1022,8 @@ public data class MetroOptions(
     MetroOption.CUSTOM_OPTIONAL_BINDING.raw.defaultValue.expectAs(),
   public val contributesAsInject: Boolean =
     MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
+  public val deduplicateInjectedParams: Boolean =
+    MetroOption.DEDUPLICATE_INJECTED_PARAMS.raw.defaultValue.expectAs(),
   public val enableKlibParamsCheck: Boolean =
     MetroOption.ENABLE_KLIB_PARAMS_CHECK.raw.defaultValue.expectAs(),
   public val patchKlibParams: Boolean = MetroOption.PATCH_KLIB_PARAMS.raw.defaultValue.expectAs(),
@@ -959,6 +1036,18 @@ public data class MetroOptions(
       ?.toBooleanStrict(),
   public val compilerVersion: String? =
     MetroOption.COMPILER_VERSION.raw.defaultValue.expectAs<String>().takeUnless(String::isBlank),
+  public val compilerVersionAliases: Map<String, String> =
+    MetroOption.COMPILER_VERSION_ALIASES.raw.defaultValue.expectAs(),
+  public val parallelThreads: Int = MetroOption.PARALLEL_THREADS.raw.defaultValue.expectAs(),
+  public val enableFunctionProviders: Boolean =
+    MetroOption.ENABLE_FUNCTION_PROVIDERS.raw.defaultValue.expectAs(),
+  public val enableKClassToClassInterop: Boolean =
+    MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP.raw.defaultValue.expectAs(),
+  public val generateContributionProviders: Boolean =
+    MetroOption.GENERATE_CONTRIBUTION_PROVIDERS.raw.defaultValue.expectAs(),
+  val enableCircuitCodegen: Boolean =
+    MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
+  public val richDiagnostics: Boolean = MetroOption.RICH_DIAGNOSTICS.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -995,21 +1084,19 @@ public data class MetroOptions(
     public var reportsDestination: Path? = base.rawReportsDestination
     public var traceDestination: Path? = base.rawTraceDestination
     public var generateAssistedFactories: Boolean = base.generateAssistedFactories
-    public var generateThrowsAnnotations: Boolean = base.generateThrowsAnnotations
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
     public var generateContributionHints: Boolean = base.generateContributionHints
     public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
-    public var transformProvidersToPrivate: Boolean = base.transformProvidersToPrivate
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
-    public var chunkFieldInits: Boolean = base.chunkFieldInits
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
     public var enableFastInit: Boolean = base.enableSwitchingProviders
-    public var publicProviderSeverity: DiagnosticSeverity = base.publicProviderSeverity
+    public var publicScopedProviderSeverity: DiagnosticSeverity = base.publicScopedProviderSeverity
     public var nonPublicContributionSeverity: DiagnosticSeverity =
       base.nonPublicContributionSeverity
     public var optionalBindingBehavior: OptionalBindingBehavior = base.optionalBindingBehavior
+    public var useAssistedParamNamesAsIdentifiers: Boolean = base.useAssistedParamNamesAsIdentifiers
     public var warnOnInjectAnnotationPlacement: Boolean = base.warnOnInjectAnnotationPlacement
     public var interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
       base.interopAnnotationsNamedArgSeverity
@@ -1070,11 +1157,19 @@ public data class MetroOptions(
     public var customOptionalBindingAnnotations: MutableSet<ClassId> =
       base.customOptionalBindingAnnotations.toMutableSet()
     public var contributesAsInject: Boolean = base.contributesAsInject
+    public var deduplicateInjectedParams: Boolean = base.deduplicateInjectedParams
     public var enableKlibParamsCheck: Boolean = base.enableKlibParamsCheck
     public var patchKlibParams: Boolean = base.patchKlibParams
     public var forceEnableFirInIde: Boolean = base.forceEnableFirInIde
     public var pluginOrderSet: Boolean? = base.pluginOrderSet
     public var compilerVersion: String? = base.compilerVersion
+    public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
+    public var parallelThreads: Int = base.parallelThreads
+    public var enableFunctionProviders: Boolean = base.enableFunctionProviders
+    public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
+    public var generateContributionProviders: Boolean = base.generateContributionProviders
+    public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
+    public var richDiagnostics: Boolean = base.richDiagnostics
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1196,20 +1291,18 @@ public data class MetroOptions(
         rawReportsDestination = reportsDestination,
         rawTraceDestination = traceDestination,
         generateAssistedFactories = generateAssistedFactories,
-        generateThrowsAnnotations = generateThrowsAnnotations,
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
         generateContributionHints = generateContributionHints,
         generateContributionHintsInFir = generateContributionHintsInFir,
-        transformProvidersToPrivate = transformProvidersToPrivate,
         shrinkUnusedBindings = shrinkUnusedBindings,
-        chunkFieldInits = chunkFieldInits,
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
         enableSwitchingProviders = enableFastInit,
-        publicProviderSeverity = publicProviderSeverity,
+        publicScopedProviderSeverity = publicScopedProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
+        useAssistedParamNamesAsIdentifiers = useAssistedParamNamesAsIdentifiers,
         warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement,
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
         unusedGraphInputsSeverity = unusedGraphInputsSeverity,
@@ -1246,11 +1339,19 @@ public data class MetroOptions(
         customOriginAnnotations = customOriginAnnotations,
         customOptionalBindingAnnotations = customOptionalBindingAnnotations,
         contributesAsInject = contributesAsInject,
+        deduplicateInjectedParams = deduplicateInjectedParams,
         enableKlibParamsCheck = enableKlibParamsCheck,
         patchKlibParams = patchKlibParams,
         forceEnableFirInIde = forceEnableFirInIde,
         pluginOrderSet = pluginOrderSet,
         compilerVersion = compilerVersion,
+        compilerVersionAliases = compilerVersionAliases,
+        parallelThreads = parallelThreads,
+        enableFunctionProviders = enableFunctionProviders,
+        enableKClassToClassInterop = enableKClassToClassInterop,
+        generateContributionProviders = generateContributionProviders,
+        enableCircuitCodegen = enableCircuitCodegen,
+        richDiagnostics = richDiagnostics,
       )
     }
 
@@ -1271,12 +1372,99 @@ public data class MetroOptions(
     }
   }
 
+  internal fun validate(
+    compilerVersion: KotlinToolingVersion,
+    configuration: CompilerConfiguration,
+    onError: (String) -> Unit,
+  ): Boolean {
+    var valid = true
+    if (!validateKotlinJsIC(compilerVersion, configuration, onError)) {
+      valid = false
+    }
+
+    val contributionProvidersAreEnabledWithoutFirHintGen =
+      generateContributionProviders && generateContributionHints && !generateContributionHintsInFir
+    if (contributionProvidersAreEnabledWithoutFirHintGen) {
+      onError(
+        "generateContributionProviders with generateContributionHints requires " +
+          "generateContributionHintsInFir to also be enabled."
+      )
+      valid = false
+    }
+    return valid
+  }
+
+  private fun validateKotlinJsIC(
+    compilerVersion: KotlinToolingVersion,
+    configuration: CompilerConfiguration,
+    onError: (String) -> Unit,
+  ): Boolean {
+    val supportJsIc =
+      !configuration.jsIncrementalCompilationEnabled ||
+        configuration.wasmCompilation ||
+        kotlinVersionSupportsJsIC(compilerVersion)
+    if (supportJsIc) {
+      return true
+    }
+
+    val jsICOptions = buildList {
+      if (enableTopLevelFunctionInjection) {
+        add("enableTopLevelFunctionInjection")
+      }
+      if (generateContributionHints) {
+        add("generateContributionHints")
+      }
+      if (generateContributionHintsInFir) {
+        add("generateContributionHintsInFir")
+      }
+    }
+
+    if (jsICOptions.isNotEmpty()) {
+      onError(
+        "Kotlin/JS does not support generating top-level declarations with incremental compilation enabled. " +
+          "See https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989. " +
+          "Either disable ${jsICOptions.joinToString()} for JS targets or disable JS IC."
+      )
+      return false
+    }
+    return true
+  }
+
   public object SystemProperties {
     public val SHORTEN_LOCATIONS: Boolean =
       System.getProperty("metro.shortLocations", "false").toBoolean()
   }
 
   public companion object {
+    /** Minimum Kotlin version on the 2.3.x line that supports JS IC with top-level declarations. */
+    private val MIN_KOTLIN_2_3_JS_IC = KotlinToolingVersion("2.3.21-RC")
+
+    /**
+     * Minimum Kotlin dev version on the 2.4.x line that supports JS IC with top-level declarations.
+     */
+    private val MIN_KOTLIN_2_4_DEV_JS_IC = KotlinToolingVersion("2.4.0-dev-8064")
+
+    /**
+     * Minimum Kotlin non-dev version on the 2.4.x line that supports JS IC with top-level
+     * declarations.
+     */
+    private val MIN_KOTLIN_2_4_JS_IC = KotlinToolingVersion("2.4.0-Beta2")
+
+    private fun kotlinVersionSupportsJsIC(version: KotlinToolingVersion): Boolean {
+      if (version.major > 2) return true // ... if K3 ever happens
+      return when (version.minor) {
+        in 0..2 -> false
+        3 -> version >= MIN_KOTLIN_2_3_JS_IC
+        4 ->
+          if (version.maturity == KotlinToolingVersion.Maturity.DEV) {
+            version >= MIN_KOTLIN_2_4_DEV_JS_IC
+          } else {
+            version >= MIN_KOTLIN_2_4_JS_IC
+          }
+        else -> true // 2.5+
+      }
+    }
+
     public fun buildOptions(body: Builder.() -> Unit): MetroOptions {
       return Builder().apply(body).build()
     }
@@ -1301,9 +1489,6 @@ public data class MetroOptions(
           GENERATE_ASSISTED_FACTORIES ->
             generateAssistedFactories = configuration.getAsBoolean(entry)
 
-          GENERATE_THROWS_ANNOTATIONS ->
-            generateThrowsAnnotations = configuration.getAsBoolean(entry)
-
           ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
             enableTopLevelFunctionInjection = configuration.getAsBoolean(entry)
 
@@ -1313,12 +1498,7 @@ public data class MetroOptions(
           GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
             generateContributionHintsInFir = configuration.getAsBoolean(entry)
 
-          TRANSFORM_PROVIDERS_TO_PRIVATE ->
-            transformProvidersToPrivate = configuration.getAsBoolean(entry)
-
           SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = configuration.getAsBoolean(entry)
-
-          CHUNK_FIELD_INITS -> chunkFieldInits = configuration.getAsBoolean(entry)
 
           STATEMENTS_PER_INIT_FUN -> statementsPerInitFun = configuration.getAsInt(entry)
 
@@ -1328,8 +1508,8 @@ public data class MetroOptions(
 
           ENABLE_SWITCHING_PROVIDERS -> enableFastInit = configuration.getAsBoolean(entry)
 
-          PUBLIC_PROVIDER_SEVERITY ->
-            publicProviderSeverity =
+          PUBLIC_SCOPED_PROVIDER_SEVERITY ->
+            publicScopedProviderSeverity =
               configuration.getAsString(entry).let {
                 DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
               }
@@ -1367,6 +1547,9 @@ public data class MetroOptions(
             enableGuiceRuntimeInterop = configuration.getAsBoolean(entry)
 
           MAX_IR_ERRORS_COUNT -> maxIrErrorsCount = configuration.getAsInt(entry)
+
+          USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS ->
+            useAssistedParamNamesAsIdentifiers = configuration.getAsBoolean(entry)
 
           // Intrinsics
           CUSTOM_PROVIDER -> customProviderTypes.addAll(configuration.getAsSet(entry))
@@ -1425,6 +1608,9 @@ public data class MetroOptions(
 
           CONTRIBUTES_AS_INJECT -> contributesAsInject = configuration.getAsBoolean(entry)
 
+          DEDUPLICATE_INJECTED_PARAMS ->
+            deduplicateInjectedParams = configuration.getAsBoolean(entry)
+
           ENABLE_KLIB_PARAMS_CHECK -> enableKlibParamsCheck = configuration.getAsBoolean(entry)
 
           PATCH_KLIB_PARAMS -> patchKlibParams = configuration.getAsBoolean(entry)
@@ -1458,6 +1644,18 @@ public data class MetroOptions(
           COMPILER_VERSION -> {
             compilerVersion = configuration.getAsString(entry).takeUnless(String::isBlank)
           }
+          COMPILER_VERSION_ALIASES -> {
+            compilerVersionAliases = configuration.getAsMap(entry)
+          }
+          PARALLEL_THREADS -> parallelThreads = configuration.getAsInt(entry)
+          ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = configuration.getAsBoolean(entry)
+          ENABLE_KCLASS_TO_CLASS_INTEROP ->
+            enableKClassToClassInterop = configuration.getAsBoolean(entry)
+          GENERATE_CONTRIBUTION_PROVIDERS ->
+            generateContributionProviders = configuration.getAsBoolean(entry)
+          MetroOption.ENABLE_CIRCUIT_CODEGEN ->
+            enableCircuitCodegen = configuration.getAsBoolean(entry)
+          RICH_DIAGNOSTICS -> richDiagnostics = configuration.getAsBoolean(entry)
         }
       }
     }
@@ -1479,6 +1677,11 @@ public data class MetroOptions(
 
     private fun <E> CompilerConfiguration.getAsSet(option: MetroOption): Set<E> {
       @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Set<E>>
+      return get(typed.key, typed.defaultValue)
+    }
+
+    private fun <K, V> CompilerConfiguration.getAsMap(option: MetroOption): Map<K, V> {
+      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Map<K, V>>
       return get(typed.key, typed.defaultValue)
     }
   }

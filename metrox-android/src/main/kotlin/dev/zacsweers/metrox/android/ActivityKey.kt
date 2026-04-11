@@ -7,6 +7,6 @@ import dev.zacsweers.metro.MapKey
 import kotlin.reflect.KClass
 
 /** A [MapKey] annotation for binding an Activity in a multibinding map. */
-@MapKey
+@MapKey(implicitClassKey = true)
 @Target(AnnotationTarget.CLASS)
-public annotation class ActivityKey(val value: KClass<out Activity>)
+public annotation class ActivityKey(val value: KClass<out Activity> = Nothing::class)

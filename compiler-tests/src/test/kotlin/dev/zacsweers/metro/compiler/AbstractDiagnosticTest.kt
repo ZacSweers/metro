@@ -31,6 +31,7 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
         +FULL_JDK
         +IGNORE_DEXING // Avoids loading R8 from the classpath.
         +DISABLE_GENERATED_FIR_TAGS
+        commonMetroTestDirectives()
 
         // Unless overriden, assume the test will fail within the frontend.
         RUN_PIPELINE_TILL.with(TestPhase.FRONTEND)

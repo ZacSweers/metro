@@ -163,6 +163,38 @@ class MetroViewModelComposeTest {
   }
 
   @Test
+  fun `assistedMetroViewModel with manual factory with extras passes extras to factory`() {
+    val testViewModelStore = TestViewModelStoreOwner()
+    val testKey = object : CreationExtras.Key<Int> {}
+    val testFactory =
+      object : MetroViewModelFactory() {
+        override val manualAssistedFactoryProviders:
+          Map<
+            KClass<out ManualViewModelAssistedFactory>,
+            Provider<ManualViewModelAssistedFactory>,
+          > =
+          mapOf(TestManualFactory::class to Provider { TestManualFactoryImpl() })
+      }
+
+    lateinit var retrievedViewModel: ManualTestViewModel
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+        LocalMetroViewModelFactory provides testFactory,
+        LocalViewModelStoreOwner provides testViewModelStore,
+      ) {
+        val extras = MutableCreationExtras().apply { set(testKey, 42) }
+        retrievedViewModel =
+          assistedMetroViewModel<ManualTestViewModel, TestManualFactory>(extras = extras) {
+            create(extras[testKey] ?: 0)
+          }
+      }
+    }
+
+    assertThat(retrievedViewModel.param).isEqualTo(42)
+  }
+
+  @Test
   fun `metroViewModel with key creates separate instances`() {
     val testViewModelStore = TestViewModelStoreOwner()
     val testFactory =

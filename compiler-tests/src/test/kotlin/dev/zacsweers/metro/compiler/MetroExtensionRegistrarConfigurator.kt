@@ -2,9 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import androidx.compose.compiler.plugins.kotlin.ComposePluginRegistrar
+import androidx.compose.compiler.plugins.kotlin.k2.ComposeFirExtensionRegistrar
+import dev.zacsweers.metro.compiler.api.GenerateBindsContributionExtension
+import dev.zacsweers.metro.compiler.api.GenerateBindsContributionMetroExtension
+import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
+import dev.zacsweers.metro.compiler.circuit.configureCircuit
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
@@ -41,6 +53,7 @@ fun TestConfigurationBuilder.configurePlugin() {
   configureDaggerAnnotations()
   configureDaggerInterop()
   configureGuiceInterop()
+  configureCircuit()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
   useAfterAnalysisCheckers(::MetroReportsChecker)
 }
@@ -52,111 +65,115 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     module: TestModule,
     configuration: CompilerConfiguration,
   ) {
-    val options =
-      MetroOptions.buildOptions {
-        // Set non-annotation properties (only when directive is present or value is non-default)
-        enabled = MetroDirectives.DISABLE_METRO !in module.directives
-        generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
-        module.directives.singleOrZeroValue(MetroDirectives.TRANSFORM_PROVIDERS_TO_PRIVATE)?.let {
-          transformProvidersToPrivate = it
-        }
-        enableTopLevelFunctionInjection =
-          MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives
-        module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)?.let {
-          shrinkUnusedBindings = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS)?.let {
-          chunkFieldInits = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.STATEMENTS_PER_INIT_FUN)?.let {
-          statementsPerInitFun = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.ENABLE_GRAPH_SHARDING)?.let {
-          enableGraphSharding = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
-          keysPerGraphShard = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.ENABLE_SWITCHING_PROVIDERS)?.let {
-          enableFastInit = it
-        }
-        enableFullBindingGraphValidation =
-          MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
-        enableGraphImplClassAsReturnType =
-          MetroDirectives.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE in module.directives
-        generateContributionHints =
-          module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
-        generateContributionHintsInFir =
-          MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
-        if (transformProvidersToPrivate) {
-          publicProviderSeverity = MetroOptions.DiagnosticSeverity.NONE
-        } else {
-          module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_PROVIDER_SEVERITY)?.let {
-            publicProviderSeverity = it
-          }
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)?.let {
-          optionalBindingBehavior = it
-        }
-        module.directives
-          .singleOrZeroValue(MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY)
-          ?.let { interopAnnotationsNamedArgSeverity = it }
-        module.directives.singleOrZeroValue(MetroDirectives.NON_PUBLIC_CONTRIBUTION_SEVERITY)?.let {
-          nonPublicContributionSeverity = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.UNUSED_GRAPH_INPUTS_SEVERITY)?.let {
-          unusedGraphInputsSeverity = it
-        }
-        module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
-          maxIrErrorsCount = it
-        }
-        // Use explicit REPORTS_DESTINATION or default if CHECK_REPORTS is present
-        val reportsDir =
-          module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)
-            ?: if (module.directives[MetroDirectives.CHECK_REPORTS].isNotEmpty()) {
-              MetroReportsChecker.DEFAULT_REPORTS_DIR
-            } else {
-              null
-            }
-        reportsDir?.let {
-          reportsDestination =
-            Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
-        }
-        contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
-
-        // Configure interop annotations using builder helper methods
-        if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
-          includeKotlinInjectAnvilAnnotations()
-        }
-        if (
-          MetroDirectives.WITH_ANVIL in module.directives ||
-            MetroDirectives.ENABLE_ANVIL_KSP in module.directives
-        ) {
-          includeAnvilAnnotations()
-        }
-
-        if (
-          MetroDirectives.WITH_DAGGER in module.directives ||
-            MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
-            MetroDirectives.ENABLE_DAGGER_KSP in module.directives
-        ) {
-          includeDaggerAnnotations()
-        }
-
-        if (MetroDirectives.enableGuiceAnnotations(module.directives)) {
-          includeGuiceAnnotations()
-        }
-
-        // Override enableDaggerRuntimeInterop if needed
-        if (MetroDirectives.enableDaggerRuntimeInterop(module.directives)) {
-          enableDaggerRuntimeInterop = true
-        }
-
-        // Override enableGuiceRuntimeInterop if needed
-        if (MetroDirectives.enableGuiceInterop(module.directives)) {
-          enableGuiceRuntimeInterop = true
-        }
+    val options = MetroOptions.buildOptions {
+      // Set non-annotation properties (only when directive is present or value is non-default)
+      enabled = MetroDirectives.DISABLE_METRO !in module.directives
+      generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
+      enableTopLevelFunctionInjection =
+        MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives
+      module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)?.let {
+        shrinkUnusedBindings = it
       }
+      module.directives.singleOrZeroValue(MetroDirectives.STATEMENTS_PER_INIT_FUN)?.let {
+        statementsPerInitFun = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_GRAPH_SHARDING)?.let {
+        enableGraphSharding = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
+        keysPerGraphShard = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_SWITCHING_PROVIDERS)?.let {
+        enableFastInit = it
+      }
+      enableFullBindingGraphValidation =
+        MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
+      enableGraphImplClassAsReturnType =
+        MetroDirectives.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE in module.directives
+      generateContributionHints =
+        module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
+      generateContributionHintsInFir =
+        MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
+      module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
+        publicScopedProviderSeverity = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)?.let {
+        optionalBindingBehavior = it
+      }
+      module.directives
+        .singleOrZeroValue(MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY)
+        ?.let { interopAnnotationsNamedArgSeverity = it }
+      module.directives.singleOrZeroValue(MetroDirectives.NON_PUBLIC_CONTRIBUTION_SEVERITY)?.let {
+        nonPublicContributionSeverity = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.UNUSED_GRAPH_INPUTS_SEVERITY)?.let {
+        unusedGraphInputsSeverity = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
+        maxIrErrorsCount = it
+      }
+      // Use explicit REPORTS_DESTINATION or default if CHECK_REPORTS is present
+      val reportsDir =
+        module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)
+          ?: if (module.directives[MetroDirectives.CHECK_REPORTS].isNotEmpty()) {
+            MetroReportsChecker.DEFAULT_REPORTS_DIR
+          } else {
+            null
+          }
+      reportsDir?.let {
+        reportsDestination =
+          Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
+      }
+      module.directives
+        .singleOrZeroValue(MetroDirectives.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS)
+        ?.let { useAssistedParamNamesAsIdentifiers = it }
+      module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
+        parallelThreads = it
+      }
+      contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
+      enableFunctionProviders = MetroDirectives.ENABLE_FUNCTION_PROVIDERS in module.directives
+      enableKClassToClassInterop =
+        MetroDirectives.ENABLE_KCLASS_TO_CLASS_INTEROP in module.directives
+      generateContributionProviders =
+        MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS in module.directives
+
+      // Configure interop annotations using builder helper methods
+      if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
+        includeKotlinInjectAnvilAnnotations()
+      }
+      if (
+        MetroDirectives.WITH_ANVIL in module.directives ||
+          MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+      ) {
+        includeAnvilAnnotations()
+      }
+
+      if (
+        MetroDirectives.WITH_DAGGER in module.directives ||
+          MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
+          MetroDirectives.ENABLE_DAGGER_KSP in module.directives
+      ) {
+        includeDaggerAnnotations()
+      }
+
+      if (MetroDirectives.enableGuiceAnnotations(module.directives)) {
+        includeGuiceAnnotations()
+      }
+
+      // Override enableDaggerRuntimeInterop if needed
+      if (MetroDirectives.enableDaggerRuntimeInterop(module.directives)) {
+        enableDaggerRuntimeInterop = true
+      }
+
+      // Override enableGuiceRuntimeInterop if needed
+      if (MetroDirectives.enableGuiceInterop(module.directives)) {
+        enableGuiceRuntimeInterop = true
+      }
+
+      if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
+        enableCircuitCodegen = true
+      }
+    }
 
     if (!options.enabled) return
 
@@ -164,14 +181,50 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     val compatContext = CompatContext.create()
     FirExtensionRegistrarAdapter.registerExtension(
       MetroFirExtensionRegistrar(
-        classIds,
-        options,
-        compatContext,
-        { session, options -> listOf(GenerateImplExtension.Factory().create(session, options)) },
-      ) { session, options ->
-        listOf(GenerateImplContributionExtension.Factory().create(session, options))
-      }
+        classIds = classIds,
+        options = options,
+        isIde = false,
+        compatContext = compatContext,
+        loadExternalDeclarationExtensions = { session, options, compatContext ->
+          buildList {
+            add(GenerateImplExtension.Factory().create(session, options, compatContext))
+            add(
+              GenerateProvidesContributionExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            add(
+              GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
+            )
+            add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
+            if (options.enableCircuitCodegen) {
+              add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
+            }
+          }
+        },
+        loadExternalContributionExtensions = { session, options, compatContext ->
+          buildList {
+            add(GenerateImplContributionExtension.Factory().create(session, options, compatContext))
+            add(
+              GenerateProvidesContributionMetroExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            add(
+              GenerateBindsContributionMetroExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            if (options.enableCircuitCodegen) {
+              add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
+            }
+          }
+        },
+      )
     )
+    if (options.enableCircuitCodegen) {
+      FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
+      IrGenerationExtension.registerExtension(CircuitIrExtension(compatContext))
+    }
+    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
+    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector = configuration.messageCollector,
@@ -183,6 +236,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         compatContext = compatContext,
       )
     )
-    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
+    if (options.enableCircuitCodegen) {
+      IrGenerationExtension.registerExtension(
+        ComposePluginRegistrar.createComposeIrExtension(configuration)
+      )
+    }
   }
 }

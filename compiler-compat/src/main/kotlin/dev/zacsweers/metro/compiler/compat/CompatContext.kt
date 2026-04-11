@@ -3,16 +3,23 @@
 package dev.zacsweers.metro.compiler.compat
 
 import java.util.ServiceLoader
+import kotlin.reflect.KClass
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
+import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
+import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
@@ -20,6 +27,10 @@ import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
+import org.jetbrains.kotlin.fir.declarations.result
+import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirExpressionEvaluator
+import org.jetbrains.kotlin.fir.expressions.PrivateConstantEvaluatorAPI
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
@@ -32,17 +43,25 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.ir.IrDiagnosticReporter
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.builders.IrBuilder
 import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.util.PrivateForInline
 
 public interface CompatContext {
   public companion object Companion {
@@ -102,21 +121,36 @@ public interface CompatContext {
     ): Factory? {
       // If current version is DEV, try DEV track factories first
       if (currentVersion.isDev) {
-        val devFactories =
-          factoryDataList.filter { KotlinToolingVersion(it.factory.minVersion).isDev }
+        val devFactories = factoryDataList.filter {
+          KotlinToolingVersion(it.factory.minVersion).isDev
+        }
         val devMatch = findHighestCompatibleFactory(currentVersion, devFactories)
         if (devMatch != null) {
           return devMatch
         }
-        // Fall back to non-DEV factories
-        val nonDevFactories =
-          factoryDataList.filter { !KotlinToolingVersion(it.factory.minVersion).isDev }
-        return findHighestCompatibleFactory(currentVersion, nonDevFactories)
+
+        // Fall back to non-DEV factories.
+        // Use the base version (strip dev classifier) for comparison, because
+        // 2.2.20-dev-5812 is a dev build OF 2.2.20 and should match the 2.2.20 factory,
+        // but KotlinToolingVersion ordering puts DEV < STABLE so the comparison would
+        // otherwise exclude it.
+        val nonDevFactories = factoryDataList.filter {
+          !KotlinToolingVersion(it.factory.minVersion).isDev
+        }
+        val baseVersion =
+          KotlinToolingVersion(
+            currentVersion.major,
+            currentVersion.minor,
+            currentVersion.patch,
+            null,
+          )
+        return findHighestCompatibleFactory(baseVersion, nonDevFactories)
       }
 
       // For non-DEV versions, only consider non-DEV factories
-      val nonDevFactories =
-        factoryDataList.filter { !KotlinToolingVersion(it.factory.minVersion).isDev }
+      val nonDevFactories = factoryDataList.filter {
+        !KotlinToolingVersion(it.factory.minVersion).isDev
+      }
       return findHighestCompatibleFactory(currentVersion, nonDevFactories)
     }
 
@@ -406,7 +440,6 @@ public interface CompatContext {
     message =
       "External repeatable annotations are not readable in IR until 2.3.20-Beta2. https://youtrack.jetbrains.com/issue/KT-83185",
   )
-  // TODO enable in 2.3.20-dev-7429 dev build
   public val supportsExternalRepeatableAnnotations: Boolean
     get() = false
 
@@ -435,9 +468,7 @@ public interface CompatContext {
     message: String,
     location: CompilerMessageSourceLocation?,
     languageVersionSettings: LanguageVersionSettings,
-  ): KtDiagnosticWithoutSource? {
-    return create(message, languageVersionSettings)
-  }
+  ): KtDiagnosticWithoutSource?
 
   @CompatApi(
     since = "2.3.20-dev-7621",
@@ -453,6 +484,98 @@ public interface CompatContext {
     message: String,
   ) {
     throw NotImplementedError("reportCompat is not implemented on this version of the compiler")
+  }
+
+  @CompatApi(
+    since = "2.2.20",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "Stable wrapper over IrDiagnosticReporter.at().report() chain",
+  )
+  public fun <A : Any> IrDiagnosticReporter.reportAt(
+    declaration: IrDeclaration,
+    factory: KtDiagnosticFactory1<A>,
+    a: A,
+  )
+
+  @CompatApi(
+    since = "2.2.20",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "Stable wrapper over IrDiagnosticReporter.at().report() chain",
+  )
+  public fun <A : Any> IrDiagnosticReporter.reportAt(
+    element: IrElement,
+    file: IrFile,
+    factory: KtDiagnosticFactory1<A>,
+    a: A,
+  )
+
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.COMPAT,
+    message = "2.3 moved APIs around here",
+  )
+  public val FirClassLikeSymbol<*>.isLocalCompat: Boolean
+
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.COMPAT,
+    message = "2.3 moved APIs around here",
+  )
+  public val FirClass.isLocalCompat: Boolean
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 moved APIs around here",
+  )
+  context(_: CompilerPluginRegistrar)
+  public fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
+    extension: FirExtensionRegistrar
+  )
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 moved APIs around here",
+  )
+  context(_: CompilerPluginRegistrar)
+  public fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
+    extension: IrGenerationExtension
+  )
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 introduced IrAnnotation for IrConstructorCall",
+  )
+  fun createIrGeneratedDeclarationsRegistrar(
+    pluginContext: IrPluginContext
+  ): IrGeneratedDeclarationsRegistrarCompat {
+    return IrConstructorCallIrGeneratedDeclarationsRegistrarCompat(
+      pluginContext.metadataDeclarationRegistrar
+    )
+  }
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 introduced IrAnnotation for IrConstructorCall",
+  )
+  fun IrBuilder.irAnnotationCompat(
+    callee: IrConstructorSymbol,
+    typeArguments: List<IrType>,
+  ): IrConstructorCall {
+    return irCallConstructor(callee, typeArguments)
+  }
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 changed the inline API's use of .result",
+  )
+  fun <T : FirElement> FirExpression.evaluateAsCompat(session: FirSession, tKlass: KClass<T>): T? {
+    @Suppress("UNCHECKED_CAST") @OptIn(PrivateConstantEvaluatorAPI::class, PrivateForInline::class)
+    return FirExpressionEvaluator.evaluateExpression(this, session)?.result as? T
   }
 }
 

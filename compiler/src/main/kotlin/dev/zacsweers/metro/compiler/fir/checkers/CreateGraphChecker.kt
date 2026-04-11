@@ -2,26 +2,28 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isLocalClassOrAnonymousObject
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.nestedClasses
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.findClosestClassOrObject
-import org.jetbrains.kotlin.fir.declarations.utils.isLocalClassOrAnonymousObject
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirSpreadArgumentExpression
 import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.toResolvedCallableSymbol
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousObjectSymbol
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.resolvedType
@@ -33,6 +35,11 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(expression: FirFunctionCall) {
+    context(context.session.compatContext) { checkImpl(expression) }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
+  private fun checkImpl(expression: FirFunctionCall) {
     val source = expression.source ?: return
 
     val callee = expression.toResolvedCallableSymbol() ?: return
@@ -44,7 +51,8 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
     // It's a createGraph() intrinsic
     val typeArg = expression.typeArguments.singleOrNull() ?: return
     val rawType =
-      typeArg.toConeTypeProjection().type?.classLikeLookupTagIfAny?.toClassSymbol(session) ?: return
+      typeArg.toConeTypeProjection().type?.classLikeLookupTagIfAny?.toClassSymbolCompat(session)
+        ?: return
 
     // If it's factory-less
     if (targetFunction == builtins.createGraph || targetFunction == builtins.createDynamicGraph) {
@@ -158,7 +166,7 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
         if (checkAndReportSpread(arg)) continue
 
         val type = arg.resolvedType
-        val classSymbol = type.toClassSymbol(session) ?: continue
+        val classSymbol = type.toClassSymbolCompat(session) ?: continue
 
         classSymbol.bindingContainerErrorMessage(session)?.let { bindingContainerErrorMessage ->
           reporter.reportOn(

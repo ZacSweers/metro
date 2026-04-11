@@ -639,6 +639,7 @@ internal class DaggerSymbols(
       ClassId(daggerInternalPackageFqName, "MapFactory".asName())
     val DAGGER_MULTIBINDS = ClassId(daggerMultibindsPackageFqName, "Multibinds".asName())
     val DAGGER_ASSISTED_INJECT = ClassId(daggerAssistedPackageFqName, "AssistedInject".asName())
+    val DAGGER_LAZY_CLASS_KEY = ClassId(daggerMultibindsPackageFqName, "LazyClassKey".asName())
     val DAGGER_INJECTED_FIELD_SIGNATURE =
       ClassId(daggerInternalPackageFqName, "InjectedFieldSignature".asName())
   }

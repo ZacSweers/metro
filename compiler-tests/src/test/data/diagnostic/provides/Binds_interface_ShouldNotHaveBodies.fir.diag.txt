@@ -1,1 +1,0 @@
-/Binds_interface_ShouldNotHaveBodies.kt:(184,188): warning: `@Binds` declarations should be private.

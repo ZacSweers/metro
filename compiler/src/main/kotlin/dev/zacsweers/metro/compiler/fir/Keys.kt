@@ -61,6 +61,10 @@ internal object Keys {
     override fun toString() = "MetroContributionClassDeclaration"
   }
 
+  data object ContributionProviderHolderDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "ContributionProviderHolderDeclaration"
+  }
+
   data object MetroContributionCallableDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "MetroContributionCallableDeclaration"
   }
@@ -117,6 +121,10 @@ internal object Keys {
     override fun toString() = "BindingMirrorClassDeclaration"
   }
 
+  data object DefaultBindingMirrorClassDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "DefaultBindingMirrorClassDeclaration"
+  }
+
   data object GeneratedDynamicGraph : GeneratedDeclarationKey() {
     override fun toString() = "GeneratedDynamicGraph"
   }
@@ -127,5 +135,9 @@ internal object Keys {
 
   data object ParentGraphParam : GeneratedDeclarationKey() {
     override fun toString() = "ParentGraphParam"
+  }
+
+  data object GeneratedAssistedFactoryCreateFunction : GeneratedDeclarationKey() {
+    override fun toString() = "GeneratedAssistedFactoryCreateFunction"
   }
 }

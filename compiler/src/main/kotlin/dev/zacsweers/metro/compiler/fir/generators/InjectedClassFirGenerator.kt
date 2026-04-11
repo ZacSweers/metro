@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.NameAllocator
+import dev.zacsweers.metro.compiler.api.fir.metroGeneratedInjectClassData
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
@@ -15,14 +16,16 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.hasMetroDefault
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isIde
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
-import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
+import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.memoize
@@ -63,6 +66,7 @@ import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
@@ -73,7 +77,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
@@ -93,6 +96,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     register(session.predicates.injectLikeAnnotationsPredicate)
     register(session.predicates.assistedAnnotationPredicate)
     register(session.predicates.hasMemberInjectionsAnnotationPredicate)
+    register(session.predicates.exposeImplBindingPredicate)
   }
 
   private val symbols: FirCache<Unit, Map<ClassId, FirNamedFunctionSymbol>, TypeResolveService?> =
@@ -119,7 +123,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
    * Will generate
    *
    * ```
-   * class AppClass @Inject constructor(private val message: Provider<String>) {
+   * class App @Inject constructor(private val message: Provider<String>) {
    *   operator fun invoke() {
    *     App(message())
    *   }
@@ -139,12 +143,35 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     if (!session.metroFirBuiltIns.options.enableTopLevelFunctionInjection) return null
     val function = symbols.getValue(Unit, null).getValue(classId)
     val annotations = function.metroAnnotations(session)
-    return createTopLevelClass(classId, Keys.TopLevelInjectFunctionClass)
+    return createTopLevelClass(classId, Keys.TopLevelInjectFunctionClass) {
+        if (function.typeParameterSymbols.isNotEmpty()) {
+          for (typeParameter in function.typeParameterSymbols) {
+            typeParameter(typeParameter.name, typeParameter.variance, false) {
+              for (bound in typeParameter.resolvedBounds) {
+                bound { typeParameterRefs ->
+                  val boundType = bound.coneType
+                  if (typeParameterRefs.isEmpty()) {
+                    boundType
+                  } else {
+                    val substitution = typeParameterRefs.associate { ref ->
+                      function.typeParameterSymbols.first { it.name == ref.symbol.name } to
+                        ref.symbol.constructType()
+                    }
+                    val substitutor = substitutorByMap(substitution, session)
+                    substitutor.substituteOrSelf(boundType)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
       .apply {
         replaceAnnotationsSafe(
           buildList {
             add(buildInjectAnnotation())
             add(buildInjectedFunctionClassAnnotation(function.callableId))
+            buildHiddenFromObjCAnnotation()?.let(::add)
             annotations.qualifier?.fir?.let(::add)
             if (annotations.isComposable) {
               add(buildStableAnnotation())
@@ -231,9 +258,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       parentHasMemberInjections?.let {
         return it
       }
-      val resolver =
-        MetroFirTypeResolver.Factory(session, session.memoizedAllSessionsSequence)
-          .create(classSymbol) ?: return false
+      val resolver = MetroFirTypeResolver.Factory(session).create(classSymbol) ?: return false
 
       return classSymbol.fir.superTypeRefs
         .any {
@@ -241,7 +266,17 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             if (it is FirResolvedTypeRef) {
               it.coneType
             } else {
-              resolver.resolveType(it)
+              if (session.isIde()) {
+                try {
+                  resolver.resolveType(it)
+                } catch (_: Exception) {
+                  // Generic type resolution may fail during IDE indexing because
+                  // this isn't a deep resolve
+                  return@any false
+                }
+              } else {
+                resolver.resolveType(it)
+              }
             }
           val clazz = resolved.toRegularClassSymbol(session) ?: return@any false
           clazz.classKind == ClassKind.CLASS &&
@@ -303,6 +338,12 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                     symbol = setterParam,
                     name = parameterNameAllocator.newName(propertyName),
                     memberKey = memberKeyAllocator.newName(propertyName),
+                    // Resolve qualifier from the property so annotations like @Named
+                    // on the property are properly included in the type key.
+                    qualifierSource = injectedMember,
+                    // The setter's value parameter doesn't carry the property's default
+                    // info, so we pass it explicitly from the property symbol.
+                    hasDefault = injectedMember.hasMetroDefault(session),
                   )
                 } else if (fieldSymbol != null) {
                   MetroFirValueParameter(
@@ -425,7 +466,14 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       val declaredInjectedMembers = injectedClass.populateDeclaredMemberInjections(session)
 
       val classesToGenerate = mutableSetOf<Name>()
-      if (injectedClass.isConstructorInjected) {
+
+      // Skip factory generation when generateContributionProviders is enabled and the class
+      // has binding contributions — the contribution provider generates its own provides function
+      // and factory. The inject factory would be redundant and leak internal types.
+      // @ExposeImplBinding opts out of this skip.
+      val skipFactory = classSymbol.usesContributionProviderPath(session)
+
+      if (injectedClass.isConstructorInjected && !skipFactory) {
         val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroFactory)
         injectFactoryClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
@@ -435,7 +483,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         membersInjectorClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
       }
-      return classesToGenerate
+      classesToGenerate
     }
   }
 
@@ -465,11 +513,14 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         // need to separately check them here
         val parentHasInjections = injectedClass.parentClassHasMemberInjections(session)
 
+        @OptIn(SymbolInternals::class)
         val classKind =
           if (
             injectedClass.classSymbol.typeParameterSymbols.isEmpty() &&
-              injectedClass.allParameters.isEmpty() &&
-              !parentHasInjections
+              injectedClass.allParameters.filterNot { it.isAssisted }.isEmpty() &&
+              !parentHasInjections &&
+              injectedClass.classSymbol.fir.metroGeneratedInjectClassData?.hasConstructorParams !=
+                true
           ) {
             ClassKind.OBJECT
           } else {
@@ -483,14 +534,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             classKind = classKind,
           ) {
             copyTypeParametersFrom(injectedClass.classSymbol, session)
-
-            if (!injectedClass.isAssistedInject) {
-              superType { typeParameterRefs ->
-                Symbols.ClassIds.metroFactory.constructClassLikeType(
-                  arrayOf(owner.constructType(typeParameterRefs))
-                )
-              }
-            }
           }
           .apply {
             markAsDeprecatedHidden(session)
@@ -545,22 +588,16 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       return emptySet()
     }
 
-    val names = mutableSetOf<Name>()
-    names += SpecialNames.INIT
-
-    // Factory class
-    // Factory (companion) object
-    if (isFactoryClass) {
-      // Only generate an invoke() function if it has assisted parameters, as it won't be inherited
-      // from Factory<T> in this case
-      val target = injectFactoryClassIdsToInjectedClass[classSymbol.classId]
-      if (target?.isAssistedInject == true) {
-        names += Symbols.Names.invoke
-      }
+    if (isFactoryClass && !isFactoryCreatorClass) {
+      // Factory class constructor and invoke() are implemented in IR
+      return emptySet()
     }
-    if (isFactoryCreatorClass) {
-      names += Symbols.Names.create
-      names += Symbols.Names.newInstance
+
+    val names = mutableSetOf<Name>()
+
+    if (isObject || !isFactoryClass) {
+      // Don't add constructors for regular factory classes, they are added in IR
+      names += SpecialNames.INIT
     }
 
     // MembersInjector class
@@ -586,6 +623,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           .plus(function.valueParameterSymbols)
           .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
           .map { MetroFirValueParameter(session, it) }
+      val typeParamSubstitutor = typeParameterSubstitutor(function, context.owner)
       return createConstructor(
           context.owner,
           Keys.Default,
@@ -597,9 +635,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             valueParameter(
               param.name,
               typeProvider = {
-                param.contextKey.typeKey.type
-                  // TODO need to remap these
-                  //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
+                typeParamSubstitutor
+                  .substituteOrSelf(param.contextKey.typeKey.type)
                   .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
               },
               key = Keys.RegularParameter,
@@ -628,7 +665,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         val injectedClass =
           injectFactoryClassIdsToInjectedClass[context.owner.classId] ?: return emptyList()
         injectedClass.populateAncestorMemberInjections(session)
-        buildFactoryConstructor(context, null, null, injectedClass.allParameters)
+        return emptyList()
       } else if (context.owner.hasOrigin(Keys.MembersInjectorClassDeclaration)) {
         val injectedClass =
           membersInjectorClassIdsToInjectedClass[context.owner.classId] ?: return emptyList()
@@ -649,14 +686,13 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     if (nonNullContext.owner.hasOrigin(Keys.TopLevelInjectFunctionClass)) {
       check(callableId.callableName == Symbols.Names.invoke)
       val function = symbols.getValue(Unit, null).getValue(context.owner.classId)
+      val typeParamSubstitutor = typeParameterSubstitutor(function, nonNullContext.owner)
       return createMemberFunction(
           nonNullContext.owner,
           Keys.TopLevelInjectFunctionClassFunction,
           callableId.callableName,
           returnTypeProvider = {
-            function.resolvedReturnType
-            // TODO need to remap these
-            //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
+            typeParamSubstitutor.substituteOrSelf(function.resolvedReturnType)
           },
         ) {
           status {
@@ -671,11 +707,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             }
             valueParameter(
               param.name,
-              typeProvider = {
-                param.resolvedReturnType
-                // TODO need to remap these
-                //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
-              },
+              typeProvider = { typeParamSubstitutor.substituteOrSelf(param.resolvedReturnType) },
               key = Keys.RegularParameter,
               hasDefaultValue = param.hasDefaultValue,
             )
@@ -726,69 +758,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       val injectedClass = injectFactoryClassIdsToInjectedClass[targetClassId] ?: return emptyList()
 
       injectedClass.populateAncestorMemberInjections(session)
-
-      val returnType = injectedClass.classSymbol.defaultType()
-      functions +=
-        when (callableId.callableName) {
-          Symbols.Names.invoke -> {
-            // Assisted types do not inherit from Factory<T>, so we need to generate invoke here
-            createMemberFunction(
-                owner = nonNullContext.owner,
-                key = Keys.Default,
-                name = callableId.callableName,
-                returnTypeProvider = {
-                  injectedClass.classSymbol.constructType(
-                    nonNullContext.owner.typeParameterSymbols.mapToArray(
-                      FirTypeParameterSymbol::toConeType
-                    )
-                  )
-                },
-              ) {
-                injectedClass.assistedParameters.forEach { assistedParameter ->
-                  valueParameter(
-                    assistedParameter.name,
-                    assistedParameter.symbol.resolvedReturnType,
-                    key = Keys.RegularParameter,
-                  )
-                }
-              }
-              .symbol as FirNamedFunctionSymbol
-          }
-          Symbols.Names.create -> {
-            buildFactoryCreateFunction(
-              nonNullContext,
-              { typeParams ->
-                if (injectedClass.isAssistedInject) {
-                  targetClass.constructType(typeParams.mapToArray(FirTypeParameterRef::toConeType))
-                } else {
-                  Symbols.ClassIds.metroFactory.constructClassLikeType(
-                    arrayOf(
-                      injectedClass.classSymbol.constructType(
-                        typeParams.mapToArray(FirTypeParameterRef::toConeType)
-                      )
-                    )
-                  )
-                }
-              },
-              null,
-              null,
-              injectedClass.allParameters,
-            )
-          }
-          Symbols.Names.newInstance -> {
-            buildNewInstanceFunction(
-              nonNullContext,
-              Symbols.Names.newInstance,
-              returnType,
-              null,
-              null,
-              injectedClass.constructorParameters,
-            )
-          }
-          else -> {
-            reportCompilerBug("Unrecognized function $callableId")
-          }
-        }
+      // Rest is generated in IR
     } else if (targetClass.hasOrigin(Keys.MembersInjectorClassDeclaration)) {
       val injectedClass =
         membersInjectorClassIdsToInjectedClass[targetClassId] ?: return emptyList()
@@ -872,6 +842,25 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     return functions
   }
 
+  /**
+   * Creates a substitutor that remaps type parameter references from the original [function] to the
+   * generated [classSymbol]'s type parameters (matched by name).
+   */
+  private fun typeParameterSubstitutor(
+    function: FirNamedFunctionSymbol,
+    classSymbol: FirClassSymbol<*>,
+  ): ConeSubstitutor {
+    val functionTypeParams = function.typeParameterSymbols
+    if (functionTypeParams.isEmpty()) return ConeSubstitutor.Empty
+    val classTypeParamsByName = classSymbol.typeParameterSymbols.associateBy { it.name }
+    return substitutorByMap(
+      functionTypeParams.associate { funcTypeParam ->
+        funcTypeParam to classTypeParamsByName.getValue(funcTypeParam.name).constructType()
+      },
+      session,
+    )
+  }
+
   private fun functionFor(classId: ClassId) =
     functionForOrNullable(classId) ?: reportCompilerBug("No injected function for $classId")
 
@@ -895,6 +884,10 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
 
   private fun buildStableAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.metroFirBuiltIns.stableClassSymbol }
+  }
+
+  private fun buildHiddenFromObjCAnnotation(): FirAnnotation? {
+    return session.metroFirBuiltIns.hiddenFromObjCClassSymbol?.let { buildSimpleAnnotation { it } }
   }
 
   private fun buildNonRestartableAnnotation(): FirAnnotation {

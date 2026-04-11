@@ -1,6 +1,12 @@
 # Installation
 
-Metro is primarily applied via its companion Gradle plugin.
+## Build Systems
+
+Metro is primarily applied via its companion **Gradle** plugin.
+
+If applying in other build systems, apply it however that build system conventionally applies Kotlin compiler plugins.
+
+### Gradle
 
 ```kotlin
 plugins {
@@ -11,7 +17,7 @@ plugins {
 
 …and that’s it! This will add metro’s runtime dependencies and do all the necessary compiler plugin wiring.
 
-If applying in other build systems, apply it however that build system conventionally applies Kotlin compiler plugins. For example with [Bazel](https://github.com/bazelbuild/rules_kotlin?tab=readme-ov-file#kotlin-compiler-plugins):
+### [Bazel](https://github.com/bazelbuild/rules_kotlin?tab=readme-ov-file#kotlin-compiler-plugins)
 
 ```starlark
 load("@rules_kotlin//kotlin:core.bzl", "kt_compiler_plugin")
@@ -24,6 +30,7 @@ kt_compiler_plugin(
     options = {
         "enabled": "true",
         "debug": "false",
+        # ...
     },
     deps = [
         "@maven//:dev_zacsweers_metro_compiler",
@@ -41,6 +48,25 @@ kt_jvm_library(
         "@maven//:dev_zacsweers_metro_runtime_jvm",
     ],
 )
+```
+
+### Amper
+
+Using the compiler plugin options support in [AMPER-5095](https://youtrack.jetbrains.com/issue/AMPER-5095).
+
+```yaml
+compilerPlugins:
+  - id: dev.zacsweers.metro.compiler
+    dependency: $libs.metro.compiler
+    options:
+      enabled: true
+      debug: false
+      # ...
+```
+
+```toml
+# Version Catalog
+metro-compiler = { module = "dev.zacsweers.metro:compiler", version.ref = "metro" }
 ```
 
 ## IDE Support

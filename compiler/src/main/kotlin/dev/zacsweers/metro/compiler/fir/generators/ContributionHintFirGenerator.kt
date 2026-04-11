@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.api.fir.MetroContributions
+import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
@@ -9,10 +11,11 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
-import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.mapNotNullToSet
@@ -21,11 +24,13 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
+import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.classId
@@ -37,8 +42,11 @@ import org.jetbrains.kotlin.name.FqName
  * Generates hint marker functions for during FIR. This handles both scoped `@Inject` classes and
  * classes with contributing annotations.
  */
-internal class ContributionHintFirGenerator(session: FirSession, compatContext: CompatContext) :
-  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
+internal class ContributionHintFirGenerator(
+  session: FirSession,
+  compatContext: CompatContext,
+  private val externalExtensions: List<MetroFirDeclarationGenerationExtension>,
+) : FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   private fun contributedClassSymbols(): List<FirClassSymbol<*>> {
     val injectedClasses =
@@ -50,16 +58,18 @@ internal class ContributionHintFirGenerator(session: FirSession, compatContext: 
         session.predicates.contributesAnnotationPredicate
       )
 
-    return (injectedClasses + contributedClasses).filterIsInstance<FirClassSymbol<*>>()
+    return (injectedClasses + contributedClasses).filterIsInstance<FirClassSymbol<*>>().distinct()
   }
 
-  private val allSessions = session.memoizedAllSessionsSequence
-  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
+  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session) }
 
   private val contributedClassesByScope:
     FirCache<Unit, Map<CallableId, Set<FirClassSymbol<*>>>, Unit> =
     session.firCachesFactory.createCache { _, _ ->
       val callableIds = mutableMapOf<CallableId, MutableSet<FirClassSymbol<*>>>()
+
+      val generateContributionProviders =
+        session.metroFirBuiltIns.options.generateContributionProviders
 
       val contributingClasses = contributedClassSymbols()
       for (contributingClass in contributingClasses) {
@@ -72,21 +82,66 @@ internal class ContributionHintFirGenerator(session: FirSession, compatContext: 
 
         val typeResolver = typeResolverFactory.create(contributingClass) ?: continue
 
-        val contributionScopes: Set<ClassId> =
-          contributions.mapNotNullToSet { annotation ->
-            annotation.scopeArgument()?.let { getClassCall ->
-              val reference = getClassCall.resolvedArgumentTypeRef() ?: return@let null
-              typeResolver.resolveType(typeRef = reference).classId ?: return@let null
-            }
+        val contributionScopes: Set<ClassId> = contributions.mapNotNullToSet { annotation ->
+          annotation.scopeArgument(session)?.let { getClassCall ->
+            val reference = getClassCall.resolvedArgumentTypeRef() ?: return@let null
+            typeResolver.resolveType(typeRef = reference).classId ?: return@let null
           }
+        }
+
+        // When generateContributionProviders is enabled, generate hints pointing to the
+        // generated container objects instead of the original class. The container objects
+        // are not visible to the predicate-based provider (they're generated declarations),
+        // so we must compute their ClassIds and resolve them here.
+        val hasBindingContributions =
+          generateContributionProviders &&
+            contributingClass.usesContributionProviderPath(session) &&
+            contributions.any { annotation ->
+              val classId = annotation.toAnnotationClassIdSafe(session) ?: return@any false
+              classId !in session.classIds.contributesToAnnotations
+            }
+
         for (contributionScope in contributionScopes) {
           val hintName = contributionScope.scopeHintFunctionName()
-          callableIds.getAndAdd(
-            CallableId(Symbols.FqNames.metroHintsPackage, hintName),
-            contributingClass,
-          )
+          if (hasBindingContributions) {
+            // Compute the container object ClassId and generate hint pointing to it
+            val containerClassId =
+              MetroContributions.containerObjectClassId(
+                contributingClass.classId,
+                contributionScope,
+              )
+            val containerSymbol =
+              session.symbolProvider.getClassLikeSymbolByClassId(containerClassId)
+                as? FirClassSymbol<*>
+            if (containerSymbol != null) {
+              callableIds.getAndAdd(
+                CallableId(Symbols.FqNames.metroHintsPackage, hintName),
+                containerSymbol,
+              )
+            }
+          } else {
+            callableIds.getAndAdd(
+              CallableId(Symbols.FqNames.metroHintsPackage, hintName),
+              contributingClass,
+            )
+          }
         }
       }
+
+      // Collect hints from external extensions
+      externalExtensions
+        .flatMap { it.getContributionHints() }
+        .forEach { hint ->
+          val classSymbol =
+            session.symbolProvider.getClassLikeSymbolByClassId(hint.contributingClassId)
+              as? FirClassSymbol<*> ?: return@forEach
+          val hintName = hint.scope.scopeHintFunctionName()
+
+          callableIds.getAndAdd(
+            CallableId(Symbols.FqNames.metroHintsPackage, hintName),
+            classSymbol,
+          )
+        }
 
       callableIds
     }

@@ -1,7 +1,8 @@
-// CHECK_REPORTS: keys-unused-AppGraph_Impl
-// CHECK_REPORTS: keys-unused-AppGraph_Impl_ChildGraphImpl
-// CHECK_REPORTS: keys-unused-AppGraph_Impl_ChildGraphImpl_GrandchildGraphImpl
-// CHECK_REPORTS: keys-unused-AppGraph_Impl_ChildGraphImpl_GrandchildGraphImpl_GreatGrandchildGraphImpl
+// UNUSED_GRAPH_INPUTS_SEVERITY: NONE
+// CHECK_REPORTS: keys-unused/AppGraph/Impl
+// CHECK_REPORTS: keys-unused/AppGraph/Impl/ChildGraphImpl
+// CHECK_REPORTS: keys-unused/AppGraph/Impl/ChildGraphImpl/GrandchildGraphImpl
+// CHECK_REPORTS: keys-unused/AppGraph/Impl/ChildGraphImpl/GrandchildGraphImpl/GreatGrandchildGraphImpl
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
@@ -20,6 +21,7 @@ interface ChildGraph {
   val grandchild: GrandchildGraph
 
   @Provides fun provideInt(): Int = 42
+
   @Provides fun provideUnusedDouble(): Double = 1.0
 }
 
@@ -29,6 +31,7 @@ interface GrandchildGraph {
   val greatGrandchild: GreatGrandchildGraph
 
   @Provides fun provideShort(): Short = 1
+
   @Provides fun provideUnusedFloat(): Float = 1.0f
 }
 
@@ -37,10 +40,14 @@ interface GreatGrandchildGraph {
   val byte: Byte
 
   @Provides fun provideByte(): Byte = 1
+
   @Provides fun provideUnusedChar(): Char = 'a'
 }
 
 abstract class AppScope private constructor()
+
 abstract class ChildScope private constructor()
+
 abstract class GrandchildScope private constructor()
+
 abstract class GreatGrandchildScope private constructor()

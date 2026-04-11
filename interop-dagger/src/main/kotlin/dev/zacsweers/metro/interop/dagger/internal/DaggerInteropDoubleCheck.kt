@@ -17,6 +17,10 @@ public class DaggerInteropDoubleCheck<T : Any>(provider: MetroProvider<T>) :
 
   override fun get(): T = invoke()
 
+  override fun toString(): String {
+    return super.toString() + " (Dagger interop)"
+  }
+
   public companion object {
     public fun <P : JavaxProvider<T>, T : Any> javaxProvider(delegate: P): JavaxProvider<T> {
       if (delegate is DaggerInteropDoubleCheck<*>) {

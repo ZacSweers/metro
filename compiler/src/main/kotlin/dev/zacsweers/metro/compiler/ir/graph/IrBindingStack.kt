@@ -362,7 +362,11 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
         "└─"
       }
     val contextHint =
-      if (entry.typeKey != entry.displayTypeKey) "(${entry.typeKey.render(short = true)}) " else ""
+      if (entry.typeKey != entry.displayTypeKey) {
+        "(${entry.typeKey.renderForDiagnostic(short = true)}) "
+      } else {
+        ""
+      }
     logger.log("$logPrefix $contextHint${entry.toString().withoutLineBreaks}")
     stack.addFirst(entry)
     entrySet.add(entry.typeKey)
@@ -424,9 +428,9 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
             row {
               cellStyle { alignment = TextAlignment.MiddleCenter }
               cell("${stack.lastIndex - i}")
-              cell(entry.displayTypeKey.render(short = true))
+              cell(entry.displayTypeKey.renderForDiagnostic(short = true))
               cell("${entry.usage}...")
-              val key = entry.typeKey.render(short = true)
+              val key = entry.typeKey.renderForDiagnostic(short = true)
               cell(key)
               val contextKey = entry.contextKey.render(short = true)
               cell(if (contextKey == key) "--" else contextKey)

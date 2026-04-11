@@ -1,4 +1,4 @@
-// Copyright (C) 2021 Zac Sweers
+// Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
@@ -31,15 +31,16 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
   KotlinCompilerPluginSupportPlugin {
 
   private companion object {
-    val gradleMetroKotlinVersion by
-      lazy(LazyThreadSafetyMode.NONE) {
-        KotlinVersion.fromVersion(BASE_KOTLIN_VERSION.substringBeforeLast('.'))
-      }
+    val minKotlinVersion by lazy {
+      SUPPORTED_KOTLIN_VERSIONS.minOf { KotlinVersion.fromVersion(it.substringBeforeLast('.')) }
+    }
 
     val PROBLEM_GROUP: ProblemGroup = ProblemGroup.create("metro-group", "Metro Problems")
 
     private const val COMPILER_VERSION_OVERRIDE = "metro.compilerVersionOverride"
     private const val COMPILER_VERSION_OVERRIDE_PROPERTY = "metroCompilerVersionOverride"
+    private const val CIRCUIT_ANNOTATIONS_DEP =
+      "com.slack.circuit:circuit-codegen-annotations:0.33.0"
   }
 
   private val problemReporter = problems.reporter
@@ -183,6 +184,11 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
     return true
   }
 
+  @OptIn(
+    DangerousMetroGradleApi::class,
+    ExperimentalMetroGradleApi::class,
+    RequiresIdeSupport::class,
+  )
   override fun applyToCompilation(
     kotlinCompilation: KotlinCompilation<*>
   ): Provider<List<SubpluginOption>> {
@@ -214,12 +220,12 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
         project.providers.systemProperty(COMPILER_VERSION_OVERRIDE).orElse(VERSION),
       )
 
-      // Ensure that the languageVersion is 2.x
+      // Ensure that the languageVersion is compatible
       task.doFirst { innerTask ->
         val compilerOptions = (innerTask as KotlinCompilationTask<*>).compilerOptions
         val languageVersion = compilerOptions.languageVersion.orNull ?: return@doFirst
-        check(languageVersion >= gradleMetroKotlinVersion) {
-          "Compilation task '${innerTask.name}' targets language version '${languageVersion.version}' but Metro requires Kotlin '${gradleMetroKotlinVersion.version}' or later."
+        check(languageVersion >= minKotlinVersion) {
+          "Compilation task '${innerTask.name}' targets language version '${languageVersion.version}' but Metro requires Kotlin '${minKotlinVersion.version}' or later."
         }
       }
     }
@@ -229,28 +235,26 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
         kotlinCompilation.target.platformType == KotlinPlatformType.androidJvm
 
     if (extension.automaticallyAddRuntimeDependencies.get()) {
-      project.dependencies.add(
-        kotlinCompilation.implementationConfigurationName,
-        "dev.zacsweers.metro:runtime:$VERSION",
-      )
-      if (
-        kotlinCompilation.implementationConfigurationName == "metadataCompilationImplementation"
-      ) {
+      val implConfig = kotlinCompilation.defaultSourceSet.implementationConfigurationName
+      val circuitEnabled = extension.enableCircuitCodegen.getOrElse(false)
+      project.dependencies.add(implConfig, "dev.zacsweers.metro:runtime:$VERSION")
+      if (circuitEnabled) {
+        project.dependencies.add(implConfig, CIRCUIT_ANNOTATIONS_DEP)
+      }
+
+      if (implConfig == "metadataCompilationImplementation") {
         project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
+        if (circuitEnabled) {
+          project.dependencies.add("commonMainImplementation", CIRCUIT_ANNOTATIONS_DEP)
+        }
       }
 
       if (isJvmTarget) {
         if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
-          project.dependencies.add(
-            kotlinCompilation.implementationConfigurationName,
-            "dev.zacsweers.metro:interop-dagger:$VERSION",
-          )
+          project.dependencies.add(implConfig, "dev.zacsweers.metro:interop-dagger:$VERSION")
         }
         if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
-          project.dependencies.add(
-            kotlinCompilation.implementationConfigurationName,
-            "dev.zacsweers.metro:interop-guice:$VERSION",
-          )
+          project.dependencies.add(implConfig, "dev.zacsweers.metro:interop-guice:$VERSION")
         }
       }
     }
@@ -286,7 +290,6 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           add(lazyOption("max-ir-errors-count", extension.maxIrErrors))
           add(lazyOption("debug", extension.debug))
           add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
-          add(lazyOption("generate-throws-annotations", extension.generateThrowsAnnotations))
           add(
             lazyOption(
               "generate-contribution-hints",
@@ -319,16 +322,13 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.enableGraphImplClassAsReturnType.orElse(false),
             )
           )
-          @Suppress("DEPRECATION")
-          add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
           add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
-          add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
           add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
           add(lazyOption("enable-graph-sharding", extension.enableGraphSharding))
           add(lazyOption("keys-per-graph-shard", extension.keysPerGraphShard))
           add(lazyOption("enable-switching-providers", extension.enableSwitchingProviders))
           add(lazyOption("optional-binding-behavior", extension.optionalBindingBehavior))
-          add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
+          add(lazyOption("public-scoped-provider-severity", extension.publicScopedProviderSeverity))
           add(
             lazyOption("non-public-contribution-severity", extension.nonPublicContributionSeverity)
           )
@@ -352,10 +352,32 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
             )
           )
           add(lazyOption("contributes-as-inject", extension.contributesAsInject))
+          add(lazyOption("deduplicate-injected-params", extension.deduplicateInjectedParams))
           add(lazyOption("enable-klib-params-check", extension.enableKlibParamsCheck))
           add(lazyOption("patch-klib-params", extension.patchKlibParams))
           add(lazyOption("force-enable-fir-in-ide", extension.forceEnableFirInIde))
           add(lazyOption("compiler-version", extension.compilerVersion))
+          add(
+            lazyOption(
+              "compiler-version-aliases",
+              extension.compilerVersionAliases.map { map ->
+                map.entries.joinToString(":") { "${it.key}=${it.value}" }
+              },
+            )
+          )
+          add(
+            lazyOption(
+              "use-assisted-param-names-as-identifiers",
+              extension.useAssistedParamNamesAsIdentifiers,
+            )
+          )
+          add(lazyOption("parallel-threads", extension.parallelThreads))
+          add(lazyOption("enable-function-providers", extension.enableFunctionProviders))
+          add(
+            lazyOption("generate-contribution-providers", extension.generateContributionProviders)
+          )
+          add(lazyOption("enable-circuit-codegen", extension.enableCircuitCodegen))
+          add(lazyOption("rich-diagnostics", extension.richDiagnostics))
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
           reportsDir.orNull
@@ -377,6 +399,12 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               SubpluginOption(
                 "enable-dagger-runtime-interop",
                 extension.interop.enableDaggerRuntimeInterop.getOrElse(false).toString(),
+              )
+            )
+            add(
+              lazyOption(
+                "enable-kclass-to-class-interop",
+                extension.enableKClassToClassMapKeyInterop,
               )
             )
           }

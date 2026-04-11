@@ -4,6 +4,8 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.WrappedType.Canonical
+import dev.zacsweers.metro.compiler.graph.WrappedType.Provider
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -13,6 +15,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
@@ -88,7 +91,7 @@ internal class IrContextualTypeKey(
 
         // Create a Map type with the key type and the processed value type
         val mapClass = context.irBuiltIns.mapClass
-        return mapClass.typeWith(keyType, valueType)
+        mapClass.typeWith(keyType, valueType)
       }
     }
   }
@@ -155,27 +158,25 @@ internal class IrContextualTypeKey(
       rawType: IrType? = null,
     ): IrContextualTypeKey {
       val rawClassId = rawType?.rawTypeOrNull()?.classId
+      val baseType = baseWrappedType(typeKey.type)
       val wrappedType =
         when {
           isLazyWrappedInProvider -> {
             val lazyType =
               rawType!!.requireSimpleType().arguments.single().typeOrFail.rawType().classIdOrFail
-            WrappedType.Provider(
-              WrappedType.Lazy(WrappedType.Canonical(typeKey.type), lazyType),
-              rawClassId!!,
-            )
+            Provider(WrappedType.Lazy(baseType, lazyType), rawClassId!!)
           }
 
           isWrappedInProvider -> {
-            WrappedType.Provider(WrappedType.Canonical(typeKey.type), rawClassId!!)
+            Provider(baseType, rawClassId!!)
           }
 
           isWrappedInLazy -> {
-            WrappedType.Lazy(WrappedType.Canonical(typeKey.type), rawClassId!!)
+            WrappedType.Lazy(baseType, rawClassId!!)
           }
 
           else -> {
-            WrappedType.Canonical(typeKey.type)
+            baseType
           }
         }
 
@@ -185,6 +186,25 @@ internal class IrContextualTypeKey(
         hasDefault = hasDefault,
         rawType = rawType,
       )
+    }
+
+    /**
+     * Creates the appropriate base [WrappedType] for the given type. For Map types, creates
+     * [WrappedType.Map] to ensure consistent representation with parameter analysis in
+     * [asContextualTypeKey]/[asWrappedType].
+     */
+    private fun baseWrappedType(type: IrType): WrappedType<IrType> {
+      if (type is IrSimpleType && type.arguments.size == 2) {
+        if (type.classOrNull?.owner?.classId == StandardClassIds.Map) {
+          return WrappedType.Map(
+            type.arguments[0].typeOrFail,
+            Canonical(type.arguments[1].typeOrFail),
+          ) {
+            type
+          }
+        }
+      }
+      return Canonical(type)
     }
 
     /** Left for backward compat */
@@ -210,7 +230,7 @@ internal fun IrContextualTypeKey.stripIfLazy(): IrContextualTypeKey {
 
 context(context: IrMetroContext)
 internal fun IrContextualTypeKey.stripProvider(): IrContextualTypeKey {
-  return if (wrappedType !is WrappedType.Provider) {
+  return if (wrappedType !is Provider) {
     this
   } else {
     IrContextualTypeKey(
@@ -240,13 +260,13 @@ context(context: IrMetroContext)
 internal fun IrContextualTypeKey.wrapInProvider(
   providerType: IrClass = context.metroSymbols.metroProvider.owner
 ): IrContextualTypeKey {
-  return if (wrappedType is WrappedType.Provider) {
+  return if (wrappedType is Provider) {
     if (wrappedType.providerType == providerType) {
       this
     } else {
       IrContextualTypeKey(
         typeKey,
-        WrappedType.Provider(wrappedType.innerType, providerType.classIdOrFail),
+        Provider(wrappedType.innerType, providerType.classIdOrFail),
         hasDefault,
         rawType?.let {
           // New type with the original type's arguments
@@ -257,7 +277,7 @@ internal fun IrContextualTypeKey.wrapInProvider(
   } else {
     IrContextualTypeKey(
       typeKey,
-      WrappedType.Provider(wrappedType, providerType.classIdOrFail),
+      Provider(wrappedType, providerType.classIdOrFail),
       hasDefault,
       rawType?.let { providerType.typeWith(it) },
     )
@@ -326,9 +346,12 @@ private fun IrSimpleType.asWrappedType(
     val valueWrappedType =
       valueType.typeOrFail.requireSimpleType().asWrappedType(patchMutableCollections, declaration)
 
-    return WrappedType.Map(keyType.typeOrFail, valueWrappedType) {
+    // Normalize map key type for canonical representation (Class -> KClass)
+    val canonicalKeyType = keyType.typeOrFail.normalizeToKClassIfJavaClass()
+
+    return WrappedType.Map(canonicalKeyType, valueWrappedType) {
       context.irBuiltIns.mapClass.typeWithArguments(
-        listOf(keyType, valueWrappedType.canonicalType())
+        listOf(canonicalKeyType, valueWrappedType.canonicalType())
       )
     }
   }
@@ -341,7 +364,7 @@ private fun IrSimpleType.asWrappedType(
     val innerWrappedType =
       innerType.requireSimpleType(declaration).asWrappedType(patchMutableCollections, declaration)
 
-    return WrappedType.Provider(innerWrappedType, rawClassId!!)
+    return Provider(innerWrappedType, rawClassId!!)
   }
 
   // Check if this is a Lazy type
@@ -356,7 +379,7 @@ private fun IrSimpleType.asWrappedType(
   }
 
   // If it's not a special type, it's a canonical type
-  return WrappedType.Canonical(canonicalize(patchMutableCollections, context))
+  return Canonical(canonicalize(patchMutableCollections, context))
 }
 
 context(context: IrMetroContext)
@@ -385,9 +408,9 @@ internal fun WrappedType<IrType>.toIrType(): IrType {
 
 internal fun WrappedType<IrType>.remapType(remapper: TypeRemapper): WrappedType<IrType> {
   return when (this) {
-    is Canonical -> WrappedType.Canonical(remapper.remapType(type))
+    is Canonical -> Canonical(remapper.remapType(type))
     is Provider -> {
-      WrappedType.Provider(innerType.remapType(remapper), providerType)
+      Provider(innerType.remapType(remapper), providerType)
     }
 
     is WrappedType.Lazy -> {
@@ -413,8 +436,8 @@ internal fun IrContextualTypeKey.remapType(remapper: TypeRemapper): IrContextual
 
 internal fun WrappedType<IrType>.withCanonicalType(type: IrType): WrappedType<IrType> {
   return when (this) {
-    is Canonical -> WrappedType.Canonical(type)
-    is Provider -> WrappedType.Provider(innerType.withCanonicalType(type), providerType)
+    is Canonical -> Canonical(type)
+    is Provider -> Provider(innerType.withCanonicalType(type), providerType)
     is WrappedType.Lazy -> WrappedType.Lazy(innerType.withCanonicalType(type), lazyType)
     is WrappedType.Map -> {
       val simpleType = type.requireSimpleType()

@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AS_CONTRIBUTION_ERROR
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -12,7 +13,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.toResolvedCallableSymbol
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
@@ -31,7 +31,7 @@ internal object AsContributionChecker : FirFunctionCallChecker(MppCheckerKind.Co
     when (callee.callableId) {
       context.session.metroFirBuiltIns.asContribution.callableId -> {
         val resolvedType = expression.extensionReceiver?.resolvedType
-        val rawType = resolvedType?.classLikeLookupTagIfAny?.toClassSymbol(session) ?: return
+        val rawType = resolvedType?.classLikeLookupTagIfAny?.toClassSymbolCompat(session) ?: return
         val mergedGraph =
           if (
             rawType.isAnnotatedWithAny(

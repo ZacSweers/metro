@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.graph
 import androidx.collection.MutableObjectIntMap
 import androidx.collection.MutableScatterMap
 import androidx.collection.ScatterMap
+import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.allElementsAreEqual
 import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.ir.graph.appendBindingStack
@@ -34,6 +35,14 @@ internal interface BindingGraph<
   operator fun contains(key: TypeKey): Boolean
 
   fun TypeKey.dependsOn(other: TypeKey): Boolean
+}
+
+/** Kind of diagnostic error from the binding graph, used to select the appropriate factory. */
+internal enum class BindingGraphDiagnosticKind {
+  MISSING_BINDING,
+  DUPLICATE_BINDING,
+  DEPENDENCY_CYCLE,
+  GENERIC,
 }
 
 // TODO instead of implementing BindingGraph, maybe just make this a builder and have build()
@@ -67,11 +76,11 @@ internal open class MutableBindingGraph<
     { _, _, _ ->
       emptySet()
     },
-  private val onError: (String, BindingStack) -> Unit = { message, _ -> error(message) },
-  private val onHardError: (String, BindingStack) -> Nothing = { message, _ -> error(message) },
+  private val errorReporter: ErrorReporter<BindingStack> = ErrorReporter.throwing(),
   private val missingBindingHints: (key: TypeKey) -> MissingBindingHints<Type, TypeKey> = {
     MissingBindingHints()
   },
+  protected val messageRenderer: MessageRenderer = MessageRenderer(),
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   override val bindings = MutableScatterMap<TypeKey, Binding>(256)
@@ -119,7 +128,8 @@ internal open class MutableBindingGraph<
         roots: Map<ContextualTypeKey, BindingStackEntry>,
         adjacency: GraphAdjacency<TypeKey>,
       ) -> Unit =
-      { _, _, _, _ -> /* noop */
+      { _, _, _, _ ->
+        /* noop */
       },
   ): GraphTopology<TypeKey> {
     val stack = newBindingStack()
@@ -207,7 +217,7 @@ internal open class MutableBindingGraph<
           for (binding in bindings) {
             tryPut(binding, stack, binding.typeKey)
           }
-        } else {
+        } else if (!contextKey.hasDefault) {
           stack.withEntry(entry) { missingBindings[contextKey.typeKey] = stack.copy() }
         }
       }
@@ -278,31 +288,42 @@ internal open class MutableBindingGraph<
             }
           },
           onSortedCycle = onSortedCycle,
-          onCycle = { cycle ->
-            val fullCycle =
-              buildList {
-                  addAll(cycle)
-                  add(cycle.first())
-                }
-                // Reverse upfront so we can backward look at dependency requests
-                .reversed()
-            // Populate the BindingStack for a readable cycle trace
-            val entriesInCycle =
-              fullCycle.mapIndexed { i, key ->
-                val callingBinding =
-                  if (i == 0) {
-                    // This is the first index, back around to the back
-                    bindings.getValue(fullCycle[fullCycle.lastIndex - 1])
-                  } else {
-                    bindings.getValue(fullCycle[i - 1])
-                  }
-                stack.newBindingStackEntry(
-                  callingBinding.dependencies.firstOrNull { it.typeKey == key }
-                    ?: bindings.getValue(key).contextualTypeKey,
-                  callingBinding,
-                  roots,
+          onCycle = { sccVertices ->
+            val sccSet = sccVertices.toSet()
+            val isHardEdge: (TypeKey, TypeKey) -> Boolean = { from, to ->
+              val toBinding = bindings.getValue(to)
+              if (toBinding.isImplicitlyDeferrable) false
+              else bindings.getValue(from).dependencies.any { it.typeKey == to && !it.isDeferrable }
+            }
+
+            val cyclePath: List<TypeKey> =
+              sccVertices.firstNotNullOfOrNull { candidate ->
+                findSimpleCycle(
+                  startNode = candidate,
+                  sccNodes = sccSet,
+                  fullAdjacency = fullAdjacency,
+                  isEdgeAllowed = isHardEdge,
                 )
+              } ?: sccVertices
+
+            val entriesInCycle = buildList {
+              val size = cyclePath.size
+              for (i in 0..size) {
+                val currentDep = cyclePath[i % size]
+                val prevReq = if (i == 0) cyclePath.last() else cyclePath[i - 1]
+                val callingBinding = bindings.getValue(prevReq)
+                val contextKey =
+                  callingBinding.dependencies.firstOrNull {
+                    it.typeKey == currentDep && !it.isDeferrable
+                  }
+                    ?: reportCompilerBug(
+                      "Found a hard cycle, but no scalar dependency exists from " +
+                        "${prevReq.render(short = true)} to ${currentDep.render(short = true)}."
+                    )
+                add(stack.newBindingStackEntry(contextKey, callingBinding, roots))
               }
+            }
+
             reportCycle(entriesInCycle, stack)
           },
           isImplicitlyDeferrable = { key -> bindings.getValue(key).isImplicitlyDeferrable },
@@ -312,19 +333,52 @@ internal open class MutableBindingGraph<
     return result
   }
 
+  private fun <V : Comparable<V>> findSimpleCycle(
+    startNode: V,
+    sccNodes: Set<V>,
+    fullAdjacency: Map<V, Set<V>>,
+    isEdgeAllowed: (from: V, to: V) -> Boolean,
+  ): List<V>? {
+    val parents = mutableMapOf<V, V>()
+    val queue = ArrayDeque<V>().apply { add(startNode) }
+    val visited = mutableSetOf<V>()
+
+    while (queue.isNotEmpty()) {
+      val current = queue.removeFirst()
+      val neighbors = fullAdjacency[current].orEmpty()
+      for (neighbor in neighbors) {
+        if (neighbor !in sccNodes || !isEdgeAllowed(current, neighbor)) continue
+        if (neighbor == startNode) {
+          val cycle = mutableListOf<V>()
+          var curr: V? = current
+          while (curr != null) {
+            cycle.add(curr)
+            curr = parents[curr]
+          }
+          return cycle.reversed()
+        }
+        if (neighbor !in visited) {
+          visited.add(neighbor)
+          parents[neighbor] = current
+          queue.addLast(neighbor)
+        }
+      }
+    }
+    return null
+  }
+
   private fun reportCycle(fullCycle: List<BindingStackEntry>, stack: BindingStack): Nothing {
-    val message = buildString {
+    val message = messageRenderer.buildMessage {
       appendLine(
-        "[Metro/DependencyCycle] Found a dependency cycle while processing '${stack.graphFqName.asString()}'."
+        "[Metro/DependencyCycle] Found a dependency cycle while processing ${bold("'${stack.graphFqName.asString()}'")}."
       )
       // Print a simple diagram of the cycle first
       val indent = "    "
       appendLine("Cycle:")
       if (fullCycle.size == 2) {
         val key = fullCycle[0].contextKey.typeKey
-        append(
-          "$indent${key.render(short = true)} <--> ${key.render(short = true)} (depends on itself)"
-        )
+        val rendered = bold(key.render(short = true))
+        append("$indent$rendered <--> $rendered (depends on itself)")
       } else {
         val singleLine = fullCycle.size < 5
         fullCycle.joinWithDynamicSeparatorTo(
@@ -339,7 +393,7 @@ internal open class MutableBindingGraph<
               }
               val prevBinding = bindings.getValue(prev.typeKey)
               if (prevBinding.isAlias) {
-                append("~~>")
+                append(dim("~~>"))
               } else {
                 append("-->")
               }
@@ -348,7 +402,7 @@ internal open class MutableBindingGraph<
           },
           prefix = indent,
         ) {
-          it.contextKey.render(short = true)
+          bold(it.contextKey.render(short = true))
         }
       }
 
@@ -371,7 +425,7 @@ internal open class MutableBindingGraph<
         short = false,
       )
     }
-    onHardError(message, stack)
+    errorReporter.reportFatal(BindingGraphDiagnosticKind.DEPENDENCY_CYCLE, message, stack)
   }
 
   fun replace(binding: Binding) {
@@ -400,10 +454,10 @@ internal open class MutableBindingGraph<
     reportDuplicateBindings(key, bindings.map { it.renderLocationDiagnostic() }, bindingStack) {
       if (bindings.distinctBy { System.identityHashCode(it) }.size == 1) {
         appendLine()
-        appendLine("(Hint) Bindings are all the same instance")
+        appendLine(dim("(Hint) Bindings are all the same instance"))
       } else if (bindings.allElementsAreEqual()) {
         appendLine()
-        appendLine("(Hint) Bindings are all equal")
+        appendLine(dim("(Hint) Bindings are all equal"))
       }
     }
   }
@@ -412,14 +466,14 @@ internal open class MutableBindingGraph<
     key: TypeKey,
     locations: List<LocationDiagnostic>,
     bindingStack: BindingStack,
-    extraContent: StringBuilder.() -> Unit = {},
+    extraContent: MessageRenderer.MessageBuilder.() -> Unit = {},
   ) {
     if (locations.size < 2) {
       reportCompilerBug("Must have at least two locations to report duplicate bindings")
     }
-    val message = buildString {
+    val message = messageRenderer.buildMessage {
       appendLine(
-        "[Metro/DuplicateBinding] Multiple bindings found for ${key.render(short = false, includeQualifier = true)}"
+        "[Metro/DuplicateBinding] Multiple bindings found for ${bold(key.render(short = false, includeQualifier = true))}"
       )
       appendLine()
       for (location in locations) {
@@ -429,7 +483,7 @@ internal open class MutableBindingGraph<
       extraContent()
       appendBindingStack(bindingStack)
     }
-    onError(message, bindingStack)
+    errorReporter.report(BindingGraphDiagnosticKind.DUPLICATE_BINDING, message, bindingStack)
   }
 
   override operator fun get(key: TypeKey): Binding? = bindings[key]
@@ -444,14 +498,14 @@ internal open class MutableBindingGraph<
   fun reportMissingBinding(
     typeKey: TypeKey,
     bindingStack: BindingStack,
-    extraContent: StringBuilder.() -> Unit = {},
+    extraContent: MessageRenderer.MessageBuilder.() -> Unit = {},
   ) {
     if (reportedMissingKeys.add(typeKey)) {
-      val message = buildString {
+      val message = messageRenderer.buildMessage {
         append(
           "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
         )
-        appendLine(typeKey.render(short = false))
+        appendLine(bold(typeKey.render(short = false)))
         appendLine()
         appendBindingStack(bindingStack, short = false)
         val hints = missingBindingHints(typeKey)
@@ -461,7 +515,7 @@ internal open class MutableBindingGraph<
         if (messages.isNotEmpty() || similarBindings.isNotEmpty()) {
           if (messages.isNotEmpty()) {
             appendLine()
-            appendLine("(Hint)")
+            appendLine(dim("(Hint)"))
             messages.joinTo(this, separator = "\n\n")
           }
 
@@ -469,14 +523,16 @@ internal open class MutableBindingGraph<
           if (similarBindings.isNotEmpty() && typeKey.render(short = false) != "kotlin.Any") {
             appendLine()
             appendLine("Similar bindings:")
-            similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
+            for (binding in similarBindings.values.map { "  - $it" }.sorted()) {
+              appendLine(binding)
+            }
           }
         }
 
         extraContent()
       }
 
-      onError(message, bindingStack)
+      errorReporter.report(BindingGraphDiagnosticKind.MISSING_BINDING, message, bindingStack)
     }
   }
 }

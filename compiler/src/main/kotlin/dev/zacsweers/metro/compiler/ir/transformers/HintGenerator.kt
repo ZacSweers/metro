@@ -7,7 +7,6 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.addThrowsAnnotation
 import dev.zacsweers.metro.compiler.ir.effectiveVisibility
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.reportCompat
@@ -83,7 +82,6 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
               kind = IrParameterKind.Regular
             }
           body = stubExpressionBody()
-          addThrowsAnnotation(addToMetadata = false)
         }
 
     val fileName = hintFileName(sourceClass.classIdOrFail, hintName)
@@ -127,7 +125,7 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
         .also { it.metadata = FirMetadataSource.File(firFile) }
     moduleFragment.addFile(hintFile)
     hintFile.addChild(function)
-    pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
+    metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
     // Link the hint back to the source class so source class changes in IC also mark this hint
     // https://github.com/ZacSweers/metro/pull/1349
     trackClassLookup(function, sourceClass)

@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -46,9 +47,6 @@ import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
-import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
@@ -116,10 +114,7 @@ internal class IrGraphGenerator(
   private val graphClass: IrClass,
   private val bindingGraph: IrBindingGraph,
   private val sealResult: IrBindingGraph.BindingGraphResult,
-  // TODO move these accesses to irAttributes
-  private val bindingContainerTransformer: BindingContainerTransformer,
-  private val membersInjectorTransformer: MembersInjectorTransformer,
-  private val assistedFactoryTransformer: AssistedFactoryTransformer,
+  private val metroDeclarations: MetroDeclarations,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   /** Parent graph's binding property context for hierarchical lookup. Null for root graphs. */
   parentBindingContext: BindingPropertyContext?,
@@ -240,9 +235,7 @@ internal class IrGraphGenerator(
           bindingPropertyContext = bindingPropertyContext,
           ancestorGraphProperties = ancestorGraphProperties,
           bindingGraph = bindingGraph,
-          bindingContainerTransformer = bindingContainerTransformer,
-          membersInjectorTransformer = membersInjectorTransformer,
-          assistedFactoryTransformer = assistedFactoryTransformer,
+          metroDeclarations = metroDeclarations,
           graphExtensionGenerator = graphExtensionGenerator,
         )
 
@@ -318,13 +311,24 @@ internal class IrGraphGenerator(
       if (!graphClass.origin.isSyntheticGeneratedGraph) {
         trace("Generate Metro metadata") {
           // Finally, generate metadata
-          val graphProto = node.toProto(bindingGraph = bindingGraph)
+          // Use only the graph's own provider factories (not those from binding containers)
+          // for metadata. Binding container factories are resolved independently by consumers.
+          val ownProviderFactories =
+            metroDeclarations
+              .findBindingContainer(node.sourceGraph)
+              ?.providerFactories
+              ?.values
+              .orEmpty()
+              .toSet()
+          val graphProto =
+            node.toProto(bindingGraph = bindingGraph, ownProviderFactories = ownProviderFactories)
           graphMetadataReporter.write(node, bindingGraph)
           val metroMetadata = createMetroMetadata(dependency_graph = graphProto)
 
-          writeDiagnostic({
-            "graph-metadata-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt"
-          }) {
+          writeDiagnostic(
+            "graph-metadata",
+            { "${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt" },
+          ) {
             metroMetadata.toString()
           }
 
@@ -469,27 +473,26 @@ internal class IrGraphGenerator(
     typeKey: IrTypeKey,
     name: Name,
     thisReceiverParameter: IrValueParameter,
+    contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey),
     initializer:
       IrBuilderWithScope.(thisReceiver: IrValueParameter, typeKey: IrTypeKey) -> IrExpression,
   ) {
     // Don't add it if it's not used
     if (typeKey !in sealResult.reachableKeys) return
 
-    val instanceContextKey = IrContextualTypeKey.create(typeKey)
     val instanceProperty =
       createBindingProperty(
-          instanceContextKey,
+          contextualTypeKey,
           name.decapitalizeUS().suffixIfNot("Instance"),
           typeKey.type,
           PropertyKind.FIELD,
         )
         .initFinal { initializer(thisReceiverParameter, typeKey) }
 
-    bindingPropertyContext.put(instanceContextKey, instanceProperty)
+    bindingPropertyContext.put(contextualTypeKey, instanceProperty)
 
     val providerType = metroSymbols.metroProvider.typeWith(typeKey.type)
-    val providerContextKey =
-      IrContextualTypeKey.create(typeKey, isWrappedInProvider = true, rawType = providerType)
+    val providerContextKey = contextualTypeKey.wrapInProvider()
     val providerProperty =
       createBindingProperty(
           providerContextKey,
@@ -534,7 +537,12 @@ internal class IrGraphGenerator(
           // Don't add it if there's a dynamic replacement
           continue
         }
-        addBoundInstanceProperty(param.typeKey, param.name, thisReceiverParameter) { _, _ ->
+        addBoundInstanceProperty(
+          param.typeKey,
+          param.name,
+          thisReceiverParameter,
+          contextualTypeKey = param.contextualTypeKey,
+        ) { _, _ ->
           irGet(irParam)
         }
       } else {
@@ -745,10 +753,10 @@ internal class IrGraphGenerator(
       }
       .toList()
       .also { propertyBindings ->
-        writeDiagnostic("keys-providerProperties-${diagnosticTag}.txt") {
+        writeDiagnostic("keys-providerProperties", "${diagnosticTag}.txt") {
           propertyBindings.joinToString("\n") { it.binding.typeKey.toString() }
         }
-        writeDiagnostic("keys-scopedProviderProperties-${diagnosticTag}.txt") {
+        writeDiagnostic("keys-scopedProviderProperties", "${diagnosticTag}.txt") {
           propertyBindings
             .filter { it.binding.isScoped() }
             .joinToString("\n") { it.binding.typeKey.toString() }
@@ -1083,8 +1091,7 @@ internal class IrGraphGenerator(
     thisReceiverParameter: IrValueParameter,
     constructorStatements: MutableList<InitStatement>,
   ) {
-    val mustChunkInits =
-      options.chunkFieldInits && shardPropertyInitializers.size > options.statementsPerInitFun
+    val mustChunkInits = shardPropertyInitializers.size > options.statementsPerInitFun
 
     // Create name allocator for init functions on this shard
     val shardFunctionNameAllocator =
@@ -1172,21 +1179,20 @@ internal class IrGraphGenerator(
 
     val targetThisReceiver = shard.shardClass.thisReceiverOrFail
 
-    val initFunctionsToCall =
-      chunks.map { statementsChunk ->
-        val initName = shardFunctionNameAllocator.newName("init")
-        shard.shardClass
-          .addFunction(initName, irBuiltIns.unitType, visibility = DescriptorVisibilities.PRIVATE)
-          .apply {
-            val localReceiver = targetThisReceiver.copyTo(this)
-            setDispatchReceiver(localReceiver)
-            buildBlockBody {
-              for (statement in statementsChunk) {
-                +statement(localReceiver)
-              }
+    val initFunctionsToCall = chunks.map { statementsChunk ->
+      val initName = shardFunctionNameAllocator.newName("init")
+      shard.shardClass
+        .addFunction(initName, irBuiltIns.unitType, visibility = DescriptorVisibilities.PRIVATE)
+        .apply {
+          val localReceiver = targetThisReceiver.copyTo(this)
+          setDispatchReceiver(localReceiver)
+          buildBlockBody {
+            for (statement in statementsChunk) {
+              +statement(localReceiver)
             }
           }
-      }
+        }
+    }
 
     if (shard.isGraphAsShard) {
       // For graph-as-shard, add init calls to main constructor
@@ -1462,7 +1468,7 @@ internal class IrGraphGenerator(
             // TODO reuse, consolidate calling code with how we implement this in
             //  constructor inject code gen
             // val injectors =
-            // membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
+            // metroDeclarations.findAllInjectorsFor(declaration)
             // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten()
             // }
 
@@ -1486,8 +1492,7 @@ internal class IrGraphGenerator(
               targetClass.allSupertypesSequence(excludeSelf = false, excludeAny = true)) {
 
               val clazz = type.rawType()
-              val generatedInjector =
-                membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
+              val generatedInjector = metroDeclarations.findInjector(clazz) ?: continue
               for ((function, unmappedParams) in generatedInjector.declaredInjectFunctions) {
                 val parameters =
                   if (remapper != null) {
@@ -1497,32 +1502,49 @@ internal class IrGraphGenerator(
                   }
                 // Record for IC
                 trackFunctionCall(this@apply, function)
+
+                var isOptional = false
+
+                val args = buildList {
+                  add(irGet(targetParam))
+                  for (parameter in parameters.regularParameters) {
+                    val paramBinding = bindingGraph.requireBinding(parameter.contextualTypeKey)
+                    if (paramBinding is IrBinding.Absent) {
+                      isOptional = true
+                      if (parameters.regularParameters.size > 1) {
+                        reportCompilerBug(
+                          "Unexpected multiple parameters for member injection: $contextKey"
+                        )
+                      }
+                      break
+                    } else {
+                      add(
+                        typeAsProviderArgument(
+                          parameter.contextualTypeKey,
+                          expressionGeneratorFactory
+                            .create(overriddenFunction.ir.dispatchReceiverParameter!!)
+                            .generateBindingCode(
+                              paramBinding,
+                              contextualTypeKey = parameter.contextualTypeKey,
+                            ),
+                          isAssisted = false,
+                          isGraphInstance = false,
+                        )
+                      )
+                    }
+                  }
+                }
+
+                // If it's a simple property with a default value and absent, omit injecting it here
+                if (isOptional) continue
+
                 +irInvoke(
                   callee = function.symbol,
                   typeArgs =
                     targetParam.type.requireSimpleType(targetParam).arguments.map {
                       it.typeOrNullableAny
                     },
-                  args =
-                    buildList {
-                      add(irGet(targetParam))
-                      for (parameter in parameters.regularParameters) {
-                        val paramBinding = bindingGraph.requireBinding(parameter.contextualTypeKey)
-                        add(
-                          typeAsProviderArgument(
-                            parameter.contextualTypeKey,
-                            expressionGeneratorFactory
-                              .create(overriddenFunction.ir.dispatchReceiverParameter!!)
-                              .generateBindingCode(
-                                paramBinding,
-                                contextualTypeKey = parameter.contextualTypeKey,
-                              ),
-                            isAssisted = false,
-                            isGraphInstance = false,
-                          )
-                        )
-                      }
-                    },
+                  args = args,
                 )
               }
             }

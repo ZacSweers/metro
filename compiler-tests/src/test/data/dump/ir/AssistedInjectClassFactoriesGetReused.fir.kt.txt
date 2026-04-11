@@ -9,16 +9,16 @@ class NotReused {
 
     }
 
-    fun invoke(): NotReused {
-      return MetroFactory.newInstance()
-    }
-
     fun create(): MetroFactory {
       return MetroFactory
     }
 
     fun newInstance(): NotReused {
       return NotReused()
+    }
+
+    operator fun invoke(): NotReused {
+      return MetroFactory.newInstance()
     }
 
     fun mirrorFunction(): NotReused {
@@ -46,16 +46,16 @@ class Reused {
 
     }
 
-    fun invoke(): Reused {
-      return MetroFactory.newInstance()
-    }
-
     fun create(): MetroFactory {
       return MetroFactory
     }
 
     fun newInstance(): Reused {
       return Reused()
+    }
+
+    operator fun invoke(): Reused {
+      return MetroFactory.newInstance()
     }
 
     fun mirrorFunction(): Reused {

@@ -49,6 +49,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
@@ -81,7 +82,8 @@ import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
-internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroContext by context {
+internal class MembersInjectorTransformer(context: IrMetroContext) :
+  IrMetroContext by context, Lockable by Lockable() {
 
   data class MemberInjectClass(
     val sourceClass: IrClass,
@@ -105,8 +107,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     fun mergedParameters(remapper: TypeRemapper): Parameters {
       // `MembersInjector` -> origin class
-      val allParams =
-        declaredInjectFunctions.map { (_, parameters) -> parameters.remapTypes(remapper) }
+      val allParams = declaredInjectFunctions.map { (_, parameters) ->
+        parameters.remapTypes(remapper)
+      }
       return when (allParams.size) {
         0 -> Parameters.empty()
         1 -> allParams.first()
@@ -115,11 +118,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     }
   }
 
-  private val generatedInjectors = mutableMapOf<ClassId, Optional<MemberInjectClass>>()
-  private val injectorParamsByClass = mutableMapOf<ClassId, List<Parameters>>()
+  // Thread-safe for concurrent access during parallel graph validation.
+  private val generatedInjectors = ConcurrentHashMap<ClassId, Optional<MemberInjectClass>>()
+  private val injectorParamsByClass = ConcurrentHashMap<ClassId, List<Parameters>>()
 
-  fun visitClass(declaration: IrClass) {
-    @Suppress("RETURN_VALUE_NOT_USED") getOrGenerateInjector(declaration)
+  fun visitClass(declaration: IrClass): Boolean {
+    return getOrGenerateInjector(declaration) != null
   }
 
   private fun requireInjector(declaration: IrClass): MemberInjectClass {
@@ -257,6 +261,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       return memberInjectClass.also { generatedInjectors[injectedClassId] = Optional.of(it) }
     }
 
+    checkNotLocked()
+
     val ctor = injectorClass.primaryConstructor!!
 
     val injectedMembersByClass = memberInjectClass.requiredParametersByClass
@@ -275,9 +281,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     // Static create()
     @Suppress("RETURN_VALUE_NOT_USED")
-    generateStaticCreateFunction(
-      parentClass = companionObject,
-      targetClass = injectorClass,
+    transformStaticCreateFunction(
+      objectClassToGenerateIn = companionObject,
+      factoryClass = injectorClass,
       targetConstructor = ctor.symbol,
       parameters =
         injectedMembersByClass.values
@@ -306,9 +312,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
         regularParameters.drop(1).forEachIndexed { i, param ->
           val injectedParam = params.regularParameters[i]
           injectedParam.typeKey.qualifier?.let { qualifier ->
-            pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+            metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
               param,
-              qualifier.ir.deepCopyWithSymbols(),
+              listOf(qualifier.ir.deepCopyWithSymbols()),
             )
           }
         }
@@ -393,12 +399,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     val result =
       processTypes(allTypes) { clazz, classId, nameAllocator ->
-        injectorParamsByClass.getOrPut(classId) {
+        injectorParamsByClass.computeIfAbsent(classId) {
           // Check for Dagger injector first if we're in Dagger mode or interop is enabled
           if (isDagger || options.enableDaggerRuntimeInterop) {
             val daggerParams = clazz.tryDeriveDaggerMemberInjectParameters(nameAllocator)
             if (daggerParams != null) {
-              return@getOrPut daggerParams
+              return@computeIfAbsent daggerParams
             }
           }
 
@@ -536,21 +542,21 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     data class MatchedFunction(val functionName: String, val startPosition: Int)
 
     // TODO what about overloads of the same name?
-    val matchedFunctions =
-      injectFunctionNames.mapNotNull { functionName ->
-        // Extract member name from inject function name (e.g., "injectMessage" -> "message")
-        val memberName = functionName.removePrefix("inject").decapitalizeUS()
+    val matchedFunctions = injectFunctionNames.mapNotNull { functionName ->
+      // Extract member name from inject function name (e.g., "injectMessage" -> "message")
+      val memberName = functionName.removePrefix("inject").decapitalizeUS()
 
-        // Find the position of this member in create() params by matching parameter names
-        val foundPosition =
-          allCreateParams.indexOfFirst { param -> param.name.asString() == memberName }
-
-        if (foundPosition >= 0) {
-          MatchedFunction(functionName, foundPosition)
-        } else {
-          null
-        }
+      // Find the position of this member in create() params by matching parameter names
+      val foundPosition = allCreateParams.indexOfFirst { param ->
+        param.name.asString() == memberName
       }
+
+      if (foundPosition >= 0) {
+        MatchedFunction(functionName, foundPosition)
+      } else {
+        null
+      }
+    }
 
     // If we successfully matched all functions, sort by create() order
     val sortedFunctionNames =
@@ -593,54 +599,53 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     // Create a synthetic Parameters object from the inject function
     val callableId = CallableId(clazz.classIdOrFail, memberName.asName())
-    val regularParams =
-      dependencyParams.mapIndexed { index, param ->
-        val uniqueName = nameAllocator.newName(param.name)
+    val regularParams = dependencyParams.mapIndexed { index, param ->
+      val uniqueName = nameAllocator.newName(param.name)
 
-        // Determine the qualifier based on context and injection type
-        val qualifier =
-          if (sourceMemberParametersMap != null) {
-            // Dagger context: check if this is a field injection (has @InjectedFieldSignature)
-            val isFieldInjection =
-              function.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_INJECTED_FIELD_SIGNATURE)
+      // Determine the qualifier based on context and injection type
+      val qualifier =
+        if (sourceMemberParametersMap != null) {
+          // Dagger context: check if this is a field injection (has @InjectedFieldSignature)
+          val isFieldInjection =
+            function.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_INJECTED_FIELD_SIGNATURE)
 
-            if (isFieldInjection) {
-              // Field injection: qualifier is on the inject function itself
-              function.qualifierAnnotation()
-            } else {
-              // Setter/method injection: look up the actual member Parameters and extract qualifier
-              val sourceMemberParams =
-                sourceMemberParametersMap.value[memberName]
-                  ?: reportCompilerBug(
-                    """
+          if (isFieldInjection) {
+            // Field injection: qualifier is on the inject function itself
+            function.qualifierAnnotation()
+          } else {
+            // Setter/method injection: look up the actual member Parameters and extract qualifier
+            val sourceMemberParams =
+              sourceMemberParametersMap.value[memberName]
+                ?: reportCompilerBug(
+                  """
                   Could not find corresponding injected member '$memberName' in ${clazz.fqNameWhenAvailable} for inject method ${function.name}.
                 """
-                      .trimIndent()
-                  )
-              sourceMemberParams.regularParameters[index].typeKey.qualifier
-            }
-          } else {
-            // Metro injector, it has the qualifier on the parameter
-            param.qualifierAnnotation()
+                    .trimIndent()
+                )
+            sourceMemberParams.regularParameters[index].typeKey.qualifier
           }
+        } else {
+          // Metro injector, it has the qualifier on the parameter
+          param.qualifierAnnotation()
+        }
 
-        // Create the parameter with the determined qualifier
-        val contextKey =
-          param.type.asContextualTypeKey(
-            qualifierAnnotation = qualifier,
-            hasDefault = param.defaultValue != null,
-            patchMutableCollections = false,
-            declaration = param,
-          )
-
-        Parameter.member(
-          kind = param.kind,
-          name = uniqueName,
-          originalName = param.name,
-          contextualTypeKey = contextKey,
-          ir = param,
+      // Create the parameter with the determined qualifier
+      val contextKey =
+        param.type.asContextualTypeKey(
+          qualifierAnnotation = qualifier,
+          hasDefault = param.defaultValue != null,
+          patchMutableCollections = false,
+          declaration = param,
         )
-      }
+
+      Parameter.member(
+        kind = param.kind,
+        name = uniqueName,
+        originalName = param.name,
+        contextualTypeKey = contextKey,
+        ir = param,
+      )
+    }
 
     return Parameters(
       callableId = callableId,

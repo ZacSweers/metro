@@ -1,4 +1,4 @@
-# Kotlin Compatibility
+# Kotlin Compiler Compatibility
 
 The Kotlin compiler plugin API is not a stable API, so not every version of Metro will work with every version of the Kotlin compiler.
 
@@ -8,11 +8,18 @@ Pre-release versions are normally only tested during their development cycle. Af
 
 | Kotlin version  | Metro versions (inclusive) | Notes                                |
 |-----------------|----------------------------|--------------------------------------|
-| 2.3.20-Beta2    | 0.10.0 -                   |                                      |
-| 2.3.20-Beta1    | 0.10.0 -                   |                                      |
+| 2.4.0-Beta1     | 0.13.0 -                   |                                      |
+| 2.4.0-dev-2124  | 0.12.0 -                   |                                      |
+| 2.4.0-dev-539   | 0.10.3 - [0.11.3]          |                                      |
+| 2.3.20          | 0.10.0 -                   |                                      |
+| 2.3.20-RC3      | 0.10.0 - [0.11.3]          |                                      |
+| 2.3.20-RC2      | 0.10.0 - [0.11.3]          |                                      |
+| 2.3.20-RC       | 0.10.0 - [0.11.3]          |                                      |
+| 2.3.20-Beta2    | 0.10.0 - [0.11.3]          |                                      |
+| 2.3.20-Beta1    | 0.10.0 - [0.11.3]          |                                      |
 | 2.3.20-dev-7791 | 0.10.0 - [0.10.2]          |                                      |
-| 2.3.20-dev-5437 | 0.9.1 -                    |                                      |
-| 2.3.10-RC       | 0.9.1 -                    |                                      |
+| 2.3.20-dev-5437 | 0.9.1 - [0.10.3]           |                                      |
+| 2.3.10-RC       | 0.9.1 - [0.10.3]           |                                      |
 | 2.3.0           | 0.9.1 -                    | [1]                                  |
 | 2.3.0-RC3       | 0.6.9, 0.6.11 - [0.9.2]    |                                      |
 | 2.3.0-RC2       | 0.6.9, 0.6.11 - [0.9.2]    |                                      |
@@ -54,18 +61,38 @@ IDEs have their own compatibility story with Kotlin versions. The Kotlin IDE plu
 
 The following Kotlin versions are tested via CI:
 
-| Kotlin Version  |
-|-----------------|
-| 2.3.20-dev-5437 |
-| 2.3.20-Beta2    |
-| 2.3.20-Beta1    |
-| 2.3.10-RC       |
-| 2.3.0           |
-| 2.2.21          |
-| 2.2.20          |
+| Kotlin Version |
+|----------------|
+| 2.4.0-dev-2124 |
+| 2.4.0-Beta1    |
+| 2.3.20         |
+| 2.3.10         |
+| 2.3.0          |
+| 2.2.21         |
+| 2.2.20         |
 
 !!! note
     Versions without dedicated compiler-compat modules will use the nearest available implementation _below_ that version. See [`compiler-compat/version-aliases.txt`](https://github.com/ZacSweers/metro/blob/main/compiler-compat/version-aliases.txt) for the full list.
+
+### IDE Tested Versions
+
+[![IDE Integration Tests](https://github.com/ZacSweers/metro/actions/workflows/ide-integration.yml/badge.svg)](https://github.com/ZacSweers/metro/actions/workflows/ide-integration.yml)
+
+The following IDE versions are tested via IDE integration tests:
+
+| IntelliJ IDEA | Android Studio                |
+|---------------|-------------------------------|
+| 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1)  |
+| 261.22158.182 | 2025.3.2.6 (Panda 2)          |
+|               | 2025.3.3.2 (Panda 3 Canary 2) |
+
+## Runtime Compatibility
+
+Metro's runtime artifacts target Kotlin languageVersion and apiVersion `2.2`.
+
+## Gradle Compatibility
+
+Metro's Gradle plugin targets Kotlin languageVersion and apiVersion `2.0`.
 
 ## What about Metro's stability?
 

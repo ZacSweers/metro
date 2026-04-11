@@ -1,5 +1,13 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+buildscript {
+  configurations.configureEach {
+    // Gradle's embedded Kotlin pins org.jetbrains:annotations to strictly 13.0,
+    // but AGP and other classpath dependencies require 23.0.0.
+    resolutionStrategy.force("org.jetbrains:annotations:26.1.0")
+  }
+}
+
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
   alias(libs.plugins.kotlin.multiplatform) apply false
@@ -15,7 +23,5 @@ plugins {
   alias(libs.plugins.kotlin.plugin.serialization) apply false
   id("metro.yarnNode")
 }
-
-allprojects { apply(plugin = "metro.spotless") }
 
 subprojects { apply(plugin = "metro.base") }

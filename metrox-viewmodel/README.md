@@ -2,7 +2,7 @@
 
 ViewModel integration for Metro. This artifact provides core utilities for injecting ViewModels using Metro's dependency injection.
 
-For Compose-specific APIs (`LocalMetroViewModelFactory`, `metroViewModel()`, etc.), see the [`metrox-viewmodel-compose`](/metrox-viewmodel-compose) artifact.
+For Compose-specific APIs (`LocalMetroViewModelFactory`, `metroViewModel()`, etc.), see the [`metrox-viewmodel-compose`](metrox-viewmodel-compose.md) artifact.
 
 > Should I use this?
 
@@ -61,7 +61,7 @@ Use `@ViewModelKey` with `@ContributesIntoMap` to contribute ViewModels:
 
 ```kotlin
 @Inject
-@ViewModelKey(HomeViewModel::class)
+@ViewModelKey
 @ContributesIntoMap(AppScope::class)
 class HomeViewModel : ViewModel() {
   // ...
@@ -103,7 +103,7 @@ class CustomViewModel(@Assisted val param1: String, @Assisted val param2: Int) :
   // ...
 
   @AssistedFactory
-  @ManualViewModelAssistedFactoryKey(Factory::class)
+  @ManualViewModelAssistedFactoryKey
   @ContributesIntoMap(AppScope::class)
   interface Factory : ManualViewModelAssistedFactory {
     fun create(param1: String, param2: Int): CustomViewModel

@@ -147,6 +147,11 @@ Below are some results from real-world projects, shared with the developers' per
 
     > We already had incremental compilation in the single-digit seconds range, but I’m still blown away by how much faster it is now that the entire codebase is fully on Metro. 🤯
 
+!!! note "Vinted"
+    Vinted adopted metro and reaped significant build time and developer experience improvements: [From Dagger to Metro](https://vinted.engineering/2026/02/12/from-dagger-to-metro/)
+
+    > Metro consolidated all the best practices from other popular frameworks, while leaving out the not-so-best practices on the side, allowed us to enable K2 and immediately experience significant build time improvements, while also unlocking incremental compilation, which means that the builds will be getting even faster
+
 ## Tracing
 
 If you want to investigate the performance of Metro's compiler pipeline, you can enable tracing in the Gradle DSL.

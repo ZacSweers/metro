@@ -26,6 +26,44 @@ Use the provided script to extract the bundled Kotlin compiler version from an A
 
 This prints the compiler version (e.g., `2.2.255-dev-255`) to stdout.
 
+### Resolving Dev Build for an IntelliJ Version
+
+Use `resolve-ij-kotlin-version.sh` to trace an `-ij`-suffixed Kotlin version back to the dev build it branched from:
+
+```bash
+./resolve-ij-kotlin-version.sh 252.28238.7
+./resolve-ij-kotlin-version.sh 252.28238.7 2.3.255-dev-255
+```
+
+This uses git ancestry analysis in `JetBrains/kotlin` to find the exact dev build:
+
+1. Fetches the Kotlin version (e.g., `2.2.20-ij252-24`) from `intellij-community`
+2. Finds the corresponding build tag (e.g., `build-2.2.20-ij252-25`) in `JetBrains/kotlin`
+3. Computes the merge-base between that tag and `master`
+4. Uses binary search to find the dev tag at that merge-base (e.g., `build-2.2.20-dev-5810`)
+
+This is more accurate than timestamp-based correlation because it uses actual git history.
+Requires `gh` (GitHub CLI).
+
+### Fetching All IDE Kotlin Version Aliases
+
+Use `fetch-all-ide-kotlin-versions.py` to enumerate recent IntelliJ IDEA and Android Studio releases and resolve their bundled Kotlin versions to alias mappings:
+
+```bash
+# Default: all channels, platform >= 251
+./fetch-all-ide-kotlin-versions.py
+
+# Filter channels
+./fetch-all-ide-kotlin-versions.py --channels stable,canary
+
+# Include older platforms
+./fetch-all-ide-kotlin-versions.py --min-major 243
+```
+
+This fetches release metadata from the JetBrains API and Google's Android Studio updates feed, then resolves each platform build to its Kotlin version via `intellij-community` tags on GitHub. The output includes a copy-pasteable `mapOf(...)` for `BUILT_IN_COMPILER_VERSION_ALIASES` in `build.gradle.kts`.
+
+Requires `python3` and `gh` (GitHub CLI).
+
 ## Architecture
 
 ### Core Interface
@@ -93,14 +131,14 @@ This allows Metro to support multiple Kotlin versions without requiring separate
 
 ### Track-Based Resolution
 
-dev track versions (e.g., `2.3.20-dev-5437`) are handled specially to avoid issues with divergent release tracks.
+dev track versions (e.g., `2.3.20-dev-5706`) are handled specially to avoid issues with divergent release tracks.
 
 Kotlin's release process can create divergent version tracks:
 - **dev builds** are from the main development branch (trunk)
 - **Beta/RC builds** are cut from stable branches with different changes
 
 For example:
-- `2.3.20-dev-5437` - has API change X
+- `2.3.20-dev-5706` - has API change X
 - `2.3.20-Beta1` - released from a branch, has API change X + Y
 - `2.3.20-dev-7791` - new dev build, has X + Z (not Y from Beta1)
 

@@ -1,0 +1,155 @@
+// FILE: ImplicitClassKeyPopulatedOnCopy.kt
+
+@ClassKey(value = Base::class)
+@ContributesIntoMap(scope = AppScope::class)
+@Inject
+class ExplicitKeyImpl : Base {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<ExplicitKeyImpl> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<ExplicitKeyImpl> {
+      return MetroFactory
+    }
+
+    fun newInstance(): ExplicitKeyImpl {
+      return ExplicitKeyImpl()
+    }
+
+    override operator fun invoke(): ExplicitKeyImpl {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): ExplicitKeyImpl {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface MetroContributionToAppScope {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
+    abstract class BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @Binds
+      @IntoMap
+      @ClassKey(value = Base::class)
+      @CallableMetadata(callableName = "bindIntoMapAsBase855602051", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindIntoMapAsBase855602051855602051_intomap(instance: ExplicitKeyImpl): Base
+
+    }
+
+    @IntoMap
+    @Binds
+    @ClassKey(value = Base::class)
+    @ComptimeOnly
+    abstract fun bindIntoMapAsBase855602051(instance: ExplicitKeyImpl): Base {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@ClassKey
+@ContributesIntoMap(scope = AppScope::class)
+@Inject
+class ImplicitKeyImpl : Base {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<ImplicitKeyImpl> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<ImplicitKeyImpl> {
+      return MetroFactory
+    }
+
+    fun newInstance(): ImplicitKeyImpl {
+      return ImplicitKeyImpl()
+    }
+
+    override operator fun invoke(): ImplicitKeyImpl {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): ImplicitKeyImpl {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface MetroContributionToAppScope {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
+    abstract class BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @Binds
+      @IntoMap
+      @ClassKey(value = ImplicitKeyImpl::class)
+      @CallableMetadata(callableName = "bindIntoMapAsBase4194623803", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindIntoMapAsBase41946238031920108602_intomap(instance: ImplicitKeyImpl): Base
+
+    }
+
+    @IntoMap
+    @Binds
+    @ClassKey(value = ImplicitKeyImpl::class)
+    @ComptimeOnly
+    abstract fun bindIntoMapAsBase4194623803(instance: ImplicitKeyImpl): Base {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+interface Base {
+}
+
+// FILE: explicitKeyImplAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: ExplicitKeyImpl) {
+  return error(message = "Never called")
+}
+
+// FILE: implicitKeyImplAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: ImplicitKeyImpl) {
+  return error(message = "Never called")
+}
+

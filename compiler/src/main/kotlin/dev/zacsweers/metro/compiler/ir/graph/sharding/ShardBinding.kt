@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.Name
 
 /** Models a shard binding before its property is created. */
+// TODO make this just hold the original binding + extras?
 internal data class ShardBinding(
   val binding: IrBinding,
   val typeKey: IrTypeKey,

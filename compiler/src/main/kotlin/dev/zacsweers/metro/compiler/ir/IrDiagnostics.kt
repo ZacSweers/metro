@@ -5,11 +5,13 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.ERROR
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.FIXED_WARNING
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.INFO
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.STRONG_WARNING
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.WARNING
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -24,6 +26,8 @@ import org.jetbrains.kotlin.ir.util.sourceElement
 /*
 Compat reporting functions until IrDiagnosticReporter supports source-less declarations
 */
+
+private val REPORT_LOCK = ReentrantLock()
 
 @OptIn(InternalDiagnosticFactoryMethod::class)
 internal fun <A : Any> IrMetroContext.reportCompat(
@@ -42,12 +46,13 @@ internal fun <A : Any> IrMetroContext.reportCompat(
 }
 
 // AnalyzerWithCompilerReport removed this API in 2.3.20, so we copy it in
-private fun convertSeverity(severity: Severity): CompilerMessageSeverity =
-  when (severity) {
+private fun Severity.convertSeverity(): CompilerMessageSeverity =
+  when (this) {
     Severity.INFO -> INFO
     Severity.ERROR -> ERROR
     Severity.WARNING -> WARNING
     Severity.FIXED_WARNING -> FIXED_WARNING
+    Severity.STRONG_WARNING -> STRONG_WARNING
   }
 
 internal fun <A : Any> IrMetroContext.reportCompat(
@@ -55,6 +60,19 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   factory: KtDiagnosticFactory1<A>,
   a: A,
   extraContext: StringBuilder.() -> Unit = {},
+) {
+  if (options.parallelThreads > 0) {
+    REPORT_LOCK.withLock { reportCompatImpl(irDeclaration, factory, a, extraContext) }
+  } else {
+    reportCompatImpl(irDeclaration, factory, a, extraContext)
+  }
+}
+
+private fun <A : Any> IrMetroContext.reportCompatImpl(
+  irDeclaration: IrDeclaration?,
+  factory: KtDiagnosticFactory1<A>,
+  a: A,
+  extraContext: StringBuilder.() -> Unit,
 ) {
   val sourceElement = irDeclaration?.sourceElement()
   if (irDeclaration?.fileOrNull == null || sourceElement == null) {
@@ -83,7 +101,7 @@ internal fun <A : Any> IrMetroContext.reportCompat(
       }
       return
     }
-    val severity = convertSeverity(factory.severity)
+    val severity = factory.severity.convertSeverity()
     val location = irDeclaration?.locationOrNull()
     val message =
       if (
@@ -113,7 +131,7 @@ internal fun <A : Any> IrMetroContext.reportCompat(
       }
     @Suppress("DEPRECATION") messageCollector.report(severity, message, location)
   } else {
-    diagnosticReporter.at(irDeclaration).report(factory, a)
+    diagnosticReporter.reportAt(irDeclaration, factory, a)
   }
 
   if (factory.severity == Severity.ERROR) {
@@ -128,7 +146,6 @@ private fun reportDiagnosticToMessageCollector(
   reporter: MessageCollector,
   renderDiagnosticName: Boolean,
 ) {
-  val severity = AnalyzerWithCompilerReport.convertSeverity(diagnostic.severity)
   val message = diagnostic.renderMessage()
   val textToRender =
     when (renderDiagnosticName) {
@@ -136,5 +153,5 @@ private fun reportDiagnosticToMessageCollector(
       false -> message
     }
 
-  reporter.report(severity, textToRender, location)
+  reporter.report(diagnostic.severity.convertSeverity(), textToRender, location)
 }

@@ -55,7 +55,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
-      options = metroOptions.copy(transformProvidersToPrivate = false),
+      options = metroOptions.copy(),
     ) {
       assertDiagnostics(
         """

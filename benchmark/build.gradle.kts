@@ -1,6 +1,5 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
   alias(libs.plugins.kotlin.android) apply false
@@ -17,9 +16,9 @@ plugins {
   alias(libs.plugins.metro) apply false
   alias(libs.plugins.anvil) apply false
   alias(libs.plugins.mavenPublish) apply false // wat
-  id("metro.spotless")
+  id("metro.base") apply false
 }
 
-allprojects { apply(plugin = "metro.spotless") }
-
 subprojects { apply(plugin = "metro.base") }
+
+tasks.maybeCreate("clean")
