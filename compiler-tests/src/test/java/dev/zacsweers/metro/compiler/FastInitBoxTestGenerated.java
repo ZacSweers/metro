@@ -1588,6 +1588,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("DefaultValuesAlignToParameters.kt")
+      public void testDefaultValuesAlignToParameters() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/optional/DefaultValuesAlignToParameters.kt");
+      }
+
+      @Test
       @TestMetadata("DefaultWorksWithoutAnnotation.kt")
       public void testDefaultWorksWithoutAnnotation() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/optional/DefaultWorksWithoutAnnotation.kt");
@@ -1609,12 +1615,6 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("ScopedDefaultInSeparateCompilation.kt")
       public void testScopedDefaultInSeparateCompilation() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/optional/ScopedDefaultInSeparateCompilation.kt");
-      }
-
-      @Test
-      @TestMetadata("UseDefaultValues.kt")
-      public void testUseDefaultValues() {
-        runTest("compiler-tests/src/test/data/box/dependencygraph/optional/UseDefaultValues.kt");
       }
     }
 

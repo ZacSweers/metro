@@ -1,5 +1,3 @@
-// MODULE: main
-
 @Inject
 data class Example(
   val foo: String = "foo",
