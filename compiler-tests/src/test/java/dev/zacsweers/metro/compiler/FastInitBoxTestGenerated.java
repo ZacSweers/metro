@@ -1610,6 +1610,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       public void testScopedDefaultInSeparateCompilation() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/optional/ScopedDefaultInSeparateCompilation.kt");
       }
+
+      @Test
+      @TestMetadata("UseDefaultValues.kt")
+      public void testUseDefaultValues() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/optional/UseDefaultValues.kt");
+      }
     }
 
     @Nested
