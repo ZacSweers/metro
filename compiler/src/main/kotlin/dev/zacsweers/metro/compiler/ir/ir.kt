@@ -679,6 +679,7 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
   parameters: Parameters,
   receiver: IrValueParameter,
   fields: Map<IrTypeKey, IrField>,
+  nameToField: Map<Name, IrField>? = null,
   calleeParameters: Parameters = parameters,
 ): List<IrExpression?> {
   return buildList {
@@ -688,7 +689,10 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
         .map { parameter ->
           // When calling value getter on Provider<T>, make sure the dispatch
           // receiver is the Provider instance itself
-          val providerInstance = irGetField(irGet(receiver), fields.getValue(parameter.typeKey))
+          // Look up by name first (handles multiple params with same type key),
+          // fall back to type key (handles deduped params where name was removed)
+          val field = nameToField?.get(parameter.name) ?: fields.getValue(parameter.typeKey)
+          val providerInstance = irGetField(irGet(receiver), field)
           typeAsProviderArgument(
             parameter.contextualTypeKey,
             providerInstance,
