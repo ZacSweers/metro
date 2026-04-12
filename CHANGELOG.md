@@ -4,9 +4,13 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[FIR]** Detect and report circuit factory class name collisions from overloads of conflicting `@CircuitInject`-annotated functions.
+
 ### Fixes
 
-- **[FIR]** Fix missing contribution hints for assisted factories
+- **[FIR]** Fix missing contribution hints for assisted factories.
 - **[FIR]** Fix not propagating map keys and qualifiers if they're on the bound type arg rather than the class when `generateContributionProviders` is enabled.
 - **[FIR]** Gracefully handle unresolved generic supertype type args.
 - **[FIR]** Disable contribution providers on private constructors.
