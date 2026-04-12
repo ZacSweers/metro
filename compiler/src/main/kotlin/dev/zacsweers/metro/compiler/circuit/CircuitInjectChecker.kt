@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
-import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
@@ -197,7 +197,7 @@ internal object CircuitInjectCallableChecker :
     val session = context.session
     val circuitSymbols = session.circuitFirSymbols ?: return
 
-    if (declaration !is FirFunction) return
+    if (declaration !is FirNamedFunction) return
     if (!declaration.hasAnnotation(CircuitClassIds.CircuitInject, session)) return
 
     // Check if we have multiple declarations that match this
@@ -208,14 +208,14 @@ internal object CircuitInjectCallableChecker :
         .groupBy { it.name }
 
     // TODO this seems expensive to do there. Maybe FirLanguageVersionSettingsChecker?
-    for ((name, functions) in circuitInjectDeclarationsByName) {
+    circuitInjectDeclarationsByName[declaration.name]?.let { functions ->
       if (functions.size > 1) {
         for (function in functions) {
           if (function == declaration.symbol) {
             reporter.reportOn(
               function.source,
               CIRCUIT_INJECT_ERROR,
-              "Multiple @CircuitInject-annotated functions named $name were found. " +
+              "Multiple @CircuitInject-annotated functions named ${declaration.name} were found. " +
                 "This will create conflicts in Circuit FIR code gen, please deduplicate names.",
             )
           }
