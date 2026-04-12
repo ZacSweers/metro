@@ -101,6 +101,7 @@ constructor(private val project: Project, objects: ObjectFactory) {
           iosSimulatorArm64()
           iosArm64()
           iosX64()
+          macosX64()
         } else {
           // Tier 1
           macosArm64()
@@ -119,6 +120,9 @@ constructor(private val project: Project, objects: ObjectFactory) {
           // Tier 3
           mingwX64()
           iosX64()
+          macosX64()
+          tvosX64()
+          watchosX64()
           if (!requiresAndroidXDeps) {
             androidNativeArm32()
             androidNativeArm64()

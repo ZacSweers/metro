@@ -257,6 +257,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestDataPath("$PROJECT_ROOT")
     public class Contributionproviders {
       @Test
+      @TestMetadata("abstractedAssistedFactoryIsAccessibleExternally.kt")
+      public void testAbstractedAssistedFactoryIsAccessibleExternally() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/abstractedAssistedFactoryIsAccessibleExternally.kt");
+      }
+
+      @Test
       public void testAllFilesPresentInContributionproviders() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/contributionproviders"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
@@ -268,9 +274,21 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("defaultBinding.kt")
+      public void testDefaultBinding() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/defaultBinding.kt");
+      }
+
+      @Test
       @TestMetadata("defaultParameters.kt")
       public void testDefaultParameters() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/defaultParameters.kt");
+      }
+
+      @Test
+      @TestMetadata("explicitMultibindingType.kt")
+      public void testExplicitMultibindingType() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/explicitMultibindingType.kt");
       }
 
       @Test
@@ -313,6 +331,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("objectBinding.kt")
       public void testObjectBinding() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/objectBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("privateConstructorSkipped.kt")
+      public void testPrivateConstructorSkipped() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/privateConstructorSkipped.kt");
       }
 
       @Test
@@ -511,6 +535,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("PresenterClassNoInjection.kt")
       public void testPresenterClassNoInjection() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassNoInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassNoInjectionWithCircuitParams.kt")
+      public void testPresenterClassNoInjectionWithCircuitParams() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassNoInjectionWithCircuitParams.kt");
       }
 
       @Test
@@ -1555,6 +1585,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @Test
       public void testAllFilesPresentInOptional() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/optional"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("DefaultValuesAlignToParameters.kt")
+      public void testDefaultValuesAlignToParameters() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/optional/DefaultValuesAlignToParameters.kt");
       }
 
       @Test

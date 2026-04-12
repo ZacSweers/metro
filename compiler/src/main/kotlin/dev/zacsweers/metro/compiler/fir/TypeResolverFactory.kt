@@ -45,18 +45,15 @@ public sealed interface MetroFirTypeResolver {
     public fun create(functionSymbol: FirFunctionSymbol<*>): MetroFirTypeResolver?
 
     public companion object {
-      internal operator fun invoke(session: FirSession, allSessions: List<FirSession>): Factory =
-        FactoryImpl(session, allSessions)
+      internal operator fun invoke(session: FirSession): Factory = FactoryImpl(session)
     }
   }
 
-  private class FactoryImpl(
-    private val session: FirSession,
-    private val allSessions: List<FirSession>,
-  ) : Factory {
+  private class FactoryImpl(private val session: FirSession) : Factory {
     private val scopeSession = ScopeSession()
     private val resolversByFile = mutableMapOf<FirFile, LocalMetroFirTypeResolver?>()
     private val externalResolver by lazy { ExternalMetroFirTypeResolver(session) }
+    private val allSessions: List<FirSession> by lazy { session.allSessions }
 
     override fun create(classSymbol: FirClassLikeSymbol<*>): MetroFirTypeResolver? {
       if (classSymbol.origin !is FirDeclarationOrigin.Source) return externalResolver

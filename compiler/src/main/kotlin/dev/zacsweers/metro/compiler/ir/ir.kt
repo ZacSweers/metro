@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.isExtensionGenerated
@@ -311,6 +312,10 @@ internal fun IrClass.usesContributionProviderPath(
   if (isExtensionGenerated) return false
   if (annotationsIn(classIds.contributionProviderExclusionAnnotations).any()) return false
   if (!annotationsIn(classIds.contributesBindingLikeAnnotationsWithContainers).any()) return false
+  // Can't generate a contribution provider if the inject constructor is private
+  val injectCtor =
+    findInjectableConstructor(onlyUsePrimaryConstructor = false, classIds.injectLikeAnnotations)
+  if (injectCtor?.visibility == DescriptorVisibilities.PRIVATE) return false
   return true
 }
 
@@ -674,6 +679,7 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
   parameters: Parameters,
   receiver: IrValueParameter,
   fields: Map<IrTypeKey, IrField>,
+  nameToField: Map<Name, IrField>? = null,
   calleeParameters: Parameters = parameters,
 ): List<IrExpression?> {
   return buildList {
@@ -683,7 +689,10 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
         .map { parameter ->
           // When calling value getter on Provider<T>, make sure the dispatch
           // receiver is the Provider instance itself
-          val providerInstance = irGetField(irGet(receiver), fields.getValue(parameter.typeKey))
+          // Look up by name first (handles multiple params with same type key),
+          // fall back to type key (handles deduped params where name was removed)
+          val field = nameToField?.get(parameter.name) ?: fields.getValue(parameter.typeKey)
+          val providerInstance = irGetField(irGet(receiver), field)
           typeAsProviderArgument(
             parameter.contextualTypeKey,
             providerInstance,
@@ -1784,7 +1793,7 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
   annotationsToLookFor: Collection<ClassId>
 ): Set<IrConstructorCall> {
   if (this == null) return emptySet()
-  return filterTo(LinkedHashSet()) {
+  return filterToSet {
     it.type.classOrNull?.owner?.isAnnotatedWithAny(annotationsToLookFor) == true
   }
 }
@@ -2010,22 +2019,33 @@ internal fun Collection<IrClass>.toIrVararg() = ifNotEmpty {
 
 // Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
 // checks for non-interop
-context(context: IrPluginContext)
-internal fun IrConstructorCall.bindingTypeOrNull(): Pair<IrType?, Boolean> {
-  return bindingTypeArgument()?.let { type ->
+context(context: IrMetroContext)
+internal fun IrConstructorCall.bindingTypeOrNull(
+  contributingClass: IrClass,
+  ignoreQualifier: Boolean,
+): IrTypeKey? {
+  bindingTypeArgument()?.let { typeKey ->
     // Return a binding defined using Metro's API
-    type to false
+    return typeKey.copy(qualifier = typeKey.qualifier ?: contributingClass.qualifierAnnotation())
   }
-    ?:
-    // Return a boundType defined using anvil KClass
-    (anvilKClassBoundTypeArgument() to anvilIgnoreQualifier())
+  val anvilBoundType = anvilKClassBoundTypeArgument() ?: return null
+  // Return a boundType defined using anvil KClass
+  val qualifier =
+    if (!ignoreQualifier) {
+      contributingClass.qualifierAnnotation()
+    } else {
+      null
+    }
+  return IrTypeKey(anvilBoundType, qualifier)
 }
 
-context(context: IrPluginContext)
-internal fun IrConstructorCall.bindingTypeArgument(): IrType? {
+context(context: IrMetroContext)
+internal fun IrConstructorCall.bindingTypeArgument(): IrTypeKey? {
   return getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let {
     bindingType ->
-    bindingType.typeArguments.getOrNull(0)?.takeUnless { it == context.irBuiltIns.nothingType }
+    val type =
+      bindingType.typeArguments.getOrNull(0)?.takeUnless { it == context.irBuiltIns.nothingType }
+    type?.let { IrTypeKey(it, it.qualifierAnnotation()) }
   }
 }
 

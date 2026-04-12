@@ -15,8 +15,8 @@
 [versions]
 agp = "8.13.2"
 androidx-lifecycle = "2.10.0"
-androidx-lint-gradle = "1.0.0-alpha05"
-annotation = "1.9.1"
+androidx-lint-gradle = "1.0.0-alpha06"
+annotation = "1.10.0"
 anvil = "0.5.3"
 circuit = "0.33.1"
 compose-jb = "1.10.3"
@@ -74,7 +74,7 @@ mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
 shadow = { id = "com.gradleup.shadow", version = "9.4.1" }
-testkit = { id = "com.autonomousapps.testkit", version = "0.17" }
+testkit = { id = "com.autonomousapps.testkit", version = "0.18" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
@@ -99,7 +99,7 @@ androidx-test-uiautomator = "androidx.test.uiautomator:uiautomator:2.3.0"
 androidx-benchmark-macro = "androidx.benchmark:benchmark-macro-junit4:1.4.1"
 androidx-benchmark-micro = "androidx.benchmark:benchmark-junit4:1.4.1"
 androidx-profileinstaller = "androidx.profileinstaller:profileinstaller:1.4.1"
-androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha04"
+androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha05"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
@@ -168,7 +168,7 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "gjf" }
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 
-graphSupport = "com.autonomousapps:graph-support:0.9.0"
+graphSupport = "com.autonomousapps:graph-support:0.10.0"
 
 guava = "com.google.guava:guava:33.5.0-jre"
 
@@ -199,8 +199,8 @@ ksp-symbolProcessing = { module = "com.google.devtools.ksp:symbol-processing", v
 ksp-symbolProcessing-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 ksp-symbolProcessing-commonDeps = { module = "com.google.devtools.ksp:symbol-processing-common-deps", version.ref = "ksp" }
 ksp-symbolProcessing-aaEmbeddable = { module = "com.google.devtools.ksp:symbol-processing-aa-embeddable", version.ref = "ksp" }
-testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.22"}
-testkit-truth = { module =  "com.autonomousapps:gradle-testkit-truth", version = "1.6.1"}
+testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.23"}
+testkit-truth = { module =  "com.autonomousapps:gradle-testkit-truth", version = "1.7.0"}
 truth = { module = "com.google.truth:truth", version = "1.4.5" }
 kct = { module = "dev.zacsweers.kctfork:core", version.ref = "kct" }
 kct-ksp = { module = "dev.zacsweers.kctfork:ksp", version.ref = "kct" }
