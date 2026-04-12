@@ -193,12 +193,14 @@ internal object CircuitInjectCallableChecker :
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirCallableDeclaration) {
-    val source = declaration.source ?: return
-    val session = context.session
-    val circuitSymbols = session.circuitFirSymbols ?: return
-
     if (declaration !is FirNamedFunction) return
+
+    val session = context.session
+
     if (!declaration.hasAnnotation(CircuitClassIds.CircuitInject, session)) return
+
+    val source = declaration.source ?: return
+    val circuitSymbols = session.circuitFirSymbols ?: return
 
     // Check if we have multiple declarations that match this
     val circuitInjectDeclarationsByName =
