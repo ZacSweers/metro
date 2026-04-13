@@ -122,6 +122,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("DuplicateCircuitInjects.kt")
+      public void testDuplicateCircuitInjects() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/DuplicateCircuitInjects.kt");
+      }
+
+      @Test
       @TestMetadata("InvalidAssistedInjection.kt")
       public void testInvalidAssistedInjection() {
         runTest("compiler-tests/src/test/data/diagnostic/api/circuit/InvalidAssistedInjection.kt");

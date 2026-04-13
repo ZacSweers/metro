@@ -272,7 +272,7 @@ jobs:
 
       - name: Comment on PR if regression
         if: github.event_name == 'pull_request' && steps.compare.outputs.is_regression == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const baselineFields = '${{ steps.baseline.outputs.fields }}';
@@ -518,7 +518,7 @@ jobs:
 
       - name: Comment on PR if regression
         if: github.event_name == 'pull_request' && steps.compare.outputs.is_regression == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const baseline_s = (${{ steps.baseline.outputs.score }} / 1000).toFixed(2);

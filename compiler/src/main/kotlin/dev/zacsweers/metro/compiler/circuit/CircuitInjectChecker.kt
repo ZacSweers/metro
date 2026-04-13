@@ -193,12 +193,37 @@ internal object CircuitInjectCallableChecker :
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirCallableDeclaration) {
-    val source = declaration.source ?: return
+    if (declaration !is FirFunction) return
+
     val session = context.session
+
+    if (!declaration.hasAnnotation(CircuitClassIds.CircuitInject, session)) return
+
+    val source = declaration.source ?: return
     val circuitSymbols = session.circuitFirSymbols ?: return
 
-    if (declaration !is FirFunction) return
-    if (!declaration.hasAnnotation(CircuitClassIds.CircuitInject, session)) return
+    // Check if we have multiple declarations that match this
+    val circuitInjectDeclarationsByName =
+      CircuitFirExtension.findCircuitInjectFunctions(
+          CircuitFirExtension.findCircuitInjectSymbols(session)
+        )
+        .groupBy { it.name }
+
+    // TODO this seems expensive to do there. Maybe FirLanguageVersionSettingsChecker?
+    circuitInjectDeclarationsByName[declaration.symbol.name]?.let { functions ->
+      if (functions.size > 1) {
+        for (function in functions) {
+          if (function == declaration.symbol) {
+            reporter.reportOn(
+              function.source,
+              CIRCUIT_INJECT_ERROR,
+              "Multiple @CircuitInject-annotated functions named ${declaration.symbol.name} were found. " +
+                "This will create conflicts in Circuit FIR code gen, please deduplicate names.",
+            )
+          }
+        }
+      }
+    }
 
     val returnTypeRef = declaration.returnTypeRef
     val returnType = returnTypeRef.coneType

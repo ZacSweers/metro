@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
-import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.caching
@@ -89,10 +88,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     loadExternalContributionExtensions(session, options, this)
   }
 
-  private val allSessions by lazy { session.allSessions }
-  private val typeResolverFactory by lazy {
-    MetroFirTypeResolver.Factory(session, allSessions).caching()
-  }
+  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session).caching() }
 
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =

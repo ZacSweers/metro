@@ -7,7 +7,6 @@ import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtensi
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
-import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
@@ -16,6 +15,7 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.mapNotNullToSet
@@ -61,8 +61,7 @@ internal class ContributionHintFirGenerator(
     return (injectedClasses + contributedClasses).filterIsInstance<FirClassSymbol<*>>().distinct()
   }
 
-  private val allSessions by lazy { session.allSessions }
-  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session, allSessions) }
+  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session) }
 
   private val contributedClassesByScope:
     FirCache<Unit, Map<CallableId, Set<FirClassSymbol<*>>>, Unit> =
@@ -96,6 +95,7 @@ internal class ContributionHintFirGenerator(
         // so we must compute their ClassIds and resolve them here.
         val hasBindingContributions =
           generateContributionProviders &&
+            contributingClass.usesContributionProviderPath(session) &&
             contributions.any { annotation ->
               val classId = annotation.toAnnotationClassIdSafe(session) ?: return@any false
               classId !in session.classIds.contributesToAnnotations

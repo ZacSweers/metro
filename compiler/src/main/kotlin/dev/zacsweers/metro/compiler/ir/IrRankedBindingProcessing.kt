@@ -8,9 +8,11 @@ import dev.zacsweers.metro.compiler.fir.rankValue
 import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.Fir2IrComponents
 import org.jetbrains.kotlin.fir.backend.toIrType
+import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -100,11 +102,7 @@ internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundT
 
     return ContributedBinding(
       contributingType = contributingType,
-      typeKey =
-        IrTypeKey(
-          result.type,
-          if (result.ignoreQualifier) null else contributingType.qualifierAnnotation(),
-        ),
+      typeKey = result.typeKey,
       rank = annotation.rankValue(),
     )
   }
@@ -124,17 +122,30 @@ internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundT
         ?: return null
     if (scope !in allScopes) return null
 
+    val ignoreQualifier =
+      annotation.getBooleanArgument(Symbols.Names.ignoreQualifier, session) ?: false
+
     val explicitBindingType =
       annotation.resolvedBindingArgument(session)?.coneTypeOrNull?.let {
-        with(fir2IrComponents) { it.toIrType() }
+        with(fir2IrComponents) {
+          val irType = it.toIrType()
+          val qualifier =
+            if (!ignoreQualifier) {
+              irType.qualifierAnnotation()
+            } else {
+              null
+            } ?: contributingType.qualifierAnnotation()
+          IrTypeKey(irType, qualifier)
+        }
       }
 
     val boundType =
-      boundTypeResolver.resolveBoundType(contributingType, explicitBindingType) ?: return null
+      boundTypeResolver.resolveBoundType(contributingType, explicitBindingType, ignoreQualifier)
+        ?: return null
 
     return ContributedBinding(
       contributingType = contributingType,
-      typeKey = IrTypeKey(boundType, contributingType.qualifierAnnotation()),
+      typeKey = boundType,
       rank = annotation.rankValue(session),
     )
   }
