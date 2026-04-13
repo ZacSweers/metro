@@ -9,32 +9,38 @@ plugins {
   alias(libs.plugins.wire)
   alias(libs.plugins.shadow) apply false
   id("metro.publish")
-  alias(libs.plugins.metro)
+  // apply false to put metro on the classpath. Conditionally applied below.
+  alias(libs.plugins.metro) apply false
 }
 
-metro {
-  generateAssistedFactories = true
-  // We embed and shade the runtime in the compiler's shadow JAR
-  automaticallyAddRuntimeDependencies = false
-}
-
-// Bootstrap: When Metro is applied to the compiler module itself, Gradle automatically substitutes
-// the external dev.zacsweers.metro:compiler artifact with project(:compiler), creating a circular
-// dependency. We resolve the bootstrap compiler JAR from Maven Central using a detached
-// configuration (which isn't subject to automatic project substitution), then replace the project
-// dependency on the kotlinCompilerPluginClasspath with a file dependency pointing to that JAR.
-val bootstrapVersion = libs.versions.metro.bootstrap.get()
-val bootstrapCompilerConfig =
-  configurations
-    .detachedConfiguration(dependencies.create("dev.zacsweers.metro:compiler:$bootstrapVersion"))
-    .apply { isTransitive = false }
-
-configurations
-  .matching { it.name.startsWith("kotlinCompilerPluginClasspath") }
-  .configureEach {
-    exclude(group = "dev.zacsweers.metro", module = "compiler")
-    dependencies.add(project.dependencies.create(bootstrapCompilerConfig))
+// Bootstrap: Apply Metro to compile the compiler with itself, but only in the main build.
+// In composite builds (samples/benchmark via includeBuild), composite build substitution applies
+// globally to all configurations (including detached ones), causing a circular task dependency:
+//   compileKotlin → shadowJar → compileKotlin
+// By checking gradle.parent, we skip applying Metro when the main build is an included build.
+if (gradle.parent == null) {
+  apply(plugin = libs.plugins.metro.get().pluginId)
+  configure<dev.zacsweers.metro.gradle.MetroPluginExtension> {
+    generateAssistedFactories.set(true)
+    // We embed and shade the runtime in the compiler's shadow JAR
+    automaticallyAddRuntimeDependencies.set(false)
   }
+
+  // Resolve the bootstrap compiler JAR from Maven Central using a detached configuration
+  // (which isn't subject to automatic multi-project substitution), then replace the project
+  // dependency on the kotlinCompilerPluginClasspath with a file dependency pointing to that JAR.
+  val bootstrapVersion = libs.versions.metro.bootstrap.get()
+  val bootstrapCompilerConfig =
+    configurations
+      .detachedConfiguration(dependencies.create("dev.zacsweers.metro:compiler:$bootstrapVersion"))
+      .apply { isTransitive = false }
+  configurations
+    .matching { it.name.startsWith("kotlinCompilerPluginClasspath") }
+    .configureEach {
+      exclude(group = "dev.zacsweers.metro", module = "compiler")
+      dependencies.add(project.dependencies.create(bootstrapCompilerConfig))
+    }
+}
 
 buildConfig {
   generateAtSync = true
