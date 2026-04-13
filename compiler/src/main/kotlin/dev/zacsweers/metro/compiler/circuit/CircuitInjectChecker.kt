@@ -167,6 +167,41 @@ internal object CircuitInjectClassChecker : FirClassChecker(MppCheckerKind.Commo
       )
     }
 
+    // @CircuitInject classes must use @Inject (or be objects)
+    if (declaration.classKind != ClassKind.OBJECT) {
+      val hasInject = declaration.isAnnotatedWithAny(session, classIds.injectAnnotations)
+      @OptIn(DirectDeclarationsAccess::class)
+      val hasInjectConstructor =
+        declaration.declarations.filterIsInstance<FirConstructor>().any {
+          it.isAnnotatedWithAny(session, classIds.allInjectAnnotations)
+        }
+      if (!hasInject && !hasInjectConstructor) {
+        // Check if the constructor has circuit-provided params to give a more specific message
+        @OptIn(DirectDeclarationsAccess::class)
+        val hasCircuitParams =
+          declaration.declarations.filterIsInstance<FirConstructor>().any { ctor ->
+            ctor.valueParameters.any { param ->
+              val paramClassId = param.returnTypeRef.coneType.classId ?: return@any false
+              circuitSymbols.isNavigatorType(paramClassId) ||
+                circuitSymbols.isScreenType(paramClassId) ||
+                circuitSymbols.isModifierType(paramClassId) ||
+                circuitSymbols.isUiStateType(paramClassId)
+            }
+          }
+        val message =
+          if (hasCircuitParams) {
+            "@CircuitInject-annotated class must also be annotated with @Inject. " +
+              "Circuit-provided parameters (Screen, Navigator, etc.) should use @AssistedInject with @Assisted annotations, " +
+              "or consider using a presenter function instead."
+          } else {
+            "@CircuitInject-annotated class must also be annotated with @Inject. " +
+              "If no dependencies are needed, consider using a presenter function instead."
+          }
+        reporter.reportOn(source, CIRCUIT_INJECT_ERROR, message)
+        return
+      }
+    }
+
     @OptIn(DirectDeclarationsAccess::class)
     for (constructor in declaration.declarations.filterIsInstance<FirConstructor>()) {
       validateCircuitInjectParams(

@@ -84,7 +84,8 @@ The following IDE versions are tested via IDE integration tests:
 |---------------|-------------------------------|
 | 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1)  |
 | 261.22158.182 | 2025.3.2.6 (Panda 2)          |
-|               | 2025.3.3.2 (Panda 3 Canary 2) |
+|               | 2025.3.3.6 (Panda 3)          |
+|               | 2025.3.4.4 (Panda 4 Canary 4) |
 
 ## Runtime Compatibility
 

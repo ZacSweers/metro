@@ -4,6 +4,15 @@ Changelog
 **Unreleased**
 --------------
 
+1.0.0-RC1
+---------
+
+_2026-04-13_
+
+This is the first release candidate for Metro 1.0!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) will be API stable unless annotated with an experimental annotation.
+
 ### Enhancements
 
 - **[FIR]** Detect and report circuit factory class name collisions from overloads of conflicting `@CircuitInject`-annotated functions.
@@ -17,7 +26,7 @@ Changelog
 - **[FIR]** Fix cross-module resolution of `@DefaultBinding`.
 - **[FIR]** Fix another eager `allSessions` lookup to avoid lockups in the IDE.
 - **[FIR/IR]** Ensure qualifier annotations on explicit binding params are propagated to generated providers when `generateContributionProviders` is enabled.
-- **[FIR/IR/Circuit]** Fix support for `@CircuitInject` on non-`@Inject`-annotated classes.
+- **[FIR/IR/Circuit]** Check for `@CircuitInject` on non-`@Inject`-annotated classes + improve diagnostic messaging.
 - **[IR]** Check for matching parameter's default value first when copying default value expressions. Previously, if multiple parameters with the same type had default values, only one would be used.
 
 ### Changes
@@ -36,6 +45,8 @@ Special thanks to the following contributors for contributing to this release!
 - [@kevinguitar](https://github.com/kevinguitar)
 - [@LionZXY](https://github.com/LionZXY)
 - [@Sultan1993](https://github.com/Sultan1993)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 0.13.2
 ------
