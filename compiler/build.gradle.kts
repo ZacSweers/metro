@@ -12,7 +12,11 @@ plugins {
   alias(libs.plugins.metro)
 }
 
-metro { generateAssistedFactories = true }
+metro {
+  generateAssistedFactories = true
+  // We embed and shade the runtime in the compiler's shadow JAR
+  automaticallyAddRuntimeDependencies = false
+}
 
 buildConfig {
   generateAtSync = true
@@ -92,6 +96,10 @@ val shadowJar =
       "dev.zacsweers.metro.compiler.shaded.com.jakewharton.crossword",
     )
     relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
+    // Relocate the metro runtime while excluding the compiler's own package
+    relocate("dev.zacsweers.metro", "dev.zacsweers.metro.compiler.shaded.metro") {
+      exclude("dev.zacsweers.metro.compiler.**")
+    }
   }
 
 /**
@@ -124,6 +132,7 @@ dependencies {
   compileOnly(libs.poko.annotations)
   compileOnly(libs.androidx.collection)
 
+  add(embedded.name, project(":runtime"))
   add(embedded.name, libs.androidx.collection)
   add(embedded.name, libs.androidx.tracing.wire)
   add(embedded.name, libs.picnic)
@@ -138,7 +147,6 @@ dependencies {
 
   testCompileOnly(libs.poko.annotations)
 
-  testImplementation(project(":runtime"))
   testImplementation(project(":interop-dagger"))
   testImplementation(libs.kotlin.reflect)
   testImplementation(libs.kotlin.stdlib)

@@ -89,8 +89,9 @@ internal class Symbols(
     const val METRO_CONTRIBUTION_NAME_PREFIX = "MetroContribution"
     const val METRO_FACTORY = "MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
-    const val METRO_RUNTIME_INTERNAL_PACKAGE = "dev.zacsweers.metro.internal"
-    const val METRO_RUNTIME_PACKAGE = "dev.zacsweers.metro"
+    // Weird but here to defeat shadow jar
+    val METRO_RUNTIME_PACKAGE = listOf("dev", "zacsweers", "metro").joinToString(".")
+    val METRO_RUNTIME_INTERNAL_PACKAGE = "${METRO_RUNTIME_PACKAGE}.internal"
     const val MIRROR_FUNCTION = "mirrorFunction"
     const val NEW_INSTANCE = "newInstance"
     const val NON_RESTARTABLE_COMPOSABLE = "NonRestartableComposable"
