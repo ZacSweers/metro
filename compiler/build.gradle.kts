@@ -18,6 +18,24 @@ metro {
   automaticallyAddRuntimeDependencies = false
 }
 
+// Bootstrap: When Metro is applied to the compiler module itself, Gradle automatically substitutes
+// the external dev.zacsweers.metro:compiler artifact with project(:compiler), creating a circular
+// dependency. We resolve the bootstrap compiler JAR from Maven Central using a detached
+// configuration (which isn't subject to automatic project substitution), then replace the project
+// dependency on the kotlinCompilerPluginClasspath with a file dependency pointing to that JAR.
+val bootstrapVersion = libs.versions.metro.bootstrap.get()
+val bootstrapCompilerConfig =
+  configurations
+    .detachedConfiguration(dependencies.create("dev.zacsweers.metro:compiler:$bootstrapVersion"))
+    .apply { isTransitive = false }
+
+configurations
+  .matching { it.name.startsWith("kotlinCompilerPluginClasspath") }
+  .configureEach {
+    exclude(group = "dev.zacsweers.metro", module = "compiler")
+    dependencies.add(project.dependencies.create(bootstrapCompilerConfig))
+  }
+
 buildConfig {
   generateAtSync = true
   packageName("dev.zacsweers.metro.compiler")
