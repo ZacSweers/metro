@@ -12,6 +12,8 @@ plugins {
   alias(libs.plugins.metro)
 }
 
+metro { generateAssistedFactories = true }
+
 buildConfig {
   generateAtSync = true
   packageName("dev.zacsweers.metro.compiler")
