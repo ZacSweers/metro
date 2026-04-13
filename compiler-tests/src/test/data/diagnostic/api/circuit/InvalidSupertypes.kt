@@ -14,6 +14,7 @@ object HomeScreen : Screen {
 
 // A class that is neither a Presenter nor a Ui should be an error
 @CircuitInject(HomeScreen::class, AppScope::class)
+@Inject
 class <!CIRCUIT_INJECT_ERROR!>Favorites<!> {
   @Composable
   fun Content(state: HomeScreen.State, modifier: Modifier) {

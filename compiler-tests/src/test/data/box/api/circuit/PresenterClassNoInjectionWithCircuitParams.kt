@@ -12,13 +12,9 @@ data object HomeScreen : Screen
 data class HomeState(val message: String) : CircuitUiState
 
 @CircuitInject(HomeScreen::class, AppScope::class)
-class HomePresenter(
-  private val navigator: Navigator
-) : Presenter<HomeState> {
-  @Composable
-  override fun present(): HomeState {
-    return HomeState(message = "Hello")
-  }
+@Composable
+fun HomePresenter(navigator: Navigator): HomeState {
+  return HomeState(message = "Hello")
 }
 
 @DependencyGraph(AppScope::class)

@@ -152,6 +152,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("PresenterClassMissingInject.kt")
+      public void testPresenterClassMissingInject() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterClassMissingInject.kt");
+      }
+
+      @Test
       @TestMetadata("PresenterFunctionImplicitReturnType.kt")
       public void testPresenterFunctionImplicitReturnType() {
         runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionImplicitReturnType.kt");

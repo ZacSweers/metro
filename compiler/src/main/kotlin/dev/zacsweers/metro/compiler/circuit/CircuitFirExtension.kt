@@ -36,7 +36,6 @@ import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataKey
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataRegistry
-import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -738,8 +737,8 @@ internal class CircuitFactoryTarget(
   }
 
   /**
-   * Resolves the constructor params and their owning symbol for the target class. Prefers the
-   * `@Inject`-annotated constructor if available, otherwise falls back to the primary constructor.
+   * Resolves the constructor params and their owning symbol for the target class. Requires an
+   * `@Inject`-annotated constructor (or class-level `@Inject`).
    */
   fun resolveConstructorParams(
     session: FirSession
@@ -747,8 +746,8 @@ internal class CircuitFactoryTarget(
     val classSymbol = classSymbol ?: return emptyList<FirValueParameterSymbol>() to null
     val injectConstructor = classSymbol.findInjectLikeConstructors(session, true).firstOrNull()
     val constructor =
-      injectConstructor?.constructor ?: classSymbol.constructors(session).firstOrNull()
-    val params = constructor?.valueParameterSymbols ?: emptyList()
+      injectConstructor?.constructor ?: return emptyList<FirValueParameterSymbol>() to null
+    val params = constructor.valueParameterSymbols
     return params to constructor
   }
 

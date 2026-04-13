@@ -17,7 +17,7 @@ Changelog
 - **[FIR]** Fix cross-module resolution of `@DefaultBinding`.
 - **[FIR]** Fix another eager `allSessions` lookup to avoid lockups in the IDE.
 - **[FIR/IR]** Ensure qualifier annotations on explicit binding params are propagated to generated providers when `generateContributionProviders` is enabled.
-- **[FIR/IR/Circuit]** Fix support for `@CircuitInject` on non-`@Inject`-annotated classes.
+- **[FIR/IR/Circuit]** Check for `@CircuitInject` on non-`@Inject`-annotated classes + improve diagnostic messaging.
 - **[IR]** Check for matching parameter's default value first when copying default value expressions. Previously, if multiple parameters with the same type had default values, only one would be used.
 
 ### Changes
