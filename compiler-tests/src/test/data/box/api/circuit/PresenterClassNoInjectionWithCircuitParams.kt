@@ -1,4 +1,5 @@
 // ENABLE_CIRCUIT
+// COMPILER_VERSION: 2.3
 
 import com.slack.circuit.runtime.CircuitUiState
 import com.slack.circuit.runtime.Navigator
