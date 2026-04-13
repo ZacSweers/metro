@@ -40,6 +40,14 @@ No.
 
 This is a spurious JVM warning related to `ReentrantLock` (used internally by Metro's `DoubleCheck` for scoped bindings). It is not an actual stack overflow and can be safely ignored. You can suppress it by increasing the thread stack size with (i.e., `-Xss1m`) in your JVM args.
 
+### **Would you consider putting Metro into a foundation? My team has concerns about solo maintainers**
+
+I would only do this if it makes sense for the project, not for optics. Most open source software is maintained by one person. This probably includes many libraries your team already uses.
+
+This usually comes up in comparison to Dagger. Dagger is also usually only maintained by one or two people at Google. That level of backing is a luxury, not the standard.
+
+Moving to a foundation would not change the maintenance story — it would still be me. If your management requires a different GitHub URL to feel secure, they likely misunderstand how their dependencies are built. I prefer to focus on the project and its surrounding community rather than managing a facade :)
+
 ## Dagger/Hilt FAQ
 
 ### **In Dagger I could make declarations `internal` and it worked, why doesn't that work in Metro?**
