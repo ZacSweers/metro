@@ -20,12 +20,6 @@ You can upgrade your Kotlin version (including across minor updates) or use diff
 
 In short — it's a wide, moving window of support that periodically raises the minimum, which isn't terribly dissimilar from any other tool.
 
-### **Metro is not a stable API, is Metro safe to use?**
-
-Yes, Metro is _functionally_ stable and ready for production use. Its runtime and Gradle plugin APIs are not yet _stabilized_, which is not the same as being unstable for use
-
-See the [stability docs](stability.md) for more details.
-
 ### **Why doesn't Metro support kotlin-inject-style `@IntoMap` bindings?**
 
 !!! tip "Some technical context"
