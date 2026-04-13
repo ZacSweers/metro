@@ -48,6 +48,8 @@ This usually comes up in comparison to Dagger. Dagger is also usually only maint
 
 Moving to a foundation would not change the maintenance story — it would still be me. If your management requires a different GitHub URL to feel secure, they likely misunderstand how their dependencies are built. I prefer to focus on the project and its surrounding community rather than managing a facade :)
 
+[The best way to support Metro's continued maintenance is to sponsor it](https://www.zacsweers.dev/sponsoring-metro/)!
+
 ## Dagger/Hilt FAQ
 
 ### **In Dagger I could make declarations `internal` and it worked, why doesn't that work in Metro?**
