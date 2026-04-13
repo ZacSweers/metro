@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.Assisted
-import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
@@ -118,11 +117,6 @@ internal class DependencyGraphTransformer(
   private val bindingContainerResolver: IrBindingContainerResolver,
   private val boundTypeResolver: IrBoundTypeResolver,
 ) : IrMetroContext by context, TraceScope by traceScope {
-
-  @AssistedFactory
-  interface Factory {
-    fun create(traceScope: TraceScope): DependencyGraphTransformer
-  }
 
   private val bindingLookupCache = BindingLookupCache()
 

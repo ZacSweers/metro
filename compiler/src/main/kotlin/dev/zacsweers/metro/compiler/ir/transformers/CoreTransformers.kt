@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.Assisted
-import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.GraphToProcess
@@ -51,15 +50,6 @@ internal class CoreTransformers(
   TransformerContextAccess,
   IrMetroContext by context,
   TraceScope by traceScope {
-
-  @AssistedFactory
-  interface Factory {
-    fun create(
-      traceScope: TraceScope,
-      contributionTransformer: ContributionTransformer,
-      createGraphTransformer: CreateGraphTransformer,
-    ): CoreTransformers
-  }
 
   override val currentFileAccess: IrFile
     get() = currentFile

@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.Assisted
-import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
@@ -83,11 +82,6 @@ internal class ContributionTransformer(
   @Assisted traceScope: TraceScope,
   private val boundTypeResolver: IrBoundTypeResolver,
 ) : IrTransformer<IrContributionData>(), IrMetroContext by context, TraceScope by traceScope {
-
-  @AssistedFactory
-  interface Factory {
-    fun create(traceScope: TraceScope): ContributionTransformer
-  }
 
   private val transformedContributions = mutableSetOf<ClassId>()
 

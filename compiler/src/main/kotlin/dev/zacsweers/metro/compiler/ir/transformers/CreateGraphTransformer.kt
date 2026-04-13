@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.Assisted
-import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -49,11 +48,6 @@ internal class CreateGraphTransformer(
   private val dynamicGraphGenerator: IrDynamicGraphGenerator,
   @Assisted traceScope: TraceScope,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
-
-  @AssistedFactory
-  interface Factory {
-    fun create(traceScope: TraceScope): CreateGraphTransformer
-  }
 
   private val IrCall.targetGraphType: IrType
     get() = typeArguments[0] ?: reportCompilerBug("Missing type argument for ${symbol.owner.name}")
