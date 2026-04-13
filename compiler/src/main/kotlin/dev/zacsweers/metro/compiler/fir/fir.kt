@@ -145,6 +145,7 @@ import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.ClassIdBasedLocality
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.ConstantValueKind
@@ -1677,6 +1678,7 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
   }
 }
 
+@OptIn(ClassIdBasedLocality::class) // For compat
 internal inline val FirClassSymbol<*>.isLocalClassOrAnonymousObject: Boolean
   get() = classId.isLocal || this is FirAnonymousObjectSymbol
 
