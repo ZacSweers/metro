@@ -11,7 +11,7 @@ livereload==2.7.1
 lunr==0.8.0
 Markdown==3.10.2
 MarkupSafe==3.0.3
-mike==2.1.4
+mike==2.2.0
 mkdocs==1.6.1
 mkdocs-get-deps==0.2.2
 mkdocs-macros-plugin==1.5.0
