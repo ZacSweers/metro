@@ -11,6 +11,7 @@ interface IntProvider {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: IntProvider, stringValue: Provider<String?> = provider<String?>(provider = local fun <anonymous>(): String? {
         return null
       }
@@ -18,22 +19,26 @@ interface IntProvider {
         return ProvideIntMetroFactory(instance = instance, stringValue = stringValue)
       }
 
+      @HiddenFromObjC
       fun provideInt(instance: IntProvider, stringValue: String? = null): Int {
         return instance.provideInt(stringValue = stringValue)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: IntProvider, stringValue: Provider<String?>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance, stringValue = <this>.#stringValue.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(stringValue: String? = error(message = "Never called")): Int {
       return error(message = "Never called")
     }

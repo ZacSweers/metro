@@ -23,26 +23,31 @@ class ConsumerA {
 
       }
 
+      @HiddenFromObjC
       fun create(consumer: Provider<SetConsumer>): Factory<ConsumerA> {
         return MetroFactory(consumer = consumer)
       }
 
+      @HiddenFromObjC
       fun newInstance(consumer: Provider<SetConsumer>): ConsumerA {
         return ConsumerA(consumer = consumer)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(consumer: Provider<SetConsumer>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ConsumerA {
       return Companion.newInstance(consumer = <this>.#consumer)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(consumer: Provider<SetConsumer>): ConsumerA {
       return error(message = "Never called")
     }
@@ -73,26 +78,31 @@ class ConsumerB {
 
       }
 
+      @HiddenFromObjC
       fun create(consumer: Provider<SetConsumer>): Factory<ConsumerB> {
         return MetroFactory(consumer = consumer)
       }
 
+      @HiddenFromObjC
       fun newInstance(consumer: Provider<SetConsumer>): ConsumerB {
         return ConsumerB(consumer = consumer)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(consumer: Provider<SetConsumer>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ConsumerB {
       return Companion.newInstance(consumer = <this>.#consumer)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(consumer: Provider<SetConsumer>): ConsumerB {
       return error(message = "Never called")
     }
@@ -128,26 +138,31 @@ class Entry {
 
       }
 
+      @HiddenFromObjC
       fun create(a: Provider<ConsumerA>, b: Provider<ConsumerB>): Factory<Entry> {
         return MetroFactory(a = a, b = b)
       }
 
+      @HiddenFromObjC
       fun newInstance(a: ConsumerA, b: ConsumerB): Entry {
         return Entry(a = a, b = b)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(a: Provider<ConsumerA>, b: Provider<ConsumerB>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Entry {
       return Companion.newInstance(a = <this>.#a.invoke(), b = <this>.#b.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(a: ConsumerA, b: ConsumerB): Entry {
       return error(message = "Never called")
     }
@@ -178,26 +193,31 @@ class SetConsumer {
 
       }
 
+      @HiddenFromObjC
       fun create(set: Provider<Set<Int>>): Factory<SetConsumer> {
         return MetroFactory(set = set)
       }
 
+      @HiddenFromObjC
       fun newInstance(set: Set<Int>): SetConsumer {
         return SetConsumer(set = set)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(set: Provider<Set<Int>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): SetConsumer {
       return Companion.newInstance(set = <this>.#set.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(set: Set<Int>): SetConsumer {
       return error(message = "Never called")
     }
@@ -274,26 +294,31 @@ interface TestGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: TestGraph): Factory<Base> {
         return ProvideBaseMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideBase(instance: TestGraph): Base {
         return instance.provideBase()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: TestGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Base {
       return Companion.provideBase(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Base {
       return error(message = "Never called")
     }
@@ -312,27 +337,32 @@ interface TestGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: TestGraph, base: Provider<Base>): Factory<Int> {
         return ProvideInt1MetroFactory(instance = instance, base = base)
       }
 
+      @HiddenFromObjC
       fun provideInt1(instance: TestGraph, base: Base): Int {
         return instance.provideInt1(base = base)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: TestGraph, base: Provider<Base>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt1(instance = <this>.#instance, base = <this>.#base.invoke())
     }
 
     @IntoSet
+    @HiddenFromObjC
     fun mirrorFunction(base: Base): Int {
       return error(message = "Never called")
     }
@@ -351,27 +381,32 @@ interface TestGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: TestGraph, base: Provider<Base>): Factory<Int> {
         return ProvideInt2MetroFactory(instance = instance, base = base)
       }
 
+      @HiddenFromObjC
       fun provideInt2(instance: TestGraph, base: Base): Int {
         return instance.provideInt2(base = base)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: TestGraph, base: Provider<Base>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt2(instance = <this>.#instance, base = <this>.#base.invoke())
     }
 
     @IntoSet
+    @HiddenFromObjC
     fun mirrorFunction(base: Base): Int {
       return error(message = "Never called")
     }

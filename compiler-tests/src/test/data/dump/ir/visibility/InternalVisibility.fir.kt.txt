@@ -49,26 +49,31 @@ abstract class AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideInt(instance: AppGraph): Int {
         return instance.provideInt()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
@@ -104,18 +109,22 @@ class InternalClass {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<InternalClass> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): InternalClass {
       return InternalClass()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): InternalClass {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): InternalClass {
       return error(message = "Never called")
     }

@@ -14,26 +14,31 @@ class Bar : Foo {
 
       }
 
+      @HiddenFromObjC
       fun create(fooProvider: Provider<Foo>): Factory<Bar> {
         return MetroFactory(fooProvider = fooProvider)
       }
 
+      @HiddenFromObjC
       fun newInstance(fooProvider: Provider<Foo>): Bar {
         return Bar(fooProvider = fooProvider)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(fooProvider: Provider<Foo>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Bar {
       return Companion.newInstance(fooProvider = <this>.#fooProvider)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(fooProvider: Provider<Foo>): Bar {
       return error(message = "Never called")
     }

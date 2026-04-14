@@ -14,26 +14,31 @@ class BarA {
 
       }
 
+      @HiddenFromObjC
       fun create(foo: Provider<Foo>): Factory<BarA> {
         return MetroFactory(foo = foo)
       }
 
+      @HiddenFromObjC
       fun newInstance(foo: Provider<Foo>): BarA {
         return BarA(foo = foo)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(foo: Provider<Foo>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): BarA {
       return Companion.newInstance(foo = <this>.#foo)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(foo: Provider<Foo>): BarA {
       return error(message = "Never called")
     }
@@ -64,26 +69,31 @@ class BarB {
 
       }
 
+      @HiddenFromObjC
       fun create(foo: Provider<Foo>): Factory<BarB> {
         return MetroFactory(foo = foo)
       }
 
+      @HiddenFromObjC
       fun newInstance(foo: Provider<Foo>): BarB {
         return BarB(foo = foo)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(foo: Provider<Foo>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): BarB {
       return Companion.newInstance(foo = <this>.#foo)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(foo: Provider<Foo>): BarB {
       return error(message = "Never called")
     }
@@ -109,18 +119,22 @@ class BazImpl : BazMiddle {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<BazImpl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): BazImpl {
       return BazImpl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): BazImpl {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): BazImpl {
       return error(message = "Never called")
     }
@@ -172,18 +186,22 @@ class FooImpl : Foo {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<FooImpl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): FooImpl {
       return FooImpl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): FooImpl {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): FooImpl {
       return error(message = "Never called")
     }
@@ -256,27 +274,32 @@ class Main {
 
       }
 
+      @HiddenFromObjC
       fun create(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Factory<Main> {
         return MetroFactory(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
       }
 
+      @HiddenFromObjC
       fun newInstance(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Main {
         return Main(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Main {
       return Companion.newInstance(barA = <this>.#barA, barB = <this>.#barB, quxA = <this>.#quxA, quxB = <this>.#quxB)
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Main {
       return error(message = "Never called")
     }
@@ -307,26 +330,31 @@ class QuxA {
 
       }
 
+      @HiddenFromObjC
       fun create(baz: Provider<Baz>): Factory<QuxA> {
         return MetroFactory(baz = baz)
       }
 
+      @HiddenFromObjC
       fun newInstance(baz: Provider<Baz>): QuxA {
         return QuxA(baz = baz)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(baz: Provider<Baz>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): QuxA {
       return Companion.newInstance(baz = <this>.#baz)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(baz: Provider<Baz>): QuxA {
       return error(message = "Never called")
     }
@@ -357,26 +385,31 @@ class QuxB {
 
       }
 
+      @HiddenFromObjC
       fun create(baz: Provider<Baz>): Factory<QuxB> {
         return MetroFactory(baz = baz)
       }
 
+      @HiddenFromObjC
       fun newInstance(baz: Provider<Baz>): QuxB {
         return QuxB(baz = baz)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(baz: Provider<Baz>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): QuxB {
       return Companion.newInstance(baz = <this>.#baz)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(baz: Provider<Baz>): QuxB {
       return error(message = "Never called")
     }

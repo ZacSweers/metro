@@ -15,6 +15,7 @@ class AFragment : Fragment {
 
       }
 
+      @HiddenFromObjC
       fun create(viewModelFactory: Provider<ViewModelFactory>): MembersInjector<AFragment> {
         return MetroMembersInjector(viewModelFactory = viewModelFactory)
       }
@@ -63,26 +64,31 @@ class AFragmentInjector : Injector {
 
       }
 
+      @HiddenFromObjC
       fun create(memberInjector: Provider<MembersInjector<AFragment>>): Factory<AFragmentInjector> {
         return MetroFactory(memberInjector = memberInjector)
       }
 
+      @HiddenFromObjC
       fun newInstance(memberInjector: MembersInjector<AFragment>): AFragmentInjector {
         return AFragmentInjector(memberInjector = memberInjector)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(memberInjector: Provider<MembersInjector<AFragment>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): AFragmentInjector {
       return Companion.newInstance(memberInjector = <this>.#memberInjector.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(memberInjector: MembersInjector<AFragment>): AFragmentInjector {
       return error(message = "Never called")
     }
@@ -139,18 +145,22 @@ class AViewModel : ViewModel {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<AViewModel> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): AViewModel {
       return AViewModel()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): AViewModel {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): AViewModel {
       return error(message = "Never called")
     }
@@ -219,6 +229,7 @@ class BFragment : Fragment {
 
       }
 
+      @HiddenFromObjC
       fun create(viewModelFactory: Provider<ViewModelFactory>): MembersInjector<BFragment> {
         return MetroMembersInjector(viewModelFactory = viewModelFactory)
       }
@@ -267,26 +278,31 @@ class BFragmentInjector : Injector {
 
       }
 
+      @HiddenFromObjC
       fun create(memberInjector: Provider<MembersInjector<BFragment>>): Factory<BFragmentInjector> {
         return MetroFactory(memberInjector = memberInjector)
       }
 
+      @HiddenFromObjC
       fun newInstance(memberInjector: MembersInjector<BFragment>): BFragmentInjector {
         return BFragmentInjector(memberInjector = memberInjector)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(memberInjector: Provider<MembersInjector<BFragment>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): BFragmentInjector {
       return Companion.newInstance(memberInjector = <this>.#memberInjector.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(memberInjector: MembersInjector<BFragment>): BFragmentInjector {
       return error(message = "Never called")
     }
@@ -343,18 +359,22 @@ class BViewModel : ViewModel {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<BViewModel> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): BViewModel {
       return BViewModel()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): BViewModel {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): BViewModel {
       return error(message = "Never called")
     }
@@ -415,6 +435,7 @@ abstract class BaseActivity : Activity {
 
       }
 
+      @HiddenFromObjC
       fun create(fragmentInjector: Provider<FragmentInjector>): MembersInjector<BaseActivity> {
         return MetroMembersInjector(fragmentInjector = fragmentInjector)
       }
@@ -470,26 +491,31 @@ class FragmentInjector {
 
       }
 
+      @HiddenFromObjC
       fun create(injectors: Provider<Map<KClass<*>, Injector>>): Factory<FragmentInjector> {
         return MetroFactory(injectors = injectors)
       }
 
+      @HiddenFromObjC
       fun newInstance(injectors: Map<KClass<*>, Injector>): FragmentInjector {
         return FragmentInjector(injectors = injectors)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(injectors: Provider<Map<KClass<*>, Injector>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): FragmentInjector {
       return Companion.newInstance(injectors = <this>.#injectors.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(injectors: Map<KClass<*>, Injector>): FragmentInjector {
       return error(message = "Never called")
     }
@@ -538,26 +564,31 @@ class ViewModelFactory {
 
       }
 
+      @HiddenFromObjC
       fun create(viewModels: Provider<Map<KClass<*>, Provider<ViewModel>>>): Factory<ViewModelFactory> {
         return MetroFactory(viewModels = viewModels)
       }
 
+      @HiddenFromObjC
       fun newInstance(viewModels: Map<KClass<*>, Provider<ViewModel>>): ViewModelFactory {
         return ViewModelFactory(viewModels = viewModels)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(viewModels: Provider<Map<KClass<*>, Provider<ViewModel>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ViewModelFactory {
       return Companion.newInstance(viewModels = <this>.#viewModels.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(viewModels: Map<KClass<*>, Provider<ViewModel>>): ViewModelFactory {
       return error(message = "Never called")
     }

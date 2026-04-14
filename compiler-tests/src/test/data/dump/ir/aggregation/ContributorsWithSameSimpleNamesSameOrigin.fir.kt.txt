@@ -28,18 +28,22 @@ class FooImpl : Foo {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<FooImpl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): FooImpl {
       return FooImpl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): FooImpl {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): FooImpl {
       return error(message = "Never called")
     }
@@ -102,3 +106,4 @@ package metro.hints
 fun AppScope(contributed: FooImpl) {
   return error(message = "Never called")
 }
+

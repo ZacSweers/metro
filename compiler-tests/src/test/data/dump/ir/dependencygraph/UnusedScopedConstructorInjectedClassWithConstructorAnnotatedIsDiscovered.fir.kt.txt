@@ -17,27 +17,32 @@ class ChildDependency {
 
       }
 
+      @HiddenFromObjC
       fun create(dep: Provider<Dependency>): Factory<ChildDependency> {
         return MetroFactory(dep = dep)
       }
 
+      @HiddenFromObjC
       fun newInstance(dep: Dependency): ChildDependency {
         return ChildDependency(dep = dep)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(dep: Provider<Dependency>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ChildDependency {
       return Companion.newInstance(dep = <this>.#dep.invoke())
     }
 
     @SingleIn(scope = LoggedInScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(dep: Dependency): ChildDependency {
       return error(message = "Never called")
     }
@@ -62,19 +67,23 @@ class Dependency {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<Dependency> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): Dependency {
       return Dependency()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Dependency {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): Dependency {
       return error(message = "Never called")
     }

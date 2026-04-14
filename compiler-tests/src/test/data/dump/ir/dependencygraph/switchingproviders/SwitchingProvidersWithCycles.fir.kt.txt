@@ -81,26 +81,31 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideInt(instance: AppGraph): Int {
         return instance.provideInt()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
@@ -119,27 +124,32 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph, string: Provider<String>): Factory<Long> {
         return ProvideLongMetroFactory(instance = instance, string = string)
       }
 
+      @HiddenFromObjC
       fun provideLong(instance: AppGraph, string: String): Long {
         return instance.provideLong(string = string)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph, string: Provider<String>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Long {
       return Companion.provideLong(instance = <this>.#instance, string = <this>.#string.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(string: String): Long {
       return error(message = "Never called")
     }
@@ -159,27 +169,32 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph, int: Provider<Int>, long: Provider<Long>): Factory<String> {
         return ProvideStringMetroFactory(instance = instance, int = int, long = long)
       }
 
+      @HiddenFromObjC
       fun provideString(instance: AppGraph, int: Int, long: Lazy<Long>): String {
         return instance.provideString(int = int, long = long)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph, int: Provider<Int>, long: Provider<Long>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): String {
       return Companion.provideString(instance = <this>.#instance, int = <this>.#int.invoke(), long = Companion.lazy<Provider<Long>, Long>(provider = <this>.#long))
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(int: Int, long: Lazy<Long>): String {
       return error(message = "Never called")
     }

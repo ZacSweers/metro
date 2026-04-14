@@ -55,27 +55,32 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<Set<Int>> {
         return ProvideIntsMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideInts(instance: AppGraph): Set<Int> {
         return instance.provideInts()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Set<Int> {
       return Companion.provideInts(instance = <this>.#instance)
     }
 
     @ElementsIntoSet
+    @HiddenFromObjC
     fun mirrorFunction(): Set<Int> {
       return error(message = "Never called")
     }

@@ -9,19 +9,23 @@ class A {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<A> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): A {
       return A()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): A {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): A {
       return error(message = "Never called")
     }
@@ -53,27 +57,32 @@ class B {
 
       }
 
+      @HiddenFromObjC
       fun create(a: Provider<A>): Factory<B> {
         return MetroFactory(a = a)
       }
 
+      @HiddenFromObjC
       fun newInstance(a: A): B {
         return B(a = a)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(a: Provider<A>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): B {
       return Companion.newInstance(a = <this>.#a.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(a: A): B {
       return error(message = "Never called")
     }
@@ -110,27 +119,32 @@ class C {
 
       }
 
+      @HiddenFromObjC
       fun create(b: Provider<B>, d: Provider<D>): Factory<C> {
         return MetroFactory(b = b, d = d)
       }
 
+      @HiddenFromObjC
       fun newInstance(b: B, d: Provider<D>): C {
         return C(b = b, d = d)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(b: Provider<B>, d: Provider<D>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): C {
       return Companion.newInstance(b = <this>.#b.invoke(), d = <this>.#d)
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(b: B, d: Provider<D>): C {
       return error(message = "Never called")
     }
@@ -162,27 +176,32 @@ class D {
 
       }
 
+      @HiddenFromObjC
       fun create(c: Provider<C>): Factory<D> {
         return MetroFactory(c = c)
       }
 
+      @HiddenFromObjC
       fun newInstance(c: C): D {
         return D(c = c)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(c: Provider<C>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): D {
       return Companion.newInstance(c = <this>.#c.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(c: C): D {
       return error(message = "Never called")
     }
@@ -214,27 +233,32 @@ class E {
 
       }
 
+      @HiddenFromObjC
       fun create(c: Provider<C>): Factory<E> {
         return MetroFactory(c = c)
       }
 
+      @HiddenFromObjC
       fun newInstance(c: C): E {
         return E(c = c)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(c: Provider<C>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): E {
       return Companion.newInstance(c = <this>.#c.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(c: C): E {
       return error(message = "Never called")
     }

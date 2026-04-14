@@ -49,26 +49,31 @@ abstract class AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<String> {
         return StringFieldMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun stringField(instance: AppGraph): String {
         return instance.#stringField
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): String {
       return Companion.stringField(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")
     }

@@ -41,6 +41,7 @@ interface Foo {
 
 // FILE: ImplContributions.kt
 
+@HiddenFromObjC
 @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
 abstract class ImplContributions {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -59,26 +60,31 @@ abstract class ImplContributions {
 
         }
 
+        @HiddenFromObjC
         fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Bar> {
           return ProvideImplAsBarMetroFactory(instance = instance)
         }
 
+        @HiddenFromObjC
         fun provideImplAsBar(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
           return ToAppScope.provideImplAsBar(instance = instance)
         }
 
       }
 
+      @HiddenFromObjC
       private constructor(instance: Provider<Any?>) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
       }
 
+      @HiddenFromObjC
       override operator fun invoke(): Bar {
         return Companion.provideImplAsBar(instance = <this>.#instance.invoke())
       }
 
+      @HiddenFromObjC
       fun mirrorFunction(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
         return error(message = "Never called")
       }
@@ -94,26 +100,31 @@ abstract class ImplContributions {
 
         }
 
+        @HiddenFromObjC
         fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Foo> {
           return ProvideImplAsFooMetroFactory(instance = instance)
         }
 
+        @HiddenFromObjC
         fun provideImplAsFoo(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
           return ToAppScope.provideImplAsFoo(instance = instance)
         }
 
       }
 
+      @HiddenFromObjC
       private constructor(instance: Provider<Any?>) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
       }
 
+      @HiddenFromObjC
       override operator fun invoke(): Foo {
         return Companion.provideImplAsFoo(instance = <this>.#instance.invoke())
       }
 
+      @HiddenFromObjC
       fun mirrorFunction(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
         return error(message = "Never called")
       }
@@ -132,28 +143,33 @@ abstract class ImplContributions {
 
         }
 
+        @HiddenFromObjC
         fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Any?> {
           return ProvideScopedInstanceImplMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
+        @HiddenFromObjC
         fun provideScopedInstanceImpl(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
           return ToAppScope.provideScopedInstanceImpl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
       }
 
+      @HiddenFromObjC
       private constructor(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
       }
 
+      @HiddenFromObjC
       override operator fun invoke(): Any? {
         return Companion.provideScopedInstanceImpl(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = Companion.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = Companion.create<Double>(provider = <this>.#providerOfLazyDouble))
       }
 
       @SingleIn(scope = AppScope::class)
       @Named(name = "metro_scoped_Impl")
+      @HiddenFromObjC
       fun mirrorFunction(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
         return error(message = "Never called")
       }

@@ -10,6 +10,7 @@ class ValueHolder {
 
       }
 
+      @HiddenFromObjC
       fun create(stringValue: Provider<String?> = provider<String?>(provider = local fun <anonymous>(): String? {
         return null
       }
@@ -17,22 +18,26 @@ class ValueHolder {
         return MetroFactory(stringValue = stringValue)
       }
 
+      @HiddenFromObjC
       fun newInstance(stringValue: String? = null): ValueHolder {
         return ValueHolder(stringValue = stringValue)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(stringValue: Provider<String?>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ValueHolder {
       return Companion.newInstance(stringValue = <this>.#stringValue.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(stringValue: String? = error(message = "Never called")): ValueHolder {
       return error(message = "Never called")
     }
@@ -46,3 +51,4 @@ class ValueHolder {
   }
 
 }
+

@@ -9,19 +9,23 @@ class ScopedClass {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<ScopedClass> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): ScopedClass {
       return ScopedClass()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ScopedClass {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): ScopedClass {
       return error(message = "Never called")
     }
@@ -202,26 +206,31 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideReusedIntMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideReusedInt(instance: AppGraph): Int {
         return instance.provideReusedInt()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideReusedInt(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
@@ -239,27 +248,32 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<String> {
         return ProvideStringMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideString(instance: AppGraph): String {
         return instance.provideString()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): String {
       return Companion.provideString(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")
     }

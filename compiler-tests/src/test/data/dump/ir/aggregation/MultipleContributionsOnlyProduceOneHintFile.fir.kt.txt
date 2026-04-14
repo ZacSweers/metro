@@ -25,19 +25,23 @@ class Base1Impl : Base1, Base2, Base3 {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<Base1Impl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): Base1Impl {
       return Base1Impl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Base1Impl {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): Base1Impl {
       return error(message = "Never called")
     }

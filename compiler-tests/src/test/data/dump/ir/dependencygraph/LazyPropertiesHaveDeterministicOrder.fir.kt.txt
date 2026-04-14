@@ -86,27 +86,32 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph, int: Provider<Int>): Factory<Double> {
         return BindDoubleMetroFactory(instance = instance, int = int)
       }
 
+      @HiddenFromObjC
       fun bindDouble(instance: AppGraph, int: Int): Double {
         return instance.bindDouble(int = int)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Double {
       return Companion.bindDouble(instance = <this>.#instance, int = <this>.#int.invoke())
     }
 
     @IntoSet
+    @HiddenFromObjC
     fun mirrorFunction(int: Int): Double {
       return error(message = "Never called")
     }
@@ -125,27 +130,32 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph, int: Provider<Int>): Factory<Long> {
         return BindLongMetroFactory(instance = instance, int = int)
       }
 
+      @HiddenFromObjC
       fun bindLong(instance: AppGraph, int: Int): Long {
         return instance.bindLong(int = int)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Long {
       return Companion.bindLong(instance = <this>.#instance, int = <this>.#int.invoke())
     }
 
     @IntoSet
+    @HiddenFromObjC
     fun mirrorFunction(int: Int): Long {
       return error(message = "Never called")
     }
@@ -163,26 +173,31 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideInt(instance: AppGraph): Int {
         return instance.provideInt()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }

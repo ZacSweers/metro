@@ -50,27 +50,32 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph, string: Provider<String>): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance, string = string)
       }
 
+      @HiddenFromObjC
       fun provideInt(instance: AppGraph, string: String): Int {
         return instance.provideInt(string = string)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph, string: Provider<String>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance, string = <this>.#string.invoke())
     }
 
     @IntoSet
+    @HiddenFromObjC
     fun mirrorFunction(string: String): Int {
       return error(message = "Never called")
     }
@@ -88,26 +93,31 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<String> {
         return ProvideStringMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideString(instance: AppGraph): String {
         return instance.provideString()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): String {
       return Companion.provideString(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")
     }

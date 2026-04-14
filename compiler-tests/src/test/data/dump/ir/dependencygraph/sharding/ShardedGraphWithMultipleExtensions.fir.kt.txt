@@ -11,19 +11,23 @@ class AppService1 {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<AppService1> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): AppService1 {
       return AppService1()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): AppService1 {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): AppService1 {
       return error(message = "Never called")
     }
@@ -49,19 +53,23 @@ class AppService2 {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<AppService2> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): AppService2 {
       return AppService2()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): AppService2 {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): AppService2 {
       return error(message = "Never called")
     }
@@ -87,19 +95,23 @@ class AppService3 {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<AppService3> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): AppService3 {
       return AppService3()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): AppService3 {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): AppService3 {
       return error(message = "Never called")
     }
@@ -125,19 +137,23 @@ class AppService4 {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<AppService4> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): AppService4 {
       return AppService4()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): AppService4 {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): AppService4 {
       return error(message = "Never called")
     }
@@ -172,19 +188,23 @@ class Feature1Service1 {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<Feature1Service1> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): Feature1Service1 {
       return Feature1Service1()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Feature1Service1 {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = Feature1Scope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): Feature1Service1 {
       return error(message = "Never called")
     }
@@ -216,27 +236,32 @@ class Feature1Service2 {
 
       }
 
+      @HiddenFromObjC
       fun create(f1s1: Provider<Feature1Service1>): Factory<Feature1Service2> {
         return MetroFactory(f1s1 = f1s1)
       }
 
+      @HiddenFromObjC
       fun newInstance(f1s1: Feature1Service1): Feature1Service2 {
         return Feature1Service2(f1s1 = f1s1)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(f1s1: Provider<Feature1Service1>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Feature1Service2 {
       return Companion.newInstance(f1s1 = <this>.#f1s1.invoke())
     }
 
     @SingleIn(scope = Feature1Scope::class)
+    @HiddenFromObjC
     fun mirrorFunction(f1s1: Feature1Service1): Feature1Service2 {
       return error(message = "Never called")
     }
@@ -268,27 +293,32 @@ class Feature1Service3 {
 
       }
 
+      @HiddenFromObjC
       fun create(f1s2: Provider<Feature1Service2>): Factory<Feature1Service3> {
         return MetroFactory(f1s2 = f1s2)
       }
 
+      @HiddenFromObjC
       fun newInstance(f1s2: Feature1Service2): Feature1Service3 {
         return Feature1Service3(f1s2 = f1s2)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(f1s2: Provider<Feature1Service2>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Feature1Service3 {
       return Companion.newInstance(f1s2 = <this>.#f1s2.invoke())
     }
 
     @SingleIn(scope = Feature1Scope::class)
+    @HiddenFromObjC
     fun mirrorFunction(f1s2: Feature1Service2): Feature1Service3 {
       return error(message = "Never called")
     }
@@ -329,27 +359,32 @@ class Feature2Service1 {
 
       }
 
+      @HiddenFromObjC
       fun create(app: Provider<AppService1>): Factory<Feature2Service1> {
         return MetroFactory(app = app)
       }
 
+      @HiddenFromObjC
       fun newInstance(app: AppService1): Feature2Service1 {
         return Feature2Service1(app = app)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(app: Provider<AppService1>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Feature2Service1 {
       return Companion.newInstance(app = <this>.#app.invoke())
     }
 
     @SingleIn(scope = Feature2Scope::class)
+    @HiddenFromObjC
     fun mirrorFunction(app: AppService1): Feature2Service1 {
       return error(message = "Never called")
     }
@@ -381,27 +416,32 @@ class Feature2Service2 {
 
       }
 
+      @HiddenFromObjC
       fun create(f2s1: Provider<Feature2Service1>): Factory<Feature2Service2> {
         return MetroFactory(f2s1 = f2s1)
       }
 
+      @HiddenFromObjC
       fun newInstance(f2s1: Feature2Service1): Feature2Service2 {
         return Feature2Service2(f2s1 = f2s1)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(f2s1: Provider<Feature2Service1>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Feature2Service2 {
       return Companion.newInstance(f2s1 = <this>.#f2s1.invoke())
     }
 
     @SingleIn(scope = Feature2Scope::class)
+    @HiddenFromObjC
     fun mirrorFunction(f2s1: Feature2Service1): Feature2Service2 {
       return error(message = "Never called")
     }
@@ -433,27 +473,32 @@ class Feature2Service3 {
 
       }
 
+      @HiddenFromObjC
       fun create(f2s2: Provider<Feature2Service2>): Factory<Feature2Service3> {
         return MetroFactory(f2s2 = f2s2)
       }
 
+      @HiddenFromObjC
       fun newInstance(f2s2: Feature2Service2): Feature2Service3 {
         return Feature2Service3(f2s2 = f2s2)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(f2s2: Provider<Feature2Service2>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Feature2Service3 {
       return Companion.newInstance(f2s2 = <this>.#f2s2.invoke())
     }
 
     @SingleIn(scope = Feature2Scope::class)
+    @HiddenFromObjC
     fun mirrorFunction(f2s2: Feature2Service2): Feature2Service3 {
       return error(message = "Never called")
     }

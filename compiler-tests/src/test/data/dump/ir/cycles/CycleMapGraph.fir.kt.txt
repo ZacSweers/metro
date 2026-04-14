@@ -14,26 +14,31 @@ class X {
 
       }
 
+      @HiddenFromObjC
       fun create(y: Provider<Y>): Factory<X> {
         return MetroFactory(y = y)
       }
 
+      @HiddenFromObjC
       fun newInstance(y: Y): X {
         return X(y = y)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(y: Provider<Y>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): X {
       return Companion.newInstance(y = <this>.#y.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(y: Y): X {
       return error(message = "Never called")
     }
@@ -69,26 +74,31 @@ class Y {
 
       }
 
+      @HiddenFromObjC
       fun create(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>): Factory<Y> {
         return MetroFactory(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 
+      @HiddenFromObjC
       fun newInstance(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
         return Y(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Y {
       return Companion.newInstance(mapOfProvidersOfX = <this>.#mapOfProvidersOfX.invoke(), mapOfProvidersOfY = <this>.#mapOfProvidersOfY.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
       return error(message = "Never called")
     }
