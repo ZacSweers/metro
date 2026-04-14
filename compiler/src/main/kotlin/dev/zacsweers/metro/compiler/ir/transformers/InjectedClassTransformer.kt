@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
+import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
@@ -287,6 +288,7 @@ internal class InjectedClassTransformer(
             }
           }
         }
+    addHiddenFromObjCAnnotation(invokeFunction)
     metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(invokeFunction)
 
     val allParameters =
@@ -339,6 +341,7 @@ internal class InjectedClassTransformer(
               nameToField[irParam.name] = field
               typeKeyToField[typeKey] = field
             }
+            addHiddenFromObjCAnnotation(this)
             body = generateDefaultConstructorBody()
           }
     }

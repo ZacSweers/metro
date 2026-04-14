@@ -1364,6 +1364,10 @@ internal fun buildSimpleAnnotation(symbol: () -> FirClassSymbol<*>): FirAnnotati
   }
 }
 
+internal fun buildHiddenFromObjCAnnotation(session: FirSession): FirAnnotation? {
+  return session.metroFirBuiltIns.hiddenFromObjCClassSymbol?.let { buildSimpleAnnotation { it } }
+}
+
 internal fun FirClass.isOrImplements(supertype: ClassId, session: FirSession): Boolean {
   if (classId == supertype) return true
   return implements(supertype, session)

@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.ProviderFactory.Companion.lookupRealDeclaration
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
+import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -315,6 +316,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
           isOperator = true
         }
 
+    addHiddenFromObjCAnnotation(invokeFunction)
     metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(invokeFunction)
 
     val sourceParameters =
@@ -386,6 +388,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
           nameToField[irParam.name] = field
           typeKeyToField[typeKey] = field
         }
+        addHiddenFromObjCAnnotation(this)
         body = generateDefaultConstructorBody()
       }
     }

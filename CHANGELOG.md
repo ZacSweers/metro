@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR/IR]** Propagate `@HiddenFromObjC` annotations to more generated Metro classes' member declarations. This a workaround to help avoid some gaps in K/N klib deserialization of generated files.
+
 1.0.0-RC1
 ---------
 

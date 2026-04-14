@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
+import dev.zacsweers.metro.compiler.fir.buildHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
@@ -171,7 +172,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           buildList {
             add(buildInjectAnnotation())
             add(buildInjectedFunctionClassAnnotation(function.callableId))
-            buildHiddenFromObjCAnnotation()?.let(::add)
+            buildHiddenFromObjCAnnotation(session)?.let(::add)
             annotations.qualifier?.fir?.let(::add)
             if (annotations.isComposable) {
               add(buildStableAnnotation())
@@ -884,10 +885,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
 
   private fun buildStableAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.metroFirBuiltIns.stableClassSymbol }
-  }
-
-  private fun buildHiddenFromObjCAnnotation(): FirAnnotation? {
-    return session.metroFirBuiltIns.hiddenFromObjCClassSymbol?.let { buildSimpleAnnotation { it } }
   }
 
   private fun buildNonRestartableAnnotation(): FirAnnotation {
