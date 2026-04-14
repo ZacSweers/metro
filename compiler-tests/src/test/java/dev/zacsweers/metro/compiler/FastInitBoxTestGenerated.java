@@ -428,6 +428,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("QualifiedContributesBindingAndIgnoreQualifierMultibinding.kt")
+      public void testQualifiedContributesBindingAndIgnoreQualifierMultibinding() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/QualifiedContributesBindingAndIgnoreQualifierMultibinding.kt");
+      }
+
+      @Test
       @TestMetadata("RankBasedReplacementFromClassWithMultipleBindingsInGraphExtension.kt")
       public void testRankBasedReplacementFromClassWithMultipleBindingsInGraphExtension() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/RankBasedReplacementFromClassWithMultipleBindingsInGraphExtension.kt");
