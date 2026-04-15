@@ -3,65 +3,55 @@
 package dev.zacsweers.metro.compiler
 
 import java.io.File
-import java.io.File.pathSeparator
-import java.io.File.separator
+import java.util.concurrent.ConcurrentHashMap
 
 object ClasspathBasedStandardLibrariesPathProvider : MetroKotlinStandardLibrariesPathProvider() {
-  private val SEP = "\\$separator"
+  private val fileCache = ConcurrentHashMap<String, File>()
 
-  private val GRADLE_DEPENDENCY =
-    (".*?" +
-        SEP +
-        "(?<name>[^$SEP]*)" +
-        SEP +
-        "(?<version>[^$SEP]*)" +
-        SEP +
-        "[^$SEP]*" +
-        SEP +
-        "\\1-\\2\\.jar")
-      .toRegex()
-
-  private val jars =
-    System.getProperty("java.class.path")
-      .split("\\$pathSeparator".toRegex())
-      .dropLastWhile(String::isEmpty)
-      .map(::File)
-      .associateBy {
-        GRADLE_DEPENDENCY.matchEntire(it.path)?.let { it.groups["name"]!!.value } ?: it.name
-      }
-
-  private fun getFile(name: String): File {
-    return jars[name]
-      ?: error("Jar $name not found in classpath:\n${jars.entries.joinToString("\n")}")
+  private fun getFile(propName: String): File {
+    return fileCache.computeIfAbsent(propName) {
+      val path = System.getProperty(propName) ?: error("System property '$propName' not set")
+      File(path)
+    }
   }
 
-  override fun runtimeJarForTests(): File = getFile("kotlin-stdlib")
+  override fun runtimeJarForTests(): File = getFile("kotlin.minimal.stdlib.path")
 
-  override fun runtimeJarForTestsWithJdk8(): File = getFile("kotlin-stdlib-jdk8")
+  override fun runtimeJarForTestsWithJdk8(): File = getFile("kotlin.full.stdlib.path")
 
-  override fun minimalRuntimeJarForTests(): File = getFile("kotlin-stdlib")
+  override fun minimalRuntimeJarForTests(): File = getFile("kotlin.minimal.stdlib.path")
 
-  override fun reflectJarForTests(): File = getFile("kotlin-reflect")
+  override fun reflectJarForTests(): File = getFile("kotlin.reflect.jar.path")
 
-  override fun kotlinTestJarForTests(): File = getFile("kotlin-test")
+  override fun kotlinTestJarForTests(): File = getFile("kotlin.test.jar.path")
 
-  override fun scriptRuntimeJarForTests(): File = getFile("kotlin-script-runtime")
+  override fun scriptRuntimeJarForTests(): File = getFile("kotlin.script.runtime.path")
 
-  override fun jvmAnnotationsForTests(): File = getFile("kotlin-annotations-jvm")
+  override fun jvmAnnotationsForTests(): File = getFile("kotlin.annotations.path")
 
-  override fun getAnnotationsJar(): File = getFile("kotlin-annotations-jvm")
+  override fun getAnnotationsJar(): File = getFile("kotlin.annotations.path")
 
-  override fun fullJsStdlib(): File = getFile("kotlin-stdlib-js")
+  override fun fullJsStdlib(): File = getFile("kotlin.js.stdlib.path")
 
-  override fun defaultJsStdlib(): File = getFile("kotlin-stdlib-js")
+  override fun defaultJsStdlib(): File = getFile("kotlin.js.stdlib.path")
 
-  override fun kotlinTestJsKLib(): File = getFile("kotlin-test-js")
+  override fun kotlinTestJsKLib(): File = getFile("kotlin.js.test.path")
 
   override fun scriptingPluginFilesForTests(): Collection<File> {
     TODO("KT-67573")
   }
 
-  override fun commonStdlibForTests(): File = getFile("kotlin-common-stdlib")
+  override fun commonStdlibForTests(): File = getFile("kotlin.common.stdlib.path")
 
-  override fun webStdlibForTests(): File = getFile("kotlin-stdlib-web")
+  override fun webStdlibForTests(): File = getFile("kotlin.web.stdlib.path")
+
+  // kotlin-stdlib-<WasmTarget>.klib
+  override fun fullWasmStdlib(target: String): File {
+    return getFile("kotlin.wasm.stdlib.$target.path")
+  }
+
+  // kotlin-test-<WasmTarget>.klib
+  override fun kotlinTestWasmKLib(target: String): File {
+    return getFile("kotlin.wasm.test.$target.path")
+  }
 }

@@ -1,5 +1,5 @@
 // ENABLE_TOP_LEVEL_FUNCTION_INJECTION
-// COMPILER_VERSION: 2.3
+// MIN_COMPILER_VERSION: 2.3
 
 // FILE: Composable.kt
 package androidx.compose.runtime

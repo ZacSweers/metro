@@ -11,5 +11,5 @@ interface ParentGraph {
 
 @GraphExtension
 interface ChildGraph {
-  val <!METRO_ERROR!>text<!>: String
+  val <!MISSING_BINDING!>text<!>: String
 }

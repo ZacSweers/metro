@@ -10,18 +10,22 @@ class TaskImpl1 : Task {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<TaskImpl1> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): TaskImpl1 {
       return TaskImpl1()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): TaskImpl1 {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): TaskImpl1 {
       return error(message = "Never called")
     }
@@ -46,18 +50,22 @@ class TaskImpl2 : Task {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<TaskImpl2> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): TaskImpl2 {
       return TaskImpl2()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): TaskImpl2 {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): TaskImpl2 {
       return error(message = "Never called")
     }
@@ -205,27 +213,32 @@ interface ExampleGraph : MetroContributionToAppScope {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: ExampleGraph): Factory<Task> {
         return Provide3MetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provide3(instance: ExampleGraph): Task {
         return instance.provide3()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: ExampleGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Task {
       return Companion.provide3(instance = <this>.#instance)
     }
 
     @IntoSet
+    @HiddenFromObjC
     fun mirrorFunction(): Task {
       return error(message = "Never called")
     }
@@ -243,27 +256,32 @@ interface ExampleGraph : MetroContributionToAppScope {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: ExampleGraph): Factory<Task> {
         return Provide4MetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provide4(instance: ExampleGraph): Task {
         return instance.provide4()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: ExampleGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Task {
       return Companion.provide4(instance = <this>.#instance)
     }
 
     @IntoSet
+    @HiddenFromObjC
     fun mirrorFunction(): Task {
       return error(message = "Never called")
     }

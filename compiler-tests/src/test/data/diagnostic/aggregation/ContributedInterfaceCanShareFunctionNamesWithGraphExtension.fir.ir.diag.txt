@@ -1,4 +1,4 @@
-/ContributedInterfaceCanShareFunctionNamesWithGraphExtension.kt:(187,195): error: [Metro/IncompatibleOverrides] The following declarations clash with each other when merging supertypes into a generated `MyGraph` graph impl class:
+/ContributedInterfaceCanShareFunctionNamesWithGraphExtension.kt:(187,195): error: The following declarations clash with each other when merging supertypes into a generated `MyGraph` graph impl class:
 
   ContributedInterfaceCanShareFunctionNamesWithGraphExtension.kt:12:3
     fun dependency(): Dependency (defined in 'MyGraph')

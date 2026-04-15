@@ -36,8 +36,8 @@ import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
+import dev.zacsweers.metro.compiler.ir.isCompilerIntrinsicOrAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
-import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
@@ -51,6 +51,7 @@ import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.renderDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
@@ -82,7 +83,6 @@ import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
-import org.jetbrains.kotlin.ir.interpreter.hasAnnotation
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrFail
@@ -408,10 +408,12 @@ internal class GraphNodes(
     ) {
       if (bindingStack.entryFor(graphTypeKey) != null) {
         // TODO dagger doesn't appear to error for this case to model off of
-        val message = buildString {
+        val message = renderDiagnostic {
           if (bindingStack.entries.size == 1) {
             // If there's just one entry, specify that it's a self-referencing cycle for clarity
-            appendLine("Graph dependency cycle detected! The below graph depends on itself.")
+            appendLine(
+              "Graph dependency cycle detected! The below graph ${bold("depends on itself")}."
+            )
           } else {
             appendLine("Graph dependency cycle detected!")
           }
@@ -427,6 +429,18 @@ internal class GraphNodes(
         exitProcessing()
       }
     }
+
+    private data class QualifierMismatchEntry(
+      val type: String,
+      val declarationFqName: String,
+      /** The qualifier on the final/overriding declaration (may be absent). */
+      val actualQualifier: String,
+      val overriddenSymbolFqName: String,
+      /** The qualifier on the overridden declaration. */
+      val expectedQualifier: String,
+    )
+
+    private val qualifierMismatches = mutableListOf<QualifierMismatchEntry>()
 
     private fun reportQualifierMismatch(
       declaration: IrOverridableDeclaration<*>,
@@ -449,21 +463,49 @@ internal class GraphNodes(
             overriddenDeclaration.propertyIfAccessor.expectAs<IrDeclarationWithName>()
           is IrProperty -> overriddenDeclaration as IrDeclarationWithName
         }
+
+      qualifierMismatches +=
+        QualifierMismatchEntry(
+          type = type,
+          declarationFqName = "${declaration.fqNameWhenAvailable}",
+          actualQualifier = expectedQualifier?.let { "'$it'" } ?: "absent",
+          overriddenSymbolFqName = "${declWithName.fqNameWhenAvailable}",
+          expectedQualifier = overriddenQualifier?.let { "'$it'" } ?: "none",
+        )
+      hasErrors = true
+    }
+
+    private fun flushQualifierMismatchErrors() {
+      if (qualifierMismatches.isEmpty()) return
       val message =
-        "[Metro/QualifierOverrideMismatch] Overridden $type '${declaration.fqNameWhenAvailable}' must have the same qualifier annotations as the overridden $type. However, the final $type qualifier is '${expectedQualifier}' but overridden symbol ${declWithName.fqNameWhenAvailable} has '${overriddenQualifier}'.'"
-
-      val errorDecl =
-        when (declaration) {
-          is IrSimpleFunction -> declaration.propertyIfAccessor
-          is IrProperty -> declaration
+        if (qualifierMismatches.size == 1) {
+          val e = qualifierMismatches[0]
+          renderDiagnostic {
+            append(
+              "[Metro/QualifierOverrideMismatch] Overridden ${e.type} '${bold(e.declarationFqName)}' must have the same qualifier annotations as the overridden ${e.type}. However, the final ${e.type} qualifier is ${red(e.actualQualifier)} but overridden symbol ${e.overriddenSymbolFqName} has ${green(e.expectedQualifier)}."
+            )
+          }
+        } else {
+          renderDiagnostic {
+            appendLine(
+              "[Metro/QualifierOverrideMismatch] Overridden declarations must have matching qualifier annotations:"
+            )
+            for (e in qualifierMismatches) {
+              appendLine()
+              appendLine("  ${e.type} '${bold(e.declarationFqName)}'")
+              appendLine(
+                "    expected: ${green(e.expectedQualifier)} (from ${e.overriddenSymbolFqName})"
+              )
+              appendLine("    actual:   ${red(e.actualQualifier)}")
+            }
+          }
         }
-
       reportCompat(
-        sequenceOf(errorDecl, graphDeclaration.sourceGraphIfMetroGraph),
-        MetroDiagnostics.METRO_ERROR,
+        sequenceOf(graphDeclaration.sourceGraphIfMetroGraph),
+        MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH,
         message,
       )
-      hasErrors = true
+      qualifierMismatches.clear()
     }
 
     context(traceScope: TraceScope)
@@ -514,7 +556,11 @@ internal class GraphNodes(
           if (declaration !is IrOverridableDeclaration<*>) continue
           if (!declaration.isFakeOverride) continue
           if (
-            declaration is IrFunction && declaration.isInheritedFromAny(pluginContext.irBuiltIns)
+            declaration is IrFunction &&
+              declaration.isCompilerIntrinsicOrAny(
+                pluginContext.irBuiltIns,
+                nonNullMetroGraph.isData,
+              )
           ) {
             continue
           }
@@ -1192,6 +1238,9 @@ internal class GraphNodes(
         )
         exitProcessing()
       }
+
+      // Flush any batched qualifier mismatch errors
+      flushQualifierMismatchErrors()
 
       // Exit after collecting all errors
       if (hasErrors) {

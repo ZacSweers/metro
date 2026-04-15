@@ -61,6 +61,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ExposeImplBindingWithoutContributionProviders.kt")
+    public void testExposeImplBindingWithoutContributionProviders() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ExposeImplBindingWithoutContributionProviders.kt");
+    }
+
+    @Test
     @TestMetadata("InternalContributionMissingHint.kt")
     public void testInternalContributionMissingHint() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalContributionMissingHint.kt");
@@ -94,6 +100,104 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("SuspiciousScopeWarnings.kt")
     public void testSuspiciousScopeWarnings() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/SuspiciousScopeWarnings.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/api")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Api {
+    @Test
+    public void testAllFilesPresentInApi() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/api"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/api/circuit")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Circuit {
+      @Test
+      public void testAllFilesPresentInCircuit() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/api/circuit"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("DuplicateCircuitInjects.kt")
+      public void testDuplicateCircuitInjects() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/DuplicateCircuitInjects.kt");
+      }
+
+      @Test
+      @TestMetadata("InvalidAssistedInjection.kt")
+      public void testInvalidAssistedInjection() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/InvalidAssistedInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("InvalidAssistedInjectionMissingFactory.kt")
+      public void testInvalidAssistedInjectionMissingFactory() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/InvalidAssistedInjectionMissingFactory.kt");
+      }
+
+      @Test
+      @TestMetadata("InvalidSupertypes.kt")
+      public void testInvalidSupertypes() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/InvalidSupertypes.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassInvalidParams.kt")
+      public void testPresenterClassInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterClassInvalidParams.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassMissingInject.kt")
+      public void testPresenterClassMissingInject() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterClassMissingInject.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionImplicitReturnType.kt")
+      public void testPresenterFunctionImplicitReturnType() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionImplicitReturnType.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionInvalidParams.kt")
+      public void testPresenterFunctionInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionInvalidParams.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionInvalidReturn.kt")
+      public void testPresenterFunctionInvalidReturn() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionInvalidReturn.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionMissingReturn.kt")
+      public void testPresenterFunctionMissingReturn() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionMissingReturn.kt");
+      }
+
+      @Test
+      @TestMetadata("UiClassInvalidParams.kt")
+      public void testUiClassInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/UiClassInvalidParams.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionInvalidParams.kt")
+      public void testUiFunctionInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/UiFunctionInvalidParams.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionMissingModifier.kt")
+      public void testUiFunctionMissingModifier() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/UiFunctionMissingModifier.kt");
+      }
     }
   }
 
@@ -581,9 +685,9 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("CannotHaveTypeArgs.kt")
-    public void testCannotHaveTypeArgs() {
-      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveTypeArgs.kt");
+    @TestMetadata("CannotHaveReifiedTypeArgs.kt")
+    public void testCannotHaveReifiedTypeArgs() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveReifiedTypeArgs.kt");
     }
 
     @Test
@@ -634,6 +738,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("InjectingAPlainObjectIsSus.kt")
     public void testInjectingAPlainObjectIsSus() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingAPlainObjectIsSus.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectingContributesClassWithoutExposeImplBinding.kt")
+    public void testInjectingContributesClassWithoutExposeImplBinding() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingContributesClassWithoutExposeImplBinding.kt");
     }
 
     @Test
@@ -742,12 +852,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
-      @TestMetadata("AssistedIdentifierSeverityError.kt")
-      public void testAssistedIdentifierSeverityError() {
-        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/AssistedIdentifierSeverityError.kt");
-      }
-
-      @Test
       @TestMetadata("InjectingAssistedInjectClassesIsAnError.kt")
       public void testInjectingAssistedInjectClassesIsAnError() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/InjectingAssistedInjectClassesIsAnError.kt");
@@ -757,12 +861,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("LazyAssistedFactoryInjection.kt")
       public void testLazyAssistedFactoryInjection() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/LazyAssistedFactoryInjection.kt");
-      }
-
-      @Test
-      @TestMetadata("RedundantAssistedNamesAreWarned.kt")
-      public void testRedundantAssistedNamesAreWarned() {
-        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/RedundantAssistedNamesAreWarned.kt");
       }
     }
 

@@ -27,7 +27,7 @@ interface SubscopeGraph {
 
   // This should fail because of missing @Inject on Implementation
   @Binds
-  fun bindImplementation(<!METRO_ERROR!>instance: Implementation<!>): Base
+  fun bindImplementation(<!MISSING_BINDING!>instance: Implementation<!>): Base
 }
 
 @DependencyGraph(AppScope::class)

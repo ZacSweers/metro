@@ -613,7 +613,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           .trimIndent()
       ),
       previousCompilationResult = firstCompilation,
-      options = metroOptions.withDaggerInterop(),
+      options = metroOptions.withDaggerInterop().copy(unusedGraphInputsSeverity = NONE),
     ) {
       assertDiagnostics(
         """

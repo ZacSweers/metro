@@ -110,10 +110,7 @@ abstract class MetroCompilerTest {
                   entry.raw.cliOption,
                   this@toPluginOptions.generateContributionHintsInFir,
                 )
-              TRANSFORM_PROVIDERS_TO_PRIVATE ->
-                processor.option(entry.raw.cliOption, transformProvidersToPrivate)
               SHRINK_UNUSED_BINDINGS -> processor.option(entry.raw.cliOption, shrinkUnusedBindings)
-              CHUNK_FIELD_INITS -> processor.option(entry.raw.cliOption, chunkFieldInits)
               STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
               ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)
               KEYS_PER_GRAPH_SHARD -> processor.option(entry.raw.cliOption, keysPerGraphShard)
@@ -123,8 +120,6 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, nonPublicContributionSeverity)
               USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS ->
                 processor.option(entry.raw.cliOption, useAssistedParamNamesAsIdentifiers)
-              ASSISTED_IDENTIFIER_SEVERITY ->
-                processor.option(entry.raw.cliOption, assistedIdentifierSeverity)
               WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
@@ -352,6 +347,18 @@ abstract class MetroCompilerTest {
                   entry.raw.cliOption,
                   this@toPluginOptions.enableKClassToClassInterop,
                 )
+              }
+              GENERATE_CONTRIBUTION_PROVIDERS -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.generateContributionProviders,
+                )
+              }
+              ENABLE_CIRCUIT_CODEGEN -> {
+                processor.option(entry.raw.cliOption, enableCircuitCodegen)
+              }
+              RICH_DIAGNOSTICS -> {
+                processor.option(entry.raw.cliOption, richDiagnostics)
               }
             }
           yield(option)

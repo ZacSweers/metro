@@ -203,11 +203,11 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         """
         @Suppress("DEPRECATION")
         class ExampleClass @AssistedInject constructor(
-          @Assisted("count") val count: String,
+          @Assisted val count: String,
         ) {
           @AssistedFactory
           interface Factory {
-            fun create(@Assisted("notcount") count: Int): ExampleClass
+            fun create(@Assisted notcount: Int): ExampleClass
           }
         }
         """
@@ -233,11 +233,11 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         """
         @Suppress("DEPRECATION")
         class ExampleClass @AssistedInject constructor(
-          @Assisted("count") val count: String,
+          @Assisted val count: String,
         ) {
           @AssistedFactory
           interface Factory {
-            fun create(@Assisted("count") count: Int): ExampleClass
+            fun create(@Assisted count: Int): ExampleClass
           }
         }
         """

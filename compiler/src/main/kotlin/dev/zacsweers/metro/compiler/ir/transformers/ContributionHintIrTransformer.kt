@@ -18,6 +18,8 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
  * both scoped @Inject classes and classes with contributing annotations. See [HintGenerator] for
  * more details about hint specifics.
  */
+// NOTE this doesn't have logic for generating hints for top-level providers since this IR impl will
+// go away
 internal class ContributionHintIrTransformer(
   context: IrMetroContext,
   private val hintGenerator: HintGenerator,

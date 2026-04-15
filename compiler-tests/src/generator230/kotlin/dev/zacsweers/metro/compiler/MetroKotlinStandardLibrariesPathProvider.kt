@@ -8,4 +8,8 @@ import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 // KotlinStandardLibrariesPathProvider was changed to an interface in 2.3.20
 abstract class MetroKotlinStandardLibrariesPathProvider : KotlinStandardLibrariesPathProvider() {
   abstract fun webStdlibForTests(): File
+
+  abstract fun fullWasmStdlib(target: String): File
+
+  abstract fun kotlinTestWasmKLib(target: String): File
 }

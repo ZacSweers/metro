@@ -12,6 +12,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getValue
+import dev.zacsweers.metro.compiler.graph.BindingGraphDiagnosticKind
+import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
@@ -41,6 +43,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -67,6 +70,14 @@ import org.jetbrains.kotlin.name.ClassId
 
 private const val MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT = 3
 
+private fun BindingGraphDiagnosticKind.toDiagnosticFactory(): KtDiagnosticFactory1<String> =
+  when (this) {
+    BindingGraphDiagnosticKind.MISSING_BINDING -> MetroDiagnostics.MISSING_BINDING
+    BindingGraphDiagnosticKind.DUPLICATE_BINDING -> MetroDiagnostics.DUPLICATE_BINDING
+    BindingGraphDiagnosticKind.DEPENDENCY_CYCLE -> MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
+    BindingGraphDiagnosticKind.GENERIC -> MetroDiagnostics.METRO_ERROR
+  }
+
 internal data class ChildGraphScopeInfo(
   val reachableKeys: Set<IrTypeKey>,
   val scopeNames: Set<ClassId>,
@@ -80,8 +91,72 @@ internal class IrBindingGraph(
   bindingLookup: BindingLookup,
   private val contributionData: IrContributionData,
   private val boundTypeResolver: IrBoundTypeResolver,
-) : IrMetroContext by metroContext {
+) : IrMetroContext by metroContext, ErrorReporter<IrBindingStack> {
   private var hasErrors = false
+
+  private data class PendingError(
+    val factory: KtDiagnosticFactory1<String>,
+    val declaration: IrDeclaration,
+    val message: String,
+  )
+
+  private val pendingErrors = mutableListOf<PendingError>()
+
+  private fun collectError(
+    message: String,
+    declaration: IrDeclaration,
+    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  ) {
+    hasErrors = true
+    pendingErrors += PendingError(factory, declaration, message)
+  }
+
+  override fun report(kind: BindingGraphDiagnosticKind, message: String, stack: IrBindingStack) {
+    val factory = kind.toDiagnosticFactory()
+    val element =
+      stack.lastEntryOrGraph?.originalDeclarationIfOverride()
+        ?: node.reportableSourceGraphDeclaration
+    onError(message, element, factory)
+  }
+
+  override fun reportFatal(
+    kind: BindingGraphDiagnosticKind,
+    message: String,
+    stack: IrBindingStack,
+  ): Nothing {
+    report(kind, message, stack)
+    flush()
+    exitProcessing()
+  }
+
+  /**
+   * Flushes collected errors, grouping by (factory, declaration) to batch multiple messages
+   * targeting the same diagnostic slot into a single report. This avoids kotlinc's diagnostic
+   * deduplication which drops subsequent reports with the same factory on the same source element.
+   */
+  override fun flush() {
+    pendingErrors
+      .groupBy { it.factory to it.declaration }
+      .forEach { (key, errors) ->
+        val (factory, declaration) = key
+        // Stable sort so output is deterministic across kotlin versions
+        val sorted = errors.sortedBy { it.message }
+        val combinedMessage =
+          if (sorted.size == 1) {
+            sorted[0].message
+          } else {
+            buildString {
+              appendLine("${sorted.size} errors:")
+              for (error in sorted) {
+                appendLine()
+                appendLine(error.message)
+              }
+            }
+          }
+        metroContext.reportCompat(declaration, factory, combinedMessage)
+      }
+    pendingErrors.clear()
+  }
 
   private var _bindingLookup: BindingLookup? = bindingLookup
     set(value) {
@@ -110,11 +185,8 @@ internal class IrBindingGraph(
           reportDuplicateBindings(key, bindings, stack)
         }
       },
-      onError = ::onError,
-      onHardError = { message, stack ->
-        onError(message, stack)
-        exitProcessing()
-      },
+      errorReporter = this,
+      messageRenderer = messageRenderer,
       missingBindingHints = { key ->
         MissingBindingHints(
           missingBindingHints(key),
@@ -238,7 +310,11 @@ internal class IrBindingGraph(
     }
   }
 
-  data class GraphError(val declaration: IrDeclaration?, val message: String)
+  data class GraphError(
+    val declaration: IrDeclaration?,
+    val message: String,
+    val factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  )
 
   context(traceScope: TraceScope)
   fun seal(
@@ -283,6 +359,8 @@ internal class IrBindingGraph(
     val reachableKeys = topologyResult.reachableKeys
 
     if (hasErrors) {
+      // Flush any collected errors before returning
+      flush()
       // Clear out the binding lookup now that we're done
       _bindingLookup = null
       return BindingGraphResult.ERROR
@@ -321,6 +399,7 @@ internal class IrBindingGraph(
               }
               .distinctBy { it.typeKey }
           }
+          val suspiciousMessages = mutableListOf<String>()
           for ((key, binding) in bindingLookup.getAvailableMultibindings()) {
             if (binding.declaration != null) continue // Skip explicitly declared
             val unusedSources = binding.sourceBindings.intersect(unusedMultibindingElements)
@@ -378,7 +457,15 @@ internal class IrBindingGraph(
               }
             }
 
-            reportCompat(node.sourceGraph, MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING, message)
+            suspiciousMessages += message
+          }
+          if (suspiciousMessages.isNotEmpty()) {
+            val combinedMessage = suspiciousMessages.joinToString(separator = "\n\n")
+            reportCompat(
+              node.sourceGraph,
+              MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING,
+              combinedMessage,
+            )
           }
         }
         writeDiagnostic(
@@ -412,6 +499,9 @@ internal class IrBindingGraph(
         }
       }
 
+    // Flush any remaining collected errors
+    flush()
+
     // Clear out the binding lookup now that we're done
     _bindingLookup = null
 
@@ -421,7 +511,7 @@ internal class IrBindingGraph(
       reachableKeys = reachableKeys,
       shardGroups = shardGroups,
       unusedKeys = unusedKeys,
-      hasErrors = false,
+      hasErrors = hasErrors,
     )
   }
 
@@ -469,7 +559,7 @@ internal class IrBindingGraph(
           } else {
             multibinding.declaration
           }
-        errors += GraphError(declarationToReport, message)
+        errors += GraphError(declarationToReport, message, MetroDiagnostics.EMPTY_MULTIBINDING)
       }
     }
     if (errors.isNotEmpty()) {
@@ -726,7 +816,7 @@ internal class IrBindingGraph(
                 .annotationsIn(metroContext.metroSymbols.classIds.allContributesAnnotations)
                 .any { annotation ->
                   val result = boundTypeResolver.resolveBoundType(contribution, annotation)
-                  result == null || result.type.rawTypeOrNull()?.classId == klass.classId
+                  result == null || result.typeKey.type.rawTypeOrNull()?.classId == klass.classId
                 }
             implementsKey && bindsKey
           }
@@ -794,26 +884,42 @@ internal class IrBindingGraph(
     }
   }
 
-  private fun onError(message: String, stack: IrBindingStack) {
-    val declaration =
+  private fun onError(
+    message: String,
+    stack: IrBindingStack,
+    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  ) {
+    val element =
       stack.lastEntryOrGraph?.originalDeclarationIfOverride()
         ?: node.reportableSourceGraphDeclaration
-    onError(message, declaration)
+    onError(message, element, factory)
   }
 
-  private fun onError(message: String, declaration: IrDeclaration) {
-    hasErrors = true
-    metroContext.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
+  private fun onError(
+    message: String,
+    declaration: IrDeclaration,
+    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  ) {
+    collectError(message, declaration, factory)
   }
 
-  private fun onError(message: String, element: IrElement) {
+  private fun onError(
+    message: String,
+    element: IrElement,
+    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  ) {
     hasErrors = true
     if (element is IrDeclaration) {
-      onError(message, element)
+      collectError(message, element, factory)
     } else {
-      metroContext.diagnosticReporter
-        .at(element, node.metroGraphOrFail.file)
-        .report(MetroDiagnostics.METRO_ERROR, message)
+      with(metroContext) {
+        metroContext.diagnosticReporter.reportAt(
+          element,
+          node.metroGraphOrFail.file,
+          factory,
+          message,
+        )
+      }
     }
   }
 
@@ -896,7 +1002,7 @@ internal class IrBindingGraph(
         }
       }
     }
-    metroContext.reportCompat(declarationToReport, MetroDiagnostics.METRO_ERROR, message)
+    onError(message, declarationToReport, MetroDiagnostics.INCOMPATIBLE_SCOPE)
   }
 
   private fun buildStackToRoot(
@@ -955,7 +1061,7 @@ internal class IrBindingGraph(
         appendLine()
         appendBindingStack(stack)
       }
-      onError(message, stack)
+      onError(message, stack, MetroDiagnostics.DUPLICATE_MAP_KEY)
     }
   }
 
@@ -1001,7 +1107,7 @@ internal class IrBindingGraph(
           )
         }
       }
-      onError(message, declaration ?: node.sourceGraph)
+      onError(message, declaration ?: node.sourceGraph, MetroDiagnostics.INVALID_ASSISTED_BINDING)
     }
 
     reverseAdjacency[binding.typeKey]?.let { dependents ->

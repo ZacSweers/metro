@@ -13,6 +13,7 @@ class Target {
 
       }
 
+      @HiddenFromObjC
       fun create(strings: Provider<Map<Int, Provider<String>>>): MembersInjector<Target> {
         return MetroMembersInjector(strings = strings)
       }
@@ -55,28 +56,33 @@ interface Bindings {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: Bindings): Factory<String> {
         return ProvideStringMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideString(instance: Bindings): String {
         return instance.provideString()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: Bindings) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): String {
       return Companion.provideString(instance = <this>.#instance)
     }
 
     @IntoMap
     @IntKey(value = 1)
+    @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")
     }

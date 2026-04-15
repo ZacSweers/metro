@@ -11,18 +11,22 @@ class InternalClass {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<InternalClass> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): InternalClass {
       return InternalClass()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): InternalClass {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): InternalClass {
       return error(message = "Never called")
     }
@@ -48,18 +52,22 @@ object IntProvider {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<Int> {
       return ProvideIntMetroFactory
     }
 
+    @HiddenFromObjC
     fun provideInt(): Int {
       return IntProvider.provideInt()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return ProvideIntMetroFactory.provideInt()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }

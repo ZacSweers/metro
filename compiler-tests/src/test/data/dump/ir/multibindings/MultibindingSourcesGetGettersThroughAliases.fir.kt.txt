@@ -8,18 +8,22 @@ class Bar : Base {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<Bar> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): Bar {
       return Bar()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Bar {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Bar {
       return error(message = "Never called")
     }
@@ -53,18 +57,22 @@ class Foo : Base {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<Foo> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): Foo {
       return Foo()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Foo {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Foo {
       return error(message = "Never called")
     }

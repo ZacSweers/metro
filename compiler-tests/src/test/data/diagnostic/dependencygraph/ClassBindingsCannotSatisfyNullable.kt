@@ -7,7 +7,7 @@
 class Foo
 
 @Inject
-class View(<!METRO_ERROR!>foo: Foo?<!>)
+class View(<!MISSING_BINDING!>foo: Foo?<!>)
 
 @DependencyGraph
 interface AppGraph {

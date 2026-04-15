@@ -21,7 +21,7 @@ concurrency:
 jobs:
   generate-matrix:
     name: Generate IDE matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       ide-matrix: ${{ steps.matrix.outputs.ide-matrix }}
     steps:
@@ -134,7 +134,7 @@ jobs:
 
   ide-integration:
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     needs:
       - ide-tests
     steps:

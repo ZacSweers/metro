@@ -6,6 +6,7 @@ import androidx.tracing.AbstractTraceDriver
 import androidx.tracing.wire.TraceDriver as WireTraceDriver
 import androidx.tracing.wire.TraceSink
 import dev.zacsweers.metro.compiler.LOG_PREFIX
+import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -56,6 +57,8 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   val lookupTracker: LookupTracker?
   val expectActualTracker: ExpectActualTracker
+
+  val messageRenderer: MessageRenderer
 
   val irTypeSystemContext: IrTypeSystemContext
 
@@ -194,6 +197,9 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
           expectActualTracker
         }
 
+      override val messageRenderer: MessageRenderer =
+        MessageRenderer(MessageRenderer.resolveRichOutput(options.richDiagnostics))
+
       override val irTypeSystemContext: IrTypeSystemContext =
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)
 
@@ -267,6 +273,11 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     }
   }
 }
+
+/** Builds a diagnostic message string using the [MessageRenderer.MessageBuilder] DSL. */
+internal inline fun IrMetroContext.renderDiagnostic(
+  body: MessageRenderer.MessageBuilder.() -> Unit
+): String = messageRenderer.buildMessage(body)
 
 /** See the other [writeDiagnostic] */
 context(context: IrMetroContext)

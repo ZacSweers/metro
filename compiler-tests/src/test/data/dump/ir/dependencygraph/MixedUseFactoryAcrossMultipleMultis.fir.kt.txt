@@ -10,26 +10,31 @@ class ClientDevice {
 
       }
 
+      @HiddenFromObjC
       fun create(userAgentProvider: Provider<UserAgentProvider>): Factory<ClientDevice> {
         return MetroFactory(userAgentProvider = userAgentProvider)
       }
 
+      @HiddenFromObjC
       fun newInstance(userAgentProvider: UserAgentProvider): ClientDevice {
         return ClientDevice(userAgentProvider = userAgentProvider)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(userAgentProvider: Provider<UserAgentProvider>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ClientDevice {
       return Companion.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(userAgentProvider: UserAgentProvider): ClientDevice {
       return error(message = "Never called")
     }
@@ -54,18 +59,22 @@ class ClientId {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<ClientId> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): ClientId {
       return ClientId()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ClientId {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): ClientId {
       return error(message = "Never called")
     }
@@ -93,26 +102,31 @@ class CommonAppHeadersInterceptor {
 
       }
 
+      @HiddenFromObjC
       fun create(additionalHeaders: Provider<Set<Pair<String, String>>>, lazyDelegate: Provider<CommonAppHeadersInterceptor>): Factory<CommonAppHeadersInterceptor> {
         return MetroFactory(additionalHeaders = additionalHeaders, lazyDelegate = lazyDelegate)
       }
 
+      @HiddenFromObjC
       fun newInstance(additionalHeaders: Set<Pair<String, String>>, lazyDelegate: Lazy<CommonAppHeadersInterceptor>): CommonAppHeadersInterceptor {
         return CommonAppHeadersInterceptor(additionalHeaders = additionalHeaders, lazyDelegate = lazyDelegate)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(additionalHeaders: Provider<Set<Pair<String, String>>>, lazyDelegate: Provider<CommonAppHeadersInterceptor>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): CommonAppHeadersInterceptor {
       return Companion.newInstance(additionalHeaders = <this>.#additionalHeaders.invoke(), lazyDelegate = Companion.lazy<Provider<CommonAppHeadersInterceptor>, CommonAppHeadersInterceptor>(provider = <this>.#lazyDelegate))
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(additionalHeaders: Set<Pair<String, String>>, lazyDelegate: Lazy<CommonAppHeadersInterceptor>): CommonAppHeadersInterceptor {
       return error(message = "Never called")
     }
@@ -147,26 +161,31 @@ class InternalHeader {
 
       }
 
+      @HiddenFromObjC
       fun create(key: Provider<String>): Factory<InternalHeader> {
         return MetroFactory(key = key)
       }
 
+      @HiddenFromObjC
       fun newInstance(key: String): InternalHeader {
         return InternalHeader(key = key)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(key: Provider<String>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): InternalHeader {
       return Companion.newInstance(key = <this>.#key.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(key: String): InternalHeader {
       return error(message = "Never called")
     }
@@ -193,26 +212,31 @@ class UserAgent {
 
       }
 
+      @HiddenFromObjC
       fun create(userAgentProvider: Provider<UserAgentProvider>): Factory<UserAgent> {
         return MetroFactory(userAgentProvider = userAgentProvider)
       }
 
+      @HiddenFromObjC
       fun newInstance(userAgentProvider: UserAgentProvider): UserAgent {
         return UserAgent(userAgentProvider = userAgentProvider)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(userAgentProvider: Provider<UserAgentProvider>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): UserAgent {
       return Companion.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(userAgentProvider: UserAgentProvider): UserAgent {
       return error(message = "Never called")
     }
@@ -237,18 +261,22 @@ class UserAgentProvider {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<UserAgentProvider> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): UserAgentProvider {
       return UserAgentProvider()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): UserAgentProvider {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): UserAgentProvider {
       return error(message = "Never called")
     }
@@ -342,27 +370,32 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph, @Named(name = "other") otherHeaders: Provider<Set<Pair<String, String>>>): Factory<Set<Pair<String, String>>> {
         return ProvideHeadersMetroFactory(instance = instance, otherHeaders = otherHeaders)
       }
 
+      @HiddenFromObjC
       fun provideHeaders(instance: AppGraph, @Named(name = "other") otherHeaders: Set<Pair<String, String>>): Set<Pair<String, String>> {
         return instance.provideHeaders(otherHeaders = otherHeaders)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph, otherHeaders: Provider<Set<Pair<String, String>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Set<Pair<String, String>> {
       return Companion.provideHeaders(instance = <this>.#instance, otherHeaders = <this>.#otherHeaders.invoke())
     }
 
     @ElementsIntoSet
+    @HiddenFromObjC
     fun mirrorFunction(@Named(name = "other") otherHeaders: Set<Pair<String, String>>): Set<Pair<String, String>> {
       return error(message = "Never called")
     }
@@ -381,28 +414,33 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph, header: Provider<InternalHeader>): Factory<Pair<String, String>> {
         return ProvideInternalHeaderMetroFactory(instance = instance, header = header)
       }
 
+      @HiddenFromObjC
       fun provideInternalHeader(instance: AppGraph, header: InternalHeader): Pair<String, String> {
         return instance.provideInternalHeader(header = header)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph, header: Provider<InternalHeader>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Pair<String, String> {
       return Companion.provideInternalHeader(instance = <this>.#instance, header = <this>.#header.invoke())
     }
 
     @IntoSet
     @Named(name = "other")
+    @HiddenFromObjC
     fun mirrorFunction(header: InternalHeader): Pair<String, String> {
       return error(message = "Never called")
     }
@@ -420,28 +458,33 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<Set<Pair<String, String>>> {
         return ProvideOtherHeadersMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideOtherHeaders(instance: AppGraph): Set<Pair<String, String>> {
         return instance.provideOtherHeaders()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Set<Pair<String, String>> {
       return Companion.provideOtherHeaders(instance = <this>.#instance)
     }
 
     @ElementsIntoSet
     @Named(name = "other")
+    @HiddenFromObjC
     fun mirrorFunction(): Set<Pair<String, String>> {
       return error(message = "Never called")
     }
@@ -459,26 +502,31 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<String> {
         return ProvideStringMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideString(instance: AppGraph): String {
         return instance.provideString()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): String {
       return Companion.provideString(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")
     }

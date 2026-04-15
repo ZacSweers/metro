@@ -61,6 +61,10 @@ internal object Keys {
     override fun toString() = "MetroContributionClassDeclaration"
   }
 
+  data object ContributionProviderHolderDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "ContributionProviderHolderDeclaration"
+  }
+
   data object MetroContributionCallableDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "MetroContributionCallableDeclaration"
   }

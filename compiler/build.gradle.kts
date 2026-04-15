@@ -39,6 +39,7 @@ buildConfig {
 tasks.test {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
+  systemProperty("metro.richDiagnostics", "false")
 }
 
 wire { kotlin { javaInterop = false } }
@@ -143,8 +144,13 @@ dependencies {
   testRuntimeOnly("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
   // Cover for https://github.com/tschuchortdev/kotlin-compile-testing/issues/274
   testImplementation(libs.kotlin.aptEmbeddable)
-  testImplementation(libs.kct)
-  testImplementation(libs.kct.ksp)
+  if (testCompilerVersion.startsWith("2.4")) {
+    testImplementation("dev.zacsweers.kctfork:core:0.13.0-alpha01")
+    testImplementation("dev.zacsweers.kctfork:ksp:0.13.0-alpha01")
+  } else {
+    testImplementation(libs.kct)
+    testImplementation(libs.kct.ksp)
+  }
   testImplementation(libs.okio)
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)

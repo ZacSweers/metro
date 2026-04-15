@@ -7,6 +7,10 @@ import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitDiagnostics
+import dev.zacsweers.metro.compiler.circuit.CircuitFactorySupertypeGenerator
+import dev.zacsweers.metro.compiler.circuit.CircuitFirCheckers
+import dev.zacsweers.metro.compiler.circuit.CircuitSymbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator
@@ -21,6 +25,7 @@ import dev.zacsweers.metro.compiler.fir.generators.LoggingFirDeclarationGenerati
 import dev.zacsweers.metro.compiler.fir.generators.LoggingFirSupertypeGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.kotlinOnly
+import dev.zacsweers.metro.compiler.letIf
 import java.util.ServiceLoader
 import kotlin.io.path.appendText
 import kotlin.io.path.createFile
@@ -37,10 +42,10 @@ public class MetroFirExtensionRegistrar(
   private val isIde: Boolean,
   private val compatContext: CompatContext,
   private val loadExternalDeclarationExtensions:
-    (FirSession, MetroOptions) -> List<MetroFirDeclarationGenerationExtension> =
+    (FirSession, MetroOptions, CompatContext) -> List<MetroFirDeclarationGenerationExtension> =
     ::loadExternalDeclarationExtensions,
   private val loadExternalContributionExtensions:
-    (FirSession, MetroOptions) -> List<MetroContributionExtension> =
+    (FirSession, MetroOptions, CompatContext) -> List<MetroContributionExtension> =
     ::loadExternalContributionExtensions,
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
@@ -62,9 +67,19 @@ public class MetroFirExtensionRegistrar(
     // These are types
     if (!isIde) {
       +{ session: FirSession -> FirAccessorOverrideStatusTransformer(session, compatContext) }
+      if (options.enableCircuitCodegen) {
+        +supertypeGenerator(
+          "Supertypes - circuit factories",
+          { session, compatContext -> CircuitFactorySupertypeGenerator(session, compatContext) },
+          false,
+        )
+      }
     }
-    if (options.transformProvidersToPrivate) {
-      +{ session: FirSession -> FirProvidesStatusTransformer(session, compatContext) }
+
+    if (options.enableCircuitCodegen) {
+      +CircuitSymbols.Fir.getFactory()
+      +::CircuitFirCheckers
+      registerDiagnosticContainers(CircuitDiagnostics)
     }
 
     // Register the composite declaration generator that includes external extensions
@@ -86,7 +101,10 @@ public class MetroFirExtensionRegistrar(
       val isCli = session.isCli()
 
       // Load external extensions via ServiceLoader
-      val externalExtensions = loadExternalDeclarationExtensions(session, options)
+      val externalExtensions =
+        loadExternalDeclarationExtensions(session, options, compatContext)
+          // If we're running in the IDE, only enable extensions that opt-in to that.
+          .letIf(!isCli) { extensions -> extensions.filter { it.enableFirInIde } }
 
       // Build list of native Metro generators
       val nativeExtensions = buildList {
@@ -228,6 +246,7 @@ public class MetroFirExtensionRegistrar(
 private fun loadExternalDeclarationExtensions(
   session: FirSession,
   options: MetroOptions,
+  compatContext: CompatContext,
 ): List<MetroFirDeclarationGenerationExtension> {
   return ServiceLoader.load(
       MetroFirDeclarationGenerationExtension.Factory::class.java,
@@ -235,7 +254,7 @@ private fun loadExternalDeclarationExtensions(
     )
     .mapNotNull { factory ->
       try {
-        factory.create(session, options)
+        factory.create(session, options, compatContext)
       } catch (e: Exception) {
         // Log but don't fail compilation
         if (options.debug) {
@@ -251,6 +270,7 @@ private fun loadExternalDeclarationExtensions(
 private fun loadExternalContributionExtensions(
   session: FirSession,
   options: MetroOptions,
+  compatContext: CompatContext,
 ): List<MetroContributionExtension> {
   return ServiceLoader.load(
       MetroContributionExtension.Factory::class.java,
@@ -258,7 +278,7 @@ private fun loadExternalContributionExtensions(
     )
     .mapNotNull { factory ->
       try {
-        factory.create(session, options)
+        factory.create(session, options, compatContext)
       } catch (e: Exception) {
         if (options.debug) {
           System.err.println(

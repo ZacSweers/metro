@@ -1,6 +1,6 @@
 // Klib ABI Dump
-// Targets: [androidNativeArm32, androidNativeArm64, androidNativeX64, androidNativeX86, iosArm64, iosSimulatorArm64, iosX64, js, linuxArm64, linuxX64, macosArm64, mingwX64, tvosArm64, tvosSimulatorArm64, wasmJs, wasmWasi, watchosArm32, watchosArm64, watchosDeviceArm64, watchosSimulatorArm64]
-// Alias: native => [androidNativeArm32, androidNativeArm64, androidNativeX64, androidNativeX86, iosArm64, iosSimulatorArm64, iosX64, linuxArm64, linuxX64, macosArm64, mingwX64, tvosArm64, tvosSimulatorArm64, watchosArm32, watchosArm64, watchosDeviceArm64, watchosSimulatorArm64]
+// Targets: [androidNativeArm32, androidNativeArm64, androidNativeX64, androidNativeX86, iosArm64, iosSimulatorArm64, iosX64, js, linuxArm64, linuxX64, macosArm64, macosX64, mingwX64, tvosArm64, tvosSimulatorArm64, tvosX64, wasmJs, wasmWasi, watchosArm32, watchosArm64, watchosDeviceArm64, watchosSimulatorArm64, watchosX64]
+// Alias: native => [androidNativeArm32, androidNativeArm64, androidNativeX64, androidNativeX86, iosArm64, iosSimulatorArm64, iosX64, linuxArm64, linuxX64, macosArm64, macosX64, mingwX64, tvosArm64, tvosSimulatorArm64, tvosX64, watchosArm32, watchosArm64, watchosDeviceArm64, watchosSimulatorArm64, watchosX64]
 // Rendering settings:
 // - Signature version: 2
 // - Show manifest properties: true
@@ -12,10 +12,7 @@ open annotation class <#A: kotlin/Any?> dev.zacsweers.metro/binding : kotlin/Ann
 }
 
 open annotation class dev.zacsweers.metro/Assisted : kotlin/Annotation { // dev.zacsweers.metro/Assisted|null[0]
-    constructor <init>(kotlin/String = ...) // dev.zacsweers.metro/Assisted.<init>|<init>(kotlin.String){}[0]
-
-    final val value // dev.zacsweers.metro/Assisted.value|{}value[0]
-        final fun <get-value>(): kotlin/String // dev.zacsweers.metro/Assisted.value.<get-value>|<get-value>(){}[0]
+    constructor <init>() // dev.zacsweers.metro/Assisted.<init>|<init>(){}[0]
 }
 
 open annotation class dev.zacsweers.metro/AssistedFactory : kotlin/Annotation { // dev.zacsweers.metro/AssistedFactory|null[0]

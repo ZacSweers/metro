@@ -9,26 +9,31 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
 
       }
 
+      @HiddenFromObjC
       fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithBackRefs<T, V, E>> {
         return MetroFactory<T, V, E>()
       }
 
+      @HiddenFromObjC
       fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithBackRefs<T, V, E> {
         return ClassWithBackRefs<T, V, E>()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ClassWithBackRefs<T, V, E> {
       return Companion.newInstance<ClassWithBackRefs<T, V, E>, /* null */, /* null */>()
     }
 
+    @HiddenFromObjC
     fun <T : Any?, V : Any?, E : V> mirrorFunction(): ClassWithBackRefs<T, V, E> {
       return error(message = "Never called")
     }
@@ -54,26 +59,31 @@ class ClassWithBounds<T : Any> {
 
       }
 
+      @HiddenFromObjC
       fun <T : Any> create(): Factory<ClassWithBounds<T>> {
         return MetroFactory<T>()
       }
 
+      @HiddenFromObjC
       fun <T : Any> newInstance(): ClassWithBounds<T> {
         return ClassWithBounds<T>()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ClassWithBounds<T> {
       return Companion.newInstance<ClassWithBounds<T>>()
     }
 
+    @HiddenFromObjC
     fun <T : Any> mirrorFunction(): ClassWithBounds<T> {
       return error(message = "Never called")
     }
@@ -99,26 +109,31 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
 
       }
 
+      @HiddenFromObjC
       fun <T : Any?, V : Any?, E : Any?> create(): Factory<ClassWithMultiple<T, V, E>> {
         return MetroFactory<T, V, E>()
       }
 
+      @HiddenFromObjC
       fun <T : Any?, V : Any?, E : Any?> newInstance(): ClassWithMultiple<T, V, E> {
         return ClassWithMultiple<T, V, E>()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ClassWithMultiple<T, V, E> {
       return Companion.newInstance<ClassWithMultiple<T, V, E>, /* null */, /* null */>()
     }
 
+    @HiddenFromObjC
     fun <T : Any?, V : Any?, E : Any?> mirrorFunction(): ClassWithMultiple<T, V, E> {
       return error(message = "Never called")
     }
@@ -144,26 +159,31 @@ class ClassWithNullable<T : Any?, E : T?> {
 
       }
 
+      @HiddenFromObjC
       fun <T : Any?, E : T?> create(): Factory<ClassWithNullable<T, E>> {
         return MetroFactory<T, E>()
       }
 
+      @HiddenFromObjC
       fun <T : Any?, E : T?> newInstance(): ClassWithNullable<T, E> {
         return ClassWithNullable<T, E>()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ClassWithNullable<T, E> {
       return Companion.newInstance<ClassWithNullable<T, E>, /* null */>()
     }
 
+    @HiddenFromObjC
     fun <T : Any?, E : T?> mirrorFunction(): ClassWithNullable<T, E> {
       return error(message = "Never called")
     }
@@ -189,26 +209,31 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
 
       }
 
+      @HiddenFromObjC
       fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithWheres<T, V, E>> {
         return MetroFactory<T, V, E>()
       }
 
+      @HiddenFromObjC
       fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithWheres<T, V, E> {
         return ClassWithWheres<T, V, E>()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ClassWithWheres<T, V, E> {
       return Companion.newInstance<ClassWithWheres<T, V, E>, /* null */, /* null */>()
     }
 
+    @HiddenFromObjC
     fun <T : Any?, V : Any?, E : V> mirrorFunction(): ClassWithWheres<T, V, E> {
       return error(message = "Never called")
     }
@@ -234,26 +259,31 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
 
       }
 
+      @HiddenFromObjC
       fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> create(): Factory<ComplexMonster<T, V, E, LongName, NullableLongName>> {
         return MetroFactory<T, V, E, LongName, NullableLongName>()
       }
 
+      @HiddenFromObjC
       fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> newInstance(): ComplexMonster<T, V, E, LongName, NullableLongName> {
         return ComplexMonster<T, V, E, LongName, NullableLongName>()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ComplexMonster<T, V, E, LongName, NullableLongName> {
       return Companion.newInstance<ComplexMonster<T, V, E, LongName, NullableLongName>, /* null */, /* null */, /* null */, /* null */>()
     }
 
+    @HiddenFromObjC
     fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> mirrorFunction(): ComplexMonster<T, V, E, LongName, NullableLongName> {
       return error(message = "Never called")
     }
@@ -279,26 +309,31 @@ class SimpleClass<T : Any?> {
 
       }
 
+      @HiddenFromObjC
       fun <T : Any?> create(): Factory<SimpleClass<T>> {
         return MetroFactory<T>()
       }
 
+      @HiddenFromObjC
       fun <T : Any?> newInstance(): SimpleClass<T> {
         return SimpleClass<T>()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): SimpleClass<T> {
       return Companion.newInstance<SimpleClass<T>>()
     }
 
+    @HiddenFromObjC
     fun <T : Any?> mirrorFunction(): SimpleClass<T> {
       return error(message = "Never called")
     }

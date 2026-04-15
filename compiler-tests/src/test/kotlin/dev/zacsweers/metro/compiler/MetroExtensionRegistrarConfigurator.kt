@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import androidx.compose.compiler.plugins.kotlin.ComposePluginRegistrar
+import androidx.compose.compiler.plugins.kotlin.k2.ComposeFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
@@ -11,6 +13,10 @@ import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
+import dev.zacsweers.metro.compiler.circuit.configureCircuit
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
@@ -47,6 +53,7 @@ fun TestConfigurationBuilder.configurePlugin() {
   configureDaggerAnnotations()
   configureDaggerInterop()
   configureGuiceInterop()
+  configureCircuit()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
   useAfterAnalysisCheckers(::MetroReportsChecker)
 }
@@ -62,16 +69,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       // Set non-annotation properties (only when directive is present or value is non-default)
       enabled = MetroDirectives.DISABLE_METRO !in module.directives
       generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
-      module.directives.singleOrZeroValue(MetroDirectives.TRANSFORM_PROVIDERS_TO_PRIVATE)?.let {
-        transformProvidersToPrivate = it
-      }
       enableTopLevelFunctionInjection =
         MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives
       module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)?.let {
         shrinkUnusedBindings = it
-      }
-      module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS)?.let {
-        chunkFieldInits = it
       }
       module.directives.singleOrZeroValue(MetroDirectives.STATEMENTS_PER_INIT_FUN)?.let {
         statementsPerInitFun = it
@@ -93,12 +94,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
       generateContributionHintsInFir =
         MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
-      if (transformProvidersToPrivate) {
-        publicScopedProviderSeverity = MetroOptions.DiagnosticSeverity.NONE
-      } else {
-        module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
-          publicScopedProviderSeverity = it
-        }
+      module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
+        publicScopedProviderSeverity = it
       }
       module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)?.let {
         optionalBindingBehavior = it
@@ -130,9 +127,6 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       module.directives
         .singleOrZeroValue(MetroDirectives.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS)
         ?.let { useAssistedParamNamesAsIdentifiers = it }
-      module.directives.singleOrZeroValue(MetroDirectives.ASSISTED_IDENTIFIER_SEVERITY)?.let {
-        assistedIdentifierSeverity = it
-      }
       module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
         parallelThreads = it
       }
@@ -140,6 +134,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       enableFunctionProviders = MetroDirectives.ENABLE_FUNCTION_PROVIDERS in module.directives
       enableKClassToClassInterop =
         MetroDirectives.ENABLE_KCLASS_TO_CLASS_INTEROP in module.directives
+      generateContributionProviders =
+        MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS in module.directives
 
       // Configure interop annotations using builder helper methods
       if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
@@ -173,6 +169,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       if (MetroDirectives.enableGuiceInterop(module.directives)) {
         enableGuiceRuntimeInterop = true
       }
+
+      if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
+        enableCircuitCodegen = true
+      }
     }
 
     if (!options.enabled) return
@@ -185,22 +185,46 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         options = options,
         isIde = false,
         compatContext = compatContext,
-        loadExternalDeclarationExtensions = { session, options ->
-          listOf(
-            GenerateImplExtension.Factory().create(session, options),
-            GenerateProvidesContributionExtension.Factory().create(session, options),
-            GenerateBindsContributionExtension.Factory().create(session, options),
-            GenerateDependencyGraphExtension.Factory().create(session, options),
-          )
+        loadExternalDeclarationExtensions = { session, options, compatContext ->
+          buildList {
+            add(GenerateImplExtension.Factory().create(session, options, compatContext))
+            add(
+              GenerateProvidesContributionExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            add(
+              GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
+            )
+            add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
+            if (options.enableCircuitCodegen) {
+              add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
+            }
+          }
         },
-      ) { session, options ->
-        listOf(
-          GenerateImplContributionExtension.Factory().create(session, options),
-          GenerateProvidesContributionMetroExtension.Factory().create(session, options),
-          GenerateBindsContributionMetroExtension.Factory().create(session, options),
-        )
-      }
+        loadExternalContributionExtensions = { session, options, compatContext ->
+          buildList {
+            add(GenerateImplContributionExtension.Factory().create(session, options, compatContext))
+            add(
+              GenerateProvidesContributionMetroExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            add(
+              GenerateBindsContributionMetroExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            if (options.enableCircuitCodegen) {
+              add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
+            }
+          }
+        },
+      )
     )
+    if (options.enableCircuitCodegen) {
+      FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
+      IrGenerationExtension.registerExtension(CircuitIrExtension(compatContext))
+    }
+    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
+    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector = configuration.messageCollector,
@@ -212,7 +236,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         compatContext = compatContext,
       )
     )
-    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
-    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
+    if (options.enableCircuitCodegen) {
+      IrGenerationExtension.registerExtension(
+        ComposePluginRegistrar.createComposeIrExtension(configuration)
+      )
+    }
   }
 }

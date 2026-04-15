@@ -83,10 +83,10 @@ jobs:
             exit 1
           fi
           
-          # Check if version matches x.y.z or x.y.z-SNAPSHOT pattern
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$ ]]; then
+          # Check if version matches x.y.z, x.y.z-SNAPSHOT, or x.y.z-<prerelease> pattern
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(SNAPSHOT|[a-zA-Z]+[0-9]*))?$ ]]; then
             echo "ERROR: VERSION_NAME '$VERSION' does not match expected format:"
-            echo "   Expected: x.y.z or x.y.z-SNAPSHOT (e.g., 1.2.3 or 1.2.3-SNAPSHOT)"
+            echo "   Expected: x.y.z, x.y.z-SNAPSHOT, or x.y.z-<prerelease> (e.g., 1.2.3, 1.2.3-SNAPSHOT, 1.0.0-RC1)"
             echo "   Actual: $VERSION"
             exit 1
           fi

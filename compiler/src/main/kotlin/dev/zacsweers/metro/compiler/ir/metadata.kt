@@ -14,8 +14,13 @@ import dev.zacsweers.metro.compiler.proto.AssistedFactoryImplProto
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.proto.ProviderFactoryProto
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -126,8 +131,23 @@ private fun createGraphProto(
 ): DependencyGraphProto {
   return DependencyGraphProto(
     is_graph = isGraph,
-    provider_factory_classes =
-      providerFactories.map { factory -> factory.factoryClass.classIdOrFail.protoString }.sorted(),
+    provider_factories =
+      providerFactories
+        .map { factory ->
+          val factoryClass = factory.factoryClass
+          val isInvisible =
+            factoryClass.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) == true
+          ProviderFactoryProto(
+            class_id = factoryClass.classIdOrFail.protoString,
+            invisible = isInvisible,
+            is_object = factoryClass.isObject,
+            callable_name = factory.callableId.callableName.asString(),
+            property_name =
+              if (factory.isPropertyAccessor) factory.callableId.callableName.asString() else "",
+            new_instance_name = factory.newInstanceName.asString(),
+          )
+        }
+        .sortedBy { it.class_id },
     accessor_callable_names = accessorNames.sorted(),
     multibinding_accessor_indices = multibindingAccessorIndices,
     included_binding_containers = includedBindingContainers.sorted(),

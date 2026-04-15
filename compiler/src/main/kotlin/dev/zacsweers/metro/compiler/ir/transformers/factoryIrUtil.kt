@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.applyIf
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
@@ -19,7 +20,9 @@ import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.setExtensionReceiver
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
@@ -47,6 +50,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
@@ -109,6 +113,7 @@ internal fun generateStaticCreateFunction(
           copyQualifiers = true,
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
+        addHiddenFromObjCAnnotation(this)
         context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
       }
   transformStaticCreateFunction(
@@ -251,28 +256,9 @@ internal fun generateStaticNewInstanceFunction(
           copyQualifiers = true,
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
+        addHiddenFromObjCAnnotation(this)
         context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
       }
-  transformStaticNewInstanceFunction(
-    sourceMetroParameters = sourceMetroParameters,
-    sourceParameters = sourceParameters,
-    targetFunction = targetFunction,
-    newInstanceFunction = newInstanceFunction,
-    buildBody = buildBody,
-  )
-  return newInstanceFunction
-}
-
-context(context: IrMetroContext)
-internal fun transformStaticNewInstanceFunction(
-  parentClass: IrClass,
-  sourceMetroParameters: Parameters,
-  sourceParameters: List<IrValueParameter>,
-  targetFunction: IrFunction? = null,
-  buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
-): IrSimpleFunction {
-  val newInstanceFunction =
-    parentClass.functions.first { it.origin == Origins.FactoryNewInstanceFunction }
   transformStaticNewInstanceFunction(
     sourceMetroParameters = sourceMetroParameters,
     sourceParameters = sourceParameters,
@@ -320,6 +306,7 @@ internal fun generateMetadataVisibleMirrorFunction(
   target: IrFunction?,
   backingField: IrField?,
   annotations: MetroAnnotations<IrAnnotation>,
+  registerAsMetadataVisible: Boolean = true,
 ): IrSimpleFunction {
   val returnType =
     target?.returnType
@@ -381,8 +368,47 @@ internal fun generateMetadataVisibleMirrorFunction(
         // this for
         body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
       }
-  context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
+  addHiddenFromObjCAnnotation(function)
+  if (registerAsMetadataVisible) {
+    context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
+  }
   return function
+}
+
+/**
+ * Adds stub `create()` and named creator functions to a factory class for cross-module invisible
+ * factory stubs. These are phantom functions that the consuming module can reference, at runtime
+ * the real factory class from the producing module provides the actual implementation.
+ *
+ * For object factories, the functions are added directly to the object. For class factories, the
+ * functions are added to the companion object.
+ */
+context(context: IrMetroContext)
+internal fun generateStubCreatorFunctions(
+  factoryClass: IrClass,
+  callableName: String,
+  returnType: IrType,
+  sourceFunction: IrSimpleFunction,
+) {
+  val creatorClass = factoryClass.requireStaticIshDeclarationContainer()
+
+  val params = sourceFunction.parameters().regularParameters
+
+  // create() function, parameters are Provider-wrapped
+  creatorClass
+    .addFunction(Symbols.StringNames.CREATE, context.metroSymbols.metroFactory.typeWith(returnType))
+    .apply {
+      setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
+      addParameters(params, wrapInProvider = true, copyQualifiers = true)
+      body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+    }
+
+  // Named function (e.g., "provideImplAsBase")
+  creatorClass.addFunction(callableName, returnType).apply {
+    setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
+    addParameters(params, wrapInProvider = false, copyQualifiers = true)
+    body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+  }
 }
 
 context(context: IrMetroContext)

@@ -553,7 +553,8 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
 
 private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
 
-fun String.cleanOutputLine(): String = FILE_PATH_REGEX.replace(trimEnd(), "")
+fun String.cleanOutputLine(): String =
+  MessageRenderer.stripAnsi(FILE_PATH_REGEX.replace(trimEnd(), ""))
 
 inline fun <reified T : Throwable> assertThrows(block: () -> Unit): ThrowableSubject {
   val throwable = assertFailsWith(T::class, block)

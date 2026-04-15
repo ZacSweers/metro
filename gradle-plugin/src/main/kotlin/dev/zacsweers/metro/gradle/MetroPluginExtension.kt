@@ -55,9 +55,6 @@ constructor(
   public val generateAssistedFactories: Property<Boolean> =
     objects.booleanProperty("metro.generateAssistedFactories", false)
 
-  @Deprecated("This does not do anything anymore and will be removed")
-  public abstract val generateThrowsAnnotations: Property<Boolean>
-
   /**
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
    * `Inject` for more details.
@@ -180,11 +177,6 @@ constructor(
   public val shrinkUnusedBindings: Property<Boolean> =
     objects.booleanProperty("metro.shrinkUnusedBindings", true)
 
-  /** Enable/disable chunking of field initializers. Enabled by default. */
-  @Deprecated("This is the default and the option will be removed", level = DeprecationLevel.ERROR)
-  public val chunkFieldInits: Property<Boolean> =
-    objects.booleanProperty("metro.chunkFieldInits", true)
-
   /**
    * Maximum number of statements per init function when chunking field initializers. Default is 25,
    * must be > 0.
@@ -224,21 +216,6 @@ constructor(
     objects
       .property(OptionalBindingBehavior::class.java)
       .convention(OptionalBindingBehavior.DEFAULT)
-
-  /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
-  @Deprecated(
-    "Transforming providers to private is deprecated as it results in less efficient code generation",
-    level = DeprecationLevel.ERROR,
-  )
-  public val transformProvidersToPrivate: Property<Boolean> =
-    objects.booleanProperty("metro.transformProvidersToPrivate", false)
-
-  @Deprecated(
-    "This is just a proxy to publicScopedProviderSeverity now",
-    replaceWith = ReplaceWith("publicScopedProviderSeverity"),
-  )
-  public val publicProviderSeverity: Property<DiagnosticSeverity>
-    get() = publicScopedProviderSeverity
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
@@ -391,12 +368,6 @@ constructor(
   public val useAssistedParamNamesAsIdentifiers: Property<Boolean> =
     objects.booleanProperty("metro.useAssistedParamNamesAsIdentifiers", true)
 
-  @Deprecated(
-    "The `Assisted.value` property is now formally deprecated and this control no longer does anything."
-  )
-  public val assistedIdentifierSeverity: Property<DiagnosticSeverity> =
-    objects.enumProperty<DiagnosticSeverity>("assistedIdentifierSeverity", DiagnosticSeverity.WARN)
-
   /**
    * Compiler version aliases mapping fake IDE versions to their real compiler versions.
    *
@@ -452,6 +423,44 @@ constructor(
    */
   public val enableKClassToClassMapKeyInterop: Property<Boolean> =
     objects.booleanProperty("metro.enableKClassToClassMapKeyInterop", false)
+
+  /**
+   * When enabled, generates top-level contribution provider classes with `@Provides` functions
+   * instead of nested `@Binds` interfaces for `@ContributesBinding`, `@ContributesIntoSet`, and
+   * `@ContributesIntoMap`. This allows implementation classes to remain `internal` since the
+   * generated provider directly constructs them (which in turn allows for finer grained IC).
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val generateContributionProviders: Property<Boolean> =
+    objects.booleanProperty("metro.generateContributionProviders", false)
+
+  /**
+   * Enable/disable Metro-native Circuit code generation. When enabled, Metro will generate
+   * `Ui.Factory` and `Presenter.Factory` implementations for `@CircuitInject`-annotated classes and
+   * functions.
+   *
+   * Note this will eventually move to a separate plugin.
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val enableCircuitCodegen: Property<Boolean> =
+    objects.booleanProperty("metro.enableCircuitCodegen", false)
+
+  /**
+   * Enable/disable rich diagnostic formatting (ANSI bold, colors, etc.) in error messages. When
+   * enabled, key parts of diagnostic messages (types, qualifiers, declarations) are emphasized
+   * using ANSI formatting codes for better readability in terminal output.
+   *
+   * The `metro.richDiagnostics` system property takes priority over this option if set.
+   *
+   * Disabled by default as it's still a work in progress.
+   */
+  @ExperimentalMetroGradleApi
+  public val richDiagnostics: Property<Boolean> =
+    objects.booleanProperty("metro.richDiagnostics", false)
 
   /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency

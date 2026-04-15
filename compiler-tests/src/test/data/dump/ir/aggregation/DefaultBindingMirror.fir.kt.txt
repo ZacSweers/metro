@@ -11,18 +11,22 @@ class Impl : Base<Impl>, Other {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<Impl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): Impl {
       return Impl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Impl {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Impl {
       return error(message = "Never called")
     }

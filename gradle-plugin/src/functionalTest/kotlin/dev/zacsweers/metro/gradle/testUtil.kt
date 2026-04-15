@@ -12,9 +12,14 @@ import com.autonomousapps.kit.truth.BuildResultSubject
 import com.autonomousapps.kit.truth.TestKitTruth.Companion.assertThat
 import java.io.File
 import java.net.URLClassLoader
+import java.nio.file.Files.readAttributes
+import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.FileTime
 import java.util.Locale
 import kotlin.io.path.absolute
 import kotlin.io.path.exists
+import kotlin.io.path.getLastModifiedTime
 import kotlin.test.assertContains
 import kotlin.test.fail
 import org.gradle.testkit.runner.BuildResult
@@ -170,3 +175,13 @@ internal fun File.resolveSafe(relative: String): File {
     }
   }
 }
+
+val Path.snapshot: FileSnapshot
+  get() {
+    return FileSnapshot(
+      fileKey = readAttributes(this, BasicFileAttributes::class.java).fileKey(),
+      lastModified = getLastModifiedTime(),
+    )
+  }
+
+data class FileSnapshot(val fileKey: Any?, val lastModified: FileTime)

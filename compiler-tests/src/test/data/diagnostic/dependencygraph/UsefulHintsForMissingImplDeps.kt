@@ -17,6 +17,6 @@ interface Bindings {
 
 // MODULE: main(lib2 core)
 @DependencyGraph(AppScope::class)
-interface <!METRO_ERROR!>AppGraph<!> {
+interface <!MISSING_BINDING!>AppGraph<!> {
   val base: Base
 }

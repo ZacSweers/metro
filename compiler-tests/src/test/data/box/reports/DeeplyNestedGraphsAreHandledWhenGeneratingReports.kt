@@ -1,3 +1,6 @@
+// REPORTS_DESTINATION: metro/reports
+// MAX_COMPILER_VERSION: 2.3.20
+// TODO eventually enable this on 2.4.0+ again
 // Similar to https://github.com/ZacSweers/metro/issues/1303
 /**
  * Covers the case where debug report file names exceed the file name limit when we have a deeply nested graph, e.g.
@@ -8,7 +11,6 @@
  * 	In this example, the nested class name is already 264 characters before factoring in any unique diagnostic report key or package name:
  * 	ProductDevAppDependencyGraph_Impl_ProductDevLoggedInComponentImpl_ProductDevMainActivityComponentImpl_EditEstimateConfigureItemScopeComponentImpl_ConfigureItemComponentImpl_ProductConfigureItemDetailScreenComponentImpl_ConfigureItemConfirmationScreenComponentImpl
  */
-// REPORTS_DESTINATION: metro/reports
 
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.SingleIn

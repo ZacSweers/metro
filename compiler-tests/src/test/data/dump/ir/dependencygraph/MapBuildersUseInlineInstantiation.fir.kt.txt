@@ -12,18 +12,22 @@ class IntHolderImpl : IntHolder {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<IntHolderImpl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): IntHolderImpl {
       return IntHolderImpl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): IntHolderImpl {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): IntHolderImpl {
       return error(message = "Never called")
     }
@@ -136,28 +140,33 @@ interface AppGraph : MetroContributionToAppScope {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideInt1MetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideInt1(instance: AppGraph): Int {
         return instance.provideInt1()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt1(instance = <this>.#instance)
     }
 
     @IntoMap
     @IntKey(value = 1)
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
@@ -175,28 +184,33 @@ interface AppGraph : MetroContributionToAppScope {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideInt2MetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideInt2(instance: AppGraph): Int {
         return instance.provideInt2()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt2(instance = <this>.#instance)
     }
 
     @IntoMap
     @IntKey(value = 2)
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }

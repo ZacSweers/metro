@@ -13,6 +13,7 @@ class Injectable {
 
       }
 
+      @HiddenFromObjC
       fun create(string: Provider<String>): MembersInjector<Injectable> {
         return MetroMembersInjector(string = string)
       }
@@ -64,27 +65,32 @@ class ScopedClass {
 
       }
 
+      @HiddenFromObjC
       fun create(injectable: Provider<MembersInjector<Injectable>>): Factory<ScopedClass> {
         return MetroFactory(injectable = injectable)
       }
 
+      @HiddenFromObjC
       fun newInstance(injectable: MembersInjector<Injectable>, injectable2: MembersInjector<Injectable>): ScopedClass {
         return ScopedClass(injectable = injectable, injectable2 = injectable2)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(injectable: Provider<MembersInjector<Injectable>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ScopedClass {
       return Companion.newInstance(injectable = <this>.#injectable.invoke(), injectable2 = <this>.#injectable.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(injectable: MembersInjector<Injectable>, injectable2: MembersInjector<Injectable>): ScopedClass {
       return error(message = "Never called")
     }
@@ -176,27 +182,32 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph): Factory<String> {
         return ProvideStringMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
       fun provideString(instance: AppGraph): String {
         return instance.provideString()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): String {
       return Companion.provideString(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")
     }

@@ -12,18 +12,22 @@ class IntHolder {
 
     }
 
+    @HiddenFromObjC
     fun create(): Factory<IntHolder> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
     fun newInstance(): IntHolder {
       return IntHolder()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): IntHolder {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): IntHolder {
       return error(message = "Never called")
     }
@@ -90,26 +94,31 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph, holder: Provider<IntHolder>): Factory<Long> {
         return ProvideLongMetroFactory(instance = instance, holder = holder)
       }
 
+      @HiddenFromObjC
       fun provideLong(instance: AppGraph, holder: IntHolder): Long {
         return instance.provideLong(holder = holder)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph, holder: Provider<IntHolder>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Long {
       return Companion.provideLong(instance = <this>.#instance, holder = <this>.#holder.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(holder: IntHolder): Long {
       return error(message = "Never called")
     }
@@ -128,26 +137,31 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
       fun create(instance: AppGraph, holder: Provider<IntHolder>): Factory<String> {
         return ProvideStringMetroFactory(instance = instance, holder = holder)
       }
 
+      @HiddenFromObjC
       fun provideString(instance: AppGraph, holder: IntHolder): String {
         return instance.provideString(holder = holder)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph, holder: Provider<IntHolder>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): String {
       return Companion.provideString(instance = <this>.#instance, holder = <this>.#holder.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(holder: IntHolder): String {
       return error(message = "Never called")
     }

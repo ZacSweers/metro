@@ -19,7 +19,11 @@ import org.jetbrains.kotlin.fir.expressions.FirExpressionEvaluator
 import org.jetbrains.kotlin.fir.expressions.PrivateConstantEvaluatorAPI
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
-import org.jetbrains.kotlin.fir.unwrapOr
+import org.jetbrains.kotlin.ir.builders.IrBuilder
+import org.jetbrains.kotlin.ir.builders.irAnnotation
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.types.IrType
 
 public class CompatContextImpl : CompatContext by DelegateType() {
   context(_: CompilerPluginRegistrar)
@@ -44,6 +48,13 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     )
   }
 
+  override fun IrBuilder.irAnnotationCompat(
+    callee: IrConstructorSymbol,
+    typeArguments: List<IrType>,
+  ): IrConstructorCall {
+    return irAnnotation(callee, typeArguments)
+  }
+
   override fun <T : FirElement> FirExpression.evaluateAsCompat(
     session: FirSession,
     tKlass: KClass<T>,
@@ -52,21 +63,19 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     return FirExpressionEvaluator.evaluateExpression(this, session)?.unwrapOr {}
   }
 
-  private fun <T : FirElement> FirEvaluatorResult.unwrapOr(
-    action: (CompileTimeException) -> Unit
-  ): T? {
-    @Suppress("UNCHECKED_CAST")
-    when (this) {
-      is CompileTimeException -> action(this)
-      is Evaluated -> return this.result as? T
-      else -> return null
-    }
-    return null
-  }
-
   public class Factory : CompatContext.Factory {
     override val minVersion: String = "2.4.0-dev-2124"
 
     override fun create(): CompatContext = CompatContextImpl()
   }
+}
+
+fun <T : FirElement> FirEvaluatorResult.unwrapOr(action: (CompileTimeException) -> Unit): T? {
+  @Suppress("UNCHECKED_CAST")
+  when (this) {
+    is CompileTimeException -> action(this)
+    is Evaluated -> return this.result as? T
+    else -> return null
+  }
+  return null
 }

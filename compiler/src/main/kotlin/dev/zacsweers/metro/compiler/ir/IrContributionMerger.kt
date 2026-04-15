@@ -270,6 +270,14 @@ internal class IrContributionMerger(
         }
         // Binding containers (only remaining ones after exclusions)
         yieldAll(mutableContributedBindingContainers.values)
+
+        // For binding containers with @Origin (contribution providers), also scan the
+        // origin class for @ContributesBinding(replaces=...) annotations
+        for (container in mutableContributedBindingContainers.values) {
+          val originClassId = container.originClassId() ?: continue
+          val originClass = pluginContext.referenceClass(originClassId)?.owner ?: continue
+          yield(originClass)
+        }
       }
 
       trace("Process replacements") {
@@ -332,9 +340,27 @@ internal class IrContributionMerger(
         trace("Process ranked replacements") {
           val unmatchedRankReplacements = mutableSetOf<ClassId>()
           val rankReplacements =
-            rankedBindingProcessing.processRankBasedReplacements(allScopes, mutableAllContributions)
+            rankedBindingProcessing.processRankBasedReplacements(
+              allScopes,
+              mutableAllContributions,
+              mutableContributedBindingContainers,
+            )
+
           for (replacedClassId in rankReplacements) {
-            if (mutableAllContributions.remove(replacedClassId) == null) {
+            val removedContribution = mutableAllContributions.remove(replacedClassId)
+            val removedContainer = mutableContributedBindingContainers.remove(replacedClassId)
+
+            // Also remove contributions that have @Origin pointing to the replaced class
+            originToContributions[replacedClassId]?.forEach { contributionId ->
+              mutableAllContributions.remove(contributionId)
+              mutableContributedBindingContainers.remove(contributionId)
+            }
+
+            val wasNotMatched =
+              removedContribution == null &&
+                removedContainer == null &&
+                originToContributions[replacedClassId] == null
+            if (wasNotMatched) {
               unmatchedRankReplacements += replacedClassId
             }
           }

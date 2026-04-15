@@ -1453,6 +1453,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+      options = metroOptions.copy(contributesAsInject = false),
     ) {
       assertDiagnostics(
         "e: ContributedInterface.kt:9:1 `@ContributesBinding` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
@@ -2144,6 +2145,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+      options = metroOptions.copy(contributesAsInject = false),
     ) {
       assertDiagnostics(
         "e: ContributedInterface.kt:9:1 `@ContributesIntoSet` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
@@ -2640,6 +2642,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+      options = metroOptions.copy(contributesAsInject = false),
     ) {
       assertDiagnostics(
         "e: ContributedInterface.kt:9:1 `@ContributesIntoMap` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."

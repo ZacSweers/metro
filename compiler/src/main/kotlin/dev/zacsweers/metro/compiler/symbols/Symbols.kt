@@ -133,6 +133,7 @@ internal class Symbols(
 
   object ClassIds {
     val Composable = ClassId(FqNames.composeRuntime, StringNames.COMPOSABLE.asName())
+    val ExposeImplBinding = ClassId(FqNames.metroRuntimePackage, "ExposeImplBinding".asName())
     val HiddenFromObjC = ClassId(FqName("kotlin.native"), "HiddenFromObjC".asName())
     val GraphFactoryInvokeFunctionMarkerClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
@@ -169,6 +170,7 @@ internal class Symbols(
     val metroIntoMap = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_MAP.asName())
     val metroIntoSet = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_SET.asName())
     val metroImplMarker = ClassId(FqNames.metroRuntimeInternalPackage, "MetroImplMarker".asName())
+    val irOnlyFactories = ClassId(FqNames.metroRuntimeInternalPackage, "IROnlyFactories".asName())
     val metroOrigin = ClassId(FqNames.metroRuntimePackage, "Origin".asName())
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
     val metroProvides = ClassId(FqNames.metroRuntimePackage, StringNames.PROVIDES.asName())
@@ -436,6 +438,10 @@ internal class Symbols(
 
   val comptimeOnlyAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(ClassIds.ComptimeOnly)?.constructors?.first()!!
+  }
+
+  val hiddenFromObjCAnnotationConstructor: IrConstructorSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.HiddenFromObjC)?.constructors?.first()
   }
 
   val throwsAnnotationConstructor: IrConstructorSymbol? by lazy {

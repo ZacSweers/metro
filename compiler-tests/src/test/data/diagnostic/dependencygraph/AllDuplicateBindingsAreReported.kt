@@ -2,7 +2,7 @@
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
 
 @DependencyGraph
-interface <!METRO_ERROR!>AppGraph<!> {
+interface <!DUPLICATE_BINDING!>AppGraph<!> {
   // Accessor to actually use the String binding - duplicates are only reported for used bindings
   val string: String
 

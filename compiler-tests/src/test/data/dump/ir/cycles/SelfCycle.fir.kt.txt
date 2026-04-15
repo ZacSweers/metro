@@ -19,28 +19,33 @@ class S {
 
       }
 
+      @HiddenFromObjC
       fun create(sProvider: Provider<S>): Factory<S> {
         return MetroFactory(sProvider = sProvider)
       }
 
+      @HiddenFromObjC
       fun newInstance(sProvider: Provider<S>): S {
         return S(sProvider = sProvider)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(sProvider: Provider<S>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): S {
       val tmp_0: S = Companion.newInstance(sProvider = <this>.#sProvider)
       Companion.injectSLazy(instance = tmp_0, sLazy = Companion.lazy<Provider<S>, S>(provider = <this>.#sProvider))
       return tmp_0
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(sProvider: Provider<S>): S {
       return error(message = "Never called")
     }
@@ -57,6 +62,7 @@ class S {
 
       }
 
+      @HiddenFromObjC
       fun create(sLazy: Provider<S>): MembersInjector<S> {
         return MetroMembersInjector(sLazy = sLazy)
       }

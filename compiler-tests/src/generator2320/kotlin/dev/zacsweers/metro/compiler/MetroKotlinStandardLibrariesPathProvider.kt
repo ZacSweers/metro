@@ -9,4 +9,8 @@ import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 // webStdlibForTests() was added as a new abstract member in 2.3.20-RC
 abstract class MetroKotlinStandardLibrariesPathProvider : KotlinStandardLibrariesPathProvider {
   abstract override fun webStdlibForTests(): File
+
+  abstract fun fullWasmStdlib(target: String): File
+
+  abstract fun kotlinTestWasmKLib(target: String): File
 }
