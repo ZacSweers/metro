@@ -144,6 +144,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
         "Expected files should be named '<testFile>/<diagnosticKey>/<path>/<reportName>.txt'."
     )
   val ENABLE_CIRCUIT by directive("Enables Circuit code gen.")
+  val METRO_DUMP_KT_IR by
+    directive("Like DUMP_KT_IR but uses betterDumpKotlinLike() for nested class name rendering.")
 
   fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
     return WITH_DAGGER in directives ||

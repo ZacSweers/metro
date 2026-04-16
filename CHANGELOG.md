@@ -46,6 +46,7 @@ This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin
 ### Enhancements
 
 - **[FIR]** Detect and report circuit factory class name collisions from overloads of conflicting `@CircuitInject`-annotated functions.
+- **[IR]** Improve readability of Kotlin IR dumps in reporting.
 
 ### Fixes
 

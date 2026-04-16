@@ -35,7 +35,7 @@ class Bar : Foo {
 
     @HiddenFromObjC
     override operator fun invoke(): Bar {
-      return Companion.newInstance(fooProvider = <this>.#fooProvider)
+      return MetroFactory/* companion */.newInstance(fooProvider = <this>.#fooProvider)
     }
 
     @HiddenFromObjC
@@ -80,7 +80,7 @@ interface BindsCycleGraph {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<Bar>(delegateFactory = <this>.#barProvider, delegate = Companion.create(fooProvider = <this>.#barProvider))
+      DelegateFactory/* companion */.setDelegate<Bar>(delegateFactory = <this>.#barProvider, delegate = Bar.MetroFactory/* companion */.create(fooProvider = <this>.#barProvider))
     }
 
     override fun bar(): Bar {

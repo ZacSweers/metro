@@ -73,7 +73,7 @@ class IntHolderImpl : IntHolder {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : MetroContributionToAppScope {
+interface AppGraph : IntHolderImpl.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
@@ -161,7 +161,7 @@ interface AppGraph : MetroContributionToAppScope {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt1(instance = <this>.#instance)
+      return ProvideInt1MetroFactory/* companion */.provideInt1(instance = <this>.#instance)
     }
 
     @IntoMap
@@ -205,7 +205,7 @@ interface AppGraph : MetroContributionToAppScope {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt2(instance = <this>.#instance)
+      return ProvideInt2MetroFactory/* companion */.provideInt2(instance = <this>.#instance)
     }
 
     @IntoMap

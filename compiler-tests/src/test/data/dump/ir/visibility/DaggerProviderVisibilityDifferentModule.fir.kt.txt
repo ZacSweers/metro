@@ -36,7 +36,7 @@ class InternalModule {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -72,7 +72,7 @@ interface ExampleGraph {
       field = InternalModule()
 
     private val internalModuleInstanceProvider: Provider<InternalModule>
-      field = Companion.invoke<InternalModule>(value = <this>.#internalModuleInstance)
+      field = InstanceFactory/* companion */.invoke<InternalModule>(value = <this>.#internalModuleInstance)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -82,7 +82,7 @@ interface ExampleGraph {
 
     override val int: Int
       override get(): Int {
-        return Companion.provideInt(instance = <this>.#internalModuleInstance)
+        return InternalModule.ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#internalModuleInstance)
       }
 
   }
