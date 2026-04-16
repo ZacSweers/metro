@@ -73,7 +73,13 @@ plugins:
   - search
   # Versioned Metro docs site for each release
   # https://github.com/squidfunk/mike (Zensical fork)
-  - mike
+  # Workaround for https://github.com/squidfunk/mike/issues/4
+  # Zensical returns empty plugin config, but mike expects these defaults to be present
+  - mike:
+      alias_type: symlink
+      redirect_template: null
+      deploy_prefix: ''
+      canonical_version: null
   # https://github.com/sondregronas/mkdocs-callouts
   - callouts
   # Last update date in the footer of each page
