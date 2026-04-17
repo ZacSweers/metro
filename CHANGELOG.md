@@ -6,6 +6,7 @@ Changelog
 
 ### Fixes
 
+- **[IR]** Fix secondary inject constructors support when `generateContributionProviders` is enabled.
 - **[docs]** Fix source links in Dokka API docs.
 - **[docs]** Don't publish `**.internal.**` APIs in Dokka API docs.
 

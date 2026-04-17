@@ -1,19 +1,17 @@
-// GENERATE_CONTRIBUTION_PROVIDERS
-
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-    val accountManager: AccountManager
+  val accountManager: AccountManager
 }
 
 interface AccountManager
 
 @ContributesBinding(AppScope::class)
 class RealAccountManager : AccountManager {
-    @Inject
-    constructor()
+  @Inject constructor()
 }
 
 fun box(): String {
-    val graph = createGraph<AppGraph>()
-    return "OK"
+  val graph = createGraph<AppGraph>()
+  assertNotNull(graph.accountManager)
+  return "OK"
 }

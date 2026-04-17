@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.findAnnotations
+import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
@@ -63,7 +64,6 @@ import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
-import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.name.ClassId
 
@@ -74,7 +74,7 @@ import org.jetbrains.kotlin.name.ClassId
  *    overrides of them.
  * 3. Collects contribution data while transforming for use by the dependency graph.
  */
-internal class ContributionTransformer(
+internal class ContributionIrTransformer(
   private val context: IrMetroContext,
   traceScope: TraceScope,
   private val boundTypeResolver: IrBoundTypeResolver,
@@ -208,7 +208,8 @@ internal class ContributionTransformer(
     val originClass = context.referenceClass(originClassId)?.owner ?: return
 
     // Find the primary constructor of the origin class
-    val injectConstructor = originClass.primaryConstructor ?: return
+    val injectConstructor =
+      originClass.findInjectableConstructor(onlyUsePrimaryConstructor = false) ?: return
 
     // Add bodies to all @Provides functions
     for (function in declaration.functions) {
