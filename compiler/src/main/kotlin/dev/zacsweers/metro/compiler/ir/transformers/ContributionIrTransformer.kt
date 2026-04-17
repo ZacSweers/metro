@@ -59,6 +59,7 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.isObject
@@ -208,8 +209,9 @@ internal class ContributionIrTransformer(
     val originClass = context.referenceClass(originClassId)?.owner ?: return
 
     // Find the primary constructor of the origin class
-    val injectConstructor =
-      originClass.findInjectableConstructor(onlyUsePrimaryConstructor = false) ?: return
+    val injectConstructor by memoize {
+      originClass.findInjectableConstructor(onlyUsePrimaryConstructor = false)
+    }
 
     // Add bodies to all @Provides functions
     for (function in declaration.functions) {
@@ -229,10 +231,16 @@ internal class ContributionIrTransformer(
             // Object: just reference the singleton instance
             irExprBodySafe(irGetObject(originClass.symbol))
           } else {
+            val calleeCtor =
+              injectConstructor
+                ?: reportCompilerBug(
+                  "No inject constructor found in IR for provided contribution ${declaration.fqNameWhenAvailable}"
+                )
+
             copyParameterDefaultValues(
-              providerFunction = injectConstructor,
+              providerFunction = calleeCtor,
               sourceMetroParameters = Parameters.empty(),
-              sourceParameters = injectConstructor.regularParameters,
+              sourceParameters = calleeCtor.regularParameters,
               targetParameters = function.regularParameters,
               containerParameter = null,
               isTopLevelFunction = true,
@@ -240,10 +248,10 @@ internal class ContributionIrTransformer(
 
             // Constructor call (synthetic scoped or direct)
             val constructorCall =
-              irCallConstructor(injectConstructor.symbol, emptyList()).apply {
+              irCallConstructor(calleeCtor.symbol, emptyList()).apply {
                 val functionParams = function.regularParameters
                 for ((index, param) in functionParams.withIndex()) {
-                  if (index < injectConstructor.regularParameters.size) {
+                  if (index < calleeCtor.regularParameters.size) {
                     arguments[index] = irGet(param)
                   }
                 }
