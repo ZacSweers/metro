@@ -469,6 +469,7 @@ constructor(
    *
    * Enabled by default.
    */
+  @ExperimentalMetroGradleApi // This will likely be deleted after stabilization
   public val generateStaticAnnotations: Property<Boolean> =
     objects.booleanProperty("metro.generateStaticAnnotations", true)
 
