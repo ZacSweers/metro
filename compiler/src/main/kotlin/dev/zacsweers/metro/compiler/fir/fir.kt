@@ -1678,17 +1678,17 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
   alreadyCheckedAnnotation: Boolean = false,
 ): String? {
   return if (classId.isPlatformType()) {
-    "Platform type '${classId.asFqNameString()}' is not a binding container."
+    "Platform type '${classId.diagnosticString(session)}' is not a binding container."
   } else if (this is FirAnonymousObjectSymbol) {
     "Anonymous objects cannot be binding containers."
   } else if (with(compatContext) { isLocalCompat }) {
-    "Local class '${classId.shortClassName}' cannot be a binding container."
+    "Local class '${classId.diagnosticString(session)}' cannot be a binding container."
   } else if (isInner) {
-    "Inner class '${classId.shortClassName}' cannot be a binding container."
+    "Inner class '${classId.diagnosticString(session)}' cannot be a binding container."
   } else if (
     !alreadyCheckedAnnotation && this is FirClassSymbol<*> && !isBindingContainer(session)
   ) {
-    "'${classId.asFqNameString()}' is not a binding container."
+    "'${classId.diagnosticString(session)}' is not a binding container."
   } else {
     null
   }
@@ -1810,5 +1810,27 @@ internal fun buildClassReference(session: FirSession, classId: ClassId): FirGetC
         arrayOf(classType),
         isMarkedNullable = false,
       )
+  }
+}
+
+/**
+ * Indirection for printing a diagnostic string for a given [ClassId]. In the IDE it's not super
+ * helpful to show long, verbose messages since they see it in context anyway.
+ */
+context(context: CheckerContext)
+internal val ClassId.diagnosticString: String
+  get() {
+    return diagnosticString(context.session)
+  }
+
+/**
+ * Indirection for printing a diagnostic string for a given [ClassId]. In the IDE it's not super
+ * helpful to show long, verbose messages since they see it in context anyway.
+ */
+internal fun ClassId.diagnosticString(session: FirSession): String {
+  return if (session.isIde()) {
+    relativeClassName.asString()
+  } else {
+    asFqNameString()
   }
 }

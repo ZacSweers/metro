@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.findInjectConstructor
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.validateBindingSource
@@ -69,7 +70,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
         reporter.reportOn(
           source,
           MetroDiagnostics.AMBIGUOUS_INJECT_CONSTRUCTOR,
-          "Class '${declaration.classId.asFqNameString()}' is annotated with an @Inject-like annotation but does not have a primary constructor. It does have one or more secondary instructions. Did you mean to annotate one of them with @Inject instead?",
+          "Class '${declaration.classId.diagnosticString}' is annotated with an @Inject-like annotation but does not have a primary constructor. It does have one or more secondary instructions. Did you mean to annotate one of them with @Inject instead?",
         )
         return
       }

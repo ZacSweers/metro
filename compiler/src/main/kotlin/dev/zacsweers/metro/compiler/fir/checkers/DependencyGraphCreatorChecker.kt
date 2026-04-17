@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
@@ -135,7 +136,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         reporter.reportOn(
           graphFactoryAnnotation.source ?: declaration.source,
           MetroDiagnostics.GRAPH_CREATORS_ERROR,
-          "${annotationClassId.relativeClassName.asString()} declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to '${overlapping.map { it.asFqNameString() }.single()}'.",
+          "${annotationClassId.relativeClassName.asString()} declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to '${overlapping.map { it.diagnosticString }.single()}'.",
         )
         return
       }

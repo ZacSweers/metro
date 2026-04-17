@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
@@ -95,7 +96,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             reporter.reportOn(
               annotation.scopeArgument(session)?.source ?: annotation.source,
               MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
-              "Suspicious aggregation scope '${scope.asFqNameString()}' is a concrete `@Scope` annotation type, and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+              "Suspicious aggregation scope '${scope.diagnosticString}' is a concrete `@Scope` annotation type, and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
             )
           }
         } else {
@@ -104,7 +105,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             reporter.reportOn(
               annotation.scopeArgument(session)?.source ?: annotation.source,
               MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
-              "Suspicious aggregation scope '${scope.asFqNameString()}' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+              "Suspicious aggregation scope '${scope.diagnosticString}' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
             )
           }
         }
@@ -334,7 +335,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             reporter.reportOn(
               annotation.source,
               MetroDiagnostics.AGGREGATION_ERROR,
-              "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `binding` type but ambiguously has multiple supertypes that declare a `@DefaultBinding` (${result.types.joinToString { it.classId!!.asFqNameString() }}). You must define an explicit bound type in this scenario.",
+              "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `binding` type but ambiguously has multiple supertypes that declare a `@DefaultBinding` (${result.types.joinToString { it.classId!!.diagnosticString }}). You must define an explicit bound type in this scenario.",
             )
             return false
           }
