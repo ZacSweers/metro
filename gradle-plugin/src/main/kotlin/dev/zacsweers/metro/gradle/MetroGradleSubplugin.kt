@@ -378,6 +378,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           )
           add(lazyOption("enable-circuit-codegen", extension.enableCircuitCodegen))
           add(lazyOption("rich-diagnostics", extension.richDiagnostics))
+          add(lazyOption("generate-static-annotations", extension.generateStaticAnnotations))
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
           reportsDir.orNull
