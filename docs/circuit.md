@@ -1,6 +1,6 @@
 # Circuit Integration
 
-Metro includes built-in support for [Circuit](https://slackhq.github.io/circuit/), a Compose-first architecture for building kotlin apps. This integration generates `Presenter.Factory` and `Ui.Factory` implementations from `@CircuitInject`-annotated classes and functions, similar to Circuit's existing KSP code generator but running entirely within Metro's compiler plugin. These factories then contribute into `Set<Presenter.Factory>` and `Set<Presenter.Factory` multibindings.
+Metro includes built-in support for [Circuit](https://slackhq.github.io/circuit/), a Compose-first architecture for building kotlin apps. This integration generates `Presenter.Factory` and `Ui.Factory` implementations from `@CircuitInject`-annotated classes and functions, similar to Circuit's existing KSP code generator but running entirely within Metro's compiler plugin. These factories then contribute into `Set<Presenter.Factory>` and `Set<Presenter.Factory>` multibindings.
 
 ## Setup
 
