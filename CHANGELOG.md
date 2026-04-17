@@ -16,6 +16,7 @@ Changelog
 - **[IR]** Fix secondary inject constructors support when `generateContributionProviders` is enabled.
 - **[IR]** Fix implicit class key lookup for map keys on source-declared `@Binds` declarations.
 - **[interop]** Fix `@ContributesSubcomponent.Factory` interop with square/anvil.
+- **[interop]** Fix `@MergeSubcomponent.Factory` interop with zacsweers/anvil (anvil-ksp).
 - **[docs]** Fix source links in Dokka API docs.
 - **[docs]** Don't publish `**.internal.**` APIs in Dokka API docs.
 
@@ -23,6 +24,7 @@ Changelog
 
 Special thanks to the following contributors for contributing to this release!
 
+- [@anddani](https://github.com/anddani)
 - [@jonamireh](https://github.com/jonamireh)
 
 1.0.0-RC2
