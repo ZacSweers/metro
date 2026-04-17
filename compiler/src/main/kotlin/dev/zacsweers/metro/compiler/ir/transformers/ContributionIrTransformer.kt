@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.findAnnotations
+import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
@@ -58,12 +59,12 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
-import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.name.ClassId
 
@@ -74,7 +75,7 @@ import org.jetbrains.kotlin.name.ClassId
  *    overrides of them.
  * 3. Collects contribution data while transforming for use by the dependency graph.
  */
-internal class ContributionTransformer(
+internal class ContributionIrTransformer(
   private val context: IrMetroContext,
   traceScope: TraceScope,
   private val boundTypeResolver: IrBoundTypeResolver,
@@ -208,7 +209,9 @@ internal class ContributionTransformer(
     val originClass = context.referenceClass(originClassId)?.owner ?: return
 
     // Find the primary constructor of the origin class
-    val injectConstructor = originClass.primaryConstructor ?: return
+    val injectConstructor by memoize {
+      originClass.findInjectableConstructor(onlyUsePrimaryConstructor = false)
+    }
 
     // Add bodies to all @Provides functions
     for (function in declaration.functions) {
@@ -228,10 +231,16 @@ internal class ContributionTransformer(
             // Object: just reference the singleton instance
             irExprBodySafe(irGetObject(originClass.symbol))
           } else {
+            val calleeCtor =
+              injectConstructor
+                ?: reportCompilerBug(
+                  "No inject constructor found in IR for provided contribution ${declaration.fqNameWhenAvailable}"
+                )
+
             copyParameterDefaultValues(
-              providerFunction = injectConstructor,
+              providerFunction = calleeCtor,
               sourceMetroParameters = Parameters.empty(),
-              sourceParameters = injectConstructor.regularParameters,
+              sourceParameters = calleeCtor.regularParameters,
               targetParameters = function.regularParameters,
               containerParameter = null,
               isTopLevelFunction = true,
@@ -239,10 +248,10 @@ internal class ContributionTransformer(
 
             // Constructor call (synthetic scoped or direct)
             val constructorCall =
-              irCallConstructor(injectConstructor.symbol, emptyList()).apply {
+              irCallConstructor(calleeCtor.symbol, emptyList()).apply {
                 val functionParams = function.regularParameters
                 for ((index, param) in functionParams.withIndex()) {
-                  if (index < injectConstructor.regularParameters.size) {
+                  if (index < calleeCtor.regularParameters.size) {
                     arguments[index] = irGet(param)
                   }
                 }

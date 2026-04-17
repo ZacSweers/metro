@@ -34,7 +34,7 @@ internal class CoreTransformers(
   private val context: IrMetroContext,
   traceScope: TraceScope,
   private val data: MutableMetroGraphData,
-  private val contributionTransformer: ContributionTransformer,
+  private val contributionTransformer: ContributionIrTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val injectedClassTransformer: InjectedClassTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,

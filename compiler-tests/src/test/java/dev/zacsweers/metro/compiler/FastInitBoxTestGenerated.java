@@ -356,6 +356,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       public void testScoped() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/scoped.kt");
       }
+
+      @Test
+      @TestMetadata("secondaryConstructor.kt")
+      public void testSecondaryConstructor() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/secondaryConstructor.kt");
+      }
     }
 
     @Nested

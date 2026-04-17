@@ -13,9 +13,16 @@ Changelog
 ### Fixes
 
 - **[FIR]** Fix not recognizing `FirDeclarationOrigin.Precompiled` origins when checking resolved default binding types. Previously we only considered `FirDeclarationOrigin.Library`, but incremental compilation uses `FirDeclarationOrigin.Precompiled` to differentiate. This would result in misreads of default binding types in some cases during IC.
+- **[IR]** Fix secondary inject constructors support when `generateContributionProviders` is enabled.
 - **[interop]** Fix `@ContributesSubcomponent.Factory` interop with square/anvil.
 - **[docs]** Fix source links in Dokka API docs.
 - **[docs]** Don't publish `**.internal.**` APIs in Dokka API docs.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@jonamireh](https://github.com/jonamireh)
 
 1.0.0-RC2
 ---------
