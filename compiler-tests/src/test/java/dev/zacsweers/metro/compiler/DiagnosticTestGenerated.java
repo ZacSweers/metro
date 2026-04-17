@@ -723,6 +723,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AmbiguousPrimaryConstructor.kt")
+    public void testAmbiguousPrimaryConstructor() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/AmbiguousPrimaryConstructor.kt");
+    }
+
+    @Test
     @TestMetadata("CannotMixProviderOfLazyTypes.kt")
     public void testCannotMixProviderOfLazyTypes() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/CannotMixProviderOfLazyTypes.kt");

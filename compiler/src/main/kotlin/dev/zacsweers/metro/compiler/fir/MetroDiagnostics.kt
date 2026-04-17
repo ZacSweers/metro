@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ADHOC_GRAPH_EXTENSION_FACTORY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AGGREGATION_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AMBIGUOUS_INJECT_CONSTRUCTOR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_WARNING
@@ -137,6 +138,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val SUGGEST_CLASS_INJECTION by warning0<KtElement>(NAME_IDENTIFIER)
 
   // Inject/assisted constructor errors
+  val AMBIGUOUS_INJECT_CONSTRUCTOR by error1<KtElement, String>(NAME_IDENTIFIER)
   val CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS by error0<KtElement>(NAME_IDENTIFIER)
   val CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS by error0<KtElement>(NAME_IDENTIFIER)
   val ASSISTED_FACTORIES_CANNOT_BE_LAZY by error2<KtElement, String, String>(NAME_IDENTIFIER)
@@ -275,6 +277,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         )
 
         // Inject/assisted Constructor errors
+        put(AMBIGUOUS_INJECT_CONSTRUCTOR, "{0}", STRING)
         put(
           CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
           "Only one `@Inject` constructor is allowed.",
