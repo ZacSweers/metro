@@ -50,3 +50,5 @@
 2.3.255-dev-255=2.3.0-dev-9992
 # IntelliJ IDEA 2026.1.1 (eap)
 2.4.0-ij261-32=2.4.0-dev-2633
+# Android Studio Quail 1 | 2026.1.1 Canary 1 (canary)
+2.4.255-dev-255=2.4.0-dev-2631
