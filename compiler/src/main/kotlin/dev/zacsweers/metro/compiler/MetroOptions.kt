@@ -1251,6 +1251,9 @@ public data class MetroOptions(
       customContributesToAnnotations.add(anvilPackage.classId("ContributesTo"))
       customGraphAnnotations.add(anvilPackage.classId("MergeComponent"))
       customGraphExtensionAnnotations.add(anvilPackage.classId("ContributesSubcomponent"))
+      customGraphExtensionFactoryAnnotations.add(
+        anvilPackage.classId("ContributesSubcomponent.Factory")
+      )
       customGraphExtensionAnnotations.add(anvilPackage.classId("MergeSubcomponent"))
       // Anvil for Dagger doesn't have MergeSubcomponent.Factory
       customGraphFactoryAnnotations.add(anvilPackage.classId("MergeComponent.Factory"))
