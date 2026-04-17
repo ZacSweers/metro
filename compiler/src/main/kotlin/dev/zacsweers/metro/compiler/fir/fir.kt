@@ -1736,13 +1736,15 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingTypeRef(session: FirSession)
 internal fun FirClassSymbol<*>.resolveDefaultBindingTypeKey(session: FirSession): FirRefTypeKey? {
   val annotation =
     getAnnotationByClassId(session.classIds.defaultBindingAnnotation, session) ?: return null
-  if (origin is FirDeclarationOrigin.Library) {
-    // If it's external we need to read the mirror
+  // Source annotations are `FirAnnotationCall` and carry the `@DefaultBinding<T>` type argument.
+  // Deserialized annotations (from `Library`, `Precompiled`, and other non-source origins during
+  // incremental compilation) are plain `FirAnnotation`s without type arguments. For those we have
+  // to read the type from the generated `DefaultBindingMirror` nested class.
+  if (annotation !is FirAnnotationCall) {
     return resolveExternalDefaultBindingTypeKey(session)
   }
 
   // Try to read from @DefaultBinding annotation directly (same-module)
-  if (annotation !is FirAnnotationCall) return null
   val typeArg = annotation.typeArguments.firstOrNull() ?: return null
   val typeRef =
     when (typeArg) {
