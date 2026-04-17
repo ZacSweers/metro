@@ -10,11 +10,15 @@ class A {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<A> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): A {
       return A()
     }
@@ -58,11 +62,15 @@ class B {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(a: Provider<A>): Factory<B> {
         return MetroFactory(a = a)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(a: A): B {
         return B(a = a)
       }
@@ -115,11 +123,15 @@ class C {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(b: Provider<B>): Factory<C> {
         return MetroFactory(b = b)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(b: B): C {
         return C(b = b)
       }
@@ -172,11 +184,15 @@ class D {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(c: Provider<C>): Factory<D> {
         return MetroFactory(c = c)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(c: C): D {
         return D(c = c)
       }
@@ -229,11 +245,15 @@ class E {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(d: Provider<D>): Factory<E> {
         return MetroFactory(d = d)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(d: D): E {
         return E(d = d)
       }
@@ -286,11 +306,15 @@ class F {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(e: Provider<E>): Factory<F> {
         return MetroFactory(e = e)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(e: E): F {
         return F(e = e)
       }
@@ -400,6 +424,8 @@ interface TestGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph {
       return Impl()
     }

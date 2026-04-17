@@ -11,11 +11,15 @@ class TaskImpl1 : Task {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<TaskImpl1> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): TaskImpl1 {
       return TaskImpl1()
     }
@@ -51,11 +55,15 @@ class TaskImpl2 : Task {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<TaskImpl2> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): TaskImpl2 {
       return TaskImpl2()
     }
@@ -196,6 +204,8 @@ interface ExampleGraph : MetroContributionToAppScope {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): ExampleGraph {
       return Impl()
     }
@@ -214,11 +224,15 @@ interface ExampleGraph : MetroContributionToAppScope {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: ExampleGraph): Factory<Task> {
         return Provide3MetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provide3(instance: ExampleGraph): Task {
         return instance.provide3()
       }
@@ -257,11 +271,15 @@ interface ExampleGraph : MetroContributionToAppScope {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: ExampleGraph): Factory<Task> {
         return Provide4MetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provide4(instance: ExampleGraph): Task {
         return instance.provide4()
       }

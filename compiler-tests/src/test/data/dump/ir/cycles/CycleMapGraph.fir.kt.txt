@@ -15,11 +15,15 @@ class X {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(y: Provider<Y>): Factory<X> {
         return MetroFactory(y = y)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(y: Y): X {
         return X(y = y)
       }
@@ -75,11 +79,15 @@ class Y {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>): Factory<Y> {
         return MetroFactory(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
         return Y(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
@@ -183,6 +191,8 @@ interface CycleMapGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): CycleMapGraph {
       return Impl()
     }

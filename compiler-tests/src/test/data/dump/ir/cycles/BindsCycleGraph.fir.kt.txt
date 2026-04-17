@@ -15,11 +15,15 @@ class Bar : Foo {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(fooProvider: Provider<Foo>): Factory<Bar> {
         return MetroFactory(fooProvider = fooProvider)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(fooProvider: Provider<Foo>): Bar {
         return Bar(fooProvider = fooProvider)
       }
@@ -97,6 +101,8 @@ interface BindsCycleGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): BindsCycleGraph {
       return Impl()
     }

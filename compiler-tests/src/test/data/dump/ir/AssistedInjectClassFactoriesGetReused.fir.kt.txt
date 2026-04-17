@@ -10,11 +10,15 @@ class NotReused {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): MetroFactory {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): NotReused {
       return NotReused()
     }
@@ -51,11 +55,15 @@ class Reused {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): MetroFactory {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): Reused {
       return Reused()
     }
@@ -119,6 +127,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -147,6 +157,8 @@ interface NotReusedFactory {
 
       }
 
+      @JvmStatic
+      @JsStatic
       fun create(delegateFactory: MetroFactory): Provider<NotReusedFactory> {
         return Companion.invoke<NotReusedFactory>(value = Impl(delegateFactory = delegateFactory))
       }
@@ -180,6 +192,8 @@ interface ReusedFactory1 {
 
       }
 
+      @JvmStatic
+      @JsStatic
       fun create(delegateFactory: MetroFactory): Provider<ReusedFactory1> {
         return Companion.invoke<ReusedFactory1>(value = Impl(delegateFactory = delegateFactory))
       }
@@ -213,6 +227,8 @@ interface ReusedFactory2 {
 
       }
 
+      @JvmStatic
+      @JsStatic
       fun create(delegateFactory: MetroFactory): Provider<ReusedFactory2> {
         return Companion.invoke<ReusedFactory2>(value = Impl(delegateFactory = delegateFactory))
       }

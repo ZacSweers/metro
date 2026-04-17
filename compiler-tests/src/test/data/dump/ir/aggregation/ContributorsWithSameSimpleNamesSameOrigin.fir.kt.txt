@@ -29,11 +29,15 @@ class FooImpl : Foo {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<FooImpl> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): FooImpl {
       return FooImpl()
     }

@@ -18,11 +18,15 @@ class ChildDependency {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(dep: Provider<Dependency>): Factory<ChildDependency> {
         return MetroFactory(dep = dep)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(dep: Dependency): ChildDependency {
         return ChildDependency(dep = dep)
       }
@@ -68,11 +72,15 @@ class Dependency {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Dependency> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): Dependency {
       return Dependency()
     }
@@ -151,6 +159,8 @@ interface ExampleGraph : MetroContributionToAppScope {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): ExampleGraph {
       return Impl()
     }

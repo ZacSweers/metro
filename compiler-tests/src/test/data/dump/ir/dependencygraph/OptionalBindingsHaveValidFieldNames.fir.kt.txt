@@ -30,6 +30,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -48,11 +50,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<String> {
         return StringMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun string(instance: AppGraph): String {
         return instance.<get-string>()
       }

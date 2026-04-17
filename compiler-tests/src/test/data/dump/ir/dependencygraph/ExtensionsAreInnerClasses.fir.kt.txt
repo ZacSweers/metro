@@ -55,6 +55,8 @@ interface AppGraph : Factory {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -73,11 +75,15 @@ interface AppGraph : Factory {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideCountMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideCount(instance: AppGraph): Int {
         return instance.provideCount()
       }

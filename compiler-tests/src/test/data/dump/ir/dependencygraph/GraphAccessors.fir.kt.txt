@@ -50,6 +50,8 @@ interface ExampleGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     override fun create(@Includes accessors: Accessors): ExampleGraph {
       return Impl(accessors = accessors)
     }

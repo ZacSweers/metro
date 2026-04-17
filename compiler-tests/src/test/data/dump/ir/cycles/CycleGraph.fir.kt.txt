@@ -20,11 +20,15 @@ class A {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(b: Provider<B>, e: Provider<E>): Factory<A> {
         return MetroFactory(b = b, e = e)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(b: B, e: E): A {
         return A(b = b, e = e)
       }
@@ -75,11 +79,15 @@ class B {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(c: Provider<C>): Factory<B> {
         return MetroFactory(c = c)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(c: C): B {
         return B(c = c)
       }
@@ -139,11 +147,15 @@ class C {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(aProvider: Provider<A>): Factory<C> {
         return MetroFactory(aProvider = aProvider)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(aProvider: Provider<A>): C {
         return C(aProvider = aProvider)
       }
@@ -184,14 +196,20 @@ class C {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(aLazy: Provider<A>, aLazyProvider: Provider<A>): MembersInjector<C> {
         return MetroMembersInjector(aLazy = aLazy, aLazyProvider = aLazyProvider)
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectALazy(@Assisted instance: C, aLazy: Lazy<A>) {
         return instance.#aLazy = aLazy
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectALazyProvider(@Assisted instance: C, aLazyProvider: Provider<Lazy<A>>) {
         return instance.#aLazyProvider = aLazyProvider
       }
@@ -236,11 +254,15 @@ class D {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(b: Provider<B>): Factory<D> {
         return MetroFactory(b = b)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(b: B): D {
         return D(b = b)
       }
@@ -291,11 +313,15 @@ class E {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(d: Provider<D>): Factory<E> {
         return MetroFactory(d = d)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(d: D): E {
         return E(d = d)
       }
@@ -451,6 +477,8 @@ interface CycleGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): CycleGraph {
       return Impl()
     }
@@ -470,11 +498,15 @@ interface CycleGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: CycleGraph, obj: Provider<Any>): Factory<Any> {
         return ProvideObjectWithCycleMetroFactory(instance = instance, obj = obj)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideObjectWithCycle(instance: CycleGraph, obj: Provider<Any>): Any {
         return instance.provideObjectWithCycle(obj = obj)
       }

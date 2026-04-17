@@ -39,11 +39,15 @@ class Entry {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(a1: Provider<WrapperA1>, a2: Provider<WrapperA2>, b1: Provider<WrapperB1>, b2: Provider<WrapperB2>): Factory<Entry> {
         return MetroFactory(a1 = a1, a2 = a2, b1 = b1, b2 = b2)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(a1: WrapperA1, a2: WrapperA2, b1: WrapperB1, b2: WrapperB2): Entry {
         return Entry(a1 = a1, a2 = a2, b1 = b1, b2 = b2)
       }
@@ -94,11 +98,15 @@ class SetConsumerA {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(set: Provider<Set<Int>>): Factory<SetConsumerA> {
         return MetroFactory(set = set)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(set: Set<Int>): SetConsumerA {
         return SetConsumerA(set = set)
       }
@@ -149,11 +157,15 @@ class SetConsumerB {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(set: Provider<Set<Int>>): Factory<SetConsumerB> {
         return MetroFactory(set = set)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(set: Set<Int>): SetConsumerB {
         return SetConsumerB(set = set)
       }
@@ -204,11 +216,15 @@ class WrapperA1 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(consumer: Provider<SetConsumerA>): Factory<WrapperA1> {
         return MetroFactory(consumer = consumer)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(consumer: Provider<SetConsumerA>): WrapperA1 {
         return WrapperA1(consumer = consumer)
       }
@@ -259,11 +275,15 @@ class WrapperA2 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(consumer: Provider<SetConsumerA>): Factory<WrapperA2> {
         return MetroFactory(consumer = consumer)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(consumer: Provider<SetConsumerA>): WrapperA2 {
         return WrapperA2(consumer = consumer)
       }
@@ -314,11 +334,15 @@ class WrapperB1 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(consumer: Provider<SetConsumerB>): Factory<WrapperB1> {
         return MetroFactory(consumer = consumer)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(consumer: Provider<SetConsumerB>): WrapperB1 {
         return WrapperB1(consumer = consumer)
       }
@@ -369,11 +393,15 @@ class WrapperB2 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(consumer: Provider<SetConsumerB>): Factory<WrapperB2> {
         return MetroFactory(consumer = consumer)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(consumer: Provider<SetConsumerB>): WrapperB2 {
         return WrapperB2(consumer = consumer)
       }
@@ -455,6 +483,8 @@ interface TestGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph {
       return Impl()
     }
@@ -473,11 +503,15 @@ interface TestGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: TestGraph): Factory<Base> {
         return ProvideBaseMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideBase(instance: TestGraph): Base {
         return instance.provideBase()
       }
@@ -516,11 +550,15 @@ interface TestGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: TestGraph, base: Provider<Base>): Factory<Int> {
         return ProvideInt1MetroFactory(instance = instance, base = base)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt1(instance: TestGraph, base: Base): Int {
         return instance.provideInt1(base = base)
       }
@@ -560,11 +598,15 @@ interface TestGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: TestGraph, base: Provider<Base>): Factory<Int> {
         return ProvideInt2MetroFactory(instance = instance, base = base)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt2(instance: TestGraph, base: Base): Int {
         return instance.provideInt2(base = base)
       }

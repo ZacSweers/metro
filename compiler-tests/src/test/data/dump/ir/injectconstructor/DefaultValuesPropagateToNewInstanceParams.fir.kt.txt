@@ -11,6 +11,8 @@ class ValueHolder {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(stringValue: Provider<String?> = provider<String?>(provider = local fun <anonymous>(): String? {
         return null
       }
@@ -19,6 +21,8 @@ class ValueHolder {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(stringValue: String? = null): ValueHolder {
         return ValueHolder(stringValue = stringValue)
       }

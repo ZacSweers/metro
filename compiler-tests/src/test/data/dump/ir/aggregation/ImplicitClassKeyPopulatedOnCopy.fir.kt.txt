@@ -13,11 +13,15 @@ class ExplicitKeyImpl : Base {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<ExplicitKeyImpl> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): ExplicitKeyImpl {
       return ExplicitKeyImpl()
     }
@@ -85,11 +89,15 @@ class ImplicitKeyImpl : Base {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<ImplicitKeyImpl> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): ImplicitKeyImpl {
       return ImplicitKeyImpl()
     }

@@ -10,11 +10,15 @@ class A {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<A> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): A {
       return A()
     }
@@ -58,11 +62,15 @@ class B {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(a: Provider<A>): Factory<B> {
         return MetroFactory(a = a)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(a: A): B {
         return B(a = a)
       }
@@ -120,11 +128,15 @@ class C {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(b: Provider<B>, d: Provider<D>): Factory<C> {
         return MetroFactory(b = b, d = d)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(b: B, d: Provider<D>): C {
         return C(b = b, d = d)
       }
@@ -177,11 +189,15 @@ class D {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(c: Provider<C>): Factory<D> {
         return MetroFactory(c = c)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(c: C): D {
         return D(c = c)
       }
@@ -234,11 +250,15 @@ class E {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(c: Provider<C>): Factory<E> {
         return MetroFactory(c = c)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(c: C): E {
         return E(c = c)
       }
@@ -351,6 +371,8 @@ interface TestGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph {
       return Impl()
     }

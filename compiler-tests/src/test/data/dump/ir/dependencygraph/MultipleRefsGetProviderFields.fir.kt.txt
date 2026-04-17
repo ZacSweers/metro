@@ -13,11 +13,15 @@ class IntHolder {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<IntHolder> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): IntHolder {
       return IntHolder()
     }
@@ -76,6 +80,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -95,11 +101,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph, holder: Provider<IntHolder>): Factory<Long> {
         return ProvideLongMetroFactory(instance = instance, holder = holder)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideLong(instance: AppGraph, holder: IntHolder): Long {
         return instance.provideLong(holder = holder)
       }
@@ -138,11 +148,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph, holder: Provider<IntHolder>): Factory<String> {
         return ProvideStringMetroFactory(instance = instance, holder = holder)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideString(instance: AppGraph, holder: IntHolder): String {
         return instance.provideString(holder = holder)
       }

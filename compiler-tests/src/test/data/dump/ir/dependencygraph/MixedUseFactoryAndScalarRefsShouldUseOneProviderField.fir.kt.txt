@@ -40,6 +40,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -58,11 +60,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: AppGraph): Int {
         return instance.provideInt()
       }
@@ -101,11 +107,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph, int: Provider<Int>): Factory<String> {
         return ProvideStringMetroFactory(instance = instance, int = int)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideString(instance: AppGraph, int: Int): String {
         return instance.provideString(int = int)
       }

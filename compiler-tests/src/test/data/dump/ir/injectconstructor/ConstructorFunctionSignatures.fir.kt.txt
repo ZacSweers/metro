@@ -10,11 +10,15 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithBackRefs<T, V, E>> {
         return MetroFactory<T, V, E>()
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithBackRefs<T, V, E> {
         return ClassWithBackRefs<T, V, E>()
       }
@@ -60,11 +64,15 @@ class ClassWithBounds<T : Any> {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any> create(): Factory<ClassWithBounds<T>> {
         return MetroFactory<T>()
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any> newInstance(): ClassWithBounds<T> {
         return ClassWithBounds<T>()
       }
@@ -110,11 +118,15 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any?, V : Any?, E : Any?> create(): Factory<ClassWithMultiple<T, V, E>> {
         return MetroFactory<T, V, E>()
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any?, V : Any?, E : Any?> newInstance(): ClassWithMultiple<T, V, E> {
         return ClassWithMultiple<T, V, E>()
       }
@@ -160,11 +172,15 @@ class ClassWithNullable<T : Any?, E : T?> {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any?, E : T?> create(): Factory<ClassWithNullable<T, E>> {
         return MetroFactory<T, E>()
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any?, E : T?> newInstance(): ClassWithNullable<T, E> {
         return ClassWithNullable<T, E>()
       }
@@ -210,11 +226,15 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithWheres<T, V, E>> {
         return MetroFactory<T, V, E>()
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithWheres<T, V, E> {
         return ClassWithWheres<T, V, E>()
       }
@@ -260,11 +280,15 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> create(): Factory<ComplexMonster<T, V, E, LongName, NullableLongName>> {
         return MetroFactory<T, V, E, LongName, NullableLongName>()
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> newInstance(): ComplexMonster<T, V, E, LongName, NullableLongName> {
         return ComplexMonster<T, V, E, LongName, NullableLongName>()
       }
@@ -310,11 +334,15 @@ class SimpleClass<T : Any?> {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any?> create(): Factory<SimpleClass<T>> {
         return MetroFactory<T>()
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun <T : Any?> newInstance(): SimpleClass<T> {
         return SimpleClass<T>()
       }

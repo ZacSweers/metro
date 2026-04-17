@@ -26,11 +26,15 @@ class Base1Impl : Base1, Base2, Base3 {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Base1Impl> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): Base1Impl {
       return Base1Impl()
     }
@@ -157,6 +161,8 @@ interface ExampleGraph : MetroContributionToAppScope {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): ExampleGraph {
       return Impl()
     }

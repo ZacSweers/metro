@@ -12,11 +12,15 @@ class AppService1 {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AppService1> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AppService1 {
       return AppService1()
     }
@@ -54,11 +58,15 @@ class AppService2 {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AppService2> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AppService2 {
       return AppService2()
     }
@@ -96,11 +104,15 @@ class AppService3 {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AppService3> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AppService3 {
       return AppService3()
     }
@@ -153,11 +165,15 @@ class ChildService1 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(app1: Provider<AppService1>): Factory<ChildService1> {
         return MetroFactory(app1 = app1)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(app1: AppService1): ChildService1 {
         return ChildService1(app1 = app1)
       }
@@ -210,11 +226,15 @@ class ChildService2 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(child1: Provider<ChildService1>): Factory<ChildService2> {
         return MetroFactory(child1 = child1)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(child1: ChildService1): ChildService2 {
         return ChildService2(child1 = child1)
       }
@@ -267,11 +287,15 @@ class ChildService3 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(child2: Provider<ChildService2>): Factory<ChildService3> {
         return MetroFactory(child2 = child2)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(child2: ChildService2): ChildService3 {
         return ChildService3(child2 = child2)
       }
@@ -338,11 +362,15 @@ class GrandchildService1 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(app2: Provider<AppService2>, child3: Provider<ChildService3>): Factory<GrandchildService1> {
         return MetroFactory(app2 = app2, child3 = child3)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(app2: AppService2, child3: ChildService3): GrandchildService1 {
         return GrandchildService1(app2 = app2, child3 = child3)
       }
@@ -395,11 +423,15 @@ class GrandchildService2 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(gc1: Provider<GrandchildService1>): Factory<GrandchildService2> {
         return MetroFactory(gc1 = gc1)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(gc1: GrandchildService1): GrandchildService2 {
         return GrandchildService2(gc1 = gc1)
       }
@@ -649,6 +681,8 @@ interface AppGraph : MetroContributionToAppScope {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }

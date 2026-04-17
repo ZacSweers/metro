@@ -12,11 +12,15 @@ class Impl : Base<Impl>, Other {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Impl> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): Impl {
       return Impl()
     }

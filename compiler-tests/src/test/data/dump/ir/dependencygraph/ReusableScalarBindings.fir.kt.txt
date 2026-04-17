@@ -9,11 +9,15 @@ class NonReused {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<NonReused> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): NonReused {
       return NonReused()
     }
@@ -55,11 +59,15 @@ class Reused {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(nonReused: Provider<NonReused>): Factory<Reused> {
         return MetroFactory(nonReused = nonReused)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(nonReused: NonReused): Reused {
         return Reused(nonReused = nonReused)
       }
@@ -142,6 +150,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -161,11 +171,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph, long: Provider<Long>): Factory<Double> {
         return ProvideDoubleMetroFactory(instance = instance, long = long)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideDouble(instance: AppGraph, long: Long, long2: Long): Double {
         return instance.provideDouble(long = long, long2 = long2)
       }
@@ -203,11 +217,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: AppGraph): Int {
         return instance.provideInt()
       }
@@ -246,11 +264,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph, int: Provider<Int>): Factory<Long> {
         return ProvideLongMetroFactory(instance = instance, int = int)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideLong(instance: AppGraph, int: Int, int2: Int): Long {
         return instance.provideLong(int = int, int2 = int2)
       }

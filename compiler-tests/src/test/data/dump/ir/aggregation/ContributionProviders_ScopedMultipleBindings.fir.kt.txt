@@ -61,11 +61,15 @@ abstract class ImplContributions {
         }
 
         @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
         fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Bar> {
           return ProvideImplAsBarMetroFactory(instance = instance)
         }
 
         @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
         fun provideImplAsBar(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
           return ToAppScope.provideImplAsBar(instance = instance)
         }
@@ -101,11 +105,15 @@ abstract class ImplContributions {
         }
 
         @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
         fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Foo> {
           return ProvideImplAsFooMetroFactory(instance = instance)
         }
 
         @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
         fun provideImplAsFoo(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
           return ToAppScope.provideImplAsFoo(instance = instance)
         }
@@ -144,11 +152,15 @@ abstract class ImplContributions {
         }
 
         @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
         fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Any?> {
           return ProvideScopedInstanceImplMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
         @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
         fun provideScopedInstanceImpl(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
           return ToAppScope.provideScopedInstanceImpl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }

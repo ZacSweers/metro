@@ -11,11 +11,15 @@ class ClientDevice {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(userAgentProvider: Provider<UserAgentProvider>): Factory<ClientDevice> {
         return MetroFactory(userAgentProvider = userAgentProvider)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(userAgentProvider: UserAgentProvider): ClientDevice {
         return ClientDevice(userAgentProvider = userAgentProvider)
       }
@@ -60,11 +64,15 @@ class ClientId {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<ClientId> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): ClientId {
       return ClientId()
     }
@@ -103,11 +111,15 @@ class CommonAppHeadersInterceptor {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(additionalHeaders: Provider<Set<Pair<String, String>>>, lazyDelegate: Provider<CommonAppHeadersInterceptor>): Factory<CommonAppHeadersInterceptor> {
         return MetroFactory(additionalHeaders = additionalHeaders, lazyDelegate = lazyDelegate)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(additionalHeaders: Set<Pair<String, String>>, lazyDelegate: Lazy<CommonAppHeadersInterceptor>): CommonAppHeadersInterceptor {
         return CommonAppHeadersInterceptor(additionalHeaders = additionalHeaders, lazyDelegate = lazyDelegate)
       }
@@ -162,11 +174,15 @@ class InternalHeader {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(key: Provider<String>): Factory<InternalHeader> {
         return MetroFactory(key = key)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(key: String): InternalHeader {
         return InternalHeader(key = key)
       }
@@ -213,11 +229,15 @@ class UserAgent {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(userAgentProvider: Provider<UserAgentProvider>): Factory<UserAgent> {
         return MetroFactory(userAgentProvider = userAgentProvider)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(userAgentProvider: UserAgentProvider): UserAgent {
         return UserAgent(userAgentProvider = userAgentProvider)
       }
@@ -262,11 +282,15 @@ class UserAgentProvider {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<UserAgentProvider> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): UserAgentProvider {
       return UserAgentProvider()
     }
@@ -352,6 +376,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -371,11 +397,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph, @Named(name = "other") otherHeaders: Provider<Set<Pair<String, String>>>): Factory<Set<Pair<String, String>>> {
         return ProvideHeadersMetroFactory(instance = instance, otherHeaders = otherHeaders)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideHeaders(instance: AppGraph, @Named(name = "other") otherHeaders: Set<Pair<String, String>>): Set<Pair<String, String>> {
         return instance.provideHeaders(otherHeaders = otherHeaders)
       }
@@ -415,11 +445,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph, header: Provider<InternalHeader>): Factory<Pair<String, String>> {
         return ProvideInternalHeaderMetroFactory(instance = instance, header = header)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInternalHeader(instance: AppGraph, header: InternalHeader): Pair<String, String> {
         return instance.provideInternalHeader(header = header)
       }
@@ -459,11 +493,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Set<Pair<String, String>>> {
         return ProvideOtherHeadersMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideOtherHeaders(instance: AppGraph): Set<Pair<String, String>> {
         return instance.provideOtherHeaders()
       }
@@ -503,11 +541,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<String> {
         return ProvideStringMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideString(instance: AppGraph): String {
         return instance.provideString()
       }

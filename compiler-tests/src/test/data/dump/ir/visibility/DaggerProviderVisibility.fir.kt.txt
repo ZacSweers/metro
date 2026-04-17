@@ -42,6 +42,8 @@ interface ExampleGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): ExampleGraph {
       return Impl()
     }
@@ -75,11 +77,15 @@ class ModuleWithInternal {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: ModuleWithInternal): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: ModuleWithInternal): Int {
         return instance.provideInt()
       }
