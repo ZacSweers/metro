@@ -25,7 +25,7 @@ inline fun <
       }
       testClass<Box> { commonModel("box") }
       testClass<FastInitBox> { commonModel("box") }
-      testClass<ContributionProvidersBox> { commonModel("box/aggregation") }
+      testClass<ContributionProvidersBox> { commonModel("box") }
       testClass<Diagnostic> { commonModel("diagnostic") }
       testClass<FirDump> { commonModel("dump/fir") }
       testClass<IrDump> { commonModel("dump/ir") }
