@@ -367,6 +367,7 @@ internal class ContributionIrTransformer(
                 //  bound type?
               }
               qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
+              // TODO can we remove this and just rely on the copy in BindsMirrorTransformer?
               if (this@BindingContribution is ContributesIntoMapBinding) {
                 mapKey?.let { mk ->
                   val copied = mk.ir.deepCopyWithSymbols()

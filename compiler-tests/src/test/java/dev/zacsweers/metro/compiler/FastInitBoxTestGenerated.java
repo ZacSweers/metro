@@ -2631,6 +2631,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ImplicitClassKeyBindsMultibinding.kt")
+    public void testImplicitClassKeyBindsMultibinding() {
+      runTest("compiler-tests/src/test/data/box/multibindings/ImplicitClassKeyBindsMultibinding.kt");
+    }
+
+    @Test
     @TestMetadata("ImplicitClassKeyMapBinding.kt")
     public void testImplicitClassKeyMapBinding() {
       runTest("compiler-tests/src/test/data/box/multibindings/ImplicitClassKeyMapBinding.kt");
