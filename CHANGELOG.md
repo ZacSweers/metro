@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- **[Gradle]** Introduce a new `compilerOptions {}` DSL for free Metro compiler options and flags.
+
 ### Enhancements
 
 - **[FIR]** Add a new diagnostic for ambiguous inject constructors. Namely cases where a class is annotated with `@Inject`, defines a secondary constructor, but no primary constructor. This is ambiguous, metro now asks you pick a lane.
@@ -18,6 +22,15 @@ Changelog
 - **[interop]** Fix `@ContributesSubcomponent.Factory` interop with square/anvil.
 - **[docs]** Fix source links in Dokka API docs.
 - **[docs]** Don't publish `**.internal.**` APIs in Dokka API docs.
+
+### Changes
+
+- **[Gradle]** Remove deprecated `useAssistedParamNamesAsIdentifiers` property.
+- **[Gradle]** Remove `deduplicateInjectedParams` property.
+- **[Gradle]** Remove `enableKlibParamsCheck` property, use the new compilerOptions API.
+- **[Gradle]** Remove `enableFullBindingGraphValidation` property, use the new compilerOptions API.
+- **[Gradle]** Remove `enableGraphImplClassAsReturnType` property, use the new compilerOptions API.
+- **[Gradle]** Remove `shrinkUnusedBindings` property, use the new compilerOptions API.
 
 ### Contributors
 

@@ -313,17 +313,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.toInt() },
     )
   ),
-  USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS(
-    RawMetroOption.boolean(
-      name = "use-assisted-param-names-as-identifiers",
-      defaultValue = true,
-      valueDescription = "<true | false>",
-      description =
-        "When enabled, Metro's native @Assisted annotation uses the parameter name as the default identifier. When disabled, defaults to an empty string (legacy Dagger behavior). Only affects Metro's own @Assisted annotation, not custom/interop annotations.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   CUSTOM_PROVIDER(
     RawMetroOption(
       name = "custom-provider",
@@ -655,17 +644,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  DEDUPLICATE_INJECTED_PARAMS(
-    RawMetroOption.boolean(
-      name = "deduplicate-injected-params",
-      defaultValue = true,
-      valueDescription = "<true | false>",
-      description =
-        "Enable/disable deduplication of injected parameters with the same type key in generated factories.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   ENABLE_KLIB_PARAMS_CHECK(
     RawMetroOption.boolean(
       name = "enable-klib-params-check",
@@ -960,8 +938,6 @@ public data class MetroOptions(
     MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
     },
-  public val useAssistedParamNamesAsIdentifiers: Boolean =
-    MetroOption.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS.raw.defaultValue.expectAs(),
   public val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -1033,8 +1009,6 @@ public data class MetroOptions(
     MetroOption.CUSTOM_OPTIONAL_BINDING.raw.defaultValue.expectAs(),
   public val contributesAsInject: Boolean =
     MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
-  public val deduplicateInjectedParams: Boolean =
-    MetroOption.DEDUPLICATE_INJECTED_PARAMS.raw.defaultValue.expectAs(),
   public val enableKlibParamsCheck: Boolean =
     MetroOption.ENABLE_KLIB_PARAMS_CHECK.raw.defaultValue.expectAs(),
   public val patchKlibParams: Boolean = MetroOption.PATCH_KLIB_PARAMS.raw.defaultValue.expectAs(),
@@ -1109,7 +1083,6 @@ public data class MetroOptions(
     public var nonPublicContributionSeverity: DiagnosticSeverity =
       base.nonPublicContributionSeverity
     public var optionalBindingBehavior: OptionalBindingBehavior = base.optionalBindingBehavior
-    public var useAssistedParamNamesAsIdentifiers: Boolean = base.useAssistedParamNamesAsIdentifiers
     public var warnOnInjectAnnotationPlacement: Boolean = base.warnOnInjectAnnotationPlacement
     public var interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
       base.interopAnnotationsNamedArgSeverity
@@ -1170,7 +1143,6 @@ public data class MetroOptions(
     public var customOptionalBindingAnnotations: MutableSet<ClassId> =
       base.customOptionalBindingAnnotations.toMutableSet()
     public var contributesAsInject: Boolean = base.contributesAsInject
-    public var deduplicateInjectedParams: Boolean = base.deduplicateInjectedParams
     public var enableKlibParamsCheck: Boolean = base.enableKlibParamsCheck
     public var patchKlibParams: Boolean = base.patchKlibParams
     public var forceEnableFirInIde: Boolean = base.forceEnableFirInIde
@@ -1319,7 +1291,6 @@ public data class MetroOptions(
         publicScopedProviderSeverity = publicScopedProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
-        useAssistedParamNamesAsIdentifiers = useAssistedParamNamesAsIdentifiers,
         warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement,
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
         unusedGraphInputsSeverity = unusedGraphInputsSeverity,
@@ -1356,7 +1327,6 @@ public data class MetroOptions(
         customOriginAnnotations = customOriginAnnotations,
         customOptionalBindingAnnotations = customOptionalBindingAnnotations,
         contributesAsInject = contributesAsInject,
-        deduplicateInjectedParams = deduplicateInjectedParams,
         enableKlibParamsCheck = enableKlibParamsCheck,
         patchKlibParams = patchKlibParams,
         forceEnableFirInIde = forceEnableFirInIde,
@@ -1566,9 +1536,6 @@ public data class MetroOptions(
 
           MAX_IR_ERRORS_COUNT -> maxIrErrorsCount = configuration.getAsInt(entry)
 
-          USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS ->
-            useAssistedParamNamesAsIdentifiers = configuration.getAsBoolean(entry)
-
           // Intrinsics
           CUSTOM_PROVIDER -> customProviderTypes.addAll(configuration.getAsSet(entry))
           CUSTOM_LAZY -> customLazyTypes.addAll(configuration.getAsSet(entry))
@@ -1625,9 +1592,6 @@ public data class MetroOptions(
               }
 
           CONTRIBUTES_AS_INJECT -> contributesAsInject = configuration.getAsBoolean(entry)
-
-          DEDUPLICATE_INJECTED_PARAMS ->
-            deduplicateInjectedParams = configuration.getAsBoolean(entry)
 
           ENABLE_KLIB_PARAMS_CHECK -> enableKlibParamsCheck = configuration.getAsBoolean(entry)
 

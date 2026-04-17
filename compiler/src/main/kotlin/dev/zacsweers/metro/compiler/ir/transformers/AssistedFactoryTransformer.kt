@@ -456,8 +456,6 @@ internal class AssistedFactoryTransformer(
               param.toAssistedParameterKey(
                 symbols = context.metroSymbols,
                 typeKey = substitutedTypeKey,
-                useAssistedParamNamesAsIdentifiers =
-                  context.options.useAssistedParamNamesAsIdentifiers,
               )
             },
         )

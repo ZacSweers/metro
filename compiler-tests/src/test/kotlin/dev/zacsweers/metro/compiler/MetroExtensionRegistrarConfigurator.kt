@@ -124,9 +124,6 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         reportsDestination =
           Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
       }
-      module.directives
-        .singleOrZeroValue(MetroDirectives.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS)
-        ?.let { useAssistedParamNamesAsIdentifiers = it }
       module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
         parallelThreads = it
       }

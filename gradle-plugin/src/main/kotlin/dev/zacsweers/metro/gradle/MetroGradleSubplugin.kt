@@ -310,19 +310,6 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.generateContributionHintsInFir,
             )
           )
-          add(
-            lazyOption(
-              "enable-full-binding-graph-validation",
-              extension.enableFullBindingGraphValidation,
-            )
-          )
-          add(
-            lazyOption(
-              "enable-graph-impl-class-as-return-type",
-              extension.enableGraphImplClassAsReturnType.orElse(false),
-            )
-          )
-          add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
           add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
           add(lazyOption("enable-graph-sharding", extension.enableGraphSharding))
           add(lazyOption("keys-per-graph-shard", extension.keysPerGraphShard))
@@ -352,7 +339,6 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
             )
           )
           add(lazyOption("contributes-as-inject", extension.contributesAsInject))
-          add(lazyOption("deduplicate-injected-params", extension.deduplicateInjectedParams))
           add(lazyOption("enable-klib-params-check", extension.enableKlibParamsCheck))
           add(lazyOption("patch-klib-params", extension.patchKlibParams))
           add(lazyOption("force-enable-fir-in-ide", extension.forceEnableFirInIde))
@@ -365,20 +351,11 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               },
             )
           )
-          add(
-            lazyOption(
-              "use-assisted-param-names-as-identifiers",
-              extension.useAssistedParamNamesAsIdentifiers,
-            )
-          )
-          add(lazyOption("parallel-threads", extension.parallelThreads))
           add(lazyOption("enable-function-providers", extension.enableFunctionProviders))
           add(
             lazyOption("generate-contribution-providers", extension.generateContributionProviders)
           )
           add(lazyOption("enable-circuit-codegen", extension.enableCircuitCodegen))
-          add(lazyOption("rich-diagnostics", extension.richDiagnostics))
-          add(lazyOption("generate-static-annotations", extension.generateStaticAnnotations))
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
           reportsDir.orNull
@@ -408,6 +385,12 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
                 extension.enableKClassToClassMapKeyInterop,
               )
             )
+          }
+
+          val compilerOptions = extension.compilerOptions.rawOptions
+          for (key in compilerOptions.keySet().orNull.orEmpty().sorted()) {
+            val valueProvider = compilerOptions.getting(key)
+            add(lazyOption(key, valueProvider))
           }
 
           with(extension.interop) {

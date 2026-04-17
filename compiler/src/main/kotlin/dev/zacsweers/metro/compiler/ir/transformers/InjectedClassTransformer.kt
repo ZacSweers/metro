@@ -303,12 +303,7 @@ internal class InjectedClassTransformer(
     // Deduplicate parameters to match the FIR-generated factory constructor.
     // The FIR side deduplicates by type key, so the factory constructor has fewer
     // parameters when multiple source params share the same type+qualifier.
-    val dedupedParameters =
-      if (options.deduplicateInjectedParams) {
-        nonAssistedParameters.dedupeParameters()
-      } else {
-        nonAssistedParameters
-      }
+    val dedupedParameters = nonAssistedParameters.dedupeParameters()
 
     // Use parameter name as the primary field key to correctly handle multiple parameters
     // with the same type key (e.g., two String params with different defaults).
@@ -692,10 +687,7 @@ internal class InjectedClassTransformer(
     // Deduplicate to match the FIR-generated create() function signature
     val dedupedMerged =
       mergedParameters.copy(
-        regularParameters =
-          if (options.deduplicateInjectedParams)
-            mergedParameters.regularParameters.dedupeParameters()
-          else mergedParameters.regularParameters
+        regularParameters = mergedParameters.regularParameters.dedupeParameters()
       )
 
     // Generate create()

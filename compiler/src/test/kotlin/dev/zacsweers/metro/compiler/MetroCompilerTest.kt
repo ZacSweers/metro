@@ -118,8 +118,6 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, publicScopedProviderSeverity)
               NON_PUBLIC_CONTRIBUTION_SEVERITY ->
                 processor.option(entry.raw.cliOption, nonPublicContributionSeverity)
-              USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS ->
-                processor.option(entry.raw.cliOption, useAssistedParamNamesAsIdentifiers)
               WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
@@ -282,9 +280,6 @@ abstract class MetroCompilerTest {
               }
               CONTRIBUTES_AS_INJECT -> {
                 processor.option(entry.raw.cliOption, contributesAsInject)
-              }
-              DEDUPLICATE_INJECTED_PARAMS -> {
-                processor.option(entry.raw.cliOption, deduplicateInjectedParams)
               }
               ENABLE_KLIB_PARAMS_CHECK -> {
                 processor.option(entry.raw.cliOption, enableKlibParamsCheck)
