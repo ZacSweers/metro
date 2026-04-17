@@ -199,7 +199,7 @@ tasks.withType<Test> {
 
   // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
   minHeapSize = "512m"
-  maxHeapSize = if (largeTestMode) "4g" else "2g"
+  maxHeapSize = if (largeTestMode) "5g" else "2g"
   jvmArgs(
     "-ea",
     "-XX:+UseCodeCacheFlushing",
