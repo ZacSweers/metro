@@ -34,9 +34,11 @@ body:
       description: |
         Provide a [minimal, self-contained example](https://en.wikipedia.org/wiki/Minimal_reproducible_example) that reproduces the issue.
         
-        Ideally, fork this repo and create a test case in compiler-tests that reproduces this and then link that here. IC issues can be reproduced in `ICTests.kt` in the gradle-plugin project. If you can reproduce this in a test, you can skip writing this issue and just send a PR with the failing test directly.
+        Ideally, fork this repo and create a test case in `compiler-tests/` that reproduces this and then link that here (that project's README has detailed info). IC issues can be reproduced in `ICTests.kt` in the gradle-plugin project.
         
-        A minimally reproducible project is also good, either as a link or attached here. If linking a project, please include the relevant build commands and ensure it uses the latest stable versions of build+kotlin+metro dependencies (or explain why specific versions are necessary).
+        If you can reproduce this in a test, you can skip writing this issue and just send a PR with the failing test directly.
+        
+        A minimally reproducible project is also good, either as a link or attached here. If linking a project, please include the relevant build commands and ensure it uses the latest stable versions of build+kotlin+metro dependencies (or explain why specific versions are necessary). If it is an Android project, please make some effort to reduce the project to a plain JVM project unless the issue is specific to Android projects. Issues that do not attempt to minimalize a repro project may be rejected.
         
         If you cannot supply a repro case, it may be difficult or impossible to help. In this event, be as detailed as you can and what you've tried (if nothing else, at least acknowledge you could not create a repro).
         
