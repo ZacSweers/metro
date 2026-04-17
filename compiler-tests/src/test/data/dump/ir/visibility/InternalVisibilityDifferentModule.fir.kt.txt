@@ -12,11 +12,15 @@ class InternalClass {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<InternalClass> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): InternalClass {
       return InternalClass()
     }
@@ -53,11 +57,15 @@ object IntProvider {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Int> {
       return ProvideIntMetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun provideInt(): Int {
       return IntProvider.provideInt()
     }
@@ -121,6 +129,8 @@ abstract class AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }

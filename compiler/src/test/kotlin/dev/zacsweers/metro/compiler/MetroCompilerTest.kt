@@ -360,6 +360,12 @@ abstract class MetroCompilerTest {
               RICH_DIAGNOSTICS -> {
                 processor.option(entry.raw.cliOption, richDiagnostics)
               }
+              GENERATE_STATIC_ANNOTATIONS -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.generateStaticAnnotations,
+                )
+              }
             }
           yield(option)
         }

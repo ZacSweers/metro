@@ -18,11 +18,15 @@ class Collector {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(services: Provider<Set<Any>>): Factory<Collector> {
         return MetroFactory(services = services)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(services: Set<Any>): Collector {
         return Collector(services = services)
       }
@@ -69,11 +73,15 @@ class Service1 {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Service1> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): Service1 {
       return Service1()
     }
@@ -111,11 +119,15 @@ class Service2 {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Service2> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): Service2 {
       return Service2()
     }
@@ -217,6 +229,8 @@ interface TestGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph {
       return Impl()
     }
@@ -243,11 +257,15 @@ object Module1 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(s1: Provider<Service1>): Factory<Any> {
         return ProvideService1MetroFactory(s1 = s1)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideService1(s1: Service1): Any {
         return Module1.provideService1(s1 = s1)
       }
@@ -305,11 +323,15 @@ object Module2 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(s2: Provider<Service2>): Factory<Any> {
         return ProvideService2MetroFactory(s2 = s2)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideService2(s2: Service2): Any {
         return Module2.provideService2(s2 = s2)
       }

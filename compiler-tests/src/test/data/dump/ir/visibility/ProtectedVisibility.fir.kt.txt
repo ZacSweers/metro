@@ -37,6 +37,8 @@ abstract class AppGraph : BaseGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -55,11 +57,15 @@ abstract class AppGraph : BaseGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<String> {
         return ProvideStringMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideString(instance: AppGraph): String {
         return instance.provideString()
       }
@@ -120,11 +126,15 @@ open class BaseGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: BaseGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: BaseGraph): Int {
         return instance.provideInt()
       }
@@ -174,11 +184,15 @@ class ProtectedConstructorClass {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<ProtectedConstructorClass> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): ProtectedConstructorClass {
       return ProtectedConstructorClass()
     }

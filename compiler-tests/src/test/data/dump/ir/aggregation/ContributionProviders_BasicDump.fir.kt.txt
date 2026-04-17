@@ -59,11 +59,15 @@ abstract class ImplContributions {
         }
 
         @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
         fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Base> {
           return ProvideImplAsBaseMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
         @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
         fun provideImplAsBase(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Base {
           return ToAppScope.provideImplAsBase(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }

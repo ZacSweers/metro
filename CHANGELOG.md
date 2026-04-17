@@ -4,8 +4,15 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[FIR]** Add a new diagnostic for ambiguous inject constructors. Namely cases where a class is annotated with `@Inject`, defines a secondary constructor, but no primary constructor. This is ambiguous, metro now asks you pick a lane.
+- **[JVM/JS]** Generate `@JvmStatic` and `@JsStatic` annotations onto static-ish functions for better staticization on those platforms.
+- **[docs]** Migrate doc site to Zensical. Works the same, fresh-ish coat of paint!
+
 ### Fixes
 
+- **[FIR]** Fix not recognizing `FirDeclarationOrigin.Precompiled` origins when checking resolved default binding types. Previously we only considered `FirDeclarationOrigin.Library`, but incremental compilation uses `FirDeclarationOrigin.Precompiled` to differentiate. This would result in misreads of default binding types in some cases during IC.
 - **[IR]** Fix secondary inject constructors support when `generateContributionProviders` is enabled.
 - **[docs]** Fix source links in Dokka API docs.
 - **[docs]** Don't publish `**.internal.**` APIs in Dokka API docs.

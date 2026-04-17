@@ -463,6 +463,17 @@ constructor(
     objects.booleanProperty("metro.richDiagnostics", false)
 
   /**
+   * When enabled, annotates generated static-ish factory functions (e.g. `create`, `newInstance`,
+   * `inject{Name}`) with `@JvmStatic` and `@JsStatic` so they compile to true static methods on
+   * JVM/JS.
+   *
+   * Enabled by default.
+   */
+  @ExperimentalMetroGradleApi // This will likely be deleted after stabilization
+  public val generateStaticAnnotations: Property<Boolean> =
+    objects.booleanProperty("metro.generateStaticAnnotations", true)
+
+  /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
    * graphs to the given destination. Outputs are per-compilation granularity (i.e.
    * `build/metro/main/...`).

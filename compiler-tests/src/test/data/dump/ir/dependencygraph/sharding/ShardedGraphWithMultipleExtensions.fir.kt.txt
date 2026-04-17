@@ -12,11 +12,15 @@ class AppService1 {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AppService1> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AppService1 {
       return AppService1()
     }
@@ -54,11 +58,15 @@ class AppService2 {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AppService2> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AppService2 {
       return AppService2()
     }
@@ -96,11 +104,15 @@ class AppService3 {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AppService3> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AppService3 {
       return AppService3()
     }
@@ -138,11 +150,15 @@ class AppService4 {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AppService4> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AppService4 {
       return AppService4()
     }
@@ -189,11 +205,15 @@ class Feature1Service1 {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Feature1Service1> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): Feature1Service1 {
       return Feature1Service1()
     }
@@ -237,11 +257,15 @@ class Feature1Service2 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(f1s1: Provider<Feature1Service1>): Factory<Feature1Service2> {
         return MetroFactory(f1s1 = f1s1)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(f1s1: Feature1Service1): Feature1Service2 {
         return Feature1Service2(f1s1 = f1s1)
       }
@@ -294,11 +318,15 @@ class Feature1Service3 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(f1s2: Provider<Feature1Service2>): Factory<Feature1Service3> {
         return MetroFactory(f1s2 = f1s2)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(f1s2: Feature1Service2): Feature1Service3 {
         return Feature1Service3(f1s2 = f1s2)
       }
@@ -360,11 +388,15 @@ class Feature2Service1 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(app: Provider<AppService1>): Factory<Feature2Service1> {
         return MetroFactory(app = app)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(app: AppService1): Feature2Service1 {
         return Feature2Service1(app = app)
       }
@@ -417,11 +449,15 @@ class Feature2Service2 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(f2s1: Provider<Feature2Service1>): Factory<Feature2Service2> {
         return MetroFactory(f2s1 = f2s1)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(f2s1: Feature2Service1): Feature2Service2 {
         return Feature2Service2(f2s1 = f2s1)
       }
@@ -474,11 +510,15 @@ class Feature2Service3 {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(f2s2: Provider<Feature2Service2>): Factory<Feature2Service3> {
         return MetroFactory(f2s2 = f2s2)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(f2s2: Feature2Service2): Feature2Service3 {
         return Feature2Service3(f2s2 = f2s2)
       }
@@ -720,6 +760,8 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }

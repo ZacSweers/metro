@@ -881,6 +881,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  GENERATE_STATIC_ANNOTATIONS(
+    RawMetroOption.boolean(
+      name = "generate-static-annotations",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "When enabled, annotates generated static-ish factory functions (e.g. create, newInstance, inject{Name}) with @JvmStatic and @JsStatic so they compile to true static methods on JVM/JS.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -1048,6 +1059,8 @@ public data class MetroOptions(
   val enableCircuitCodegen: Boolean =
     MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
   public val richDiagnostics: Boolean = MetroOption.RICH_DIAGNOSTICS.raw.defaultValue.expectAs(),
+  public val generateStaticAnnotations: Boolean =
+    MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1170,6 +1183,7 @@ public data class MetroOptions(
     public var generateContributionProviders: Boolean = base.generateContributionProviders
     public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
     public var richDiagnostics: Boolean = base.richDiagnostics
+    public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1352,6 +1366,7 @@ public data class MetroOptions(
         generateContributionProviders = generateContributionProviders,
         enableCircuitCodegen = enableCircuitCodegen,
         richDiagnostics = richDiagnostics,
+        generateStaticAnnotations = generateStaticAnnotations,
       )
     }
 
@@ -1656,6 +1671,8 @@ public data class MetroOptions(
           MetroOption.ENABLE_CIRCUIT_CODEGEN ->
             enableCircuitCodegen = configuration.getAsBoolean(entry)
           RICH_DIAGNOSTICS -> richDiagnostics = configuration.getAsBoolean(entry)
+          GENERATE_STATIC_ANNOTATIONS ->
+            generateStaticAnnotations = configuration.getAsBoolean(entry)
         }
       }
     }

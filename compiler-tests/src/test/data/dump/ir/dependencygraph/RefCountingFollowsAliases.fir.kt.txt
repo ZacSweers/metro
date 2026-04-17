@@ -15,11 +15,15 @@ class BarA {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(foo: Provider<Foo>): Factory<BarA> {
         return MetroFactory(foo = foo)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(foo: Provider<Foo>): BarA {
         return BarA(foo = foo)
       }
@@ -70,11 +74,15 @@ class BarB {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(foo: Provider<Foo>): Factory<BarB> {
         return MetroFactory(foo = foo)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(foo: Provider<Foo>): BarB {
         return BarB(foo = foo)
       }
@@ -120,11 +128,15 @@ class BazImpl : BazMiddle {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<BazImpl> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): BazImpl {
       return BazImpl()
     }
@@ -187,11 +199,15 @@ class FooImpl : Foo {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<FooImpl> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): FooImpl {
       return FooImpl()
     }
@@ -275,11 +291,15 @@ class Main {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Factory<Main> {
         return MetroFactory(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Main {
         return Main(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
       }
@@ -331,11 +351,15 @@ class QuxA {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(baz: Provider<Baz>): Factory<QuxA> {
         return MetroFactory(baz = baz)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(baz: Provider<Baz>): QuxA {
         return QuxA(baz = baz)
       }
@@ -386,11 +410,15 @@ class QuxB {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(baz: Provider<Baz>): Factory<QuxB> {
         return MetroFactory(baz = baz)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(baz: Provider<Baz>): QuxB {
         return QuxB(baz = baz)
       }
@@ -474,6 +502,8 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }

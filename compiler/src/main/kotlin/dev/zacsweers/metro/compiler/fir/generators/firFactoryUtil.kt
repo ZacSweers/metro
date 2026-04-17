@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.buildFullSubstitutionMap
 import dev.zacsweers.metro.compiler.fir.buildHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSimpleValueParameter
+import dev.zacsweers.metro.compiler.fir.buildStaticAnnotations
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.copyParameters
@@ -194,8 +195,12 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
         }
       }
       .also { func ->
-        buildHiddenFromObjCAnnotation(session)?.let {
-          func.replaceAnnotationsSafe(func.annotations + it)
+        val extraAnnotations = buildList {
+          buildHiddenFromObjCAnnotation(session)?.let(::add)
+          addAll(buildStaticAnnotations(session))
+        }
+        if (extraAnnotations.isNotEmpty()) {
+          func.replaceAnnotationsSafe(func.annotations + extraAnnotations)
         }
       }
       .symbol as FirNamedFunctionSymbol

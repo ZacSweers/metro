@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.buildHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
+import dev.zacsweers.metro.compiler.fir.buildStaticAnnotations
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
@@ -834,6 +835,10 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                 // Mark the instance parameter as assisted since this is always provided at runtime
                 valueParameters[0].apply {
                   replaceAnnotationsSafe(annotations + buildAssistedAnnotation())
+                }
+                val staticAnnotations = buildStaticAnnotations(session)
+                if (staticAnnotations.isNotEmpty()) {
+                  replaceAnnotationsSafe(annotations + staticAnnotations)
                 }
               }
               .symbol as FirNamedFunctionSymbol

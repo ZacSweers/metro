@@ -15,11 +15,15 @@ class FinalThing {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(@Named(name = "final") ints: Provider<Set<Int>>): Factory<FinalThing> {
         return MetroFactory(ints = ints)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(@Named(name = "final") ints: Provider<Set<Int>>): FinalThing {
         return FinalThing(ints = ints)
       }
@@ -149,6 +153,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -167,11 +173,15 @@ interface AppGraph {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: AppGraph): Int {
         return instance.provideInt()
       }

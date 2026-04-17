@@ -1368,6 +1368,18 @@ internal fun buildHiddenFromObjCAnnotation(session: FirSession): FirAnnotation? 
   return session.metroFirBuiltIns.hiddenFromObjCClassSymbol?.let { buildSimpleAnnotation { it } }
 }
 
+/**
+ * Builds `@JvmStatic` and `@JsStatic` annotations when [MetroOptions.generateStaticAnnotations] is
+ * enabled and the annotations are present on the current classpath. Empty list otherwise.
+ */
+internal fun buildStaticAnnotations(session: FirSession): List<FirAnnotation> {
+  if (!session.metroFirBuiltIns.options.generateStaticAnnotations) return emptyList()
+  return buildList {
+    session.metroFirBuiltIns.jvmStaticClassSymbol?.let { add(buildSimpleAnnotation { it }) }
+    session.metroFirBuiltIns.jsStaticClassSymbol?.let { add(buildSimpleAnnotation { it }) }
+  }
+}
+
 internal fun FirClass.isOrImplements(supertype: ClassId, session: FirSession): Boolean {
   if (classId == supertype) return true
   return implements(supertype, session)
@@ -1736,13 +1748,15 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingTypeRef(session: FirSession)
 internal fun FirClassSymbol<*>.resolveDefaultBindingTypeKey(session: FirSession): FirRefTypeKey? {
   val annotation =
     getAnnotationByClassId(session.classIds.defaultBindingAnnotation, session) ?: return null
-  if (origin is FirDeclarationOrigin.Library) {
-    // If it's external we need to read the mirror
+  // Source annotations are `FirAnnotationCall` and carry the `@DefaultBinding<T>` type argument.
+  // Deserialized annotations (from `Library`, `Precompiled`, and other non-source origins during
+  // incremental compilation) are plain `FirAnnotation`s without type arguments. For those we have
+  // to read the type from the generated `DefaultBindingMirror` nested class.
+  if (annotation !is FirAnnotationCall) {
     return resolveExternalDefaultBindingTypeKey(session)
   }
 
   // Try to read from @DefaultBinding annotation directly (same-module)
-  if (annotation !is FirAnnotationCall) return null
   val typeArg = annotation.typeArguments.firstOrNull() ?: return null
   val typeRef =
     when (typeArg) {

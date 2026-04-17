@@ -16,10 +16,14 @@ class AFragment : Fragment {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(viewModelFactory: Provider<ViewModelFactory>): MembersInjector<AFragment> {
         return MetroMembersInjector(viewModelFactory = viewModelFactory)
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectViewModelFactory(@Assisted instance: AFragment, viewModelFactory: ViewModelFactory) {
         return instance.#viewModelFactory = viewModelFactory
       }
@@ -65,11 +69,15 @@ class AFragmentInjector : Injector {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(memberInjector: Provider<MembersInjector<AFragment>>): Factory<AFragmentInjector> {
         return MetroFactory(memberInjector = memberInjector)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(memberInjector: MembersInjector<AFragment>): AFragmentInjector {
         return AFragmentInjector(memberInjector = memberInjector)
       }
@@ -146,11 +154,15 @@ class AViewModel : ViewModel {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AViewModel> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AViewModel {
       return AViewModel()
     }
@@ -230,10 +242,14 @@ class BFragment : Fragment {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(viewModelFactory: Provider<ViewModelFactory>): MembersInjector<BFragment> {
         return MetroMembersInjector(viewModelFactory = viewModelFactory)
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectViewModelFactory(@Assisted instance: BFragment, viewModelFactory: ViewModelFactory) {
         return instance.#viewModelFactory = viewModelFactory
       }
@@ -279,11 +295,15 @@ class BFragmentInjector : Injector {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(memberInjector: Provider<MembersInjector<BFragment>>): Factory<BFragmentInjector> {
         return MetroFactory(memberInjector = memberInjector)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(memberInjector: MembersInjector<BFragment>): BFragmentInjector {
         return BFragmentInjector(memberInjector = memberInjector)
       }
@@ -360,11 +380,15 @@ class BViewModel : ViewModel {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<BViewModel> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): BViewModel {
       return BViewModel()
     }
@@ -436,10 +460,14 @@ abstract class BaseActivity : Activity {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(fragmentInjector: Provider<FragmentInjector>): MembersInjector<BaseActivity> {
         return MetroMembersInjector(fragmentInjector = fragmentInjector)
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectFragmentInjector(@Assisted instance: BaseActivity, fragmentInjector: FragmentInjector) {
         return instance.#fragmentInjector = fragmentInjector
       }
@@ -492,11 +520,15 @@ class FragmentInjector {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(injectors: Provider<Map<KClass<*>, Injector>>): Factory<FragmentInjector> {
         return MetroFactory(injectors = injectors)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(injectors: Map<KClass<*>, Injector>): FragmentInjector {
         return FragmentInjector(injectors = injectors)
       }
@@ -565,11 +597,15 @@ class ViewModelFactory {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(viewModels: Provider<Map<KClass<*>, Provider<ViewModel>>>): Factory<ViewModelFactory> {
         return MetroFactory(viewModels = viewModels)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(viewModels: Map<KClass<*>, Provider<ViewModel>>): ViewModelFactory {
         return ViewModelFactory(viewModels = viewModels)
       }
@@ -652,6 +688,8 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope, M
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }

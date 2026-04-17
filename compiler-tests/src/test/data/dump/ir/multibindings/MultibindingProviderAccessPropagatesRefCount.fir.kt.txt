@@ -15,11 +15,15 @@ class A {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(x: Provider<X>): Factory<A> {
         return MetroFactory(x = x)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(x: X): A {
         return A(x = x)
       }
@@ -70,11 +74,15 @@ class B {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(x: Provider<X>): Factory<B> {
         return MetroFactory(x = x)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(x: X): B {
         return B(x = x)
       }
@@ -125,11 +133,15 @@ class C {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(x: Provider<X>): Factory<C> {
         return MetroFactory(x = x)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(x: X): C {
         return C(x = x)
       }
@@ -180,11 +192,15 @@ class MapConsumer {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(map: Provider<Map<Int, B>>): Factory<MapConsumer> {
         return MetroFactory(map = map)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(map: Provider<Map<Int, B>>): MapConsumer {
         return MapConsumer(map = map)
       }
@@ -235,11 +251,15 @@ class ProviderMapConsumer {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(map: Provider<Map<Int, Provider<C>>>): Factory<ProviderMapConsumer> {
         return MetroFactory(map = map)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(map: Map<Int, Provider<C>>): ProviderMapConsumer {
         return ProviderMapConsumer(map = map)
       }
@@ -290,11 +310,15 @@ class SetConsumer {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(set: Provider<Set<A>>): Factory<SetConsumer> {
         return MetroFactory(set = set)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(set: Provider<Set<A>>): SetConsumer {
         return SetConsumer(set = set)
       }
@@ -339,11 +363,15 @@ class XImpl : X {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<XImpl> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): XImpl {
       return XImpl()
     }
@@ -465,6 +493,8 @@ interface TestGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph {
       return Impl()
     }

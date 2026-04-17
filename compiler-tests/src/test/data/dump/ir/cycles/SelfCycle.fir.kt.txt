@@ -20,11 +20,15 @@ class S {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(sProvider: Provider<S>): Factory<S> {
         return MetroFactory(sProvider = sProvider)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(sProvider: Provider<S>): S {
         return S(sProvider = sProvider)
       }
@@ -63,10 +67,14 @@ class S {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(sLazy: Provider<S>): MembersInjector<S> {
         return MetroMembersInjector(sLazy = sLazy)
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectSLazy(@Assisted instance: S, sLazy: Lazy<S>) {
         return instance.#sLazy = sLazy
       }
@@ -122,6 +130,8 @@ interface SelfCycleGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): SelfCycleGraph {
       return Impl()
     }

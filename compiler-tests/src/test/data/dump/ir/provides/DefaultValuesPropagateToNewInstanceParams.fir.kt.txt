@@ -12,6 +12,8 @@ interface IntProvider {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: IntProvider, stringValue: Provider<String?> = provider<String?>(provider = local fun <anonymous>(): String? {
         return null
       }
@@ -20,6 +22,8 @@ interface IntProvider {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: IntProvider, stringValue: String? = null): Int {
         return instance.provideInt(stringValue = stringValue)
       }

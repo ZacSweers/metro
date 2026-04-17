@@ -14,10 +14,14 @@ class Target {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(strings: Provider<Map<Int, Provider<String>>>): MembersInjector<Target> {
         return MetroMembersInjector(strings = strings)
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectStrings(@Assisted instance: Target, strings: Map<Int, Provider<String>>) {
         return instance.#strings = strings
       }
@@ -57,11 +61,15 @@ interface Bindings {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: Bindings): Factory<String> {
         return ProvideStringMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideString(instance: Bindings): String {
         return instance.provideString()
       }
@@ -134,6 +142,8 @@ interface TestGraph1 : Bindings {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph1 {
       return Impl()
     }
@@ -186,6 +196,8 @@ interface TestGraph2 : Bindings {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph2 {
       return Impl()
     }
@@ -240,6 +252,8 @@ interface TestGraph3 : Bindings {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph3 {
       return Impl()
     }
@@ -291,6 +305,8 @@ interface TestGraph4 : Bindings {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph4 {
       return Impl()
     }
@@ -339,6 +355,8 @@ interface TestGraph5 : Bindings {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph5 {
       return Impl()
     }

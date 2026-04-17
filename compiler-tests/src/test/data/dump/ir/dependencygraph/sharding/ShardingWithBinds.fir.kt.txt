@@ -12,11 +12,15 @@ class RepositoryImpl : Repository {
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<RepositoryImpl> {
       return MetroFactory
     }
 
     @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): RepositoryImpl {
       return RepositoryImpl()
     }
@@ -60,11 +64,15 @@ class Service {
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(repo: Provider<Repository>): Factory<Service> {
         return MetroFactory(repo = repo)
       }
 
       @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(repo: Repository): Service {
         return Service(repo = repo)
       }
@@ -188,6 +196,8 @@ interface TestGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph {
       return Impl()
     }
