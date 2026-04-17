@@ -2421,6 +2421,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
         }
 
         @Test
+        @TestMetadata("ContributesSubcomponentFactoryContributedAndExposedByParent.kt")
+        public void testContributesSubcomponentFactoryContributedAndExposedByParent() {
+          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/ContributesSubcomponentFactoryContributedAndExposedByParent.kt");
+        }
+
+        @Test
         @TestMetadata("DaggerMergeComponentModulesAnnotationInterop.kt")
         public void testDaggerMergeComponentModulesAnnotationInterop() {
           runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/DaggerMergeComponentModulesAnnotationInterop.kt");
