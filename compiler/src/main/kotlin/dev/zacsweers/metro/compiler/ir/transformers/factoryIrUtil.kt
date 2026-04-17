@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
+import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
@@ -114,6 +115,7 @@ internal fun generateStaticCreateFunction(
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
         addHiddenFromObjCAnnotation(this)
+        addStaticAnnotations(this)
         context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
       }
   transformStaticCreateFunction(
@@ -257,6 +259,7 @@ internal fun generateStaticNewInstanceFunction(
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
         addHiddenFromObjCAnnotation(this)
+        addStaticAnnotations(this)
         context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
       }
   transformStaticNewInstanceFunction(
@@ -400,6 +403,7 @@ internal fun generateStubCreatorFunctions(
     .apply {
       setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
       addParameters(params, wrapInProvider = true, copyQualifiers = true)
+      addStaticAnnotations(this)
       body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
     }
 
@@ -407,6 +411,7 @@ internal fun generateStubCreatorFunctions(
   creatorClass.addFunction(callableName, returnType).apply {
     setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
     addParameters(params, wrapInProvider = false, copyQualifiers = true)
+    addStaticAnnotations(this)
     body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
   }
 }

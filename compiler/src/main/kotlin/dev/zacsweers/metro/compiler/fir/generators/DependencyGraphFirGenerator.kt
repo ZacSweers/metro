@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
+import dev.zacsweers.metro.compiler.fir.buildStaticAnnotations
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.hasOrigin
@@ -444,13 +445,19 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
                 parameter.resolvedCompilerAnnotationsWithClassIds
               )
             }
-            // Add our marker annotation
-            replaceAnnotationsSafe(
-              annotations +
+            // Add our marker annotation (and static annotations when generated into a
+            // companion, i.e. not an override).
+            val extraAnnotations = buildList {
+              add(
                 buildSimpleAnnotation {
                   session.metroFirBuiltIns.graphFactoryInvokeFunctionMarkerClassSymbol
                 }
-            )
+              )
+              if (owner.isCompanion) {
+                addAll(buildStaticAnnotations(session))
+              }
+            }
+            replaceAnnotationsSafe(annotations + extraAnnotations)
           }
           .symbol as FirNamedFunctionSymbol
       }
@@ -479,12 +486,13 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
                 status { isOperator = true }
               }
               .apply {
-                // Add our marker annotation
+                // Add our marker annotation + static annotations (this is in a companion)
                 replaceAnnotationsSafe(
                   annotations +
                     buildSimpleAnnotation {
                       session.metroFirBuiltIns.graphFactoryInvokeFunctionMarkerClassSymbol
-                    }
+                    } +
+                    buildStaticAnnotations(session)
                 )
               }
           functions += generatedFunction.symbol as FirNamedFunctionSymbol
@@ -498,13 +506,19 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
           val creatorClass = creator.classSymbol
           val generatedFunction =
             createMemberFunction(
-              owner,
-              Keys.MetroGraphFactoryCompanionGetter,
-              Symbols.Names.factory,
-              returnTypeProvider = {
-                creatorClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
-              },
-            )
+                owner,
+                Keys.MetroGraphFactoryCompanionGetter,
+                Symbols.Names.factory,
+                returnTypeProvider = {
+                  creatorClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
+                },
+              )
+              .apply {
+                val staticAnnotations = buildStaticAnnotations(session)
+                if (staticAnnotations.isNotEmpty()) {
+                  replaceAnnotationsSafe(annotations + staticAnnotations)
+                }
+              }
           functions += generatedFunction.symbol as FirNamedFunctionSymbol
         }
       }

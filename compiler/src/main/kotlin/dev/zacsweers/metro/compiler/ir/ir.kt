@@ -1453,6 +1453,21 @@ internal fun addHiddenFromObjCAnnotation(function: IrFunction) {
   function.annotations += buildAnnotation(function.symbol, ctor)
 }
 
+/**
+ * Adds `@JvmStatic` and `@JsStatic` to [function] when [MetroOptions.generateStaticAnnotations] is
+ * enabled and the annotations are available on the current classpath.
+ */
+context(context: IrMetroContext)
+internal fun addStaticAnnotations(function: IrFunction) {
+  if (!context.options.generateStaticAnnotations) return
+  context.metroSymbols.jvmStaticAnnotationConstructor?.let { ctor ->
+    function.annotations += buildAnnotation(function.symbol, ctor)
+  }
+  context.metroSymbols.jsStaticAnnotationConstructor?.let { ctor ->
+    function.annotations += buildAnnotation(function.symbol, ctor)
+  }
+}
+
 internal val IrClass.metroGraphOrFail: IrClass
   get() = metroGraphOrNull ?: reportCompilerBug("No generated MetroGraph found: $classId")
 

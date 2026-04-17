@@ -1368,6 +1368,18 @@ internal fun buildHiddenFromObjCAnnotation(session: FirSession): FirAnnotation? 
   return session.metroFirBuiltIns.hiddenFromObjCClassSymbol?.let { buildSimpleAnnotation { it } }
 }
 
+/**
+ * Builds `@JvmStatic` and `@JsStatic` annotations when [MetroOptions.generateStaticAnnotations] is
+ * enabled and the annotations are present on the current classpath. Empty list otherwise.
+ */
+internal fun buildStaticAnnotations(session: FirSession): List<FirAnnotation> {
+  if (!session.metroFirBuiltIns.options.generateStaticAnnotations) return emptyList()
+  return buildList {
+    session.metroFirBuiltIns.jvmStaticClassSymbol?.let { add(buildSimpleAnnotation { it }) }
+    session.metroFirBuiltIns.jsStaticClassSymbol?.let { add(buildSimpleAnnotation { it }) }
+  }
+}
+
 internal fun FirClass.isOrImplements(supertype: ClassId, session: FirSession): Boolean {
   if (classId == supertype) return true
   return implements(supertype, session)
