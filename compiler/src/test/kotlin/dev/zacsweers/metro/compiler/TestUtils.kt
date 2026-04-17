@@ -232,9 +232,7 @@ fun Class<*>.staticMethods(
     )
   }
 
-  companionObjectClassOrNull?.let {
-    yieldAll(it.staticMethods(companionObjectInstanceFieldOrNull!!))
-  }
+  // No more companion object methods as we generated JvmStatic and should be using those everywhere
 }
 
 // Cannot confine to Class<Factory<*>> because this is also used for assisted factories
