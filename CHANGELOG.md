@@ -7,6 +7,7 @@ Changelog
 ### Enhancements
 
 - **[JVM/JS]** Generate `@JvmStatic` and `@JsStatic` annotations onto static-ish functions for better staticization on those platforms.
+- **[docs]** Migrate doc site to Zensical. Works the same, fresh-ish coat of paint!
 
 ### Fixes
 
