@@ -10,6 +10,12 @@ Changelog
 - **[docs]** Fix source links in Dokka API docs.
 - **[docs]** Don't publish `**.internal.**` APIs in Dokka API docs.
 
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@jonamireh](https://github.com/jonamireh)
+
 1.0.0-RC2
 ---------
 
