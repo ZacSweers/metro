@@ -1682,7 +1682,7 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
   } else if (this is FirAnonymousObjectSymbol) {
     "Anonymous objects cannot be binding containers."
   } else if (with(compatContext) { isLocalCompat }) {
-    "Local class '${classId.diagnosticString(session)}' cannot be a binding container."
+    "Local class '${classId.shortClassName}' cannot be a binding container."
   } else if (isInner) {
     "Inner class '${classId.diagnosticString(session)}' cannot be a binding container."
   } else if (
