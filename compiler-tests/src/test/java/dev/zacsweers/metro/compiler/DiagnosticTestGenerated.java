@@ -91,6 +91,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("PrivateContributionError.kt")
+    public void testPrivateContributionError() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/PrivateContributionError.kt");
+    }
+
+    @Test
     @TestMetadata("SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt")
     public void testSimilarBindingsNotReportedWhenMissingBindingTypeIsAny() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt");

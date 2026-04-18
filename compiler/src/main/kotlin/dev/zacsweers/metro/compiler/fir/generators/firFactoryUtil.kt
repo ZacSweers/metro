@@ -14,7 +14,6 @@ import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -213,10 +212,7 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
  * - Parameters with [dev.zacsweers.metro.compiler.fir.FirContextualTypeKey.hasDefault]: their
  *   defaults may differ
  */
-internal fun List<MetroFirValueParameter>.dedupeParameters(
-  session: FirSession
-): List<MetroFirValueParameter> {
-  if (!session.metroFirBuiltIns.options.deduplicateInjectedParams) return this
+internal fun List<MetroFirValueParameter>.dedupeParameters(): List<MetroFirValueParameter> {
   val seenKeys = HashSet<FirTypeKey>(size)
   return buildList {
     for (param in this@dedupeParameters) {

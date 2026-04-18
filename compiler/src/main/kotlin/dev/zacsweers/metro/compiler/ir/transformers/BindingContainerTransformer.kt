@@ -340,15 +340,11 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
           },
       )
 
-    // Possibly de-duped source params used by the constructor and create() function
+    // De-duped source params used by the constructor and create() function
     val dedupedSourceParameters =
-      if (options.deduplicateInjectedParams) {
-        sourceParameters.copy(
-          regularParameters = sourceParameters.regularParameters.dedupeParameters()
-        )
-      } else {
-        sourceParameters
-      }
+      sourceParameters.copy(
+        regularParameters = sourceParameters.regularParameters.dedupeParameters()
+      )
 
     // Use parameter name as the primary field key to correctly handle multiple parameters
     // with the same type key (e.g., two String params with different defaults).

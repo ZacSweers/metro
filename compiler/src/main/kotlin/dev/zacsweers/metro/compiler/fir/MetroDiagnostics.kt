@@ -68,6 +68,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLA
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PRIVATE_BINDING_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PRIVATE_CONTRIBUTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDER_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_COULD_BE_BINDS
@@ -171,6 +172,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val SUSPICIOUS_SET_INTO_SET by warning1<KtElement, String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val DEFAULT_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val PRIVATE_CONTRIBUTION_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val NON_PUBLIC_CONTRIBUTION_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val NON_PUBLIC_CONTRIBUTION_WARNING by warning1<KtElement, String>(VISIBILITY_MODIFIER)
   val EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS by
@@ -317,6 +319,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(SUSPICIOUS_AGGREGATION_SCOPE, "{0}", STRING)
         put(AGGREGATION_ERROR, "{0}", STRING)
         put(DEFAULT_BINDING_ERROR, "{0}", STRING)
+        put(PRIVATE_CONTRIBUTION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_WARNING, "{0}", STRING)
         put(EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS, "{0}", STRING)

@@ -73,12 +73,6 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive(
       "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations."
     )
-  val USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS by
-    valueDirective(
-      "When enabled, Metro's native @Assisted annotation uses the parameter name as the default identifier."
-    ) {
-      it.toBoolean()
-    }
   val PARALLEL_THREADS by
     valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
   val ENABLE_FUNCTION_PROVIDERS by directive("Enable () -> T as a provider type.")

@@ -1868,12 +1868,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
-      @TestMetadata("AssistedParamNamesDisabled.kt")
-      public void testAssistedParamNamesDisabled() {
-        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedParamNamesDisabled.kt");
-      }
-
-      @Test
       @TestMetadata("AssistedParametersInLaterOrderWork.kt")
       public void testAssistedParametersInLaterOrderWork() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedParametersInLaterOrderWork.kt");

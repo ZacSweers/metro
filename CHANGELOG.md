@@ -4,9 +4,14 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- **[Gradle]** Introduce a new `compilerOptions {}` DSL for free Metro compiler options and flags.
+
 ### Enhancements
 
-- **[FIR]** Add a new diagnostic for ambiguous inject constructors. Namely cases where a class is annotated with `@Inject`, defines a secondary constructor, but no primary constructor. This is ambiguous, metro now asks you pick a lane.
+- **[FIR]** Add a new diagnostic for ambiguous inject constructors. Namely, cases where a class is annotated with `@Inject`, defines a secondary constructor but no primary constructor. This is ambiguous, metro now asks you to pick a lane.
+- **[FIR]** Add a new diagnostic for check against `private` contributions.
 - **[FIR]** When rendering diagnostics in the IDE, use short names for classes since they are shown in context already.
 - **[JVM/JS]** Generate `@JvmStatic` and `@JsStatic` annotations onto static-ish functions for better staticization on those platforms.
 - **[docs]** Migrate doc site to Zensical. Works the same, fresh-ish coat of paint!
@@ -20,6 +25,15 @@ Changelog
 - **[interop]** Fix `@MergeSubcomponent.Factory` interop with zacsweers/anvil (anvil-ksp).
 - **[docs]** Fix source links in Dokka API docs.
 - **[docs]** Don't publish `**.internal.**` APIs in Dokka API docs.
+
+### Changes
+
+- **[Gradle]** Remove deprecated `useAssistedParamNamesAsIdentifiers` property.
+- **[Gradle]** Remove `deduplicateInjectedParams` property.
+- **[Gradle]** Remove `enableKlibParamsCheck` property, use the new compilerOptions API.
+- **[Gradle]** Remove `enableFullBindingGraphValidation` property, use the new compilerOptions API.
+- **[Gradle]** Remove `enableGraphImplClassAsReturnType` property, use the new compilerOptions API.
+- **[Gradle]** Remove `shrinkUnusedBindings` property, use the new compilerOptions API.
 
 ### Contributors
 
