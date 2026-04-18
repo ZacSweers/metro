@@ -437,7 +437,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       onError()
     }
     // Check for non-public contributions
-    checkNonPublicContribution(session, contribution.declaration, annotation, kind, scope)
+    checkContributionVisibility(session, contribution.declaration, annotation, kind, scope)
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -471,6 +471,8 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
   }
 
   /**
+   * Checks if a contribution has valid visibility. Private is never allowed.
+   *
    * Checks if a contributed class (or any containing class) has non-public effective visibility. If
    * it does, and the scope is not also non-public, reports a diagnostic based on the configured
    * severity.
@@ -480,18 +482,28 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
    * outside its class hierarchy, making it unsuitable for contributions to public scopes.
    */
   context(context: CheckerContext, reporter: DiagnosticReporter)
-  private fun checkNonPublicContribution(
+  private fun checkContributionVisibility(
     session: FirSession,
     declaration: FirClass,
     annotation: FirAnnotation,
     kind: ContributionKind,
     scope: ClassId,
   ) {
+    val effectiveVisibility = declaration.effectiveVisibility
+
+    if (effectiveVisibility.privateApi) {
+      reporter.reportOn(
+        declaration.source,
+        MetroDiagnostics.PRIVATE_CONTRIBUTION_ERROR,
+        "@Contributes*-annotated classes cannot be private.",
+      )
+      return
+    }
+
     val options = session.metroFirBuiltIns.options
     val severity = options.nonPublicContributionSeverity
     if (severity == MetroOptions.DiagnosticSeverity.NONE) return
 
-    val effectiveVisibility = declaration.effectiveVisibility
     // Treat protected as non-public for contributions - a protected class can't be accessed
     // from outside its class hierarchy, making it unsuitable for contributions to public scopes
     val isProtected = effectiveVisibility.toVisibility() == Visibilities.Protected

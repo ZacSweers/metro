@@ -110,6 +110,7 @@ internal class ContributedInterfaceSupertypeGenerator(
             )
           }
           .filterIsInstance<FirRegularClassSymbol>()
+          .filterNot { it.visibility == Visibilities.Private }
           .toList()
 
       getScopedContributions(contributingClasses, scopeClassId, typeResolver)

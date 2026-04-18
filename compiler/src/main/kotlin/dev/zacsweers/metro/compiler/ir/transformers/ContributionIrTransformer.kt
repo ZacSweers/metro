@@ -53,6 +53,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -155,6 +156,10 @@ internal class ContributionIrTransformer(
     scope: ClassId,
     isBindingContainer: Boolean,
   ) {
+    if (declaration.isEffectivelyPrivate()) {
+      // Should be caught in FIR but just in case
+      return
+    }
     if (isBindingContainer) {
       data.addBindingContainerContribution(scope, declaration)
     } else {
