@@ -118,8 +118,8 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 
 public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$OptionsHandler {
 	public fun <init> (Lorg/gradle/api/model/ObjectFactory;)V
-	public final fun disableFlag (Ljava/lang/String;)V
-	public final fun enableFlag (Ljava/lang/String;)V
+	public final fun disable (Ljava/lang/String;)V
+	public final fun enable (Ljava/lang/String;)V
 	public final fun getRawOptions ()Lorg/gradle/api/provider/MapProperty;
 	public final fun put (Ljava/lang/String;Ldev/zacsweers/metro/gradle/DiagnosticSeverity;)V
 	public final fun put (Ljava/lang/String;Ljava/lang/String;)V

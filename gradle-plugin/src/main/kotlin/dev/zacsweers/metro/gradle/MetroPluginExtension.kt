@@ -421,12 +421,12 @@ constructor(
     }
 
     /** Enables a given [key] as a boolean flag in [rawOptions] */
-    public fun enableFlag(key: String) {
+    public fun enable(key: String) {
       rawOptions.put(key, "true")
     }
 
     /** Enables a given [key] as a boolean flag in [rawOptions] */
-    public fun disableFlag(key: String) {
+    public fun disable(key: String) {
       rawOptions.put(key, "false")
     }
 
