@@ -15,7 +15,7 @@ MarkupSafe==3.0.3
 # Mike (Zensical fork by squidfunk) - versioned docs deployment to gh-pages
 # https://zensical.org/docs/setup/versioning/
 # NOTE: Not published to PyPI, must install from GitHub
-mike @ git+https://github.com/squidfunk/mike.git@2d4ad799442f4592db8ad53b179bfb33db8c69ac
+mike @ git+https://github.com/squidfunk/mike.git@2.2.0+zensical-0.1.0
 mkdocs==1.6.1
 mkdocs-get-deps==0.2.2
 mkdocs-macros-plugin==1.5.0
