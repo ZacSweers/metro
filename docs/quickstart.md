@@ -108,11 +108,12 @@ interface AppGraph {
 
 ### Providing third-party classes
 
-For classes you don't control (e.g. OkHttp), use `@Provides` in a contributed interface:
+For types you don't control (e.g. third party code), use `@Provides` in a contributed binding container:
 
 ```kotlin
 @ContributesTo(AppScope::class)
-interface NetworkProviders {
+@BindingContainer
+object NetworkBindings {
   @Provides
   fun provideCache(application: Application): Cache =
     Cache(application.cacheDir.resolve("http_cache"), 50L * 1024 * 1024)
@@ -124,6 +125,11 @@ interface NetworkProviders {
       .build()
 }
 ```
+
+A contributed `@BindingContainer` is the lightest-weight form: its `@Provides` declarations are pulled into the graph without exposing them as accessors on the graph type. See [Binding Containers](dependency-graphs.md#binding-containers) for more, including replacing or excluding them in tests.
+
+!!! tip
+    A contributed `interface` with `@Provides` works too, and is useful when you want subtypes to override non-provider members of the interface. `@Provides` declarations themselves cannot be overridden — see [Provides](provides.md).
 
 ### Scoping (singletons)
 
