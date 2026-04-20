@@ -747,6 +747,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DesugaredProviderWarning.kt")
+    public void testDesugaredProviderWarning() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/DesugaredProviderWarning.kt");
+    }
+
+    @Test
     @TestMetadata("InjectingAPlainObjectIsSus.kt")
     public void testInjectingAPlainObjectIsSus() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingAPlainObjectIsSus.kt");
