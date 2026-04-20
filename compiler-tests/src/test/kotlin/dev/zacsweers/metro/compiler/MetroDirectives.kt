@@ -76,6 +76,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val PARALLEL_THREADS by
     valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
   val ENABLE_FUNCTION_PROVIDERS by directive("Enable () -> T as a provider type.")
+  val DESUGARED_PROVIDER_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of uses of the desugared `Provider<T>` form. Prefer the function syntax form `() -> T` instead."
+    )
   val ENABLE_KCLASS_TO_CLASS_INTEROP by
     directive("Enable KClass/Class interop for multibinding map keys.")
   val GENERATE_CONTRIBUTION_PROVIDERS by

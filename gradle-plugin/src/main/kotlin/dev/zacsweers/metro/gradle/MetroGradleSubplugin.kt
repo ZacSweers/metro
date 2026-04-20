@@ -352,6 +352,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
             )
           )
           add(lazyOption("enable-function-providers", extension.enableFunctionProviders))
+          add(lazyOption("desugared-provider-severity", extension.desugaredProviderSeverity))
           add(
             lazyOption("generate-contribution-providers", extension.generateContributionProviders)
           )

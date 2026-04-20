@@ -346,11 +346,24 @@ constructor(
    * Note: On JS, `Provider<T>` does not implement `() -> T`, so an ad-hoc wrapping lambda is
    * generated.
    *
-   * Disabled by default.
+   * Enabled by default.
    */
   @ExperimentalMetroGradleApi
   public val enableFunctionProviders: Property<Boolean> =
-    objects.booleanProperty("metro.enableFunctionProviders", false)
+    objects.booleanProperty("metro.enableFunctionProviders", true)
+
+  /**
+   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters uses of
+   * the desugared `Provider<T>` form as a provider type. Prefer the function syntax form `() -> T`
+   * instead.
+   *
+   * Only applies when [enableFunctionProviders] is enabled; treated as [DiagnosticSeverity.NONE]
+   * otherwise.
+   *
+   * `WARN` by default.
+   */
+  public val desugaredProviderSeverity: Property<DiagnosticSeverity> =
+    objects.enumProperty<DiagnosticSeverity>("desugaredProviderSeverity", DiagnosticSeverity.WARN)
 
   /**
    * Enable/disable [kotlin.reflect.KClass]/[Class] interop for multibinding map keys. When enabled,

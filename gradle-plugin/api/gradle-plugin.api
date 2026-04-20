@@ -42,6 +42,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getCompilerVersionAliases ()Lorg/gradle/api/provider/MapProperty;
 	public final fun getContributesAsInject ()Lorg/gradle/api/provider/Property;
 	public final fun getDebug ()Lorg/gradle/api/provider/Property;
+	public final fun getDesugaredProviderSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableGraphSharding ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableKClassToClassMapKeyInterop ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableKotlinVersionCompatibilityChecks ()Lorg/gradle/api/provider/Property;

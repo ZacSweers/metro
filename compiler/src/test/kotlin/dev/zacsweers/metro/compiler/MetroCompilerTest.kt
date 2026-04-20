@@ -337,6 +337,9 @@ abstract class MetroCompilerTest {
               ENABLE_FUNCTION_PROVIDERS -> {
                 processor.option(entry.raw.cliOption, enableFunctionProviders)
               }
+              DESUGARED_PROVIDER_SEVERITY -> {
+                processor.option(entry.raw.cliOption, desugaredProviderSeverity)
+              }
               ENABLE_KCLASS_TO_CLASS_INTEROP -> {
                 processor.option(
                   entry.raw.cliOption,

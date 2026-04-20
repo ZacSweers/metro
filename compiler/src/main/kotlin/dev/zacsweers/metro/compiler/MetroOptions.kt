@@ -809,11 +809,23 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   ENABLE_FUNCTION_PROVIDERS(
     RawMetroOption.boolean(
       name = "enable-function-providers",
-      defaultValue = false,
+      defaultValue = true,
       valueDescription = "<true | false>",
       description = "Enable/disable treating () -> T as a provider type.",
       required = false,
       allowMultipleOccurrences = false,
+    )
+  ),
+  DESUGARED_PROVIDER_SEVERITY(
+    RawMetroOption(
+      name = "desugared-provider-severity",
+      defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
+      valueDescription = "NONE|WARN|ERROR",
+      description =
+        "Control diagnostic severity reporting of uses of the desugared `Provider<T>` form as a provider type. Prefer the function syntax form `() -> T` instead. Only applies if `enable-function-providers` is enabled; otherwise this is treated as NONE.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
     )
   ),
   ENABLE_KCLASS_TO_CLASS_INTEROP(
@@ -1026,6 +1038,10 @@ public data class MetroOptions(
   public val parallelThreads: Int = MetroOption.PARALLEL_THREADS.raw.defaultValue.expectAs(),
   public val enableFunctionProviders: Boolean =
     MetroOption.ENABLE_FUNCTION_PROVIDERS.raw.defaultValue.expectAs(),
+  public val desugaredProviderSeverity: DiagnosticSeverity =
+    MetroOption.DESUGARED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
+    },
   public val enableKClassToClassInterop: Boolean =
     MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP.raw.defaultValue.expectAs(),
   public val generateContributionProviders: Boolean =
@@ -1151,6 +1167,7 @@ public data class MetroOptions(
     public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
     public var parallelThreads: Int = base.parallelThreads
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
+    public var desugaredProviderSeverity: DiagnosticSeverity = base.desugaredProviderSeverity
     public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
     public var generateContributionProviders: Boolean = base.generateContributionProviders
     public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
@@ -1335,6 +1352,12 @@ public data class MetroOptions(
         compilerVersionAliases = compilerVersionAliases,
         parallelThreads = parallelThreads,
         enableFunctionProviders = enableFunctionProviders,
+        desugaredProviderSeverity =
+          if (enableFunctionProviders) {
+            desugaredProviderSeverity
+          } else {
+            DiagnosticSeverity.NONE
+          },
         enableKClassToClassInterop = enableKClassToClassInterop,
         generateContributionProviders = generateContributionProviders,
         enableCircuitCodegen = enableCircuitCodegen,
@@ -1631,6 +1654,11 @@ public data class MetroOptions(
           }
           PARALLEL_THREADS -> parallelThreads = configuration.getAsInt(entry)
           ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = configuration.getAsBoolean(entry)
+          DESUGARED_PROVIDER_SEVERITY ->
+            desugaredProviderSeverity =
+              configuration.getAsString(entry).let {
+                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
+              }
           ENABLE_KCLASS_TO_CLASS_INTEROP ->
             enableKClassToClassInterop = configuration.getAsBoolean(entry)
           GENERATE_CONTRIBUTION_PROVIDERS ->
