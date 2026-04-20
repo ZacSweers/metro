@@ -23,6 +23,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_LAZY_CLASS_KEY_E
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEFAULT_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DESUGARED_PROVIDER_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DESUGARED_PROVIDER_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DUPLICATE_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DUPLICATE_MAP_KEY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.EMPTY_MULTIBINDING
@@ -207,6 +209,10 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val INTEROP_ANNOTATION_ARGS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val INTEROP_ANNOTATION_ARGS_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
+  // Desugared provider diagnostics
+  val DESUGARED_PROVIDER_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val DESUGARED_PROVIDER_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
+
   // IR errors
   val GRAPH_DEPENDENCY_CYCLE by error1<KtElement, String>(NAME_IDENTIFIER)
   val INCOMPATIBLE_OVERRIDES by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -356,6 +362,8 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(OPTIONAL_BINDING_ERROR, "{0}", STRING)
         put(INTEROP_ANNOTATION_ARGS_ERROR, "{0}", STRING)
         put(INTEROP_ANNOTATION_ARGS_WARNING, "{0}", STRING)
+        put(DESUGARED_PROVIDER_ERROR, "{0}", STRING)
+        put(DESUGARED_PROVIDER_WARNING, "{0}", STRING)
         put(
           PROVIDER_OVERRIDES,
           "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",

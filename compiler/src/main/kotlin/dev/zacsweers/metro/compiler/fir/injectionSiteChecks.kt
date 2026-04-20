@@ -3,6 +3,9 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.ERROR
+import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.NONE
+import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.WARN
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -108,6 +111,10 @@ internal fun validateInjectionSiteType(
     checkLazyAssistedFactory(session, contextKey, typeRef, source)
   } else if (contextKey.isLazyWrappedInProvider) {
     checkProviderOfLazy(session, contextKey, typeRef, source)
+  }
+
+  if (contextKey.wrappedType !is WrappedType.Canonical) {
+    checkDesugaredProviderUse(session, contextKey, typeRef, source)
   }
 
   // Check if we're directly injecting a qualifier type
@@ -270,4 +277,32 @@ private fun checkProviderOfLazy(
       lazyType.lazyType.asString(),
     )
   }
+}
+
+context(context: CheckerContext, reporter: DiagnosticReporter)
+private fun checkDesugaredProviderUse(
+  session: FirSession,
+  contextKey: FirContextualTypeKey,
+  typeRef: FirTypeRef,
+  source: KtSourceElement?,
+) {
+  val options = session.metroFirBuiltIns.options
+  val severity = options.desugaredProviderSeverity
+  if (severity == NONE) return
+  val hasDesugaredProvider =
+    contextKey.wrappedType.innerTypesSequence.any {
+      it is WrappedType.Provider && it.providerType == Symbols.ClassIds.metroProvider
+    }
+  if (!hasDesugaredProvider) return
+  val factory =
+    when (severity) {
+      ERROR -> MetroDiagnostics.DESUGARED_PROVIDER_ERROR
+      WARN -> MetroDiagnostics.DESUGARED_PROVIDER_WARNING
+      NONE -> return
+    }
+  reporter.reportOn(
+    typeRef.source ?: source,
+    factory,
+    "Using the desugared `Provider<T>` type is discouraged. Prefer the function syntax form `() -> T` instead.",
+  )
 }
