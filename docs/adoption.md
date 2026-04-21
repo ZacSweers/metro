@@ -61,6 +61,9 @@ If adopting Metro into an existing codebase, you can use a few different strateg
 
 === "From kotlin-inject"
 
+    !!! warning "Keep `enableFunctionProviders` enabled"
+        kotlin-inject's idiomatic way to request a provider is `() -> T`, so any non-trivial kotlin-inject codebase has these all over the graph. Metro's `enableFunctionProviders` option (on by default) is what makes Metro resolve `() -> T` as a provider of `T`, which is exactly the semantics kotlin-inject users expect. Disabling it will break almost every migrated class, so leave it at its default during and after the migration.
+
     ### Precursor steps
 
     1. Remove the kotlin-inject(-anvil) dependencies (but keep their runtime deps if you use option 1 below!).
