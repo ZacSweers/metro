@@ -36,6 +36,7 @@ Changelog
 - **[Gradle]** Remove `enableFullBindingGraphValidation` property, use the new compilerOptions API.
 - **[Gradle]** Remove `enableGraphImplClassAsReturnType` property, use the new compilerOptions API.
 - **[Gradle]** Remove `shrinkUnusedBindings` property, use the new compilerOptions API.
+- **[metrox-viewmodel]** Change `MetroViewModelFactory` and `MetroViewModelMultibindings` accessor multibindings to expose function types instead of `Provider` types.
 
 ### Contributors
 
