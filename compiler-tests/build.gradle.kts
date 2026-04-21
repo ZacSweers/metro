@@ -148,6 +148,7 @@ dependencies {
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
   daggerRuntimeClasspath(libs.dagger.runtime)
   kiAnvilRuntimeClasspath(libs.kotlinInject.anvil.runtime)
+  kiAnvilRuntimeClasspath(libs.kotlinInject.runtime)
   circuitRuntimeClasspath(libs.circuit.runtime.presenter)
   circuitRuntimeClasspath(libs.circuit.runtime.ui)
   circuitRuntimeClasspath(libs.circuit.codegenAnnotations)
