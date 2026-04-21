@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.isIde
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
@@ -255,20 +256,22 @@ internal object BindingContainerCallableChecker :
     }
 
     val isPrivate = declaration.visibility == Visibilities.Private
+    val publicScopedProviderSeverity =
+      session.metroFirBuiltIns.options.publicScopedProviderSeverity.resolve(session.isIde())
     val shouldReportForPublic =
       !isPrivate &&
         annotations.isScoped &&
         !annotations.isMultibinds &&
         declaration !is FirProperty &&
-        session.metroFirBuiltIns.options.publicScopedProviderSeverity.isEnabled
+        publicScopedProviderSeverity.isEnabled
 
     if (shouldReportForPublic) {
       val message = "Scoped @Provides declarations should be private."
       val diagnosticFactory =
-        when (session.metroFirBuiltIns.options.publicScopedProviderSeverity) {
-          NONE -> reportCompilerBug("Not possible")
+        when (publicScopedProviderSeverity) {
           WARN -> MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING
           ERROR -> MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR
+          else -> reportCompilerBug("Not possible")
         }
       reporter.reportOn(source, diagnosticFactory, message)
     }

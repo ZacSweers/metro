@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.isIde
 import dev.zacsweers.metro.compiler.fir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.isResolved
@@ -502,7 +503,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     }
 
     val options = session.metroFirBuiltIns.options
-    val severity = options.nonPublicContributionSeverity
+    val severity = options.nonPublicContributionSeverity.resolve(session.isIde())
     if (severity == MetroOptions.DiagnosticSeverity.NONE) return
 
     // Treat protected as non-public for contributions - a protected class can't be accessed
@@ -530,7 +531,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       when (severity) {
         ERROR -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_ERROR
         WARN -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_WARNING
-        NONE -> return
+        else -> return
       }
     reporter.reportOn(declaration.source, diagnosticFactory, message)
   }

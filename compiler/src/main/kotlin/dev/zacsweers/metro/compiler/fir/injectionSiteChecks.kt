@@ -287,7 +287,7 @@ private fun checkDesugaredProviderUse(
   source: KtSourceElement?,
 ) {
   val options = session.metroFirBuiltIns.options
-  val severity = options.desugaredProviderSeverity
+  val severity = options.desugaredProviderSeverity.resolve(session.isIde())
   if (severity == NONE) return
   val hasDesugaredProvider =
     contextKey.wrappedType.innerTypesSequence.any {
@@ -298,7 +298,7 @@ private fun checkDesugaredProviderUse(
     when (severity) {
       ERROR -> MetroDiagnostics.DESUGARED_PROVIDER_ERROR
       WARN -> MetroDiagnostics.DESUGARED_PROVIDER_WARNING
-      NONE -> return
+      else -> return
     }
   reporter.reportOn(
     typeRef.source ?: source,
