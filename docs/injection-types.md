@@ -203,7 +203,7 @@ To do this, Metro’s FIR plugin will generate a concrete type that acts as a br
 ```kotlin
 @Inject
 class App(
-  private val message: Provider<String>
+  private val message: () -> String
 ) {
   operator fun invoke() {
     App(message())
@@ -315,7 +315,7 @@ Any assisted context parameters will be carried as context parameters to the gen
 
     ```kotlin
     @Inject
-    class ClockWidgetClass(private val clock: Provider<Clock>) {
+    class ClockWidgetClass(private val clock: () -> Clock) {
       @Composable
       context(sharedTransitionScope: SharedTransitionScope)
       operator fun invoke(modifier: Modifier) {
