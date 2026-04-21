@@ -27,7 +27,8 @@ constructor(
 
   public val interop: InteropHandler = objects.newInstance(InteropHandler::class.java)
 
-  public val compilerOptions: OptionsHandler = objects.newInstance(OptionsHandler::class.java)
+  public val compilerOptions: CompilerOptionsHandler =
+    objects.newInstance(CompilerOptionsHandler::class.java)
 
   /** Controls whether Metro's compiler plugin will be enabled on this project. */
   public val enabled: Property<Boolean> = objects.booleanProperty("metro.enabled", true)
@@ -413,12 +414,12 @@ constructor(
    * Configures Metro options for misc compiler options that don't necessarily warrant dedicated API
    * controls.
    */
-  public fun compilerOptions(action: Action<OptionsHandler>) {
+  public fun compilerOptions(action: Action<CompilerOptionsHandler>) {
     action.execute(compilerOptions)
   }
 
   @MetroExtensionMarker
-  public abstract class OptionsHandler @Inject constructor(objects: ObjectFactory) {
+  public abstract class CompilerOptionsHandler @Inject constructor(objects: ObjectFactory) {
     public val rawOptions: MapProperty<String, String> =
       objects.mapProperty(String::class.java, String::class.java)
 
