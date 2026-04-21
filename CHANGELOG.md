@@ -22,6 +22,7 @@ Changelog
 - **[FIR]** Fix not recognizing `FirDeclarationOrigin.Precompiled` origins when checking resolved default binding types. Previously we only considered `FirDeclarationOrigin.Library`, but incremental compilation uses `FirDeclarationOrigin.Precompiled` to differentiate. This would result in misreads of default binding types in some cases during IC.
 - **[IR]** Fix secondary inject constructors support when `generateContributionProviders` is enabled.
 - **[IR]** Fix implicit class key lookup for map keys on source-declared `@Binds` declarations.
+- **[IR]** Fix `implementsProviderType()` check in the compiler to only exactly match `Function0` types when `enableFunctionProviders` is enabled
 - **[interop]** Fix `@ContributesSubcomponent.Factory` interop with square/anvil.
 - **[interop]** Fix `@MergeSubcomponent.Factory` interop with zacsweers/anvil (anvil-ksp).
 - **[docs]** Fix source links in Dokka API docs.
