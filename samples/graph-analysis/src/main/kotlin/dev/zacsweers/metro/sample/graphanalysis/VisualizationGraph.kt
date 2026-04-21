@@ -19,7 +19,7 @@ abstract class VisualizationScope private constructor()
 
 /**
  * A test graph that exercises various visualization scenarios:
- * - Valid cycles (broken by Provider/Lazy)
+ * - Valid cycles (broken by function provider/Lazy)
  * - Assisted injection
  * - Contributions from modules
  * - Scoped bindings
@@ -39,14 +39,14 @@ interface VisualizationGraph {
   val extension: Extension
 }
 
-// --- Basic services demonstrating valid cycle via Provider ---
+// --- Basic services demonstrating valid cycle via function provider ---
 
 interface ServiceA
 
 @Inject
 @SingleIn(VisualizationScope::class)
 class ServiceAImpl(
-  // This creates a valid cycle: A -> B -> Provider<A>
+  // This creates a valid cycle: A -> B -> () -> A
   val serviceB: ServiceB
 ) : ServiceA
 

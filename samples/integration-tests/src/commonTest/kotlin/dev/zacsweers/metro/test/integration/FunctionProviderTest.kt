@@ -65,7 +65,7 @@ class FunctionProviderTest {
   abstract class MixedProviderGraph {
     var counter = 0
 
-    abstract val metroProvider: Provider<Int>
+    @Suppress("DESUGARED_PROVIDER_WARNING") abstract val metroProvider: Provider<Int>
     abstract val functionProvider: () -> Int
     abstract val lazyInt: Lazy<Int>
 
