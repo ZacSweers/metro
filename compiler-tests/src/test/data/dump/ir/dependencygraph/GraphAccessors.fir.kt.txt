@@ -1,5 +1,5 @@
 interface Accessors {
-  abstract val intProvider: Provider<Int>
+  abstract val intProvider: Function0<Int>
     abstract get
 
   abstract val string: String

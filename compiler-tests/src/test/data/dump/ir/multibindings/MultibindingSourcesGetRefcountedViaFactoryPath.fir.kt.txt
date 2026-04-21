@@ -9,7 +9,7 @@ class Base {
 
 @Inject
 class ConsumerA {
-  val consumer: Provider<SetConsumer>
+  val consumer: Function0<SetConsumer>
     field = consumer
     get
 
@@ -33,7 +33,7 @@ class ConsumerA {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun newInstance(consumer: Provider<SetConsumer>): ConsumerA {
+      fun newInstance(consumer: Function0<SetConsumer>): ConsumerA {
         return ConsumerA(consumer = consumer)
       }
 
@@ -52,13 +52,13 @@ class ConsumerA {
     }
 
     @HiddenFromObjC
-    fun mirrorFunction(consumer: Provider<SetConsumer>): ConsumerA {
+    fun mirrorFunction(consumer: Function0<SetConsumer>): ConsumerA {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(consumer: Provider<SetConsumer>) /* primary */ {
+  constructor(consumer: Function0<SetConsumer>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -68,7 +68,7 @@ class ConsumerA {
 
 @Inject
 class ConsumerB {
-  val consumer: Provider<SetConsumer>
+  val consumer: Function0<SetConsumer>
     field = consumer
     get
 
@@ -92,7 +92,7 @@ class ConsumerB {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun newInstance(consumer: Provider<SetConsumer>): ConsumerB {
+      fun newInstance(consumer: Function0<SetConsumer>): ConsumerB {
         return ConsumerB(consumer = consumer)
       }
 
@@ -111,13 +111,13 @@ class ConsumerB {
     }
 
     @HiddenFromObjC
-    fun mirrorFunction(consumer: Provider<SetConsumer>): ConsumerB {
+    fun mirrorFunction(consumer: Function0<SetConsumer>): ConsumerB {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(consumer: Provider<SetConsumer>) /* primary */ {
+  constructor(consumer: Function0<SetConsumer>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 

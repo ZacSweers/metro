@@ -582,13 +582,13 @@ open class ViewModel {
 
 @Inject
 class ViewModelFactory {
-  private val viewModels: Map<KClass<*>, Provider<ViewModel>>
+  private val viewModels: Map<KClass<*>, Function0<ViewModel>>
     field = viewModels
     private get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<ViewModelFactory> {
-    private /* final field */ val viewModels: Provider<Map<KClass<*>, Provider<ViewModel>>> = viewModels
+    private /* final field */ val viewModels: Provider<Map<KClass<*>, Function0<ViewModel>>> = viewModels
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -599,21 +599,21 @@ class ViewModelFactory {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(viewModels: Provider<Map<KClass<*>, Provider<ViewModel>>>): Factory<ViewModelFactory> {
+      fun create(viewModels: Provider<Map<KClass<*>, Function0<ViewModel>>>): Factory<ViewModelFactory> {
         return MetroFactory(viewModels = viewModels)
       }
 
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun newInstance(viewModels: Map<KClass<*>, Provider<ViewModel>>): ViewModelFactory {
+      fun newInstance(viewModels: Map<KClass<*>, Function0<ViewModel>>): ViewModelFactory {
         return ViewModelFactory(viewModels = viewModels)
       }
 
     }
 
     @HiddenFromObjC
-    private constructor(viewModels: Provider<Map<KClass<*>, Provider<ViewModel>>>) /* primary */ {
+    private constructor(viewModels: Provider<Map<KClass<*>, Function0<ViewModel>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -625,13 +625,13 @@ class ViewModelFactory {
     }
 
     @HiddenFromObjC
-    fun mirrorFunction(viewModels: Map<KClass<*>, Provider<ViewModel>>): ViewModelFactory {
+    fun mirrorFunction(viewModels: Map<KClass<*>, Function0<ViewModel>>): ViewModelFactory {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(viewModels: Map<KClass<*>, Provider<ViewModel>>) /* primary */ {
+  constructor(viewModels: Map<KClass<*>, Function0<ViewModel>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -663,8 +663,8 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope, M
         }
       }
 
-    private val mapOfKClass___ToViewModelProvider: Provider<Map<KClass<*>, Provider<ViewModel>>>
-      private get(): Provider<Map<KClass<*>, Provider<ViewModel>>> {
+    private val mapOfKClass___ToViewModelProvider: Provider<Map<KClass<*>, Function0<ViewModel>>>
+      private get(): Provider<Map<KClass<*>, Function0<ViewModel>>> {
         return { // BLOCK
           val tmp_1: Builder<KClass<*>, ViewModel> = Companion.builder<KClass<*>, ViewModel>(size = 2)
           tmp_1.put(key = BViewModel::class, providerOfValue = MetroFactory.create())

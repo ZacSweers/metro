@@ -5,19 +5,17 @@
  * This test verifies that SCCs (cycles) are kept together in the same shard.
  *
  * Graph structure: E → (C ↔ D) → B → A
- * where C and D form a cycle broken by Provider<D>.
+ * where C and D form a cycle broken by () -> D.
  *
  * C and D MUST stay in the same shard because:
  * 1. They form a strongly connected component (SCC)
- * 2. Provider<D> needs the actual D instance from the same shard
+ * 2. () -> D needs the actual D instance from the same shard
  *
  * With maxPerShard=2, expected shards:
  * - Shard with A and B (or A alone and B alone)
  * - Shard with C and D together (cycle preserved)
  * - Shard with E
  */
-
-import dev.zacsweers.metro.Provider
 
 @SingleIn(AppScope::class)
 @Inject
@@ -29,7 +27,7 @@ class B(val a: A)
 
 @SingleIn(AppScope::class)
 @Inject
-class C(val b: B, val d: Provider<D>) {
+class C(val b: B, val d: () -> D) {
   fun getValue(): String = "C+${d().getValue()}"
 }
 

@@ -1,9 +1,9 @@
 // ENABLE_KCLASS_TO_CLASS_INTEROP
 
 // Regression test: when Map<Class<*>, V> is injected through an @Inject constructor,
-// the factory stores the binding as a Provider<Map<KClass<*>, V>> internally.
+// the factory stores the binding as a provider of Map<KClass<*>, V> internally.
 // The KClass-to-Class map key conversion must happen after the provider is invoked,
-// not before, otherwise it crashes trying to access type arguments on the Provider type.
+// not before, otherwise it crashes trying to access type arguments on the provider type.
 
 interface Greeting
 

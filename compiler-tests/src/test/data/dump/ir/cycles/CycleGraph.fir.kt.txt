@@ -124,7 +124,7 @@ class B {
 @Suppress(names = ["MEMBERS_INJECT_WARNING"])
 @Inject
 class C {
-  val aProvider: Provider<A>
+  val aProvider: Function0<A>
     field = aProvider
     get
 
@@ -132,7 +132,7 @@ class C {
     get
     set
 
-  lateinit var aLazyProvider: Provider<Lazy<A>>
+  lateinit var aLazyProvider: Function0<Lazy<A>>
     get
     set
 
@@ -156,7 +156,7 @@ class C {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun newInstance(aProvider: Provider<A>): C {
+      fun newInstance(aProvider: Function0<A>): C {
         return C(aProvider = aProvider)
       }
 
@@ -178,7 +178,7 @@ class C {
     }
 
     @HiddenFromObjC
-    fun mirrorFunction(aProvider: Provider<A>): C {
+    fun mirrorFunction(aProvider: Function0<A>): C {
       return error(message = "Never called")
     }
 
@@ -210,7 +210,7 @@ class C {
 
       @JvmStatic
       @JsStatic
-      fun injectALazyProvider(@Assisted instance: C, aLazyProvider: Provider<Lazy<A>>) {
+      fun injectALazyProvider(@Assisted instance: C, aLazyProvider: Function0<Lazy<A>>) {
         return instance.#aLazyProvider = aLazyProvider
       }
 
@@ -229,7 +229,7 @@ class C {
 
   }
 
-  constructor(aProvider: Provider<A>) /* primary */ {
+  constructor(aProvider: Function0<A>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -486,7 +486,7 @@ interface CycleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideObjectWithCycle", propertyName = "", startOffset = 497, endOffset = 594, newInstanceName = "provideObjectWithCycle")
+  @CallableMetadata(callableName = "provideObjectWithCycle", propertyName = "", startOffset = 489, endOffset = 582, newInstanceName = "provideObjectWithCycle")
   class ProvideObjectWithCycleMetroFactory : Factory<Any> {
     private /* final field */ val instance: CycleGraph = instance
     private /* final field */ val obj: Provider<Any> = obj
@@ -507,7 +507,7 @@ interface CycleGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun provideObjectWithCycle(instance: CycleGraph, obj: Provider<Any>): Any {
+      fun provideObjectWithCycle(instance: CycleGraph, obj: Function0<Any>): Any {
         return instance.provideObjectWithCycle(obj = obj)
       }
 
@@ -526,7 +526,7 @@ interface CycleGraph {
     }
 
     @HiddenFromObjC
-    fun mirrorFunction(obj: Provider<Any>): Any {
+    fun mirrorFunction(obj: Function0<Any>): Any {
       return error(message = "Never called")
     }
 
@@ -539,7 +539,7 @@ interface CycleGraph {
   abstract fun childCycleGraph(): Factory
 
   @Provides
-  private final fun provideObjectWithCycle(obj: Provider<Any>): Any {
+  private final fun provideObjectWithCycle(obj: Function0<Any>): Any {
     return "object"
   }
 

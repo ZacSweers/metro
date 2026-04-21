@@ -112,7 +112,7 @@ class C {
     field = b
     get
 
-  val d: Provider<D>
+  val d: Function0<D>
     field = d
     get
 
@@ -137,7 +137,7 @@ class C {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun newInstance(b: B, d: Provider<D>): C {
+      fun newInstance(b: B, d: Function0<D>): C {
         return C(b = b, d = d)
       }
 
@@ -157,13 +157,13 @@ class C {
 
     @SingleIn(scope = AppScope::class)
     @HiddenFromObjC
-    fun mirrorFunction(b: B, d: Provider<D>): C {
+    fun mirrorFunction(b: B, d: Function0<D>): C {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(b: B, d: Provider<D>) /* primary */ {
+  constructor(b: B, d: Function0<D>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 

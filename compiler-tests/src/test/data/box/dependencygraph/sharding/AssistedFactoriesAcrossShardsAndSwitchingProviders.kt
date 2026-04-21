@@ -13,7 +13,7 @@
  * This test creates a scenario where the AssistedFactory's target's MetroFactory ends up
  * in a later shard (by having two factories target the same class, forcing the target
  * into a FIELD property), while the factory itself is in an earlier shard (due to its
- * factoryRefCount > 1 from Provider<F> usage).
+ * factoryRefCount > 1 from () -> F usage).
  *
  * With SwitchingProviders (FastInitBoxTest), the deferred initialization breaks the
  * circular cross-shard dependency at runtime. Without SwitchingProviders (BoxTest),
@@ -43,13 +43,13 @@ fun interface F2 {
 }
 
 // Multiple consumers using the same factory via Provider → forces factory into FIELD property
-@SingleIn(AppScope::class) @Inject class C1(val f: Provider<F1>)
+@SingleIn(AppScope::class) @Inject class C1(val f: () -> F1)
 
-@SingleIn(AppScope::class) @Inject class C2(val f: Provider<F1>)
+@SingleIn(AppScope::class) @Inject class C2(val f: () -> F1)
 
 @SingleIn(AppScope::class) @Inject class C3(val f: F2)
 
-@SingleIn(AppScope::class) @Inject class C4(val f: Provider<F2>)
+@SingleIn(AppScope::class) @Inject class C4(val f: () -> F2)
 
 @DependencyGraph(scope = AppScope::class)
 interface TestGraph {

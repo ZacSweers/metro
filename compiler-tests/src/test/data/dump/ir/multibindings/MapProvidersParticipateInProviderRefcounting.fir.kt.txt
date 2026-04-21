@@ -32,19 +32,19 @@ interface AppGraph {
 
     }
 
-    override val int: Provider<Int>
-      override get(): Provider<Int> {
+    override val int: Function0<Int>
+      override get(): Function0<Int> {
         return <this>.#provideIntProvider
       }
 
-    override val ints: Map<Int, Provider<Int>>
-      override get(): Map<Int, Provider<Int>> {
+    override val ints: Map<Int, Function0<Int>>
+      override get(): Map<Int, Function0<Int>> {
         return <this>.<get-mapOfIntToInt>()
       }
 
-    private val mapOfIntToInt: Map<Int, Provider<Int>>
-      private get(): Map<Int, Provider<Int>> {
-        return buildMap<Int, Provider<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<Int>>.<anonymous>() {
+    private val mapOfIntToInt: Map<Int, Function0<Int>>
+      private get(): Map<Int, Function0<Int>> {
+        return buildMap<Int, Function0<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Int>>.<anonymous>() {
           $receiver.put(key = 3, value = <this>.#provideIntProvider)
         }
 )
@@ -127,10 +127,10 @@ interface AppGraph {
     return 3
   }
 
-  abstract val int: Provider<Int>
+  abstract val int: Function0<Int>
     abstract get
 
-  abstract val ints: Map<Int, Provider<Int>>
+  abstract val ints: Map<Int, Function0<Int>>
     abstract get
 
 }

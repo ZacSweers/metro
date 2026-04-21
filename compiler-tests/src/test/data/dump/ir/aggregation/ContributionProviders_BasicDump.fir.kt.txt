@@ -7,7 +7,7 @@ internal class Impl : Base {
     field = string
     get
 
-  val longProvider: Provider<Long>
+  val longProvider: Function0<Long>
     field = longProvider
     get
 
@@ -19,11 +19,11 @@ internal class Impl : Base {
     field = lazyBool
     get
 
-  val providerOfLazyDouble: Provider<Lazy<Double>>
+  val providerOfLazyDouble: Function0<Lazy<Double>>
     field = providerOfLazyDouble
     get
 
-  constructor(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>) /* primary */ {
+  constructor(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -68,7 +68,7 @@ abstract class ImplContributions {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun provideImplAsBase(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Base {
+        fun provideImplAsBase(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
           return ToAppScope.provideImplAsBase(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
@@ -87,7 +87,7 @@ abstract class ImplContributions {
       }
 
       @HiddenFromObjC
-      fun mirrorFunction(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Base {
+      fun mirrorFunction(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
         return error(message = "Never called")
       }
 
@@ -100,7 +100,7 @@ abstract class ImplContributions {
     }
 
     @Provides
-    fun provideImplAsBase(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Base {
+    fun provideImplAsBase(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
       return Impl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
     }
 

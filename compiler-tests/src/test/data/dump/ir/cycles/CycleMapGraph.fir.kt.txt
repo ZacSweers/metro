@@ -59,18 +59,18 @@ class X {
 
 @Inject
 class Y {
-  val mapOfProvidersOfX: Map<String, Provider<X>>
+  val mapOfProvidersOfX: Map<String, Function0<X>>
     field = mapOfProvidersOfX
     get
 
-  val mapOfProvidersOfY: Map<String, Provider<Y>>
+  val mapOfProvidersOfY: Map<String, Function0<Y>>
     field = mapOfProvidersOfY
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<Y> {
-    private /* final field */ val mapOfProvidersOfX: Provider<Map<String, Provider<X>>> = mapOfProvidersOfX
-    private /* final field */ val mapOfProvidersOfY: Provider<Map<String, Provider<Y>>> = mapOfProvidersOfY
+    private /* final field */ val mapOfProvidersOfX: Provider<Map<String, Function0<X>>> = mapOfProvidersOfX
+    private /* final field */ val mapOfProvidersOfY: Provider<Map<String, Function0<Y>>> = mapOfProvidersOfY
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -81,21 +81,21 @@ class Y {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>): Factory<Y> {
+      fun create(mapOfProvidersOfX: Provider<Map<String, Function0<X>>>, mapOfProvidersOfY: Provider<Map<String, Function0<Y>>>): Factory<Y> {
         return MetroFactory(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun newInstance(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
+      fun newInstance(mapOfProvidersOfX: Map<String, Function0<X>>, mapOfProvidersOfY: Map<String, Function0<Y>>): Y {
         return Y(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 
     }
 
     @HiddenFromObjC
-    private constructor(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>) /* primary */ {
+    private constructor(mapOfProvidersOfX: Provider<Map<String, Function0<X>>>, mapOfProvidersOfY: Provider<Map<String, Function0<Y>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -107,13 +107,13 @@ class Y {
     }
 
     @HiddenFromObjC
-    fun mirrorFunction(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
+    fun mirrorFunction(mapOfProvidersOfX: Map<String, Function0<X>>, mapOfProvidersOfY: Map<String, Function0<Y>>): Y {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>) /* primary */ {
+  constructor(mapOfProvidersOfX: Map<String, Function0<X>>, mapOfProvidersOfY: Map<String, Function0<Y>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -135,13 +135,13 @@ interface CycleMapGraph {
     @Binds
     @IntoMap
     @StringKey(value = "X")
-    @CallableMetadata(callableName = "<get-x>", propertyName = "x", startOffset = 295, endOffset = 305)
+    @CallableMetadata(callableName = "<get-x>", propertyName = "x", startOffset = 287, endOffset = 297)
     abstract fun X.x3540965534_intomap(): X
 
     @Binds
     @IntoMap
     @StringKey(value = "Y")
-    @CallableMetadata(callableName = "<get-y>", propertyName = "y", startOffset = 341, endOffset = 351)
+    @CallableMetadata(callableName = "<get-y>", propertyName = "y", startOffset = 333, endOffset = 343)
     abstract fun Y.y3540965535_intomap(): Y
 
   }
@@ -163,8 +163,8 @@ interface CycleMapGraph {
       return <this>.#yProvider.invoke()
     }
 
-    private val mapOfStringToXProvider: Provider<Map<String, Provider<X>>>
-      private get(): Provider<Map<String, Provider<X>>> {
+    private val mapOfStringToXProvider: Provider<Map<String, Function0<X>>>
+      private get(): Provider<Map<String, Function0<X>>> {
         return { // BLOCK
           val tmp_0: Builder<String, X> = Companion.builder<String, X>(size = 1)
           tmp_0.put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider))
@@ -172,8 +172,8 @@ interface CycleMapGraph {
         }
       }
 
-    private val mapOfStringToYProvider: Provider<Map<String, Provider<Y>>>
-      private get(): Provider<Map<String, Provider<Y>>> {
+    private val mapOfStringToYProvider: Provider<Map<String, Function0<Y>>>
+      private get(): Provider<Map<String, Function0<Y>>> {
         return { // BLOCK
           val tmp_1: Builder<String, Y> = Companion.builder<String, Y>(size = 1)
           tmp_1.put(key = "Y", providerOfValue = <this>.#yProvider)

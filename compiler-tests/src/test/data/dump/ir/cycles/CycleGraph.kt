@@ -5,9 +5,9 @@
 
 @Suppress("MEMBERS_INJECT_WARNING")
 @Inject
-class C(val aProvider: Provider<A>) {
+class C(val aProvider: () -> A) {
   @Inject lateinit var aLazy: Lazy<A>
-  @Inject lateinit var aLazyProvider: Provider<Lazy<A>>
+  @Inject lateinit var aLazyProvider: () -> Lazy<A>
 }
 
 @Inject class D(val b: B)
@@ -25,7 +25,7 @@ interface CycleGraph {
   fun childCycleGraph(): ChildCycleGraph.Factory
 
   @Provides
-  private fun provideObjectWithCycle(obj: Provider<Any>): Any {
+  private fun provideObjectWithCycle(obj: () -> Any): Any {
     return "object"
   }
 }

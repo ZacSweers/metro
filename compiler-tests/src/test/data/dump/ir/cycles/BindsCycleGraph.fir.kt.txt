@@ -1,6 +1,6 @@
 @Inject
 class Bar : Foo {
-  val fooProvider: Provider<Foo>
+  val fooProvider: Function0<Foo>
     field = fooProvider
     get
 
@@ -24,7 +24,7 @@ class Bar : Foo {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun newInstance(fooProvider: Provider<Foo>): Bar {
+      fun newInstance(fooProvider: Function0<Foo>): Bar {
         return Bar(fooProvider = fooProvider)
       }
 
@@ -43,13 +43,13 @@ class Bar : Foo {
     }
 
     @HiddenFromObjC
-    fun mirrorFunction(fooProvider: Provider<Foo>): Bar {
+    fun mirrorFunction(fooProvider: Function0<Foo>): Bar {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(fooProvider: Provider<Foo>) /* primary */ {
+  constructor(fooProvider: Function0<Foo>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -69,7 +69,7 @@ interface BindsCycleGraph {
     }
 
     @Binds
-    @CallableMetadata(callableName = "foo", propertyName = "", startOffset = 314, endOffset = 336)
+    @CallableMetadata(callableName = "foo", propertyName = "", startOffset = 310, endOffset = 332)
     abstract fun foo(bar: Bar): Foo
 
   }

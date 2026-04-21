@@ -7,7 +7,7 @@
 interface FooComponent {
   val value: Int
 
-  @Provides fun provideFoo(<!MISSING_BINDING!>bar: Map<String, Provider<String>><!>): Int = 3
+  @Provides fun provideFoo(<!MISSING_BINDING!>bar: Map<String, () -> String><!>): Int = 3
 
   @DependencyGraph.Factory
   interface Factory {

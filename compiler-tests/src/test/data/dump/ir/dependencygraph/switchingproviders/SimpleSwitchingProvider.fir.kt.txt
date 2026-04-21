@@ -89,13 +89,13 @@ interface AppGraph {
 
     }
 
-    override val int1: Provider<Int>
-      override get(): Provider<Int> {
+    override val int1: Function0<Int>
+      override get(): Function0<Int> {
         return <this>.#provideReusedIntProvider
       }
 
-    override val int2: Provider<Int>
-      override get(): Provider<Int> {
+    override val int2: Function0<Int>
+      override get(): Function0<Int> {
         return <this>.#provideReusedIntProvider
       }
 
@@ -128,7 +128,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideReusedInt", propertyName = "", startOffset = 311, endOffset = 354, newInstanceName = "provideReusedInt")
+  @CallableMetadata(callableName = "provideReusedInt", propertyName = "", startOffset = 303, endOffset = 346, newInstanceName = "provideReusedInt")
   class ProvideReusedIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -174,7 +174,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 229, endOffset = 307, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 221, endOffset = 299, newInstanceName = "provideString")
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -231,10 +231,10 @@ interface AppGraph {
     return "Hello"
   }
 
-  abstract val int1: Provider<Int>
+  abstract val int1: Function0<Int>
     abstract get
 
-  abstract val int2: Provider<Int>
+  abstract val int2: Function0<Int>
     abstract get
 
   abstract val scopedClass: ScopedClass

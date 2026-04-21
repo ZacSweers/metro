@@ -39,13 +39,13 @@ interface AppGraph {
 
     }
 
-    override val int: Provider<Optional<Int>>
-      override get(): Provider<Optional<Int>> {
+    override val int: Function0<Optional<Int>>
+      override get(): Function0<Optional<Int>> {
         return <this>.#optionalIntProvider
       }
 
-    override val int2: Provider<Optional<Int>>
-      override get(): Provider<Optional<Int>> {
+    override val int2: Function0<Optional<Int>>
+      override get(): Function0<Optional<Int>> {
         return <this>.#optionalIntProvider
       }
 
@@ -68,7 +68,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 401, endOffset = 467, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 393, endOffset = 459, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -120,10 +120,10 @@ interface AppGraph {
     return 3
   }
 
-  abstract val int: Provider<Optional<Int>>
+  abstract val int: Function0<Optional<Int>>
     abstract get
 
-  abstract val int2: Provider<Optional<Int>>
+  abstract val int2: Function0<Optional<Int>>
     abstract get
 
 }

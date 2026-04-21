@@ -37,8 +37,8 @@ interface AppGraph {
         return <this>.<get-mapOfIntToInt>()
       }
 
-    override val intsWithProviders: Map<Int, Provider<Int>>
-      override get(): Map<Int, Provider<Int>> {
+    override val intsWithProviders: Map<Int, Function0<Int>>
+      override get(): Map<Int, Function0<Int>> {
         return <this>.<get-mapOfIntToInt2>()
       }
 
@@ -50,9 +50,9 @@ interface AppGraph {
 )
       }
 
-    private val mapOfIntToInt2: Map<Int, Provider<Int>>
-      private get(): Map<Int, Provider<Int>> {
-        return buildMap<Int, Provider<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<Int>>.<anonymous>() {
+    private val mapOfIntToInt2: Map<Int, Function0<Int>>
+      private get(): Map<Int, Function0<Int>> {
+        return buildMap<Int, Function0<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Int>>.<anonymous>() {
           $receiver.put(key = 3, value = <this>.#provideIntProvider)
         }
 )
@@ -77,7 +77,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 160, endOffset = 215, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 156, endOffset = 211, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -135,7 +135,7 @@ interface AppGraph {
   abstract val ints: Map<Int, Int>
     abstract get
 
-  abstract val intsWithProviders: Map<Int, Provider<Int>>
+  abstract val intsWithProviders: Map<Int, Function0<Int>>
     abstract get
 
 }

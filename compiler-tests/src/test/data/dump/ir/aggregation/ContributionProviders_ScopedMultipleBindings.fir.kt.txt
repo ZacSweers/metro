@@ -9,7 +9,7 @@ internal class Impl : Bar, Foo {
     field = string
     get
 
-  val longProvider: Provider<Long>
+  val longProvider: Function0<Long>
     field = longProvider
     get
 
@@ -21,11 +21,11 @@ internal class Impl : Bar, Foo {
     field = lazyBool
     get
 
-  val providerOfLazyDouble: Provider<Lazy<Double>>
+  val providerOfLazyDouble: Function0<Lazy<Double>>
     field = providerOfLazyDouble
     get
 
-  constructor(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>) /* primary */ {
+  constructor(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -161,7 +161,7 @@ abstract class ImplContributions {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun provideScopedInstanceImpl(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
+        fun provideScopedInstanceImpl(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Any? {
           return ToAppScope.provideScopedInstanceImpl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
@@ -182,7 +182,7 @@ abstract class ImplContributions {
       @SingleIn(scope = AppScope::class)
       @Named(name = "metro_scoped_Impl")
       @HiddenFromObjC
-      fun mirrorFunction(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
+      fun mirrorFunction(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Any? {
         return error(message = "Never called")
       }
 
@@ -207,7 +207,7 @@ abstract class ImplContributions {
     @Provides
     @SingleIn(scope = AppScope::class)
     @Named(name = "metro_scoped_Impl")
-    fun provideScopedInstanceImpl(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Any? {
+    fun provideScopedInstanceImpl(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Any? {
       return Impl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
     }
 

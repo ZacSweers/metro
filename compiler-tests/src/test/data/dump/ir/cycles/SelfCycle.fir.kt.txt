@@ -1,7 +1,7 @@
 @Suppress(names = ["MEMBERS_INJECT_WARNING"])
 @Inject
 class S {
-  val sProvider: Provider<S>
+  val sProvider: Function0<S>
     field = sProvider
     get
 
@@ -29,7 +29,7 @@ class S {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun newInstance(sProvider: Provider<S>): S {
+      fun newInstance(sProvider: Function0<S>): S {
         return S(sProvider = sProvider)
       }
 
@@ -50,7 +50,7 @@ class S {
     }
 
     @HiddenFromObjC
-    fun mirrorFunction(sProvider: Provider<S>): S {
+    fun mirrorFunction(sProvider: Function0<S>): S {
       return error(message = "Never called")
     }
 
@@ -93,7 +93,7 @@ class S {
 
   }
 
-  constructor(sProvider: Provider<S>) /* primary */ {
+  constructor(sProvider: Function0<S>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 

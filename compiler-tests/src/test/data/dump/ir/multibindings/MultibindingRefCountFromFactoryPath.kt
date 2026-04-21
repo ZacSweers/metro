@@ -1,5 +1,5 @@
 // Tests that multibinding source bindings get proper refcounting when
-// the multibinding is accessed via factory path (not directly as Provider<Set<...>>).
+// the multibinding is accessed via factory path (not directly as () -> Set<...>).
 //
 // Scenario:
 // - SetConsumerA and SetConsumerB both depend on Set<Int> (the multibinding)
@@ -30,9 +30,9 @@ class Base
 @Inject class SetConsumerB(val set: Set<Int>)
 
 // Each consumer is accessed via Provider twice, giving them refCount = 2
-@Inject class WrapperA1(val consumer: Provider<SetConsumerA>)
-@Inject class WrapperA2(val consumer: Provider<SetConsumerA>)
-@Inject class WrapperB1(val consumer: Provider<SetConsumerB>)
-@Inject class WrapperB2(val consumer: Provider<SetConsumerB>)
+@Inject class WrapperA1(val consumer: () -> SetConsumerA)
+@Inject class WrapperA2(val consumer: () -> SetConsumerA)
+@Inject class WrapperB1(val consumer: () -> SetConsumerB)
+@Inject class WrapperB2(val consumer: () -> SetConsumerB)
 
 @Inject class Entry(val a1: WrapperA1, val a2: WrapperA2, val b1: WrapperB1, val b2: WrapperB2)

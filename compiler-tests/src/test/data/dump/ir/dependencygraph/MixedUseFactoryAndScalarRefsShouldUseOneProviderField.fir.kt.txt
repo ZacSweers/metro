@@ -15,8 +15,8 @@ interface AppGraph {
 
     }
 
-    override val providerString: Provider<String>
-      override get(): Provider<String> {
+    override val providerString: Function0<String>
+      override get(): Function0<String> {
         return <this>.#provideStringProvider
       }
 
@@ -151,7 +151,7 @@ interface AppGraph {
     return int.toString()
   }
 
-  abstract val providerString: Provider<String>
+  abstract val providerString: Function0<String>
     abstract get
 
   abstract val scalarString: String

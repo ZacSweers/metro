@@ -177,7 +177,7 @@ class C {
 
 @Inject
 class MapConsumer {
-  val map: Provider<Map<Int, B>>
+  val map: Function0<Map<Int, B>>
     field = map
     get
 
@@ -201,7 +201,7 @@ class MapConsumer {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun newInstance(map: Provider<Map<Int, B>>): MapConsumer {
+      fun newInstance(map: Function0<Map<Int, B>>): MapConsumer {
         return MapConsumer(map = map)
       }
 
@@ -220,13 +220,13 @@ class MapConsumer {
     }
 
     @HiddenFromObjC
-    fun mirrorFunction(map: Provider<Map<Int, B>>): MapConsumer {
+    fun mirrorFunction(map: Function0<Map<Int, B>>): MapConsumer {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(map: Provider<Map<Int, B>>) /* primary */ {
+  constructor(map: Function0<Map<Int, B>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -236,13 +236,13 @@ class MapConsumer {
 
 @Inject
 class ProviderMapConsumer {
-  val map: Map<Int, Provider<C>>
+  val map: Map<Int, Function0<C>>
     field = map
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<ProviderMapConsumer> {
-    private /* final field */ val map: Provider<Map<Int, Provider<C>>> = map
+    private /* final field */ val map: Provider<Map<Int, Function0<C>>> = map
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -253,21 +253,21 @@ class ProviderMapConsumer {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(map: Provider<Map<Int, Provider<C>>>): Factory<ProviderMapConsumer> {
+      fun create(map: Provider<Map<Int, Function0<C>>>): Factory<ProviderMapConsumer> {
         return MetroFactory(map = map)
       }
 
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun newInstance(map: Map<Int, Provider<C>>): ProviderMapConsumer {
+      fun newInstance(map: Map<Int, Function0<C>>): ProviderMapConsumer {
         return ProviderMapConsumer(map = map)
       }
 
     }
 
     @HiddenFromObjC
-    private constructor(map: Provider<Map<Int, Provider<C>>>) /* primary */ {
+    private constructor(map: Provider<Map<Int, Function0<C>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -279,13 +279,13 @@ class ProviderMapConsumer {
     }
 
     @HiddenFromObjC
-    fun mirrorFunction(map: Map<Int, Provider<C>>): ProviderMapConsumer {
+    fun mirrorFunction(map: Map<Int, Function0<C>>): ProviderMapConsumer {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(map: Map<Int, Provider<C>>) /* primary */ {
+  constructor(map: Map<Int, Function0<C>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -295,7 +295,7 @@ class ProviderMapConsumer {
 
 @Inject
 class SetConsumer {
-  val set: Provider<Set<A>>
+  val set: Function0<Set<A>>
     field = set
     get
 
@@ -319,7 +319,7 @@ class SetConsumer {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun newInstance(set: Provider<Set<A>>): SetConsumer {
+      fun newInstance(set: Function0<Set<A>>): SetConsumer {
         return SetConsumer(set = set)
       }
 
@@ -338,13 +338,13 @@ class SetConsumer {
     }
 
     @HiddenFromObjC
-    fun mirrorFunction(set: Provider<Set<A>>): SetConsumer {
+    fun mirrorFunction(set: Function0<Set<A>>): SetConsumer {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(set: Provider<Set<A>>) /* primary */ {
+  constructor(set: Function0<Set<A>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -409,23 +409,23 @@ interface TestGraph {
 
     @Binds
     @IntoSet
-    @CallableMetadata(callableName = "bindA", propertyName = "", startOffset = 909, endOffset = 925)
+    @CallableMetadata(callableName = "bindA", propertyName = "", startOffset = 899, endOffset = 915)
     abstract fun A.bindA_intoset(): A
 
     @Binds
     @IntoMap
     @IntKey(value = 1)
-    @CallableMetadata(callableName = "bindB", propertyName = "", startOffset = 986, endOffset = 1002)
+    @CallableMetadata(callableName = "bindB", propertyName = "", startOffset = 976, endOffset = 992)
     abstract fun B.bindB4013004649_intomap(): B
 
     @Binds
     @IntoMap
     @IntKey(value = 1)
-    @CallableMetadata(callableName = "bindC", propertyName = "", startOffset = 1091, endOffset = 1107)
+    @CallableMetadata(callableName = "bindC", propertyName = "", startOffset = 1077, endOffset = 1093)
     abstract fun C.bindC4013004649_intomap(): C
 
     @Binds
-    @CallableMetadata(callableName = "bindX", propertyName = "", startOffset = 844, endOffset = 864)
+    @CallableMetadata(callableName = "bindX", propertyName = "", startOffset = 834, endOffset = 854)
     abstract fun XImpl.bindX(): X
 
   }
@@ -456,9 +456,9 @@ interface TestGraph {
         }
       }
 
-    private val mapOfIntToC: Map<Int, Provider<C>>
-      private get(): Map<Int, Provider<C>> {
-        return buildMap<Int, Provider<C>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<C>>.<anonymous>() {
+    private val mapOfIntToC: Map<Int, Function0<C>>
+      private get(): Map<Int, Function0<C>> {
+        return buildMap<Int, Function0<C>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<C>>.<anonymous>() {
           $receiver.put(key = 1, value = Companion.create(x = <this>.#xImplProvider))
         }
 )

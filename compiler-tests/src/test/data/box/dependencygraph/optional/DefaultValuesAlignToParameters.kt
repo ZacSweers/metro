@@ -8,7 +8,7 @@ data class Example(
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val exampleFactory: Provider<Example>
+  val exampleFactory: () -> Example
 }
 
 fun box(): String {

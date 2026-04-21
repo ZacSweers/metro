@@ -163,13 +163,13 @@ interface AppGraph {
       <this>.#shard3 = Shard3(graph = <this>)
     }
 
-    override val int1: Provider<Int>
-      override get(): Provider<Int> {
+    override val int1: Function0<Int>
+      override get(): Function0<Int> {
         return <this>.#shard2.#provideReusedIntProvider
       }
 
-    override val int2: Provider<Int>
-      override get(): Provider<Int> {
+    override val int2: Function0<Int>
+      override get(): Function0<Int> {
         return <this>.#shard2.#provideReusedIntProvider
       }
 
@@ -202,7 +202,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideReusedInt", propertyName = "", startOffset = 369, endOffset = 412, newInstanceName = "provideReusedInt")
+  @CallableMetadata(callableName = "provideReusedInt", propertyName = "", startOffset = 361, endOffset = 404, newInstanceName = "provideReusedInt")
   class ProvideReusedIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -248,7 +248,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 287, endOffset = 365, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 279, endOffset = 357, newInstanceName = "provideString")
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -305,10 +305,10 @@ interface AppGraph {
     return "Hello"
   }
 
-  abstract val int1: Provider<Int>
+  abstract val int1: Function0<Int>
     abstract get
 
-  abstract val int2: Provider<Int>
+  abstract val int2: Function0<Int>
     abstract get
 
   abstract val scopedClass: ScopedClass

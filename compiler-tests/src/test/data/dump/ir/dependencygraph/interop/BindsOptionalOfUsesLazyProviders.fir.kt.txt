@@ -21,8 +21,8 @@ interface AppGraph {
 
     }
 
-    override val intProvider: Provider<Optional<Int>>
-      override get(): Provider<Optional<Int>> {
+    override val intProvider: Function0<Optional<Int>>
+      override get(): Function0<Optional<Int>> {
         return provider<Optional<Int>>(provider = local fun <anonymous>(): Optional<Int> {
           return of<Int>(p0 = <this>.#thisGraphInstance.provideInt())
         }
@@ -34,8 +34,8 @@ interface AppGraph {
         return <this>.#optionalStringProvider.invoke()
       }
 
-    override val stringProvider: Provider<Optional<String>>
-      override get(): Provider<Optional<String>> {
+    override val stringProvider: Function0<Optional<String>>
+      override get(): Function0<Optional<String>> {
         return <this>.#optionalStringProvider
       }
 
@@ -58,7 +58,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 608, endOffset = 643, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 600, endOffset = 635, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -104,7 +104,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 531, endOffset = 605, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 523, endOffset = 597, newInstanceName = "provideString")
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -161,13 +161,13 @@ interface AppGraph {
     return "Hello"
   }
 
-  abstract val intProvider: Provider<Optional<Int>>
+  abstract val intProvider: Function0<Optional<Int>>
     abstract get
 
   abstract val string: Optional<String>
     abstract get
 
-  abstract val stringProvider: Provider<Optional<String>>
+  abstract val stringProvider: Function0<Optional<String>>
     abstract get
 
 }
