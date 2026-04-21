@@ -255,6 +255,10 @@ constructor(
    * used by the graph).
    *
    * WARN by default.
+   *
+   * Note: [DiagnosticSeverity.IDE_WARN] and [DiagnosticSeverity.IDE_ERROR] are **not** supported
+   * here because unused-input detection only runs during IR (a CLI-only phase). Attempting to set
+   * an IDE-only severity will fail the build with a validation error.
    */
   public val unusedGraphInputsSeverity: Property<DiagnosticSeverity> =
     objects.enumProperty<DiagnosticSeverity>("unusedGraphInputsSeverity", DiagnosticSeverity.WARN)
