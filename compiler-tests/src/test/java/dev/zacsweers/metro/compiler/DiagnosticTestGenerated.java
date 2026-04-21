@@ -1171,6 +1171,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("PrivateProviderOption_IdeWarn.kt")
+    public void testPrivateProviderOption_IdeWarn() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/PrivateProviderOption_IdeWarn.kt");
+    }
+
+    @Test
     @TestMetadata("PrivateProviderOption_None.kt")
     public void testPrivateProviderOption_None() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/PrivateProviderOption_None.kt");
