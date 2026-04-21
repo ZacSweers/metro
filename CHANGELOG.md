@@ -6,6 +6,7 @@ Changelog
 
 ### New
 
+- Add a new `desugaredProviderSeverity` option (default: `WARN`) that reports a diagnostic when `Provider<T>` is used instead of the preferred `() -> T` form. Set this to `NONE` to disable the warning during migration, or `ERROR` to enforce the new style. Automatically treated as `NONE` when `enableFunctionProviders` is disabled.
 - **[Gradle]** Introduce a new `compilerOptions {}` DSL for free Metro compiler options and flags.
 
 ### Enhancements
@@ -28,6 +29,7 @@ Changelog
 
 ### Changes
 
+- `enableFunctionProviders` (i.e. `() -> T` syntax for providers) is now enabled by default.  Previously this required opting in. The function-syntax form is now the **recommended** way to declare provider dependencies; `Provider<T>` is still supported but treated as a desugared alternative and a **warning** by default, similar to if you were to use `Function0` instead of `() -> T` syntax for functions. See the [metro-intrinsics](docs/metro-intrinsics.md) docs for more details.
 - **[Gradle]** Remove deprecated `useAssistedParamNamesAsIdentifiers` property.
 - **[Gradle]** Remove `deduplicateInjectedParams` property.
 - **[Gradle]** Remove `enableKlibParamsCheck` property, use the new compilerOptions API.
