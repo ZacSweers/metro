@@ -418,7 +418,7 @@ class MetroSortTest : TraceScope by testTraceScope() {
         "CommonUtil" to typedSortedSetOf(),
         "SharedService" to typedSortedSetOf(),
         "Service1" to typedSortedSetOf("Service2", "CommonUtil"),
-        "Service2" to typedSortedSetOf("Service3"), // deferrable - Provider<Service3>
+        "Service2" to typedSortedSetOf("Service3"), // deferrable - () -> Service3
         "Service3" to typedSortedSetOf("Service1", "SharedService"),
         "Client" to typedSortedSetOf("Service1", "SharedService"),
       )

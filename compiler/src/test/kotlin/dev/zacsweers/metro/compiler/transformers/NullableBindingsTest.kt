@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation
-import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.assertDiagnostics
@@ -314,8 +313,8 @@ class NullableBindingsTest : MetroCompilerTest() {
         """
         @DependencyGraph(Unit::class)
         interface ExampleGraph {
-          val nullableInts: Map<Int, Provider<Int?>>
-          val ints: Map<Int, Provider<Int>>
+          val nullableInts: Map<Int, () -> Int?>
+          val ints: Map<Int, () -> Int>
 
           @Provides
           @IntoMap
@@ -342,9 +341,9 @@ class NullableBindingsTest : MetroCompilerTest() {
       )
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
-      val ints = graph.callProperty<Map<Int, Provider<Int>>>("ints")
+      val ints = graph.callProperty<Map<Int, () -> Int>>("ints")
       assertThat(ints.mapValues { it.value() }).containsExactly(3, 3)
-      val nullableInts = graph.callProperty<Map<Int, Provider<Int?>>>("nullableInts")
+      val nullableInts = graph.callProperty<Map<Int, () -> Int?>>("nullableInts")
       assertThat(nullableInts.mapValues { it.value() }).containsExactly(0, 0, 1, null, 2, null)
     }
   }

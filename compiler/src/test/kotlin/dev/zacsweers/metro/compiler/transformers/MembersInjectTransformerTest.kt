@@ -184,8 +184,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           """
           class ExampleClass {
             @Inject lateinit var string: String
-            @Inject lateinit var stringProvider: Provider<String>
-            @Inject lateinit var stringListProvider: Provider<List<String>>
+            @Inject lateinit var stringProvider: () -> String
+            @Inject lateinit var stringListProvider: () -> List<String>
             @Inject lateinit var lazyString: Lazy<String>
 
             override fun equals(other: Any?): Boolean {
@@ -246,7 +246,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
         source(
           """
           class ExampleClass {
-            @Inject lateinit var lazyStringProvider: Provider<Lazy<String>>
+            @Inject lateinit var lazyStringProvider: () -> Lazy<String>
 
             override fun equals(other: Any?): Boolean {
               return toString() == other.toString()
