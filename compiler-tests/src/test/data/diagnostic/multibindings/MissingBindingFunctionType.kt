@@ -1,4 +1,4 @@
-// RUN_PIPELINE_TILL: BACKEND
+// RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
 
 // A missing binding requested as `() -> T` (at a top-level graph accessor) should surface
