@@ -1059,6 +1059,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("EmptyMultibindingFunctionType.kt")
+    public void testEmptyMultibindingFunctionType() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/EmptyMultibindingFunctionType.kt");
+    }
+
+    @Test
     @TestMetadata("ImplicitClassKeyDiagnostics.kt")
     public void testImplicitClassKeyDiagnostics() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/ImplicitClassKeyDiagnostics.kt");
@@ -1074,6 +1080,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("MapKeyDiagnostics.kt")
     public void testMapKeyDiagnostics() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/MapKeyDiagnostics.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingFunctionType.kt")
+    public void testMissingBindingFunctionType() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/MissingBindingFunctionType.kt");
     }
 
     @Test
