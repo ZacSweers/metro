@@ -235,7 +235,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
     RawMetroOption(
       name = "public-scoped-provider-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
-      valueDescription = "NONE|WARN|ERROR",
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
         "Control diagnostic severity reporting of public scoped providers. Only applies if `transform-providers-to-private` is false.",
       required = false,
@@ -247,7 +247,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
     RawMetroOption(
       name = "non-public-contribution-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
-      valueDescription = "NONE|WARN|ERROR",
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
         "Control diagnostic severity reporting of @Contributes*-annotated declarations that are non-public.",
       required = false,
@@ -270,7 +270,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
     RawMetroOption(
       name = "interop-annotations-named-arg-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
-      valueDescription = "NONE|WARN|ERROR",
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
         "Control diagnostic severity reporting of interop annotations using positional arguments instead of named arguments.",
       required = false,
@@ -282,7 +282,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
     RawMetroOption(
       name = "unused-graph-inputs-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
-      valueDescription = "NONE|WARN|ERROR",
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
         "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph).",
       required = false,
@@ -820,7 +820,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
     RawMetroOption(
       name = "desugared-provider-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
-      valueDescription = "NONE|WARN|ERROR",
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
         "Control diagnostic severity reporting of uses of the desugared `Provider<T>` form as a provider type. Prefer the function syntax form `() -> T` instead. Only applies if `enable-function-providers` is enabled; otherwise this is treated as NONE.",
       required = false,
@@ -1402,6 +1402,14 @@ public data class MetroOptions(
       )
       valid = false
     }
+
+    if (unusedGraphInputsSeverity.isIdeOnly) {
+      onError(
+        "unusedGraphInputsSeverity (set to ${unusedGraphInputsSeverity.name}) does not support IDE_WARN/IDE_ERROR " +
+          "because the underlying check only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead."
+      )
+      valid = false
+    }
     return valid
   }
 
@@ -1701,9 +1709,44 @@ public data class MetroOptions(
   public enum class DiagnosticSeverity {
     NONE,
     WARN,
-    ERROR;
+    ERROR,
+
+    /**
+     * Like [WARN], but only reports when Metro is running inside an IDE FirSession. CLI
+     * compilations treat this as [NONE].
+     *
+     * Useful for diagnostics you only want to surface to readers in the IDE without emitting
+     * compiler warnings in real (CLI) compilations.
+     */
+    IDE_WARN,
+
+    /**
+     * Like [ERROR], but only reports when Metro is running inside an IDE FirSession. CLI
+     * compilations treat this as [NONE].
+     *
+     * Useful for diagnostics you only want to surface to readers in the IDE without failing real
+     * (CLI) compilations.
+     */
+    IDE_ERROR;
 
     public val isEnabled: Boolean
       get() = this != NONE
+
+    public val isIdeOnly: Boolean
+      get() = this == IDE_ERROR || this == IDE_WARN
+
+    /**
+     * Resolves this severity against the current environment. [IDE_WARN] and [IDE_ERROR] resolve to
+     * [WARN] or [ERROR] respectively only when [isIde] is true; otherwise they resolve to [NONE].
+     * All other values resolve to themselves.
+     */
+    public fun resolve(isIde: Boolean): DiagnosticSeverity =
+      when (this) {
+        NONE,
+        WARN,
+        ERROR -> this
+        IDE_WARN -> if (isIde) WARN else NONE
+        IDE_ERROR -> if (isIde) ERROR else NONE
+      }
   }
 }
