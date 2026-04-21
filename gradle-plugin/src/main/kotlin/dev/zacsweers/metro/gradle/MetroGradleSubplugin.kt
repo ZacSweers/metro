@@ -331,7 +331,18 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.interopAnnotationsNamedArgSeverity,
             )
           )
-          add(lazyOption("unused-graph-inputs-severity", extension.unusedGraphInputsSeverity))
+          add(
+            lazyOption(
+              "unused-graph-inputs-severity",
+              extension.unusedGraphInputsSeverity.map { severity ->
+                check(!severity.isIdeOnly) {
+                  "metro.unusedGraphInputsSeverity (set to ${severity.name}) does not support ${severity.name} " +
+                    "because unused-input detection only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead."
+                }
+                severity
+              },
+            )
+          )
           add(
             lazyOption(
               "enable-top-level-function-injection",

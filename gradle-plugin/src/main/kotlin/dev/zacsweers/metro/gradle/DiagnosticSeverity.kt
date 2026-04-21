@@ -32,4 +32,7 @@ public enum class DiagnosticSeverity {
 
   public val isEnabled: Boolean
     get() = this != NONE
+
+  public val isIdeOnly: Boolean
+    get() = this == IDE_ERROR || this == IDE_WARN
 }
