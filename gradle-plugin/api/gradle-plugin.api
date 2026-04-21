@@ -14,6 +14,7 @@ public final class dev/zacsweers/metro/gradle/DiagnosticSeverity : java/lang/Enu
 	public static final field WARN Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public final fun isEnabled ()Z
+	public final fun isIdeOnly ()Z
 	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static fun values ()[Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 }
@@ -39,7 +40,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public fun <init> (Lorg/gradle/api/provider/Provider;Lorg/gradle/api/file/ProjectLayout;Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
 	public final fun compilerOptions (Lorg/gradle/api/Action;)V
 	public final fun getAutomaticallyAddRuntimeDependencies ()Lorg/gradle/api/provider/Property;
-	public final fun getCompilerOptions ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$OptionsHandler;
+	public final fun getCompilerOptions ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$CompilerOptionsHandler;
 	public final fun getCompilerVersion ()Lorg/gradle/api/provider/Property;
 	public final fun getCompilerVersionAliases ()Lorg/gradle/api/provider/MapProperty;
 	public final fun getContributesAsInject ()Lorg/gradle/api/provider/Property;
@@ -67,6 +68,17 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getUnusedGraphInputsSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getWarnOnInjectAnnotationPlacement ()Lorg/gradle/api/provider/Property;
 	public final fun interop (Lorg/gradle/api/Action;)V
+}
+
+public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$CompilerOptionsHandler {
+	public fun <init> (Lorg/gradle/api/model/ObjectFactory;)V
+	public final fun disable (Ljava/lang/String;)V
+	public final fun enable (Ljava/lang/String;)V
+	public final fun getRawOptions ()Lorg/gradle/api/provider/MapProperty;
+	public final fun put (Ljava/lang/String;Ldev/zacsweers/metro/gradle/DiagnosticSeverity;)V
+	public final fun put (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun put (Ljava/lang/String;Lorg/gradle/api/provider/Provider;)V
+	public final fun put (Ljava/lang/String;Z)V
 }
 
 public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler {
@@ -117,17 +129,6 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun includeJakarta ()V
 	public final fun includeJavax ()V
 	public final fun includeKotlinInject ()V
-}
-
-public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$OptionsHandler {
-	public fun <init> (Lorg/gradle/api/model/ObjectFactory;)V
-	public final fun disable (Ljava/lang/String;)V
-	public final fun enable (Ljava/lang/String;)V
-	public final fun getRawOptions ()Lorg/gradle/api/provider/MapProperty;
-	public final fun put (Ljava/lang/String;Ldev/zacsweers/metro/gradle/DiagnosticSeverity;)V
-	public final fun put (Ljava/lang/String;Ljava/lang/String;)V
-	public final fun put (Ljava/lang/String;Lorg/gradle/api/provider/Provider;)V
-	public final fun put (Ljava/lang/String;Z)V
 }
 
 public final class dev/zacsweers/metro/gradle/OptionalBindingBehavior : java/lang/Enum {
