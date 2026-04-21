@@ -556,6 +556,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("PresenterClassQualifiedInjection.kt")
+      public void testPresenterClassQualifiedInjection() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassQualifiedInjection.kt");
+      }
+
+      @Test
       @TestMetadata("PresenterClassSimpleInjection.kt")
       public void testPresenterClassSimpleInjection() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassSimpleInjection.kt");
@@ -2511,6 +2517,22 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       @TestMetadata("MixedClassKClassMapKeyInterop.kt")
       public void testMixedClassKClassMapKeyInterop() {
         runTest("compiler-tests/src/test/data/box/interop/kclass/MixedClassKClassMapKeyInterop.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/kotlinInject")
+    @TestDataPath("$PROJECT_ROOT")
+    public class KotlinInject {
+      @Test
+      public void testAllFilesPresentInKotlinInject() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/kotlinInject"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("FunctionProviderWithKotlinInject.kt")
+      public void testFunctionProviderWithKotlinInject() {
+        runTest("compiler-tests/src/test/data/box/interop/kotlinInject/FunctionProviderWithKotlinInject.kt");
       }
     }
   }
