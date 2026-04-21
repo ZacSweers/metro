@@ -10,7 +10,25 @@ public enum class DiagnosticSeverity {
   WARN,
 
   /** Emits a compiler error if encountered and fails compilation. */
-  ERROR;
+  ERROR,
+
+  /**
+   * Like [WARN], but only reports when the Metro compiler is running inside an IDE session. CLI
+   * compilations treat this as [NONE].
+   *
+   * Useful for diagnostics you only want to surface to readers in the IDE without emitting compiler
+   * warnings in real (CLI) compilations.
+   */
+  IDE_WARN,
+
+  /**
+   * Like [ERROR], but only reports when the Metro compiler is running inside an IDE session. CLI
+   * compilations treat this as [NONE].
+   *
+   * Useful for diagnostics you only want to surface to readers in the IDE without failing real
+   * (CLI) compilations.
+   */
+  IDE_ERROR;
 
   public val isEnabled: Boolean
     get() = this != NONE

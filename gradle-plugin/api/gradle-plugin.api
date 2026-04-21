@@ -8,6 +8,8 @@ public abstract interface annotation class dev/zacsweers/metro/gradle/DelicateMe
 
 public final class dev/zacsweers/metro/gradle/DiagnosticSeverity : java/lang/Enum {
 	public static final field ERROR Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
+	public static final field IDE_ERROR Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
+	public static final field IDE_WARN Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static final field NONE Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static final field WARN Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
