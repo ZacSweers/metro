@@ -1840,8 +1840,7 @@ internal fun ClassId?.isIntrinsicType(session: FirSession): Boolean {
   val classIds = session.metroFirBuiltIns.classIds
   return when (this) {
     in classIds.providerTypes,
-    in classIds.lazyTypes,
-    in classIds.membersInjectorTypes -> true
+    in classIds.lazyTypes -> true
     else -> false
   }
 }
