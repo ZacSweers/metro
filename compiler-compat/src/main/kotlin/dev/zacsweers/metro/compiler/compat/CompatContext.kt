@@ -29,6 +29,8 @@ import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
+import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
+import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.result
 import org.jetbrains.kotlin.fir.expressions.FirExpression
@@ -590,6 +592,19 @@ public interface CompatContext {
     session: FirSession
   ): DeprecationsProvider? {
     return getDeprecationsProvider(session)
+  }
+
+  @CompatApi(
+    since = "2.4.0-Beta2",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      "This is an inline API and it used some ABI-changed internal logic. This is a non-inline one",
+  )
+  fun buildValueParameterCopyCompat(
+    original: FirValueParameter,
+    init: FirValueParameterBuilder.() -> Unit,
+  ): FirValueParameter {
+    return buildValueParameterCopy(original, init)
   }
 }
 

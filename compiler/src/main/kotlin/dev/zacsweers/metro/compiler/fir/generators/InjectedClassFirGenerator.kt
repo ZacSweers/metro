@@ -43,7 +43,6 @@ import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
-import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.hasAnnotationWithClassId
 import org.jetbrains.kotlin.fir.declarations.origin
@@ -729,7 +728,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             }
             @OptIn(SymbolInternals::class)
             contextParams +=
-              buildValueParameterCopy(original.fir) {
+              buildValueParameterCopyCompat(original.fir) {
                   name = original.name
                   origin = Keys.RegularParameter.origin
                   symbol = FirValueParameterSymbol()

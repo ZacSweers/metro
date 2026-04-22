@@ -9,6 +9,9 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
+import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
+import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 
 public class CompatContextImpl : CompatContext by DelegateType() {
@@ -20,6 +23,13 @@ public class CompatContextImpl : CompatContext by DelegateType() {
       is FirClassLikeDeclaration -> getDeprecationsProvider(session)
       else -> null
     }
+  }
+
+  override fun buildValueParameterCopyCompat(
+    original: FirValueParameter,
+    init: FirValueParameterBuilder.() -> Unit,
+  ): FirValueParameter {
+    return buildValueParameterCopy(original, init)
   }
 
   public class Factory : CompatContext.Factory {
