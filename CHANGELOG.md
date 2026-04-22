@@ -7,6 +7,7 @@ Changelog
 ### New
 
 - Add a new `desugaredProviderSeverity` option (default: `WARN`) that reports a diagnostic when `Provider<T>` is used instead of the preferred `() -> T` form. Set this to `NONE` to disable the warning during migration, or `ERROR` to enforce the new style. Automatically treated as `NONE` when `enableFunctionProviders` is disabled.
+- **[FIR]** Add diagnostic checks against providing intrinsic types (`Provider`, `Lazy`, etc.) from `@Provides` declarations.
 - **[Gradle]** Introduce a new `compilerOptions {}` DSL for free Metro compiler options and flags.
 - **[Gradle]** Add `IDE_WARN` and `IDE_ERROR` members to `DiagnosticSeverity` to allow configuring some diagnostics to _only_ run in IDE sessions. Useful for diagnostics you only want to surface to readers in the IDE without emitting compiler warnings in real (CLI) compilations.
 
