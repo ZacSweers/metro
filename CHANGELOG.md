@@ -7,6 +7,7 @@ Changelog
 ### New
 
 - Add a new `desugaredProviderSeverity` option (default: `WARN`) that reports a diagnostic when `Provider<T>` is used instead of the preferred `() -> T` form. Set this to `NONE` to disable the warning during migration, or `ERROR` to enforce the new style. Automatically treated as `NONE` when `enableFunctionProviders` is disabled.
+- **[FIR]** Add diagnostic checks against providing intrinsic types (`Provider`, `Lazy`, etc.) from `@Provides` declarations.
 - **[Gradle]** Introduce a new `compilerOptions {}` DSL for free Metro compiler options and flags.
 - **[Gradle]** Add `IDE_WARN` and `IDE_ERROR` members to `DiagnosticSeverity` to allow configuring some diagnostics to _only_ run in IDE sessions. Useful for diagnostics you only want to surface to readers in the IDE without emitting compiler warnings in real (CLI) compilations.
 
@@ -33,6 +34,7 @@ Changelog
 ### Changes
 
 - `enableFunctionProviders` (i.e. `() -> T` syntax for providers) is now enabled by default. Previously this required opting in. The function-syntax form is now the **recommended** way to declare provider dependencies; `Provider<T>` is still supported but treated as a desugared alternative and a **warning** by default, similar to if you were to use `Function0` instead of `() -> T` syntax for functions. See the [metro-intrinsics](docs/metro-intrinsics.md) docs for more details.
+- **[IR]** Remove deprecated `indexInOldValueParameters` use in IR for better `2.4.0`+ support.
 - **[Gradle]** Promote `enableFunctionProviders` to stable.
 - **[Gradle]** Remove deprecated `useAssistedParamNamesAsIdentifiers` property.
 - **[Gradle]** Remove `deduplicateInjectedParams` property.
@@ -42,6 +44,7 @@ Changelog
 - **[Gradle]** Remove `shrinkUnusedBindings` property, use the new compilerOptions API.
 - **[metrox-android]** Change `MetroAppComponentProviders` accessor multibindings to expose function types instead of `Provider` types.
 - **[metrox-viewmodel]** Change `MetroViewModelFactory` and `MetroViewModelMultibindings` accessor multibindings to expose function types instead of `Provider` types.
+- Support Kotlin `2.4.0-Beta2`.
 
 ### Contributors
 

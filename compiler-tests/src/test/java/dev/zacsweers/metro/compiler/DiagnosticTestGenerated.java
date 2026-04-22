@@ -397,6 +397,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DependencyGraphFactory_ProvidesParamCannotBeIntrinsic.kt")
+    public void testDependencyGraphFactory_ProvidesParamCannotBeIntrinsic() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/DependencyGraphFactory_ProvidesParamCannotBeIntrinsic.kt");
+    }
+
+    @Test
     @TestMetadata("DoNotSuggestSimilarBindingSubtypesForAny.kt")
     public void testDoNotSuggestSimilarBindingSubtypesForAny() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/DoNotSuggestSimilarBindingSubtypesForAny.kt");
@@ -533,6 +539,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("ExtensionsWithFactoriesMustUseThem.kt")
       public void testExtensionsWithFactoriesMustUseThem() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/ExtensionsWithFactoriesMustUseThem.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphExtensionFactory_ProvidesParamCannotBeIntrinsic.kt")
+      public void testGraphExtensionFactory_ProvidesParamCannotBeIntrinsic() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/GraphExtensionFactory_ProvidesParamCannotBeIntrinsic.kt");
       }
 
       @Test
@@ -1297,9 +1309,27 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("Provides_ElementsIntoSet_AllowsIntrinsicElementType.kt")
+    public void testProvides_ElementsIntoSet_AllowsIntrinsicElementType() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_ElementsIntoSet_AllowsIntrinsicElementType.kt");
+    }
+
+    @Test
     @TestMetadata("Provides_Interface_MayNotHaveTypeParameters.kt")
     public void testProvides_Interface_MayNotHaveTypeParameters() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_Interface_MayNotHaveTypeParameters.kt");
+    }
+
+    @Test
+    @TestMetadata("Provides_ReturnTypeCannotBeIntrinsic.kt")
+    public void testProvides_ReturnTypeCannotBeIntrinsic() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_ReturnTypeCannotBeIntrinsic.kt");
+    }
+
+    @Test
+    @TestMetadata("Provides_ReturnTypeCannotBeIntrinsic_DaggerInterop.kt")
+    public void testProvides_ReturnTypeCannotBeIntrinsic_DaggerInterop() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_ReturnTypeCannotBeIntrinsic_DaggerInterop.kt");
     }
   }
 }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -35,6 +36,7 @@ public class ClassIds(
   customOptionalBindingAnnotations: Set<ClassId> = emptySet(),
   private val contributesAsInject: Boolean = false,
   private val enableFunctionProviders: Boolean = false,
+  private val enableDaggerRuntimeInterop: Boolean = false,
 ) {
   public companion object {
     public fun fromOptions(options: MetroOptions): ClassIds =
@@ -66,6 +68,7 @@ public class ClassIds(
         customOptionalBindingAnnotations = options.customOptionalBindingAnnotations,
         contributesAsInject = options.contributesAsInject,
         enableFunctionProviders = options.enableFunctionProviders,
+        enableDaggerRuntimeInterop = options.enableDaggerRuntimeInterop,
       )
   }
 
@@ -252,6 +255,13 @@ public class ClassIds(
   internal val nonFunctionProviderTypes by memoize { providerTypes - Symbols.ClassIds.function0 }
 
   internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses
+
+  internal val membersInjectorTypes = buildSet {
+    add(Symbols.ClassIds.MembersInjector)
+    if (enableDaggerRuntimeInterop) {
+      add(DaggerSymbols.ClassIds.DAGGER_MEMBERS_INJECTOR)
+    }
+  }
 
   internal val includes = setOf(Symbols.ClassIds.metroIncludes)
 

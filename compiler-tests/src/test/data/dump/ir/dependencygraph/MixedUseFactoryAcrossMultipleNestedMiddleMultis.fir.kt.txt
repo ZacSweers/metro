@@ -1,5 +1,6 @@
 @Inject
 class FinalThing {
+  @Named(name = "final")
   val ints: Function0<Set<Int>>
     field = ints
     get

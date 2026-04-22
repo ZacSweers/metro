@@ -41,6 +41,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTRINSIC_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INVALID_ASSISTED_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_WARNING
@@ -169,6 +170,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val SUSPICIOUS_AGGREGATION_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
   val BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val INTRINSIC_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPICIOUS_SET_INTO_SET by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -341,6 +343,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(BINDING_ERROR, "{0}", STRING)
         put(BINDS_ERROR, "{0}", STRING)
         put(BINDS_OPTIONAL_OF_ERROR, "{0}", STRING)
+        put(INTRINSIC_BINDING_ERROR, "{0}", STRING)
         put(BINDS_OPTIONAL_OF_WARNING, "{0}", STRING)
         put(SUSPICIOUS_SET_INTO_SET, "{0}", STRING)
         put(MULTIBINDS_ERROR, "{0}", STRING)

@@ -5,7 +5,7 @@ zensical==0.0.34
 # MkDocs + Material - transitive dependencies of the mike fork (not used directly)
 # Can be removed once zensical ships native versioning and the mike fork is dropped
 # See docs/zensical-migration.md for details
-click==8.3.2
+click==8.3.3
 future==1.0.0
 Jinja2==3.1.6
 livereload==2.7.1

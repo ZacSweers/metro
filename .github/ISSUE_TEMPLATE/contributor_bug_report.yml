@@ -60,10 +60,24 @@ body:
     validations:
       required: true
   - type: input
+    id: kotlin-version
+    attributes:
+      label: Kotlin version
+      description: What version of Kotlin are you using? (e.g. `2.3.20`)
+    validations:
+      required: true
+  - type: input
     id: ide-version
     attributes:
       label: IDE version
       description: (For IDE issues) What version of the IDE are you using? (i.e., Android Studio Panda 1 2025.3.1, IntelliJ 2025.3.2, etc).
+    validations:
+      required: false
+  - type: input
+    id: platform-target
+    attributes:
+      label: Platform
+      description: (If relevant) What Kotlin platform does this happen on? JVM, Android, etc.
     validations:
       required: false
   - type: textarea
@@ -71,6 +85,6 @@ body:
     attributes:
       label: Context
       description: |
-        Include as many relevant details about the environment as you can. Which platform, is it a compiler or runtime bug, etc.
+        Include as many relevant details about the environment as you can. Is it a compiler failure, a runtime failure, etc.
     validations:
       required: false

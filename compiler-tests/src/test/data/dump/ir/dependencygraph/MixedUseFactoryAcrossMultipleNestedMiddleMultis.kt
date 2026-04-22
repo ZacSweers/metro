@@ -30,5 +30,6 @@ interface AppGraph {
   val finalThing: FinalThing
 }
 
+// Annoying duplication of params to make this happy across different kotlin dump versions
 @Inject
-class FinalThing(@Named("final") val ints: () -> Set<Int>)
+class FinalThing(@param:Named("final") @field:Named("final") @property:Named("final") val ints: () -> Set<Int>)
