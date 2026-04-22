@@ -17,8 +17,10 @@ import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
+import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
@@ -27,6 +29,7 @@ import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
+import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.result
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpressionEvaluator
@@ -576,6 +579,17 @@ public interface CompatContext {
   fun <T : FirElement> FirExpression.evaluateAsCompat(session: FirSession, tKlass: KClass<T>): T? {
     @Suppress("UNCHECKED_CAST") @OptIn(PrivateConstantEvaluatorAPI::class, PrivateForInline::class)
     return FirExpressionEvaluator.evaluateExpression(this, session)?.result as? T
+  }
+
+  @CompatApi(
+    since = "2.4.0-Beta2",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 changed to use more specific receivers",
+  )
+  fun FirAnnotationContainer.getDeprecationsProviderCompat(
+    session: FirSession
+  ): DeprecationsProvider? {
+    return getDeprecationsProvider(session)
   }
 }
 

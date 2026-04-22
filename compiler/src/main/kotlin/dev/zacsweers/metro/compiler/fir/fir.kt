@@ -45,7 +45,6 @@ import org.jetbrains.kotlin.fir.declarations.declaredFunctions
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
-import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.getTargetType
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.origin
@@ -886,14 +885,20 @@ internal fun FirClassLikeDeclaration.markImpl(session: FirSession) {
   )
 }
 
+context(compatContext: CompatContext)
 internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession) {
-  replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
-  replaceDeprecationsProvider(this.getDeprecationsProvider(session))
+  with(compatContext) {
+    replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
+    getDeprecationsProviderCompat(session)?.let(::replaceDeprecationsProvider)
+  }
 }
 
+context(compatContext: CompatContext)
 internal fun FirCallableDeclaration.markAsDeprecatedHidden(session: FirSession) {
-  replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
-  replaceDeprecationsProvider(this.getDeprecationsProvider(session))
+  with(compatContext) {
+    replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
+    getDeprecationsProviderCompat(session)?.let(::replaceDeprecationsProvider)
+  }
 }
 
 internal fun ConeTypeProjection.wrapInProviderIfNecessary(
