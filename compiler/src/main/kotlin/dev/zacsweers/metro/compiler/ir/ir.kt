@@ -1556,7 +1556,6 @@ private fun IrFunction.setReceiverParameter(kind: IrParameterKind, value: IrValu
   var reindexSubsequent = false
   if (index >= 0) {
     val old = parameters[index]
-    old.indexInOldValueParameters = -1
     old.indexInParameters = -1
 
     if (value != null) {
@@ -1576,7 +1575,6 @@ private fun IrFunction.setReceiverParameter(kind: IrParameterKind, value: IrValu
   }
 
   if (value != null) {
-    value.indexInOldValueParameters = -1
     value.indexInParameters = index
     value.kind = kind
   }
