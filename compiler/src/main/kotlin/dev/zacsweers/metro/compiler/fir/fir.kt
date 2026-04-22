@@ -1834,3 +1834,14 @@ internal fun ClassId.diagnosticString(session: FirSession): String {
     asFqNameString()
   }
 }
+
+internal fun ClassId?.isIntrinsicType(session: FirSession): Boolean {
+  contract { returns(true) implies (this@isIntrinsicType != null) }
+  val classIds = session.metroFirBuiltIns.classIds
+  return when (this) {
+    in classIds.providerTypes,
+    in classIds.lazyTypes,
+    in classIds.membersInjectorTypes -> true
+    else -> false
+  }
+}
