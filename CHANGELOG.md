@@ -45,6 +45,7 @@ Changelog
 - **[metrox-android]** Change `MetroAppComponentProviders` accessor multibindings to expose function types instead of `Provider` types.
 - **[metrox-viewmodel]** Change `MetroViewModelFactory` and `MetroViewModelMultibindings` accessor multibindings to expose function types instead of `Provider` types.
 - Support Kotlin `2.4.0-Beta2`.
+- Update embedded androidx.tracing to `2.0.0-alpha06`.
 
 ### Contributors
 
