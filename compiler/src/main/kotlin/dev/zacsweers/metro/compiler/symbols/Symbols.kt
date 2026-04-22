@@ -35,6 +35,8 @@ import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.JsStandardClassIds
+import org.jetbrains.kotlin.name.JvmStandardClassIds
 import org.jetbrains.kotlin.name.StandardClassIds
 
 @SingleIn(IrScope::class)
@@ -146,7 +148,9 @@ internal class Symbols(
     val HasMemberInjections = ClassId(FqNames.metroRuntimePackage, "HasMemberInjections".asName())
     val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
     val JavaLangClass = ClassId(FqName("java.lang"), "Class".asName())
-    val JvmField = ClassId(FqName("kotlin.jvm"), "JvmField".asName())
+    val JvmField = JvmStandardClassIds.Annotations.JvmField
+    val JvmStatic = JvmStandardClassIds.Annotations.JvmStatic
+    val JsStatic = JsStandardClassIds.Annotations.JsStatic
     val Lazy = StandardClassIds.byName("Lazy")
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
     val MultibindingElement =
@@ -446,6 +450,18 @@ internal class Symbols(
     pluginContext.referenceClass(ClassIds.ComptimeOnly)?.constructors?.first()!!
   }
 
+  val hiddenFromObjCAnnotationConstructor: IrConstructorSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.HiddenFromObjC)?.constructors?.first()
+  }
+
+  val jvmStaticAnnotationConstructor: IrConstructorSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.JvmStatic)?.constructors?.first()
+  }
+
+  val jsStaticAnnotationConstructor: IrConstructorSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.JsStatic)?.constructors?.first()
+  }
+
   val throwsAnnotationConstructor: IrConstructorSymbol? by lazy {
     // For some reason this isn't visible until 2.3.0?
     pluginContext.referenceClass(ClassIds.Throws)?.constructors?.first()
@@ -718,3 +734,6 @@ internal class Symbols(
 
 internal fun IrModuleFragment.createPackage(packageName: String): IrPackageFragment =
   createEmptyExternalPackageFragment(descriptor, FqName(packageName))
+
+internal val FqName.classId
+  get() = ClassId.topLevel(this)

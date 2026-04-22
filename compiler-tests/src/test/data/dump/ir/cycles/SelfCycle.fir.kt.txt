@@ -1,7 +1,7 @@
 @Suppress(names = ["MEMBERS_INJECT_WARNING"])
 @Inject
 class S {
-  val sProvider: Provider<S>
+  val sProvider: Function0<S>
     field = sProvider
     get
 
@@ -19,29 +19,38 @@ class S {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(sProvider: Provider<S>): Factory<S> {
         return MetroFactory(sProvider = sProvider)
       }
 
-      fun newInstance(sProvider: Provider<S>): S {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(sProvider: Function0<S>): S {
         return S(sProvider = sProvider)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(sProvider: Provider<S>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): S {
       val tmp_0: S = Companion.newInstance(sProvider = <this>.#sProvider)
       Companion.injectSLazy(instance = tmp_0, sLazy = Companion.lazy<Provider<S>, S>(provider = <this>.#sProvider))
       return tmp_0
     }
 
-    fun mirrorFunction(sProvider: Provider<S>): S {
+    @HiddenFromObjC
+    fun mirrorFunction(sProvider: Function0<S>): S {
       return error(message = "Never called")
     }
 
@@ -57,10 +66,15 @@ class S {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(sLazy: Provider<S>): MembersInjector<S> {
         return MetroMembersInjector(sLazy = sLazy)
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectSLazy(@Assisted instance: S, sLazy: Lazy<S>) {
         return instance.#sLazy = sLazy
       }
@@ -79,7 +93,7 @@ class S {
 
   }
 
-  constructor(sProvider: Provider<S>) /* primary */ {
+  constructor(sProvider: Function0<S>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -116,6 +130,8 @@ interface SelfCycleGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): SelfCycleGraph {
       return Impl()
     }

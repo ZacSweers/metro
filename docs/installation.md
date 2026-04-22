@@ -50,18 +50,20 @@ kt_jvm_library(
 )
 ```
 
-### Amper
+### [Amper](https://amper.org)
 
-Using the compiler plugin options support in [AMPER-5095](https://youtrack.jetbrains.com/issue/AMPER-5095).
+Using the [compiler plugin](https://amper.org/latest/user-guide/advanced/kotlin-compiler-plugins/) support in Amper 0.10+.
 
 ```yaml
-compilerPlugins:
-  - id: dev.zacsweers.metro.compiler
-    dependency: $libs.metro.compiler
-    options:
-      enabled: true
-      debug: false
-      # ...
+settings:
+  kotlin:
+    compilerPlugins:
+      - id: dev.zacsweers.metro.compiler
+        dependency: $libs.metro.compiler
+        options:
+          enabled: true
+          debug: false
+          # ...
 ```
 
 ```toml

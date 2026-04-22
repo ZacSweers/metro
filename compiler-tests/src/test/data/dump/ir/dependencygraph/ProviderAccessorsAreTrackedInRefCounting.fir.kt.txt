@@ -3,7 +3,7 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: AppGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     private val provideIntProvider: Provider<Int>
@@ -18,13 +18,13 @@ interface AppGraph {
 
     }
 
-    override val int1: Provider<Int>
-      override get(): Provider<Int> {
+    override val int1: Function0<Int>
+      override get(): Function0<Int> {
         return <this>.#provideIntProvider
       }
 
-    override val int2: Provider<Int>
-      override get(): Provider<Int> {
+    override val int2: Function0<Int>
+      override get(): Function0<Int> {
         return <this>.#provideIntProvider
       }
 
@@ -48,6 +48,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -65,26 +67,35 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: AppGraph): Int {
         return instance.provideInt()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
@@ -92,7 +103,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 161, endOffset = 199, newInstanceName = "provideLong")
+  @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 153, endOffset = 191, newInstanceName = "provideLong")
   class ProvideLongMetroFactory : Factory<Long> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -102,26 +113,35 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Long> {
         return ProvideLongMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideLong(instance: AppGraph): Long {
         return instance.provideLong()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Long {
       return Companion.provideLong(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Long {
       return error(message = "Never called")
     }
@@ -138,10 +158,10 @@ interface AppGraph {
     return 3L
   }
 
-  abstract val int1: Provider<Int>
+  abstract val int1: Function0<Int>
     abstract get
 
-  abstract val int2: Provider<Int>
+  abstract val int2: Function0<Int>
     abstract get
 
   abstract val long1: Lazy<Long>

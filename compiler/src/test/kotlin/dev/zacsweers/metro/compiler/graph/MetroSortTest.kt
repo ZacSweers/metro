@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 /*
  * Copyright (C) 2021 Square, Inc.
  *
@@ -16,6 +18,7 @@
 
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.MutableScatterMap
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.compiler.testTraceScope
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -26,8 +29,9 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import org.jetbrains.annotations.TestOnly
 
-class TopologicalSortTest : TraceScope by testTraceScope() {
+class MetroSortTest : TraceScope by testTraceScope() {
   @Test
   fun emptyEdges() {
     val unsorted = listOf("a", "b", "c")
@@ -211,11 +215,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
     val isDeferrable = { f: String, t: String -> f == "a" && t == "b" }
 
     val result =
-      topologicalSort(
-          fullAdjacency = full,
-          isDeferrable = isDeferrable,
-          onCycle = { fail("cycle") },
-        )
+      metroSort(fullAdjacency = full, isDeferrable = isDeferrable, onCycle = { fail("cycle") })
         .sortedKeys
 
     assertEquals(listOf("a", "b"), result)
@@ -239,7 +239,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
 
     // Test 1: Start from "a" - should only reach a, b, c
     val resultFromA =
-      topologicalSort(
+      metroSort(
         fullAdjacency = fullAdjacency,
         isDeferrable = { _, _ -> false },
         onCycle = { fail("No cycles expected") },
@@ -251,7 +251,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
 
     // Test 2: Start from "d" - should only reach d, e
     val resultFromD =
-      topologicalSort(
+      metroSort(
         fullAdjacency = fullAdjacency,
         isDeferrable = { _, _ -> false },
         onCycle = { fail("No cycles expected") },
@@ -263,7 +263,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
 
     // Test 3: Start from "f" - should only reach f
     val resultFromF =
-      topologicalSort(
+      metroSort(
         fullAdjacency = fullAdjacency,
         isDeferrable = { _, _ -> false },
         onCycle = { fail("No cycles expected") },
@@ -275,7 +275,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
 
     // Test 4: Multiple roots - should reach union of reachable sets
     val resultFromMultiple =
-      topologicalSort(
+      metroSort(
         fullAdjacency = fullAdjacency,
         isDeferrable = { _, _ -> false },
         onCycle = { fail("No cycles expected") },
@@ -287,7 +287,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
 
     // Test 5: Empty roots - should process entire graph
     val resultNoRoots =
-      topologicalSort(
+      metroSort(
         fullAdjacency = fullAdjacency,
         isDeferrable = { _, _ -> false },
         onCycle = { fail("No cycles expected") },
@@ -314,7 +314,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
     // Test 1: Starting from "a" should detect the cycle
     assertFailsWith<IllegalArgumentException> {
       val _ =
-        topologicalSort(
+        metroSort(
           fullAdjacency = fullAdjacency,
           isDeferrable = { _, _ -> false },
           onCycle = { cycle -> throw IllegalArgumentException("Cycle detected: $cycle") },
@@ -324,7 +324,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
 
     // Test 2: Starting from "d" should NOT detect the cycle (it's unreachable)
     val resultFromD =
-      topologicalSort(
+      metroSort(
         fullAdjacency = fullAdjacency,
         isDeferrable = { _, _ -> false },
         onCycle = { fail("Should not detect cycle from d") },
@@ -349,7 +349,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
     val isDeferrable = { from: String, to: String -> from == "b" && to == "c" }
 
     val result =
-      topologicalSort(
+      metroSort(
         fullAdjacency = fullAdjacency,
         isDeferrable = isDeferrable,
         onCycle = { fail("Should handle deferrable cycle") },
@@ -375,7 +375,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
     val isDeferrable = { f: String, t: String -> f == "a" && t == "b" }
 
     val result =
-      topologicalSort(
+      metroSort(
         fullAdjacency = full,
         isDeferrable = isDeferrable,
         onCycle = { fail("cycle") },
@@ -418,7 +418,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
         "CommonUtil" to typedSortedSetOf(),
         "SharedService" to typedSortedSetOf(),
         "Service1" to typedSortedSetOf("Service2", "CommonUtil"),
-        "Service2" to typedSortedSetOf("Service3"), // deferrable - Provider<Service3>
+        "Service2" to typedSortedSetOf("Service3"), // deferrable - () -> Service3
         "Service3" to typedSortedSetOf("Service1", "SharedService"),
         "Client" to typedSortedSetOf("Service1", "SharedService"),
       )
@@ -426,7 +426,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
     val isDeferrable = { from: String, to: String -> from == "Service2" && to == "Service3" }
 
     val result =
-      topologicalSort(
+      metroSort(
         fullAdjacency = fullAdjacency,
         isDeferrable = isDeferrable,
         onCycle = { fail("Should handle deferrable cycle") },
@@ -455,7 +455,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
       )
 
     val result =
-      topologicalSort(
+      metroSort(
         fullAdjacency = fullAdjacency,
         // All edges are deferrable
         isDeferrable = { _, _ -> true },
@@ -481,7 +481,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
     val isDeferrable = { from: String, to: String -> from == "A" && to == "B" }
 
     val result =
-      topologicalSort(
+      metroSort(
         fullAdjacency = fullAdjacency,
         isDeferrable = isDeferrable,
         onCycle = { fail("Should handle deferrable cycle") },
@@ -508,7 +508,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
     val exception =
       assertFailsWith<IllegalArgumentException> {
         val _ =
-          topologicalSort(
+          metroSort(
             fullAdjacency = fullAdjacency,
             isDeferrable = isDeferrable,
             onCycle = { cycle ->
@@ -542,7 +542,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
     val isDeferrable = { from: String, to: String -> from == "X" && to == "Y" }
 
     val result =
-      topologicalSort(
+      metroSort(
         fullAdjacency = fullAdjacency,
         isDeferrable = isDeferrable,
         onCycle = { fail("Should handle deferrable cycle") },
@@ -580,7 +580,7 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
     val exception =
       assertFailsWith<IllegalArgumentException> {
         val _ =
-          topologicalSort(
+          metroSort(
             fullAdjacency = fullAdjacency,
             isDeferrable = isDeferrable,
             onCycle = { cycle ->
@@ -617,4 +617,62 @@ class TopologicalSortTest : TraceScope by testTraceScope() {
   private fun edges(vararg edges: String): (String) -> List<String> {
     return { node: String -> edges.filter { it.startsWith(node) }.map { it.substring(1) } }
   }
+}
+
+/**
+ * Returns a new list where each element is preceded by its results in [sourceToTarget]. The first
+ * element will return no values in [sourceToTarget].
+ *
+ * Modifications from Zipline
+ * - Add [onMissing] check
+ * - Add [onCycle] for customizing how cycle errors are handled
+ * - Add [isDeferrable] for indicating deferrable dependencies
+ * - Implementation modified to instead use a Tarjan-processed SCC DAG
+ *
+ * @param sourceToTarget a function that returns nodes that should precede the argument in the
+ *   result.
+ * @see <a href="Adapted from
+ *   https://github.com/cashapp/zipline/blob/30ca7c9d782758737e9d20e8d9505930178d1992/zipline/src/hostMain/kotlin/app/cash/zipline/internal/topologicalSort.kt">Adapted
+ *   from Zipline's implementation</a>
+ */
+@TestOnly
+private fun <T : Comparable<T>> Iterable<T>.topologicalSort(
+  sourceToTarget: (T) -> Iterable<T>,
+  onCycle: (List<T>) -> Nothing = { cycle ->
+    val message = buildString {
+      append("No topological ordering is possible for these items:")
+
+      for (unorderedItem in cycle.reversed()) {
+        append("\n  ")
+        append(unorderedItem)
+        val unsatisfiedDeps = sourceToTarget(unorderedItem).toSet()
+        unsatisfiedDeps.joinTo(this, separator = ", ", prefix = " (", postfix = ")")
+      }
+    }
+    throw IllegalArgumentException(message)
+  },
+  isDeferrable: (from: T, to: T) -> Boolean = { _, _ -> false },
+  onMissing: (source: T, missing: T) -> Unit = { source, missing ->
+    throw IllegalArgumentException("No element for $missing found for $source")
+  },
+): List<T> {
+  // TODO this is really just here for tests
+  val fakeMap =
+    MutableScatterMap<T, Any>().apply {
+      for (key in this@topologicalSort) {
+        put(key, Any())
+      }
+    }
+  val fullAdjacency = buildFullAdjacency(fakeMap, sourceToTarget, onMissing)
+  val topology = with(testTraceScope()) { metroSort(fullAdjacency, isDeferrable, onCycle) }
+  return topology.sortedKeys
+}
+
+private fun <T> List<T>.isTopologicallySorted(sourceToTarget: (T) -> Iterable<T>): Boolean {
+  val seenNodes = mutableSetOf<T>()
+  for (node in this) {
+    if (sourceToTarget(node).any { it !in seenNodes }) return false
+    seenNodes.add(node)
+  }
+  return true
 }

@@ -11,18 +11,26 @@ class Impl : Base<Impl>, Other {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Impl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): Impl {
       return Impl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Impl {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Impl {
       return error(message = "Never called")
     }

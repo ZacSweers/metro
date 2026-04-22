@@ -36,11 +36,13 @@ import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireMapKeyType
 import dev.zacsweers.metro.compiler.ir.requireMapValueType
 import dev.zacsweers.metro.compiler.ir.requireSetElementType
+import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.safePathString
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
@@ -52,6 +54,7 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isAny
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
@@ -549,6 +552,17 @@ internal class IrBindingGraph(
           )
 
           appendSimilarMultibindingHints(multibinding, allMultibindings)
+
+          val elementType =
+            if (multibinding.isMap) {
+              multibinding.typeKey.requireMapValueType()
+            } else {
+              multibinding.typeKey.requireSetElementType()
+            }
+          functionProviderMigrationHint(elementType)?.let {
+            appendLine()
+            appendLine(it)
+          }
         }
         val declarationToReport =
           if (multibinding.declaration?.isFakeOverride == true) {
@@ -637,6 +651,39 @@ internal class IrBindingGraph(
     }
   }
 
+  // When function-provider mode is enabled, `() -> T` is treated as a provider wrapper for
+  // `T` rather than a bindable value type. An empty multibinding or a missing binding for a
+  // `Function0<T>` key often means either (a) contributors weren't migrated from
+  // `Provider<T>`, or (b) the author intended the function itself to be the bound value —
+  // which is no longer supported at the top level under this mode. Returns null when the
+  // mode is off or the type isn't a zero-arg function.
+  private fun functionProviderMigrationHint(type: IrType): String? {
+    if (!metroContext.options.enableFunctionProviders) return null
+    if (type.rawTypeOrNull()?.classId != Symbols.ClassIds.function0) return null
+    val targetType = type.requireSimpleType().arguments[0].typeOrFail.render(short = true)
+    return "`() -> $targetType` is treated as a provider for `$targetType` when `enableFunctionProviders` is enabled " +
+      "(desugared: `Provider<$targetType>`). As a result, Metro treats them as an intrinsic and unwraps them when " +
+      "resolving bindings. If the binding itself was meant to be the literal `() -> $targetType` function type, you " +
+      "need to migrate it to a named type. For example: " +
+      "`fun interface SomeType : () -> $targetType`".trimIndent()
+  }
+
+  // For missing-binding diagnostics, [key] is the unwrapped inner type (e.g. `T` for a
+  // `() -> T` request under function-provider mode). Scan the graph's root contextual keys
+  // to recover whether any entry point was originally a `() -> T` wrapper, and if so emit
+  // the migration hint using the wrapper's raw type so `$targetType` renders correctly.
+  private fun functionProviderMigrationHintForMissing(key: IrTypeKey): String? {
+    if (!metroContext.options.enableFunctionProviders) return null
+    val function0RawType =
+      sequenceOf(accessors, injectors, extraKeeps)
+        .flatMap { it.keys.asSequence() }
+        .firstOrNull { ctx ->
+          ctx.typeKey == key && ctx.rawType?.rawTypeOrNull()?.classId == Symbols.ClassIds.function0
+        }
+        ?.rawType ?: return null
+    return functionProviderMigrationHint(function0RawType)
+  }
+
   private fun missingBindingHints(key: IrTypeKey): List<String> {
     return buildList {
       if (key.type.hasErrorTypes()) {
@@ -645,6 +692,8 @@ internal class IrBindingGraph(
         )
         return@buildList
       }
+
+      functionProviderMigrationHintForMissing(key)?.let(::add)
 
       if (key in bindingLookup.getParentGraphPrivateKeys()) {
         add(

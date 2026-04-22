@@ -1,7 +1,6 @@
 // GENERATE_CONTRIBUTION_PROVIDERS
 // GENERATE_CONTRIBUTION_HINTS: true
 // GENERATE_CONTRIBUTION_HINTS_IN_FIR
-// ENABLE_FUNCTION_PROVIDERS
 // MIN_COMPILER_VERSION: 2.3.20
 
 // Verify the synthetic scoped provider pattern for multiple bindings from a scoped class.
@@ -16,8 +15,8 @@ interface Bar
 @Inject
 internal class Impl(
   val string: String,
-  val longProvider: Provider<Long>,
+  val longProvider: () -> Long,
   val longFun: () -> Long,
   val lazyBool: Lazy<Boolean>,
-  val providerOfLazyDouble: Provider<Lazy<Double>>,
+  val providerOfLazyDouble: () -> Lazy<Double>,
 ) : Foo, Bar

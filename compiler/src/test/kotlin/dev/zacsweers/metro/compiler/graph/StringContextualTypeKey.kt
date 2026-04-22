@@ -48,8 +48,8 @@ private constructor(
 
     private fun parseWrappedType(type: String): WrappedType<String> {
       return when {
-        type.startsWith("Provider<") -> {
-          val inner = type.removeSurrounding("Provider<", ">")
+        type.startsWith("() ->") -> {
+          val inner = type.removePrefix("() -> ")
           WrappedType.Provider(parseWrappedType(inner), Symbols.ClassIds.metroProvider)
         }
 

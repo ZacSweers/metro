@@ -124,14 +124,13 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         reportsDestination =
           Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
       }
-      module.directives
-        .singleOrZeroValue(MetroDirectives.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS)
-        ?.let { useAssistedParamNamesAsIdentifiers = it }
       module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
         parallelThreads = it
       }
       contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
-      enableFunctionProviders = MetroDirectives.ENABLE_FUNCTION_PROVIDERS in module.directives
+      module.directives.singleOrZeroValue(MetroDirectives.DESUGARED_PROVIDER_SEVERITY)?.let {
+        desugaredProviderSeverity = it
+      }
       enableKClassToClassInterop =
         MetroDirectives.ENABLE_KCLASS_TO_CLASS_INTEROP in module.directives
       generateContributionProviders =

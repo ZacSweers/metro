@@ -41,7 +41,10 @@ class GenerateProjectsCommand : CliktCommand() {
   private val providerMultibindings by
     option(
         "--provider-multibindings",
-        help = "Wrap multibinding accessors in Provider (e.g., Provider<Set<E>> instead of Set<E>)",
+        help =
+          "Wrap multibinding accessors in a provider form (e.g., a provider of `Set<E>` instead of `Set<E>`). " +
+            "Metro mode generates the preferred function-syntax form `() -> Set<E>`. Dagger mode uses the " +
+            "classic `Provider<Set<E>>` form. Useful for benchmarking `SetFactory`/`MapFactory` behavior.",
       )
       .flag(default = false)
 
@@ -315,7 +318,12 @@ class GenerateProjectsCommand : CliktCommand() {
       }
     }
     if (providerMultibindings) {
-      println("Provider multibindings: enabled (using Provider<Set<E>> instead of Set<E>)")
+      val form =
+        when (buildMode) {
+          BuildMode.METRO -> "() -> Set<E>"
+          else -> "Provider<Set<E>>"
+        }
+      println("Provider multibindings: enabled (using $form instead of Set<E>)")
     }
     if (buildMode == BuildMode.METRO) {
       echo("Graph sharding: ${if (enableSharding) "enabled" else "disabled"}")
@@ -1533,34 +1541,43 @@ application {
 
     val sourceFile = File(srcDir, "AppComponent.kt")
 
-    // Provider import for modes that support it (Metro uses its own Provider, Dagger uses
-    // javax.inject.Provider)
+    // Metro uses the function-syntax provider form `() -> T` (no import needed). Dagger/NOOP use
+    // `javax.inject.Provider`.
     val providerImport =
       when {
         !providerMultibindings -> ""
-        buildMode == BuildMode.METRO -> "import dev.zacsweers.metro.Provider"
+        buildMode == BuildMode.METRO -> ""
         buildMode == BuildMode.DAGGER -> "import javax.inject.Provider"
         else -> "import javax.inject.Provider" // NOOP uses javax style for consistency
       }
 
     // Multibinding types based on providerMultibindings flag
-    val pluginsType = if (providerMultibindings) "Provider<Set<Plugin>>" else "Set<Plugin>"
+    val pluginsType =
+      when {
+        !providerMultibindings -> "Set<Plugin>"
+        buildMode == BuildMode.METRO -> "() -> Set<Plugin>"
+        else -> "Provider<Set<Plugin>>"
+      }
     val initializersType =
-      if (providerMultibindings) "Provider<Set<Initializer>>" else "Set<Initializer>"
+      when {
+        !providerMultibindings -> "Set<Initializer>"
+        buildMode == BuildMode.METRO -> "() -> Set<Initializer>"
+        else -> "Provider<Set<Initializer>>"
+      }
 
-    // Access pattern for multibindings - Metro uses invoke(), Dagger uses .get()
+    // Access pattern for multibindings - Metro uses operator invoke, Dagger uses .get()
     val pluginsAccess =
       when {
         !providerMultibindings -> "graph.getAllPlugins()"
         buildMode == BuildMode.METRO ->
-          "graph.getAllPlugins()()" // Metro Provider uses operator invoke
+          "graph.getAllPlugins()()" // function invocation on () -> Set<Plugin>
         else -> "graph.getAllPlugins().get()" // Dagger/javax Provider uses .get()
       }
     val initializersAccess =
       when {
         !providerMultibindings -> "graph.getAllInitializers()"
         buildMode == BuildMode.METRO ->
-          "graph.getAllInitializers()()" // Metro Provider uses operator invoke
+          "graph.getAllInitializers()()" // function invocation on () -> Set<Initializer>
         else -> "graph.getAllInitializers().get()" // Dagger/javax Provider uses .get()
       }
 

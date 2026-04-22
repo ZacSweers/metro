@@ -7,7 +7,7 @@ internal class Impl : Base {
     field = string
     get
 
-  val longProvider: Provider<Long>
+  val longProvider: Function0<Long>
     field = longProvider
     get
 
@@ -19,11 +19,11 @@ internal class Impl : Base {
     field = lazyBool
     get
 
-  val providerOfLazyDouble: Provider<Lazy<Double>>
+  val providerOfLazyDouble: Function0<Lazy<Double>>
     field = providerOfLazyDouble
     get
 
-  constructor(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>) /* primary */ {
+  constructor(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -36,6 +36,7 @@ interface Base {
 
 // FILE: ImplContributions.kt
 
+@HiddenFromObjC
 @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
 abstract class ImplContributions {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -57,27 +58,36 @@ abstract class ImplContributions {
 
         }
 
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
         fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Base> {
           return ProvideImplAsBaseMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
-        fun provideImplAsBase(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Base {
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun provideImplAsBase(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
           return ToAppScope.provideImplAsBase(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
       }
 
+      @HiddenFromObjC
       private constructor(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
       }
 
+      @HiddenFromObjC
       override operator fun invoke(): Base {
         return Companion.provideImplAsBase(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = Companion.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = Companion.create<Double>(provider = <this>.#providerOfLazyDouble))
       }
 
-      fun mirrorFunction(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Base {
+      @HiddenFromObjC
+      fun mirrorFunction(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
         return error(message = "Never called")
       }
 
@@ -90,7 +100,7 @@ abstract class ImplContributions {
     }
 
     @Provides
-    fun provideImplAsBase(string: String, longProvider: Provider<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Provider<Lazy<Double>>): Base {
+    fun provideImplAsBase(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
       return Impl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
     }
 

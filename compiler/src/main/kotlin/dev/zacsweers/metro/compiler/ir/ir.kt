@@ -1440,6 +1440,34 @@ internal fun buildAnnotation(
   }
 }
 
+/**
+ * Adds `@HiddenFromObjC` to [function] if the annotation is available (K/N only).
+ *
+ * We do this because there's a bunch of places where K/N linking breaks on generated symbols.
+ *
+ * https://github.com/ZacSweers/metro/issues/2137
+ */
+context(context: IrMetroContext)
+internal fun addHiddenFromObjCAnnotation(function: IrFunction) {
+  val ctor = context.metroSymbols.hiddenFromObjCAnnotationConstructor ?: return
+  function.annotations += buildAnnotation(function.symbol, ctor)
+}
+
+/**
+ * Adds `@JvmStatic` and `@JsStatic` to [function] when [MetroOptions.generateStaticAnnotations] is
+ * enabled and the annotations are available on the current classpath.
+ */
+context(context: IrMetroContext)
+internal fun addStaticAnnotations(function: IrFunction) {
+  if (!context.options.generateStaticAnnotations) return
+  context.metroSymbols.jvmStaticAnnotationConstructor?.let { ctor ->
+    function.annotations += buildAnnotation(function.symbol, ctor)
+  }
+  context.metroSymbols.jsStaticAnnotationConstructor?.let { ctor ->
+    function.annotations += buildAnnotation(function.symbol, ctor)
+  }
+}
+
 internal val IrClass.metroGraphOrFail: IrClass
   get() = metroGraphOrNull ?: reportCompilerBug("No generated MetroGraph found: $classId")
 
@@ -1528,7 +1556,6 @@ private fun IrFunction.setReceiverParameter(kind: IrParameterKind, value: IrValu
   var reindexSubsequent = false
   if (index >= 0) {
     val old = parameters[index]
-    old.indexInOldValueParameters = -1
     old.indexInParameters = -1
 
     if (value != null) {
@@ -1548,7 +1575,6 @@ private fun IrFunction.setReceiverParameter(kind: IrParameterKind, value: IrValu
   }
 
   if (value != null) {
-    value.indexInOldValueParameters = -1
     value.indexInParameters = index
     value.kind = kind
   }
@@ -1606,6 +1632,16 @@ internal val IrFunction.isNamedCopy: Boolean
 
 private val COMPONENT_FUNCTION_REGEX = Regex(StandardNames.DATA_CLASS_COMPONENT_PREFIX + "[0-9]*")
 
+// private fun isComponentNMethod(method: CallableMemberDescriptor): Boolean {
+//    if ((method as? FunctionDescriptor)?.isOperator != true) return false
+//    val parent = method.containingDeclaration
+//    if (parent is ClassDescriptor && parent.isData &&
+// DataClassResolver.isComponentLike(method.name)) {
+//        // componentN method of data class.
+//        return true
+//    }
+//    return false
+// }
 internal val IrFunction.isComponentOperator: Boolean
   get() {
     return this is IrSimpleFunction &&

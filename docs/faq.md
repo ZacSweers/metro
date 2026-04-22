@@ -35,7 +35,7 @@ See the [stability docs](stability.md) for more details.
 This allows some dynamism with keys but has some downsides. A few different reasons Metro doesn't use this approach
 
 - Duplicate key checking becomes a runtime failure rather than compile-time.
-- It breaks the ability to expose `Map<Key, Provider<Value>>` unless you start manually managing `Provider` types yourself.
+- It breaks the ability to expose `Map<Key, () -> Value>` (or `Map<Key, Provider<Value>>`) unless you start manually managing function/provider types yourself.
 - You allocate and throw away a `Pair` instance each time it's called.
 
 ### **Will Metro add support for dagger-android features or dagger-android interop?**

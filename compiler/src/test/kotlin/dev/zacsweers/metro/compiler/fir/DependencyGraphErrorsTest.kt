@@ -528,7 +528,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleGraph.kt:7:20 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface' is private but graph declaration 'test.ExampleGraph' is internal."
+        "e: ExampleGraph.kt:10:1 @Contributes*-annotated classes cannot be private."
       )
     }
   }
@@ -550,9 +550,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
-      assertDiagnostics(
-        "e: Parent.kt:8:13 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface' is private but graph declaration 'test.Parent.ExampleGraph' is effectively internal."
-      )
+      assertDiagnostics("e: Parent.kt:12:1 @Contributes*-annotated classes cannot be private.")
     }
   }
 
@@ -574,7 +572,11 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleGraph.kt:7:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.Parent.ContributedInterface' is effectively private but graph declaration 'test.ExampleGraph' is public."
+        """
+        e: ExampleGraph.kt:7:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.Parent.ContributedInterface' is effectively private but graph declaration 'test.ExampleGraph' is public.
+        e: ExampleGraph.kt:11:13 @Contributes*-annotated classes cannot be private.
+        """
+          .trimIndent()
       )
     }
   }

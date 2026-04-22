@@ -1,10 +1,10 @@
 interface MapHolder {
-  fun strings(): Map<String, Provider<String>>
+  fun strings(): Map<String, () -> String>
 }
 
 @DependencyGraph
 interface AppGraph {
-  val strings: Map<String, Provider<String>>
+  val strings: Map<String, () -> String>
 
   @DependencyGraph.Factory
   interface Factory {
@@ -13,10 +13,10 @@ interface AppGraph {
 }
 
 fun box(): String {
-  val strings = mapOf("1" to providerOf("2"))
+  val strings = mapOf<String, () -> String>("1" to { "2" })
   val holder =
     object : MapHolder {
-      override fun strings(): Map<String, Provider<String>> {
+      override fun strings(): Map<String, () -> String> {
         return strings
       }
     }

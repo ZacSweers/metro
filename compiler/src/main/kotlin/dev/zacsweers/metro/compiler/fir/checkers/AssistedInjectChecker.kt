@@ -12,7 +12,6 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
@@ -229,14 +228,12 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     override fun toString() = cachedToString
 
     companion object {
-      context(context: CheckerContext, reporter: DiagnosticReporter)
       fun FirValueParameterSymbol.toAssistedParameterKey(
         session: FirSession,
         typeKey: FirTypeKey,
       ): FirAssistedParameterKey {
         val paramName = name.asString()
         val classIds = session.classIds
-        val options = session.metroFirBuiltIns.options
 
         val assistedAnnotation =
           resolvedCompilerAnnotationsWithClassIds
@@ -249,22 +246,17 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         val isNativeMetroAssisted =
           assistedAnnotation != null &&
             assistedAnnotation.toAnnotationClassIdSafe(session) == classIds.metroAssisted
-        val hasCustomAssistedAnnotation = assistedAnnotation != null && !isNativeMetroAssisted
-
-        val useParamNames =
-          if (hasCustomAssistedAnnotation) {
-            true
-          } else {
-            options.useAssistedParamNamesAsIdentifiers
-          }
 
         val explicitIdentifier =
-          assistedAnnotation
-            ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
-            ?.takeUnless { it.isBlank() }
+          if (isNativeMetroAssisted) {
+            paramName
+          } else {
+            assistedAnnotation
+              ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
+              ?.takeUnless { it.isBlank() } ?: paramName
+          }
 
-        val defaultIdentifier = if (useParamNames) paramName else ""
-        return FirAssistedParameterKey(typeKey, explicitIdentifier ?: defaultIdentifier)
+        return FirAssistedParameterKey(typeKey, explicitIdentifier)
       }
     }
   }

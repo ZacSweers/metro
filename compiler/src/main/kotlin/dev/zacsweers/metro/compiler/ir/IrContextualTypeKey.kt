@@ -287,9 +287,17 @@ internal fun IrContextualTypeKey.wrapInProvider(
 context(context: IrMetroContext)
 internal fun IrType.implementsProviderType(): Boolean {
   val rawType = rawTypeOrNull() ?: return false
-  val allProviderClassIds =
-    context.metroSymbols.providerTypes + Symbols.ClassIds.commonMetroProviders
-  return rawType.implementsAny(allProviderClassIds)
+  // For dedicated provider types (Metro, javax, jakarta, dagger, guice), a transitive supertype
+  // check is correct — a user class implementing one of those interfaces is a real provider.
+  // Function0 is different: many non-provider types (user graph-extension factories, Kotlin
+  // function-SAM declarations, etc.) transitively implement Function0 yet are not semantic
+  // provider wrappers. So exclude Function0 from the supertype check and only match it when
+  // the raw type is literally Function0.
+  val nonFunctionProviderTypes = context.metroSymbols.classIds.nonFunctionProviderTypes
+  val supertypeMatchClassIds = nonFunctionProviderTypes + Symbols.ClassIds.commonMetroProviders
+  if (rawType.implementsAny(supertypeMatchClassIds)) return true
+  return rawType.classId == Symbols.ClassIds.function0 &&
+    Symbols.ClassIds.function0 in context.metroSymbols.classIds.providerTypes
 }
 
 context(context: IrMetroContext)

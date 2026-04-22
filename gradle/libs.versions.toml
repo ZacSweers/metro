@@ -15,13 +15,13 @@
 [versions]
 agp = "8.13.2"
 androidx-lifecycle = "2.10.0"
-androidx-lint-gradle = "1.0.0-alpha06"
+androidx-lint-gradle = "1.0.0-beta01"
 annotation = "1.10.0"
 anvil = "0.5.3"
 circuit = "0.33.1"
 compose-jb = "1.10.3"
 jetbrains-lifecycle-navigation3 = "2.10.0"
-jetbrains-navigation3 = "1.0.0-alpha06"
+jetbrains-navigation3 = "1.1.0"
 dagger = "2.59.2"
 gjf = "1.35.0"
 jdk = "24"
@@ -40,7 +40,7 @@ kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.10.0"
 ksp = "2.3.6"
 ktfmt = "0.62"
-ktor = "3.4.2"
+ktor = "3.4.3"
 okhttp = "5.3.2"
 okio = "3.17.0"
 pluginId = "dev.zacsweers.metro.compiler"
@@ -59,7 +59,7 @@ buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.9" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
 dokka = { id = "org.jetbrains.dokka", version = "2.2.0" }
 gradleTestRetry = { id = "org.gradle.test-retry", version = "1.6.4" }
-intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.13.1" }
+intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.14.0" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
@@ -99,7 +99,7 @@ androidx-test-uiautomator = "androidx.test.uiautomator:uiautomator:2.3.0"
 androidx-benchmark-macro = "androidx.benchmark:benchmark-macro-junit4:1.4.1"
 androidx-benchmark-micro = "androidx.benchmark:benchmark-junit4:1.4.1"
 androidx-profileinstaller = "androidx.profileinstaller:profileinstaller:1.4.1"
-androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha05"
+androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha06"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
@@ -168,9 +168,9 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "gjf" }
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 
-graphSupport = "com.autonomousapps:graph-support:0.10.0"
+graphSupport = "com.autonomousapps:graph-support:0.12.0"
 
-guava = "com.google.guava:guava:33.5.0-jre"
+guava = "com.google.guava:guava:33.6.0-jre"
 
 ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }

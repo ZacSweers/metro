@@ -18,7 +18,7 @@ abstract class LoggedInScope private constructor()
 
 @SingleIn(LoggedInScope::class) @Inject class Cycle1(cycle2: Cycle2)
 
-@SingleIn(LoggedInScope::class) @Inject class Cycle2(cycle1Provider: Provider<Cycle1>)
+@SingleIn(LoggedInScope::class) @Inject class Cycle2(cycle1Provider: () -> Cycle1)
 
 @SingleIn(LoggedInScope::class)
 @ContributesBinding(LoggedInScope::class)

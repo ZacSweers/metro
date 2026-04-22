@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -130,7 +131,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
           reporter.reportOn(
             source,
             BINDING_CONTAINER_ERROR,
-            "Binding containers cannot extend other binding containers, use `includes` instead. Container '${declaration.classId.asFqNameString()}' extends '${supertypeClass.classId.asFqNameString()}'.",
+            "Binding containers cannot extend other binding containers, use `includes` instead. Container '${declaration.classId.diagnosticString}' extends '${supertypeClass.classId.diagnosticString}'.",
           )
         }
       }
@@ -237,7 +238,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
             )
           } else {
             noArgConstructor.validateVisibility(
-              "Contributed binding container ${declaration.classId.asFqNameString()}'s no-arg constructor"
+              "Contributed binding container ${declaration.classId.diagnosticString}'s no-arg constructor"
             ) {
               return
             }

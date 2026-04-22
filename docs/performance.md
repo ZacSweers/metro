@@ -101,6 +101,11 @@ On Android, the differences become more pronounced. Metro and Dagger perform sim
 
 Below are some results from real-world projects, shared with the developers' permission.
 
+!!! note "Square"
+    Square wrote a blog post about their migration to Metro: [Metro Migration at Square Android](https://engineering.block.xyz/blog/metro-migration-at-square-android)
+
+    > How Square Android migrated its monorepo from Dagger 2 and Anvil to Metro over nine months and saved thousands of hours of build time.
+
 !!! note "Cash App"
     Cash App wrote a blog post about their migration to Metro: [Cash App Moves to Metro](https://code.cash.app/cash-android-moves-to-metro)
 

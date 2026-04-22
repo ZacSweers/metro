@@ -12,18 +12,26 @@ class ExplicitKeyImpl : Base {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<ExplicitKeyImpl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): ExplicitKeyImpl {
       return ExplicitKeyImpl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ExplicitKeyImpl {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): ExplicitKeyImpl {
       return error(message = "Never called")
     }
@@ -80,18 +88,26 @@ class ImplicitKeyImpl : Base {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<ImplicitKeyImpl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): ImplicitKeyImpl {
       return ImplicitKeyImpl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ImplicitKeyImpl {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): ImplicitKeyImpl {
       return error(message = "Never called")
     }

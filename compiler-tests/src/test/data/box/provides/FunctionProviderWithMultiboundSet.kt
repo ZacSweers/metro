@@ -1,4 +1,3 @@
-// ENABLE_FUNCTION_PROVIDERS
 @DependencyGraph
 interface ExampleGraph {
   val strings: Set<String>

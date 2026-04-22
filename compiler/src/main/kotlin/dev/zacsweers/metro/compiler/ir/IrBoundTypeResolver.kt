@@ -11,8 +11,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.name.StandardClassIds
 
 internal interface DefaultBindingLookup {
@@ -35,7 +34,7 @@ internal class IrBoundTypeResolver(
   private val defaultBindingLookup: DefaultBindingLookup,
 ) {
 
-  private val implicitBoundTypeCache = mutableMapOf<ClassId, Optional<IrTypeKey>>()
+  private val implicitBoundTypeCache = mutableMapOf<IrTypeKey, Optional<IrTypeKey>>()
 
   /**
    * Resolves the bound type for [contributingClass] given its contributing [annotation].
@@ -75,8 +74,18 @@ internal class IrBoundTypeResolver(
   }
 
   private fun resolveImplicitBoundType(clazz: IrClass, ignoreQualifier: Boolean): IrTypeKey? {
+    val cacheKey =
+      IrTypeKey(
+        type = clazz.defaultType,
+        qualifier =
+          if (ignoreQualifier) {
+            null
+          } else {
+            with(metroContext) { clazz.qualifierAnnotation() }
+          },
+      )
     return implicitBoundTypeCache
-      .getOrPut(clazz.classIdOrFail) { // TODO iter once
+      .getOrPut(cacheKey) { // TODO iter once
         val supertypesExcludingAny =
           clazz.superTypes
             .mapNotNull {

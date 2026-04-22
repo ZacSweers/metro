@@ -163,4 +163,13 @@ internal sealed interface WrappedType<T : Any> {
       is Lazy -> "Lazy<${innerType.render(renderType)}>"
       is Map -> "Map<${renderType(keyType)}, ${valueType.render(renderType)}>"
     }
+
+  val innerTypesSequence: Sequence<WrappedType<T>>
+    get() =
+      when (this) {
+        is Canonical -> sequenceOf(this)
+        is Lazy -> sequenceOf<WrappedType<T>>(this) + innerType.innerTypesSequence
+        is Map -> sequenceOf<WrappedType<T>>(this) + valueType.innerTypesSequence
+        is Provider -> sequenceOf<WrappedType<T>>(this) + innerType.innerTypesSequence
+      }
 }
