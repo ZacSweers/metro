@@ -22,6 +22,7 @@ Changelog
 ### Fixes
 
 - **[FIR]** Fix not recognizing `FirDeclarationOrigin.Precompiled` origins when checking resolved default binding types. Previously we only considered `FirDeclarationOrigin.Library`, but incremental compilation uses `FirDeclarationOrigin.Precompiled` to differentiate. This would result in misreads of default binding types in some cases during IC.
+- **[FIR]** When merging `@ContributesTo` types to graph supertypes, add the original interface as well. This ensures they are visible in ObjC exports, as the metro-generated contribution interfaces are normally excluded.
 - **[IR]** Fix secondary inject constructors support when `generateContributionProviders` is enabled.
 - **[IR]** Fix implicit class key lookup for map keys on source-declared `@Binds` declarations.
 - **[IR]** Fix `implementsProviderType()` check in the compiler to only exactly match `Function0` types when `enableFunctionProviders` is enabled.
