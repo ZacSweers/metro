@@ -18,7 +18,7 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: AppGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     @MultibindingElement(bindingId = "kotlin.Int_kotlin.Int", elementId = "-1823364611")

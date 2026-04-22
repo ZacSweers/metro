@@ -376,7 +376,7 @@ interface CycleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : CycleGraph {
-    private val thisGraphInstance: CycleGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     private val cProvider: Provider<C>

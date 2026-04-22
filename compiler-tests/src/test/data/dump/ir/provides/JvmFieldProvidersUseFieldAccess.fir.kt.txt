@@ -8,7 +8,7 @@ abstract class AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: AppGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {

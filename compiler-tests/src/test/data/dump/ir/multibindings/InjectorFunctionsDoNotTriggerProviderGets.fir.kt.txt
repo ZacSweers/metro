@@ -111,7 +111,7 @@ interface TestGraph1 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph1 {
-    private val thisGraphInstance: TestGraph1
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -159,7 +159,7 @@ interface TestGraph2 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph2 {
-    private val thisGraphInstance: TestGraph2
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -216,7 +216,7 @@ interface TestGraph3 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph3 {
-    private val thisGraphInstance: TestGraph3
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -272,7 +272,7 @@ interface TestGraph4 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph4 {
-    private val thisGraphInstance: TestGraph4
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -323,7 +323,7 @@ interface TestGraph5 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph5 {
-    private val thisGraphInstance: TestGraph5
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
