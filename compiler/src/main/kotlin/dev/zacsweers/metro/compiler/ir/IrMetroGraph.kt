@@ -9,7 +9,7 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.ir.transformers.ContributionTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.ContributionIrTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.CoreTransformers
 import dev.zacsweers.metro.compiler.ir.transformers.CreateGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
@@ -33,7 +33,7 @@ internal interface IrMetroGraph {
   val metroContext: IrMetroContext
   val forkJoinPool: ForkJoinPool?
   val createGraphTransformer: CreateGraphTransformer.Factory
-  val contributionTransformer: ContributionTransformer.Factory
+  val contributionTransformer: ContributionIrTransformer.Factory
   val coreTransformersFactory: CoreTransformers.Factory
   val dependencyGraphTransformerFactory: DependencyGraphTransformer.Factory
   val graphData: MutableMetroGraphData
