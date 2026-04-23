@@ -1,5 +1,6 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 // Bootstrap: add the Metro compiler plugin JAR to the buildscript classpath from Maven Central.
 // Buildscript resolution is NOT subject to project-level composite build dependency substitution,
@@ -7,12 +8,13 @@
 // occurs when Gradle substitutes dev.zacsweers.metro:compiler with project(:compiler).
 buildscript {
   repositories { mavenCentral() }
-  val bootstrapVersion = extra.properties["METRO_BOOTSTRAP_VERSION"]?.toString()
-    ?: error("METRO_BOOTSTRAP_VERSION not set in gradle.properties")
-  dependencies { classpath("dev.zacsweers.metro:compiler:$bootstrapVersion") { isTransitive = false } }
+  val bootstrapVersion =
+    extra.properties["METRO_BOOTSTRAP_VERSION"]?.toString()
+      ?: error("METRO_BOOTSTRAP_VERSION not set in gradle.properties")
+  dependencies {
+    classpath("dev.zacsweers.metro:compiler:$bootstrapVersion") { isTransitive = false }
+  }
 }
-
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -33,9 +35,11 @@ metro {
 
 // Extract the bootstrap compiler JAR from the buildscript classpath
 val bootstrapVersion = extra.properties["METRO_BOOTSTRAP_VERSION"]?.toString()!!
-val bootstrapJar = buildscript.configurations.getByName("classpath").files.single {
-  it.name == "compiler-$bootstrapVersion.jar"
-}
+val bootstrapJar =
+  buildscript.configurations.getByName("classpath").files.single {
+    it.name == "compiler-$bootstrapVersion.jar"
+  }
+
 configurations
   .matching { it.name.startsWith("kotlinCompilerPluginClasspath") }
   .configureEach {
