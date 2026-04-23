@@ -6,10 +6,10 @@ Changelog
 
 ### Changes
 
-- Test Kotlin `2.3.21`.
-- Test IntelliJ `2026.1.1`.
-- Test Android Studio Panda 4.
-- Test Android Studio Quail canaries.
+- **[compiler]** Test Kotlin `2.3.21`.
+- **[ide]** Test IntelliJ `2026.1.1`.
+- **[ide]** Test Android Studio Panda 4.
+- **[ide]** Test Android Studio Quail canaries.
 
 1.0.0-RC3
 ---------
