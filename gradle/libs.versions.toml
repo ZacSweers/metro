@@ -33,6 +33,8 @@ kct = "0.12.1"
 kotlin = "2.3.20"
 kotlinPublished = "2.2.20"
 kotlinInject = "0.9.0"
+koin = "4.2.1"
+koin-compiler = "1.0.0-RC2"
 metro = "1.0.0-RC3"
 kotlinInject-anvil = "0.1.7"
 kotlinx-benchmark = "0.4.16"
@@ -61,6 +63,7 @@ dokka = { id = "org.jetbrains.dokka", version = "2.2.0" }
 gradleTestRetry = { id = "org.gradle.test-retry", version = "1.6.4" }
 intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.14.0" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
+koin-compiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koin-compiler" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -139,6 +142,10 @@ jetbrains-lifecycle-viewmodel = "org.jetbrains.androidx.lifecycle:lifecycle-view
 jetbrains-lifecycle-viewmodel-compose = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0"
 jetbrains-lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "jetbrains-lifecycle-navigation3" }
 jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "jetbrains-navigation3" }
+
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
+koin-annotations = { module = "io.insert-koin:koin-annotations", version.ref = "koin" }
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 
 kotlinInject-anvil-compiler = { module = "software.amazon.lastmile.kotlin.inject.anvil:compiler", version.ref = "kotlinInject-anvil" }
 kotlinInject-anvil-runtime = { module = "software.amazon.lastmile.kotlin.inject.anvil:runtime", version.ref = "kotlinInject-anvil" }
