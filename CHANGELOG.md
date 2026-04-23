@@ -7,6 +7,9 @@ Changelog
 ### Changes
 
 - Test Kotlin `2.3.21`.
+- Test IntelliJ `2026.1.1`.
+- Test Android Studio Panda 4.
+- Test Android Studio Quail canaries.
 
 1.0.0-RC3
 ---------
