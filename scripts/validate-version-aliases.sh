@@ -40,7 +40,7 @@ echo ""
 echo "📦 Checking all modules are declared in $ALIASES_FILE..."
 missing_in_file=""
 for version in $module_versions; do
-    if ! echo "$declared_versions" | grep -Fxq "$version"; then
+    if ! grep -Fxq "$version" <<< "$declared_versions"; then
         missing_in_file="$missing_in_file$version"$'\n'
         echo "  ❌ Module version $version is not declared in $ALIASES_FILE"
     else
@@ -63,7 +63,7 @@ echo ""
 echo "📋 Checking declared versions coverage..."
 missing_modules=""
 for version in $declared_versions; do
-    if ! echo "$module_versions" | grep -Fxq "$version"; then
+    if ! grep -Fxq "$version" <<< "$module_versions"; then
         missing_modules="$missing_modules$version"$'\n'
         echo "  ℹ️  Declared version $version has no corresponding module (will use nearest available)"
     else
