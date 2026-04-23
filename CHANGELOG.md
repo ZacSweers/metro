@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Changes
+
+- Test Kotlin `2.3.21`.
+
 1.0.0-RC3
 ---------
 
