@@ -3,7 +3,7 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: AppGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     private val provideStringProvider: Provider<String>
@@ -15,8 +15,8 @@ interface AppGraph {
 
     }
 
-    override val providerString: Provider<String>
-      override get(): Provider<String> {
+    override val providerString: Function0<String>
+      override get(): Function0<String> {
         return <this>.#provideStringProvider
       }
 
@@ -40,6 +40,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -57,26 +59,35 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: AppGraph): Int {
         return instance.provideInt()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
@@ -95,26 +106,35 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph, int: Provider<Int>): Factory<String> {
         return ProvideStringMetroFactory(instance = instance, int = int)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideString(instance: AppGraph, int: Int): String {
         return instance.provideString(int = int)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): String {
       return Companion.provideString(instance = <this>.#instance, int = <this>.#int.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(int: Int): String {
       return error(message = "Never called")
     }
@@ -131,7 +151,7 @@ interface AppGraph {
     return int.toString()
   }
 
-  abstract val providerString: Provider<String>
+  abstract val providerString: Function0<String>
     abstract get
 
   abstract val scalarString: String

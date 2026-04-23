@@ -11,19 +11,27 @@ class AppService1 {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AppService1> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AppService1 {
       return AppService1()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): AppService1 {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): AppService1 {
       return error(message = "Never called")
     }
@@ -49,19 +57,27 @@ class AppService2 {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AppService2> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AppService2 {
       return AppService2()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): AppService2 {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): AppService2 {
       return error(message = "Never called")
     }
@@ -87,19 +103,27 @@ class AppService3 {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AppService3> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AppService3 {
       return AppService3()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): AppService3 {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): AppService3 {
       return error(message = "Never called")
     }
@@ -140,27 +164,36 @@ class ChildService1 {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(app1: Provider<AppService1>): Factory<ChildService1> {
         return MetroFactory(app1 = app1)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(app1: AppService1): ChildService1 {
         return ChildService1(app1 = app1)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(app1: Provider<AppService1>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ChildService1 {
       return Companion.newInstance(app1 = <this>.#app1.invoke())
     }
 
     @SingleIn(scope = ChildScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(app1: AppService1): ChildService1 {
       return error(message = "Never called")
     }
@@ -192,27 +225,36 @@ class ChildService2 {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(child1: Provider<ChildService1>): Factory<ChildService2> {
         return MetroFactory(child1 = child1)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(child1: ChildService1): ChildService2 {
         return ChildService2(child1 = child1)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(child1: Provider<ChildService1>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ChildService2 {
       return Companion.newInstance(child1 = <this>.#child1.invoke())
     }
 
     @SingleIn(scope = ChildScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(child1: ChildService1): ChildService2 {
       return error(message = "Never called")
     }
@@ -244,27 +286,36 @@ class ChildService3 {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(child2: Provider<ChildService2>): Factory<ChildService3> {
         return MetroFactory(child2 = child2)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(child2: ChildService2): ChildService3 {
         return ChildService3(child2 = child2)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(child2: Provider<ChildService2>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ChildService3 {
       return Companion.newInstance(child2 = <this>.#child2.invoke())
     }
 
     @SingleIn(scope = ChildScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(child2: ChildService2): ChildService3 {
       return error(message = "Never called")
     }
@@ -310,27 +361,36 @@ class GrandchildService1 {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(app2: Provider<AppService2>, child3: Provider<ChildService3>): Factory<GrandchildService1> {
         return MetroFactory(app2 = app2, child3 = child3)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(app2: AppService2, child3: ChildService3): GrandchildService1 {
         return GrandchildService1(app2 = app2, child3 = child3)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(app2: Provider<AppService2>, child3: Provider<ChildService3>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): GrandchildService1 {
       return Companion.newInstance(app2 = <this>.#app2.invoke(), child3 = <this>.#child3.invoke())
     }
 
     @SingleIn(scope = GrandchildScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(app2: AppService2, child3: ChildService3): GrandchildService1 {
       return error(message = "Never called")
     }
@@ -362,27 +422,36 @@ class GrandchildService2 {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(gc1: Provider<GrandchildService1>): Factory<GrandchildService2> {
         return MetroFactory(gc1 = gc1)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(gc1: GrandchildService1): GrandchildService2 {
         return GrandchildService2(gc1 = gc1)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(gc1: Provider<GrandchildService1>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): GrandchildService2 {
       return Companion.newInstance(gc1 = <this>.#gc1.invoke())
     }
 
     @SingleIn(scope = GrandchildScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(gc1: GrandchildService1): GrandchildService2 {
       return error(message = "Never called")
     }
@@ -402,7 +471,7 @@ interface AppGraph : MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: AppGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     internal val shard1: Shard1
@@ -612,6 +681,8 @@ interface AppGraph : MetroContributionToAppScope {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }

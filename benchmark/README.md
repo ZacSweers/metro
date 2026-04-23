@@ -32,9 +32,10 @@ The script supports multiple modes and configurable module counts:
 - **Metro-NOOP mode** (`--mode metro_noop`): Metro compiler plugin applied but no Metro annotations (measures plugin overhead)
 - **Dagger mode** (`--mode dagger`): Uses Dagger with Anvil for dependency injection
 - **Kotlin-inject + Anvil mode** (`--mode kotlin-inject-anvil`): Uses Metro with kotlin-inject + anvil interop
+- **Koin mode** (`--mode koin`): Uses Koin with koin-annotations and the Koin compiler plugin. See [Koin caveats](#koin-mode-caveats) below.
 - **Module count** (`--count <number>`): Total number of modules to generate (default: 500)
 - **Processor** (`--processor ksp|kapt`): Annotation processor for Dagger mode (default: ksp)
-- **Provider multibindings** (`--provider-multibindings`): Wrap multibinding accessors in `Provider<Set<E>>` instead of `Set<E>` to benchmark `SetFactory`/`MapFactory` optimizations
+- **Provider multibindings** (`--provider-multibindings`): Wrap multibinding accessors in the legacy `Provider<Set<E>>` form instead of `Set<E>` to benchmark `SetFactory`/`MapFactory` behavior against the explicit `Provider<T>` type. Metro's preferred provider form is now `() -> T`, so this flag is only relevant for benchmarking the legacy form.
 
 ## Usage
 
@@ -63,7 +64,10 @@ kotlin generate-projects.main.kts --mode dagger --processor kapt
 # Generate kotlin-inject + anvil mode project (uses Amazon kotlin-inject-anvil)
 kotlin generate-projects.main.kts --mode kotlin-inject-anvil
 
-# Generate with Provider-wrapped multibindings (for SetFactory/MapFactory benchmarking)
+# Generate Koin mode project (koin-annotations + koin compiler plugin)
+kotlin generate-projects.main.kts --mode koin
+
+# Generate with legacy Provider-wrapped multibindings (for SetFactory/MapFactory benchmarking)
 kotlin generate-projects.main.kts --mode metro --provider-multibindings
 
 # Build the entire benchmark
@@ -78,7 +82,7 @@ kotlin generate-projects.main.kts --mode metro --provider-multibindings
 Use the `run_benchmarks.sh` script for comprehensive performance testing:
 
 ```bash
-# Run all benchmark modes on current branch (metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil)
+# Run all benchmark modes on current branch (metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin)
 ./run_benchmarks.sh all
 
 # Run all modes including baseline benchmarks (vanilla + metro-noop)
@@ -88,6 +92,7 @@ Use the `run_benchmarks.sh` script for comprehensive performance testing:
 ./run_benchmarks.sh metro 500
 ./run_benchmarks.sh dagger-ksp 250
 ./run_benchmarks.sh kotlin-inject-anvil 500
+./run_benchmarks.sh koin 500
 
 # Include clean build scenarios (opt-in)
 ./run_benchmarks.sh all --include-clean-builds
@@ -512,3 +517,55 @@ gh workflow run benchmarks.yml \
 ```
 
 Or trigger from the Actions tab in GitHub with the desired options.
+
+## Koin mode caveats
+
+Koin is structurally different from Metro/Dagger/kotlin-inject: it is a **runtime service
+locator** with a `KClass`-keyed registry, not a compile-time graph resolver. The benchmark
+exercises Koin via `koin-annotations` 4.2.1 + the Koin K2 compiler plugin 1.0.0-RC2. The
+compiler plugin runs some validation during compilation, but this benchmark makes **no claims
+about the scope or correctness of that validation** — we measure observed compile-time and
+runtime cost, not correctness guarantees. Read any "compile-safe" marketing accordingly.
+
+Because Koin's annotation model diverges from the other frameworks, the generator translates
+each construct as follows:
+
+| Construct                         | Metro / Dagger / kotlin-inject-anvil                                                                     | Koin emission                                                                                                                                                                                                                                                                                                  |
+|-----------------------------------|----------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Scope-kept binding                | `@SingleIn(AppScope::class)` + `@ContributesBinding`                                                     | `@Singleton(binds = [Iface::class])` on the impl                                                                                                                                                                                                                                                               |
+| Multibinding (`Set<Plugin>`)      | `@ContributesIntoSet` / `@ContributesMultibinding`                                                       | `@Singleton(binds = [Plugin::class])`, consumer calls `koin.getAll<Plugin>().toSet()`                                                                                                                                                                                                                          |
+| Cross-Gradle-module aggregation   | Anvil / kotlin-inject-anvil merging                                                                      | One `@Module @ComponentScan("<per-module-pkg>") class <Name>KoinModule` per Gradle module, enumerated in `@KoinApplication(modules = [...])` on the root (see below for why)                                                                                                                                   |
+| Subcomponent hierarchy (L1/L2/L3) | `@GraphExtension` / `@ContributesSubcomponent` — nested containers                                       | **Flat** Koin scopes: per-level `class <Level>Scope` marker + `@Scope(<Marker>::class) @Scoped` impls + `class <Level>Subcomponent(koin, scopeId) : KoinScopeComponent` wrapper exposing services via `by scope.inject()`. Scopes are **not nested** — this is a real property of Koin, not a benchmark fudge. |
+| Graph creation entry point        | `createGraph<AppComponent>()` / `AppComponent::class.create()` / `DaggerAppComponent.factory().create()` | `koinApplication<AppKoinApp> { }` from `org.koin.plugin.module.dsl` (detached `KoinApplication`, no global state)                                                                                                                                                                                              |
+
+### Why per-module `@Module` classes instead of a single root `@ComponentScan`
+
+A single `@KoinApplication @ComponentScan("dev.zacsweers.metro.benchmark") class AppKoinApp`
+causes the Koin compiler plugin to emit one giant registration lambda for every annotated
+class in the transitive classpath. This overflows the JVM 64KB method size limit at roughly
+100+ modules (error: `Method too large: …module$lambda$0`). The generator sidesteps this by
+emitting one `@Module @ComponentScan("<narrow-pkg>") class <Name>KoinModule` per Gradle
+module — each gets its own small generated lambda — and enumerating the whole set in the
+root's `@KoinApplication(modules = [...])`. This is a nontrivial footgun in the Koin 1.0.0-RC2
+plugin that users should be aware of.
+
+### Multiplatform
+
+Koin mode supports `--multiplatform` with the same targets Metro uses.
+
+### Comparability notes
+
+- **Multibinding shape**: `List<T>.toSet()` wrapping at the accessor boundary has a tiny
+  per-call allocation cost that the other frameworks do not pay. This is inherent to Koin's
+  lack of multibinding support.
+- **Subcomponent cost**: Koin's flat-scope model is cheaper than Metro/Dagger's nested
+  container construction. Runtime numbers for subcomponent-heavy scenarios will look
+  favorable for Koin — that is a real property of Koin, not a measurement artifact.
+- **Binary metrics**: JVM class/JAR/APK metrics collection works identically to the other
+  modes via `run_startup_benchmarks.sh --binary-metrics-only`. Expect Koin's runtime JAR to
+  be noticeably larger than Metro's generated graph because it ships the `koin-core` and
+  `koin-annotations` runtimes rather than generating direct constructor calls.
+- **Compile-time plugin cost**: Koin's compiler plugin is a K2 IR plugin with no annotation
+  processing step (no KSP, no KAPT); the benchmark runs the `raw_compilation` scenario
+  variant (same as Metro/Vanilla), not the KSP or Java-generating variants used for
+  kotlin-inject-anvil and Dagger.

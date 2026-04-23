@@ -45,7 +45,6 @@ import org.jetbrains.kotlin.fir.declarations.declaredFunctions
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
-import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.getTargetType
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.origin
@@ -145,6 +144,7 @@ import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.ClassIdBasedLocality
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.ConstantValueKind
@@ -885,14 +885,20 @@ internal fun FirClassLikeDeclaration.markImpl(session: FirSession) {
   )
 }
 
+context(compatContext: CompatContext)
 internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession) {
-  replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
-  replaceDeprecationsProvider(this.getDeprecationsProvider(session))
+  with(compatContext) {
+    replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
+    getDeprecationsProviderCompat(session)?.let(::replaceDeprecationsProvider)
+  }
 }
 
+context(compatContext: CompatContext)
 internal fun FirCallableDeclaration.markAsDeprecatedHidden(session: FirSession) {
-  replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
-  replaceDeprecationsProvider(this.getDeprecationsProvider(session))
+  with(compatContext) {
+    replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
+    getDeprecationsProviderCompat(session)?.let(::replaceDeprecationsProvider)
+  }
 }
 
 internal fun ConeTypeProjection.wrapInProviderIfNecessary(
@@ -1363,6 +1369,22 @@ internal fun buildSimpleAnnotation(symbol: () -> FirClassSymbol<*>): FirAnnotati
   }
 }
 
+internal fun buildHiddenFromObjCAnnotation(session: FirSession): FirAnnotation? {
+  return session.metroFirBuiltIns.hiddenFromObjCClassSymbol?.let { buildSimpleAnnotation { it } }
+}
+
+/**
+ * Builds `@JvmStatic` and `@JsStatic` annotations when [MetroOptions.generateStaticAnnotations] is
+ * enabled and the annotations are present on the current classpath. Empty list otherwise.
+ */
+internal fun buildStaticAnnotations(session: FirSession): List<FirAnnotation> {
+  if (!session.metroFirBuiltIns.options.generateStaticAnnotations) return emptyList()
+  return buildList {
+    session.metroFirBuiltIns.jvmStaticClassSymbol?.let { add(buildSimpleAnnotation { it }) }
+    session.metroFirBuiltIns.jsStaticClassSymbol?.let { add(buildSimpleAnnotation { it }) }
+  }
+}
+
 internal fun FirClass.isOrImplements(supertype: ClassId, session: FirSession): Boolean {
   if (classId == supertype) return true
   return implements(supertype, session)
@@ -1426,18 +1448,24 @@ internal fun StringBuilder.renderType(
     renderType(short, abbreviatedType, includeAbbreviation = false)
     append(" (typealias to ")
   }
-  val renderer =
-    object :
-      ConeTypeRendererForReadability(
-        this,
-        null,
-        { if (short) ConeIdShortRenderer() else ConeIdRendererForDiagnostics() },
-      ) {
-      override fun ConeKotlinType.renderAttributes() {
-        // Do nothing, we don't want annotations
+  if (type.classId == Symbols.ClassIds.function0) {
+    // the native renderer changes this format in later versions, so short-hand it for consistency
+    append("() -> ")
+    renderType(short, type.typeArguments[0].type!!, includeAbbreviation)
+  } else {
+    val renderer =
+      object :
+        ConeTypeRendererForReadability(
+          this,
+          null,
+          { if (short) ConeIdShortRenderer() else ConeIdRendererForDiagnostics() },
+        ) {
+        override fun ConeKotlinType.renderAttributes() {
+          // Do nothing, we don't want annotations
+        }
       }
-    }
-  renderer.render(type)
+    renderer.render(type)
+  }
   if (abbreviatedType != null) {
     append(')')
   }
@@ -1661,22 +1689,23 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
   alreadyCheckedAnnotation: Boolean = false,
 ): String? {
   return if (classId.isPlatformType()) {
-    "Platform type '${classId.asFqNameString()}' is not a binding container."
+    "Platform type '${classId.diagnosticString(session)}' is not a binding container."
   } else if (this is FirAnonymousObjectSymbol) {
     "Anonymous objects cannot be binding containers."
   } else if (with(compatContext) { isLocalCompat }) {
     "Local class '${classId.shortClassName}' cannot be a binding container."
   } else if (isInner) {
-    "Inner class '${classId.shortClassName}' cannot be a binding container."
+    "Inner class '${classId.diagnosticString(session)}' cannot be a binding container."
   } else if (
     !alreadyCheckedAnnotation && this is FirClassSymbol<*> && !isBindingContainer(session)
   ) {
-    "'${classId.asFqNameString()}' is not a binding container."
+    "'${classId.diagnosticString(session)}' is not a binding container."
   } else {
     null
   }
 }
 
+@OptIn(ClassIdBasedLocality::class) // For compat
 internal inline val FirClassSymbol<*>.isLocalClassOrAnonymousObject: Boolean
   get() = classId.isLocal || this is FirAnonymousObjectSymbol
 
@@ -1730,13 +1759,15 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingTypeRef(session: FirSession)
 internal fun FirClassSymbol<*>.resolveDefaultBindingTypeKey(session: FirSession): FirRefTypeKey? {
   val annotation =
     getAnnotationByClassId(session.classIds.defaultBindingAnnotation, session) ?: return null
-  if (origin is FirDeclarationOrigin.Library) {
-    // If it's external we need to read the mirror
+  // Source annotations are `FirAnnotationCall` and carry the `@DefaultBinding<T>` type argument.
+  // Deserialized annotations (from `Library`, `Precompiled`, and other non-source origins during
+  // incremental compilation) are plain `FirAnnotation`s without type arguments. For those we have
+  // to read the type from the generated `DefaultBindingMirror` nested class.
+  if (annotation !is FirAnnotationCall) {
     return resolveExternalDefaultBindingTypeKey(session)
   }
 
   // Try to read from @DefaultBinding annotation directly (same-module)
-  if (annotation !is FirAnnotationCall) return null
   val typeArg = annotation.typeArguments.firstOrNull() ?: return null
   val typeRef =
     when (typeArg) {
@@ -1790,5 +1821,37 @@ internal fun buildClassReference(session: FirSession, classId: ClassId): FirGetC
         arrayOf(classType),
         isMarkedNullable = false,
       )
+  }
+}
+
+/**
+ * Indirection for printing a diagnostic string for a given [ClassId]. In the IDE it's not super
+ * helpful to show long, verbose messages since they see it in context anyway.
+ */
+context(context: CheckerContext)
+internal val ClassId.diagnosticString: String
+  get() {
+    return diagnosticString(context.session)
+  }
+
+/**
+ * Indirection for printing a diagnostic string for a given [ClassId]. In the IDE it's not super
+ * helpful to show long, verbose messages since they see it in context anyway.
+ */
+internal fun ClassId.diagnosticString(session: FirSession): String {
+  return if (session.isIde()) {
+    relativeClassName.asString()
+  } else {
+    asFqNameString()
+  }
+}
+
+internal fun ClassId?.isIntrinsicType(session: FirSession): Boolean {
+  contract { returns(true) implies (this@isIntrinsicType != null) }
+  val classIds = session.metroFirBuiltIns.classIds
+  return when (this) {
+    in classIds.providerTypes,
+    in classIds.lazyTypes -> true
+    else -> false
   }
 }

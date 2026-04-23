@@ -27,16 +27,17 @@ package dev.zacsweers.metro
  * Constructor injection should be the default injection mechanism where possible, as it affords the
  * most flexibility and allows Metro to manage the lifecycle of the created class.
  *
- * ### [Provider] and [Lazy]
+ * ### Provider functions and [Lazy]
  *
- * Injected dependency parameter types may be wrapped in [Provider] or [Lazy] and Metro will enforce
- * these contracts in its generated code.
+ * Injected dependency parameter types may be wrapped in a function (`() -> T`) or [Lazy] and Metro
+ * will enforce these contracts in its generated code. [Provider] is also supported as an equivalent
+ * alternative to `() -> T`, but is considered legacy use and a warning by default.
  *
  * ```
  * @Inject
  * class HttpClient(
- *   // A Cache instance will be lazily provided each time Provider.invoke() is called
- *   providedCache: Provider<Cache>,
+ *   // A Cache instance will be lazily provided each time the function is invoked
+ *   providedCache: () -> Cache,
  *   // A lazily-computed Cache instance will be created whenever Lazy.value is called
  *   lazyCache: Lazy<Cache>,
  * )
@@ -93,7 +94,7 @@ package dev.zacsweers.metro
  *
  * **Notes**
  * - Only _classes_ may have member injections. Interfaces, objects, enums, and annotations may not.
- * - The same behaviors apply regarding use of [Provider], [Lazy], and [qualifiers][Qualifier].
+ * - The same behaviors apply regarding use of functions, [Lazy], and [qualifiers][Qualifier].
  * - Injected members may (and likely should!) also be `private`.
  *
  * In non-final classes, subclasses with member injections will automatically also perform member

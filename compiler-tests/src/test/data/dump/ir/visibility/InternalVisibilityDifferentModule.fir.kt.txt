@@ -11,18 +11,26 @@ class InternalClass {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<InternalClass> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): InternalClass {
       return InternalClass()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): InternalClass {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): InternalClass {
       return error(message = "Never called")
     }
@@ -48,18 +56,26 @@ object IntProvider {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Int> {
       return ProvideIntMetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun provideInt(): Int {
       return IntProvider.provideInt()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return ProvideIntMetroFactory.provideInt()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
@@ -113,6 +129,8 @@ abstract class AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }

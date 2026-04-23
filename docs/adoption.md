@@ -57,9 +57,12 @@ If adopting Metro into an existing codebase, you can use a few different strateg
     - Remove the Dagger and anvil runtimes.
     - Replace all Dagger/anvil annotations with Metro equivalents.
     - Update references to generated `Dagger*Component` calls to use metro's `createGraph`/`createGraphFactory` APIs.
-    - Migrate from javax/jakarta `Provider` and `dagger.Lazy` APIs to Metro's `Provider` and the stdlib's `Lazy` APIs.
+    - Migrate from javax/jakarta `Provider` and `dagger.Lazy` APIs to the function-syntax `() -> T` provider form (or Metro's `Provider<T>`) and the stdlib's `Lazy` APIs. See [Migrating `Provider<T>` to function syntax](#migrating-providert-to-function-syntax) below.
 
 === "From kotlin-inject"
+
+    !!! warning "Keep `enableFunctionProviders` enabled"
+        kotlin-inject's idiomatic way to request a provider is `() -> T`, so any non-trivial kotlin-inject codebase has these all over the graph. Metro's `enableFunctionProviders` option (on by default) is what makes Metro resolve `() -> T` as a provider of `T`, which is exactly the semantics kotlin-inject users expect. Disabling it will break almost every migrated class, so leave it at its default during and after the migration.
 
     ### Precursor steps
 
@@ -91,7 +94,7 @@ If adopting Metro into an existing codebase, you can use a few different strateg
     You will still possibly need to do some manual migrations, namely providers.
 
     - Any map multibindings need to migrate to use [map keys](bindings.md#multibindings).
-    - Any higher order function injection will need to switch to using Metro's `Provider` API.
+    - Any higher order function injection is directly compatible with Metro's function-syntax providers (`() -> T`), which are enabled by default. See [Migrating `Provider<T>` to function syntax](#migrating-providert-to-function-syntax) below for details.
     - Any higher order _assisted_ function injection will need to switch to using `@AssistedFactory`-annotated factories.
     - If you use `@MergeComponent` + `@Component`, it'll be easier if you just migrate those interfaces to `@DependencyGraph` since they're combined in there now.
     - If you use `@Component` parameters for graph extensions, you'll have to switch to [Graph extensions](dependency-graphs.md#graph-extensions). This will primarily entail annotating the parameter with `@Nested` and marking the parent graph as extendable.
@@ -100,9 +103,87 @@ If adopting Metro into an existing codebase, you can use a few different strateg
     ### Option 3: Full migration
 
     - Any map multibindings need to migrate to use [map keys](bindings.md#multibindings).
-    - Any higher order function injection will need to switch to using Metro's `Provider` API.
+    - Any higher order function injection is directly compatible with Metro's function-syntax providers (`() -> T`), which are enabled by default.
     - Any higher order _assisted_ function injection will need to switch to using `@AssistedFactory`-annotated factories.
     - Remove the kotlin-inject and kotlin-inject-anvil runtimes.
     - Replace all kotlin-inject/kotlin-inject-anvil annotations with Metro equivalents.
     - If you use `@Component` parameters for graph extensions, you'll have to switch to [Graph extensions](dependency-graphs.md#graph-extensions). This will primarily entail annotating the parameter with `@Nested` and marking the parent graph as extendable.
     - Update calls to generated `SomeComponent::class.create(...)` functions to use metro's `createGraph`/`createGraphFactory` APIs.
+
+## Migrating `Provider<T>` to function syntax
+
+Metro supports two equivalent provider forms:
+
+- **Function syntax** (preferred, default): `() -> T`
+- **Desugared**: `Provider<T>`
+
+The function-syntax form is enabled by default (`enableFunctionProviders = true`) and is the recommended way to declare provider dependencies going forward. The desugared `Provider<T>` form still works and remains useful for some interop scenarios, but Metro will surface a compiler diagnostic when it encounters it so you can incrementally migrate.
+
+### Controlling the diagnostic severity
+
+Use the `desugaredProviderSeverity` compiler option to control how Metro reports `Provider<T>` usages:
+
+```kotlin
+metro {
+  // `WARN` by default. Set to `NONE` while migrating a large codebase, or
+  // `ERROR` to enforce function syntax for new code.
+  desugaredProviderSeverity.set(DiagnosticSeverity.NONE)
+}
+```
+
+Values:
+
+- `NONE` — no diagnostic (also forced when `enableFunctionProviders` is disabled).
+- `WARN` *(default)* — emit a compiler warning.
+- `ERROR` — fail the compilation.
+
+If a specific declaration intentionally uses `Provider<T>` (e.g., to interop with an external API), suppress the warning locally:
+
+```kotlin
+@Suppress("DESUGARED_PROVIDER_WARNING")
+val metroProvider: Provider<Foo>
+```
+
+### Automated migration
+
+For large codebases, a helper script is available at [`scripts/migrate-metro-provider.sh`](https://github.com/ZacSweers/metro/blob/main/scripts/migrate-metro-provider.sh) that mechanically rewrites `Provider<T>` → `() -> T` across all `.kt` files in a directory:
+
+```bash
+scripts/migrate-metro-provider.sh path/to/your/code
+```
+
+What it does:
+
+- Only touches files that import `dev.zacsweers.metro.Provider` (explicit or via a `dev.zacsweers.metro.*` wildcard).
+- Skips files that also import a non-Metro `Provider` (`javax.inject`, `jakarta.inject`, `com.google.inject`, `dagger.internal`) to avoid ambiguity.
+- Handles nested generics (`Provider<Lazy<Foo>>`, `Map<K, Provider<V>>`, etc.) via a recursive regex that loops until stable.
+- Preserves `Provider<*>` (since `() -> *` is not valid Kotlin) and `Provider { ... }` factory calls.
+- Drops the now-unused `dev.zacsweers.metro.Provider` import when no `Provider` identifier remains.
+
+Review the diff afterwards — the script is deliberately conservative about what it rewrites, but manual spot-checking is always recommended.
+
+### If you previously used function types as binding keys
+
+With `enableFunctionProviders` enabled (the default), any `() -> T` (i.e., `Function0<T>`) on the graph is interpreted as a provider of `T`. If your existing code uses a bare function type as the binding *itself* — e.g., a navigation callback or a side-effecting action injected as `() -> Unit` — Metro will now resolve it as "provide me a `Unit`" instead of "provide me this particular function".
+
+The fix is to give that function a concrete type so its binding key is distinct from the generic function shape. A `fun interface` extending the original function type is the lightest-weight option and keeps SAM conversion at call sites:
+
+```kotlin
+// Before: ambiguous under function-syntax providers
+@Inject class AppShell(val onBackPressed: () -> Unit)
+
+@Provides fun provideOnBackPressed(): () -> Unit = { /* ... */ }
+```
+
+```kotlin
+// After: the binding is keyed by OnBackPressed, not by the function shape
+fun interface OnBackPressed : () -> Unit
+
+@Inject class AppShell(val onBackPressed: OnBackPressed)
+
+@Provides fun provideOnBackPressed(): OnBackPressed = OnBackPressed { /* ... */ }
+```
+
+Qualifiers (`@Named`, custom `@Qualifier`s) do *not* disambiguate here — the provider semantics apply to `() -> T` regardless of qualifier — so a named type is required.
+
+If you prefer to keep raw function types as bindings (and give up the function-syntax provider form for the whole project), set `enableFunctionProviders = false` in the Gradle `metro { }` block. That's the escape hatch, but be aware it's a project-wide decision and the `desugaredProviderSeverity` diagnostic will be forced to `NONE` since there is no alternative form to migrate to.

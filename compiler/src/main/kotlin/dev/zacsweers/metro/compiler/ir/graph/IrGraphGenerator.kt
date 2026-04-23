@@ -662,7 +662,13 @@ internal class IrGraphGenerator(
     if (node.typeKey !in sealResult.reachableKeys) return
 
     val thisGraphProperty =
-      addSimpleInstanceProperty(propertyNameAllocator.newName("thisGraphInstance"), node.typeKey) {
+      addSimpleInstanceProperty(
+        propertyNameAllocator.newName("thisGraphInstance"),
+        node.typeKey,
+        // Use the concrete Impl type (thisReceiverParameter.type) for the backing field rather than
+        // the graph's interface type for Wasm: https://github.com/ZacSweers/metro/issues/2181
+        fieldType = thisReceiverParameter.type,
+      ) {
         irGet(thisReceiverParameter)
       }
 
@@ -1407,13 +1413,14 @@ internal class IrGraphGenerator(
   private fun IrClass.addSimpleInstanceProperty(
     name: String,
     typeKey: IrTypeKey,
+    fieldType: IrType = typeKey.type,
     initializerExpression: IrBuilderWithScope.() -> IrExpression,
   ): IrProperty =
     addProperty {
         this.name = name.decapitalizeUS().asName()
         this.visibility = DescriptorVisibilities.PRIVATE
       }
-      .apply { this.addBackingFieldCompat { this.type = typeKey.type } }
+      .apply { this.addBackingFieldCompat { this.type = fieldType } }
       .initFinal { initializerExpression() }
 
   private fun GraphNode.Local.implementOverrides(

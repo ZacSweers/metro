@@ -21,7 +21,6 @@ android {
 
 @OptIn(ExperimentalMetroGradleApi::class, DelicateMetroGradleApi::class, RequiresIdeSupport::class)
 metro {
-  enableFunctionProviders.set(true)
   // Until it's possible to disable JS IC
   // https://youtrack.jetbrains.com/issue/KT-82989
   enableTopLevelFunctionInjection.set(false)

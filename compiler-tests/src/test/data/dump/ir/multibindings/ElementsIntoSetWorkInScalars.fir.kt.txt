@@ -3,7 +3,7 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: AppGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -38,6 +38,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -55,27 +57,36 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Set<Int>> {
         return ProvideIntsMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInts(instance: AppGraph): Set<Int> {
         return instance.provideInts()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Set<Int> {
       return Companion.provideInts(instance = <this>.#instance)
     }
 
     @ElementsIntoSet
+    @HiddenFromObjC
     fun mirrorFunction(): Set<Int> {
       return error(message = "Never called")
     }

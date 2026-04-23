@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode.COMPILATION_ERROR
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import org.junit.Test
 
@@ -427,6 +428,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
+      options = metroOptions.copy(desugaredProviderSeverity = MetroOptions.DiagnosticSeverity.NONE),
     ) {
       assertDiagnostics(
         """

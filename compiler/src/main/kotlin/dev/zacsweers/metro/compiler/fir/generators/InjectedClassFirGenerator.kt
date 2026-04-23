@@ -9,9 +9,10 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
-import dev.zacsweers.metro.compiler.fir.allSessions
+import dev.zacsweers.metro.compiler.fir.buildHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
+import dev.zacsweers.metro.compiler.fir.buildStaticAnnotations
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
@@ -21,6 +22,7 @@ import dev.zacsweers.metro.compiler.fir.hasMetroDefault
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isIde
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -41,7 +43,6 @@ import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
-import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.hasAnnotationWithClassId
 import org.jetbrains.kotlin.fir.declarations.origin
@@ -171,7 +172,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           buildList {
             add(buildInjectAnnotation())
             add(buildInjectedFunctionClassAnnotation(function.callableId))
-            buildHiddenFromObjCAnnotation()?.let(::add)
+            buildHiddenFromObjCAnnotation(session)?.let(::add)
             annotations.qualifier?.fir?.let(::add)
             if (annotations.isComposable) {
               add(buildStableAnnotation())
@@ -258,9 +259,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       parentHasMemberInjections?.let {
         return it
       }
-      val resolver =
-        MetroFirTypeResolver.Factory(session, session.allSessions).create(classSymbol)
-          ?: return false
+      val resolver = MetroFirTypeResolver.Factory(session).create(classSymbol) ?: return false
 
       return classSymbol.fir.superTypeRefs
         .any {
@@ -268,12 +267,16 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             if (it is FirResolvedTypeRef) {
               it.coneType
             } else {
-              try {
+              if (session.isIde()) {
+                try {
+                  resolver.resolveType(it)
+                } catch (_: Exception) {
+                  // Generic type resolution may fail during IDE indexing because
+                  // this isn't a deep resolve
+                  return@any false
+                }
+              } else {
                 resolver.resolveType(it)
-              } catch (_: Exception) {
-                // Generic type resolution may fail during IDE indexing because
-                // this isn't a deep resolve
-                return@any false
               }
             }
           val clazz = resolved.toRegularClassSymbol(session) ?: return@any false
@@ -725,7 +728,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             }
             @OptIn(SymbolInternals::class)
             contextParams +=
-              buildValueParameterCopy(original.fir) {
+              buildValueParameterCopyCompat(original.fir) {
                   name = original.name
                   origin = Keys.RegularParameter.origin
                   symbol = FirValueParameterSymbol()
@@ -832,6 +835,10 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                 valueParameters[0].apply {
                   replaceAnnotationsSafe(annotations + buildAssistedAnnotation())
                 }
+                val staticAnnotations = buildStaticAnnotations(session)
+                if (staticAnnotations.isNotEmpty()) {
+                  replaceAnnotationsSafe(annotations + staticAnnotations)
+                }
               }
               .symbol as FirNamedFunctionSymbol
           }
@@ -882,10 +889,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
 
   private fun buildStableAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.metroFirBuiltIns.stableClassSymbol }
-  }
-
-  private fun buildHiddenFromObjCAnnotation(): FirAnnotation? {
-    return session.metroFirBuiltIns.hiddenFromObjCClassSymbol?.let { buildSimpleAnnotation { it } }
   }
 
   private fun buildNonRestartableAnnotation(): FirAnnotation {

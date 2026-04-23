@@ -11,11 +11,11 @@ import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
-import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.buildClassReference
+import dev.zacsweers.metro.compiler.fir.buildHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSimpleValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -142,8 +142,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       holderInfo.bindingContributions().size > 1
   }
 
-  private val allSessions = session.allSessions
-  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
+  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session) }
 
   // Maps holder ClassId -> info. Only populated for generateContributionProviders mode.
   // This uses a simple map because the holder ClassId is deterministic (no scope resolution
@@ -241,7 +240,10 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     return createTopLevelClass(classId, Keys.ContributionProviderHolderDeclaration) {
         modality = Modality.ABSTRACT
       }
-      .apply { markAsDeprecatedHidden(session) }
+      .apply {
+        buildHiddenFromObjCAnnotation(session)?.let { replaceAnnotationsSafe(listOf(it)) }
+        markAsDeprecatedHidden(session)
+      }
       .symbol
   }
 

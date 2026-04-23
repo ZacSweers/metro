@@ -94,11 +94,10 @@ internal open class MutableBindingGraph<
    * Finalizes the binding graph by performing validation and cache initialization.
    *
    * This function operates in a two-step process:
-   * 1. Validates the binding graph by performing a [topologicalSort]. Cycles that involve
-   *    deferrable types, such as `Lazy` or `Provider`, are allowed and deferred for special
-   *    handling at code-generation-time and store any deferred types in
-   *    [GraphTopology.deferredTypes]. Any strictly invalid cycles or missing bindings result in an
-   *    error being thrown.
+   * 1. Validates the binding graph by performing a [metroSort]. Cycles that involve deferrable
+   *    types, such as `Lazy` or `Provider`, are allowed and deferred for special handling at
+   *    code-generation-time and store any deferred types in [GraphTopology.deferredTypes]. Any
+   *    strictly invalid cycles or missing bindings result in an error being thrown.
    * 2. The returned topologically sorted list is then processed to compute [bindingIndices] and
    *    [GraphTopology.deferredTypes]. Any dependency whose index is later than the current index is
    *    presumed a valid cycle indicator and thus that type must be deferred.
@@ -151,23 +150,22 @@ internal open class MutableBindingGraph<
     val fullAdjacency =
       trace("Build adjacency list") {
         buildFullAdjacency(
-          bindings = bindings,
-          dependenciesOf = { binding -> binding.dependencies.map { it.typeKey } },
-          onMissing = { source, missing ->
-            val binding = bindings.getValue(source)
-            val contextKey = binding.dependencies.first { it.typeKey == missing }
-            if (!contextKey.hasDefault) {
-              val stackCopy = stack.copy()
-              val stackEntry = stackCopy.newBindingStackEntry(contextKey, binding, roots)
+          map = bindings,
+          sourceToTarget = { key -> bindings.getValue(key).dependencies.map { it.typeKey } },
+        ) { source, missing ->
+          val binding = bindings.getValue(source)
+          val contextKey = binding.dependencies.first { it.typeKey == missing }
+          if (!contextKey.hasDefault) {
+            val stackCopy = stack.copy()
+            val stackEntry = stackCopy.newBindingStackEntry(contextKey, binding, roots)
 
-              // If there's a root entry for the missing binding, add it into the stack too
-              val matchingRootEntry =
-                roots.entries.firstOrNull { it.key.typeKey == binding.typeKey }?.value
-              matchingRootEntry?.let { stackCopy.push(it) }
-              stackCopy.withEntry(stackEntry) { reportMissingBinding(missing, stackCopy) }
-            }
-          },
-        )
+            // If there's a root entry for the missing binding, add it into the stack too
+            val matchingRootEntry =
+              roots.entries.firstOrNull { it.key.typeKey == binding.typeKey }?.value
+            matchingRootEntry?.let { stackCopy.push(it) }
+            stackCopy.withEntry(stackEntry) { reportMissingBinding(missing, stackCopy) }
+          }
+        }
       }
 
     // Report all missing bindings _after_ building adjacency so we can backtrace where possible
@@ -277,7 +275,7 @@ internal open class MutableBindingGraph<
     // Run topo sort. It gives back either a valid order or calls onCycle for errors
     val result =
       trace("Topo sort") {
-        topologicalSort(
+        metroSort(
           fullAdjacency = fullAdjacency,
           roots = sortedRootKeys,
           isDeferrable = { from, to ->

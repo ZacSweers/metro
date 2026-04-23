@@ -1,7 +1,7 @@
 @AssistedInject
 class Foo(
   @Assisted nested: Boolean,
-  factoryProvider: Provider<Factory>,
+  factoryProvider: () -> Factory,
   factory: Factory,
 ) {
   val nestedFooViaProvider = if (nested) factoryProvider().create() else null

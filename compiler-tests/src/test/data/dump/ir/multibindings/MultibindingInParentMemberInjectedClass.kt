@@ -49,7 +49,7 @@ class BFragment : Fragment() {
 
 @Inject
 class ViewModelFactory constructor(
-  private val viewModels: Map<KClass<*>, Provider<ViewModel>>,
+  private val viewModels: Map<KClass<*>, () -> ViewModel>,
 )
 
 @Inject

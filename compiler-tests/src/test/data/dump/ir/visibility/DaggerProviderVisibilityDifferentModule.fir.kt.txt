@@ -15,26 +15,35 @@ class InternalModule {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: InternalModule): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: InternalModule): Int {
         return instance.provideInt()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: InternalModule) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
@@ -90,6 +99,8 @@ interface ExampleGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): ExampleGraph {
       return Impl()
     }

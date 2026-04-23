@@ -198,7 +198,7 @@
 
 @Inject class Class100(class101: Class101)
 
-@Inject class Class101(class1Provider: Provider<Class1>)
+@Inject class Class101(class1Provider: () -> Class1)
 
 @DependencyGraph
 interface LongCycleGraph {

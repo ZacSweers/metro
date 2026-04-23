@@ -3,7 +3,7 @@
 @DependencyGraph(AppScope::class)
 interface AppGraph {
   val nullableString: String?
-  val nullableProvider: Provider<String?>
+  val nullableProvider: () -> String?
 
   @SingleIn(AppScope::class) @Provides fun provideNullableString(): String? = "Hello"
 }
@@ -11,7 +11,7 @@ interface AppGraph {
 @DependencyGraph(AppScope::class)
 interface NullGraph {
   val nullableString: String?
-  val nullableProvider: Provider<String?>
+  val nullableProvider: () -> String?
 
   @SingleIn(AppScope::class) @Provides fun provideNullableString(): String? = null
 }

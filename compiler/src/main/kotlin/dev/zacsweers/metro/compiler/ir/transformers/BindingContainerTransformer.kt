@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.ProviderFactory.Companion.lookupRealDeclaration
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
+import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -315,6 +316,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
           isOperator = true
         }
 
+    addHiddenFromObjCAnnotation(invokeFunction)
     metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(invokeFunction)
 
     val sourceParameters =
@@ -338,16 +340,16 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
           },
       )
 
-    // Possibly de-duped source params used by the constructor and create() function
+    // De-duped source params used by the constructor and create() function
     val dedupedSourceParameters =
-      if (options.deduplicateInjectedParams) {
-        sourceParameters.copy(
-          regularParameters = sourceParameters.regularParameters.dedupeParameters()
-        )
-      } else {
-        sourceParameters
-      }
+      sourceParameters.copy(
+        regularParameters = sourceParameters.regularParameters.dedupeParameters()
+      )
 
+    // Use parameter name as the primary field key to correctly handle multiple parameters
+    // with the same type key (e.g., two String params with different defaults).
+    // The typeKey map is kept as a fallback for dedup cases.
+    val nameToField = mutableMapOf<Name, IrField>()
     val typeKeyToField = mutableMapOf<IrTypeKey, IrField>()
     val ctor: IrConstructor
     if (factoryCls.isObject) {
@@ -378,8 +380,11 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
           stubDefaults = false,
           typeRemapper = { type -> typeRemapper.remapType(type) },
         ) { typeKey, irParam ->
-          typeKeyToField[typeKey] = irParam.addBackingFieldTo(factoryCls)
+          val field = irParam.addBackingFieldTo(factoryCls)
+          nameToField[irParam.name] = field
+          typeKeyToField[typeKey] = field
         }
+        addHiddenFromObjCAnnotation(this)
         body = generateDefaultConstructorBody()
       }
     }
@@ -401,6 +406,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
                 parameters = sourceParameters,
                 receiver = invokeFunction.dispatchReceiverParameter!!,
                 fields = typeKeyToField,
+                nameToField = nameToField,
               ),
           )
         )

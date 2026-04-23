@@ -13,6 +13,7 @@ plugins {
   alias(libs.plugins.jmh) apply false
   alias(libs.plugins.kotlinx.benchmark) apply false
   alias(libs.plugins.benchmark) apply false
+  alias(libs.plugins.koin.compiler) apply false
   alias(libs.plugins.metro) apply false
   alias(libs.plugins.anvil) apply false
   alias(libs.plugins.mavenPublish) apply false // wat
@@ -20,5 +21,3 @@ plugins {
 }
 
 subprojects { apply(plugin = "metro.base") }
-
-tasks.maybeCreate("clean")

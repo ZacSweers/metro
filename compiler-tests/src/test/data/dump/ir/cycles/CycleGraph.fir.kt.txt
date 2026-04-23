@@ -19,26 +19,35 @@ class A {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(b: Provider<B>, e: Provider<E>): Factory<A> {
         return MetroFactory(b = b, e = e)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(b: B, e: E): A {
         return A(b = b, e = e)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(b: Provider<B>, e: Provider<E>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): A {
       return Companion.newInstance(b = <this>.#b.invoke(), e = <this>.#e.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(b: B, e: E): A {
       return error(message = "Never called")
     }
@@ -69,26 +78,35 @@ class B {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(c: Provider<C>): Factory<B> {
         return MetroFactory(c = c)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(c: C): B {
         return B(c = c)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(c: Provider<C>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): B {
       return Companion.newInstance(c = <this>.#c.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(c: C): B {
       return error(message = "Never called")
     }
@@ -106,7 +124,7 @@ class B {
 @Suppress(names = ["MEMBERS_INJECT_WARNING"])
 @Inject
 class C {
-  val aProvider: Provider<A>
+  val aProvider: Function0<A>
     field = aProvider
     get
 
@@ -114,7 +132,7 @@ class C {
     get
     set
 
-  lateinit var aLazyProvider: Provider<Lazy<A>>
+  lateinit var aLazyProvider: Function0<Lazy<A>>
     get
     set
 
@@ -128,22 +146,30 @@ class C {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(aProvider: Provider<A>): Factory<C> {
         return MetroFactory(aProvider = aProvider)
       }
 
-      fun newInstance(aProvider: Provider<A>): C {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(aProvider: Function0<A>): C {
         return C(aProvider = aProvider)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(aProvider: Provider<A>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): C {
       val tmp_0: C = Companion.newInstance(aProvider = <this>.#aProvider)
       Companion.injectALazy(instance = tmp_0, aLazy = Companion.lazy<Provider<A>, A>(provider = <this>.#aProvider))
@@ -151,7 +177,8 @@ class C {
       return tmp_0
     }
 
-    fun mirrorFunction(aProvider: Provider<A>): C {
+    @HiddenFromObjC
+    fun mirrorFunction(aProvider: Function0<A>): C {
       return error(message = "Never called")
     }
 
@@ -168,15 +195,22 @@ class C {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(aLazy: Provider<A>, aLazyProvider: Provider<A>): MembersInjector<C> {
         return MetroMembersInjector(aLazy = aLazy, aLazyProvider = aLazyProvider)
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectALazy(@Assisted instance: C, aLazy: Lazy<A>) {
         return instance.#aLazy = aLazy
       }
 
-      fun injectALazyProvider(@Assisted instance: C, aLazyProvider: Provider<Lazy<A>>) {
+      @JvmStatic
+      @JsStatic
+      fun injectALazyProvider(@Assisted instance: C, aLazyProvider: Function0<Lazy<A>>) {
         return instance.#aLazyProvider = aLazyProvider
       }
 
@@ -195,7 +229,7 @@ class C {
 
   }
 
-  constructor(aProvider: Provider<A>) /* primary */ {
+  constructor(aProvider: Function0<A>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -219,26 +253,35 @@ class D {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(b: Provider<B>): Factory<D> {
         return MetroFactory(b = b)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(b: B): D {
         return D(b = b)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(b: Provider<B>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): D {
       return Companion.newInstance(b = <this>.#b.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(b: B): D {
       return error(message = "Never called")
     }
@@ -269,26 +312,35 @@ class E {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(d: Provider<D>): Factory<E> {
         return MetroFactory(d = d)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(d: D): E {
         return E(d = d)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(d: Provider<D>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): E {
       return Companion.newInstance(d = <this>.#d.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(d: D): E {
       return error(message = "Never called")
     }
@@ -324,7 +376,7 @@ interface CycleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : CycleGraph {
-    private val thisGraphInstance: CycleGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     private val cProvider: Provider<C>
@@ -425,6 +477,8 @@ interface CycleGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): CycleGraph {
       return Impl()
     }
@@ -432,7 +486,7 @@ interface CycleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideObjectWithCycle", propertyName = "", startOffset = 497, endOffset = 594, newInstanceName = "provideObjectWithCycle")
+  @CallableMetadata(callableName = "provideObjectWithCycle", propertyName = "", startOffset = 489, endOffset = 582, newInstanceName = "provideObjectWithCycle")
   class ProvideObjectWithCycleMetroFactory : Factory<Any> {
     private /* final field */ val instance: CycleGraph = instance
     private /* final field */ val obj: Provider<Any> = obj
@@ -443,27 +497,36 @@ interface CycleGraph {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: CycleGraph, obj: Provider<Any>): Factory<Any> {
         return ProvideObjectWithCycleMetroFactory(instance = instance, obj = obj)
       }
 
-      fun provideObjectWithCycle(instance: CycleGraph, obj: Provider<Any>): Any {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideObjectWithCycle(instance: CycleGraph, obj: Function0<Any>): Any {
         return instance.provideObjectWithCycle(obj = obj)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: CycleGraph, obj: Provider<Any>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Any {
       return Companion.provideObjectWithCycle(instance = <this>.#instance, obj = <this>.#obj)
     }
 
-    fun mirrorFunction(obj: Provider<Any>): Any {
+    @HiddenFromObjC
+    fun mirrorFunction(obj: Function0<Any>): Any {
       return error(message = "Never called")
     }
 
@@ -476,7 +539,7 @@ interface CycleGraph {
   abstract fun childCycleGraph(): Factory
 
   @Provides
-  private final fun provideObjectWithCycle(obj: Provider<Any>): Any {
+  private final fun provideObjectWithCycle(obj: Function0<Any>): Any {
     return "object"
   }
 

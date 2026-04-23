@@ -3,6 +3,9 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.ERROR
+import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.NONE
+import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.WARN
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -110,6 +113,10 @@ internal fun validateInjectionSiteType(
     checkProviderOfLazy(session, contextKey, typeRef, source)
   }
 
+  if (contextKey.wrappedType !is WrappedType.Canonical) {
+    checkDesugaredProviderUse(session, contextKey, typeRef, source)
+  }
+
   // Check if we're directly injecting a qualifier type
   if (qualifier == null) {
     val clazz = type.classLikeLookupTagIfAny?.toClassSymbolCompat(session) ?: return false
@@ -119,7 +126,7 @@ internal fun validateInjectionSiteType(
       reporter.reportOn(
         typeRef.source ?: source,
         MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING,
-        "Suspicious injection of an unqualified object type '${clazz.classId.asFqNameString()}'. This is probably unnecessary or unintentional.",
+        "Suspicious injection of an unqualified object type '${clazz.classId.diagnosticString}'. This is probably unnecessary or unintentional.",
       )
     } else {
       val isAssistedInject =
@@ -138,16 +145,16 @@ internal fun validateInjectionSiteType(
               ?.symbol
 
         val message = buildString {
-          val fqName = clazz.classId.asFqNameString()
+          val fqName = clazz.classId.diagnosticString
           append(
-            "[Metro/InvalidBinding] '$fqName' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead."
+            "'$fqName' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead."
           )
           if (nestedFactory != null) {
             appendLine()
             appendLine()
             appendLine("(Hint)")
             appendLine(
-              "It looks like the @AssistedFactory for '$fqName' may be '${nestedFactory.classId.asFqNameString()}'."
+              "It looks like the @AssistedFactory for '$fqName' may be '${nestedFactory.classId.diagnosticString}'."
             )
           }
         }
@@ -157,7 +164,7 @@ internal fun validateInjectionSiteType(
           message,
         )
       } else if (clazz.usesContributionProviderPath(session)) {
-        val fqName = clazz.classId.asFqNameString()
+        val fqName = clazz.classId.diagnosticString
         reporter.reportOn(
           typeRef.source ?: source,
           MetroDiagnostics.NON_EXPOSED_IMPL_TYPE,
@@ -241,7 +248,7 @@ private fun checkLazyAssistedFactory(
       typeRef.source ?: source,
       MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY,
       canonicalClass.name.asString(),
-      canonicalClass.classId.asFqNameString(),
+      canonicalClass.classId.diagnosticString,
     )
   }
 }
@@ -270,4 +277,32 @@ private fun checkProviderOfLazy(
       lazyType.lazyType.asString(),
     )
   }
+}
+
+context(context: CheckerContext, reporter: DiagnosticReporter)
+private fun checkDesugaredProviderUse(
+  session: FirSession,
+  contextKey: FirContextualTypeKey,
+  typeRef: FirTypeRef,
+  source: KtSourceElement?,
+) {
+  val options = session.metroFirBuiltIns.options
+  val severity = options.desugaredProviderSeverity.resolve(session.isIde())
+  if (severity == NONE) return
+  val hasDesugaredProvider =
+    contextKey.wrappedType.innerTypesSequence.any {
+      it is WrappedType.Provider && it.providerType == Symbols.ClassIds.metroProvider
+    }
+  if (!hasDesugaredProvider) return
+  val factory =
+    when (severity) {
+      ERROR -> MetroDiagnostics.DESUGARED_PROVIDER_ERROR
+      WARN -> MetroDiagnostics.DESUGARED_PROVIDER_WARNING
+      else -> return
+    }
+  reporter.reportOn(
+    typeRef.source ?: source,
+    factory,
+    "Using the desugared `Provider<T>` type is discouraged. Prefer the function syntax form `() -> T` instead.",
+  )
 }

@@ -15,13 +15,13 @@
 [versions]
 agp = "8.13.2"
 androidx-lifecycle = "2.10.0"
-androidx-lint-gradle = "1.0.0-alpha06"
+androidx-lint-gradle = "1.0.0-beta01"
 annotation = "1.10.0"
 anvil = "0.5.3"
 circuit = "0.33.1"
 compose-jb = "1.10.3"
 jetbrains-lifecycle-navigation3 = "2.10.0"
-jetbrains-navigation3 = "1.0.0-alpha06"
+jetbrains-navigation3 = "1.1.0"
 dagger = "2.59.2"
 gjf = "1.35.0"
 jdk = "24"
@@ -33,14 +33,16 @@ kct = "0.12.1"
 kotlin = "2.3.21-RC2"
 kotlinPublished = "2.2.20"
 kotlinInject = "0.9.0"
-metro = "0.13.2"
+koin = "4.2.1"
+koin-compiler = "1.0.0-RC2"
+metro = "1.0.0-RC3"
 kotlinInject-anvil = "0.1.7"
 kotlinx-benchmark = "0.4.16"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.10.0"
-ksp = "2.3.6"
+ksp = "2.3.7"
 ktfmt = "0.62"
-ktor = "3.4.2"
+ktor = "3.4.3"
 okhttp = "5.3.2"
 okio = "3.17.0"
 pluginId = "dev.zacsweers.metro.compiler"
@@ -59,8 +61,9 @@ buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.9" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
 dokka = { id = "org.jetbrains.dokka", version = "2.2.0" }
 gradleTestRetry = { id = "org.gradle.test-retry", version = "1.6.4" }
-intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.13.1" }
+intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.14.0" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
+koin-compiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koin-compiler" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -74,7 +77,7 @@ mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
 shadow = { id = "com.gradleup.shadow", version = "9.4.1" }
-testkit = { id = "com.autonomousapps.testkit", version = "0.17" }
+testkit = { id = "com.autonomousapps.testkit", version = "0.18" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
@@ -99,7 +102,7 @@ androidx-test-uiautomator = "androidx.test.uiautomator:uiautomator:2.3.0"
 androidx-benchmark-macro = "androidx.benchmark:benchmark-macro-junit4:1.4.1"
 androidx-benchmark-micro = "androidx.benchmark:benchmark-junit4:1.4.1"
 androidx-profileinstaller = "androidx.profileinstaller:profileinstaller:1.4.1"
-androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha05"
+androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha06"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
@@ -140,6 +143,10 @@ jetbrains-lifecycle-viewmodel-compose = "org.jetbrains.androidx.lifecycle:lifecy
 jetbrains-lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "jetbrains-lifecycle-navigation3" }
 jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "jetbrains-navigation3" }
 
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
+koin-annotations = { module = "io.insert-koin:koin-annotations", version.ref = "koin" }
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+
 kotlinInject-anvil-compiler = { module = "software.amazon.lastmile.kotlin.inject.anvil:compiler", version.ref = "kotlinInject-anvil" }
 kotlinInject-anvil-runtime = { module = "software.amazon.lastmile.kotlin.inject.anvil:runtime", version.ref = "kotlinInject-anvil" }
 kotlinInject-anvil-runtime-optional = { module = "software.amazon.lastmile.kotlin.inject.anvil:runtime-optional", version.ref = "kotlinInject-anvil" }
@@ -168,9 +175,9 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "gjf" }
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 
-graphSupport = "com.autonomousapps:graph-support:0.9.0"
+graphSupport = "com.autonomousapps:graph-support:0.12.0"
 
-guava = "com.google.guava:guava:33.5.0-jre"
+guava = "com.google.guava:guava:33.6.0-jre"
 
 ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
@@ -199,8 +206,8 @@ ksp-symbolProcessing = { module = "com.google.devtools.ksp:symbol-processing", v
 ksp-symbolProcessing-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 ksp-symbolProcessing-commonDeps = { module = "com.google.devtools.ksp:symbol-processing-common-deps", version.ref = "ksp" }
 ksp-symbolProcessing-aaEmbeddable = { module = "com.google.devtools.ksp:symbol-processing-aa-embeddable", version.ref = "ksp" }
-testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.22"}
-testkit-truth = { module =  "com.autonomousapps:gradle-testkit-truth", version = "1.6.1"}
+testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.23"}
+testkit-truth = { module =  "com.autonomousapps:gradle-testkit-truth", version = "1.7.0"}
 truth = { module = "com.google.truth:truth", version = "1.4.5" }
 kct = { module = "dev.zacsweers.kctfork:core", version.ref = "kct" }
 kct-ksp = { module = "dev.zacsweers.kctfork:ksp", version.ref = "kct" }

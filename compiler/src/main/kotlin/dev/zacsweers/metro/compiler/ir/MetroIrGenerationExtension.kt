@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrDynamicGraphGenerator
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.ContributionHintIrTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.ContributionTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.ContributionIrTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.CoreTransformers
 import dev.zacsweers.metro.compiler.ir.transformers.CreateGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DefaultBindingMirrorTransformer
@@ -142,7 +142,7 @@ public class MetroIrGenerationExtension(
                 metroContext,
                 this,
                 data,
-                ContributionTransformer(metroContext, this, boundTypeResolver),
+                ContributionIrTransformer(metroContext, this, boundTypeResolver),
                 membersInjectorTransformer,
                 injectedClassTransformer,
                 assistedFactoryTransformer,

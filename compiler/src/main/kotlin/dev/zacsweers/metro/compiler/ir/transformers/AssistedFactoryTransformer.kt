@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
@@ -291,6 +292,7 @@ internal class AssistedFactoryTransformer(
           val factoryParamType = pluginContext.referenceClass(factoryClassId)!!.defaultType
           addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
 
+          addStaticAnnotations(this)
           // Body will be implemented in implementImplClass
         }
 
@@ -454,8 +456,6 @@ internal class AssistedFactoryTransformer(
               param.toAssistedParameterKey(
                 symbols = context.metroSymbols,
                 typeKey = substitutedTypeKey,
-                useAssistedParamNamesAsIdentifiers =
-                  context.options.useAssistedParamNamesAsIdentifiers,
               )
             },
         )

@@ -1,6 +1,7 @@
 @Inject
 class FinalThing {
-  val ints: Provider<Set<Int>>
+  @Named(name = "final")
+  val ints: Function0<Set<Int>>
     field = ints
     get
 
@@ -14,33 +15,42 @@ class FinalThing {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(@Named(name = "final") ints: Provider<Set<Int>>): Factory<FinalThing> {
         return MetroFactory(ints = ints)
       }
 
-      fun newInstance(@Named(name = "final") ints: Provider<Set<Int>>): FinalThing {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(@Named(name = "final") ints: Function0<Set<Int>>): FinalThing {
         return FinalThing(ints = ints)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(ints: Provider<Set<Int>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): FinalThing {
       return Companion.newInstance(ints = <this>.#ints)
     }
 
-    fun mirrorFunction(@Named(name = "final") ints: Provider<Set<Int>>): FinalThing {
+    @HiddenFromObjC
+    fun mirrorFunction(@Named(name = "final") ints: Function0<Set<Int>>): FinalThing {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(@Named(name = "final") ints: Provider<Set<Int>>) /* primary */ {
+  constructor(@Named(name = "final") ints: Function0<Set<Int>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -62,19 +72,19 @@ interface AppGraph {
     @Binds
     @ElementsIntoSet
     @Named(name = "second")
-    @CallableMetadata(callableName = "bindFirstAsSecond", propertyName = "", startOffset = 370, endOffset = 435)
+    @CallableMetadata(callableName = "bindFirstAsSecond", propertyName = "", startOffset = 367, endOffset = 432)
     abstract fun bindFirstAsSecond1587700901_elementsintoset(@Named(name = "first") second: Set<Int>): Set<Int>
 
     @Binds
     @IntoSet
     @Named(name = "first")
-    @CallableMetadata(callableName = "bindIntAsFirstSet", propertyName = "", startOffset = 282, endOffset = 318)
+    @CallableMetadata(callableName = "bindIntAsFirstSet", propertyName = "", startOffset = 279, endOffset = 315)
     abstract fun bindIntAsFirstSet2591421153_intoset(int: Int): Int
 
     @Binds
     @ElementsIntoSet
     @Named(name = "final")
-    @CallableMetadata(callableName = "bindSecondAsFinal", propertyName = "", startOffset = 486, endOffset = 552)
+    @CallableMetadata(callableName = "bindSecondAsFinal", propertyName = "", startOffset = 483, endOffset = 549)
     abstract fun bindSecondAsFinal2591416743_elementsintoset(@Named(name = "second") second: Set<Int>): Set<Int>
 
   }
@@ -82,7 +92,7 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: AppGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     private val provideIntProvider: Provider<Int>
@@ -144,6 +154,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -151,7 +163,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 203, endOffset = 240, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 200, endOffset = 237, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -161,26 +173,35 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: AppGraph): Int {
         return instance.provideInt()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }

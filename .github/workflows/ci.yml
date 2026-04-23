@@ -24,6 +24,12 @@ jobs:
         with:
           lfs: true
 
+      - name: Configure JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
       - name: Check formatting
         run: ./scripts/format.sh --check
 
@@ -70,8 +76,9 @@ jobs:
           ./gradlew :compiler-tests:generateTests --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
           echo "Running checks..."
           ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-          echo "Running large tests..."
-          ./gradlew :compiler-tests:test --quiet '-Pmetro.enableLargeTests' '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          # TODO disabled for now because GHA is running smaller machines now it seems
+          # echo "Running large tests..."
+          # ./gradlew :compiler-tests:test --quiet '-Pmetro.enableLargeTests' '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()

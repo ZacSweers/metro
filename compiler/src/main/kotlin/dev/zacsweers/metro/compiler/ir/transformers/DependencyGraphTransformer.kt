@@ -560,7 +560,8 @@ internal class DependencyGraphTransformer(
   }
 
   private fun IrBindingGraph.BindingGraphResult.reportUnusedInputs(graphDeclaration: IrClass) {
-    val severity = options.unusedGraphInputsSeverity
+    // IR runs in CLI-only contexts, so IDE-only severities resolve to NONE here.
+    val severity = options.unusedGraphInputsSeverity.resolve(isIde = false)
     if (!severity.isEnabled) return
 
     if (unusedKeys.isEmpty()) return
@@ -570,7 +571,7 @@ internal class DependencyGraphTransformer(
         WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
         ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
         // Already checked above, but for exhaustive when
-        NONE -> return
+        else -> return
       }
 
     val unusedGraphInputs = unusedKeys.values.filterNotNull().sortedBy { it.typeKey }

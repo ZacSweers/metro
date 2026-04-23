@@ -167,6 +167,41 @@ internal object CircuitInjectClassChecker : FirClassChecker(MppCheckerKind.Commo
       )
     }
 
+    // @CircuitInject classes must use @Inject (or be objects)
+    if (declaration.classKind != ClassKind.OBJECT) {
+      val hasInject = declaration.isAnnotatedWithAny(session, classIds.injectAnnotations)
+      @OptIn(DirectDeclarationsAccess::class)
+      val hasInjectConstructor =
+        declaration.declarations.filterIsInstance<FirConstructor>().any {
+          it.isAnnotatedWithAny(session, classIds.allInjectAnnotations)
+        }
+      if (!hasInject && !hasInjectConstructor) {
+        // Check if the constructor has circuit-provided params to give a more specific message
+        @OptIn(DirectDeclarationsAccess::class)
+        val hasCircuitParams =
+          declaration.declarations.filterIsInstance<FirConstructor>().any { ctor ->
+            ctor.valueParameters.any { param ->
+              val paramClassId = param.returnTypeRef.coneType.classId ?: return@any false
+              circuitSymbols.isNavigatorType(paramClassId) ||
+                circuitSymbols.isScreenType(paramClassId) ||
+                circuitSymbols.isModifierType(paramClassId) ||
+                circuitSymbols.isUiStateType(paramClassId)
+            }
+          }
+        val message =
+          if (hasCircuitParams) {
+            "@CircuitInject-annotated class must also be annotated with @Inject. " +
+              "Circuit-provided parameters (Screen, Navigator, etc.) should use @AssistedInject with @Assisted annotations, " +
+              "or consider using a presenter function instead."
+          } else {
+            "@CircuitInject-annotated class must also be annotated with @Inject. " +
+              "If no dependencies are needed, consider using a presenter function instead."
+          }
+        reporter.reportOn(source, CIRCUIT_INJECT_ERROR, message)
+        return
+      }
+    }
+
     @OptIn(DirectDeclarationsAccess::class)
     for (constructor in declaration.declarations.filterIsInstance<FirConstructor>()) {
       validateCircuitInjectParams(
@@ -193,12 +228,37 @@ internal object CircuitInjectCallableChecker :
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirCallableDeclaration) {
-    val source = declaration.source ?: return
+    if (declaration !is FirFunction) return
+
     val session = context.session
+
+    if (!declaration.hasAnnotation(CircuitClassIds.CircuitInject, session)) return
+
+    val source = declaration.source ?: return
     val circuitSymbols = session.circuitFirSymbols ?: return
 
-    if (declaration !is FirFunction) return
-    if (!declaration.hasAnnotation(CircuitClassIds.CircuitInject, session)) return
+    // Check if we have multiple declarations that match this
+    val circuitInjectDeclarationsByName =
+      CircuitFirExtension.findCircuitInjectFunctions(
+          CircuitFirExtension.findCircuitInjectSymbols(session)
+        )
+        .groupBy { it.name }
+
+    // TODO this seems expensive to do there. Maybe FirLanguageVersionSettingsChecker?
+    circuitInjectDeclarationsByName[declaration.symbol.name]?.let { functions ->
+      if (functions.size > 1) {
+        for (function in functions) {
+          if (function == declaration.symbol) {
+            reporter.reportOn(
+              function.source,
+              CIRCUIT_INJECT_ERROR,
+              "Multiple @CircuitInject-annotated functions named ${declaration.symbol.name} were found. " +
+                "This will create conflicts in Circuit FIR code gen, please deduplicate names.",
+            )
+          }
+        }
+      }
+    }
 
     val returnTypeRef = declaration.returnTypeRef
     val returnType = returnTypeRef.coneType

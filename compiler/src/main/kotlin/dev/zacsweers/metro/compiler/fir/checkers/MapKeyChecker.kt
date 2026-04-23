@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_TYPE_PARAM_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -124,7 +125,7 @@ internal object MapKeyChecker : FirClassChecker(MppCheckerKind.Common) {
           reporter.reportOn(
             returnTypeRef.source ?: ctor.source,
             MAP_KEY_ERROR,
-            "Map key annotations with implicitClassKey must have a single KClass parameter but found ${returnTypeRef.coneType.classId?.asFqNameString()}.",
+            "Map key annotations with implicitClassKey must have a single KClass parameter but found ${returnTypeRef.coneType.classId?.diagnosticString}.",
           )
         }
 
@@ -143,7 +144,7 @@ internal object MapKeyChecker : FirClassChecker(MppCheckerKind.Common) {
             reporter.reportOn(
               defaultValueExpression.source ?: param.source ?: ctor.source,
               MAP_KEY_ERROR,
-              "Map key annotations with implicitClassKey must have a default value of `Nothing::class` but found ${defaultClassId?.asFqNameString()}::class.",
+              "Map key annotations with implicitClassKey must have a default value of `Nothing::class` but found ${defaultClassId?.diagnosticString}::class.",
             )
           }
         }

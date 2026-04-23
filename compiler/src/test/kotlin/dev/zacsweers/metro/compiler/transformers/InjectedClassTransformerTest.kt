@@ -113,7 +113,7 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
       source(
         """
         @Inject
-        class ExampleClass(private val value: Provider<String>) : Callable<String> {
+        class ExampleClass(private val value: () -> String) : Callable<String> {
           override fun call(): String = value()
         }
 
@@ -163,7 +163,7 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
       source(
         """
         @Inject
-        class ExampleClass(private val value: Provider<Lazy<String>>) : Callable<Lazy<String>> {
+        class ExampleClass(private val value: () -> Lazy<String>) : Callable<Lazy<String>> {
           override fun call(): Lazy<String> = value()
         }
 

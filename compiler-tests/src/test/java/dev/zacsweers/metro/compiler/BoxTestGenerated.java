@@ -356,6 +356,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testScoped() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/scoped.kt");
       }
+
+      @Test
+      @TestMetadata("secondaryConstructor.kt")
+      public void testSecondaryConstructor() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/secondaryConstructor.kt");
+      }
     }
 
     @Nested
@@ -425,6 +431,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("ExcludesWithOriginInterop.kt")
       public void testExcludesWithOriginInterop() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/ExcludesWithOriginInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiedContributesBindingAndIgnoreQualifierMultibinding.kt")
+      public void testQualifiedContributesBindingAndIgnoreQualifierMultibinding() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/QualifiedContributesBindingAndIgnoreQualifierMultibinding.kt");
       }
 
       @Test
@@ -541,6 +553,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("PresenterClassNoInjectionWithCircuitParams.kt")
       public void testPresenterClassNoInjectionWithCircuitParams() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassNoInjectionWithCircuitParams.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassQualifiedInjection.kt")
+      public void testPresenterClassQualifiedInjection() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassQualifiedInjection.kt");
       }
 
       @Test
@@ -1588,6 +1606,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DefaultValuesAlignToParameters.kt")
+      public void testDefaultValuesAlignToParameters() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/optional/DefaultValuesAlignToParameters.kt");
+      }
+
+      @Test
       @TestMetadata("DefaultWorksWithoutAnnotation.kt")
       public void testDefaultWorksWithoutAnnotation() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/optional/DefaultWorksWithoutAnnotation.kt");
@@ -1847,12 +1871,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("AssistedInjectWithConstValQualifiers.kt")
       public void testAssistedInjectWithConstValQualifiers() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedInjectWithConstValQualifiers.kt");
-      }
-
-      @Test
-      @TestMetadata("AssistedParamNamesDisabled.kt")
-      public void testAssistedParamNamesDisabled() {
-        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedParamNamesDisabled.kt");
       }
 
       @Test
@@ -2403,6 +2421,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
         }
 
         @Test
+        @TestMetadata("ContributesSubcomponentFactoryContributedAndExposedByParent.kt")
+        public void testContributesSubcomponentFactoryContributedAndExposedByParent() {
+          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/ContributesSubcomponentFactoryContributedAndExposedByParent.kt");
+        }
+
+        @Test
         @TestMetadata("DaggerMergeComponentModulesAnnotationInterop.kt")
         public void testDaggerMergeComponentModulesAnnotationInterop() {
           runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/DaggerMergeComponentModulesAnnotationInterop.kt");
@@ -2493,6 +2517,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("MixedClassKClassMapKeyInterop.kt")
       public void testMixedClassKClassMapKeyInterop() {
         runTest("compiler-tests/src/test/data/box/interop/kclass/MixedClassKClassMapKeyInterop.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/kotlinInject")
+    @TestDataPath("$PROJECT_ROOT")
+    public class KotlinInject {
+      @Test
+      public void testAllFilesPresentInKotlinInject() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/kotlinInject"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("FunctionProviderWithKotlinInject.kt")
+      public void testFunctionProviderWithKotlinInject() {
+        runTest("compiler-tests/src/test/data/box/interop/kotlinInject/FunctionProviderWithKotlinInject.kt");
       }
     }
   }
@@ -2610,6 +2650,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("EmptyMapLazyTypes.kt")
     public void testEmptyMapLazyTypes() {
       runTest("compiler-tests/src/test/data/box/multibindings/EmptyMapLazyTypes.kt");
+    }
+
+    @Test
+    @TestMetadata("ImplicitClassKeyBindsMultibinding.kt")
+    public void testImplicitClassKeyBindsMultibinding() {
+      runTest("compiler-tests/src/test/data/box/multibindings/ImplicitClassKeyBindsMultibinding.kt");
     }
 
     @Test

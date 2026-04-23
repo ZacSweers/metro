@@ -1,5 +1,4 @@
 // ENABLE_DAGGER_INTEROP
-// ENABLE_FUNCTION_PROVIDERS
 package test
 
 import dagger.Lazy

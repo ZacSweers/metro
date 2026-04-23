@@ -7,7 +7,6 @@ import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtensi
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
-import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
@@ -22,10 +21,12 @@ import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -59,11 +60,13 @@ internal class ContributionHintFirGenerator(
         session.predicates.contributesAnnotationPredicate
       )
 
-    return (injectedClasses + contributedClasses).filterIsInstance<FirClassSymbol<*>>().distinct()
+    return (injectedClasses + contributedClasses)
+      .filterIsInstance<FirClassSymbol<*>>()
+      .filterNot { it.visibility == Visibilities.Private }
+      .distinct()
   }
 
-  private val allSessions by lazy { session.allSessions }
-  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session, allSessions) }
+  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session) }
 
   private val contributedClassesByScope:
     FirCache<Unit, Map<CallableId, Set<FirClassSymbol<*>>>, Unit> =

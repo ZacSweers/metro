@@ -15,7 +15,7 @@ interface ExampleGraph {
   @ClassKey(GoodbyeGreeting::class)
   fun provideGoodbye(): Greeting = GoodbyeGreeting()
 
-  val greetings: Map<Class<*>, Provider<Greeting>>
+  val greetings: Map<Class<*>, () -> Greeting>
 }
 
 fun box(): String {

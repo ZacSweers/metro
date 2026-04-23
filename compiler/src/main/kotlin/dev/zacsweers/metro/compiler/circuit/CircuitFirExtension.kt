@@ -13,7 +13,6 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.FirContextualTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
-import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.caching
@@ -37,7 +36,6 @@ import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataKey
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataRegistry
-import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -58,6 +56,7 @@ import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -99,18 +98,15 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   private val symbols by lazy { session.circuitFirSymbols }
 
   // Caches for discovered @CircuitInject-annotated elements
-  private val annotatedSymbols by lazy {
-    session.predicateBasedProvider
-      .getSymbolsByPredicate(CircuitSymbols.circuitInjectPredicate)
-      .toList()
+  private val annotatedSymbols: List<FirBasedSymbol<*>> by lazy {
+    findCircuitInjectSymbols(session)
   }
 
-  private val annotatedClasses by lazy {
+  private val annotatedClasses: Set<FirRegularClassSymbol> by lazy {
     annotatedSymbols
       .filterIsInstance<FirRegularClassSymbol>()
       // Only read actual declarations to avoid duplicate, plus that's what IR sees
-      .filterNot { it.rawStatus.isExpect }
-      .toSet()
+      .filterNotTo(mutableSetOf()) { it.rawStatus.isExpect }
   }
 
   private val annotatedFunctions by lazy {
@@ -118,7 +114,6 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       .filterIsInstance<FirNamedFunctionSymbol>()
       .filter { it.callableId.classId == null } // Only top-level functions
       .filterNot { it.rawStatus.isExpect }
-      .toList()
   }
 
   // Map from factory ClassId -> annotated function (for top-level function factories)
@@ -132,8 +127,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   // recomputation.
   private val computedTargets = mutableMapOf<ClassId, CircuitFactoryTarget?>()
 
-  private val typeResolverFactory =
-    MetroFirTypeResolver.Factory(session, session.allSessions).caching()
+  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session).caching() }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(CircuitSymbols.circuitInjectPredicate)
@@ -491,6 +485,21 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     // ClassId for ContributesIntoSet annotation
     private val contributesIntoSetClassId =
       ClassId(Symbols.FqNames.metroRuntimePackage, Name.identifier("ContributesIntoSet"))
+
+    fun findCircuitInjectSymbols(session: FirSession): List<FirBasedSymbol<*>> {
+      return session.predicateBasedProvider.getSymbolsByPredicate(
+        CircuitSymbols.circuitInjectPredicate
+      )
+    }
+
+    fun findCircuitInjectFunctions(
+      annotatedSymbols: List<FirBasedSymbol<*>>
+    ): List<FirNamedFunctionSymbol> {
+      return annotatedSymbols
+        .filterIsInstance<FirNamedFunctionSymbol>()
+        .filter { it.callableId.classId == null } // Only top-level functions
+        .filterNot { it.rawStatus.isExpect }
+    }
   }
 
   private fun findTargetForFactory(factoryClassId: ClassId): CircuitFactoryTarget? {
@@ -728,8 +737,8 @@ internal class CircuitFactoryTarget(
   }
 
   /**
-   * Resolves the constructor params and their owning symbol for the target class. Prefers the
-   * `@Inject`-annotated constructor if available, otherwise falls back to the primary constructor.
+   * Resolves the constructor params and their owning symbol for the target class. Requires an
+   * `@Inject`-annotated constructor (or class-level `@Inject`).
    */
   fun resolveConstructorParams(
     session: FirSession
@@ -737,8 +746,8 @@ internal class CircuitFactoryTarget(
     val classSymbol = classSymbol ?: return emptyList<FirValueParameterSymbol>() to null
     val injectConstructor = classSymbol.findInjectLikeConstructors(session, true).firstOrNull()
     val constructor =
-      injectConstructor?.constructor ?: classSymbol.constructors(session).firstOrNull()
-    val params = constructor?.valueParameterSymbols ?: emptyList()
+      injectConstructor?.constructor ?: return emptyList<FirValueParameterSymbol>() to null
+    val params = constructor.valueParameterSymbols
     return params to constructor
   }
 

@@ -39,7 +39,7 @@ class Base
 // Two places access SetConsumer via Provider -> SetConsumer refCount = 2
 // SetConsumer uses factory path -> Set<Int> gets markProviderAccess
 // If there are 2+ such consumers, Set<Int> would have refCount > 1
-@Inject class ConsumerA(val consumer: Provider<SetConsumer>)
-@Inject class ConsumerB(val consumer: Provider<SetConsumer>)
+@Inject class ConsumerA(val consumer: () -> SetConsumer)
+@Inject class ConsumerB(val consumer: () -> SetConsumer)
 
 @Inject class Entry(val a: ConsumerA, val b: ConsumerB)

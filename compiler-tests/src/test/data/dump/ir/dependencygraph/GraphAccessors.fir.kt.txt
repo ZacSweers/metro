@@ -1,5 +1,5 @@
 interface Accessors {
-  abstract val intProvider: Provider<Int>
+  abstract val intProvider: Function0<Int>
     abstract get
 
   abstract val string: String
@@ -50,6 +50,8 @@ interface ExampleGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     override fun create(@Includes accessors: Accessors): ExampleGraph {
       return Impl(accessors = accessors)
     }

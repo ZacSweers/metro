@@ -7,14 +7,14 @@
 #
 # ℹ️ NOTE: Deployment is done via `mike` for versioned site using GitHub Actions
 #          For manual deployment, use `./scripts/deploy_metro_docs_site.sh`
-# ℹ️ NOTE: See docs/zensical-migration.md for details on the partial Zensical migration
+# ℹ️ NOTE: Versioned deployment uses squidfunk's mike fork (https://github.com/squidfunk/mike)
+# ℹ️ NOTE: See docs/zensical-migration.md for remaining migration details
 
 site_name: Metro
 repo_name: Metro
 repo_url: https://github.com/ZacSweers/metro
 edit_uri: edit/main/docs/
-# site_url is set via env var so local `zensical serve` works at root without prefix issues
-site_url: !ENV [SITE_URL, '']
+site_url: https://zacsweers.github.io/metro/
 site_description: "A multiplatform dependency injection framework for Kotlin"
 site_author: Zac Sweers
 remote_branch: gh-pages
@@ -72,8 +72,12 @@ plugins:
   - social
   - search
   # Versioned Metro docs site for each release
-  # https://github.com/jimporter/mike
-  - mike
+  # https://github.com/squidfunk/mike (Zensical fork)
+  # Workaround for https://github.com/squidfunk/mike/issues/4
+  # `canonical_version: null` works around a zensical bug where the mike plugin
+  # defaults aren't merged when the plugin is listed without explicit config.
+  - mike:
+      canonical_version: null
   # https://github.com/sondregronas/mkdocs-callouts
   - callouts
   # Last update date in the footer of each page

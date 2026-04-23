@@ -1,19 +1,5 @@
-/*
- * Copyright (C) 2021 Square, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
+// Copyright (C) 2026 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
 import androidx.collection.IntList
@@ -23,124 +9,17 @@ import androidx.collection.MutableIntList
 import androidx.collection.MutableIntObjectMap
 import androidx.collection.MutableIntSet
 import androidx.collection.MutableObjectIntMap
-import androidx.collection.MutableScatterMap
 import androidx.collection.ObjectIntMap
 import androidx.collection.ScatterMap
 import androidx.collection.emptyIntSet
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.getAndAdd
-import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.Collections.emptySortedSet
 import java.util.PriorityQueue
 import java.util.SortedMap
 import java.util.SortedSet
-import org.jetbrains.annotations.TestOnly
-
-/**
- * Returns a new list where each element is preceded by its results in [sourceToTarget]. The first
- * element will return no values in [sourceToTarget].
- *
- * Modifications from Zipline
- * - Add [onMissing] check
- * - Add [onCycle] for customizing how cycle errors are handled
- * - Add [isDeferrable] for indicating deferrable dependencies
- * - Implementation modified to instead use a Tarjan-processed SCC DAG
- *
- * @param sourceToTarget a function that returns nodes that should precede the argument in the
- *   result.
- * @see <a href="Adapted from
- *   https://github.com/cashapp/zipline/blob/30ca7c9d782758737e9d20e8d9505930178d1992/zipline/src/hostMain/kotlin/app/cash/zipline/internal/topologicalSort.kt">Adapted
- *   from Zipline's implementation</a>
- */
-@TestOnly
-context(traceScope: TraceScope)
-internal fun <T : Comparable<T>> Iterable<T>.topologicalSort(
-  sourceToTarget: (T) -> Iterable<T>,
-  onCycle: (List<T>) -> Nothing = { cycle ->
-    val message = buildString {
-      append("No topological ordering is possible for these items:")
-
-      for (unorderedItem in cycle.reversed()) {
-        append("\n  ")
-        append(unorderedItem)
-        val unsatisfiedDeps = sourceToTarget(unorderedItem).toSet()
-        unsatisfiedDeps.joinTo(this, separator = ", ", prefix = " (", postfix = ")")
-      }
-    }
-    throw IllegalArgumentException(message)
-  },
-  isDeferrable: (from: T, to: T) -> Boolean = { _, _ -> false },
-  onMissing: (source: T, missing: T) -> Unit = { source, missing ->
-    throw IllegalArgumentException("No element for $missing found for $source")
-  },
-): List<T> {
-  // TODO this is really just here for tests
-  val fakeMap =
-    MutableScatterMap<T, Any>().apply {
-      for (key in this@topologicalSort) {
-        put(key, Any())
-      }
-    }
-  val fullAdjacency = fakeMap.buildFullAdjacency(sourceToTarget, onMissing)
-  val topology = topologicalSort(fullAdjacency, isDeferrable, onCycle)
-  return topology.sortedKeys
-}
-
-internal fun <T> List<T>.isTopologicallySorted(sourceToTarget: (T) -> Iterable<T>): Boolean {
-  val seenNodes = mutableSetOf<T>()
-  for (node in this) {
-    if (sourceToTarget(node).any { it !in seenNodes }) return false
-    seenNodes.add(node)
-  }
-  return true
-}
-
-@JvmName("buildFullAdjacencyReceiver")
-internal fun <T : Comparable<T>> ScatterMap<T, *>.buildFullAdjacency(
-  sourceToTarget: (T) -> Iterable<T>,
-  onMissing: (source: T, missing: T) -> Unit,
-): SortedMap<T, SortedSet<T>> {
-  val map = this
-
-  /**
-   * Sort our map keys and list values here for better performance later (avoiding needing to
-   * defensively sort in [computeStronglyConnectedComponents]).
-   */
-  val adjacency = sortedMapOf<T, SortedSet<T>>()
-
-  forEachKey { key ->
-    val dependencies = adjacency.getOrPut(key, ::sortedSetOf)
-
-    for (targetKey in sourceToTarget(key)) {
-      if (targetKey !in map) {
-        // may throw, or silently allow
-        onMissing(key, targetKey)
-        // If we got here, this missing target is allowable (i.e. a default value). Just ignore it
-        continue
-      }
-      dependencies += targetKey
-    }
-  }
-  return adjacency
-}
-
-/**
- * Builds the full adjacency list.
- * * Keeps all edges (strict _and_ deferrable).
- * * Prunes edges whose target isn't in [bindings], delegating the decision to [onMissing].
- */
-internal fun <TypeKey : Comparable<TypeKey>, Binding : Any> buildFullAdjacency(
-  bindings: ScatterMap<TypeKey, Binding>,
-  dependenciesOf: (Binding) -> Iterable<TypeKey>,
-  onMissing: (source: TypeKey, missing: TypeKey) -> Unit,
-): SortedMap<TypeKey, SortedSet<TypeKey>> {
-  return bindings.buildFullAdjacency(
-    sourceToTarget = { key -> dependenciesOf(bindings.getValue(key)) },
-    onMissing = onMissing,
-  )
-}
 
 /**
  * @param sortedKeys Topologically sorted list of keys.
@@ -213,7 +92,7 @@ internal data class GraphAdjacency<T>(
  * @param onSortedCycle optional callback reporting (sorted) cycles.
  */
 context(traceScope: TraceScope)
-internal fun <V : Comparable<V>> topologicalSort(
+internal fun <V : Comparable<V>> metroSort(
   fullAdjacency: SortedMap<V, SortedSet<V>>,
   isDeferrable: (from: V, to: V) -> Boolean,
   onCycle: (List<V>) -> Unit,
@@ -524,13 +403,13 @@ internal data class TarjanResult<V : Comparable<V>>(
  * NOTE: For performance and determinism, this implementation assumes [this] adjacency is already
  * sorted (both keys and each set of values).
  *
- * @param this A map representing the directed graph where the keys are vertices of type [V] and the
- *   values are sets of vertices to which each key vertex has outgoing edges.
  * @param roots An optional input of source roots to walk from. Defaults to this map's keys. This
  *   can be useful to only return accessible nodes.
  * @return A pair where the first element is a list of components (each containing an ID and its
  *   associated vertices) and the second element is a map that associates each vertex with the ID of
  *   its component.
+ * @receiver A map representing the directed graph where the keys are vertices of type [V] and the
+ *   values are sets of vertices to which each key vertex has outgoing edges.
  * @see <a
  *   href="https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm">Tarjan's
  *   algorithm</a>
@@ -724,4 +603,31 @@ private fun topologicallySortComponentDag(dag: IntObjectMap<IntSet>, componentCo
   }
   check(order.size == componentCount) { "Cycle remained after SCC collapse (should be impossible)" }
   return order
+}
+
+internal fun <T : Comparable<T>> buildFullAdjacency(
+  map: ScatterMap<T, *>,
+  sourceToTarget: (T) -> Iterable<T>,
+  onMissing: (source: T, missing: T) -> Unit,
+): SortedMap<T, SortedSet<T>> {
+  /**
+   * Sort our map keys and list values here for better performance later (avoiding needing to
+   * defensively sort in [computeStronglyConnectedComponents]).
+   */
+  val adjacency = sortedMapOf<T, SortedSet<T>>()
+
+  map.forEachKey { key ->
+    val dependencies = adjacency.getOrPut(key, ::sortedSetOf)
+
+    for (targetKey in sourceToTarget(key)) {
+      if (targetKey !in map) {
+        // may throw, or silently allow
+        onMissing(key, targetKey)
+        // If we got here, this missing target is allowable (i.e. a default value). Just ignore it
+        continue
+      }
+      dependencies += targetKey
+    }
+  }
+  return adjacency
 }
