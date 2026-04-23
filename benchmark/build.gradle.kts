@@ -20,6 +20,4 @@ plugins {
   id("metro.base") apply false
 }
 
-subprojects {
-  apply(plugin = "metro.base")
-}
+subprojects { apply(plugin = "metro.base") }
