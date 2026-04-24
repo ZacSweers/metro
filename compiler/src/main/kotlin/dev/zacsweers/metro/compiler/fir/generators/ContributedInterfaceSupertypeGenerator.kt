@@ -264,7 +264,11 @@ internal class ContributedInterfaceSupertypeGenerator(
   ): List<ConeKotlinType> {
     // For generated @DependencyGraph classes (from external FIR extensions), FIR calls this
     // method instead of computeAdditionalSupertypes. Delegate to the shared implementation.
-    return computeContributionSupertypes(klass, typeResolver)
+    return computeContributionSupertypes(
+      classLikeDeclaration = klass,
+      typeResolver = typeResolver,
+      existingSupertypeClassIds = emptySet(),
+    )
   }
 
   override fun computeAdditionalSupertypes(
@@ -272,12 +276,18 @@ internal class ContributedInterfaceSupertypeGenerator(
     resolvedSupertypes: List<FirResolvedTypeRef>,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    return computeContributionSupertypes(classLikeDeclaration, typeResolver)
+    return computeContributionSupertypes(
+      classLikeDeclaration = classLikeDeclaration,
+      typeResolver = typeResolver,
+      existingSupertypeClassIds =
+        resolvedSupertypes.mapNotNullTo(mutableSetOf()) { it.coneType.classId },
+    )
   }
 
   private fun computeContributionSupertypes(
     classLikeDeclaration: FirClassLikeDeclaration,
     typeResolver: TypeResolveService,
+    existingSupertypeClassIds: Set<ClassId>,
   ): List<ConeKotlinType> {
     val graphAnnotation = classLikeDeclaration.graphAnnotation() ?: return emptyList()
 
@@ -601,6 +611,7 @@ internal class ContributedInterfaceSupertypeGenerator(
 
         val promoteParent =
           parentSymbol.classKind.isInterface &&
+            parentClassId !in existingSupertypeClassIds &&
             !parentSymbol.isAnnotatedWithAny(
               session,
               session.classIds.graphExtensionFactoryAnnotations,
