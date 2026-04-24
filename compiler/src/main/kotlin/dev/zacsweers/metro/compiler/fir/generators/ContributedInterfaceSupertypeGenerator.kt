@@ -31,6 +31,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
+import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeMap
@@ -264,7 +265,11 @@ internal class ContributedInterfaceSupertypeGenerator(
   ): List<ConeKotlinType> {
     // For generated @DependencyGraph classes (from external FIR extensions), FIR calls this
     // method instead of computeAdditionalSupertypes. Delegate to the shared implementation.
-    return computeContributionSupertypes(klass, typeResolver)
+    return computeContributionSupertypes(
+      classLikeDeclaration = klass,
+      typeResolver = typeResolver,
+      existingSupertypeClassIds = emptySet(),
+    )
   }
 
   override fun computeAdditionalSupertypes(
@@ -272,12 +277,17 @@ internal class ContributedInterfaceSupertypeGenerator(
     resolvedSupertypes: List<FirResolvedTypeRef>,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    return computeContributionSupertypes(classLikeDeclaration, typeResolver)
+    return computeContributionSupertypes(
+      classLikeDeclaration = classLikeDeclaration,
+      typeResolver = typeResolver,
+      existingSupertypeClassIds = resolvedSupertypes.mapNotNullToSet { it.coneType.classId },
+    )
   }
 
   private fun computeContributionSupertypes(
     classLikeDeclaration: FirClassLikeDeclaration,
     typeResolver: TypeResolveService,
+    existingSupertypeClassIds: Set<ClassId>,
   ): List<ConeKotlinType> {
     val graphAnnotation = classLikeDeclaration.graphAnnotation() ?: return emptyList()
 
@@ -601,6 +611,7 @@ internal class ContributedInterfaceSupertypeGenerator(
 
         val promoteParent =
           parentSymbol.classKind.isInterface &&
+            parentClassId !in existingSupertypeClassIds &&
             !parentSymbol.isAnnotatedWithAny(
               session,
               session.classIds.graphExtensionFactoryAnnotations,

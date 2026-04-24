@@ -175,6 +175,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphCanExplicitlyExtendContributedInterface.kt")
+    public void testGraphCanExplicitlyExtendContributedInterface() {
+      runTest("compiler-tests/src/test/data/box/aggregation/GraphCanExplicitlyExtendContributedInterface.kt");
+    }
+
+    @Test
     @TestMetadata("InheritedBindingsDoNotCauseDuplicatesFromNestedContainers.kt")
     public void testInheritedBindingsDoNotCauseDuplicatesFromNestedContainers() {
       runTest("compiler-tests/src/test/data/box/aggregation/InheritedBindingsDoNotCauseDuplicatesFromNestedContainers.kt");
