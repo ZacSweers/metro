@@ -4,9 +4,19 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR]** Avoid duplicate contributed graph supertypes when merging contributions by checking against explicitly declared supertypes.
+
 ### Changes
 
 - Test Kotlin `2.3.21`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@vRallev](https://github.com/vRallev)
 
 1.0.0-RC3
 ---------
