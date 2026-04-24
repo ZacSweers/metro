@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.graph
 
 import androidx.collection.MutableObjectIntMap
 import androidx.collection.MutableScatterMap
+import androidx.collection.MutableScatterSet
 import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.allElementsAreEqual
@@ -191,9 +192,7 @@ internal open class MutableBindingGraph<
       // must be deferred. This is how we handle cycles that are broken by deferrable
       // types like Provider/Lazy/...
       // O(1) ("does A depend on B?")
-      for ((i, key) in topo.sortedKeys.withIndex()) {
-        bindingIndices.put(key, i)
-      }
+      topo.sortedKeys.forEachIndexed { i, key -> bindingIndices.put(key, i) }
     }
 
     return topo
@@ -225,30 +224,40 @@ internal open class MutableBindingGraph<
     // are computed (i.e., constructor-injected types) as they are used. We do this upfront
     // so that the graph is fully populated before we start validating it and avoid mutating
     // it while we're validating it.
-    val bindingQueue = ArrayDeque<Binding>().apply { bindings.forEachValue(::add) }
+    val bindingQueue = ArrayDeque<Binding>(bindings.size * 2).apply { bindings.forEachValue(::add) }
+
+    // Tracks type keys whose dependencies have already been walked. Bindings may appear in the
+    // queue more than once (e.g. when multiple paths resolve to the same class-based binding or
+    // shared member-injector ancestors) and this avoids re-walking their dependency lists.
+    val visited = MutableScatterSet<TypeKey>(bindings.size)
 
     trace("Populate bindings") {
       while (bindingQueue.isNotEmpty()) {
         val binding = bindingQueue.removeFirst()
-        if (binding.typeKey !in bindings && !binding.isTransient) {
-          bindings[binding.typeKey] = binding
+        val typeKey = binding.typeKey
+        if (typeKey !in bindings && !binding.isTransient) {
+          bindings[typeKey] = binding
         }
 
+        if (!visited.add(typeKey)) continue
+
         for (depKey in binding.dependencies) {
+          val typeKey = depKey.typeKey
+          // Fast path: if the dependency already has a binding we have nothing to do. Skip the
+          // stack-entry allocation + push/pop which are only needed for missing-binding reports
+          // and error paths inside computeBindings. Avoid repeat loops for valid cycles
+          if (typeKey in bindings) continue
           stack.withEntry(stack.newBindingStackEntry(depKey, binding, roots)) {
-            val typeKey = depKey.typeKey
-            if (typeKey !in bindings) {
-              // If the binding isn't present, we'll report it later
-              val bindings = computeBindings(depKey, bindings, stack)
-              if (bindings.isNotEmpty()) {
-                for (binding in bindings) {
-                  bindingQueue.addLast(binding)
-                }
-              } else if (depKey.hasDefault) {
-                // Do nothing here, it has a default value and missing is ok
-              } else {
-                missingBindings[typeKey] = stack.copy()
+            // If the binding isn't present, we'll report it later
+            val newBindings = computeBindings(depKey, bindings, stack)
+            if (newBindings.isNotEmpty()) {
+              for (newBinding in newBindings) {
+                bindingQueue.addLast(newBinding)
               }
+            } else if (depKey.hasDefault) {
+              // Do nothing here, it has a default value and missing is ok
+            } else {
+              missingBindings[typeKey] = stack.copy()
             }
           }
         }
