@@ -7,6 +7,7 @@ Changelog
 ### Fixes
 
 - **[FIR]** Avoid duplicate contributed graph supertypes when merging contributions by checking against explicitly declared supertypes.
+- **[IR]** Fix default value transformation for function types when `enableFunctionProviders` is enabled.
 
 ### Changes
 
