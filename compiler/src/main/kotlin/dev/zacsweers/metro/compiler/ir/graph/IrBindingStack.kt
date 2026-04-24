@@ -342,7 +342,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
   override val entries: List<Entry> = stack
 
   init {
-    logger.log("New stack: ${logger.type}")
+    logger.log { "New stack: ${logger.type}" }
   }
 
   override fun copy(): IrBindingStack {
@@ -355,19 +355,21 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
   }
 
   override fun push(entry: Entry) {
-    val logPrefix =
-      if (stack.isEmpty()) {
-        "\uD83C\uDF32"
-      } else {
-        "└─"
-      }
-    val contextHint =
-      if (entry.typeKey != entry.displayTypeKey) {
-        "(${entry.typeKey.renderForDiagnostic(short = true)}) "
-      } else {
-        ""
-      }
-    logger.log("$logPrefix $contextHint${entry.toString().withoutLineBreaks}")
+    logger.log {
+      val logPrefix =
+        if (stack.size == 1) {
+          "\uD83C\uDF32"
+        } else {
+          "└─"
+        }
+      val contextHint =
+        if (entry.typeKey != entry.displayTypeKey) {
+          "(${entry.typeKey.renderForDiagnostic(short = true)}) "
+        } else {
+          ""
+        }
+      "$logPrefix $contextHint${entry.toString().withoutLineBreaks}"
+    }
     stack.addFirst(entry)
     entrySet.add(entry.typeKey)
     logger.indent()
