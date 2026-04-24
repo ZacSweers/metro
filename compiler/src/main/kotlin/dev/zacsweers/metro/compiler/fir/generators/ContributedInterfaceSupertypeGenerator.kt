@@ -31,6 +31,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
+import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeMap
@@ -279,8 +280,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     return computeContributionSupertypes(
       classLikeDeclaration = classLikeDeclaration,
       typeResolver = typeResolver,
-      existingSupertypeClassIds =
-        resolvedSupertypes.mapNotNullTo(mutableSetOf()) { it.coneType.classId },
+      existingSupertypeClassIds = resolvedSupertypes.mapNotNullToSet { it.coneType.classId },
     )
   }
 
