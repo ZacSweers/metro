@@ -132,6 +132,8 @@ coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", ve
 dagger-runtime = { module = "com.google.dagger:dagger", version.ref = "dagger" }
 dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger" }
 
+foundry-betterProps = "com.slack.foundry:better-gradle-properties:0.35.1"
+
 guice = "com.google.inject:guice:7.0.0"
 guice-assistedInject = "com.google.inject.extensions:guice-assistedinject:7.0.0"
 
