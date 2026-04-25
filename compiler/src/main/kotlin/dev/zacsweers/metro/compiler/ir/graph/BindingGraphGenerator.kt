@@ -62,39 +62,50 @@ internal class BindingGraphGenerator(
     get() = this in node.dynamicTypeKeys[typeKey].orEmpty()
 
   fun generate(): IrBindingGraph {
-    val bindingLookup =
-      BindingLookup(
-        metroContext = metroContext,
-        sourceGraph = node.sourceGraph,
-        findClassFactory = { clazz ->
-          metroDeclarations.findClassFactory(
-            clazz,
-            previouslyFoundConstructor = null,
-            doNotErrorOnMissing = true,
+    val bindingLookup: BindingLookup
+    val graph: IrBindingGraph
+    val bindingStack: IrBindingStack
+    trace("Construct lookup & graph") {
+      bindingLookup =
+        trace("Construct BindingLookup") {
+          BindingLookup(
+            metroContext = metroContext,
+            sourceGraph = node.sourceGraph,
+            findClassFactory = { clazz ->
+              metroDeclarations.findClassFactory(
+                clazz,
+                previouslyFoundConstructor = null,
+                doNotErrorOnMissing = true,
+              )
+            },
+            findMemberInjectors = metroDeclarations::findAllInjectorsFor,
+            parentContext = parentContext,
+            bindingLookupCache = bindingLookupCache,
           )
-        },
-        findMemberInjectors = metroDeclarations::findAllInjectorsFor,
-        parentContext = parentContext,
-        bindingLookupCache = bindingLookupCache,
-      )
+        }
 
-    val graph =
-      IrBindingGraph(
-        this,
-        node,
-        newBindingStack = {
-          IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
-        },
-        bindingLookup = bindingLookup,
-        contributionData = contributionData,
-        boundTypeResolver = boundTypeResolver,
-      )
+      graph =
+        trace("Construct IrBindingGraph") {
+          IrBindingGraph(
+            this@BindingGraphGenerator,
+            node,
+            newBindingStack = {
+              IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
+            },
+            bindingLookup = bindingLookup,
+            contributionData = contributionData,
+            boundTypeResolver = boundTypeResolver,
+          )
+        }
 
-    val bindingStack =
-      IrBindingStack(
-        node.sourceGraph,
-        metroContext.loggerFor(MetroLogger.Type.BindingGraphConstruction),
-      )
+      bindingStack =
+        trace("Construct IrBindingStack") {
+          IrBindingStack(
+            node.sourceGraph,
+            metroContext.loggerFor(MetroLogger.Type.BindingGraphConstruction),
+          )
+        }
+    }
 
     fun putBinding(typeKey: IrTypeKey, isLocallyDeclared: Boolean, binding: IrBinding) {
       bindingLookup.putBinding(binding, isLocallyDeclared = isLocallyDeclared)
@@ -104,15 +115,17 @@ internal class BindingGraphGenerator(
       }
     }
 
-    // Add instance parameters
-    val graphInstanceBinding =
-      IrBinding.BoundInstance(
-        typeKey = node.typeKey,
-        nameHint = "${node.sourceGraph.name}Provider",
-        reportableDeclaration = node.sourceGraph,
-        token = null, // indicates self-binding, code gen uses thisReceiver
-      )
-    putBinding(graphInstanceBinding.typeKey, isLocallyDeclared = false, graphInstanceBinding)
+    trace("Seed graph instance binding") {
+      // Add instance parameters
+      val graphInstanceBinding =
+        IrBinding.BoundInstance(
+          typeKey = node.typeKey,
+          nameHint = "${node.sourceGraph.name}Provider",
+          reportableDeclaration = node.sourceGraph,
+          token = null, // indicates self-binding, code gen uses thisReceiver
+        )
+      putBinding(graphInstanceBinding.typeKey, isLocallyDeclared = false, graphInstanceBinding)
+    }
 
     // Mapping of supertypes to aliased bindings
     // We populate this for the current graph type first and then
