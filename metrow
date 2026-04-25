@@ -222,6 +222,21 @@ case "$1" in
        ./compiler-compat/generate-compat-module.sh "$2"
        ;;
 
+   "trace")
+       # Delegate to the script so the logic lives in one place.
+       # Script takes: <project-dir> <gradle-task> [version]
+       if [[ $# -lt 3 ]]; then
+           echo "Usage: metrow trace <project-dir> <gradle-task> [version]"
+           echo ""
+           echo "Examples:"
+           echo "  metrow trace ~/dev/android/personal/CatchUp :app-scaffold:compileDebugKotlin"
+           echo "  metrow trace ~/dev/MyApp :app:compileKotlinJvm 1.0.0-LOCAL500"
+           exit 1
+       fi
+       shift
+       exec ./scripts/trace-project.sh "$@"
+       ;;
+
    "update-gradle")
        if [[ $# -lt 2 ]]; then
            echo "Usage: metrow update-gradle <gradle-version>"
@@ -249,7 +264,7 @@ case "$1" in
        ;;
 
    *)
-       echo "Usage: metrow (publish|check|test|clean|format|regen|gen-compat|update-gradle)"
+       echo "Usage: metrow (publish|check|test|clean|format|regen|gen-compat|trace|update-gradle)"
        echo ""
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
@@ -262,6 +277,12 @@ case "$1" in
        echo "test options:"
        echo "  --all                Test against all available compiler versions"
        echo "  --version <version>  Test against specific compiler version"
+       echo ""
+       echo "trace options:"
+       echo "  <project-dir> <gradle-task> [version]  Publish metro locally, pin it in"
+       echo "                                         the target project, force-rerun the"
+       echo "                                         compile, and copy the produced"
+       echo "                                         perfetto trace into .claude/traces/."
        echo ""
        echo "update-gradle options:"
        echo "  <gradle-version>     Gradle version to update all wrappers to"
