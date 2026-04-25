@@ -108,8 +108,8 @@ jobs:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Install aria2
-        run: sudo apt-get install -y aria2
+      - name: Install aria2 and xvfb
+        run: sudo apt-get install -y aria2 xvfb
 
       - name: Filter IDE version for this matrix entry
         run: |
