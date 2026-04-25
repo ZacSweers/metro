@@ -4,12 +4,28 @@ Changelog
 **Unreleased**
 --------------
 
+1.0.0-RC4
+---------
+
+_2026-04-24_
+
+### Fixes
+
+- **[FIR]** Avoid duplicate contributed graph supertypes when merging contributions by checking against explicitly declared supertypes.
+- **[IR]** Fix default value transformation for function types when `enableFunctionProviders` is enabled.
+
 ### Changes
 
 - **[compiler]** Test Kotlin `2.3.21`.
 - **[ide]** Test IntelliJ `2026.1.1`.
 - **[ide]** Test Android Studio Panda 4.
 - **[ide]** Test Android Studio Quail canaries.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@vRallev](https://github.com/vRallev)
 
 1.0.0-RC3
 ---------
