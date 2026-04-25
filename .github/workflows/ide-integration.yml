@@ -86,7 +86,8 @@ jobs:
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
-          android: true
+          # Keep the Android SDK for AS matrix entries — AS's Gradle processor blocks on SdkSync if missing
+          android: ${{ !startsWith(matrix.ide, 'AS:') }}
           dotnet: true
           haskell: true
           large-packages: true
@@ -117,6 +118,10 @@ jobs:
           echo "IDE_SLUG=${IDE//:/-}" >> "$GITHUB_ENV"
         env:
           IDE: ${{ matrix.ide }}
+
+      - name: Write local.properties for Android Studio
+        if: startsWith(matrix.ide, 'AS:')
+        run: echo "sdk.dir=$ANDROID_HOME" > ide-integration-tests/test-project/local.properties
 
       # We don't cache IDE downloads with a separate cache step because they download in a few seconds
       - name: Download IDE
