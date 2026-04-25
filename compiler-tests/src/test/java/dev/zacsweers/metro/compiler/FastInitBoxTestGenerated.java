@@ -1822,6 +1822,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       runTest("compiler-tests/src/test/data/box/inject/ReusedMultiInjectRespectsProviderCalls.kt");
     }
 
+    @Test
+    @TestMetadata("ScopedInjectedSecondaryConstructorWithFunctionProviderDefault.kt")
+    public void testScopedInjectedSecondaryConstructorWithFunctionProviderDefault() {
+      runTest("compiler-tests/src/test/data/box/inject/ScopedInjectedSecondaryConstructorWithFunctionProviderDefault.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/inject/assisted")
     @TestDataPath("$PROJECT_ROOT")
