@@ -4,6 +4,14 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[IR]** Do not process platform type supertypes.
+- **[IR]** Make a number of compiler internals lazier and cached.
+- **[IR/graph]** When populating bindings from roots, track a `processedKeys` set so duplicate queue entries don't re-walk dependency lists. This avoids unnecessary extra iterations when doing an initial reachability walk.
+- **[IR/graph]** Merge two annotation walks in supertype collection into a single pass with a per-annotation-class meta-annotation cache, so `@Singleton`/`@Scope`-style annotations appearing across many supertypes are meta-walked once instead of N times.
+- **[IR/tracing]** Add a lot more tracing spans for more granular tracing.
+
 1.0.0-RC4
 ---------
 
