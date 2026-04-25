@@ -74,4 +74,6 @@ tasks.test {
     failOnPassedAfterRetry.set(false)
     failOnSkippedAfterRetry.set(true)
   }
+
+  testLogging { showStandardStreams = false }
 }
