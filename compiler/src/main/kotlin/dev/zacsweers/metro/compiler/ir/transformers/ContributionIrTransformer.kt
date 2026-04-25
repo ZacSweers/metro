@@ -99,14 +99,14 @@ internal class ContributionIrTransformer(
    */
   private val contributionsByClass = mutableMapOf<ClassId, Map<ClassId, Set<Contribution>>>()
 
-  override fun visitClass(declaration: IrClass, data: IrContributionData): IrStatement =
-    trace("Visit ${declaration.name}") {
-      // TODO others?
-      val shouldSkip = declaration.isLocal
-      if (shouldSkip) {
-        return@trace declaration
-      }
+  override fun visitClass(declaration: IrClass, data: IrContributionData): IrStatement {
+    // TODO others?
+    val shouldSkip = declaration.isLocal
+    if (shouldSkip) {
+      return declaration
+    }
 
+    return trace("Visit ${declaration.name}") {
       trace("Transform ${declaration.name} bindings") {
         val isBindingContainer by memoize { declaration.isBindingContainer() }
 
@@ -149,6 +149,7 @@ internal class ContributionIrTransformer(
 
       return@trace super.visitClass(declaration, data)
     }
+  }
 
   private fun collectContributionDataFromContribution(
     declaration: IrClass,
