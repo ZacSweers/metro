@@ -51,7 +51,7 @@ tasks.test {
     ?.let { dependsOn(it.task(":installForFunctionalTest")) }
   useJUnitPlatform()
   // IDE Starter tests need significant memory and time
-  jvmArgs("-Xmx4g")
+  jvmArgs("-Xmx4g", "-Xlog:cds=off")
   // Timeout per test — IDE download + Gradle import + analysis can be slow
   systemProperty("junit.jupiter.execution.timeout.default", "15m")
   systemProperty(
