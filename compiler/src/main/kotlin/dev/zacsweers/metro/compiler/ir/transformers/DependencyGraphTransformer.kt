@@ -664,9 +664,12 @@ internal class DependencyGraphTransformer(
 
     trace("[${metroGraph.kotlinFqName.shortName().asString()}] Generate graph") {
       try {
-        // Generate this graph's implementation
-        val bindingPropertyContext =
-          IrGraphGenerator(
+        // Generate this graph's implementation. The generator's constructor does non-trivial
+        // work (name-allocator preallocation over graph properties/nested classes), so trace it
+        // separately from generate() to keep that cost visible instead of an opaque leading gap.
+        val generator =
+          trace("Construct IrGraphGenerator") {
+            IrGraphGenerator(
               metroContext = metroContext,
               traceScope = this,
               diagnosticTag = metroGraph.diagnosticTag,
@@ -679,7 +682,8 @@ internal class DependencyGraphTransformer(
               graphExtensionGenerator = validationResult.graphExtensionGenerator,
               parentBindingContext = parentBindingContext,
             )
-            .generate()
+          }
+        val bindingPropertyContext = generator.generate()
 
         // Generate child graphs with this graph's binding context as their parent
         for (childResult in validationResult.childValidationResults) {

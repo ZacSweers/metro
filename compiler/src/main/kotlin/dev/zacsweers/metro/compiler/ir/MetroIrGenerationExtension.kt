@@ -100,12 +100,12 @@ public class MetroIrGenerationExtension(
           val contributionData = IrContributionData(metroContext)
 
           val hintGenerator = HintGenerator(metroContext, moduleFragment)
-          val membersInjectorTransformer = MembersInjectorTransformer(metroContext)
+          val membersInjectorTransformer = MembersInjectorTransformer(metroContext, this)
           val injectedClassTransformer =
             InjectedClassTransformer(metroContext, membersInjectorTransformer)
           val assistedFactoryTransformer =
             AssistedFactoryTransformer(metroContext, injectedClassTransformer)
-          val bindingContainerTransformer = BindingContainerTransformer(metroContext)
+          val bindingContainerTransformer = BindingContainerTransformer(metroContext, this)
           val contributionHintIrTransformer: Lazy<ContributionHintIrTransformer> = memoize {
             ContributionHintIrTransformer(metroContext, hintGenerator)
           }
