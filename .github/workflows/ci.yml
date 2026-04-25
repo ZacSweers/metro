@@ -24,6 +24,12 @@ jobs:
         with:
           lfs: true
 
+      - name: Configure JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
       - name: Check formatting
         run: ./scripts/format.sh --check
 

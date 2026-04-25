@@ -19,11 +19,11 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 # Mode lists
 # Standard modes (without baselines)
-STANDARD_MODES="metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil"
+STANDARD_MODES="metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
 # Baseline modes (pure Kotlin and Metro plugin overhead)
 BASELINE_MODES="vanilla,metro-noop"
 # All modes including baselines
-ALL_MODES_WITH_BASELINES="metro,vanilla,metro-noop,dagger-ksp,dagger-kapt,kotlin-inject-anvil"
+ALL_MODES_WITH_BASELINES="metro,vanilla,metro-noop,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
 
 # Git refs
 SINGLE_REF=""
@@ -100,6 +100,8 @@ collect_build_metadata() {
     local kotlin_inject_version=$(get_version "kotlinInject")
     local anvil_version=$(get_version "anvil")
     local kotlin_inject_anvil_version=$(get_version "kotlinInject-anvil")
+    local koin_version=$(get_version "koin")
+    local koin_compiler_version=$(get_version "koin-compiler")
     local jvm_target=$(get_version "jvmTarget")
     local jdk_version=$(get_version "jdk")
 
@@ -154,7 +156,9 @@ collect_build_metadata() {
     "ksp": "$ksp_version",
     "kotlinInject": "$kotlin_inject_version",
     "anvil": "$anvil_version",
-    "kotlinInjectAnvil": "$kotlin_inject_anvil_version"
+    "kotlinInjectAnvil": "$kotlin_inject_anvil_version",
+    "koin": "$koin_version",
+    "koinCompiler": "$koin_compiler_version"
   },
   "build": {
     "gradle": "$gradle_version",
@@ -216,6 +220,8 @@ generate_projects() {
         kotlin generate-projects.main.kts --mode "DAGGER" --processor "$(echo $processor | tr '[:lower:]' '[:upper:]')" --count "$count"
     elif [ "$mode" = "kotlin-inject-anvil" ]; then
         kotlin generate-projects.main.kts --mode "KOTLIN_INJECT_ANVIL" --count "$count"
+    elif [ "$mode" = "koin" ]; then
+        kotlin generate-projects.main.kts --mode "KOIN" --count "$count"
     elif [ "$mode" = "vanilla" ]; then
         kotlin generate-projects.main.kts --mode "VANILLA" --count "$count"
     elif [ "$mode" = "metro-noop" ]; then
@@ -252,6 +258,8 @@ run_scenarios() {
         mode_name="dagger_kapt"
     elif [ "$mode" = "kotlin-inject-anvil" ]; then
         mode_name="kotlin_inject_anvil"
+    elif [ "$mode" = "koin" ]; then
+        mode_name="koin"
     else
         print_error "Invalid mode/processor combination: $mode/$processor"
         exit 1
@@ -263,7 +271,9 @@ run_scenarios() {
     # Determine the raw compilation variant for this mode
     local raw_compilation_variant
     case "$mode_name" in
-        metro|vanilla|metro_noop)
+        metro|vanilla|metro_noop|koin)
+            # Metro/Koin use pure K2 compiler plugins (no annotation processing), so the
+            # `raw_compilation` scenario (app-component-only rerun) works for both.
             raw_compilation_variant="raw_compilation"
             ;;
         kotlin_inject_anvil)
@@ -415,6 +425,7 @@ show_usage() {
     echo "  dagger-ksp [COUNT]            Run only Dagger (KSP) mode"
     echo "  dagger-kapt [COUNT]           Run only Dagger (KAPT) mode"
     echo "  kotlin-inject-anvil [COUNT]   Run only Kotlin-inject + Anvil mode"
+    echo "  koin [COUNT]                  Run only Koin mode (koin-annotations + compiler plugin)"
     echo "  single                        Run benchmarks on a git ref, Metro version, or HEAD (current branch)"
     echo "  compare                       Compare benchmarks across two refs (git refs or Metro versions)"
     echo "  help                          Show this help message"
@@ -428,8 +439,8 @@ show_usage() {
     echo "Single/Compare Options:"
     echo "  --ref <ref>                  Git ref (branch name/commit) or Metro version (e.g., 1.0.0)"
     echo "  --modes <list>               Comma-separated list of modes to benchmark, or 'all'"
-    echo "                               Available: metro, vanilla, metro-noop, dagger-ksp, dagger-kapt, kotlin-inject-anvil, all"
-    echo "                               Default: metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil"
+    echo "                               Available: metro, vanilla, metro-noop, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin, all"
+    echo "                               Default: metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
     echo "                               Use 'all' to run all standard modes (add --include-baselines for vanilla/metro-noop)"
     echo "  --scenarios <list>           Comma-separated list of scenarios to run"
     echo "                               Available: abi_change, non_abi_change, plain_abi_change, plain_non_abi_change, raw_compilation, clean_build"
@@ -632,6 +643,15 @@ run_benchmarks_for_ref() {
                     fi
                 done
                 ;;
+            "koin")
+                generate_projects "koin" "" "$count"
+                run_scenarios "koin" "" "$include_clean_builds"
+                for scenario_dir in "$RESULTS_DIR"/koin_*"$TIMESTAMP"*; do
+                    if [ -d "$scenario_dir" ]; then
+                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
+                    fi
+                done
+                ;;
             *)
                 print_warning "Unknown mode: $mode, skipping"
                 ;;
@@ -653,7 +673,7 @@ extract_median_for_ref() {
     case "$test_type" in
         raw_compilation)
             case "$mode_prefix" in
-                metro|vanilla|metro_noop)
+                metro|vanilla|metro_noop|koin)
                     scenario_name="raw_compilation"
                     ;;
                 kotlin_inject_anvil)
@@ -713,7 +733,7 @@ extract_gc_for_ref() {
     case "$test_type" in
         raw_compilation)
             case "$mode_prefix" in
-                metro|vanilla|metro_noop)
+                metro|vanilla|metro_noop|koin)
                     scenario_name="raw_compilation"
                     ;;
                 kotlin_inject_anvil)
@@ -798,6 +818,7 @@ generate_comparison_summary() {
             "dagger-ksp") mode_prefix="dagger_ksp" ;;
             "dagger-kapt") mode_prefix="dagger_kapt" ;;
             "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
+            "koin") mode_prefix="koin" ;;
             *) continue ;;
         esac
         if mode_was_run_for_ref "$ref2_label" "$mode_prefix"; then
@@ -856,6 +877,8 @@ EOF
                 "dagger-ksp") mode_prefix="dagger_ksp" ;;
                 "dagger-kapt") mode_prefix="dagger_kapt" ;;
                 "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
+                "koin") mode_prefix="koin" ;;
+            "koin") mode_prefix="koin" ;;
                 *) continue ;;
             esac
 
@@ -982,7 +1005,7 @@ generate_html_report() {
     <title>Metro Benchmark Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --metro-color: #4CAF50; --vanilla-color: #607D8B; --metro-noop-color: #795548; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        :root { --metro-color: #4CAF50; --vanilla-color: #607D8B; --metro-noop-color: #795548; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; --koin-color: #E91E63; }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
@@ -1053,8 +1076,8 @@ HTMLHEAD
 
     cat >> "$html_file" << 'HTMLTAIL'
 ;
-const colors = { 'metro': '#4CAF50', 'vanilla': '#607D8B', 'metro_noop': '#795548', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
-const displayNames = { 'metro': 'Metro', 'vanilla': 'Vanilla (Baseline)', 'metro_noop': 'Metro-NOOP', 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject' };
+const colors = { 'metro': '#4CAF50', 'vanilla': '#607D8B', 'metro_noop': '#795548', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
+const displayNames = { 'metro': 'Metro', 'vanilla': 'Vanilla (Baseline)', 'metro_noop': 'Metro-NOOP', 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin' };
 
 // State for selectable baseline
 let selectedBaseline = 'metro';
@@ -1113,8 +1136,8 @@ function renderRefsInfo() {
 
 function renderSummaryStats() {
     const container = document.getElementById('summary-stats');
-    let totalSpeedup = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0 };
-    let counts = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0 };
+    let totalSpeedup = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0, koin: 0 };
+    let counts = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0, koin: 0 };
     benchmarkData.benchmarks.forEach(benchmark => {
         const metroResult = benchmark.results.find(r => r.key === 'metro');
         if (!metroResult || !metroResult.ref1) return;
@@ -1126,7 +1149,7 @@ function renderSummaryStats() {
         });
     });
     let html = '';
-    const names = { 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject' };
+    const names = { 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin' };
     Object.keys(totalSpeedup).forEach(key => {
         if (counts[key] > 0) {
             const avgSpeedup = (totalSpeedup[key] / counts[key]).toFixed(1);
@@ -1219,6 +1242,8 @@ function renderMetadata() {
                     <dt>kotlin-inject</dt><dd>${m.versions?.kotlinInject || '—'}</dd>
                     <dt>Anvil</dt><dd>${m.versions?.anvil || '—'}</dd>
                     <dt>kotlin-inject-anvil</dt><dd>${m.versions?.kotlinInjectAnvil || '—'}</dd>
+                    <dt>Koin</dt><dd>${m.versions?.koin || '—'}</dd>
+                    <dt>Koin Compiler</dt><dd>${m.versions?.koinCompiler || '—'}</dd>
                 </dl>
             </div>
             <div class="metadata-group">
@@ -1296,6 +1321,8 @@ build_benchmark_json() {
     local kotlin_inject_version=$(get_toml_version "kotlinInject")
     local anvil_version=$(get_toml_version "anvil")
     local kotlin_inject_anvil_version=$(get_toml_version "kotlinInject-anvil")
+    local koin_version=$(get_toml_version "koin")
+    local koin_compiler_version=$(get_toml_version "koin-compiler")
     local jvm_target=$(get_toml_version "jvmTarget")
 
     local gradle_version=$("$repo_root/gradlew" --version 2>/dev/null | grep "^Gradle " | awk '{print $2}' || echo "unknown")
@@ -1334,7 +1361,9 @@ build_benchmark_json() {
     echo '      "ksp": "'"$ksp_version"'",'
     echo '      "kotlinInject": "'"$kotlin_inject_version"'",'
     echo '      "anvil": "'"$anvil_version"'",'
-    echo '      "kotlinInjectAnvil": "'"$kotlin_inject_anvil_version"'"'
+    echo '      "kotlinInjectAnvil": "'"$kotlin_inject_anvil_version"'",'
+    echo '      "koin": "'"$koin_version"'",'
+    echo '      "koinCompiler": "'"$koin_compiler_version"'"'
     echo '    },'
     echo '    "build": {'
     echo '      "gradle": "'"$gradle_version"'",'
@@ -1377,6 +1406,7 @@ build_benchmark_json() {
                 "dagger-ksp") mode_prefix="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_prefix="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
+                "koin") mode_prefix="koin"; mode_name="Koin" ;;
                 *) continue ;;
             esac
 
@@ -1477,6 +1507,8 @@ EOF
                 "dagger-ksp") mode_prefix="dagger_ksp" ;;
                 "dagger-kapt") mode_prefix="dagger_kapt" ;;
                 "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
+                "koin") mode_prefix="koin" ;;
+            "koin") mode_prefix="koin" ;;
                 *) continue ;;
             esac
 
@@ -1820,7 +1852,7 @@ main() {
             COMPARE_MODES="all"
             run_single "$count" "$include_clean_builds"
             ;;
-        metro|vanilla|metro-noop|dagger-ksp|dagger-kapt|kotlin-inject-anvil)
+        metro|vanilla|metro-noop|dagger-ksp|dagger-kapt|kotlin-inject-anvil|koin)
             # Single mode is shorthand for 'single --ref HEAD --modes <mode>' (current branch)
             SINGLE_REF="HEAD"
             COMPARE_MODES="$command"

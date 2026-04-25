@@ -33,17 +33,7 @@ kotlin {
   androidTarget()
   jvm()
 
-  js {
-    browser()
-    // https://youtrack.jetbrains.com/issue/KT-82989
-    compilations.configureEach {
-      compileTaskProvider.configure {
-        incremental = false
-        @Suppress("INVISIBLE_REFERENCE")
-        incrementalJsKlib = false
-      }
-    }
-  }
+  js { browser() }
 
   wasmJs { browser() }
   wasmWasi { nodejs() }

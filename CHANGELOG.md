@@ -4,6 +4,43 @@ Changelog
 **Unreleased**
 --------------
 
+1.0.0-RC4
+---------
+
+_2026-04-24_
+
+### Fixes
+
+- **[FIR]** Avoid duplicate contributed graph supertypes when merging contributions by checking against explicitly declared supertypes.
+- **[IR]** Fix default value transformation for function types when `enableFunctionProviders` is enabled.
+
+### Changes
+
+- Test Kotlin `2.3.21`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@vRallev](https://github.com/vRallev)
+
+1.0.0-RC3
+---------
+
+_2026-04-23_
+
+This is the third release candidate for Metro 1.0!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) will be API stable unless annotated with an experimental annotation.
+
+_Changes since RC2_
+
+### `enableFunctionProviders` enabled by default
+
+This release promotes `enableFunctionProviders` (i.e. `() -> T` syntax for providers) to stable, enables it by default, and marks usage of Metro's native `Provider` as a warning.
+
+This may require some migration in existing codebases. To help with this, there's a [new section in docs](https://zacsweers.github.io/metro/latest/adoption/#migrating-providert-to-function-syntax) with information as well as a helper script: adoption docs guidance here too.
+
 ### New
 
 - Add a new `desugaredProviderSeverity` option (default: `WARN`) that reports a diagnostic when `Provider<T>` is used instead of the preferred `() -> T` form. Set this to `NONE` to disable the warning during migration, or `ERROR` to enforce the new style. Automatically treated as `NONE` when `enableFunctionProviders` is disabled.
@@ -22,6 +59,7 @@ Changelog
 ### Fixes
 
 - **[FIR]** Fix not recognizing `FirDeclarationOrigin.Precompiled` origins when checking resolved default binding types. Previously we only considered `FirDeclarationOrigin.Library`, but incremental compilation uses `FirDeclarationOrigin.Precompiled` to differentiate. This would result in misreads of default binding types in some cases during IC.
+- **[FIR]** When merging `@ContributesTo` types to graph supertypes, add the original interface as well. This ensures they are visible in ObjC exports, as the metro-generated contribution interfaces are normally excluded.
 - **[IR]** Fix secondary inject constructors support when `generateContributionProviders` is enabled.
 - **[IR]** Fix implicit class key lookup for map keys on source-declared `@Binds` declarations.
 - **[IR]** Fix `implementsProviderType()` check in the compiler to only exactly match `Function0` types when `enableFunctionProviders` is enabled.
@@ -38,10 +76,10 @@ Changelog
 - **[Gradle]** Promote `enableFunctionProviders` to stable.
 - **[Gradle]** Remove deprecated `useAssistedParamNamesAsIdentifiers` property.
 - **[Gradle]** Remove `deduplicateInjectedParams` property.
-- **[Gradle]** Remove `enableKlibParamsCheck` property, use the new compilerOptions API.
-- **[Gradle]** Remove `enableFullBindingGraphValidation` property, use the new compilerOptions API.
-- **[Gradle]** Remove `enableGraphImplClassAsReturnType` property, use the new compilerOptions API.
-- **[Gradle]** Remove `shrinkUnusedBindings` property, use the new compilerOptions API.
+- **[Gradle]** Remove `enableKlibParamsCheck` property, use the new `compilerOptions` API.
+- **[Gradle]** Remove `enableFullBindingGraphValidation` property, use the new `compilerOptions` API.
+- **[Gradle]** Remove `enableGraphImplClassAsReturnType` property, use the new `compilerOptions` API.
+- **[Gradle]** Remove `shrinkUnusedBindings` property, use the new `compilerOptions` API.
 - **[metrox-android]** Change `MetroAppComponentProviders` accessor multibindings to expose function types instead of `Provider` types.
 - **[metrox-viewmodel]** Change `MetroViewModelFactory` and `MetroViewModelMultibindings` accessor multibindings to expose function types instead of `Provider` types.
 - Support Kotlin `2.4.0-Beta2`.

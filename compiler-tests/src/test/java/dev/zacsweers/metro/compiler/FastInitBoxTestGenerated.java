@@ -175,6 +175,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphCanExplicitlyExtendContributedInterface.kt")
+    public void testGraphCanExplicitlyExtendContributedInterface() {
+      runTest("compiler-tests/src/test/data/box/aggregation/GraphCanExplicitlyExtendContributedInterface.kt");
+    }
+
+    @Test
     @TestMetadata("InheritedBindingsDoNotCauseDuplicatesFromNestedContainers.kt")
     public void testInheritedBindingsDoNotCauseDuplicatesFromNestedContainers() {
       runTest("compiler-tests/src/test/data/box/aggregation/InheritedBindingsDoNotCauseDuplicatesFromNestedContainers.kt");
@@ -1814,6 +1820,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("ReusedMultiInjectRespectsProviderCalls.kt")
     public void testReusedMultiInjectRespectsProviderCalls() {
       runTest("compiler-tests/src/test/data/box/inject/ReusedMultiInjectRespectsProviderCalls.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedInjectedSecondaryConstructorWithFunctionProviderDefault.kt")
+    public void testScopedInjectedSecondaryConstructorWithFunctionProviderDefault() {
+      runTest("compiler-tests/src/test/data/box/inject/ScopedInjectedSecondaryConstructorWithFunctionProviderDefault.kt");
     }
 
     @Nested

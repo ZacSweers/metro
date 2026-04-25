@@ -38,15 +38,28 @@ This allows some dynamism with keys but has some downsides. A few different reas
 - It breaks the ability to expose `Map<Key, () -> Value>` (or `Map<Key, Provider<Value>>`) unless you start manually managing function/provider types yourself.
 - You allocate and throw away a `Pair` instance each time it's called.
 
-### **Will Metro add support for dagger-android features or dagger-android interop?**
+### **Why doesn't Metro support functions with parameters for assisted injection?**
 
-No.
+!!! tip "Some technical context"
+
+    Metro supports use of function types like `() -> T` for deferred initialization of injected dependencies. Another idea in the same vein is to support function syntax for _assisted_ injection, such that `(String) -> T` could be an implicit assisted factory type for assisted-inject type `T`.
+
+There's a few reasons! Mainly, this is harder to maintain in codebases.
+
+- It makes injection sites _also_ responsible for declaring all the input parameters to that type, vs. just callers to its SAM function. This means that if you change the parameters, you then either have two compiler errors (one missing binding from metro, another to callsites) or you have to spend time finding them all and doing the prop-drilling that generated DI strives to spare you from.
+- They are harder to find (no "find usages" support from your assisted type).
+- They are harder to read (they are nameless).
+
 
 ### **I'm seeing a `ReservedStackAccess` stack overflow warning from the JVM at runtime?**
 
 This is a spurious JVM warning related to `ReentrantLock` (used internally by Metro's `DoubleCheck` for scoped bindings). It is not an actual stack overflow and can be safely ignored. You can suppress it by increasing the thread stack size with (i.e., `-Xss1m`) in your JVM args.
 
 ## Dagger/Hilt FAQ
+
+### **Will Metro add support for dagger-android features or dagger-android interop?**
+
+No. Much of this infra can be recreated as needed in codebases that use it but dagger-android is long-deprecated at this point.
 
 ### **In Dagger I could make declarations `internal` and it worked, why doesn't that work in Metro?**
 
