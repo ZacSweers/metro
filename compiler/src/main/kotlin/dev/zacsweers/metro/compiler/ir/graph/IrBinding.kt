@@ -19,7 +19,6 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allowEmpty
-import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.computeMultibindingId
 import dev.zacsweers.metro.compiler.ir.createMapBindingId
@@ -34,15 +33,11 @@ import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
-import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrErrorType
@@ -52,7 +47,6 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
-import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -958,22 +952,3 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
   }
 }
-
-internal val IrBinding.isIntoMultibinding: Boolean
-  get() {
-    return typeKey.qualifier?.ir?.annotationClass?.classId == Symbols.ClassIds.MultibindingElement
-  }
-
-internal val IrBinding.hostParent: IrDeclarationContainer?
-  get() {
-    return when (val decl = reportableDeclaration) {
-      is IrClass -> decl
-      is IrPackageFragment -> decl
-      is IrFunction,
-      is IrProperty ->
-        decl.parentDeclarationsWithSelf.firstNotNullOfOrNull {
-          it as? IrClass ?: it as? IrPackageFragment
-        }
-      else -> null
-    }
-  }
