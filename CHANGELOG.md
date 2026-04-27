@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- When reporting binding errors with `generateContributionProviders` enabled, if the referenced declaration is a `@Contributes*` binding then report the original declaration rather than the (source-less) generated declaration.
+
 ### Changes
 
 - **[compiler]** Test Kotlin `2.3.21`.
