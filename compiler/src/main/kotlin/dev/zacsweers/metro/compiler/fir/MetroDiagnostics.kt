@@ -80,6 +80,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_PROPERTIES_CAN
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REPLACES_OR_EXCLUDES_TARGET_NOT_EXPOSED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_GRAPH_ACCESSOR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING
@@ -182,6 +183,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS by
     warning1<KtElement, String>(VISIBILITY_MODIFIER)
   val NON_EXPOSED_IMPL_TYPE by warning1<KtElement, String>(VISIBILITY_MODIFIER)
+  val REPLACES_OR_EXCLUDES_TARGET_NOT_EXPOSED by error1<KtElement, String>(NAME_IDENTIFIER)
   val CREATE_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val CREATE_DYNAMIC_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val AS_CONTRIBUTION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -332,6 +334,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(NON_PUBLIC_CONTRIBUTION_WARNING, "{0}", STRING)
         put(EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS, "{0}", STRING)
         put(NON_EXPOSED_IMPL_TYPE, "{0}", STRING)
+        put(REPLACES_OR_EXCLUDES_TARGET_NOT_EXPOSED, "{0}", STRING)
         put(CREATE_GRAPH_ERROR, "{0}", STRING)
         put(CREATE_DYNAMIC_GRAPH_ERROR, "{0}", STRING)
         put(AS_CONTRIBUTION_ERROR, "{0}", STRING)
