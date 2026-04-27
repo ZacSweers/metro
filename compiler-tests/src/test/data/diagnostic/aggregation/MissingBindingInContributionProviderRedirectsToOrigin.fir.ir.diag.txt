@@ -1,0 +1,9 @@
+/MissingBindingInContributionProviderRedirectsToOrigin.kt:(643,666): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: ChangelogRepositoryImpl
+
+    ChangelogRepositoryImpl is injected at
+        [AppGraph] StubChangelogRepositoryContributions.ToAppScope.provideStubChangelogRepositoryAsChangelogRepository(…, realImpl)
+    ChangelogRepository is requested at
+        [AppGraph] AppGraph.repo
+
+Similar bindings:
+  - ChangelogRepository (Supertype). Type: Provided.

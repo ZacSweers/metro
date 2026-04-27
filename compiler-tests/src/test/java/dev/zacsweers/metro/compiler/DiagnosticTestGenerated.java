@@ -79,6 +79,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingBindingInContributionProviderRedirectsToOrigin.kt")
+    public void testMissingBindingInContributionProviderRedirectsToOrigin() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/MissingBindingInContributionProviderRedirectsToOrigin.kt");
+    }
+
+    @Test
     @TestMetadata("NonPublicContributionError.kt")
     public void testNonPublicContributionError() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/NonPublicContributionError.kt");
