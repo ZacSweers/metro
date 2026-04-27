@@ -219,10 +219,8 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       }
     }
 
-    if (session.metroFirBuiltIns.options.generateContributionProviders) {
-      checkReplacesArguments(session, declaration)
-    } else {
-      // Warn if @ExposeImplBinding is used but generateContributionProviders is not enabled
+    // Warn if @ExposeImplBinding is used but generateContributionProviders is not enabled
+    if (!session.metroFirBuiltIns.options.generateContributionProviders) {
       declaration
         .annotationsIn(session, setOf(classIds.exposeImplBindingAnnotation))
         .firstOrNull()
@@ -233,22 +231,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             "`@ExposeImplBinding` has no effect when `generateContributionProviders` is not enabled.",
           )
         }
-    }
-  }
-
-  /**
-   * `@Contributes*` annotations only support `replaces`. When `generateContributionProviders` is
-   * enabled, naming a hidden impl as a `replaces` target won't have the intended effect — require
-   * the target to opt-in via `@ExposeImplBinding`.
-   */
-  context(context: CheckerContext, reporter: DiagnosticReporter)
-  private fun checkReplacesArguments(session: FirSession, declaration: FirClass) {
-    val classIds = session.classIds
-    for (annotation in declaration.annotations) {
-      if (!annotation.isResolved) continue
-      val annotationClassId = annotation.toAnnotationClassId(session) ?: continue
-      if (annotationClassId !in classIds.allContributesAnnotations) continue
-      annotation.checkReplacesAndExcludesTargetsExposed(session, ContributionTargetArg.REPLACES)
     }
   }
 

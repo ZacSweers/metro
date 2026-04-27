@@ -109,12 +109,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("ReplacesTargetMustBeExposed.kt")
-    public void testReplacesTargetMustBeExposed() {
-      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ReplacesTargetMustBeExposed.kt");
-    }
-
-    @Test
     @TestMetadata("SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt")
     public void testSimilarBindingsNotReportedWhenMissingBindingTypeIsAny() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt");
@@ -430,12 +424,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("DoNotSuggestSimilarBindingsForMultibindingElements.kt")
     public void testDoNotSuggestSimilarBindingsForMultibindingElements() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/DoNotSuggestSimilarBindingsForMultibindingElements.kt");
-    }
-
-    @Test
-    @TestMetadata("ExcludesTargetMustBeExposed.kt")
-    public void testExcludesTargetMustBeExposed() {
-      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/ExcludesTargetMustBeExposed.kt");
     }
 
     @Test
@@ -798,6 +786,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("InjectingContributesClassWithoutExposeImplBinding.kt")
     public void testInjectingContributesClassWithoutExposeImplBinding() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingContributesClassWithoutExposeImplBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectingContributesClassWithoutExposeImplBindingQualified.kt")
+    public void testInjectingContributesClassWithoutExposeImplBindingQualified() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingContributesClassWithoutExposeImplBindingQualified.kt");
     }
 
     @Test

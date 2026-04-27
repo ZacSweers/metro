@@ -17,7 +17,6 @@ import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
@@ -110,14 +109,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         dependencyGraphAnno.additionalScopesArgument(session)?.source ?: dependencyGraphAnno.source,
         MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
         "@${graphAnnotationClassId.shortClassName.asString()} should have a primary `scope` defined if `additionalScopes` are defined.",
-      )
-    }
-
-    if (session.metroFirBuiltIns.options.generateContributionProviders) {
-      // @DependencyGraph only supports `excludes`. Validate each target is on the graph.
-      dependencyGraphAnno.checkReplacesAndExcludesTargetsExposed(
-        session,
-        ContributionTargetArg.EXCLUDES,
       )
     }
 

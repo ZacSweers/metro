@@ -6,7 +6,6 @@ Changelog
 
 ### New
 
-- **[FIR]** Report diagnostic errors when an `excludes` or `replaces` target contribution class is not annotated `@ExposeImplBinding` and `generateContributionProviders` is enabled.
 - **[runtime]** Add an optional `@Origin.context` property, allowing generators to attach extra context to an origin if they want.
 
 ### Enhancements
@@ -15,6 +14,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Fix diagnostic reporting for injection sites referring to contribution classes is not annotated `@ExposeImplBinding` and `generateContributionProviders` is enabled. Previously it didn't report on all cases.
 - **[IR]** When reporting binding errors with `generateContributionProviders` enabled, if the referenced declaration is a `@Contributes*` binding then report the original declaration rather than the (source-less) generated declaration.
 
 ### Changes
