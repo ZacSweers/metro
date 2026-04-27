@@ -9,7 +9,7 @@ Metro is primarily applied via its companion Gradle plugin.
 ```kotlin
 plugins {
   kotlin("multiplatform") // or jvm, android, etc
-  id("dev.zacsweers.metro") version "1.0.0-RC4"
+  id("dev.zacsweers.metro") version "1.0.0"
 }
 ```
 

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.buildFullSubstitutionMap
@@ -16,7 +15,6 @@ import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
-import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
@@ -204,26 +202,6 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
       }
       .symbol as FirNamedFunctionSymbol
   }
-
-/**
- * Deduplicates parameters by [IrTypeKey], keeping one parameter per unique key. Parameters that are
- * always kept (never deduped):
- * - Assisted parameters: each is a distinct caller-provided value
- * - Parameters with [dev.zacsweers.metro.compiler.fir.FirContextualTypeKey.hasDefault]: their
- *   defaults may differ
- */
-internal fun List<MetroFirValueParameter>.dedupeParameters(): List<MetroFirValueParameter> {
-  val seenKeys = HashSet<FirTypeKey>(size)
-  return buildList {
-    for (param in this@dedupeParameters) {
-      if (
-        param.isAssisted || param.contextKey.hasDefault || seenKeys.add(param.contextKey.typeKey)
-      ) {
-        add(param)
-      }
-    }
-  }
-}
 
 internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirFunctionSymbol<*>? {
   return collectAbstractFunctions(session, exitOnAbstractProperties = true)?.singleOrNull()

@@ -117,10 +117,11 @@ internal fun validateInjectionSiteType(
     checkDesugaredProviderUse(session, contextKey, typeRef, source)
   }
 
-  // Check if we're directly injecting a qualifier type
-  if (qualifier == null) {
-    val clazz = type.classLikeLookupTagIfAny?.toClassSymbolCompat(session) ?: return false
+  val clazz = type.classLikeLookupTagIfAny?.toClassSymbolCompat(session)
 
+  // Object/assisted-injection diagnostics only apply to unqualified injections — qualifying the
+  // injection signals an intentional non-default usage.
+  if (qualifier == null && clazz != null) {
     if (clazz.classKind.isObject) {
       // Injecting a plain object doesn't really make sense when it's a singleton
       reporter.reportOn(
@@ -163,18 +164,29 @@ internal fun validateInjectionSiteType(
           MetroDiagnostics.ASSISTED_INJECTION_ERROR,
           message,
         )
-      } else if (clazz.usesContributionProviderPath(session)) {
-        val fqName = clazz.classId.diagnosticString
-        reporter.reportOn(
-          typeRef.source ?: source,
-          MetroDiagnostics.NON_EXPOSED_IMPL_TYPE,
-          "Directly injecting '$fqName' (which has one or more `@Contributes*` annotations) and will not be " +
-            "visible since `generateContributionProviders` is enabled. This is probably a bug! " +
-            "Inject the bound supertype instead, or annotate '$fqName' with `@ExposeImplBinding` " +
-            "to expose the underlying binding.",
-        )
       }
     }
+  }
+
+  // Warn whenever an impl class is injected directly while hidden behind a generated contribution
+  // provider — this is qualifier-independent because qualifying the injection still doesn't make
+  // the impl a binding on the graph. Skipped for objects (covered above) and assisted-inject
+  // classes (the assisted-injection error is more actionable).
+  if (
+    clazz != null &&
+      !clazz.classKind.isObject &&
+      clazz.findAssistedInjectConstructors(session, checkClass = true).isEmpty() &&
+      clazz.usesContributionProviderPath(session)
+  ) {
+    val fqName = clazz.classId.diagnosticString
+    reporter.reportOn(
+      typeRef.source ?: source,
+      MetroDiagnostics.NON_EXPOSED_IMPL_TYPE,
+      "Directly injecting '$fqName' (which has one or more `@Contributes*` annotations) and will not be " +
+        "visible since `generateContributionProviders` is enabled. This is probably a bug! " +
+        "Inject the bound supertype instead, or annotate '$fqName' with `@ExposeImplBinding` " +
+        "to expose the underlying binding.",
+    )
   }
 
   if (!isAccessor && (isOptionalBinding || hasDefault)) {

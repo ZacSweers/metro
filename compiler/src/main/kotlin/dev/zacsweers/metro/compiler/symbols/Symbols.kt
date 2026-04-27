@@ -57,7 +57,9 @@ internal class Symbols(
     const val BINDING = "binding"
     const val BOUND_TYPE = "boundType"
     const val COMPOSABLE = "Composable"
+    const val CONTEXT = "context"
     const val CONTRIBUTED = "contributed"
+    const val CONTRIBUTION_PROVIDER_ORIGIN_CONTEXT = "contribution_provider"
     const val CREATE = "create"
     const val CREATE_FACTORY_PROVIDER = "createFactoryProvider"
     const val CREATE_GRAPH = "createGraph"
@@ -208,6 +210,7 @@ internal class Symbols(
     val bindingContainers = "bindingContainers".asName()
     val builder = "builder".asName()
     val boundType = StringNames.BOUND_TYPE.asName()
+    val context = StringNames.CONTEXT.asName()
     val contributed = StringNames.CONTRIBUTED.asName()
     val create = StringNames.CREATE.asName()
     val createFactoryProvider = StringNames.CREATE_FACTORY_PROVIDER.asName()

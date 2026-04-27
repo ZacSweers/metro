@@ -46,7 +46,7 @@ interface Foo {
 abstract class ImplContributions {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
-  @Origin(value = Impl::class)
+  @Origin(value = Impl::class, context = "contribution_provider")
   @BindingContainer
   @IROnlyFactories
   @ContributesTo(scope = AppScope::class)

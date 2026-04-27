@@ -201,6 +201,10 @@ class MetroIdeSmokeTest {
         .prepareProjectCleanImport()
         .addProjectToTrustedLocations()
         .applyVMOptionsPatch {
+          // Silence the JBR's CDS warning about java.system.class.loader being set
+          // (the IDE uses PathClassLoader, which trips the warning every launch).
+          addLine("-Xlog:cds=off")
+
           // Enable third-party compiler plugins (like Metro) in the Kotlin IDE plugin's FIR
           // analysis.
           // RegistryValue falls back to system properties, so this works for Registry.get() calls.

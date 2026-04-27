@@ -86,7 +86,8 @@ open class AbstractContributionProvidersBoxTest : AbstractBoxTest() {
         MetroDirectives.MIN_COMPILER_VERSION.with("2.3.20")
         MetroDirectives.GENERATE_CONTRIBUTION_HINTS.with(true)
         +MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR
-        +MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS
+
+        MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS.with(true)
       }
     }
   }

@@ -24,10 +24,13 @@ import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.locationOrNull
+import dev.zacsweers.metro.compiler.ir.originContextOrNull
+import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.render
@@ -69,6 +72,7 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
 private const val MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT = 3
@@ -1297,6 +1301,15 @@ internal class IrBindingGraph(
           append(". Type: ")
           append(binding.javaClass.simpleName)
           append('.')
+          if (binding is IrBinding.Provided) {
+            binding.isFromGeneratedContributionImpl()?.let { origin ->
+              append(
+                " This is a generated contribution provider for ${origin.asFqNameString()}. If that class is the " +
+                  "binding you're looking for, annotate the contributing class with `@ExposeImplBinding` to expose" +
+                  " its impl type to the graph."
+              )
+            }
+          }
           binding.reportableDeclaration?.renderSourceLocation(short = short)?.let {
             append(" Source: ")
             append(it)
@@ -1304,5 +1317,20 @@ internal class IrBindingGraph(
         }
       }
     }
+  }
+}
+
+private fun IrBinding.Provided.isFromGeneratedContributionImpl(): ClassId? {
+  // The contribution provider generator stamps the nested contribution interface's `@Origin`
+  // with `context = "contribution_provider"`. Detecting via the annotation context (rather
+  // than an IR `origin` marker) means this also works for precompiled library sources.
+  val nestedContribClass = providerFactory.function.parentClassOrNull ?: return null
+  val originAnno = nestedContribClass.getAnnotation(Symbols.ClassIds.metroOrigin.asSingleFqName())
+  val originContext = originAnno?.originContextOrNull()
+  val isContribProvider = originContext == Symbols.StringNames.CONTRIBUTION_PROVIDER_ORIGIN_CONTEXT
+  return if (isContribProvider) {
+    originAnno.originOrNull()
+  } else {
+    null
   }
 }

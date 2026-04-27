@@ -12,19 +12,56 @@ Changelog
 - **[IR/graph]** Merge two annotation walks in supertype collection into a single pass with a per-annotation-class meta-annotation cache, so `@Singleton`/`@Scope`-style annotations appearing across many supertypes are meta-walked once instead of N times.
 - **[IR/tracing]** Add a lot more tracing spans for more granular tracing.
 
+1.0.0
+-----
+
+_2026-04-27_
+
+This is the first stable release of Metro!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) are now API stable unless annotated with an experimental annotation.
+
+**See the [announcement post](https://www.zacsweers.dev/metro-is-stable/)!**
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+_Changes since RC4_
+
+### New
+
+- **[runtime]** Add an optional `@Origin.context` property, allowing generators to attach extra context to an origin if they want.
+
+### Enhancements
+
+- **[IR]** When a missing binding is a generated contribution provider for an unexposed impl class, include a hint about that in the `MissingBinding` error message.
+
+### Fixes
+
+- **[FIR]** Fix diagnostic reporting for injection sites referring to contribution classes is not annotated `@ExposeImplBinding` and `generateContributionProviders` is enabled. Previously it didn't report on all cases.
+- **[IR]** When reporting binding errors with `generateContributionProviders` enabled, if the referenced declaration is a `@Contributes*` binding then report the original declaration rather than the (source-less) generated declaration.
+
+### Changes
+
+- **[compiler]** Test Kotlin `2.3.21`.
+- **[ide]** Test IntelliJ `2026.1.1`.
+- **[ide]** Test Android Studio Panda 4.
+- **[ide]** Test Android Studio Quail canaries.
+
 1.0.0-RC4
 ---------
 
 _2026-04-24_
 
+This is the fourth release candidate for Metro 1.0!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) will be API stable unless annotated with an experimental annotation.
+
+_Changes since RC3_
+
 ### Fixes
 
 - **[FIR]** Avoid duplicate contributed graph supertypes when merging contributions by checking against explicitly declared supertypes.
 - **[IR]** Fix default value transformation for function types when `enableFunctionProviders` is enabled.
-
-### Changes
-
-- Test Kotlin `2.3.21`.
 
 ### Contributors
 
