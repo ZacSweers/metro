@@ -1107,6 +1107,11 @@ internal fun IrConstructorCall.originClassOrNull(): IrClass? {
     ?.rawTypeOrNull()
 }
 
+/** Reads the `context` argument of an `@Origin` annotation, or `null` if unset. */
+internal fun IrConstructorCall.originContextOrNull(): String? {
+  return (getValueArgument(Symbols.Names.context) as? IrConst)?.value as? String
+}
+
 internal fun IrBuilderWithScope.kClassReference(symbol: IrClassSymbol): IrClassReference {
   return IrClassReferenceImpl(
     startOffset,

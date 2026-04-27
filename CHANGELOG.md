@@ -4,9 +4,18 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- **[FIR]** Report diagnostic errors when an `excludes` or `replaces` target contribution class is not annotated `@ExposeImplBinding` and `generateContributionProviders` is enabled.
+- **[runtime]** Add an optional `@Origin.context` property, allowing generators to attach extra context to an origin if they want.
+
+### Enhancements
+
+- **[IR]** When a missing binding is a generated contribution provider for an unexposed impl class, include a hint about that in the `MissingBinding` error message.
+
 ### Fixes
 
-- When reporting binding errors with `generateContributionProviders` enabled, if the referenced declaration is a `@Contributes*` binding then report the original declaration rather than the (source-less) generated declaration.
+- **[IR]** When reporting binding errors with `generateContributionProviders` enabled, if the referenced declaration is a `@Contributes*` binding then report the original declaration rather than the (source-less) generated declaration.
 
 ### Changes
 

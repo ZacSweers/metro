@@ -43,6 +43,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("CrossModuleContributionProviderHidesImplHint.kt")
+    public void testCrossModuleContributionProviderHidesImplHint() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/CrossModuleContributionProviderHidesImplHint.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultBinding_Ambiguous.kt")
     public void testDefaultBinding_Ambiguous() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_Ambiguous.kt");
