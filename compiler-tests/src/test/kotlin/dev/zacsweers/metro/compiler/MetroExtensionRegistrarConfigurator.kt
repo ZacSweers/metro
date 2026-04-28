@@ -133,8 +133,14 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       }
       enableKClassToClassInterop =
         MetroDirectives.ENABLE_KCLASS_TO_CLASS_INTEROP in module.directives
+
       generateContributionProviders =
-        MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS in module.directives
+        // Weird but necessary because we may set a default in default configurations that we
+        // override in the test, so just take the last one from the file
+        module.directives[MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS]
+          .lastOrNull()
+          ?.toString()
+          ?.toBoolean() ?: false
 
       // Configure interop annotations using builder helper methods
       if (MetroDirectives.WITH_KI_ANVIL in module.directives) {

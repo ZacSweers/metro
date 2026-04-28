@@ -43,6 +43,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("CrossModuleContributionProviderHidesImplHint.kt")
+    public void testCrossModuleContributionProviderHidesImplHint() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/CrossModuleContributionProviderHidesImplHint.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultBinding_Ambiguous.kt")
     public void testDefaultBinding_Ambiguous() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_Ambiguous.kt");
@@ -76,6 +82,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("InternalHintsAreNotVisibleWithoutFriends.kt")
     public void testInternalHintsAreNotVisibleWithoutFriends() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalHintsAreNotVisibleWithoutFriends.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingInContributionProviderRedirectsToOrigin.kt")
+    public void testMissingBindingInContributionProviderRedirectsToOrigin() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/MissingBindingInContributionProviderRedirectsToOrigin.kt");
     }
 
     @Test
@@ -774,6 +786,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("InjectingContributesClassWithoutExposeImplBinding.kt")
     public void testInjectingContributesClassWithoutExposeImplBinding() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingContributesClassWithoutExposeImplBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectingContributesClassWithoutExposeImplBindingQualified.kt")
+    public void testInjectingContributesClassWithoutExposeImplBindingQualified() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingContributesClassWithoutExposeImplBindingQualified.kt");
     }
 
     @Test

@@ -83,7 +83,7 @@ val repository = graph.repository
 
 ## Supported Platforms
 
-Metro supports JVM, Android, JS, WASM, and Native targets. The compiler plugin works with all Kotlin Multiplatform project types.
+Metro supports JVM, Android, JS, Wasm, and Native targets. The compiler plugin works with all Kotlin Multiplatform project types.
 
 See the [multiplatform docs](https://zacsweers.github.io/metro/latest/multiplatform/) for full details.
 

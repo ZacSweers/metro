@@ -86,9 +86,10 @@ The following IDE versions are tested via IDE integration tests:
 | IntelliJ IDEA | Android Studio                |
 |---------------|-------------------------------|
 | 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1)  |
-| 261.22158.182 | 2025.3.2.6 (Panda 2)          |
+| 2026.1.1      | 2025.3.2.6 (Panda 2)          |
 |               | 2025.3.3.6 (Panda 3)          |
-|               | 2025.3.4.4 (Panda 4 Canary 4) |
+|               | 2025.3.4.6 (Panda 4)          |
+|               | 2026.1.1.2 (Quail 1 Canary 2) |
 
 ## Runtime Compatibility
 

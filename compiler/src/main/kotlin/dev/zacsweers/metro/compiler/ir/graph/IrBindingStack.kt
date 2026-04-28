@@ -49,7 +49,7 @@ internal interface IrBindingStack :
   class Entry(
     override val contextKey: IrContextualTypeKey,
     override val usage: String?,
-    override val graphContext: String?,
+    graphContext: String?,
     val declaration: IrDeclarationWithName?,
     override val displayTypeKey: IrTypeKey = contextKey.typeKey,
     /**
@@ -57,7 +57,21 @@ internal interface IrBindingStack :
      * participate in validation.
      */
     override val isSynthetic: Boolean = false,
+    /**
+     * Optional deferred-evaluation alternative to [graphContext]. When non-null, this takes
+     * precedence and [graphContext] is ignored. The expensive formatting that some factories do
+     * (parent traversals, fake-override resolution, buildString) only runs when the stack is
+     * actually rendered — i.e. error reports or when logging is enabled.
+     */
+    graphContextProvider: (() -> String?)? = null,
   ) : BaseBindingStack.BaseEntry<IrType, IrTypeKey, IrContextualTypeKey> {
+
+    private val graphContextLazy: Lazy<String?> =
+      graphContextProvider?.let { lazy(LazyThreadSafetyMode.PUBLICATION, it) }
+        ?: lazyOf(graphContext)
+
+    override val graphContext: String?
+      get() = graphContextLazy.value
 
     override fun toString(): String = render(FqName("..."), short = true)
 
@@ -78,19 +92,22 @@ internal interface IrBindingStack :
           } else {
             accessor
           }
-        val targetFqName = declaration.parentAsClass.kotlinFqName
-        val accessorString =
-          when (declaration) {
-            is IrProperty -> declaration.name.asString()
-            is IrConstructor -> targetFqName.shortName().asString() + "()"
-            else -> declaration.name.asString() + "()"
-          }
         return Entry(
           contextKey = contextKey,
           usage = "is requested at",
-          graphContext = "$targetFqName.$accessorString",
+          graphContext = null,
           declaration = declaration,
           isSynthetic = true,
+          graphContextProvider = {
+            val targetFqName = declaration.parentAsClass.kotlinFqName
+            val accessorString =
+              when (declaration) {
+                is IrProperty -> declaration.name.asString()
+                is IrConstructor -> targetFqName.shortName().asString() + "()"
+                else -> declaration.name.asString() + "()"
+              }
+            "$targetFqName.$accessorString"
+          },
         )
       }
 
@@ -134,52 +151,52 @@ internal interface IrBindingStack :
         isSynthetic: Boolean = false,
         isMirrorFunction: Boolean = false,
       ): Entry {
-        // TODO make some of this lazily evaluated
-        val functionToUse =
-          if (function is IrSimpleFunction && function.isFakeOverride) {
-            function.resolveOverriddenTypeIfAny()
-          } else {
-            function
-          }
-        val context =
-          if (functionToUse == null) {
-            "<intrinsic>"
-          } else {
-            // If it's a synthetic signature holder in a ClassFactory, use the parent class
-            var treatAsConstructor = functionToUse is IrConstructor
-            val parentClassToReport =
-              if (functionToUse is IrSimpleFunction && isMirrorFunction) {
-                treatAsConstructor = functionToUse.name == Symbols.Names.mirrorFunction
-                functionToUse.parentAsClass.parent
-              } else {
-                functionToUse.parent
-              }
-            val targetFqName = parentClassToReport.kotlinFqName
-            val middle =
-              when {
-                functionToUse is IrConstructor -> ""
-                treatAsConstructor -> ""
-                functionToUse.isPropertyAccessor ->
-                  ".${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
-                else -> ".${functionToUse.name.asString()}"
-              }
-            val end =
-              if (param == null) {
-                "()"
-              } else if (functionToUse.isPropertyAccessor) {
-                ": $displayTypeKey"
-              } else {
-                "(…, ${param.name.asString()})"
-              }
-            "$targetFqName$middle$end"
-          }
         return Entry(
           contextKey = contextKey,
           displayTypeKey = displayTypeKey,
           usage = "is injected at",
-          graphContext = context,
+          graphContext = null,
           declaration = declaration,
           isSynthetic = isSynthetic,
+          graphContextProvider = {
+            val functionToUse =
+              if (function is IrSimpleFunction && function.isFakeOverride) {
+                function.resolveOverriddenTypeIfAny()
+              } else {
+                function
+              }
+            if (functionToUse == null) {
+              "<intrinsic>"
+            } else {
+              // If it's a synthetic signature holder in a ClassFactory, use the parent class
+              var treatAsConstructor = functionToUse is IrConstructor
+              val parentClassToReport =
+                if (functionToUse is IrSimpleFunction && isMirrorFunction) {
+                  treatAsConstructor = functionToUse.name == Symbols.Names.mirrorFunction
+                  functionToUse.parentAsClass.parent
+                } else {
+                  functionToUse.parent
+                }
+              val targetFqName = parentClassToReport.kotlinFqName
+              val middle =
+                when {
+                  functionToUse is IrConstructor -> ""
+                  treatAsConstructor -> ""
+                  functionToUse.isPropertyAccessor ->
+                    ".${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
+                  else -> ".${functionToUse.name.asString()}"
+                }
+              val end =
+                if (param == null) {
+                  "()"
+                } else if (functionToUse.isPropertyAccessor) {
+                  ": $displayTypeKey"
+                } else {
+                  "(…, ${param.name.asString()})"
+                }
+              "$targetFqName$middle$end"
+            }
+          },
         )
       }
 
@@ -190,17 +207,18 @@ internal interface IrBindingStack :
       fun memberInjectedAt(
         contextKey: IrContextualTypeKey,
         member: IrDeclarationWithName?,
-        context: String?,
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
+        context: () -> String?,
       ): Entry {
         return Entry(
           contextKey = contextKey,
           displayTypeKey = displayTypeKey,
           usage = "is injected at",
-          graphContext = context,
+          graphContext = null,
           declaration = member,
           isSynthetic = isSynthetic,
+          graphContextProvider = context,
         )
       }
 
@@ -213,15 +231,17 @@ internal interface IrBindingStack :
         function: IrFunction,
         displayTypeKey: IrTypeKey = contextualTypeKey.typeKey,
       ): Entry {
-        val targetFqName = function.parent.kotlinFqName
-        val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
-        val context = "$targetFqName$middle(…)"
         return Entry(
           contextKey = contextualTypeKey,
           displayTypeKey = displayTypeKey,
           usage = "is provided at",
-          graphContext = context,
+          graphContext = null,
           declaration = function,
+          graphContextProvider = {
+            val targetFqName = function.parent.kotlinFqName
+            val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
+            "$targetFqName$middle(…)"
+          },
         )
       }
 
@@ -234,19 +254,20 @@ internal interface IrBindingStack :
         parent: String,
         declaration: IrFunction? = null,
       ): Entry {
-        val targetFqName = graphExtensionKey.typeKey.type.rawType().kotlinFqName
-        val context =
-          when (val declarationToUse = declaration?.propertyIfAccessor) {
-            is IrProperty -> "$targetFqName.${declarationToUse.name}"
-            is IrFunction -> "$targetFqName.${declarationToUse.name}(…)"
-            else -> null
-          }
         return Entry(
           contextKey = graphExtensionKey,
           usage = "extends $parent",
-          graphContext = context,
+          graphContext = null,
           declaration = declaration,
           isSynthetic = false,
+          graphContextProvider = {
+            val targetFqName = graphExtensionKey.typeKey.type.rawType().kotlinFqName
+            when (val declarationToUse = declaration?.propertyIfAccessor) {
+              is IrProperty -> "$targetFqName.${declarationToUse.name}"
+              is IrFunction -> "$targetFqName.${declarationToUse.name}(…)"
+              else -> null
+            }
+          },
         )
       }
     }
@@ -342,7 +363,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
   override val entries: List<Entry> = stack
 
   init {
-    logger.log("New stack: ${logger.type}")
+    logger.log { "New stack: ${logger.type}" }
   }
 
   override fun copy(): IrBindingStack {
@@ -355,19 +376,21 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
   }
 
   override fun push(entry: Entry) {
-    val logPrefix =
-      if (stack.isEmpty()) {
-        "\uD83C\uDF32"
-      } else {
-        "└─"
-      }
-    val contextHint =
-      if (entry.typeKey != entry.displayTypeKey) {
-        "(${entry.typeKey.renderForDiagnostic(short = true)}) "
-      } else {
-        ""
-      }
-    logger.log("$logPrefix $contextHint${entry.toString().withoutLineBreaks}")
+    logger.log {
+      val logPrefix =
+        if (stack.size == 1) {
+          "\uD83C\uDF32"
+        } else {
+          "└─"
+        }
+      val contextHint =
+        if (entry.typeKey != entry.displayTypeKey) {
+          "(${entry.typeKey.renderForDiagnostic(short = true)}) "
+        } else {
+          ""
+        }
+      "$logPrefix $contextHint${entry.toString().withoutLineBreaks}"
+    }
     stack.addFirst(entry)
     entrySet.add(entry.typeKey)
     logger.indent()
@@ -495,42 +518,34 @@ internal fun bindingStackEntryForDependency(
       // Try to find the specific member (property/function) that requires this dependency
       val param = callingBinding.parameterFor(targetKey)
       if (param != null && param.isMember && param.ir != null) {
-        // Create a context string to indicate the TargetClass.injectedMember format
-        var context: String? = null
-        if (param.ir.isFromJava()) {
-          // TODO this is all super ugly
-          // Dagger interop, we need to synthesize the actual field or function
-          // param -> injector fun
-          val injectFunction = param.ir.parent.expectAs<IrSimpleFunction>()
-          val realName = injectFunction.name.asString().removePrefix("inject")
-          // injector fun -> injector class -> supertype
-          context =
-            injectFunction.parentAsClass
-              // Find the MembersInjector supertype
-              .superTypes
-              .find { it.rawType().classId == DaggerSymbols.ClassIds.DAGGER_MEMBERS_INJECTOR }
-              ?.let { membersInjectorSupertype ->
-                // Read the target type from its type args
-                membersInjectorSupertype.type
-                  .expectAs<IrSimpleType>()
-                  .arguments[0]
-                  .typeOrFail
-                  .classFqName
-              }
-              ?.child(realName.asName().decapitalizeUS())
-              ?.asString()
+        Entry.memberInjectedAt(contextKey, member = param.ir, displayTypeKey = targetKey) {
+          // Create a context string to indicate the TargetClass.injectedMember format
+          var context: String? = null
+          if (param.ir.isFromJava()) {
+            // TODO this is all super ugly
+            // Dagger interop, we need to synthesize the actual field or function
+            // param -> injector fun
+            val injectFunction = param.ir.parent.expectAs<IrSimpleFunction>()
+            val realName = injectFunction.name.asString().removePrefix("inject")
+            // injector fun -> injector class -> supertype
+            context =
+              injectFunction.parentAsClass
+                // Find the MembersInjector supertype
+                .superTypes
+                .find { it.rawType().classId == DaggerSymbols.ClassIds.DAGGER_MEMBERS_INJECTOR }
+                ?.let { membersInjectorSupertype ->
+                  // Read the target type from its type args
+                  membersInjectorSupertype.type
+                    .expectAs<IrSimpleType>()
+                    .arguments[0]
+                    .typeOrFail
+                    .classFqName
+                }
+                ?.child(realName.asName().decapitalizeUS())
+                ?.asString()
+          }
+          context ?: param.ir.parent.kotlinFqName.child(param.ir.name).asString()
         }
-
-        if (context == null) {
-          context = param.ir.parent.kotlinFqName.child(param.ir.name).asString()
-        }
-
-        Entry.memberInjectedAt(
-          contextKey,
-          member = param.ir,
-          context = context,
-          displayTypeKey = targetKey,
-        )
       } else {
         // Fallback to showing the inject() function
         Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)

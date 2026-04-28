@@ -1,12 +1,12 @@
 # Stability
 
-Metro is functionally **stable and ready for production** use and many companies are doing so.
+Metro is **stable, optimized, and well-tested**. Dozens of companies are using it in production, including a number of large engineering shops.
 
-Metro's **runtime** and **Gradle plugin** APIs are not _yet_ stabilized and versioned as `0.x.x` as a result. Changes to their APIs are infrequent, rarely invasive, and usually come with deprecation cycles before full removal. These APIs will eventually be stabilized.
+Metro's **runtime** and **Gradle plugin** APIs are stable and abide by semantic versioning.
 
 ## What about compiler plugin stability?
 
-See the [compatibility docs](compatibility.md).
+Metro's compiler plugin will always follow a (generously wide) moving window of supported Kotlin compiler versions. See the [compatibility docs](compatibility.md).
 
 ## Generated Code Stability
 

@@ -1,3 +1,5 @@
+// GENERATE_CONTRIBUTION_PROVIDERS: false
+
 interface Foo
 
 interface Bar : Foo {

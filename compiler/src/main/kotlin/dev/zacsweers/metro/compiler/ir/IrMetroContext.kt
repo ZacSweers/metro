@@ -91,6 +91,19 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     logFile?.appendText("$message\n")
   }
 
+  /**
+   * Deferred-evaluation log. The message is only built when [logFile] is set. Prefer this over
+   * [log] for hot paths (e.g. per-class transformer work) where building the message is non-trivial
+   * (FQ-name traversals, `buildString`, etc.).
+   */
+  fun log(message: () -> String) {
+    val file = logFile ?: return
+    val rendered = message()
+    @Suppress("DEPRECATION")
+    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $rendered")
+    file.appendText("$rendered\n")
+  }
+
   fun logVerbose(message: String) {
     @Suppress("DEPRECATION")
     messageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
