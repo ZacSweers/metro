@@ -7,9 +7,81 @@
     <meta http-equiv="refresh" content="1; url=latest/" />
   </noscript>
   <script>
-    window.location.replace(
-      "latest/" + window.location.search + window.location.hash
-    );
+    /**
+     * Redirect to the version that currently holds the "latest" alias.
+     *
+     * Rather than hard-coding a redirect to the `latest/` symlink (which mike
+     * can delete when it removes a version, causing an infinite redirect loop),
+     * we resolve the real target by reading versions.json first.
+     *
+     * Flow:
+     *   1. Fetch versions.json (same origin, cache-busted).
+     *   2. Find the entry whose `aliases` array contains "latest".
+     *   3. Redirect to that version folder directly (e.g. "1.0.0/").
+     *   4. If anything fails (network error, no alias found), fall back to
+     *      the "latest/" symlink so behaviour is unchanged for normal deploys.
+     */
+    (function () {
+      var suffix = window.location.search + window.location.hash;
+
+      console.log("[metro-redirect] Fetching versions.json…");
+
+      fetch("versions.json?t=" + Date.now())
+        .then(function (r) { return r.json(); })
+        .then(function (versions) {
+          console.log("[metro-redirect] versions.json loaded:", versions.map(function(e){ return e.version; }));
+
+          // 1. Prefer the version explicitly aliased as "latest".
+          for (var i = 0; i < versions.length; i++) {
+            var entry = versions[i];
+            if (Array.isArray(entry.aliases) && entry.aliases.indexOf("latest") !== -1) {
+              console.log("[metro-redirect] Branch 1: found 'latest' alias → redirecting to", entry.version + "/");
+              window.location.replace(entry.version + "/" + suffix);
+              return;
+            }
+          }
+
+          // 2. No "latest" alias found (e.g. it was accidentally deleted).
+          //    Fall back to the highest stable X.Y.Z version in the list.
+          //    See https://github.com/ZacSweers/metro/issues/2216
+          console.warn("[metro-redirect] Branch 2: no 'latest' alias in versions.json — finding highest stable release…");
+          var stableRe = /^\d+\.\d+\.\d+$/;
+          var stable = versions
+            .map(function (e) { return e.version; })
+            .filter(function (v) { return stableRe.test(v); })
+            .sort(function (a, b) {
+              // Numeric segment comparison so "10" > "9".
+              var pa = a.split(".").map(Number);
+              var pb = b.split(".").map(Number);
+              for (var j = 0; j < 3; j++) {
+                if (pa[j] !== pb[j]) return pb[j] - pa[j]; // descending
+              }
+              return 0;
+            });
+
+          if (stable.length > 0) {
+            console.log("[metro-redirect] Branch 2: highest stable release is", stable[0], "→ redirecting");
+            window.location.replace(stable[0] + "/" + suffix);
+            return;
+          }
+
+          // 3. No stable version at all — take whatever is first in the list.
+          if (versions.length > 0) {
+            console.warn("[metro-redirect] Branch 3: no stable releases found — falling back to first entry:", versions[0].version);
+            window.location.replace(versions[0].version + "/" + suffix);
+            return;
+          }
+
+          // 4. versions.json is empty — nothing we can do, show an error page.
+          console.error("[metro-redirect] Branch 4: versions.json is empty — cannot redirect");
+          document.body.innerHTML = "No documentation versions found. Please check back later.";
+        })
+        .catch(function (err) {
+          // versions.json unreachable — last resort symlink attempt.
+          console.error("[metro-redirect] Branch 5: failed to fetch versions.json —", err, "— falling back to latest/ symlink");
+          window.location.replace("latest/" + suffix);
+        });
+    })();
   </script>
 </head>
 <body>
