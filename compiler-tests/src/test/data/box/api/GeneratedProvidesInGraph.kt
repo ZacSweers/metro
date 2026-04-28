@@ -24,6 +24,6 @@ class Application
 
 fun box(): String {
   val graph = createGraph<Application.AppGraph>()
-  assertEquals("Hello, @GenerateProvidesInGraph!", (graph as StringComponent).text)
+  assertEquals("Hello, @GenerateProvidesInGraph!", graph.text)
   return "OK"
 }
