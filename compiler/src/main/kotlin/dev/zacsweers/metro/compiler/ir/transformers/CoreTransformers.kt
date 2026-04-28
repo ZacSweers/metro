@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.GraphToProcess
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.allScopes
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
@@ -31,9 +34,10 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
  * An [IrTransformer] that runs all of Metro's core transformers _before_ Graph validation. This
  * covers
  */
+@Inject
+@SingleIn(IrScope::class)
 internal class CoreTransformers(
   private val context: IrMetroContext,
-  traceScope: TraceScope,
   private val data: MutableMetroGraphData,
   private val contributionTransformer: ContributionIrTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
@@ -43,6 +47,7 @@ internal class CoreTransformers(
   private val contributionHintIrTransformer: Lazy<ContributionHintIrTransformer>,
   private val createGraphTransformer: CreateGraphTransformer,
   private val defaultBindingMirrorTransformer: DefaultBindingMirrorTransformer,
+  traceScope: TraceScope,
 ) :
   IrElementTransformerVoidWithContext(),
   TransformerContextAccess,

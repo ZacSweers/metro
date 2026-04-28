@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -12,6 +14,10 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.name.StandardClassIds
 
+internal interface DefaultBindingLookup {
+  fun lookupBinding(declaration: IrDeclarationWithName, clazz: IrClass): IrTypeKey?
+}
+
 /**
  * Resolves the bound type for a contributing class annotated with `@ContributesBinding`,
  * `@ContributesIntoSet`, or `@ContributesIntoMap`.
@@ -21,9 +27,11 @@ import org.jetbrains.kotlin.name.StandardClassIds
  * 2. Single supertype (excluding `Any`)
  * 3. `@DefaultBinding` on a supertype (via [defaultBindingLookup])
  */
+@Inject
+@SingleIn(IrScope::class)
 internal class IrBoundTypeResolver(
   private val metroContext: IrMetroContext,
-  private val defaultBindingLookup: (IrDeclarationWithName, IrClass) -> IrTypeKey?,
+  private val defaultBindingLookup: DefaultBindingLookup,
 ) {
 
   private val implicitBoundTypeCache = mutableMapOf<IrTypeKey, Optional<IrTypeKey>>()
@@ -115,7 +123,7 @@ internal class IrBoundTypeResolver(
     supertypes: Map<IrType, IrClass>,
   ): IrTypeKey? {
     for ((_, supertypeClass) in supertypes) {
-      val bindingTypeKey = defaultBindingLookup(caller, supertypeClass) ?: continue
+      val bindingTypeKey = defaultBindingLookup.lookupBinding(caller, supertypeClass) ?: continue
       return bindingTypeKey
     }
     return null

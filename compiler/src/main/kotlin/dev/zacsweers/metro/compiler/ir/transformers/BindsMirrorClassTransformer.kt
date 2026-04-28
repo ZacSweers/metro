@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
@@ -9,6 +12,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
@@ -42,6 +46,8 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
  * Transforms binding mirror classes generated in FIR by adding mirror functions for `@Binds` and
  * `@Multibinds` declarations.
  */
+@Inject
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
 internal class BindsMirrorClassTransformer(context: IrMetroContext) :
   IrMetroContext by context, Lockable by Lockable() {
   private val cache = mutableMapOf<ClassId, Optional<BindsMirror>>()

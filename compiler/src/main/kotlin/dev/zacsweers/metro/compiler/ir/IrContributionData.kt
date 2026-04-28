@@ -4,6 +4,9 @@ package dev.zacsweers.metro.compiler.ir
 
 import androidx.collection.MutableScatterMap
 import androidx.collection.MutableScatterSet
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
@@ -31,6 +34,9 @@ import org.jetbrains.kotlin.name.ClassId
 
 private typealias Scope = ClassId
 
+@Inject
+@SingleIn(IrScope::class)
+@ContributesBinding(IrScope::class)
 internal class IrContributionData(private val metroContext: IrMetroContext) :
   Lockable by Lockable() {
 
