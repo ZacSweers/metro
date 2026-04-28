@@ -84,7 +84,6 @@ import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
@@ -116,6 +115,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
@@ -322,9 +322,6 @@ internal class BindingContainerTransformer(context: IrMetroContext, traceScope: 
 
     val generatedClassId = reference.generatedClassId
 
-    // For in-compilation, we already have the real declaration from the reference
-    val realDeclaration = reference.callee?.owner ?: reference.backingField
-
     val factoryCls =
       trace("Find factory class") {
         reference.parent.owner.nestedClasses.singleOrNull {
@@ -332,14 +329,10 @@ internal class BindingContainerTransformer(context: IrMetroContext, traceScope: 
             it.classIdOrFail == generatedClassId
         }
           ?: run {
-            // For @IROnlyFactories-annotated containers and generated declarations, factory classes
-            // are not generated in FIR. Create the factory class entirely in IR.
+            // For @IROnlyFactories-annotated containers, factory classes are not generated in FIR.
+            // Create the factory class entirely in IR.
             val parentClass = reference.parent.owner
-            val isGeneratedDeclaration =
-              realDeclaration?.origin is IrDeclarationOrigin.GeneratedByPlugin
-            if (
-              parentClass.hasAnnotation(Symbols.ClassIds.irOnlyFactories) || isGeneratedDeclaration
-            ) {
+            if (parentClass.hasAnnotation(Symbols.ClassIds.irOnlyFactories)) {
               createContributionProviderFactory(parentClass, generatedClassId, reference)
             } else {
               reportCompilerBug(
@@ -409,15 +402,20 @@ internal class BindingContainerTransformer(context: IrMetroContext, traceScope: 
       // If it's got no parameters we'll generate it in FIR as an object
       ctor = factoryCls.primaryConstructor!!
     } else {
-      // For @IROnlyFactories containers and generated declarations, the factory stub already has a
-      // no-arg primary constructor shell. Reuse it. For FIR-generated factories, add a new
-      // constructor.
+      // For @IROnlyFactories containers, the factory stub already has a no-arg primary
+      // constructor shell. Reuse it. For FIR-generated factories, add a new constructor.
+      val isIROnlyFactory =
+        factoryCls.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) == true
+
       ctor =
-        factoryCls.primaryConstructor
-          ?: factoryCls.addConstructor {
+        if (isIROnlyFactory) {
+          factoryCls.primaryConstructor!!
+        } else {
+          factoryCls.addConstructor {
             visibility = DescriptorVisibilities.PRIVATE
             isPrimary = true
           }
+        }
 
       trace("Build factory constructor") {
         ctor.apply {
@@ -494,6 +492,9 @@ internal class BindingContainerTransformer(context: IrMetroContext, traceScope: 
           factoryCls.irCallableMetadata(mirrorFunction, reference.annotations, isInterop = false)
         }
       }
+
+    // For in-compilation, we already have the real declaration from the reference
+    val realDeclaration = reference.callee?.owner ?: reference.backingField
 
     val providerFactory =
       trace("Construct ProviderFactory") {
