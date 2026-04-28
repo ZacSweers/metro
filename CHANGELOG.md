@@ -12,6 +12,10 @@ Changelog
 - **[IR/graph]** Merge two annotation walks in supertype collection into a single pass with a per-annotation-class meta-annotation cache, so `@Singleton`/`@Scope`-style annotations appearing across many supertypes are meta-walked once instead of N times.
 - **[IR/tracing]** Add a lot more tracing spans for more granular tracing.
 
+### Enhancements
+
+- **[FIR]** Resolve copied typerefs (if necessary) in FIR code gen. This _appears_ to help avoid some IDE FIR issues.
+
 1.0.0
 -----
 
