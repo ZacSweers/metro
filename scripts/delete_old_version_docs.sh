@@ -2,7 +2,8 @@
 
 # This script cleans up old versioned mkdocs site by keeping:
 # 1. Only the LATEST snapshot version (not one per major.minor series)
-# 2. The latest patch version for each major.minor series (for releases)
+# 2. The latest patch version for each major.minor series (for stable releases)
+# 3. The latest pre-release (RC/alpha/beta) per series, ONLY if no stable release exists yet
 #
 # Example cleanup given the following versioned sites from `mike list`:
 # - "0.8.0-SNAPSHOT [snapshot]" <-- keep ✅ (latest snapshot)
@@ -14,6 +15,8 @@
 # - "0.6.0-SNAPSHOT" <-- deleted ❌ (older snapshot)
 # - "0.5.5" <-- keep ✅ (latest 0.5.x release)
 # - "0.5.4" <-- deleted ❌ (older 0.5.x release)
+# - "1.0.0 [latest]" <-- keep ✅ (stable release)
+# - "1.0.0-RC4" <-- deleted ❌ (pre-release superseded by stable 1.0.0)
 #
 # Note: This script is adapted from `https://github.com/chrisbanes/haze` repository.
 
@@ -35,14 +38,20 @@ while read -r line; do
   fi
 done < <(mike list)
 
-# Separate snapshots from releases
+# Separate into three buckets:
+#   snapshots   : *-SNAPSHOT
+#   releases    : stable X.Y.Z (no suffix) — these "own" their X.Y series
+#   prereleases : everything else (-RC*, -alpha, -beta, etc.)
 snapshots=()
 releases=()
+prereleases=()
 for v in "${versions[@]}"; do
   if [[ "$v" == *"-SNAPSHOT" ]]; then
     snapshots+=("$v")
-  else
+  elif [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     releases+=("$v")
+  else
+    prereleases+=("$v")
   fi
 done
 
@@ -52,7 +61,7 @@ if [[ ${#snapshots[@]} -gt 0 ]]; then
   latest_snapshot=$(printf "%s\n" "${snapshots[@]}" | sort -V | tail -n1)
 fi
 
-# Find latest release per X.Y series
+# Find latest stable release per X.Y series
 declare -A major_latest
 for v in "${releases[@]}"; do
   major="${v%.*}"
@@ -66,12 +75,30 @@ for v in "${releases[@]}"; do
   fi
 done
 
+# Find latest pre-release per X.Y series, but only when no stable release exists for that series.
+# Once a stable release ships, all pre-releases for the same series are deleted.
+declare -A pre_latest
+for v in "${prereleases[@]}"; do
+  base="${v%-*}"     # e.g. 1.0.0-RC4 → 1.0.0
+  major="${base%.*}" # e.g. 1.0.0 → 1.0
+  if [[ -z "${major_latest[$major]}" ]]; then
+    if [[ -z "${pre_latest[$major]}" ]]; then
+      pre_latest[$major]="$v"
+    else
+      pre_latest[$major]=$(printf "%s\n%s\n" "${pre_latest[$major]}" "$v" | sort -V | tail -n1)
+    fi
+  fi
+done
+
 # Build list of versions to keep
 keep=()
 if [[ -n "$latest_snapshot" ]]; then
   keep+=("$latest_snapshot")
 fi
 for v in "${major_latest[@]}"; do
+  keep+=("$v")
+done
+for v in "${pre_latest[@]}"; do
   keep+=("$v")
 done
 
