@@ -14,6 +14,7 @@ interface StringComponent {
 class Application
 
 // The extension generates a nested interface inside Application:
+//   @IROnlyFactories
 //   @DependencyGraph(AppScope::class)
 //   interface AppGraph {
 //     @Provides

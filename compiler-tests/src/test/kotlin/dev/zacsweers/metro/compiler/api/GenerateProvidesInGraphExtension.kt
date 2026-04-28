@@ -61,6 +61,8 @@ import org.jetbrains.kotlin.name.StandardClassIds
 private val DEPENDENCY_GRAPH_CLASS_ID =
   ClassId(FqName("dev.zacsweers.metro"), Name.identifier("DependencyGraph"))
 private val PROVIDES_CLASS_ID = ClassId(FqName("dev.zacsweers.metro"), Name.identifier("Provides"))
+private val IR_ONLY_FACTORIES_CLASS_ID =
+  ClassId(FqName("dev.zacsweers.metro.internal"), Name.identifier("IROnlyFactories"))
 
 private val APP_GRAPH_NAME = Name.identifier("AppGraph")
 private val PROVIDER_NAME = Name.identifier("provideString")
@@ -78,6 +80,7 @@ private val PROVIDER_NAME = Name.identifier("provideString")
  * This generates a nested interface:
  * ```
  * class Application {
+ *   @IROnlyFactories
  *   @DependencyGraph(AppScope::class)
  *   interface AppGraph {
  *     @Provides
@@ -159,6 +162,7 @@ internal class GenerateProvidesInGraphExtension(session: FirSession) :
           Visibilities.Public.toEffectiveVisibility(owner, forClass = true),
         )
       superTypeRefs += session.builtinTypes.anyType
+      annotations += buildIROnlyFactoriesAnnotation()
       annotations += buildDependencyGraphAnnotation(APP_SCOPE_CLASS_ID)
     }
 
@@ -196,6 +200,16 @@ internal class GenerateProvidesInGraphExtension(session: FirSession) :
   }
 
   // -- Annotation builders --
+
+  private fun buildIROnlyFactoriesAnnotation(): FirAnnotation {
+    val annotationClassSymbol =
+      session.symbolProvider.getClassLikeSymbolByClassId(IR_ONLY_FACTORIES_CLASS_ID)
+        as FirRegularClassSymbol
+    return buildAnnotation {
+      annotationTypeRef = annotationClassSymbol.defaultType().toFirResolvedTypeRef()
+      argumentMapping = buildAnnotationArgumentMapping()
+    }
+  }
 
   private fun buildDependencyGraphAnnotation(scopeClassId: ClassId): FirAnnotation {
     val annotationClassSymbol =
