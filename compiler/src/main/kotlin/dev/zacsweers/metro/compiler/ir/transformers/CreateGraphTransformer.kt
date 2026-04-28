@@ -3,9 +3,11 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.graph.IrDynamicGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.generatedDynamicGraphData
 import dev.zacsweers.metro.compiler.ir.implements
@@ -42,6 +44,7 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
  * real graphs or graph factories.
  */
 @Inject
+@SingleIn(IrScope::class)
 internal class CreateGraphTransformer(
   metroContext: IrMetroContext,
   private val dynamicGraphGenerator: IrDynamicGraphGenerator,

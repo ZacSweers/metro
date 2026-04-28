@@ -2,25 +2,41 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import androidx.tracing.AbstractTraceDriver
+import androidx.tracing.wire.TraceDriver as WireTraceDriver
+import androidx.tracing.wire.TraceSink
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.Qualifier
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ClassIds
+import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import dev.zacsweers.metro.compiler.tracing.TraceScope
+import java.nio.file.Path
 import java.util.concurrent.ForkJoinPool
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.io.path.appendText
+import kotlin.io.path.createDirectories
+import kotlin.io.path.createFile
+import kotlin.io.path.deleteIfExists
+import okio.blackholeSink
+import okio.buffer
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
 
 internal abstract class IrScope private constructor()
 
 @Qualifier internal annotation class SyntheticGraphs
+
+@Qualifier internal annotation class ReportFile(val name: String)
 
 @DependencyGraph(IrScope::class)
 internal interface IrDependencyGraph {
@@ -42,37 +58,77 @@ internal interface IrDependencyGraph {
   @SingleIn(IrScope::class)
   fun provideSyntheticGraphs(): MutableList<GraphToProcess> = mutableListOf()
 
-  @SingleIn(IrScope::class)
   @Provides
-  fun provideIrMetroContext(
-    pluginContext: IrPluginContext,
-    messageCollector: MessageCollector,
-    compatContext: CompatContext,
-    symbols: Symbols,
-    options: MetroOptions,
-    lookupTracker: LookupTracker?,
-    expectActualTracker: ExpectActualTracker,
-  ): IrMetroContext {
-    return IrMetroContext(
-      pluginContext,
-      messageCollector,
-      compatContext,
-      symbols,
-      options,
-      lookupTracker,
-      expectActualTracker,
-    )
+  @SingleIn(IrScope::class)
+  fun provideTraceDriver(options: MetroOptions): AbstractTraceDriver {
+    val tracePath = options.traceDir.value
+    val sink =
+      if (tracePath == null) {
+        TraceSink(sequenceId = 1, blackholeSink().buffer(), EmptyCoroutineContext)
+      } else {
+        tracePath.deleteIfExists()
+        tracePath.createDirectories()
+        TraceSink(sequenceId = 1, directory = tracePath.toFile())
+      }
+    return WireTraceDriver(sink = sink, isEnabled = tracePath != null)
   }
 
   @Provides
   @SingleIn(IrScope::class)
+  fun provideMessageRenderer(options: MetroOptions): MessageRenderer =
+    MessageRenderer(MessageRenderer.resolveRichOutput(options.richDiagnostics))
+
+  @Provides
+  @SingleIn(IrScope::class)
+  fun provideIrTypeSystemContext(pluginContext: IrPluginContext): IrTypeSystemContext =
+    IrTypeSystemContextImpl(pluginContext.irBuiltIns)
+
+  @Provides
+  @SingleIn(IrScope::class)
+  fun provideMetadataRegistrar(
+    pluginContext: IrPluginContext,
+    compatContext: CompatContext,
+  ): IrGeneratedDeclarationsRegistrarCompat =
+    compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
+
+  @Provides
+  @SingleIn(IrScope::class)
+  @ReportFile("log.txt")
+  fun provideLogFile(options: MetroOptions): Path? =
+    options.reportsDir.value?.resolve("log.txt")?.apply {
+      deleteIfExists()
+      createFile()
+    }
+
+  @Provides
+  @SingleIn(IrScope::class)
+  @ReportFile("lookups.csv")
+  fun provideLookupFile(options: MetroOptions): Path? =
+    options.reportsDir.value?.resolve("lookups.csv")?.apply {
+      deleteIfExists()
+      createFile()
+      appendText("file,position,scopeFqName,scopeKind,name")
+    }
+
+  @Provides
+  @SingleIn(IrScope::class)
+  @ReportFile("expectActualReports.csv")
+  fun provideExpectActualFile(options: MetroOptions): Path? =
+    options.reportsDir.value?.resolve("expectActualReports.csv")?.apply {
+      deleteIfExists()
+      createFile()
+      appendText("expected,actual")
+    }
+
+  @Provides
+  @SingleIn(IrScope::class)
   fun provideTraceScope(
-    traceScopeFactory: TraceScopeFactory,
+    traceDriver: AbstractTraceDriver,
     moduleFragment: IrModuleFragment,
   ): TraceScope {
-    return traceScopeFactory.create(
-      moduleFragment.name.asString().removePrefix("<").removeSuffix(">")
-    )
+    val name = moduleFragment.name.asString().removePrefix("<").removeSuffix(">")
+    check(name.isNotBlank()) { "Category must not be blank" }
+    return TraceScope(traceDriver.tracer, name)
   }
 
   @DependencyGraph.Factory

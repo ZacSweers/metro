@@ -4,9 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.compiler.ExitProcessingException
-import dev.zacsweers.metro.compiler.ir.transformers.ContributionIrTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.CoreTransformers
-import dev.zacsweers.metro.compiler.ir.transformers.CreateGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.Lockable
 import dev.zacsweers.metro.compiler.ir.transformers.MutableMetroGraphData
@@ -21,10 +19,8 @@ internal class MetroIrPipeline(
   override val metroContext: IrMetroContext,
   private val forkJoinPool: ForkJoinPool?,
   private val moduleFragment: IrModuleFragment,
-  private val createGraphTransformer: CreateGraphTransformer,
-  private val contributionTransformer: ContributionIrTransformer,
-  private val coreTransformersFactory: CoreTransformers.Factory,
-  private val dependencyGraphTransformerFactory: DependencyGraphTransformer.Factory,
+  private val coreTransformers: CoreTransformers,
+  private val dependencyGraphTransformer: DependencyGraphTransformer,
   private val graphData: MutableMetroGraphData,
   private val contributionData: IrContributionData,
   private val lockableTransformers: Set<Lockable>,
@@ -61,9 +57,6 @@ internal class MetroIrPipeline(
     try {
       trace("Metro compiler") {
         // Create contribution data container
-        val coreTransformers =
-          coreTransformersFactory.create(contributionTransformer, createGraphTransformer)
-
         // Run non-graph transforms + aggregate contribution data in a single pass
         trace("Core transformers") { moduleFragment.transform(coreTransformers, null) }
 
@@ -85,8 +78,6 @@ internal class MetroIrPipeline(
           }
         }
         lockableTransformers.forEach { it.lock() }
-
-        val dependencyGraphTransformer = dependencyGraphTransformerFactory.create(this)
 
         // Second - transform the dependency graphs
         trace("Graph transformers") {

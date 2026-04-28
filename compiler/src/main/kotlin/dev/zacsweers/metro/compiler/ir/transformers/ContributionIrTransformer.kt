@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
@@ -10,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.generators.isContributionProviderWrapper
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
@@ -78,6 +80,7 @@ import org.jetbrains.kotlin.name.ClassId
  * 3. Collects contribution data while transforming for use by the dependency graph.
  */
 @Inject
+@SingleIn(IrScope::class)
 internal class ContributionIrTransformer(
   private val context: IrMetroContext,
   private val boundTypeResolver: IrBoundTypeResolver,
