@@ -733,6 +733,10 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                   origin = Keys.RegularParameter.origin
                   symbol = FirValueParameterSymbol()
                   containingDeclarationSymbol = this@apply.symbol
+                  // Force a resolved type ref. The source context param can still be at
+                  // ANNOTATION_ARGUMENTS under LL FIR, in which case its returnTypeRef would be a
+                  // FirUserTypeRef and break later argument resolution.
+                  returnTypeRef = original.resolvedReturnTypeRef
                 }
                 .apply { replaceAnnotationsSafe(original.annotations) }
           }

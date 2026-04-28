@@ -450,7 +450,14 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
             functionBuilder = this,
             sourceParameters = constructorParams,
             copyParameterDefaults = true,
-          )
+          ) { original ->
+            // Force a resolved type ref. The source constructor's value parameters can still be at
+            // ANNOTATION_ARGUMENTS under LL FIR, so copying their returnTypeRef directly would
+            // leave a FirUserTypeRef on the generated parameter and crash later argument
+            // resolution. Use the symbol's resolvedReturnTypeRef to preserve the declared type
+            // (including Provider/Lazy wrappers) — typeKey.type strips those.
+            this.returnTypeRef = original.symbol.resolvedReturnTypeRef
+          }
         }
       }
 
