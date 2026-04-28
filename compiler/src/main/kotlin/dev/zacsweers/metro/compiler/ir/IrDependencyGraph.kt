@@ -9,13 +9,8 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.ir.transformers.ContributionIrTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.CoreTransformers
-import dev.zacsweers.metro.compiler.ir.transformers.CreateGraphTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.Lockable
-import dev.zacsweers.metro.compiler.ir.transformers.MutableMetroGraphData
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.util.concurrent.ForkJoinPool
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -28,18 +23,9 @@ internal abstract class IrScope private constructor()
 @Qualifier internal annotation class SyntheticGraphs
 
 @DependencyGraph(IrScope::class)
-internal interface IrMetroGraph {
+internal interface IrDependencyGraph {
 
-  val metroContext: IrMetroContext
-  val forkJoinPool: ForkJoinPool?
-  val createGraphTransformer: CreateGraphTransformer.Factory
-  val contributionTransformer: ContributionIrTransformer.Factory
-  val coreTransformersFactory: CoreTransformers.Factory
-  val dependencyGraphTransformerFactory: DependencyGraphTransformer.Factory
-  val graphData: MutableMetroGraphData
-  val contributionData: IrContributionData
-
-  val lockableTransformers: Set<Lockable>
+  val pipeline: MetroIrPipeline
 
   @Provides
   @SingleIn(IrScope::class)
@@ -78,6 +64,17 @@ internal interface IrMetroGraph {
     )
   }
 
+  @Provides
+  @SingleIn(IrScope::class)
+  fun provideTraceScope(
+    traceScopeFactory: TraceScopeFactory,
+    moduleFragment: IrModuleFragment,
+  ): TraceScope {
+    return traceScopeFactory.create(
+      moduleFragment.name.asString().removePrefix("<").removeSuffix(">")
+    )
+  }
+
   @DependencyGraph.Factory
   interface Factory {
     fun create(
@@ -89,6 +86,6 @@ internal interface IrMetroGraph {
       @Provides compatContext: CompatContext,
       @Provides moduleFragment: IrModuleFragment,
       @Provides pluginContext: IrPluginContext,
-    ): IrMetroGraph
+    ): IrDependencyGraph
   }
 }

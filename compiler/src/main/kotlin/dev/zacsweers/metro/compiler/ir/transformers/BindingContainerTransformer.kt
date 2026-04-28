@@ -128,13 +128,13 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-@AssistedInject
+@Inject
 @SingleIn(IrScope::class)
 @ContributesIntoSet(IrScope::class, binding<Lockable>())
 internal class BindingContainerTransformer(
   context: IrMetroContext,
   private val bindsMirrorClassTransformer: BindsMirrorClassTransformer,
-  @Assisted traceScope: TraceScope,
+  traceScope: TraceScope,
 ) : IrMetroContext by context, TraceScope by traceScope, Lockable by Lockable() {
 
   // Thread-safe for concurrent access during parallel graph validation.

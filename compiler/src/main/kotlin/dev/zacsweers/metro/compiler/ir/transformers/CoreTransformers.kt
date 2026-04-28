@@ -36,7 +36,6 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
 @AssistedInject
 internal class CoreTransformers(
   private val context: IrMetroContext,
-  @Assisted traceScope: TraceScope,
   private val data: MutableMetroGraphData,
   @Assisted private val contributionTransformer: ContributionIrTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
@@ -46,6 +45,7 @@ internal class CoreTransformers(
   private val contributionHintIrTransformer: Lazy<ContributionHintIrTransformer>,
   @Assisted private val createGraphTransformer: CreateGraphTransformer,
   private val defaultBindingMirrorTransformer: DefaultBindingMirrorTransformer,
+  traceScope: TraceScope,
 ) :
   IrElementTransformerVoidWithContext(),
   TransformerContextAccess,

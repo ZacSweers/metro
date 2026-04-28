@@ -89,10 +89,10 @@ import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
-@AssistedInject
+@Inject
 @SingleIn(IrScope::class)
 @ContributesIntoSet(IrScope::class, binding<Lockable>())
-internal class MembersInjectorTransformer(context: IrMetroContext, @Assisted traceScope: TraceScope) :
+internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: TraceScope) :
   IrMetroContext by context, TraceScope by traceScope, Lockable by Lockable() {
 
   data class MemberInjectClass(

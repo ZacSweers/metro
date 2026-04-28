@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
-import dev.zacsweers.metro.Assisted
-import dev.zacsweers.metro.AssistedInject
+import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
@@ -78,11 +77,11 @@ import org.jetbrains.kotlin.name.ClassId
  *    overrides of them.
  * 3. Collects contribution data while transforming for use by the dependency graph.
  */
-@AssistedInject
+@Inject
 internal class ContributionIrTransformer(
   private val context: IrMetroContext,
-  @Assisted traceScope: TraceScope,
   private val boundTypeResolver: IrBoundTypeResolver,
+  traceScope: TraceScope,
 ) : IrTransformer<IrContributionData>(), IrMetroContext by context, TraceScope by traceScope {
 
   private val transformedContributions = mutableSetOf<ClassId>()

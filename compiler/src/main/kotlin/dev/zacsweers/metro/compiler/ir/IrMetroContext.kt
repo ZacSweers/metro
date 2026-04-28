@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import androidx.tracing.AbstractTraceDriver
 import androidx.tracing.wire.TraceDriver as WireTraceDriver
 import androidx.tracing.wire.TraceSink
+import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroLogger
@@ -313,6 +314,15 @@ internal fun writeDiagnostic(diagnosticKey: String, fileName: () -> String, text
       deleteIfExists()
     }
     ?.writeText(text())
+}
+
+@Inject
+internal class TraceScopeFactory(private val context: IrMetroContext) {
+  fun create(category: String): TraceScope {
+    val driver = context.traceDriver
+    check(category.isNotBlank()) { "Category must not be blank" }
+    return TraceScope(driver.tracer, category)
+  }
 }
 
 context(context: IrMetroContext)
