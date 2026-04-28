@@ -10,9 +10,11 @@ import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidersInGraphIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidesInGraphExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
@@ -201,6 +203,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
             )
             add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
+            add(GenerateProvidesInGraphExtension.Factory().create(session, options, compatContext))
             if (options.enableCircuitCodegen) {
               add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
             }
@@ -230,6 +233,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     }
     IrGenerationExtension.registerExtension(GenerateImplIrExtension())
     IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
+    IrGenerationExtension.registerExtension(GenerateProvidersInGraphIrExtension())
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector = configuration.messageCollector,
