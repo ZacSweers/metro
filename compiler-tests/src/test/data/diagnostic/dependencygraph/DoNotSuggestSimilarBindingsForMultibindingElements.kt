@@ -5,5 +5,5 @@
 interface AppGraph {
   @Provides @IntoSet fun provideNumber(): Number = 3
   val any: Set<Number>
-  val <!METRO_ERROR!>int<!>: Int
+  val <!MISSING_BINDING!>int<!>: Int
 }

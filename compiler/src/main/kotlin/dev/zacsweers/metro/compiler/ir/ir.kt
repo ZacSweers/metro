@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
@@ -9,8 +10,10 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.isExtensionGenerated
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -42,6 +45,7 @@ import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.config.LanguageFeature
+import org.jetbrains.kotlin.config.LanguageVersion
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
@@ -60,6 +64,7 @@ import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
+import org.jetbrains.kotlin.ir.builders.irAnnotation
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -105,12 +110,8 @@ import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
-import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
 import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -141,6 +142,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.TypeRemapper
+import org.jetbrains.kotlin.ir.util.allParameters
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -157,6 +159,7 @@ import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.hasEqualFqName
 import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
@@ -174,7 +177,9 @@ import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.library.KOTLIN_JS_STDLIB_NAME
 import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.platform.TargetPlatform
 import org.jetbrains.kotlin.platform.isJs
@@ -264,8 +269,50 @@ internal fun IrType.rawTypeOrNull(): IrClass? {
   }
 }
 
+// Compat copies because of IrAnnotation in 2.4.0
+internal fun IrAnnotationContainer.getAnnotation(name: FqName): IrConstructorCall? =
+  annotations.find {
+    it.isAnnotationWithEqualFqName(name)
+  }
+
+private fun IrConstructorCall.isAnnotationWithEqualFqName(fqName: FqName): Boolean =
+  if (symbol.isBound) {
+    annotationClass.hasEqualFqName(fqName)
+  } else {
+    symbol.hasEqualFqName(fqName.child(SpecialNames.INIT))
+  }
+
+internal fun IrConstructorCall.getAnnotationStringValue() =
+  (arguments[0] as? IrConst)?.value as String?
+
+internal fun IrConstructorCall.getAnnotationStringValue(name: String): String {
+  val parameter = symbol.owner.parameters.single { it.name.asString() == name }
+  return (arguments[parameter.indexInParameters] as IrConst).value as String
+}
+
 internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>): Boolean {
   return names.any { hasAnnotation(it) }
+}
+
+/**
+ * Returns `true` if factory generation should be skipped for this class because
+ * [generateContributionProviders][MetroOptions.generateContributionProviders] is enabled and the
+ * class has `@Contributes*` annotations (unless the class is annotated with `@ExposeImplBinding` or
+ * is an extension-generated top-level class, which opt out of the skip).
+ */
+internal fun IrClass.usesContributionProviderPath(
+  options: MetroOptions,
+  classIds: ClassIds,
+): Boolean {
+  if (!options.generateContributionProviders) return false
+  if (isExtensionGenerated) return false
+  if (annotationsIn(classIds.contributionProviderExclusionAnnotations).any()) return false
+  if (!annotationsIn(classIds.contributesBindingLikeAnnotationsWithContainers).any()) return false
+  // Can't generate a contribution provider if the inject constructor is private
+  val injectCtor =
+    findInjectableConstructor(onlyUsePrimaryConstructor = false, classIds.injectLikeAnnotations)
+  if (injectCtor?.visibility == DescriptorVisibilities.PRIVATE) return false
+  return true
 }
 
 internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<IrConstructorCall> {
@@ -296,14 +343,6 @@ internal fun <Container, T> Container.repeatableAnnotationsIn(
 
 internal fun IrAnnotationContainer.findAnnotations(classId: ClassId): Sequence<IrConstructorCall> {
   return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId == classId }
-}
-
-internal fun IrAnnotationContainer.annotationsAnnotatedWithAny(
-  names: Set<ClassId>
-): Sequence<IrConstructorCall> {
-  return annotations.asSequence().filter { annotationCall ->
-    annotationCall.isAnnotatedWithAny(names)
-  }
 }
 
 internal fun IrConstructorCall.isAnnotatedWithAny(names: Set<ClassId>): Boolean {
@@ -385,7 +424,12 @@ internal fun IrBuilderWithScope.irInvoke(
   if (!contextArgs.isNullOrEmpty()) argSize += contextArgs.size
   if (extensionReceiver != null) argSize++
   check(callee.owner.parameters.size == argSize) {
-    "Expected ${callee.owner.parameters.size} arguments but got $argSize for function: ${callee.owner.kotlinFqName}"
+    """
+      Expected ${callee.owner.parameters.size} arguments but got $argSize for function: ${callee.owner.kotlinFqName}
+      Expected: ${callee.owner.allParameters.joinToKotlinLike(", ")}
+      Actual: receiver=${finalReceiverExpression?.dumpKotlinLike()} contextArgs=${contextArgs?.joinToKotlinLike(", ")} extension=${extensionReceiver?.dumpKotlinLike()} args=${args.joinToKotlinLike(", ")}
+    """
+      .trimIndent()
   }
 
   var index = 0
@@ -503,7 +547,7 @@ internal fun IrClass.allCallableMembers(
 ): Sequence<MetroSimpleFunction> {
   return functions
     .letIf(excludeAnyFunctions) {
-      it.filterNot { function -> function.isInheritedFromAny(context.irBuiltIns) }
+      it.filterNot { function -> function.isCompilerIntrinsicOrAny(context.irBuiltIns, isData) }
     }
     .filter(functionFilter)
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
@@ -516,8 +560,8 @@ internal fun IrClass.allCallableMembers(
         companionObject()?.let { companionObject ->
           asFunctions +
             companionObject.allCallableMembers(
-              excludeAnyFunctions,
-              excludeInheritedMembers,
+              excludeAnyFunctions = excludeAnyFunctions,
+              excludeInheritedMembers = excludeInheritedMembers,
               excludeCompanionObjectMembers = false,
             )
         } ?: asFunctions
@@ -589,6 +633,8 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
 }
 
 /** For use with generated factory creator functions, converts parameters to Provider<T> types. */
+// TODO this is only left over for member injectors. Should migrate that to the typekey fields
+//  overload
 context(context: IrMetroContext)
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
   parameters: Parameters,
@@ -599,28 +645,51 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
     addAll(
       parameters.allParameters
         .filterNot { it.isAssisted }
-        .map { parameter -> parameterAsProviderArgument(parameter, receiver, parametersToFields) }
+        .map { parameter ->
+          // When calling value getter on Provider<T>, make sure the dispatch
+          // receiver is the Provider instance itself
+          val providerInstance = irGetField(irGet(receiver), parametersToFields.getValue(parameter))
+          val typeMetadata = parameter.contextualTypeKey
+          typeAsProviderArgument(
+            typeMetadata,
+            providerInstance,
+            isAssisted = parameter.isAssisted,
+            isGraphInstance = parameter.isGraphInstance,
+          )
+        }
     )
   }
 }
 
-/** For use with generated factory create() functions. */
+/** For use with generated factory creator functions, converts parameters to Provider<T> types. */
 context(context: IrMetroContext)
-internal fun IrBuilderWithScope.parameterAsProviderArgument(
-  parameter: Parameter,
+internal fun IrBuilderWithScope.parametersAsProviderArguments(
+  parameters: Parameters,
   receiver: IrValueParameter,
-  parametersToFields: Map<Parameter, IrField>,
-): IrExpression {
-  // When calling value getter on Provider<T>, make sure the dispatch
-  // receiver is the Provider instance itself
-  val providerInstance = irGetField(irGet(receiver), parametersToFields.getValue(parameter))
-  val typeMetadata = parameter.contextualTypeKey
-  return typeAsProviderArgument(
-    typeMetadata,
-    providerInstance,
-    isAssisted = parameter.isAssisted,
-    isGraphInstance = parameter.isGraphInstance,
-  )
+  fields: Map<IrTypeKey, IrField>,
+  nameToField: Map<Name, IrField>? = null,
+  calleeParameters: Parameters = parameters,
+): List<IrExpression?> {
+  return buildList {
+    addAll(
+      calleeParameters.allParameters
+        .filterNot { it.isAssisted }
+        .map { parameter ->
+          // When calling value getter on Provider<T>, make sure the dispatch
+          // receiver is the Provider instance itself
+          // Look up by name first (handles multiple params with same type key),
+          // fall back to type key (handles deduped params where name was removed)
+          val field = nameToField?.get(parameter.name) ?: fields.getValue(parameter.typeKey)
+          val providerInstance = irGetField(irGet(receiver), field)
+          typeAsProviderArgument(
+            parameter.contextualTypeKey,
+            providerInstance,
+            isAssisted = parameter.isAssisted,
+            isGraphInstance = parameter.isGraphInstance,
+          )
+        }
+    )
+  }
 }
 
 context(context: IrMetroContext)
@@ -632,16 +701,14 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 ): IrExpression {
   val symbols = context.metroSymbols
 
-  // If KClass/Class interop is enabled and the consumer declared Map<Class<*>, V>,
-  // convert the canonical Map<KClass<*>, V> to Map<Class<*>, V> via `mapKeys { it.key.java }`
-  val convertedBindingCode = maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
-
-  val irType = convertedBindingCode.type
+  val irType = bindingCode.type
 
   if (!irType.implementsLazyType() && !irType.implementsProviderType()) {
     // Not a provider or suspend provider, nothing else to do here!
-    // SuspendProvider doesn't need provider framework conversion
-    return convertedBindingCode
+    // SuspendProvider doesn't need provider framework conversion.
+    // If KClass/Class interop is enabled and the consumer declared Map<Class<*>, V>,
+    // convert the canonical Map<KClass<*>, V> to Map<Class<*>, V> via `mapKeys { it.key.java }`
+    return maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
   }
 
   val providerTypeConverter = symbols.providerTypeConverter
@@ -670,9 +737,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
             valueParameters = emptyList(),
             returnType = lazyType,
           ) {
-            +irReturn(
-              with(providerTypeConverter) { convertedBindingCode.convertTo(lazyContextKey) }
-            )
+            +irReturn(with(providerTypeConverter) { bindingCode.convertTo(lazyContextKey) })
           }
         } else {
           // ProviderOfLazy.create(provider) returns Provider<Lazy<T>>
@@ -681,14 +746,14 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
             dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
             callee = symbols.providerOfLazyCreate,
             typeArgs = listOf(contextKey.typeKey.type),
-            args = listOf(convertedBindingCode),
+            args = listOf(bindingCode),
             typeHint =
               contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
           )
         }
       }
 
-      else -> with(providerTypeConverter) { convertedBindingCode.convertTo(contextKey) }
+      else -> with(providerTypeConverter) { bindingCode.convertTo(contextKey) }
     }
 
   // Determine whether we need to invoke the provider to get the value.
@@ -708,11 +773,16 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 
   return if (shouldInvoke) {
     // provider.invoke()
-    irInvoke(
-      dispatchReceiver = metroProviderExpression,
-      callee = symbols.providerInvoke,
-      typeHint = contextKey.typeKey.type,
-    )
+    val invoked =
+      irInvoke(
+        dispatchReceiver = metroProviderExpression,
+        callee = symbols.providerInvoke,
+        typeHint = contextKey.typeKey.type,
+      )
+    // If KClass/Class interop is enabled and the consumer declared Map<Class<*>, V>,
+    // convert the canonical Map<KClass<*>, V> to Map<Class<*>, V> via `mapKeys { it.key.java }`.
+    // This must happen after invoking the provider, since the binding code is Provider<Map<...>>.
+    maybeConvertMapKeysToJavaClass(invoked, contextKey)
   } else {
     metroProviderExpression
   }
@@ -746,12 +816,30 @@ private fun maybeConvertMapKeysToJavaClass(
   val rawKeyClassId = keyType.rawType().classId
   if (rawKeyClassId != Symbols.ClassIds.JavaLangClass) return bindingCode
 
+  val rawKeyTypeProjection = rawType.arguments[0] as? IrTypeProjection ?: return bindingCode
+  val kclassKeyType =
+    makeTypeProjection(
+      rawKeyTypeProjection.type.normalizeToKClassIfJavaClass(),
+      rawKeyTypeProjection.variance,
+    )
+  val valueType = rawType.arguments[1]
+
   // The consumer declared Map<Class<*>, V>, convert map keys from KClass to Class
-  return convertClassMapToKClassMap(keyType, bindingCode)
+  return convertClassMapToKClassMap(
+    keyType = keyType,
+    kclassKeyType = kclassKeyType,
+    valueType = valueType,
+    bindingCode = bindingCode,
+  )
 }
 
 context(context: IrMetroContext, scope: IrBuilderWithScope)
-private fun convertClassMapToKClassMap(keyType: IrType, bindingCode: IrExpression): IrExpression {
+private fun convertClassMapToKClassMap(
+  keyType: IrType,
+  kclassKeyType: IrTypeArgument,
+  valueType: IrTypeArgument,
+  bindingCode: IrExpression,
+): IrExpression {
   val mapKeysFunction = context.metroSymbols.mapKeysFunction
   val mapEntryKeyGetter = context.metroSymbols.mapEntryKeyGetter
   val kClassJavaGetter =
@@ -759,11 +847,6 @@ private fun convertClassMapToKClassMap(keyType: IrType, bindingCode: IrExpressio
       ?: reportCompilerBug(
         "KClass.java property getter not found but enableKClassClassInterop is enabled"
       )
-
-  // Extract types from the binding's canonical map type: Map<KClass<*>, V>
-  val mapType = bindingCode.type.requireSimpleType()
-  val kclassKeyType = mapType.arguments[0]
-  val valueType = mapType.arguments[1]
 
   // Build Map.Entry<KClass<*>, V> type for the lambda parameter
   val entryType =
@@ -826,26 +909,26 @@ internal fun IrType.normalizeToKClassIfJavaClass(): IrType {
   }
 }
 
+context(context: IrMetroContext)
+internal fun IrValueParameter.addBackingFieldTo(clazz: IrClass): IrField {
+  return clazz
+    .addField(toSafeIdentifier(name.asString()), type, DescriptorVisibilities.PRIVATE)
+    .apply {
+      isFinal = true
+      initializer =
+        context.createIrBuilder(symbol).run { irExprBody(irGet(this@addBackingFieldTo)) }
+    }
+}
+
 // TODO eventually just return a Map<TypeKey, IrField>
 context(context: IrMetroContext)
 internal fun assignConstructorParamsToFields(
   constructor: IrConstructor,
-  clazz: IrClass,
+  clazz: IrClass = constructor.parentAsClass,
 ): Map<IrValueParameter, IrField> {
   return buildMap {
     for (irParameter in constructor.regularParameters) {
-      val irField =
-        clazz
-          .addField(
-            toSafeIdentifier(irParameter.name.asString()),
-            irParameter.type,
-            DescriptorVisibilities.PRIVATE,
-          )
-          .apply {
-            isFinal = true
-            initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
-          }
-      put(irParameter, irField)
+      put(irParameter, irParameter.addBackingFieldTo(clazz))
     }
   }
 }
@@ -857,21 +940,7 @@ internal fun assignConstructorParamsToFields(
 ): Map<Parameter, IrField> {
   return buildMap {
     for (irParameter in parameters.regularParameters) {
-      val irField =
-        clazz
-          .addField(
-            irParameter.name,
-            irParameter.contextualTypeKey.toIrType(),
-            DescriptorVisibilities.PRIVATE,
-          )
-          .apply {
-            isFinal = true
-            initializer =
-              context.createIrBuilder(symbol).run {
-                irExprBody(irGet(irParameter.asValueParameter))
-              }
-          }
-      put(irParameter, irField)
+      put(irParameter, irParameter.asValueParameter.addBackingFieldTo(clazz))
     }
   }
 }
@@ -1052,10 +1121,6 @@ internal fun IrClass.originClassId(): ClassId? {
     ?.originOrNull()
 }
 
-internal fun IrConstructorCall.requireOrigin(): ClassId {
-  return originOrNull() ?: reportCompilerBug("No origin found for ${dumpKotlinLike()}")
-}
-
 internal fun IrConstructorCall.originOrNull(): ClassId? {
   return originClassOrNull()?.classIdOrFail
 }
@@ -1065,6 +1130,11 @@ internal fun IrConstructorCall.originClassOrNull(): IrClass? {
     ?.expectAsOrNull<IrClassReference>()
     ?.classType
     ?.rawTypeOrNull()
+}
+
+/** Reads the `context` argument of an `@Origin` annotation, or `null` if unset. */
+internal fun IrConstructorCall.originContextOrNull(): String? {
+  return (getValueArgument(Symbols.Names.context) as? IrConst)?.value as? String
 }
 
 internal fun IrBuilderWithScope.kClassReference(symbol: IrClassSymbol): IrClassReference {
@@ -1376,7 +1446,39 @@ internal fun buildAnnotation(
   body: IrBuilderWithScope.(IrConstructorCall) -> Unit = {},
 ): IrConstructorCall {
   return context.createIrBuilder(symbol).run {
-    irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
+    if (context.languageVersionSettings.languageVersion >= LanguageVersion.KOTLIN_2_4) {
+      irAnnotation(callee, typeArguments = emptyList()).also { body(it) }
+    } else {
+      irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
+    }
+  }
+}
+
+/**
+ * Adds `@HiddenFromObjC` to [function] if the annotation is available (K/N only).
+ *
+ * We do this because there's a bunch of places where K/N linking breaks on generated symbols.
+ *
+ * https://github.com/ZacSweers/metro/issues/2137
+ */
+context(context: IrMetroContext)
+internal fun addHiddenFromObjCAnnotation(function: IrFunction) {
+  val ctor = context.metroSymbols.hiddenFromObjCAnnotationConstructor ?: return
+  function.annotations += buildAnnotation(function.symbol, ctor)
+}
+
+/**
+ * Adds `@JvmStatic` and `@JsStatic` to [function] when [MetroOptions.generateStaticAnnotations] is
+ * enabled and the annotations are available on the current classpath.
+ */
+context(context: IrMetroContext)
+internal fun addStaticAnnotations(function: IrFunction) {
+  if (!context.options.generateStaticAnnotations) return
+  context.metroSymbols.jvmStaticAnnotationConstructor?.let { ctor ->
+    function.annotations += buildAnnotation(function.symbol, ctor)
+  }
+  context.metroSymbols.jsStaticAnnotationConstructor?.let { ctor ->
+    function.annotations += buildAnnotation(function.symbol, ctor)
   }
 }
 
@@ -1419,34 +1521,6 @@ internal val IrClass.sourceGraphIfMetroGraph: IrClass
     }
   }
 
-// Adapted from compose-compiler
-// https://github.com/JetBrains/kotlin/blob/d36a97bb4b935c719c44b76dc8de952579404f91/plugins/compose/compiler-hosted/src/main/java/androidx/compose/compiler/plugins/kotlin/lower/AbstractComposeLowering.kt#L1608
-context(context: IrMetroContext)
-internal fun hiddenDeprecated(
-  message: String = "This synthesized declaration should not be used directly"
-): IrConstructorCall {
-  return IrConstructorCallImpl.fromSymbolOwner(
-      type = context.metroSymbols.deprecated.defaultType,
-      constructorSymbol = context.metroSymbols.deprecatedAnnotationConstructor,
-    )
-    .also {
-      it.arguments[0] =
-        IrConstImpl.string(
-          SYNTHETIC_OFFSET,
-          SYNTHETIC_OFFSET,
-          context.irBuiltIns.stringType,
-          message,
-        )
-      it.arguments[2] =
-        IrGetEnumValueImpl(
-          SYNTHETIC_OFFSET,
-          SYNTHETIC_OFFSET,
-          context.metroSymbols.deprecationLevel.defaultType,
-          context.metroSymbols.hiddenDeprecationLevel,
-        )
-    }
-}
-
 internal val IrFunction.extensionReceiverParameterCompat: IrValueParameter?
   get() {
     return parameters.firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }
@@ -1468,7 +1542,6 @@ private fun IrFunction.setReceiverParameter(kind: IrParameterKind, value: IrValu
   var reindexSubsequent = false
   if (index >= 0) {
     val old = parameters[index]
-    old.indexInOldValueParameters = -1
     old.indexInParameters = -1
 
     if (value != null) {
@@ -1488,7 +1561,6 @@ private fun IrFunction.setReceiverParameter(kind: IrParameterKind, value: IrValu
   }
 
   if (value != null) {
-    value.indexInOldValueParameters = -1
     value.indexInParameters = index
     value.kind = kind
   }
@@ -1511,8 +1583,15 @@ internal val IrFunction.regularParameters: List<IrValueParameter>
     return parameters.filter { it.kind == IrParameterKind.Regular }
   }
 
-internal fun IrFunction.isInheritedFromAny(irBuiltIns: IrBuiltIns): Boolean {
-  return isEqualsOnAny(irBuiltIns) || isHashCodeOnAny() || isToStringOnAny()
+internal fun IrFunction.isCompilerIntrinsicOrAny(
+  irBuiltIns: IrBuiltIns,
+  isDataClass: Boolean,
+): Boolean {
+  return isEqualsOnAny(irBuiltIns) ||
+    isHashCodeOnAny() ||
+    isToStringOnAny() ||
+    isComponentOperator ||
+    (isDataClass && isNamedCopy)
 }
 
 internal fun IrFunction.isEqualsOnAny(irBuiltIns: IrBuiltIns): Boolean {
@@ -1533,6 +1612,29 @@ internal fun IrFunction.isToStringOnAny(): Boolean {
   return name == StandardNames.TO_STRING_NAME &&
     hasShape(dispatchReceiver = true, regularParameters = 0)
 }
+
+internal val IrFunction.isNamedCopy: Boolean
+  get() = name == StandardNames.DATA_CLASS_COPY
+
+private val COMPONENT_FUNCTION_REGEX = Regex(StandardNames.DATA_CLASS_COMPONENT_PREFIX + "[0-9]*")
+
+// private fun isComponentNMethod(method: CallableMemberDescriptor): Boolean {
+//    if ((method as? FunctionDescriptor)?.isOperator != true) return false
+//    val parent = method.containingDeclaration
+//    if (parent is ClassDescriptor && parent.isData &&
+// DataClassResolver.isComponentLike(method.name)) {
+//        // componentN method of data class.
+//        return true
+//    }
+//    return false
+// }
+internal val IrFunction.isComponentOperator: Boolean
+  get() {
+    return this is IrSimpleFunction &&
+      isOperator &&
+      COMPONENT_FUNCTION_REGEX.matches(name.asString()) &&
+      hasShape(dispatchReceiver = true, regularParameters = 0)
+  }
 
 internal val NOOP_TYPE_REMAPPER =
   object : TypeRemapper {
@@ -1713,7 +1815,7 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
   annotationsToLookFor: Collection<ClassId>
 ): Set<IrConstructorCall> {
   if (this == null) return emptySet()
-  return filterTo(LinkedHashSet()) {
+  return filterToSet {
     it.type.classOrNull?.owner?.isAnnotatedWithAny(annotationsToLookFor) == true
   }
 }
@@ -1937,31 +2039,35 @@ internal fun Collection<IrClass>.toIrVararg() = ifNotEmpty {
   scope.irVararg(first().defaultType, map { value -> scope.kClassReference(value.symbol) })
 }
 
-context(context: IrPluginContext)
-internal fun IrClass.implicitBoundTypeOrNull(): IrType? {
-  return superTypes
-    .filterNot { it.rawType().classId == context.irBuiltIns.anyClass.owner.classId }
-    .singleOrNull()
-}
-
 // Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
 // checks for non-interop
-context(context: IrPluginContext)
-internal fun IrConstructorCall.bindingTypeOrNull(): Pair<IrType?, Boolean> {
-  return bindingTypeArgument()?.let { type ->
+context(context: IrMetroContext)
+internal fun IrConstructorCall.bindingTypeOrNull(
+  contributingClass: IrClass,
+  ignoreQualifier: Boolean,
+): IrTypeKey? {
+  bindingTypeArgument()?.let { typeKey ->
     // Return a binding defined using Metro's API
-    type to false
+    return typeKey.copy(qualifier = typeKey.qualifier ?: contributingClass.qualifierAnnotation())
   }
-    ?:
-    // Return a boundType defined using anvil KClass
-    (anvilKClassBoundTypeArgument() to anvilIgnoreQualifier())
+  val anvilBoundType = anvilKClassBoundTypeArgument() ?: return null
+  // Return a boundType defined using anvil KClass
+  val qualifier =
+    if (!ignoreQualifier) {
+      contributingClass.qualifierAnnotation()
+    } else {
+      null
+    }
+  return IrTypeKey(anvilBoundType, qualifier)
 }
 
-context(context: IrPluginContext)
-internal fun IrConstructorCall.bindingTypeArgument(): IrType? {
+context(context: IrMetroContext)
+internal fun IrConstructorCall.bindingTypeArgument(): IrTypeKey? {
   return getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let {
     bindingType ->
-    bindingType.typeArguments.getOrNull(0)?.takeUnless { it == context.irBuiltIns.nothingType }
+    val type =
+      bindingType.typeArguments.getOrNull(0)?.takeUnless { it == context.irBuiltIns.nothingType }
+    type?.let { IrTypeKey(it, it.qualifierAnnotation()) }
   }
 }
 
@@ -1972,6 +2078,9 @@ internal fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
 internal fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {
   return getConstBooleanArgumentOrNull(Symbols.Names.ignoreQualifier) ?: false
 }
+
+internal fun IrConstructorCall.isKiaIntoMultibinding(): Boolean =
+  getConstBooleanArgumentOrNull(Symbols.Names.multibinding) ?: false
 
 // public for test extension use
 context(context: IrPluginContext)
@@ -2145,9 +2254,6 @@ internal fun <T : Any> IrPluginContext.withIrBuilder(
 ): T {
   return createIrBuilder(symbol).run(block)
 }
-
-internal val IrProperty.reportableDeclaration: IrDeclarationParent?
-  get() = backingField ?: getter
 
 internal fun IrBuilderWithScope.irGetProperty(
   receiver: IrExpression,

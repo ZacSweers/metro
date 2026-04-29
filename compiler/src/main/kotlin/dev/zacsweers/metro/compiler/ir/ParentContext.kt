@@ -530,17 +530,16 @@ internal class ParentContext(
     }
 
     // Capture level info for scope matching
-    val levelScopes =
-      levels.map { level ->
-        ParentContextSnapshot.LevelInfo(
-          scopes = level.node.scopes.toSet(),
-          ownership =
-            ParentContextSnapshot.KeyOwnership(
-              ownerGraphKey = level.node.typeKey,
-              receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
-            ),
-        )
-      }
+    val levelScopes = levels.map { level ->
+      ParentContextSnapshot.LevelInfo(
+        scopes = level.node.scopes.toSet(),
+        ownership =
+          ParentContextSnapshot.KeyOwnership(
+            ownerGraphKey = level.node.typeKey,
+            receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
+          ),
+      )
+    }
 
     return ParentContextSnapshot(
       metroContext = metroContext,

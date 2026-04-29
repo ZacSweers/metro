@@ -13,12 +13,12 @@ plugins {
   alias(libs.plugins.jmh) apply false
   alias(libs.plugins.kotlinx.benchmark) apply false
   alias(libs.plugins.benchmark) apply false
+  alias(libs.plugins.koin.compiler) apply false
   alias(libs.plugins.metro) apply false
   alias(libs.plugins.anvil) apply false
   alias(libs.plugins.mavenPublish) apply false // wat
-  id("metro.spotless")
+  id("metro.base") apply false
+  id("base")
 }
-
-allprojects { apply(plugin = "metro.spotless") }
 
 subprojects { apply(plugin = "metro.base") }

@@ -1,14 +1,14 @@
 // https://github.com/ZacSweers/metro/issues/1596
-// Regression test to ensure we handle Map<K, Provider<V>> in @Provides functions
+// Regression test to ensure we handle Map<K, () -> V> in @Provides functions
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val map: Map<String, Provider<String>>
+  val map: Map<String, () -> String>
   val mapAsString: String
   val holder: Holder
 }
 
-@Inject class Holder(val map: Map<String, Provider<String>>)
+@Inject class Holder(val map: Map<String, () -> String>)
 
 @BindingContainer
 @ContributesTo(AppScope::class)
@@ -18,7 +18,7 @@ object AppProviders {
   @Provides @IntoMap @StringKey("key2") fun provideSecond(): String = "second"
 
   @Provides
-  fun provideMapAsString(map: Map<String, Provider<String>>): String =
+  fun provideMapAsString(map: Map<String, () -> String>): String =
     map.values.joinToString { it() }
 }
 

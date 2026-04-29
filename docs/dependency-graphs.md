@@ -679,7 +679,6 @@ class AppGraph$Impl : AppGraph {
 
     | Gradle Extension Property | Gradle/System Property | Compiler Option | Description |
     | ------------------ | --------------- | --------------- | ----------- |
-    | chunkFieldInits | `metro.chunkFieldInits` | `chunk-field-inits` | Enable/disable chunking (default: `true`) |
     | statementsPerInitFun | `metro.statementsPerInitFun` | `statements-per-init-fun` | Max statements per init function (default: `25`) |
 
 #### Sharding

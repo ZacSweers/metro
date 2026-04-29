@@ -13,5 +13,5 @@ internal class FooImpl : Foo
 // MODULE: main(lib1 lib2)
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val <!METRO_ERROR!>foo<!>: Foo
+  val <!MISSING_BINDING!>foo<!>: Foo
 }

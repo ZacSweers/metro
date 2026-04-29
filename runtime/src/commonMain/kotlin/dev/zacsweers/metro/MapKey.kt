@@ -93,5 +93,13 @@ public annotation class MapKey(
    *
    * If true, the single member must not be an array.
    */
-  val unwrapValue: Boolean = true
+  val unwrapValue: Boolean = true,
+  /**
+   * If true, indicates that the given map key annotation's single value parameter should implicitly be treated as a class key.
+   *
+   * Requirements:
+   * - Must have a single value parameter of type [kotlin.reflect.KClass].
+   * - It must have a default value of `Nothing::class`.
+   */
+  val implicitClassKey: Boolean = false,
 )

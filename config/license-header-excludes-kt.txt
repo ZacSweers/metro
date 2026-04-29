@@ -32,7 +32,5 @@
 **/SetFactory.kt
 **/SetFactoryTest.kt
 **/StringKey.kt
-**/TopologicalSortTest.kt
 **/collectionUtil.kt
 **/ir/cache/*.kt
-**/topologicalSort.kt

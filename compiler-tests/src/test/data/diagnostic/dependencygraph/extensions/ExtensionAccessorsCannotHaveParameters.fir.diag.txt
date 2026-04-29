@@ -1,7 +1,5 @@
-/ExtensionAccessorsCannotHaveParameters.kt:(273,293): error: Ad-hoc graph extension factories are not supported in Metro. Use `@GraphExtension.Factory` instead.
+/ExtensionAccessorsCannotHaveParameters.kt:(306,326): error: Ad-hoc graph extension factories are not supported in Metro. Use `@GraphExtension.Factory` instead.
 
-/ExtensionAccessorsCannotHaveParameters.kt:(343,349): error: Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.
+/ExtensionAccessorsCannotHaveParameters.kt:(376,382): error: Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.
 
-/ExtensionAccessorsCannotHaveParameters.kt:(391,408): error: The feature "context parameters" is experimental and should be enabled explicitly. This can be done by supplying the compiler argument '-Xcontext-parameters', but note that no stability guarantees are provided.
-
-/ExtensionAccessorsCannotHaveParameters.kt:(399,402): error: Graph extension accessors may not have context parameters.
+/ExtensionAccessorsCannotHaveParameters.kt:(432,435): error: Graph extension accessors may not have context parameters.

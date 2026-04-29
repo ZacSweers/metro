@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ADHOC_GRAPH_EXTENSION_FACTORY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AGGREGATION_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AMBIGUOUS_INJECT_CONSTRUCTOR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_WARNING
@@ -18,8 +19,16 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_MULTIPLE_IN
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONFLICTING_PROVIDES_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_LAZY_CLASS_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEFAULT_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DESUGARED_PROVIDER_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DESUGARED_PROVIDER_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DUPLICATE_BINDING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DUPLICATE_MAP_KEY
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.EMPTY_MULTIBINDING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
@@ -27,13 +36,19 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_VARARG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_OVERRIDES
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_RETURN_TYPES
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTRINSIC_BINDING_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INVALID_ASSISTED_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_IMPLICIT_CLASS_KEY_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_TYPE_PARAM_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_RETURN_TYPE_WARNING
@@ -45,8 +60,10 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_DECLARATION_VISIB
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MISSING_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.NON_EXPOSED_IMPL_TYPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJECTED
@@ -54,12 +71,14 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLA
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PRIVATE_BINDING_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PRIVATE_CONTRIBUTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDER_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_COULD_BE_BINDS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_GRAPH_ACCESSOR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR
@@ -123,6 +142,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val SUGGEST_CLASS_INJECTION by warning0<KtElement>(NAME_IDENTIFIER)
 
   // Inject/assisted constructor errors
+  val AMBIGUOUS_INJECT_CONSTRUCTOR by error1<KtElement, String>(NAME_IDENTIFIER)
   val CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS by error0<KtElement>(NAME_IDENTIFIER)
   val CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS by error0<KtElement>(NAME_IDENTIFIER)
   val ASSISTED_FACTORIES_CANNOT_BE_LAZY by error2<KtElement, String, String>(NAME_IDENTIFIER)
@@ -150,12 +170,18 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val SUSPICIOUS_AGGREGATION_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
   val BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val INTRINSIC_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPICIOUS_SET_INTO_SET by warning1<KtElement, String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val DEFAULT_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val PRIVATE_CONTRIBUTION_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val NON_PUBLIC_CONTRIBUTION_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val NON_PUBLIC_CONTRIBUTION_WARNING by warning1<KtElement, String>(VISIBILITY_MODIFIER)
+  val EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS by
+    warning1<KtElement, String>(VISIBILITY_MODIFIER)
+  val NON_EXPOSED_IMPL_TYPE by warning1<KtElement, String>(VISIBILITY_MODIFIER)
   val CREATE_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val CREATE_DYNAMIC_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val AS_CONTRIBUTION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -164,12 +190,15 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val SUSPICIOUS_UNUSED_MULTIBINDING by warning1<KtElement, String>(OVERRIDE_MODIFIER)
   val MAP_KEY_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MAP_KEY_TYPE_PARAM_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
+  val MAP_KEY_IMPLICIT_CLASS_KEY_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY by warning1<KtElement, String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_STATUS_ERROR by error1<KtElement, String>(MODALITY_MODIFIER)
   val MEMBERS_INJECT_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_RETURN_TYPE_WARNING by warning1<KtElement, String>(DECLARATION_RETURN_TYPE)
   val MEMBERS_INJECT_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
   val DAGGER_REUSABLE_ERROR by error0<KtElement>(NAME_IDENTIFIER)
+  val DAGGER_LAZY_CLASS_KEY_ERROR by error0<KtElement>(NAME_IDENTIFIER)
   val FUNCTION_INJECT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val FUNCTION_INJECT_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
   val BINDING_CONTAINER_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -182,9 +211,21 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val INTEROP_ANNOTATION_ARGS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val INTEROP_ANNOTATION_ARGS_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
+  // Desugared provider diagnostics
+  val DESUGARED_PROVIDER_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val DESUGARED_PROVIDER_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
+
   // IR errors
   val GRAPH_DEPENDENCY_CYCLE by error1<KtElement, String>(NAME_IDENTIFIER)
   val INCOMPATIBLE_OVERRIDES by error1<KtElement, String>(NAME_IDENTIFIER)
+  val INCOMPATIBLE_RETURN_TYPES by error1<KtElement, String>(NAME_IDENTIFIER)
+  val MISSING_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
+  val DUPLICATE_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
+  val INCOMPATIBLE_SCOPE by error1<KtElement, String>(NAME_IDENTIFIER)
+  val DUPLICATE_MAP_KEY by error1<KtElement, String>(NAME_IDENTIFIER)
+  val INVALID_ASSISTED_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
+  val EMPTY_MULTIBINDING by error1<KtElement, String>(NAME_IDENTIFIER)
+  val QUALIFIER_OVERRIDE_MISMATCH by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val KNOWN_KOTLINC_BUG_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -246,6 +287,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         )
 
         // Inject/assisted Constructor errors
+        put(AMBIGUOUS_INJECT_CONSTRUCTOR, "{0}", STRING)
         put(
           CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
           "Only one `@Inject` constructor is allowed.",
@@ -284,8 +326,12 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(CONFLICTING_PROVIDES_SCOPE, "{0}", STRING)
         put(SUSPICIOUS_AGGREGATION_SCOPE, "{0}", STRING)
         put(AGGREGATION_ERROR, "{0}", STRING)
+        put(DEFAULT_BINDING_ERROR, "{0}", STRING)
+        put(PRIVATE_CONTRIBUTION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_WARNING, "{0}", STRING)
+        put(EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS, "{0}", STRING)
+        put(NON_EXPOSED_IMPL_TYPE, "{0}", STRING)
         put(CREATE_GRAPH_ERROR, "{0}", STRING)
         put(CREATE_DYNAMIC_GRAPH_ERROR, "{0}", STRING)
         put(AS_CONTRIBUTION_ERROR, "{0}", STRING)
@@ -297,6 +343,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(BINDING_ERROR, "{0}", STRING)
         put(BINDS_ERROR, "{0}", STRING)
         put(BINDS_OPTIONAL_OF_ERROR, "{0}", STRING)
+        put(INTRINSIC_BINDING_ERROR, "{0}", STRING)
         put(BINDS_OPTIONAL_OF_WARNING, "{0}", STRING)
         put(SUSPICIOUS_SET_INTO_SET, "{0}", STRING)
         put(MULTIBINDS_ERROR, "{0}", STRING)
@@ -304,6 +351,8 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(SUSPICIOUS_UNUSED_MULTIBINDING, "{0}", STRING)
         put(MAP_KEY_ERROR, "{0}", STRING)
         put(MAP_KEY_TYPE_PARAM_ERROR, "{0}", STRING)
+        put(MAP_KEY_IMPLICIT_CLASS_KEY_ERROR, "{0}", STRING)
+        put(MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY, "{0}", STRING)
         put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)
         put(SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR, "{0}", STRING)
         put(SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING, "{0}", STRING)
@@ -316,6 +365,8 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(OPTIONAL_BINDING_ERROR, "{0}", STRING)
         put(INTEROP_ANNOTATION_ARGS_ERROR, "{0}", STRING)
         put(INTEROP_ANNOTATION_ARGS_WARNING, "{0}", STRING)
+        put(DESUGARED_PROVIDER_ERROR, "{0}", STRING)
+        put(DESUGARED_PROVIDER_WARNING, "{0}", STRING)
         put(
           PROVIDER_OVERRIDES,
           "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",
@@ -323,6 +374,10 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(
           DAGGER_REUSABLE_ERROR,
           "Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/latest/faq#why-doesnt-metro-support-reusable for more information.",
+        )
+        put(
+          DAGGER_LAZY_CLASS_KEY_ERROR,
+          "Dagger's `@LazyClassKey` is not supported in Metro. Use `@ClassKey` instead.",
         )
 
         // IR diagnostics
@@ -332,8 +387,16 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(KNOWN_KOTLINC_BUG_WARNING, "{0}", TO_STRING)
         put(SOURCELESS_METRO_ERROR, "{0}")
         put(SOURCELESS_METRO_WARNING, "{0}")
-        put(GRAPH_DEPENDENCY_CYCLE, "[Metro/GraphDependencyCycle] {0}", TO_STRING)
-        put(INCOMPATIBLE_OVERRIDES, "[Metro/IncompatibleOverrides] {0}", TO_STRING)
+        put(GRAPH_DEPENDENCY_CYCLE, "{0}", TO_STRING)
+        put(INCOMPATIBLE_OVERRIDES, "{0}", TO_STRING)
+        put(INCOMPATIBLE_RETURN_TYPES, "{0}", TO_STRING)
+        put(MISSING_BINDING, "{0}", TO_STRING)
+        put(DUPLICATE_BINDING, "{0}", TO_STRING)
+        put(INCOMPATIBLE_SCOPE, "{0}", TO_STRING)
+        put(DUPLICATE_MAP_KEY, "{0}", TO_STRING)
+        put(INVALID_ASSISTED_BINDING, "{0}", TO_STRING)
+        put(EMPTY_MULTIBINDING, "{0}", TO_STRING)
+        put(QUALIFIER_OVERRIDE_MISMATCH, "{0}", TO_STRING)
       }
     }
 }

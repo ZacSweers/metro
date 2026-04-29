@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
@@ -13,19 +17,22 @@ import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrCallableMetadata
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.ProviderFactory.Companion.lookupRealDeclaration
+import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
+import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findAnnotations
+import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.includedClasses
@@ -40,38 +47,43 @@ import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.metroMetadata
-import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.transformIfIntoMultibinding
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
+import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
+import dev.zacsweers.metro.compiler.proto.ProviderFactoryProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.EnumSet
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getJvmNameFromAnnotation
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
+import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -87,26 +99,28 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeAlias
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
-import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
-import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
+import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverride
-import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
@@ -114,8 +128,14 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-internal class BindingContainerTransformer(context: IrMetroContext) :
-  IrMetroContext by context, Lockable by Lockable() {
+@Inject
+@SingleIn(IrScope::class)
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
+internal class BindingContainerTransformer(
+  context: IrMetroContext,
+  private val bindsMirrorClassTransformer: BindsMirrorClassTransformer,
+  traceScope: TraceScope,
+) : IrMetroContext by context, TraceScope by traceScope, Lockable by Lockable() {
 
   // Thread-safe for concurrent access during parallel graph validation.
   private val references = ConcurrentHashMap<CallableId, CallableReference>()
@@ -129,8 +149,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
    */
   private val cache = ConcurrentHashMap<FqName, Optional<BindingContainer>>()
 
-  private val bindsMirrorClassTransformer = BindsMirrorClassTransformer(context)
-
   fun findContainer(
     declaration: IrClass,
     declarationFqName: FqName = declaration.kotlinFqName,
@@ -140,10 +158,19 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
       return it.getOrNull()
     }
 
+    // Platform types (java.*, kotlin.*, android.*, etc.) can never be binding containers.
+    // Short-circuit before we start iterating declarations / computing binds mirrors / etc.
+    // This matters in callers that walk class hierarchies or module declarations, where
+    // platform classes show up repeatedly and each first-touch would otherwise do real work.
+    if (declaration.classId?.isPlatformType() == true) {
+      cache.putIfAbsent(declarationFqName, Optional.empty())
+      return null
+    }
+
     if (declaration.isExternalParent) {
       return loadExternalBindingContainer(declaration, declarationFqName, graphProto)
     } else if (declaration.name == Symbols.Names.BindsMirrorClass) {
-      cache[declarationFqName] = Optional.empty()
+      cache.putIfAbsent(declarationFqName, Optional.empty())
       return null
     }
 
@@ -157,40 +184,55 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         declaration.isAnnotatedWithAny(metroSymbols.classIds.contributesToAnnotations)
     val isGraph = graphAnnotation != null
 
-    declaration.declarations
-      .asSequence()
-      // Skip (fake) overrides, we care only about the original declaration because those have
-      // default values
-      .filterNot { it.isFakeOverride }
-      .filterNot { it is IrConstructor || it is IrTypeAlias }
-      .forEach { nestedDeclaration ->
-        when (nestedDeclaration) {
-          is IrProperty -> {
-            val getter = nestedDeclaration.getter ?: return@forEach
-            val metroFunction = metroFunctionOf(getter)
-            if (metroFunction.annotations.isProvides) {
-              providerFactories[nestedDeclaration.callableId] =
-                visitProperty(nestedDeclaration, metroFunction)
+    trace("Iterate declarations") {
+      declaration.declarations
+        .toList() // Defensive copy as we may add to this list if we generate provider factories
+        .asSequence()
+        // Skip (fake) overrides, we care only about the original declaration because those have
+        // default values
+        .filterNot { it.isFakeOverride }
+        .filterNot { it is IrConstructor || it is IrTypeAlias }
+        .forEach { nestedDeclaration ->
+          when (nestedDeclaration) {
+            is IrProperty -> {
+              val getter = nestedDeclaration.getter ?: return@forEach
+              val metroFunction =
+                trace("metroFunctionOf property ${nestedDeclaration.name}") {
+                  metroFunctionOf(getter)
+                }
+              if (metroFunction.annotations.isProvides) {
+                providerFactories[nestedDeclaration.callableId] =
+                  trace("visitProperty ${nestedDeclaration.name}") {
+                    visitProperty(nestedDeclaration, metroFunction)
+                  }
+              }
             }
-          }
-          is IrSimpleFunction -> {
-            val metroFunction = metroFunctionOf(nestedDeclaration)
-            if (metroFunction.annotations.isProvides) {
-              providerFactories[nestedDeclaration.callableId] =
-                visitFunction(nestedDeclaration, metroFunction)
+            is IrSimpleFunction -> {
+              val metroFunction =
+                trace("metroFunctionOf function ${nestedDeclaration.name}") {
+                  metroFunctionOf(nestedDeclaration)
+                }
+              if (metroFunction.annotations.isProvides) {
+                providerFactories[nestedDeclaration.callableId] =
+                  trace("visitFunction ${nestedDeclaration.name}") {
+                    visitFunction(nestedDeclaration, metroFunction)
+                  }
+              }
             }
-          }
-          is IrClass if
-            (nestedDeclaration.isCompanionObject &&
-              !(isGraph && nestedDeclaration.implements(declaration.classIdOrFail)))
-           -> {
-            // Include companion object refs
-            findContainer(nestedDeclaration)?.providerFactories?.let {
-              providerFactories.putAll(it.values.associateBy { it.callableId })
+            is IrClass if
+              (nestedDeclaration.isCompanionObject &&
+                !(isGraph && nestedDeclaration.implements(declaration.classIdOrFail)))
+             -> {
+              // Include companion object refs
+              trace("Companion recursion ${nestedDeclaration.name}") {
+                findContainer(nestedDeclaration)?.providerFactories?.let {
+                  providerFactories.putAll(it.values.associateBy { it.callableId })
+                }
+              }
             }
           }
         }
-      }
+    }
 
     val bindingContainerAnnotation =
       declaration.annotationsIn(metroSymbols.classIds.bindingContainerAnnotations).singleOrNull()
@@ -199,7 +241,10 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         it.classType.rawTypeOrNull()?.classIdOrFail
       }
 
-    val bindsMirror = bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
+    val bindsMirror =
+      trace("Compute binds mirror") {
+        bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
+      }
 
     val container =
       BindingContainer(
@@ -219,18 +264,21 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
       bindingContainerAnnotation != null || isContributedGraph || !container.isEmpty()
 
     if (shouldGenerateMetadata) {
-      checkNotLocked()
-      val metroMetadata = createMetroMetadata(dependency_graph = container.toProto())
-      declaration.metroMetadata = metroMetadata
+      trace("Generate metadata") {
+        checkNotLocked()
+        val metroMetadata = createMetroMetadata(dependency_graph = container.toProto())
+        declaration.metroMetadata = metroMetadata
+      }
     }
 
     return if (container.isEmpty() && bindingContainerAnnotation == null) {
-      cache[declarationFqName] = Optional.empty()
+      cache.putIfAbsent(declarationFqName, Optional.empty())
       null
     } else {
-      cache[declarationFqName] = Optional.of(container)
+      // putIfAbsent avoids overwriting if a concurrent caller already populated the slot.
+      val existing = cache.putIfAbsent(declarationFqName, Optional.of(container))
       generatedFactories.putAll(providerFactories)
-      container
+      existing?.getOrNull() ?: container
     }
   }
 
@@ -238,18 +286,22 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
     declaration: IrProperty,
     metroFunction: MetroSimpleFunction,
   ): ProviderFactory {
-    return getOrLookupProviderFactory(
-      getOrPutCallableReference(declaration, metroFunction.annotations)
-    )
+    val reference =
+      trace("getOrPutCallableReference") {
+        getOrPutCallableReference(declaration, metroFunction.annotations)
+      }
+    return trace("getOrLookupProviderFactory") { getOrLookupProviderFactory(reference) }
   }
 
   private fun visitFunction(
     declaration: IrSimpleFunction,
     metroFunction: MetroSimpleFunction,
   ): ProviderFactory {
-    return getOrLookupProviderFactory(
-      getOrPutCallableReference(declaration, declaration.parentAsClass, metroFunction.annotations)
-    )
+    val reference =
+      trace("getOrPutCallableReference") {
+        getOrPutCallableReference(declaration, declaration.parentAsClass, metroFunction.annotations)
+      }
+    return trace("getOrLookupProviderFactory") { getOrLookupProviderFactory(reference) }
   }
 
   fun getOrLookupProviderFactory(binding: IrBinding.Provided): ProviderFactory? {
@@ -277,151 +329,206 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
 
     checkNotLocked()
 
-    val sourceValueParameters = reference.parameters.regularParameters
-
     val generatedClassId = reference.generatedClassId
 
     val factoryCls =
-      reference.parent.owner.nestedClasses.singleOrNull {
-        it.origin == Origins.ProviderFactoryClassDeclaration && it.classIdOrFail == generatedClassId
+      trace("Find factory class") {
+        reference.parent.owner.nestedClasses.singleOrNull {
+          it.origin == Origins.ProviderFactoryClassDeclaration &&
+            it.classIdOrFail == generatedClassId
+        }
+          ?: run {
+            // For @IROnlyFactories-annotated containers, factory classes are not generated in FIR.
+            // Create the factory class entirely in IR.
+            val parentClass = reference.parent.owner
+            if (parentClass.hasAnnotation(Symbols.ClassIds.irOnlyFactories)) {
+              createContributionProviderFactory(parentClass, generatedClassId, reference)
+            } else {
+              reportCompilerBug(
+                "No expected factory class generated for ${reference.callableId}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
+              )
+            }
+          }
       }
-        ?: reportCompilerBug(
-          "No expected factory class generated for ${reference.callableId}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
-        )
 
-    val ctor = factoryCls.primaryConstructor!!
-
-    val graphType = reference.graphParent.typeWith()
-
-    val instanceParam =
-      if (!reference.isInObject) {
-        val contextualTypeKey = IrContextualTypeKey.create(typeKey = IrTypeKey(graphType))
-        Parameter.regular(
-          kind = IrParameterKind.Regular,
-          name = Name.identifier("graph"),
-          contextualTypeKey = contextualTypeKey,
-          isAssisted = false,
-          assistedIdentifier = "",
-          isGraphInstance = true,
-          isIncludes = false,
-          isBindsInstance = false,
-          ir = null,
-        )
-      } else {
-        null
+    val invokeFunction =
+      trace("Add factory supertype + invoke shell") {
+        // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to
+        // read directly since we'll read the mirror function to get the target type
+        factoryCls.superTypes += metroSymbols.metroFactory.typeWith(reference.typeKey.type)
+        // Cannot call addFakeOverrides because FIR2IR has already done that, so we need to add
+        // the invoke override directly later
+        factoryCls
+          .addFunction(Symbols.StringNames.INVOKE, reference.typeKey.type, isFakeOverride = true)
+          .apply {
+            overriddenSymbols = listOf(metroSymbols.providerInvoke)
+            isOperator = true
+          }
+          .also {
+            addHiddenFromObjCAnnotation(it)
+            metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(it)
+          }
       }
 
     val sourceParameters =
-      Parameters(
-        reference.callableId,
-        instance = instanceParam,
-        extensionReceiver = null,
-        regularParameters = sourceValueParameters,
-        contextParameters = emptyList(),
-        ir = null, // Will set later
-      )
+      trace("Copy source parameters") {
+        reference.parameters.copy(
+          dispatchReceiverParameter = null,
+          regularParameters =
+            buildList {
+              reference.parameters.dispatchReceiverParameter?.let {
+                add(
+                  it.copy(
+                    kind = IrParameterKind.Regular,
+                    ir =
+                      it.asValueParameter.deepCopyWithSymbols(reference.parameters.ir).apply {
+                        this.name = Symbols.Names.instance
+                        this.origin = Origins.InstanceParameter
+                      },
+                  )
+                )
+              }
+              addAll(reference.parameters.regularParameters)
+            },
+        )
+      }
 
-    val constructorParametersToFields = assignConstructorParamsToFields(ctor, factoryCls)
+    // De-duped source params used by the constructor and create() function
+    val dedupedSourceParameters =
+      trace("Dedupe parameters") {
+        sourceParameters.copy(
+          regularParameters = sourceParameters.regularParameters.dedupeParameters()
+        )
+      }
 
-    // Build type-key-to-field from the (potentially deduped) constructor params.
-    // Multiple source params with the same type key will share one field.
+    // Use parameter name as the primary field key to correctly handle multiple parameters
+    // with the same type key (e.g., two String params with different defaults).
+    // The typeKey map is kept as a fallback for dedup cases.
+    val nameToField = mutableMapOf<Name, IrField>()
     val typeKeyToField = mutableMapOf<IrTypeKey, IrField>()
-    var instanceField: IrField? = null
-    for ((irParam, field) in constructorParametersToFields) {
-      if (irParam.origin == Origins.InstanceParameter) {
-        instanceField = field
-      } else if (reference.callee != null) {
-        val regularParams =
-          reference.callee.owner.parameters.filter { it.kind == IrParameterKind.Regular }
-        val sourceParamIndex = regularParams.indexOfFirst { it.name == irParam.name }
-        if (sourceParamIndex >= 0) {
-          val sourceParam = sourceParameters.regularParameters[sourceParamIndex]
-          typeKeyToField.putIfAbsent(sourceParam.typeKey, field)
+    val ctor: IrConstructor
+    if (factoryCls.isObject) {
+      // If it's got no parameters we'll generate it in FIR as an object
+      ctor = factoryCls.primaryConstructor!!
+    } else {
+      // For @IROnlyFactories containers, the factory stub already has a no-arg primary
+      // constructor shell. Reuse it. For FIR-generated factories, add a new constructor.
+      val isIROnlyFactory =
+        factoryCls.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) == true
+
+      ctor =
+        if (isIROnlyFactory) {
+          factoryCls.primaryConstructor!!
+        } else {
+          factoryCls.addConstructor {
+            visibility = DescriptorVisibilities.PRIVATE
+            isPrimary = true
+          }
+        }
+
+      trace("Build factory constructor") {
+        ctor.apply {
+          val ownerClass = reference.parent.owner
+          val typeRemapper = ownerClass.deepRemapperFor(factoryCls.defaultType)
+          addParameters(
+            params = dedupedSourceParameters.allParameters,
+            wrapInProvider = true,
+            stubDefaults = false,
+            typeRemapper = { type -> typeRemapper.remapType(type) },
+          ) { typeKey, irParam ->
+            val field = irParam.addBackingFieldTo(factoryCls)
+            nameToField[irParam.name] = field
+            typeKeyToField[typeKey] = field
+          }
+          addHiddenFromObjCAnnotation(this)
+          body = generateDefaultConstructorBody()
         }
       }
     }
 
-    // Map all source params to fields by type key
-    val sourceParametersToFields: Map<Parameter, IrField> = buildMap {
-      sourceParameters.dispatchReceiverParameter?.let { param ->
-        instanceField?.let { put(param, it) }
-      }
-      for (param in sourceValueParameters) {
-        typeKeyToField[param.typeKey]?.let { put(param, it) }
-      }
-    }
-
     val bytecodeFunction =
-      implementCreatorBodies(factoryCls, ctor.symbol, reference, sourceParameters)
+      trace("Implement creator bodies") {
+        implementCreatorBodies(factoryCls, ctor.symbol, reference, dedupedSourceParameters)
+      }
 
     // Implement invoke()
     // TODO DRY this up with the constructor injection override
-    val invokeFunction = factoryCls.requireSimpleFunction(Symbols.StringNames.INVOKE)
-    invokeFunction.owner.finalizeFakeOverride(factoryCls.thisReceiverOrFail)
-    invokeFunction.owner.body =
-      pluginContext.createIrBuilder(invokeFunction).run {
-        irExprBodySafe(
-          irInvoke(
-            dispatchReceiver = dispatchReceiverFor(bytecodeFunction),
-            callee = bytecodeFunction.symbol,
-            args =
-              parametersAsProviderArguments(
-                parameters = sourceParameters,
-                receiver = invokeFunction.owner.dispatchReceiverParameter!!,
-                parametersToFields = sourceParametersToFields,
-              ),
+    trace("Implement invoke") {
+      invokeFunction.finalizeFakeOverride(factoryCls.thisReceiverOrFail)
+      invokeFunction.body =
+        pluginContext.createIrBuilder(invokeFunction.symbol).run {
+          irExprBodySafe(
+            irInvoke(
+              dispatchReceiver = dispatchReceiverFor(bytecodeFunction),
+              callee = bytecodeFunction.symbol,
+              args =
+                parametersAsProviderArguments(
+                  parameters = sourceParameters,
+                  receiver = invokeFunction.dispatchReceiverParameter!!,
+                  fields = typeKeyToField,
+                  nameToField = nameToField,
+                ),
+            )
           )
-        )
-      }
+        }
+    }
 
     // Generate a metadata-visible function that matches the signature of the target provider
     // This is used in downstream compilations to read the provider's signature
     val sourceFunction = reference.callee?.owner as? IrSimpleFunction
     val mirrorFunction =
-      generateMetadataVisibleMirrorFunction(
-        factoryClass = factoryCls,
-        target = sourceFunction,
-        backingField = reference.backingField,
-        annotations = reference.annotations,
-      )
+      trace("Generate mirror function") {
+        generateMetadataVisibleMirrorFunction(
+          factoryClass = factoryCls,
+          target = sourceFunction,
+          backingField = reference.backingField,
+          annotations = reference.annotations,
+        )
+      }
 
     // For in-compilation, use direct reference to source function to avoid round-tripping
     // through @CallableMetadata annotation
     val callableMetadata =
-      if (sourceFunction != null) {
-        IrCallableMetadata.forInCompilation(
-          sourceFunction = sourceFunction,
-          mirrorFunction = mirrorFunction,
-          annotations = reference.annotations,
-          isPropertyAccessor = reference.isPropertyAccessor,
-        )
-      } else {
-        factoryCls.irCallableMetadata(mirrorFunction, reference.annotations, isInterop = false)
+      trace("Build callable metadata") {
+        if (sourceFunction != null) {
+          IrCallableMetadata.forInCompilation(
+            sourceFunction = sourceFunction,
+            mirrorFunction = mirrorFunction,
+            annotations = reference.annotations,
+            isPropertyAccessor = reference.isPropertyAccessor,
+          )
+        } else {
+          factoryCls.irCallableMetadata(mirrorFunction, reference.annotations, isInterop = false)
+        }
       }
 
     // For in-compilation, we already have the real declaration from the reference
     val realDeclaration = reference.callee?.owner ?: reference.backingField
 
     val providerFactory =
-      ProviderFactory(
-        contextKey = IrContextualTypeKey.from(mirrorFunction),
-        clazz = factoryCls,
-        mirrorFunction = mirrorFunction,
-        sourceAnnotations = reference.annotations,
-        callableMetadata = callableMetadata,
-        realDeclaration = realDeclaration,
-      ) ?: exitProcessing()
+      trace("Construct ProviderFactory") {
+        ProviderFactory(
+          contextKey = IrContextualTypeKey.from(mirrorFunction),
+          clazz = factoryCls,
+          mirrorFunction = mirrorFunction,
+          sourceAnnotations = reference.annotations,
+          callableMetadata = callableMetadata,
+          realDeclaration = realDeclaration,
+        ) ?: exitProcessing()
+      }
 
     factoryCls.dumpToMetroLog()
 
-    val factoryPath =
-      factoryCls.packageFqName?.let { packageName ->
-        val fileName = factoryCls.kotlinFqName.toString().replace("$packageName.", "")
-        "${packageName.pathSegments().joinToString("/")}/$fileName"
-      } ?: factoryCls.kotlinFqName.asString()
+    trace("Write provider-factory diagnostic") {
+      val factoryPath =
+        factoryCls.packageFqName?.let { packageName ->
+          val fileName = factoryCls.kotlinFqName.toString().replace("$packageName.", "")
+          "${packageName.pathSegments().joinToString("/")}/$fileName"
+        } ?: factoryCls.kotlinFqName.asString()
 
-    // Relative path example: provider-factories/dev/zac/feature/Outer.Inner$$Factory.kt
-    writeDiagnostic("provider-factories", "$factoryPath.kt") { factoryCls.dumpKotlinLike() }
+      // Relative path example: provider-factories/dev/zac/feature/Outer.Inner$$Factory.kt
+      writeDiagnostic("provider-factories", "$factoryPath.kt") { factoryCls.dumpKotlinLike() }
+    }
 
     generatedFactories[reference.callableId] = providerFactory
     return providerFactory
@@ -433,7 +540,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
     annotations: MetroAnnotations<IrAnnotation>,
   ): CallableReference {
     return references.computeIfAbsent(function.callableId) {
-      val typeKey = IrContextualTypeKey.from(function).typeKey
+      val typeKey =
+        trace("IrContextualTypeKey.from(function)") { IrContextualTypeKey.from(function).typeKey }
       val isPropertyAccessor = function.isPropertyAccessor
       val callableId =
         if (isPropertyAccessor) {
@@ -441,11 +549,12 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         } else {
           function.callableId
         }
+      val parameters = trace("function.parameters()") { function.parameters() }
       CallableReference(
         callableId = callableId,
         name = function.name,
         isPropertyAccessor = isPropertyAccessor,
-        parameters = function.parameters(),
+        parameters = parameters,
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
         parent = parent.symbol,
@@ -522,24 +631,16 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         factoryCls.companionObject()!!
       }
 
-    // Deduplicate parameters to match the FIR-generated create() function signature
-    val dedupedParameters =
-      if (options.deduplicateInjectedParams) {
-        factoryParameters.copy(
-          regularParameters = factoryParameters.regularParameters.dedupeParameters()
-        )
-      } else {
-        factoryParameters
-      }
-
     // Generate create()
     @Suppress("RETURN_VALUE_NOT_USED")
     generateStaticCreateFunction(
-      parentClass = classToGenerateCreatorsIn,
-      targetClass = factoryCls,
+      objectClassToGenerateIn = classToGenerateCreatorsIn,
+      factoryClass = factoryCls,
       targetConstructor = factoryConstructor,
-      parameters = dedupedParameters,
-      providerFunction = reference.callee?.owner,
+      parameters = factoryParameters,
+      sourceFunction = reference.callee?.owner,
+      returnTypeProvider = { metroSymbols.metroFactory.typeWith(reference.typeKey.type) },
+      sourceTypeParameters = reference.parent.owner,
     )
 
     // Generate the named newInstance function
@@ -549,6 +650,9 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         targetFunction = reference.callee?.owner,
         sourceMetroParameters = reference.parameters,
         sourceParameters = reference.parameters.regularParameters.map { it.asValueParameter },
+        sourceTypeParameters = reference.parent.owner,
+        returnTypeProvider = { reference.typeKey.type },
+        functionName = reference.name.asString(),
       ) { function ->
         val parameters = function.regularParameters
 
@@ -603,7 +707,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
     val isInObject: Boolean
       get() = parent.owner.isObject
 
-    val graphParent =
+    val containerClass =
       if (parent.owner.isCompanionObject) {
         parent.owner.parentAsClass
       } else {
@@ -660,42 +764,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
     val sourceAnnotations = mirrorFunction.metroAnnotations(metroSymbols.classIds)
     val callableMetadata =
       factoryCls.irCallableMetadata(mirrorFunction, sourceAnnotations, isInterop = false)
-    val factoryType =
-      factoryCls.superTypes
-        .first {
-          it.classOrNull == metroSymbols.metroFactory ||
-            it.classOrNull == metroSymbols.metroSuspendFactory
-        }
-        .requireSimpleType(factoryCls) {
-          appendLine()
-          appendLine("(Hint)")
-          val shortPath = buildString {
-            append(callableMetadata.callableId.classId!!.shortClassName)
-            append(".")
-            append(callableMetadata.callableId.callableName)
-            if (!callableMetadata.isPropertyAccessor) {
-              append("(...)")
-            }
-            append(": ")
-            append(callableMetadata.function.returnType.render(short = true))
-          }
-          appendLine(
-            "This is a generated factory class for the '$shortPath' @Provides declaration, which is likely where the missing type is originally exposed."
-          )
-        }
-
-    val contextKey =
-      factoryType
-        .requireSimpleType(factoryCls)
-        .arguments
-        .first()
-        .typeOrFail
-        .asContextualTypeKey(
-          qualifierAnnotation = sourceAnnotations.qualifier,
-          hasDefault = false,
-          patchMutableCollections = factoryCls.isFromJava(),
-          declaration = callableMetadata.function,
-        )
+    val contextKey = IrContextualTypeKey.from(mirrorFunction)
     return ProviderFactory(
       contextKey,
       factoryCls,
@@ -710,9 +779,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
     declarationFqName: FqName,
     graphProto: DependencyGraphProto?,
   ): BindingContainer? {
-    cache[declarationFqName]?.let {
-      return it.getOrNull()
-    }
+    // Cache check intentionally omitted: the only caller ([findContainer]) has already looked
+    // up the cache before delegating here.
 
     // Look up the external class metadata
     val metadataDeclaration = declaration.metroGraphOrNull ?: declaration
@@ -784,6 +852,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
                     MetroDiagnostics.METRO_ERROR,
                     "Couldn't find Dagger-generated provider factory class for $declaration.$decl",
                   )
+                  // Cache the failure so subsequent lookups don't re-report the same diagnostic.
+                  cache.putIfAbsent(declarationFqName, Optional.empty())
                   return null
                 }
                 val transformedTypeKey = contextKey.typeKey.transformIfIntoMultibinding(annotations)
@@ -833,9 +903,9 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
               providerFactories,
               bindsCollector.buildMirror(declaration),
             )
-          cache[declarationFqName] = Optional.of(container)
+          val existing = cache.putIfAbsent(declarationFqName, Optional.of(container))
           generatedFactories.putAll(providerFactories)
-          return container
+          return existing?.getOrNull() ?: container
         }
       }
 
@@ -847,24 +917,42 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
           "No metadata found for ${metadataDeclaration.kotlinFqName} from " +
             "another module. Did you run the Metro compiler plugin on this module?"
         reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
+        // Cache the failure so subsequent lookups don't re-report the same diagnostic.
+        cache.putIfAbsent(declarationFqName, Optional.empty())
         return null
       }
-      cache[declarationFqName] = Optional.empty()
+      cache.putIfAbsent(declarationFqName, Optional.empty())
       return null
     }
 
     // Add any provider factories
     val providerFactories =
-      graphProto.provider_factory_classes
-        .map { ClassId.fromString(it) }
-        .associate { classId ->
-          val factoryClass = pluginContext.referenceClass(classId)!!.owner
-          val providerFactory = externalProviderFactoryFor(factoryClass)
-          providerFactory.callableId to providerFactory
-        }
+      trace("Load external provider factories") {
+        graphProto.provider_factories
+          .mapNotNull { entry ->
+            val classId = ClassId.fromString(entry.class_id)
+            if (entry.invisible) {
+              val providerFactory =
+                trace("Load invisible factory ${classId.shortClassName}") {
+                  loadInvisibleProviderFactory(declaration, classId, entry)
+                } ?: return@mapNotNull null
+              providerFactory.callableId to providerFactory
+            } else {
+              trace("External factory ${classId.shortClassName}") {
+                val factoryClass = pluginContext.referenceClass(classId)!!.owner
+                val providerFactory = externalProviderFactoryFor(factoryClass)
+                providerFactory.callableId to providerFactory
+              }
+            }
+          }
+          .toMap()
+      }
 
     // Add any binds callables
-    val bindsMirror = bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
+    val bindsMirror =
+      trace("Compute external binds mirror") {
+        bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
+      }
     val includedBindingContainers =
       graphProto.included_binding_containers.mapToSet { ClassId.fromString(it) }
 
@@ -877,11 +965,151 @@ internal class BindingContainerTransformer(context: IrMetroContext) :
         bindsMirror,
       )
 
-    // Cache the results
-    cache[declarationFqName] = Optional.of(container)
+    // Cache the results (putIfAbsent so a concurrent caller doesn't lose their entry).
+    val existing = cache.putIfAbsent(declarationFqName, Optional.of(container))
     generatedFactories.putAll(providerFactories)
 
-    return container
+    return existing?.getOrNull() ?: container
+  }
+
+  /**
+   * Loads an invisible provider factory from proto metadata. Creates a stub class with a mirror
+   * function and builds a [ProviderFactory] from proto values without needing a `@CallableMetadata`
+   * annotation.
+   */
+  private fun loadInvisibleProviderFactory(
+    container: IrClass,
+    classId: ClassId,
+    entry: ProviderFactoryProto,
+  ): ProviderFactory.Metro? {
+    val providesFunction =
+      findProvidesForInvisibleFactory(container, entry.callable_name) ?: return null
+
+    val stub = createContributionProviderFactoryStub(container, classId, isObject = entry.is_object)
+    val sourceAnnotations = providesFunction.metroAnnotations(metroSymbols.classIds)
+
+    val mirrorFunction =
+      generateMetadataVisibleMirrorFunction(
+        factoryClass = stub,
+        target = providesFunction,
+        backingField = null,
+        annotations = sourceAnnotations,
+        registerAsMetadataVisible = false,
+      )
+
+    // Add creator functions to the stub so IrMetroFactory can find them
+    generateStubCreatorFunctions(
+      factoryClass = stub,
+      callableName = entry.callable_name,
+      returnType = providesFunction.returnType,
+      sourceFunction = providesFunction,
+    )
+
+    val callableId = CallableId(container.classIdOrFail, Name.identifier(entry.callable_name))
+    val callableMetadata =
+      IrCallableMetadata(
+        callableId = callableId,
+        mirrorCallableId = mirrorFunction.callableId,
+        annotations = sourceAnnotations,
+        isPropertyAccessor = entry.property_name.isNotEmpty(),
+        newInstanceName = Name.identifier(entry.new_instance_name),
+        function = providesFunction,
+        mirrorFunction = mirrorFunction,
+      )
+
+    return ProviderFactory(
+      contextKey = IrContextualTypeKey.from(mirrorFunction),
+      clazz = stub,
+      mirrorFunction = mirrorFunction,
+      sourceAnnotations = sourceAnnotations,
+      callableMetadata = callableMetadata,
+      realDeclaration = providesFunction,
+    )
+  }
+
+  /**
+   * Creates a provider factory class stub in IR for contribution provider objects. The stub has its
+   * parent set but is NOT added as a child declaration. Used for both in-compilation (where the
+   * caller adds it) and external (where it's a phantom).
+   */
+  private fun createContributionProviderFactoryStub(
+    parentClass: IrClass,
+    classId: ClassId,
+    isObject: Boolean,
+  ): IrClass {
+    val classKind = if (isObject) ClassKind.OBJECT else ClassKind.CLASS
+
+    return pluginContext.irFactory
+      .buildClass {
+        name = classId.shortClassName
+        kind = classKind
+        visibility = DescriptorVisibilities.PUBLIC
+        origin = Origins.ProviderFactoryClassDeclaration
+      }
+      .apply {
+        // Set parent but do NOT add as child — caller decides
+        this.parent = parentClass
+        createThisReceiverParameter()
+
+        // Add a no-arg primary constructor shell. For objects this is the final constructor.
+        // For non-objects, getOrLookupProviderFactory will add parameters and fields to it.
+        addSimpleDelegatingConstructor(
+            irBuiltIns.anyClass.owner.primaryConstructor!!,
+            irBuiltIns,
+            isPrimary = true,
+          )
+          .apply { visibility = DescriptorVisibilities.PRIVATE }
+
+        if (!isObject) {
+          // Non-objects need a companion for create()/newInstance() static methods
+          val factoryCls = this
+          pluginContext.irFactory
+            .buildClass {
+              name = org.jetbrains.kotlin.name.SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT
+              kind = ClassKind.OBJECT
+              visibility = DescriptorVisibilities.PUBLIC
+              isCompanion = true
+            }
+            .apply {
+              factoryCls.addChild(this)
+              createThisReceiverParameter()
+              addSimpleDelegatingConstructor(
+                irBuiltIns.anyClass.owner.primaryConstructor!!,
+                irBuiltIns,
+                isPrimary = true,
+              )
+            }
+        }
+      }
+  }
+
+  /**
+   * Creates a provider factory class for an in-compilation contribution provider object. The class
+   * is created and added as a child of the parent.
+   */
+  private fun createContributionProviderFactory(
+    parentClass: IrClass,
+    generatedClassId: ClassId,
+    reference: CallableReference,
+  ): IrClass {
+    val isObject = reference.parameters.allParameters.isEmpty()
+    return createContributionProviderFactoryStub(parentClass, generatedClassId, isObject).also {
+      parentClass.declarations.add(it)
+    }
+  }
+
+  /**
+   * Finds the `@Provides` function on the binding container that corresponds to an invisible
+   * factory. The factory ClassId encodes the callable name (e.g., `ProvideImplMetroFactory`
+   * corresponds to `provideImpl`).
+   */
+  private fun findProvidesForInvisibleFactory(
+    container: IrClass,
+    callableName: String,
+  ): IrSimpleFunction? {
+    return container.declarations.filterIsInstance<IrSimpleFunction>().find {
+      it.name.asString() == callableName
+    }
   }
 }
 
@@ -912,23 +1140,21 @@ internal class BindingContainer(
    * TypedBindings<String>`).
    */
   fun withTypeSubstitution(remapper: TypeRemapper): BindingContainer {
-    val remappedFactories =
-      providerFactories.mapValues { (_, factory) ->
-        when (factory) {
-          is ProviderFactory.Metro -> factory.withRemappedTypes(remapper)
-          is ProviderFactory.Dagger -> factory.withRemappedTypes(remapper)
-        }
+    val remappedFactories = providerFactories.mapValues { (_, factory) ->
+      when (factory) {
+        is ProviderFactory.Metro -> factory.withRemappedTypes(remapper)
+        is ProviderFactory.Dagger -> factory.withRemappedTypes(remapper)
       }
-    val remappedBindsMirror =
-      bindsMirror?.let { mirror ->
-        BindsMirror(
-          ir = mirror.ir,
-          bindsCallables = mirror.bindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
-          multibindsCallables =
-            mirror.multibindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
-          optionalKeys = mirror.optionalKeys.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
-        )
-      }
+    }
+    val remappedBindsMirror = bindsMirror?.let { mirror ->
+      BindsMirror(
+        ir = mirror.ir,
+        bindsCallables = mirror.bindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
+        multibindsCallables =
+          mirror.multibindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
+        optionalKeys = mirror.optionalKeys.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
+      )
+    }
     return BindingContainer(
       isGraph = isGraph,
       ir = ir,

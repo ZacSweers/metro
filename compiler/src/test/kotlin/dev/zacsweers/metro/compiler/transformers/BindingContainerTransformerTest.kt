@@ -485,7 +485,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           }
           """
             .trimIndent()
-        )
+        ),
+        options = metroOptions.copy(enableFunctionProviders = false),
       )
       .apply {
         val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -613,7 +614,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           .trimIndent()
       ),
       previousCompilationResult = firstCompilation,
-      options = metroOptions.withDaggerInterop(),
+      options = metroOptions.withDaggerInterop().copy(unusedGraphInputsSeverity = NONE),
     ) {
       assertDiagnostics(
         """

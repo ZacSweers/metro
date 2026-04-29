@@ -315,7 +315,7 @@ internal class JavaxSymbols(
   delegate: FrameworkSymbols,
 ) : FrameworkSymbols by delegate {
   private val javaxInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.javax")
+    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.javax")
   }
 
   val javaxProvider: IrClassSymbol by lazy {
@@ -359,7 +359,7 @@ internal class JakartaSymbols(
   delegate: FrameworkSymbols,
 ) : FrameworkSymbols by delegate {
   private val jakartaInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.jakarta")
+    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.jakarta")
   }
 
   val jakartaProvider: IrClassSymbol by lazy {
@@ -403,11 +403,13 @@ internal class GuiceSymbols(
   metroFrameworkSymbols: MetroFrameworkSymbols,
 ) : FrameworkSymbols by metroFrameworkSymbols {
   private val guiceInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.guice")
+    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice")
   }
 
   private val guiceInteropRuntimeInternal: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.guice.internal")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice.internal"
+    )
   }
 
   val guiceDoubleCheckCompanionObject: IrClassSymbol by lazy {
@@ -497,11 +499,13 @@ internal class DaggerSymbols(
   }
 
   private val daggerInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.dagger")
+    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger")
   }
 
   private val daggerInteropRuntimeInternal: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.dagger.internal")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger.internal"
+    )
   }
 
   override val canonicalProviderType: IrClassSymbol by lazy {
@@ -695,6 +699,7 @@ internal class DaggerSymbols(
       ClassId(daggerInternalPackageFqName, "MapFactory".asName())
     val DAGGER_MULTIBINDS = ClassId(daggerMultibindsPackageFqName, "Multibinds".asName())
     val DAGGER_ASSISTED_INJECT = ClassId(daggerAssistedPackageFqName, "AssistedInject".asName())
+    val DAGGER_LAZY_CLASS_KEY = ClassId(daggerMultibindsPackageFqName, "LazyClassKey".asName())
     val DAGGER_INJECTED_FIELD_SIGNATURE =
       ClassId(daggerInternalPackageFqName, "InjectedFieldSignature".asName())
   }

@@ -5,5 +5,5 @@
 interface AppGraph {
   @Provides fun provideAny(): Any = Any()
   val any: Any
-  val <!METRO_ERROR!>int<!>: Int
+  val <!MISSING_BINDING!>int<!>: Int
 }

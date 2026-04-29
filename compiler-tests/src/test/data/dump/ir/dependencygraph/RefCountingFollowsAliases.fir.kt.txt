@@ -1,6 +1,6 @@
 @Inject
 class BarA {
-  val foo: Provider<Foo>
+  val foo: Function0<Foo>
     field = foo
     get
 
@@ -14,33 +14,42 @@ class BarA {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(foo: Provider<Foo>): Factory<BarA> {
         return MetroFactory(foo = foo)
       }
 
-      fun newInstance(foo: Provider<Foo>): BarA {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(foo: Function0<Foo>): BarA {
         return BarA(foo = foo)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(foo: Provider<Foo>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): BarA {
       return Companion.newInstance(foo = <this>.#foo)
     }
 
-    fun mirrorFunction(foo: Provider<Foo>): BarA {
+    @HiddenFromObjC
+    fun mirrorFunction(foo: Function0<Foo>): BarA {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(foo: Provider<Foo>) /* primary */ {
+  constructor(foo: Function0<Foo>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -50,7 +59,7 @@ class BarA {
 
 @Inject
 class BarB {
-  val foo: Provider<Foo>
+  val foo: Function0<Foo>
     field = foo
     get
 
@@ -64,33 +73,42 @@ class BarB {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(foo: Provider<Foo>): Factory<BarB> {
         return MetroFactory(foo = foo)
       }
 
-      fun newInstance(foo: Provider<Foo>): BarB {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(foo: Function0<Foo>): BarB {
         return BarB(foo = foo)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(foo: Provider<Foo>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): BarB {
       return Companion.newInstance(foo = <this>.#foo)
     }
 
-    fun mirrorFunction(foo: Provider<Foo>): BarB {
+    @HiddenFromObjC
+    fun mirrorFunction(foo: Function0<Foo>): BarB {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(foo: Provider<Foo>) /* primary */ {
+  constructor(foo: Function0<Foo>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -109,18 +127,26 @@ class BazImpl : BazMiddle {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<BazImpl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): BazImpl {
       return BazImpl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): BazImpl {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): BazImpl {
       return error(message = "Never called")
     }
@@ -172,18 +198,26 @@ class FooImpl : Foo {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<FooImpl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): FooImpl {
       return FooImpl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): FooImpl {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): FooImpl {
       return error(message = "Never called")
     }
@@ -227,19 +261,19 @@ class FooImpl : Foo {
 @Inject
 @SingleIn(scope = AppScope::class)
 class Main {
-  val barA: Provider<BarA>
+  val barA: Function0<BarA>
     field = barA
     get
 
-  val barB: Provider<BarB>
+  val barB: Function0<BarB>
     field = barB
     get
 
-  val quxA: Provider<QuxA>
+  val quxA: Function0<QuxA>
     field = quxA
     get
 
-  val quxB: Provider<QuxB>
+  val quxB: Function0<QuxB>
     field = quxB
     get
 
@@ -256,34 +290,43 @@ class Main {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Factory<Main> {
         return MetroFactory(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
       }
 
-      fun newInstance(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Main {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(barA: Function0<BarA>, barB: Function0<BarB>, quxA: Function0<QuxA>, quxB: Function0<QuxB>): Main {
         return Main(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Main {
       return Companion.newInstance(barA = <this>.#barA, barB = <this>.#barB, quxA = <this>.#quxA, quxB = <this>.#quxB)
     }
 
     @SingleIn(scope = AppScope::class)
-    fun mirrorFunction(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Main {
+    @HiddenFromObjC
+    fun mirrorFunction(barA: Function0<BarA>, barB: Function0<BarB>, quxA: Function0<QuxA>, quxB: Function0<QuxB>): Main {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>) /* primary */ {
+  constructor(barA: Function0<BarA>, barB: Function0<BarB>, quxA: Function0<QuxA>, quxB: Function0<QuxB>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -293,7 +336,7 @@ class Main {
 
 @Inject
 class QuxA {
-  val baz: Provider<Baz>
+  val baz: Function0<Baz>
     field = baz
     get
 
@@ -307,33 +350,42 @@ class QuxA {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(baz: Provider<Baz>): Factory<QuxA> {
         return MetroFactory(baz = baz)
       }
 
-      fun newInstance(baz: Provider<Baz>): QuxA {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(baz: Function0<Baz>): QuxA {
         return QuxA(baz = baz)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(baz: Provider<Baz>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): QuxA {
       return Companion.newInstance(baz = <this>.#baz)
     }
 
-    fun mirrorFunction(baz: Provider<Baz>): QuxA {
+    @HiddenFromObjC
+    fun mirrorFunction(baz: Function0<Baz>): QuxA {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(baz: Provider<Baz>) /* primary */ {
+  constructor(baz: Function0<Baz>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -343,7 +395,7 @@ class QuxA {
 
 @Inject
 class QuxB {
-  val baz: Provider<Baz>
+  val baz: Function0<Baz>
     field = baz
     get
 
@@ -357,33 +409,42 @@ class QuxB {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(baz: Provider<Baz>): Factory<QuxB> {
         return MetroFactory(baz = baz)
       }
 
-      fun newInstance(baz: Provider<Baz>): QuxB {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(baz: Function0<Baz>): QuxB {
         return QuxB(baz = baz)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(baz: Provider<Baz>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): QuxB {
       return Companion.newInstance(baz = <this>.#baz)
     }
 
-    fun mirrorFunction(baz: Provider<Baz>): QuxB {
+    @HiddenFromObjC
+    fun mirrorFunction(baz: Function0<Baz>): QuxB {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(baz: Provider<Baz>) /* primary */ {
+  constructor(baz: Function0<Baz>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -403,7 +464,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
     }
 
     @Binds
-    @CallableMetadata(callableName = "bindBaz", propertyName = "", startOffset = 816, endOffset = 849)
+    @CallableMetadata(callableName = "bindBaz", propertyName = "", startOffset = 784, endOffset = 817)
     abstract fun bindBaz(impl: BazMiddle): Baz
 
   }
@@ -441,6 +502,8 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }

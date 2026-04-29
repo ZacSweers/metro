@@ -52,9 +52,21 @@ internal fun linkDeclarationsInCompilation(callingElement: IrElement, calleeDecl
 
 context(context: IrMetroContext)
 internal fun linkDeclarationsInCompilation(callingFile: IrFile?, calleeDeclaration: IrClass) {
-  val expectedFile = calleeDeclaration.fileOrNull?.getIoFile() ?: return
   val actualFile = callingFile?.getIoFile() ?: return
+  val expectedFile = calleeDeclaration.fileOrNull?.getIoFile() ?: return
   if (expectedFile == actualFile) return
+  if (!expectedFile.isAbsolute) {
+    // This is a generated declaration!
+    // Does it have an origin?
+    val origin = calleeDeclaration.originClassId()
+    if (origin != null) {
+      val originClass = context.referenceClass(origin)?.owner
+      if (originClass != null) {
+        linkDeclarationsInCompilation(callingFile = callingFile, calleeDeclaration = originClass)
+      }
+    }
+    return
+  }
   context.expectActualTracker.report(expectedFile = expectedFile, actualFile = actualFile)
 }
 

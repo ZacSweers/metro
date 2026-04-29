@@ -7,10 +7,15 @@ import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
+import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
+import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.fakeElement as fakeElementNative
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol as getContainingClassSymbolNative
@@ -48,12 +53,16 @@ import org.jetbrains.kotlin.fir.toEffectiveVisibility
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.ir.IrDiagnosticReporter
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.types.IrType
@@ -71,6 +80,14 @@ public class CompatContextImpl : CompatContext {
 
   override fun FirDeclaration.getContainingClassSymbol(): FirClassLikeSymbol<*>? =
     getContainingClassSymbolNative()
+
+  override fun KtSourcelessDiagnosticFactory.createCompat(
+    message: String,
+    location: CompilerMessageSourceLocation?,
+    languageVersionSettings: LanguageVersionSettings,
+  ): KtDiagnosticWithoutSource? {
+    return create(message, languageVersionSettings)
+  }
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun FirExtension.createTopLevelFunction(
@@ -257,6 +274,23 @@ public class CompatContextImpl : CompatContext {
     extension: IrGenerationExtension
   ) {
     IrGenerationExtension.registerExtension(extension)
+  }
+
+  override fun <A : Any> IrDiagnosticReporter.reportAt(
+    declaration: IrDeclaration,
+    factory: KtDiagnosticFactory1<A>,
+    a: A,
+  ) {
+    at(declaration).report(factory, a)
+  }
+
+  override fun <A : Any> IrDiagnosticReporter.reportAt(
+    element: IrElement,
+    file: IrFile,
+    factory: KtDiagnosticFactory1<A>,
+    a: A,
+  ) {
+    at(element, file).report(factory, a)
   }
 
   public class Factory : CompatContext.Factory {

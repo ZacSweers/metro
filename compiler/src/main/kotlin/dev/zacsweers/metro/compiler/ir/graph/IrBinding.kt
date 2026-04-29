@@ -19,7 +19,6 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allowEmpty
-import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.computeMultibindingId
 import dev.zacsweers.metro.compiler.ir.createMapBindingId
@@ -34,15 +33,11 @@ import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
-import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrErrorType
@@ -52,7 +47,6 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
-import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -137,7 +131,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val scope: IrAnnotation?
       get() = annotations.scope
 
-    override val nameHint: String = type.name.asString()
+    override val nameHint: String
+      get() = type.name.asString()
+
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey)
 
     override val reportableDeclaration: IrDeclarationWithName
@@ -190,7 +186,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val parameters: Parameters = Parameters.empty()
     override val isImplicitlyDeferrable: Boolean = true
 
-    override val nameHint: String = type.name.asString()
+    override val nameHint: String
+      get() = type.name.asString()
+
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey)
 
     override val reportableDeclaration: IrDeclarationWithName
@@ -256,7 +254,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val isIntoMultibinding
       get() = annotations.isIntoMultibinding
 
-    override val nameHint: String = providerFactory.callableId.callableName.asString()
+    override val nameHint: String
+      get() = providerFactory.callableId.callableName.asString()
 
     override val reportableDeclaration: IrDeclarationWithName
       get() = providerFactory.function
@@ -312,13 +311,17 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     }
 
     override val scope: IrAnnotation? = null
-    override val dependencies: List<IrContextualTypeKey> =
+    override val dependencies: List<IrContextualTypeKey> by memoize {
       listOf(IrContextualTypeKey.create(aliasedType))
-    override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
+    }
+    override val nameHint: String by memoize {
+      ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
+    }
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    override val reportableDeclaration: IrDeclarationWithName?
-      get() = bindsCallable?.resolveSourceDeclaration()?.first
+    override val reportableDeclaration: IrDeclarationWithName? by memoize {
+      bindsCallable?.resolveSourceDeclaration()?.first
+    }
 
     override fun renderLocationDiagnostic(
       short: Boolean,
@@ -378,7 +381,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      */
     override val dependencies: List<IrContextualTypeKey>,
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<AssistedFactory> {
-    override val nameHint: String = type.name.asString()
+    override val nameHint: String
+      get() = type.name.asString()
+
     override val scope: IrAnnotation? = null
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val reportableDeclaration: IrDeclarationWithName
@@ -560,27 +565,32 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val callableId: CallableId?
       get() = getter?.callableId
 
-    override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(ownerKey))
+    override val dependencies: List<IrContextualTypeKey> by memoize {
+      listOf(IrContextualTypeKey(ownerKey))
+    }
     override val scope: IrAnnotation? = null
-    override val nameHint: String = buildString {
-      append(graph.name)
-      if (token != null) {
-        // Use the context key's type name as a hint
-        append(token.contextKey.typeKey.type.rawType().name.asString().capitalizeUS())
-      } else {
-        val property = getter!!.correspondingPropertySymbol
-        if (property != null) {
-          val propName = property.owner.name.asString()
-          append(propName.capitalizeUS())
+    override val nameHint: String by memoize {
+      buildString {
+        append(graph.name)
+        if (token != null) {
+          // Use the context key's type name as a hint
+          append(token.contextKey.typeKey.type.rawType().name.asString().capitalizeUS())
         } else {
-          append(getter.name.capitalizeUS())
+          val property = getter!!.correspondingPropertySymbol
+          if (property != null) {
+            val propName = property.owner.name.asString()
+            append(propName.capitalizeUS())
+          } else {
+            append(getter.name.capitalizeUS())
+          }
         }
       }
     }
     override val parameters: Parameters = Parameters.empty()
 
-    override val reportableDeclaration: IrDeclarationWithName?
-      get() = getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
+    override val reportableDeclaration: IrDeclarationWithName? by memoize {
+      getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
+    }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {
       return buildString {
@@ -869,7 +879,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // Use shouldBeScoped to check if this binding needs to be scoped
     override val scope: IrAnnotation? = null
 
-    override val nameHint: String = typeKey.type.rawType().name.asString()
+    override val nameHint: String by memoize { typeKey.type.rawType().name.asString() }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
@@ -904,7 +914,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()
     override val scope: IrAnnotation? = null
-    override val nameHint: String = "${typeKey.type.rawType().name.asString()}Factory"
+    override val nameHint: String by memoize { "${typeKey.type.rawType().name.asString()}Factory" }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
@@ -942,12 +952,14 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val allowsAbsent: Boolean,
     val wrapperKey: String,
   ) : IrBinding {
-    override val dependencies: List<IrContextualTypeKey> = listOf(wrappedContextKey)
+    override val dependencies: List<IrContextualTypeKey> by memoize { listOf(wrappedContextKey) }
     override val reportableDeclaration: IrDeclarationWithName = declaration
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()
     override val scope: IrAnnotation? = null
-    override val nameHint: String = "$wrapperKey${wrappedType.rawType().name.asString()}"
+    override val nameHint: String by memoize {
+      "$wrapperKey${wrappedType.rawType().name.asString()}"
+    }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
@@ -965,22 +977,3 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
   }
 }
-
-internal val IrBinding.isIntoMultibinding: Boolean
-  get() {
-    return typeKey.qualifier?.ir?.annotationClass?.classId == Symbols.ClassIds.MultibindingElement
-  }
-
-internal val IrBinding.hostParent: IrDeclarationContainer?
-  get() {
-    return when (val decl = reportableDeclaration) {
-      is IrClass -> decl
-      is IrPackageFragment -> decl
-      is IrFunction,
-      is IrProperty ->
-        decl.parentDeclarationsWithSelf.firstNotNullOfOrNull {
-          it as? IrClass ?: it as? IrPackageFragment
-        }
-      else -> null
-    }
-  }

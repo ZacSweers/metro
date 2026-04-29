@@ -95,19 +95,19 @@ class MetroAppComponentFactoryTest {
 
   // Test component classes
   @Inject
-  @ActivityKey(TestActivity::class)
+  @ActivityKey
   @ContributesIntoMap(AppScope::class)
   class TestActivity(val value: String) : Activity()
 
   @Inject
-  @ServiceKey(TestService::class)
+  @ServiceKey
   @ContributesIntoMap(AppScope::class)
   class TestService(val value: String) : Service() {
     override fun onBind(intent: Intent?) = null
   }
 
   @Inject
-  @BroadcastReceiverKey(TestReceiver::class)
+  @BroadcastReceiverKey
   @ContributesIntoMap(AppScope::class)
   class TestReceiver(val value: String) : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -122,7 +122,7 @@ class MetroAppComponentFactoryTest {
   }
 
   @Inject
-  @ContentProviderKey(TestProvider::class)
+  @ContentProviderKey
   @ContributesIntoMap(AppScope::class)
   class TestProvider(val value: String) : ContentProvider() {
     override fun onCreate() = true

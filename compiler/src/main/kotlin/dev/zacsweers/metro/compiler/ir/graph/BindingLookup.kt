@@ -127,9 +127,7 @@ internal class BindingLookup(
   }
 
   /** Returns all bindings for similarity checking. */
-  fun getAvailableBindings(): Map<IrTypeKey, IrBinding> {
-    return bindingsCache.mapValues { it.value }
-  }
+  fun getAvailableBindings(): Map<IrTypeKey, IrBinding> = bindingsCache
 
   /** Returns the first binding for a given type key, or null if none exist. */
   operator fun get(typeKey: IrTypeKey): IrBinding? = bindingsCache[typeKey]
@@ -626,9 +624,15 @@ internal class BindingLookup(
         // Report duplicates if there are multiple bindings
         duplicateBindings[key]?.let { onDuplicateBindings(key, it.toList()) }
 
-        // Check if this is available from parent and is scoped
-        if (binding.scope != null && parentContext?.contains(key) == true) {
-          val token = parentContext.mark(key, binding.scope!!)
+        // Check if this is available from parent and is scoped.
+        // Skip locally declared bindings, they're explicitly provided in this graph
+        // (e.g. via @Provides) and should not be delegated to a parent even if the
+        // parent has the same key under a different scope.
+        // "If graph A provides `Logger` and graph B also provides `Logger` (overriding A's),
+        // ensure graph C uses B's"
+        val scope = binding.scope
+        if (scope != null && key !in locallyDeclaredKeys && parentContext?.contains(key) == true) {
+          val token = parentContext.mark(key, scope)
           return setOf(createParentGraphDependency(key, token!!))
         }
         return setOf(binding)

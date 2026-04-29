@@ -3,7 +3,7 @@
 A compile-time dependency injection framework for Kotlin Multiplatform, powered by a Kotlin compiler plugin.
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.zacsweers.metro/runtime.svg)](https://github.com/ZacSweers/metro/releases)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20%20--%202.4.0--dev--539-blue.svg?logo=kotlin)](docs/compatibility.md)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20%20--%202.4.0--dev--2124-blue.svg?logo=kotlin)](docs/compatibility.md)
 [![Build Status](https://github.com/ZacSweers/metro/actions/workflows/ci.yml/badge.svg)](https://github.com/ZacSweers/metro/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
@@ -83,7 +83,7 @@ val repository = graph.repository
 
 ## Supported Platforms
 
-Metro supports JVM, Android, JS, WASM, and Native targets. The compiler plugin works with all Kotlin Multiplatform project types.
+Metro supports JVM, Android, JS, Wasm, and Native targets. The compiler plugin works with all Kotlin Multiplatform project types.
 
 See the [multiplatform docs](https://zacsweers.github.io/metro/latest/multiplatform/) for full details.
 

@@ -1,11 +1,11 @@
 class Target {
-  lateinit var strings: Map<Int, Provider<String>>
+  lateinit var strings: Map<Int, Function0<String>>
     get
     set
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroMembersInjector : MembersInjector<Target> {
-    private /* final field */ val strings: Provider<Map<Int, Provider<String>>> = strings
+    private /* final field */ val strings: Provider<Map<Int, Function0<String>>> = strings
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -13,17 +13,22 @@ class Target {
 
       }
 
-      fun create(strings: Provider<Map<Int, Provider<String>>>): MembersInjector<Target> {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(strings: Provider<Map<Int, Function0<String>>>): MembersInjector<Target> {
         return MetroMembersInjector(strings = strings)
       }
 
-      fun injectStrings(@Assisted instance: Target, strings: Map<Int, Provider<String>>) {
+      @JvmStatic
+      @JsStatic
+      fun injectStrings(@Assisted instance: Target, strings: Map<Int, Function0<String>>) {
         return instance.#strings = strings
       }
 
     }
 
-    private constructor(strings: Provider<Map<Int, Provider<String>>>) /* primary */ {
+    private constructor(strings: Provider<Map<Int, Function0<String>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -45,7 +50,7 @@ class Target {
 
 interface Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 129, endOffset = 196, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 125, endOffset = 192, newInstanceName = "provideString")
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val instance: Bindings = instance
     companion object Companion {
@@ -55,28 +60,37 @@ interface Bindings {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: Bindings): Factory<String> {
         return ProvideStringMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideString(instance: Bindings): String {
         return instance.provideString()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: Bindings) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): String {
       return Companion.provideString(instance = <this>.#instance)
     }
 
     @IntoMap
     @IntKey(value = 1)
+    @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")
     }
@@ -97,7 +111,7 @@ interface TestGraph1 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph1 {
-    private val thisGraphInstance: TestGraph1
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -110,9 +124,9 @@ interface TestGraph1 : Bindings {
       Companion.injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
     }
 
-    private val mapOfIntToString: Map<Int, Provider<String>>
-      private get(): Map<Int, Provider<String>> {
-        return buildMap<Int, Provider<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<String>>.<anonymous>() {
+    private val mapOfIntToString: Map<Int, Function0<String>>
+      private get(): Map<Int, Function0<String>> {
+        return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
           $receiver.put(key = 1, value = Companion.create(instance = <this>.#thisGraphInstance))
         }
 )
@@ -128,6 +142,8 @@ interface TestGraph1 : Bindings {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph1 {
       return Impl()
     }
@@ -143,7 +159,7 @@ interface TestGraph2 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph2 {
-    private val thisGraphInstance: TestGraph2
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -156,8 +172,8 @@ interface TestGraph2 : Bindings {
       Companion.injectStrings(instance = target, strings = <this>.<get-mapOfIntToStringProvider>().invoke())
     }
 
-    private val mapOfIntToStringProvider: Provider<Map<Int, Provider<String>>>
-      private get(): Provider<Map<Int, Provider<String>>> {
+    private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
+      private get(): Provider<Map<Int, Function0<String>>> {
         return { // BLOCK
           val tmp_0: Builder<Int, String> = Companion.builder<Int, String>(size = 1)
           tmp_0.put(key = 1, providerOfValue = Companion.create(instance = <this>.#thisGraphInstance))
@@ -165,8 +181,8 @@ interface TestGraph2 : Bindings {
         }
       }
 
-    override val strings: Provider<Map<Int, Provider<String>>>
-      override get(): Provider<Map<Int, Provider<String>>> {
+    override val strings: Function0<Map<Int, Function0<String>>>
+      override get(): Function0<Map<Int, Function0<String>>> {
         return <this>.<get-mapOfIntToStringProvider>()
       }
 
@@ -180,6 +196,8 @@ interface TestGraph2 : Bindings {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph2 {
       return Impl()
     }
@@ -188,7 +206,7 @@ interface TestGraph2 : Bindings {
 
   abstract fun inject(target: Target)
 
-  abstract val strings: Provider<Map<Int, Provider<String>>>
+  abstract val strings: Function0<Map<Int, Function0<String>>>
     abstract get
 
 }
@@ -198,7 +216,7 @@ interface TestGraph3 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph3 {
-    private val thisGraphInstance: TestGraph3
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -211,16 +229,16 @@ interface TestGraph3 : Bindings {
       Companion.injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
     }
 
-    private val mapOfIntToString: Map<Int, Provider<String>>
-      private get(): Map<Int, Provider<String>> {
-        return buildMap<Int, Provider<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<String>>.<anonymous>() {
+    private val mapOfIntToString: Map<Int, Function0<String>>
+      private get(): Map<Int, Function0<String>> {
+        return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
           $receiver.put(key = 1, value = Companion.create(instance = <this>.#thisGraphInstance))
         }
 )
       }
 
-    override val strings: Map<Int, Provider<String>>
-      override get(): Map<Int, Provider<String>> {
+    override val strings: Map<Int, Function0<String>>
+      override get(): Map<Int, Function0<String>> {
         return <this>.<get-mapOfIntToString>()
       }
 
@@ -234,6 +252,8 @@ interface TestGraph3 : Bindings {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph3 {
       return Impl()
     }
@@ -242,7 +262,7 @@ interface TestGraph3 : Bindings {
 
   abstract fun inject(target: Target)
 
-  abstract val strings: Map<Int, Provider<String>>
+  abstract val strings: Map<Int, Function0<String>>
     abstract get
 
 }
@@ -252,7 +272,7 @@ interface TestGraph4 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph4 {
-    private val thisGraphInstance: TestGraph4
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -261,8 +281,8 @@ interface TestGraph4 : Bindings {
 
     }
 
-    private val mapOfIntToStringProvider: Provider<Map<Int, Provider<String>>>
-      private get(): Provider<Map<Int, Provider<String>>> {
+    private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
+      private get(): Provider<Map<Int, Function0<String>>> {
         return { // BLOCK
           val tmp_1: Builder<Int, String> = Companion.builder<Int, String>(size = 1)
           tmp_1.put(key = 1, providerOfValue = Companion.create(instance = <this>.#thisGraphInstance))
@@ -270,8 +290,8 @@ interface TestGraph4 : Bindings {
         }
       }
 
-    override val strings: Provider<Map<Int, Provider<String>>>
-      override get(): Provider<Map<Int, Provider<String>>> {
+    override val strings: Function0<Map<Int, Function0<String>>>
+      override get(): Function0<Map<Int, Function0<String>>> {
         return <this>.<get-mapOfIntToStringProvider>()
       }
 
@@ -285,13 +305,15 @@ interface TestGraph4 : Bindings {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph4 {
       return Impl()
     }
 
   }
 
-  abstract val strings: Provider<Map<Int, Provider<String>>>
+  abstract val strings: Function0<Map<Int, Function0<String>>>
     abstract get
 
 }
@@ -301,7 +323,7 @@ interface TestGraph5 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph5 {
-    private val thisGraphInstance: TestGraph5
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -310,16 +332,16 @@ interface TestGraph5 : Bindings {
 
     }
 
-    private val mapOfIntToString: Map<Int, Provider<String>>
-      private get(): Map<Int, Provider<String>> {
-        return buildMap<Int, Provider<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<String>>.<anonymous>() {
+    private val mapOfIntToString: Map<Int, Function0<String>>
+      private get(): Map<Int, Function0<String>> {
+        return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
           $receiver.put(key = 1, value = Companion.create(instance = <this>.#thisGraphInstance))
         }
 )
       }
 
-    override val strings: Map<Int, Provider<String>>
-      override get(): Map<Int, Provider<String>> {
+    override val strings: Map<Int, Function0<String>>
+      override get(): Map<Int, Function0<String>> {
         return <this>.<get-mapOfIntToString>()
       }
 
@@ -333,13 +355,15 @@ interface TestGraph5 : Bindings {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph5 {
       return Impl()
     }
 
   }
 
-  abstract val strings: Map<Int, Provider<String>>
+  abstract val strings: Map<Int, Function0<String>>
     abstract get
 
 }

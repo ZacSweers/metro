@@ -220,7 +220,9 @@ abstract class MetroProject(
 
   /** Generates just the `metro { ... }` block content for use in custom build scripts. */
   fun buildMetroBlock(): String = buildString {
-    appendLine("@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class)")
+    appendLine(
+      "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class, dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)"
+    )
     appendLine("metro {")
     appendLine("  debug.set($debug)")
     if (reportsEnabled) {
@@ -228,13 +230,16 @@ abstract class MetroProject(
     }
     val options = buildList {
       metroOptions.enableFullBindingGraphValidation?.let {
-        add("enableFullBindingGraphValidation.set($it)")
+        add("compilerOptions.enable(\"enable-full-binding-graph-validation\")")
+      }
+      metroOptions.generateContributionProviders?.let {
+        add("generateContributionProviders.set($it)")
       }
     }
     if (options.isNotEmpty()) {
       options.joinTo(this, separator = "\n", prefix = "  ")
     }
-    appendLine("}")
+    appendLine("\n}")
   }
 
   /**

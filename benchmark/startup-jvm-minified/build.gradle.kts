@@ -10,11 +10,15 @@ dependencies {
   jmhCompileOnly(project(":app:component"))
   // Run against the minified jar
   jmhRuntimeOnly(project(":startup-jvm:minified-jar"))
-  // Runtime dependencies not included in the minified jar (library classpath)
+  // Runtime dependencies not included in the minified jar (library classpath).
+  // All frameworks' runtimes are listed so the same minified-jar harness works regardless of
+  // which framework the generator produced — the classloader will only resolve what's used.
   jmhRuntimeOnly("dev.zacsweers.metro:runtime:+")
   jmhRuntimeOnly("javax.inject:javax.inject:1")
   jmhRuntimeOnly(libs.dagger.runtime)
   jmhRuntimeOnly(libs.kotlinInject.runtime)
+  jmhRuntimeOnly(libs.koin.core)
+  jmhRuntimeOnly(libs.koin.annotations)
 }
 
 jmh {

@@ -161,10 +161,9 @@ internal class IrGraphShardGenerator(
 
     // Use remove() to both lookup and track which bindings have been assigned to groups
     val bindingsByKey = shardBindings.associateByTo(mutableMapOf()) { it.typeKey }
-    val filteredGroups =
-      plannedGroups.mapNotNull { group ->
-        group.mapNotNull(bindingsByKey::remove).takeIf { it.isNotEmpty() }
-      }
+    val filteredGroups = plannedGroups.mapNotNull { group ->
+      group.mapNotNull(bindingsByKey::remove).takeIf { it.isNotEmpty() }
+    }
 
     // Add any remaining bindings not in planned groups
     val allGroups =
@@ -401,11 +400,10 @@ internal class IrGraphShardGenerator(
         val shardClass = shard.shardClass
         val needsGraphAccess = shardLookup.needsGraphAccess(shard.index)
 
-        val constructor =
-          shardClass.addConstructor {
-            isPrimary = true
-            origin = Origins.Default
-          }
+        val constructor = shardClass.addConstructor {
+          isPrimary = true
+          origin = Origins.Default
+        }
 
         if (needsGraphAccess) {
           // Add graph property field to store the graph reference (needed for cross-shard access)

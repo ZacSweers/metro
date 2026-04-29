@@ -13,6 +13,8 @@ import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.isIde
+import dev.zacsweers.metro.compiler.fir.isIntrinsicType
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
@@ -35,15 +37,18 @@ import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
+import org.jetbrains.kotlin.fir.analysis.checkers.fullyExpandedClassId
 import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.correspondingProperty
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isExtension
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
@@ -120,6 +125,14 @@ internal object BindingContainerCallableChecker :
     }
 
     val annotations = declaration.symbol.metroAnnotations(session)
+
+    // Dagger's @LazyClassKey isn't supported
+    if (declaration !is FirPropertyAccessor) {
+      annotations.lazyClassKey?.let {
+        reporter.reportOn(it.fir.source ?: source, MetroDiagnostics.DAGGER_LAZY_CLASS_KEY_ERROR)
+        return
+      }
+    }
 
     declaration.symbol.validateBindingSource(annotations)
 
@@ -267,21 +280,63 @@ internal object BindingContainerCallableChecker :
       )
     }
 
+    // Reject intrinsic return types (Provider, Lazy, MembersInjector, and Function0 when
+    // `enableFunctionProviders` is on). These are wrappers Metro itself would generate, returning
+    // one from `@Provides` silently double-wraps the binding, which is almost always a
+    // bug. Mirrors Dagger's BindingElementValidator.checkFrameworkType.
+    if (annotations.isProvides) {
+      val returnClassId = returnTypeRef.coneTypeOrNull?.fullyExpandedClassId(session)
+      if (returnClassId.isIntrinsicType(session)) {
+        val rendered = returnTypeRef.coneType.render(short = true)
+        val annotationName =
+          declaration
+            .annotationsIn(session, classIds.providesAnnotations)
+            .firstOrNull()
+            ?.toAnnotationClassId(session)
+            ?.shortClassName
+            ?.toString() ?: "Provides"
+        val base =
+          "`@$annotationName` declarations may not return intrinsic types, but " +
+            "`${declaration.nameOrSpecialName}` returns `$rendered`. " +
+            "Remove the wrapper and let Metro provide the underlying type directly."
+
+        val message =
+          if (
+            session.metroFirBuiltIns.options.enableFunctionProviders &&
+              returnClassId == Symbols.ClassIds.function0
+          ) {
+            base +
+              " Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function types " +
+              "are treated as provider types by Metro and cannot be unique bindings on the graph."
+          } else {
+            base
+          }
+        reporter.reportOn(
+          returnTypeRef.source ?: source,
+          MetroDiagnostics.INTRINSIC_BINDING_ERROR,
+          message,
+        )
+        return
+      }
+    }
+
     val isPrivate = declaration.visibility == Visibilities.Private
+    val publicScopedProviderSeverity =
+      session.metroFirBuiltIns.options.publicScopedProviderSeverity.resolve(session.isIde())
     val shouldReportForPublic =
       !isPrivate &&
         annotations.isScoped &&
         !annotations.isMultibinds &&
         declaration !is FirProperty &&
-        session.metroFirBuiltIns.options.publicScopedProviderSeverity.isEnabled
+        publicScopedProviderSeverity.isEnabled
 
     if (shouldReportForPublic) {
       val message = "Scoped @Provides declarations should be private."
       val diagnosticFactory =
-        when (session.metroFirBuiltIns.options.publicScopedProviderSeverity) {
-          NONE -> reportCompilerBug("Not possible")
+        when (publicScopedProviderSeverity) {
           WARN -> MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING
           ERROR -> MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR
+          else -> reportCompilerBug("Not possible")
         }
       reporter.reportOn(source, diagnosticFactory, message)
     }

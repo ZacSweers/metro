@@ -2,9 +2,14 @@
 # Lists recent Android Studio versions from JetBrains releases XML.
 # Useful for finding version numbers when adding new AS versions to test.
 #
-# Usage: ./list-android-studio-versions.sh
+# Usage: ./list-android-studio-versions.sh [--all]
 
 set -euo pipefail
+
+SHOW_ALL=false
+if [[ "${1:-}" == "--all" ]]; then
+  SHOW_ALL=true
+fi
 
 RELEASES_URL="https://jb.gg/android-studio-releases-list.xml"
 
@@ -90,7 +95,12 @@ echo "Recent Android Studio Versions"
 echo "==============================="
 echo ""
 
-print_channel "Release" "Stable" 3
-print_channel "RC" "Release Candidate" 3
-print_channel "Beta" "Beta" 3
-print_channel "Canary" "Canary" 3
+if [[ "$SHOW_ALL" == true ]]; then
+  count=3
+else
+  count=1
+fi
+
+print_channel "Release" "Stable" "$count"
+print_channel "RC" "Release Candidate" "$count"
+print_channel "Canary" "Canary" "$count"

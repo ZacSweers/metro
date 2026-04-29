@@ -1,3 +1,4 @@
+// UNUSED_GRAPH_INPUTS_SEVERITY: NONE
 // CHECK_REPORTS: keys-unused/AppGraph/Impl
 // CHECK_REPORTS: keys-unused/AppGraph/Impl/ChildGraphImpl
 // CHECK_REPORTS: keys-unused/AppGraph/Impl/ChildGraphImpl/GrandchildGraphImpl

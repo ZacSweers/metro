@@ -49,7 +49,7 @@ class BindingGraphTest : TraceScope by testTraceScope() {
 
     val (graph, result) =
       buildGraph {
-        a dependsOn "Provider<A>".contextualTypeKey
+        a dependsOn "() -> A".contextualTypeKey
         b dependsOn "Lazy<B>".contextualTypeKey
       }
 
@@ -63,7 +63,7 @@ class BindingGraphTest : TraceScope by testTraceScope() {
 
   @Test
   fun `seal deferrableTypeDependencyGraph`() {
-    val aProvider = "Provider<A>".typeKey
+    val aProvider = "() -> A".typeKey
     val b = "B".typeKey
 
     val (graph, result) = buildGraph { aProvider dependsOn b }
@@ -114,11 +114,11 @@ class BindingGraphTest : TraceScope by testTraceScope() {
     val d = "D".typeKey
 
     // SCC: {A, B, C, D}
-    // Legal cycle: A -> B -> Provider<A>
+    // Legal cycle: A -> B -> (() -> A)
     // Illegal cycle : D -> B -> C -> D
 
     val aBinding = a.toBinding(b.contextualTypeKey)
-    val bBinding = b.toBinding("Provider<A>".contextualTypeKey, c.contextualTypeKey)
+    val bBinding = b.toBinding("() -> A".contextualTypeKey, c.contextualTypeKey)
     val cBinding = c.toBinding(d.contextualTypeKey)
     val dBinding = d.toBinding(b.contextualTypeKey)
 
@@ -262,14 +262,14 @@ class BindingGraphTest : TraceScope by testTraceScope() {
 
   @Test
   fun `simple self cycle with Provider type`() {
-    // A -> Provider<A>
+    // A -> (() -> A)
     val (graph, result) =
       buildGraph {
         // Create a direct cycle
-        "A".dependsOn("Provider<A>")
+        "A".dependsOn("() -> A")
       }
 
-    with(graph) { assertThat("A".typeKey.dependsOn("Provider<A>".typeKey)).isTrue() }
+    with(graph) { assertThat("A".typeKey.dependsOn("() -> A".typeKey)).isTrue() }
     assertThat(result.deferredTypes).containsExactly("A".typeKey)
   }
 

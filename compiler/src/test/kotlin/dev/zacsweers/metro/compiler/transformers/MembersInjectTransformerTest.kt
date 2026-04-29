@@ -87,6 +87,21 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
               result = 31 * result + privateSetter.hashCode()
               return result
             }
+
+            override fun toString(): String {
+             return "ExampleClas(" +
+              "\nstring=" + string +
+              "\nqualifiedString=" + qualifiedString +
+              "\ncharSequence=" + charSequence +
+              "\nlist=" + list +
+              "\npair=" + pair +
+              "\nset=" + set +
+              "\nsetterAnnotated=" + setterAnnotated +
+              "\nsetterAnnotated2=" + setterAnnotated2 +
+              "\nprivateField=" + privateField +
+              "\nprivateSetter=" + privateSetter +
+              ")"
+            }
           }
 
           """
@@ -169,8 +184,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           """
           class ExampleClass {
             @Inject lateinit var string: String
-            @Inject lateinit var stringProvider: Provider<String>
-            @Inject lateinit var stringListProvider: Provider<List<String>>
+            @Inject lateinit var stringProvider: () -> String
+            @Inject lateinit var stringListProvider: () -> List<String>
             @Inject lateinit var lazyString: Lazy<String>
 
             override fun equals(other: Any?): Boolean {
@@ -231,7 +246,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
         source(
           """
           class ExampleClass {
-            @Inject lateinit var lazyStringProvider: Provider<Lazy<String>>
+            @Inject lateinit var lazyStringProvider: () -> Lazy<String>
 
             override fun equals(other: Any?): Boolean {
               return toString() == other.toString()

@@ -5,7 +5,7 @@
 
 class FeatureScreen {
   @Inject
-  lateinit var <!METRO_ERROR!>dependency<!>: Dependency
+  lateinit var <!MISSING_BINDING!>dependency<!>: Dependency
 
   @ContributesTo(Unit::class)
   interface ServiceProvider

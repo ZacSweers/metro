@@ -8,18 +8,26 @@ class Bar : Base {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Bar> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): Bar {
       return Bar()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Bar {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Bar {
       return error(message = "Never called")
     }
@@ -53,18 +61,26 @@ class Foo : Base {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Foo> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): Foo {
       return Foo()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Foo {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Foo {
       return error(message = "Never called")
     }
@@ -141,6 +157,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }

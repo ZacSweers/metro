@@ -12,9 +12,14 @@ import com.autonomousapps.kit.truth.BuildResultSubject
 import com.autonomousapps.kit.truth.TestKitTruth.Companion.assertThat
 import java.io.File
 import java.net.URLClassLoader
+import java.nio.file.Files.readAttributes
+import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.FileTime
 import java.util.Locale
 import kotlin.io.path.absolute
 import kotlin.io.path.exists
+import kotlin.io.path.getLastModifiedTime
 import kotlin.test.assertContains
 import kotlin.test.fail
 import org.gradle.testkit.runner.BuildResult
@@ -43,18 +48,17 @@ fun GradleProject.classLoader(): ClassLoader {
     "Root classes dir not found: ${rootClassesDir.toAbsolutePath()}"
   }
 
-  val subprojectClassesDirs =
-    subprojects.map { subproject ->
-      val dir =
-        rootDir
-          .toPath()
-          .resolve("${subproject.name.replace(':', '/')}/build/classes/kotlin/main")
-          .absolute()
-      check(rootClassesDir.exists()) {
-        "Subproject ${subproject.name} classes dir not found: ${dir.toAbsolutePath()}"
-      }
-      dir.toUri().toURL()
+  val subprojectClassesDirs = subprojects.map { subproject ->
+    val dir =
+      rootDir
+        .toPath()
+        .resolve("${subproject.name.replace(':', '/')}/build/classes/kotlin/main")
+        .absolute()
+    check(rootClassesDir.exists()) {
+      "Subproject ${subproject.name} classes dir not found: ${dir.toAbsolutePath()}"
     }
+    dir.toUri().toURL()
+  }
 
   return URLClassLoader(
     // Include the original classpaths and the output directory to be able to load classes from
@@ -171,3 +175,13 @@ internal fun File.resolveSafe(relative: String): File {
     }
   }
 }
+
+val Path.snapshot: FileSnapshot
+  get() {
+    return FileSnapshot(
+      fileKey = readAttributes(this, BasicFileAttributes::class.java).fileKey(),
+      lastModified = getLastModifiedTime(),
+    )
+  }
+
+data class FileSnapshot(val fileKey: Any?, val lastModified: FileTime)

@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.symbols
 
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -32,8 +35,12 @@ import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.JsStandardClassIds
+import org.jetbrains.kotlin.name.JvmStandardClassIds
 import org.jetbrains.kotlin.name.StandardClassIds
 
+@SingleIn(IrScope::class)
+@Inject
 internal class Symbols(
   private val moduleFragment: IrModuleFragment,
   val pluginContext: IrPluginContext,
@@ -55,7 +62,9 @@ internal class Symbols(
     const val BINDING = "binding"
     const val BOUND_TYPE = "boundType"
     const val COMPOSABLE = "Composable"
+    const val CONTEXT = "context"
     const val CONTRIBUTED = "contributed"
+    const val CONTRIBUTION_PROVIDER_ORIGIN_CONTEXT = "contribution_provider"
     const val CREATE = "create"
     const val CREATE_FACTORY_PROVIDER = "createFactoryProvider"
     const val CREATE_GRAPH = "createGraph"
@@ -80,11 +89,13 @@ internal class Symbols(
     const val IMPL = "Impl"
     const val INVOKE = "invoke"
     const val METRO_CONTRIBUTION = "MetroContribution"
+    const val MULTIBINDING = "multibinding"
     const val METRO_CONTRIBUTION_NAME_PREFIX = "MetroContribution"
     const val METRO_FACTORY = "MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
-    const val METRO_RUNTIME_INTERNAL_PACKAGE = "dev.zacsweers.metro.internal"
-    const val METRO_RUNTIME_PACKAGE = "dev.zacsweers.metro"
+    // Weird but here to defeat shadow jar
+    val METRO_RUNTIME_PACKAGE = listOf("dev", "zacsweers", "metro").joinToString(".")
+    val METRO_RUNTIME_INTERNAL_PACKAGE = "${METRO_RUNTIME_PACKAGE}.internal"
     const val MIRROR_FUNCTION = "mirrorFunction"
     const val NEW_INSTANCE = "newInstance"
     const val NON_RESTARTABLE_COMPOSABLE = "NonRestartableComposable"
@@ -132,13 +143,16 @@ internal class Symbols(
 
   object ClassIds {
     val Composable = ClassId(FqNames.composeRuntime, StringNames.COMPOSABLE.asName())
+    val ExposeImplBinding = ClassId(FqNames.metroRuntimePackage, "ExposeImplBinding".asName())
     val HiddenFromObjC = ClassId(FqName("kotlin.native"), "HiddenFromObjC".asName())
     val GraphFactoryInvokeFunctionMarkerClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
     val HasMemberInjections = ClassId(FqNames.metroRuntimePackage, "HasMemberInjections".asName())
     val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
     val JavaLangClass = ClassId(FqName("java.lang"), "Class".asName())
-    val JvmField = ClassId(FqName("kotlin.jvm"), "JvmField".asName())
+    val JvmField = JvmStandardClassIds.Annotations.JvmField
+    val JvmStatic = JvmStandardClassIds.Annotations.JvmStatic
+    val JsStatic = JsStandardClassIds.Annotations.JsStatic
     val Lazy = StandardClassIds.byName("Lazy")
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
     val MultibindingElement =
@@ -170,6 +184,7 @@ internal class Symbols(
     val metroIntoMap = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_MAP.asName())
     val metroIntoSet = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_SET.asName())
     val metroImplMarker = ClassId(FqNames.metroRuntimeInternalPackage, "MetroImplMarker".asName())
+    val irOnlyFactories = ClassId(FqNames.metroRuntimeInternalPackage, "IROnlyFactories".asName())
     val metroOrigin = ClassId(FqNames.metroRuntimePackage, "Origin".asName())
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
     val metroSuspendProvider = ClassId(FqNames.metroRuntimePackage, Names.SuspendProviderClass)
@@ -190,6 +205,8 @@ internal class Symbols(
     val Assisted = StringNames.ASSISTED.asName()
     val Binds = "Binds".asName()
     val BindsMirrorClass = "BindsMirror".asName()
+    val DefaultBinding = "DefaultBinding".asName()
+    val DefaultBindingMirrorClass = "DefaultBindingMirror".asName()
     val Container = "Container".asName()
     val FactoryClass = "Factory".asName()
     val SuspendFactoryClass = "SuspendFactory".asName()
@@ -207,6 +224,7 @@ internal class Symbols(
     val bindingContainers = "bindingContainers".asName()
     val builder = "builder".asName()
     val boundType = StringNames.BOUND_TYPE.asName()
+    val context = StringNames.CONTEXT.asName()
     val contributed = StringNames.CONTRIBUTED.asName()
     val create = StringNames.CREATE.asName()
     val createFactoryProvider = StringNames.CREATE_FACTORY_PROVIDER.asName()
@@ -214,6 +232,7 @@ internal class Symbols(
     val createGraphFactory = StringNames.CREATE_GRAPH_FACTORY.asName()
     val createDynamicGraph = StringNames.CREATE_DYNAMIC_GRAPH.asName()
     val createDynamicGraphFactory = StringNames.CREATE_DYNAMIC_GRAPH_FACTORY.asName()
+    val defaultBindingFunction = "defaultBinding".asName()
     val delegateFactory = "delegateFactory".asName()
     val error = StringNames.ERROR.asName()
     val exclude = StringNames.EXCLUDE.asName()
@@ -227,6 +246,7 @@ internal class Symbols(
     val invoke = StringNames.INVOKE.asName()
     val membersInjector = "MembersInjector".asName()
     val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
+    val multibinding = StringNames.MULTIBINDING.asName()
     val modules = "modules".asName()
     val newInstance = StringNames.NEW_INSTANCE.asName()
     val provider = StringNames.PROVIDER.asName()
@@ -236,6 +256,7 @@ internal class Symbols(
     val subcomponents = "subcomponents".asName()
     val scope = StringNames.SCOPE.asName()
     val unwrapValue = "unwrapValue".asName()
+    val implicitClassKey = "implicitClassKey".asName()
   }
 
   private val metroRuntime: IrPackageFragment by lazy {
@@ -438,6 +459,18 @@ internal class Symbols(
 
   val comptimeOnlyAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(ClassIds.ComptimeOnly)?.constructors?.first()!!
+  }
+
+  val hiddenFromObjCAnnotationConstructor: IrConstructorSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.HiddenFromObjC)?.constructors?.first()
+  }
+
+  val jvmStaticAnnotationConstructor: IrConstructorSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.JvmStatic)?.constructors?.first()
+  }
+
+  val jsStaticAnnotationConstructor: IrConstructorSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.JsStatic)?.constructors?.first()
   }
 
   val throwsAnnotationConstructor: IrConstructorSymbol? by lazy {
@@ -747,3 +780,6 @@ internal class Symbols(
 
 internal fun IrModuleFragment.createPackage(packageName: String): IrPackageFragment =
   createEmptyExternalPackageFragment(descriptor, FqName(packageName))
+
+internal val FqName.classId
+  get() = ClassId.topLevel(this)

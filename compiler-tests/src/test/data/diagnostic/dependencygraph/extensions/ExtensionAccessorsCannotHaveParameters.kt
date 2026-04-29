@@ -1,4 +1,6 @@
 // RENDER_DIAGNOSTICS_FULL_TEXT
+// LANGUAGE: +ContextParameters
+
 @GraphExtension
 interface LoggedInGraph {
   val int: Int
@@ -16,6 +18,6 @@ interface AppGraph {
 
   fun <!DEPENDENCY_GRAPH_ERROR!>String<!>.loggedInGraphFactory(): LoggedInGraph
 
-  <!UNSUPPORTED_FEATURE!>context(<!DEPENDENCY_GRAPH_ERROR!>int<!>: Int)<!>
-  fun loggedInGraphFactory(): LoggedInGraph
+  context(<!DEPENDENCY_GRAPH_ERROR!>int<!>: Int)
+  fun contextLoggedInGraphFactory(): LoggedInGraph
 }

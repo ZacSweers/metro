@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("RUNTIME_ANNOTATION_NOT_SUPPORTED") // Only read at compile-time
-
 package dev.zacsweers.metro
 
 /** A [MapKey] annotation for maps with [Int] keys. */

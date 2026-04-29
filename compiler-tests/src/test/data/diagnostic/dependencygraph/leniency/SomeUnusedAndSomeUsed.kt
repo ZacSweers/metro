@@ -6,7 +6,7 @@ interface AppGraph {
     return int.toString()
   }
 
-  @Binds val <!METRO_ERROR!>Int<!>.unusedBinding: Number
+  @Binds val <!MISSING_BINDING!>Int<!>.unusedBinding: Number
 
   val number: Number
 }

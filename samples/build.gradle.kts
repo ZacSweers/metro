@@ -24,6 +24,4 @@ plugins {
   id("metro.yarnNode")
 }
 
-allprojects { apply(plugin = "metro.spotless") }
-
 subprojects { apply(plugin = "metro.base") }

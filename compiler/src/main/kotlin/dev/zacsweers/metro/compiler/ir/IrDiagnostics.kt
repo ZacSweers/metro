@@ -3,15 +3,16 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.api.fir.metroOriginData
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
-import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.ERROR
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.FIXED_WARNING
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.INFO
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.STRONG_WARNING
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.WARNING
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -19,8 +20,10 @@ import org.jetbrains.kotlin.diagnostics.InternalDiagnosticFactoryMethod
 import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.Severity
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.util.fileOrNull
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.sourceElement
 
 /*
@@ -46,12 +49,13 @@ internal fun <A : Any> IrMetroContext.reportCompat(
 }
 
 // AnalyzerWithCompilerReport removed this API in 2.3.20, so we copy it in
-private fun convertSeverity(severity: Severity): CompilerMessageSeverity =
-  when (severity) {
+private fun Severity.convertSeverity(): CompilerMessageSeverity =
+  when (this) {
     Severity.INFO -> INFO
     Severity.ERROR -> ERROR
     Severity.WARNING -> WARNING
     Severity.FIXED_WARNING -> FIXED_WARNING
+    Severity.STRONG_WARNING -> STRONG_WARNING
   }
 
 internal fun <A : Any> IrMetroContext.reportCompat(
@@ -73,8 +77,19 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
   a: A,
   extraContext: StringBuilder.() -> Unit,
 ) {
-  val sourceElement = irDeclaration?.sourceElement()
-  if (irDeclaration?.fileOrNull == null || sourceElement == null) {
+  // If the declaration has no source (e.g. a generated contribution provider or other
+  // generated declaration carrying @Origin/MetroOriginData), redirect to the origin class
+  // so the diagnostic points at user-authored code.
+  var effectiveDeclaration = irDeclaration
+  if (
+    irDeclaration != null &&
+      (irDeclaration.fileOrNull == null || irDeclaration.sourceElement() == null)
+  ) {
+    irDeclaration.findOriginClass()?.let { effectiveDeclaration = it }
+  }
+
+  val sourceElement = effectiveDeclaration?.sourceElement()
+  if (effectiveDeclaration?.fileOrNull == null || sourceElement == null) {
     // Report through message collector for now
     // If we have a source element, report the diagnostic directly
     if (sourceElement != null) {
@@ -87,34 +102,34 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
         val diagnostic =
           sourcelessFactory.createCompat(
             a as String,
-            irDeclaration.locationOrNull(),
+            effectiveDeclaration.locationOrNull(),
             languageVersionSettings,
           )
         @Suppress("DEPRECATION")
         reportDiagnosticToMessageCollector(
           diagnostic!!,
-          irDeclaration.locationOrNull(),
+          effectiveDeclaration.locationOrNull(),
           messageCollector,
           false,
         )
       }
       return
     }
-    val severity = convertSeverity(factory.severity)
-    val location = irDeclaration?.locationOrNull()
+    val severity = factory.severity.convertSeverity()
+    val location = effectiveDeclaration?.locationOrNull()
     val message =
       if (
         location == null &&
-          irDeclaration != null &&
+          effectiveDeclaration != null &&
           // Java stubs have nothing useful for us here
-          irDeclaration.origin != Origins.FirstParty.IR_EXTERNAL_JAVA_DECLARATION_STUB
+          effectiveDeclaration.origin != Origins.FirstParty.IR_EXTERNAL_JAVA_DECLARATION_STUB
       ) {
         buildString {
           appendLine(a)
           appendLine()
           appendLine("(context)")
           append("Encountered while processing declaration '")
-          val (fullPath, metadata) = irDeclaration.humanReadableDiagnosticMetadata()
+          val (fullPath, metadata) = effectiveDeclaration.humanReadableDiagnosticMetadata()
           append(fullPath)
           append("'")
           appendLine(" (no source location available)")
@@ -130,7 +145,7 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
       }
     @Suppress("DEPRECATION") messageCollector.report(severity, message, location)
   } else {
-    diagnosticReporter.at(irDeclaration).report(factory, a)
+    diagnosticReporter.reportAt(effectiveDeclaration, factory, a)
   }
 
   if (factory.severity == Severity.ERROR) {
@@ -139,13 +154,26 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
   }
 }
 
+context(context: IrMetroContext)
+private fun IrDeclaration.findOriginClass(): IrClass? {
+  var current: IrClass? = this as? IrClass ?: parentClassOrNull
+  while (current != null) {
+    val originClassId = current.originClassId() ?: current.metroOriginData?.originClassId
+    if (originClassId != null) {
+      val origin = context.referenceClass(originClassId)?.owner
+      if (origin != null && origin != current) return origin
+    }
+    current = current.parentClassOrNull
+  }
+  return null
+}
+
 private fun reportDiagnosticToMessageCollector(
   diagnostic: KtDiagnostic,
   location: CompilerMessageSourceLocation?,
   reporter: MessageCollector,
   renderDiagnosticName: Boolean,
 ) {
-  val severity = AnalyzerWithCompilerReport.convertSeverity(diagnostic.severity)
   val message = diagnostic.renderMessage()
   val textToRender =
     when (renderDiagnosticName) {
@@ -153,5 +181,5 @@ private fun reportDiagnosticToMessageCollector(
       false -> message
     }
 
-  reporter.report(severity, textToRender, location)
+  reporter.report(diagnostic.severity.convertSeverity(), textToRender, location)
 }

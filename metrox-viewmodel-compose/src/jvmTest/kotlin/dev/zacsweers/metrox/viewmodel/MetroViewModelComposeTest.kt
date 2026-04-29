@@ -11,7 +11,6 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.metro.Provider
 import kotlin.reflect.KClass
 import org.junit.Rule
 import org.junit.Test
@@ -44,8 +43,8 @@ class MetroViewModelComposeTest {
     val expectedViewModel = TestViewModel()
     val testFactory =
       object : MetroViewModelFactory() {
-        override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>> =
-          mapOf(TestViewModel::class to Provider { expectedViewModel })
+        override val viewModelProviders: Map<KClass<out ViewModel>, () -> ViewModel> =
+          mapOf(TestViewModel::class to { expectedViewModel })
       }
 
     lateinit var retrievedViewModel: TestViewModel
@@ -68,10 +67,10 @@ class MetroViewModelComposeTest {
     var createCount = 0
     val testFactory =
       object : MetroViewModelFactory() {
-        override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>> =
+        override val viewModelProviders: Map<KClass<out ViewModel>, () -> ViewModel> =
           mapOf(
             TestViewModel::class to
-              Provider {
+              {
                 createCount++
                 TestViewModel()
               }
@@ -106,10 +105,10 @@ class MetroViewModelComposeTest {
     val testFactory =
       object : MetroViewModelFactory() {
         override val assistedFactoryProviders:
-          Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>> =
+          Map<KClass<out ViewModel>, () -> ViewModelAssistedFactory> =
           mapOf(
             AssistedTestViewModel::class to
-              Provider {
+              {
                 object : ViewModelAssistedFactory {
                   override fun create(extras: CreationExtras): ViewModel {
                     return AssistedTestViewModel(extras[testKey] ?: "default")
@@ -140,11 +139,8 @@ class MetroViewModelComposeTest {
     val testFactory =
       object : MetroViewModelFactory() {
         override val manualAssistedFactoryProviders:
-          Map<
-            KClass<out ManualViewModelAssistedFactory>,
-            Provider<ManualViewModelAssistedFactory>,
-          > =
-          mapOf(TestManualFactory::class to Provider { TestManualFactoryImpl() })
+          Map<KClass<out ManualViewModelAssistedFactory>, () -> ManualViewModelAssistedFactory> =
+          mapOf(TestManualFactory::class to { TestManualFactoryImpl() })
       }
 
     lateinit var retrievedViewModel: ManualTestViewModel
@@ -163,12 +159,41 @@ class MetroViewModelComposeTest {
   }
 
   @Test
+  fun `assistedMetroViewModel with manual factory with extras passes extras to factory`() {
+    val testViewModelStore = TestViewModelStoreOwner()
+    val testKey = object : CreationExtras.Key<Int> {}
+    val testFactory =
+      object : MetroViewModelFactory() {
+        override val manualAssistedFactoryProviders:
+          Map<KClass<out ManualViewModelAssistedFactory>, () -> ManualViewModelAssistedFactory> =
+          mapOf(TestManualFactory::class to { TestManualFactoryImpl() })
+      }
+
+    lateinit var retrievedViewModel: ManualTestViewModel
+
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+        LocalMetroViewModelFactory provides testFactory,
+        LocalViewModelStoreOwner provides testViewModelStore,
+      ) {
+        val extras = MutableCreationExtras().apply { set(testKey, 42) }
+        retrievedViewModel =
+          assistedMetroViewModel<ManualTestViewModel, TestManualFactory>(extras = extras) {
+            create(extras[testKey] ?: 0)
+          }
+      }
+    }
+
+    assertThat(retrievedViewModel.param).isEqualTo(42)
+  }
+
+  @Test
   fun `metroViewModel with key creates separate instances`() {
     val testViewModelStore = TestViewModelStoreOwner()
     val testFactory =
       object : MetroViewModelFactory() {
-        override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>> =
-          mapOf(TestViewModel::class to Provider { TestViewModel() })
+        override val viewModelProviders: Map<KClass<out ViewModel>, () -> ViewModel> =
+          mapOf(TestViewModel::class to { TestViewModel() })
       }
 
     lateinit var viewModel1: TestViewModel

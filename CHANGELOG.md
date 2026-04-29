@@ -4,9 +4,510 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[IR]** Do not process platform type supertypes.
+- **[IR]** Make a number of compiler internals lazier and cached.
+- **[IR/graph]** When populating bindings from roots, track a `processedKeys` set so duplicate queue entries don't re-walk dependency lists. This avoids unnecessary extra iterations when doing an initial reachability walk.
+- **[IR/graph]** Merge two annotation walks in supertype collection into a single pass with a per-annotation-class meta-annotation cache, so `@Singleton`/`@Scope`-style annotations appearing across many supertypes are meta-walked once instead of N times.
+- **[IR/tracing]** Add a lot more tracing spans for more granular tracing.
+
+### Enhancements
+
+- **[FIR]** Resolve copied typerefs (if necessary) in FIR code gen. This _appears_ to help avoid some IDE FIR issues.
+
+### Changes
+
+- Metro now uses... Metro! The Metro compiler now uses proper DI internally, bootstrapping itself. This isn't really anything library consumers have to think about, I just think it's neat.
+
+1.0.0
+-----
+
+_2026-04-27_
+
+This is the first stable release of Metro!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) are now API stable unless annotated with an experimental annotation.
+
+**See the [announcement post](https://www.zacsweers.dev/metro-is-stable/)!**
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+_Changes since RC4_
+
 ### New
 
-- **`Class`/`KClass` map key interop**
+- **[runtime]** Add an optional `@Origin.context` property, allowing generators to attach extra context to an origin if they want.
+
+### Enhancements
+
+- **[IR]** When a missing binding is a generated contribution provider for an unexposed impl class, include a hint about that in the `MissingBinding` error message.
+
+### Fixes
+
+- **[FIR]** Fix diagnostic reporting for injection sites referring to contribution classes is not annotated `@ExposeImplBinding` and `generateContributionProviders` is enabled. Previously it didn't report on all cases.
+- **[IR]** When reporting binding errors with `generateContributionProviders` enabled, if the referenced declaration is a `@Contributes*` binding then report the original declaration rather than the (source-less) generated declaration.
+
+### Changes
+
+- **[compiler]** Test Kotlin `2.3.21`.
+- **[ide]** Test IntelliJ `2026.1.1`.
+- **[ide]** Test Android Studio Panda 4.
+- **[ide]** Test Android Studio Quail canaries.
+
+1.0.0-RC4
+---------
+
+_2026-04-24_
+
+This is the fourth release candidate for Metro 1.0!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) will be API stable unless annotated with an experimental annotation.
+
+_Changes since RC3_
+
+### Fixes
+
+- **[FIR]** Avoid duplicate contributed graph supertypes when merging contributions by checking against explicitly declared supertypes.
+- **[IR]** Fix default value transformation for function types when `enableFunctionProviders` is enabled.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@vRallev](https://github.com/vRallev)
+
+1.0.0-RC3
+---------
+
+_2026-04-23_
+
+This is the third release candidate for Metro 1.0!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) will be API stable unless annotated with an experimental annotation.
+
+_Changes since RC2_
+
+### `enableFunctionProviders` enabled by default
+
+This release promotes `enableFunctionProviders` (i.e. `() -> T` syntax for providers) to stable, enables it by default, and marks usage of Metro's native `Provider` as a warning.
+
+This may require some migration in existing codebases. To help with this, there's a [new section in docs](https://zacsweers.github.io/metro/latest/adoption/#migrating-providert-to-function-syntax) with information as well as a helper script: adoption docs guidance here too.
+
+### New
+
+- Add a new `desugaredProviderSeverity` option (default: `WARN`) that reports a diagnostic when `Provider<T>` is used instead of the preferred `() -> T` form. Set this to `NONE` to disable the warning during migration, or `ERROR` to enforce the new style. Automatically treated as `NONE` when `enableFunctionProviders` is disabled.
+- **[FIR]** Add diagnostic checks against providing intrinsic types (`Provider`, `Lazy`, etc.) from `@Provides` declarations.
+- **[Gradle]** Introduce a new `compilerOptions {}` DSL for free Metro compiler options and flags.
+- **[Gradle]** Add `IDE_WARN` and `IDE_ERROR` members to `DiagnosticSeverity` to allow configuring some diagnostics to _only_ run in IDE sessions. Useful for diagnostics you only want to surface to readers in the IDE without emitting compiler warnings in real (CLI) compilations.
+
+### Enhancements
+
+- **[FIR]** Add a new diagnostic for ambiguous inject constructors. Namely, cases where a class is annotated with `@Inject`, defines a secondary constructor but no primary constructor. This is ambiguous, metro now asks you to pick a lane.
+- **[FIR]** Add a new diagnostic for check against `private` contributions.
+- **[FIR]** When rendering diagnostics in the IDE, use short names for classes since they are shown in context already.
+- **[JVM/JS]** Generate `@JvmStatic` and `@JsStatic` annotations onto static-ish functions for better staticization on those platforms.
+- **[docs]** Migrate doc site to Zensical. Works the same, fresh-ish coat of paint!
+
+### Fixes
+
+- **[FIR]** Fix not recognizing `FirDeclarationOrigin.Precompiled` origins when checking resolved default binding types. Previously we only considered `FirDeclarationOrigin.Library`, but incremental compilation uses `FirDeclarationOrigin.Precompiled` to differentiate. This would result in misreads of default binding types in some cases during IC.
+- **[FIR]** When merging `@ContributesTo` types to graph supertypes, add the original interface as well. This ensures they are visible in ObjC exports, as the metro-generated contribution interfaces are normally excluded.
+- **[IR]** Fix secondary inject constructors support when `generateContributionProviders` is enabled.
+- **[IR]** Fix implicit class key lookup for map keys on source-declared `@Binds` declarations.
+- **[IR]** Fix `implementsProviderType()` check in the compiler to only exactly match `Function0` types when `enableFunctionProviders` is enabled.
+- **[IR]** Set `thisGraphInstance` field types as the graph impl type to avoid a Wasm issue.
+- **[interop]** Fix `@ContributesSubcomponent.Factory` interop with square/anvil.
+- **[interop]** Fix `@MergeSubcomponent.Factory` interop with zacsweers/anvil (anvil-ksp).
+- **[docs]** Fix source links in Dokka API docs.
+- **[docs]** Don't publish `**.internal.**` APIs in Dokka API docs.
+
+### Changes
+
+- `enableFunctionProviders` (i.e. `() -> T` syntax for providers) is now enabled by default. Previously this required opting in. The function-syntax form is now the **recommended** way to declare provider dependencies; `Provider<T>` is still supported but treated as a desugared alternative and a **warning** by default, similar to if you were to use `Function0` instead of `() -> T` syntax for functions. See the [metro-intrinsics](docs/metro-intrinsics.md) docs for more details.
+- **[IR]** Remove deprecated `indexInOldValueParameters` use in IR for better `2.4.0`+ support.
+- **[Gradle]** Promote `enableFunctionProviders` to stable.
+- **[Gradle]** Remove deprecated `useAssistedParamNamesAsIdentifiers` property.
+- **[Gradle]** Remove `deduplicateInjectedParams` property.
+- **[Gradle]** Remove `enableKlibParamsCheck` property, use the new `compilerOptions` API.
+- **[Gradle]** Remove `enableFullBindingGraphValidation` property, use the new `compilerOptions` API.
+- **[Gradle]** Remove `enableGraphImplClassAsReturnType` property, use the new `compilerOptions` API.
+- **[Gradle]** Remove `shrinkUnusedBindings` property, use the new `compilerOptions` API.
+- **[metrox-android]** Change `MetroAppComponentProviders` accessor multibindings to expose function types instead of `Provider` types.
+- **[metrox-viewmodel]** Change `MetroViewModelFactory` and `MetroViewModelMultibindings` accessor multibindings to expose function types instead of `Provider` types.
+- Support Kotlin `2.4.0-Beta2`.
+- Update embedded androidx.tracing to `2.0.0-alpha06`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@anddani](https://github.com/anddani)
+- [@jonamireh](https://github.com/jonamireh)
+
+1.0.0-RC2
+---------
+
+_2026-04-15_
+
+This is the second release candidate for Metro 1.0!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) will be API stable unless annotated with an experimental annotation.
+
+_Changes since RC1_
+
+### Fixes
+
+- **[FIR/IR]** Propagate `@HiddenFromObjC` annotations to more generated Metro classes' member declarations. This is a workaround to help avoid some gaps in K/N klib deserialization of generated files.
+- **[IR]** Fix implicit bound type cache collisions.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@Daiji256](https://github.com/Daiji256)
+- [@vRallev](https://github.com/vRallev)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+1.0.0-RC1
+---------
+
+_2026-04-13_
+
+This is the first release candidate for Metro 1.0!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) will be API stable unless annotated with an experimental annotation.
+
+### Enhancements
+
+- **[FIR]** Detect and report circuit factory class name collisions from overloads of conflicting `@CircuitInject`-annotated functions.
+
+### Fixes
+
+- **[FIR]** Fix missing contribution hints for assisted factories.
+- **[FIR]** Fix not propagating map keys and qualifiers if they're on the bound type arg rather than the class when `generateContributionProviders` is enabled.
+- **[FIR]** Gracefully handle unresolved generic supertype type args.
+- **[FIR]** Disable contribution providers on private constructors.
+- **[FIR]** Fix cross-module resolution of `@DefaultBinding`.
+- **[FIR]** Fix another eager `allSessions` lookup to avoid lockups in the IDE.
+- **[FIR/IR]** Ensure qualifier annotations on explicit binding params are propagated to generated providers when `generateContributionProviders` is enabled.
+- **[FIR/IR/Circuit]** Check for `@CircuitInject` on non-`@Inject`-annotated classes + improve diagnostic messaging.
+- **[IR]** Check for matching parameter's default value first when copying default value expressions. Previously, if multiple parameters with the same type had default values, only one would be used.
+
+### Changes
+
+- Mark generated Circuit factories as `@Deprecated(HIDDEN)` + disable them in IDE as they're not necessary there.
+- Add back deprecated `macosX64()`, `tvosX64()`, and `watchosX64()` targets for now due to [KT-78660 (comment)](https://youtrack.jetbrains.com/issue/KT-78660#focus=Comments-27-13603171.0-0).
+- Test Android Studio Panda 3 stable.
+- Test Android Studio Panda 4 canaries.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@asapha](https://github.com/asapha)
+- [@heorhiipopov](https://github.com/heorhiipopov)
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@LionZXY](https://github.com/LionZXY)
+- [@Sultan1993](https://github.com/Sultan1993)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+0.13.2
+------
+
+_2026-04-06_
+
+This is another small bugfix release for some issues with the new experimental Circuit code gen and `generateContributionProviders` features. Apologies for the churn! This should be the last of it, and is only necessary if you wanted to try out those new features.
+
+### Fixes
+
+- **[FIR/Circuit]** Add a diagnostic check for explicit return types for `@CircuitInject` presenter functions.
+
+### Fixes
+
+- **[FIR]** Fix map key generation for `generateContributionProviders` when the map key uses implicit class keys.
+- **[FIR/Circuit]** Assume implicit return types for `@CircuitInject` functions are UI types.
+
+0.13.1
+------
+
+_2026-04-06_
+
+This is a small bugfix release for some issues with the new experimental Circuit code gen and `generateContributionProviders` features.
+
+### Enhancements
+
+- Add a `@ExposeImplBinding` annotation to disable `generateContributionProviders` behavior on a per-class basis.
+- **[FIR]** Warn if injecting an impl type when `generateContributionProviders` and the class isn't annotated `@ExposeImplBinding`.
+
+### Fixes
+
+- **[FIR]** Fix Circuit code gen not reporting contribution hints for downstream compilations.
+- **[FIR]** Don't generate contribution classes for `@ContributesTo`-annotated classes when `generateContributionProviders` is enabled.
+- **[FIR]** Don't generate contribution classes for `@AssistedFactory`-annotated classes when `generateContributionProviders` is enabled.
+- **[FIR]** Better ensure `enableCircuitCodegen` and `generateContributionProviders` work together when both enabled.
+- **[IR]** Fix default parameter expressions not being copied when `generateContributionProviders` is enabled. This specifically affected scoped or private bindings.
+- **[IR]** Fix qualifier annotations not being copied when `generateContributionProviders` is enabled.
+- **[IR]** Don't link expect/actual declarations if the callee is a synthetic declaration. This avoids some non-obvious IC failures with `generateContributionProviders`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@kevinguitar](https://github.com/kevinguitar)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+0.13.0
+------
+
+_2026-04-04_
+
+### New
+
+#### Circuit codegen
+
+Metro now includes experimental built-in support for [Circuit](https://slackhq.github.io/circuit/), a Compose-first architecture for building kotlin apps. See the [docs](https://zacsweers.github.io/metro/latest/circuit/) for more details.
+
+In the long term, this will eventually move out to a separate plugin that can gracefully participate with Metro's code gen APIs. This is initially implemented within Metro to ease development.
+
+#### `generateContributionProviders`
+
+This release introduces a new `generateContributionProviders` API (Kotlin 2.3.20+) to optimize behavior with contributed APIs.
+
+Up to now, Metro's aggregation APIs (i.e. `@Contributes*` binding annotations) have worked similar to Anvil, where the ultimately just generate `@Binds` declarations as simple shorthands for the consuming graphs. This comes with the caveat that the injected class _must_ be publicly visible if it's used outside of that module.
+
+Now, if you enable the new `generateContributionProviders` feature, Metro will instead generate top-level `@Provides` declarations that mirror the injected class's inputs but only return its _bound type_. This means the annotated class can remain `internal`, which both helps encapsulation and incremental compilation.
+
+```kotlin
+interface Base
+
+@ContributesBinding(AppScope::class)
+@Inject
+internal class Impl : Base
+
+// Works across modules!
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  val base: Base
+}
+```
+
+The tradeoff is that `Impl` is no longer available directly on the graph. If you had any explicit code usages of `Impl`, you would have to remove those too in favor of purely the bound type.
+
+#### [**[MEEP-1776]**](https://github.com/ZacSweers/metro/discussions/1776) `@DefaultBinding`
+
+This release introduces a new `@DefaultBinding` annotation that allows for setting a default binding on _supertypes_ of contributed classes. This is useful for common base classes with generics that would otherwise require repetitive (or error-prone) explicit `binding<T>()` declarations in subtypes.
+
+```kotlin
+@DefaultBinding<BaseFactory<*>>
+interface BaseFactory<T : BaseFactory<T>>
+
+@ContributesIntoSet(AppScope::class) // now implicitly contributed as BaseFactory<*>
+@Inject
+class HomeFactory(...) : BaseFactory<HomeFactory>
+```
+
+### Enhancements
+
+- **[IR]** Use more unique diagnostic names in IR diagnostics (previously just used `METRO_ERROR` for a general catch-all in a lot of places).
+
+### Fixes
+
+- **[IR]** Consider Anvil's `rank` parameter when processing contributed binding containers.
+- **[IR]** When reporting qualifier mismatches, if a qualifier is absent on one declaration then the message will now say "absent" rather than the vague "null".
+
+### Changes
+
+- Support Kotlin `2.4.0-Beta1`.
+- Removed `@Assisted.value`. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#assisted-injection) on why in case you missed this! TL;DR, Metro matches by parameter names going forward.
+- Remove deprecated compiler options and Gradle extension properties.
+    - `chunkFieldInits`
+    - `transformProvidersToPrivate`
+    - `publicProviderSeverity` (use `publicScopedProviderSeverity`)
+    - `assistedIdentifierSeverity`
+    - `generateThrowsAnnotation`
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@vRallev](https://github.com/vRallev)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+0.12.1
+------
+
+_2026-03-30_
+
+### Enhancements
+
+- Support top-level FIR gen (contribution hints, function inject, etc) in Kotlin/JS on `2.3.21`+ and `2.4.0-Beta2`+.
+- Support generic (top-level) function injection.
+
+### Fixes
+
+- **[FIR]** Make `allSessions` lookup lazy to avoid lockups in the IDE.
+- **[IR]** Exclude generated data class `copy` functions from `@Includes` accessor candidates.
+- **[IR]** Exclude destructuring component functions from `@Includes` accessor candidates.
+
+### Changes
+
+- Update shaded `androidx.tracing` to 2.0.0-alpha04.
+- Update shaded Wire dependency to 6.2.0.
+- Test Kotlin `2.4.0-Beta1`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@KevinGuitar](https://github.com/KevinGuitar)
+
+0.12.0
+------
+
+_2026-03-24_
+
+### New
+
+#### [**[MEEP-2014]**](https://github.com/ZacSweers/metro/discussions/2014) Implicit class (map) keys
+
+`MapKey.implicitClassKey` is a new API to allow for class-based map keys to have their class parameters inferred on classes and `@Binds` declarations.
+
+This means that instead of redeclaring the annotated class in the key, for example `@ViewModelKey`, you can now omit it and it will be inferred.
+
+```kotlin
+@ViewModelKey // <-- implicitly HomeViewModel::class
+@ContributesIntoMap(AppScope::class)
+class HomeViewModel : ViewModel()
+```
+
+For classes, the implicit type is the annotated class. For `@Binds` declarations, the receiver or single parameter are the implicit type.
+
+You may still specify an explicit type. The compiler will warn you if you specify a redundant one. If you need to suppress this diagnostic temporarily to ease migration, you can add `-Xwarning-level=MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY:disabled` to your compiler arguments.
+
+The compiler will also error if you attempt to do this on `@Provides` declarations, as those cannot be inferred.
+
+Metro's first-party class-based map keys (like `@ClassKey`, `@ViewModelKey`, etc.) now support this. Custom map keys can opt-in to this by setting `MapKey.implicitClassKey` to true. See its doc for more details.
+
+```kotlin
+@MapKey(implicitClassKey = true)
+annotation class ViewModelKey(val value: KClass<out ViewModel> = Nothing::class)
+```
+
+#### Misc
+
+- **[metrox-viewmodel]** Add `mingwX64` target.
+
+### Enhancements
+
+- **[FIR]** Add diagnostic to ensure map key annotations support `FUNCTION` targets if they have a `@Target` annotation.
+- **[FIR]** Improve annotation argument matching to only use fully resolved names or none at all. This helps avoid situations in the past with interop where an argument at the same index and type but different name could incorrectly be used.
+
+### Fixes
+
+- **[IR]** Fix `IllegalArgumentException` thrown when there are multiple top-level functions with the same name but only one is annotated with `@Inject`.
+- **[IR]** Only store a given binding container's own provider factories in metro metadata. This resolves a bug where we could end up duplicate-processing upstream providers in dynamic factories.
+- **[IR]** Fix a severity conversion compat function call for Kotlin 2.3.20+.
+- **[IR]** Ensure stable sort of output `SuspiciousUnusedMultibinding` locations.
+- **[IR]** Don't skip dynamic keys inherited from parent graphs when working with dynamic graphs.
+- **[IR]** Propagate `@OptionalBinding` annotations to generated static factory creators if present.
+- **[IR]** Preserve nullability when remapping parameters with generic layers.
+- **[Runtime]** `IntoSet` and `IntoMap` no longer have a `Target` of `AnnotationTarget.CLASS`
+
+### Changes
+
+- The Metro compiler now requires JVM 21+. Note that the runtime JVM artifacts still target 11 unless otherwise documented.
+- The Metro Gradle plugin now requires JVM 21+.
+- The Metro Gradle plugin now requires Gradle 9+. Note that if you do not use Kotlin Gradle DSL, it may work on older versions but YMMV.
+- The Metro Gradle plugin now targets Kotlin `2.2`.
+- `@Assisted.value` is formally deprecated now. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#assisted-injection) on why in case you missed this! TL;DR, Metro matches by parameter names going forward.
+- Metro's main branch now builds with Kotlin `2.3.20` but still targets Kotlin 2.2 for its runtime artifacts and supports 2.2.20 all to 2.4.0 dev builds in its compiler.
+- Remove deprecated `macosX64`, `tvosX64`, and `watchosX64` targets.
+- Update Kotlin 2.4 compat support from `2.4.0-dev-539` to `2.4.0-dev-2124`. This should support the upcoming IntelliJ 2026.1 release as well as the upcoming Kotlin `2.4.0-Beta1`.
+- Test IntelliJ `2026.1 RC`.
+- Update shaded Wire dependency to `6.1.0`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@Asapha](https://github.com/Asapha)
+- [@ChristianKatzmann](https://github.com/ChristianKatzmann)
+- [@grandstaish](https://github.com/grandstaish)
+- [@jonamireh](https://github.com/jonamireh)
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@svenjacobs](https://github.com/svenjacobs)
+- [@vRallev](https://github.com/vRallev)
+
+0.11.4
+------
+
+_2026-03-17_
+
+### Fixes
+
+- **[IR]**: Fix codegen error when a scoped binding in a separate compilation has a default value in its `@Inject` constructor.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@ChristianKatzmann](https://github.com/ChristianKatzmann)
+
+0.11.3
+------
+
+_2026-03-16_
+
+### Enhancements
+
+- **[IR]**: When reporting suspicious unused multibindings, include a hint about their use in graph extensions if applicable.
+- **[interop]**: Support `@ContributesBinding(..., multibinding = true)` interop with kotlin-inject-anvil.
+
+### Fixes
+
+- **[FIR]**: Don't use a memoizing sequence for all `FirSession` instances as it seems that the IDE will mutate the underlying source lists in some cases.
+- **[FIR]**: Providers can now return instances of classes nested in the same container class.
+- **[IR]**: Fix `Map<Class<*>, V>` map key interop in constructor injection paths when `enableKClassToClassMapKeyInterop` is enabled.
+- **[IR]**: Fix codegen error when a scoped binding in a child graph supersedes the same-typed scoped binding from a parent graph and is used in a grandchild graph's multibinding. Basically, if graph A provides `Logger` and graph `B` also provides `Logger` (overriding `A`'s), graph `C` would incorrectly try to get it from `A` instead of `B`.
+- **[IR]**: Fix duplicate binding error in multibindings when multiple contributed containers include the same shared multibinding-contributing container.
+- **[IR]**: Fix `NoSuchFieldError` at runtime when sharded graphs access `@Includes` dependency properties.
+- **[IR]**: Check parent classes for `@Origin` annotations when performing IR-based contribution merging.
+- **[IR]**: Fix graph extensions inheriting stale bindings from ancestor graphs when a nearer parent already superseded them (e.g., a child's `@Binds` overriding a grandparent's `@Provides` of the same type).
+- **[metrox-viewmodel-compose]**: Pass `CreationExtras` to the `createViewModel` lambda for `assistedMetroViewModel` when using `ManualViewModelAssistedFactory`.
+
+### Changes
+
+- Test Kotlin 2.3.20.
+  - Note that all the 2.3.20 pre-releases were tested up to this release but are no longer tested after this release.
+- Test Android Studio Panda 2
+- Test Android Studio Panda 3 canaries
+- Update shaded `androidx.tracing` to `2.0.0-alpha03`.
+- Update shaded Wire dep to `6.0.0`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@hossain-khan](https://github.com/hossain-khan)
+- [@hvisser](https://github.com/hvisser)
+- [@jonamireh](https://github.com/jonamireh)
+- [@scottjasso](https://github.com/scottjasso)
+- [@tcmulcahy](https://github.com/tcmulcahy)
+- [@vRallev](https://github.com/vRallev)
+
+0.11.2
+------
+
+_2026-03-02_
+
+### New
+
+#### **`Class`/`KClass` map key interop**
 
 This release introduces a special-cased opt-in `java.lang.Class` and `kotlin.reflect.KClass` interop on JVM/android compilations. While these types are not intrinsics of each other in regular code, they _are_ in annotations and are often used in `Map` multibindings. Metro can support these if you enable the `enableKClassToClassMapKeyInterop` option. When enabled, `java.lang.Class` and `kotlin.reflect.KClass` are treated as interchangeable in map key types, matching Kotlin's own annotation compilation behavior. This only applies to map keys because these are the only scenario where annotation arguments are materialized into non-annotation code (i.e. `@ClassKey(Foo::class) -> Map<Class<*>, V>`).
 
@@ -15,12 +516,30 @@ This is disabled by default (even if other framework interops like `includeDagge
 ### Enhancements
 
 - **[FIR]**: Report adhoc graph extension factories as these are unsupported in Metro (but apparently supported in Dagger!)
+- **[FIR]**: Report a diagnostic error for usage of Dagger's `@LazyClassKey` as this is unsupported in Metro.
 - **[IR]**: Report warning diagnostics for unused synthetic multibindings, as it's often a sign that the user accidentally bound them to the wrong supertype.
-- **[IR]**: Fix a code gen bug where `@Provides` graph parameters wouldn't correctly be used by scoped bindings directly held in that graph.
+    ```
+    warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding kotlin.collections.Map<kotlin.reflect.KClass<*>, BaseViewModel> is unused but has 4 source binding(s). Did you possibly bind them to the wrong type?
+
+      SuspiciousUnusedMultibinding.kt:36:1
+        HomeViewmodel contributes a binding of BaseViewModel
+                                               ~~~~~~~~~~~~~
+      SuspiciousUnusedMultibinding.kt:31:1
+        AccountViewModel contributes a binding of BaseViewModel
+                                                  ~~~~~~~~~~~~~
+      SuspiciousUnusedMultibinding.kt:26:1
+        SettingsViewModel contributes a binding of BaseViewModel
+                                                   ~~~~~~~~~~~~~
+      ...and 1 more
+
+    Similar multibindings:
+    - Map<KClass<*>, ViewModel>
+    ```
+- **[Gradle]**: Add IDE support docs link to `@RequiresIdeSupport` opt-in message.
 
 ### Fixes
 
-### Changes
+- **[IR]**: Fix a code gen bug where `@Provides` graph parameters wouldn't correctly be used by scoped bindings directly held in that graph.
 
 ### Contributors
 

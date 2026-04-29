@@ -100,11 +100,13 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
     // Ensure scope is defined if any additionalScopes are defined
     val scope =
-      dependencyGraphAnno.resolvedScopeClassId()?.takeUnless { it == StandardClassIds.Nothing }
-    val additionalScopes = dependencyGraphAnno.resolvedAdditionalScopesClassIds().orEmpty()
+      dependencyGraphAnno.resolvedScopeClassId(session)?.takeUnless {
+        it == StandardClassIds.Nothing
+      }
+    val additionalScopes = dependencyGraphAnno.resolvedAdditionalScopesClassIds(session).orEmpty()
     if (additionalScopes.isNotEmpty() && scope == null) {
       reporter.reportOn(
-        dependencyGraphAnno.additionalScopesArgument()?.source ?: dependencyGraphAnno.source,
+        dependencyGraphAnno.additionalScopesArgument(session)?.source ?: dependencyGraphAnno.source,
         MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
         "@${graphAnnotationClassId.shortClassName.asString()} should have a primary `scope` defined if `additionalScopes` are defined.",
       )
@@ -129,7 +131,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       }
     }
 
-    val aggregationScopes = dependencyGraphAnno.allScopeClassIds()
+    val aggregationScopes = dependencyGraphAnno.allScopeClassIds(session)
     val scopeAnnotations = mutableSetOf<MetroFirAnnotation>()
     scopeAnnotations += declaration.annotations.scopeAnnotations(session)
 
@@ -481,7 +483,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         .annotationsIn(session, classIds.graphExtensionAnnotations)
         .firstOrNull()
 
-    val targetGraphScopes = dependencyGraphAnno?.allScopeClassIds().orEmpty()
+    val targetGraphScopes = dependencyGraphAnno?.allScopeClassIds(session).orEmpty()
     val targetGraphScopeAnnotations =
       graphExtension.resolvedCompilerAnnotationsWithClassIds.scopeAnnotations(session).toSet()
 

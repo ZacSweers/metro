@@ -9,7 +9,7 @@ private const val INT_MAX_POWER_OF_TWO: Int = 1 shl (Int.SIZE_BITS - 2)
  * Returns a new list that is pre-sized to [size], or [emptyList] if empty. The list returned is
  * never intended to grow beyond [size], so adding to a list when the size is 0 is an error.
  */
-public fun <T : Any> presizedList(size: Int): MutableList<T> =
+internal fun <T : Any> presizedList(size: Int): MutableList<T> =
   if (size == 0) {
     // Note: cannot use emptyList() here because Kotlin (helpfully) doesn't allow that cast at
     // runtime
@@ -19,7 +19,7 @@ public fun <T : Any> presizedList(size: Int): MutableList<T> =
   }
 
 /** Returns true if at least one pair of items in [this] are equal. */
-public fun List<*>.hasDuplicates(): Boolean =
+internal fun List<*>.hasDuplicates(): Boolean =
   if (size < 2) {
     false
   } else {
@@ -36,18 +36,10 @@ internal fun <K, V> Map<K, V>.toUnmodifiableMap(): Map<K, V> {
 }
 
 /**
- * Creates a [HashSet] instance, with a high enough "initial capacity" that it _should_ hold
- * [expectedSize] elements without growth.
- */
-internal fun <T> newHashSetWithExpectedSize(expectedSize: Int): HashSet<T> {
-  return HashSet(calculateInitialCapacity(expectedSize))
-}
-
-/**
  * Creates a [LinkedHashMap] instance, with a high enough "initial capacity" that it _should_ hold
  * [expectedSize] elements without growth.
  */
-public fun <K, V> newLinkedHashMapWithExpectedSize(expectedSize: Int): LinkedHashMap<K, V> {
+internal fun <K, V> newLinkedHashMapWithExpectedSize(expectedSize: Int): LinkedHashMap<K, V> {
   return LinkedHashMap(calculateInitialCapacity(expectedSize))
 }
 
@@ -62,8 +54,7 @@ public fun <K, V> newLinkedHashMapWithExpectedSize(expectedSize: Int): LinkedHas
 internal fun calculateInitialCapacity(expectedSize: Int): Int =
   when {
     // We are not coercing the value to a valid one and not throwing an exception. It is up to the
-    // caller to
-    // properly handle negative values.
+    // caller to properly handle negative values.
     expectedSize < 0 -> expectedSize
     expectedSize < 3 -> expectedSize + 1
     expectedSize < INT_MAX_POWER_OF_TWO -> ((expectedSize / 0.75F) + 1.0F).toInt()

@@ -449,7 +449,11 @@ private constructor(
               // to build the full property access chain through ancestors
               val localProperty = bindingPropertyContext.get(parentContextKey)
               if (localProperty != null) {
-                irGetProperty(irGet(thisReceiver), localProperty.property)
+                generatePropertyAccess(
+                  localProperty.property,
+                  localProperty.shardProperty,
+                  localProperty.shardIndex,
+                )
               } else {
                 // Use resolveToken to build the property access chain through ancestors
                 val propertyAccess = resolveToken(binding.token)
@@ -460,7 +464,11 @@ private constructor(
               // parameters that are stored as fields)
               val localProperty = bindingPropertyContext.get(binding.contextualTypeKey)
               if (localProperty != null) {
-                irGetProperty(irGet(thisReceiver), localProperty.property)
+                generatePropertyAccess(
+                  localProperty.property,
+                  localProperty.shardProperty,
+                  localProperty.shardIndex,
+                )
               } else {
                 // Self-binding - graph provides itself
                 irGet(thisReceiver)
@@ -563,17 +571,24 @@ private constructor(
                   AccessType.PROVIDER
                 }
             } else if (binding.getter != null) {
-              val graphInstanceProperty =
-                bindingPropertyContext.get(IrContextualTypeKey(ownerKey))?.property
+              val graphInstanceBindingProperty =
+                bindingPropertyContext.get(IrContextualTypeKey(ownerKey))
                   ?: reportCompilerBug(
                     "No matching included type instance found for type $ownerKey while processing ${node.typeKey}"
                   )
 
               val getterContextKey = IrContextualTypeKey.from(binding.getter)
 
+              val graphInstanceAccess =
+                generatePropertyAccess(
+                  graphInstanceBindingProperty.property,
+                  graphInstanceBindingProperty.shardProperty,
+                  graphInstanceBindingProperty.shardIndex,
+                )
+
               val invokeGetter =
                 irInvoke(
-                  dispatchReceiver = irGetProperty(irGet(thisReceiver), graphInstanceProperty),
+                  dispatchReceiver = graphInstanceAccess,
                   callee = binding.getter.symbol,
                   typeHint = binding.typeKey.type,
                 )
@@ -704,8 +719,15 @@ private constructor(
             // Only return early if we got an actual instance property, not a
             // provider/suspendProvider fallback
             if (!storedKey.isWrappedInProvider && !storedKey.isWrappedInSuspendProvider) {
-              return@mapIndexed generatePropertyAccess(property, shardProperty, shardIndex)
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              val instanceExpression =
+                generatePropertyAccess(property, shardProperty, shardIndex)
+                  .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              return@mapIndexed typeAsProviderArgument(
+                param.contextualTypeKey,
+                instanceExpression,
+                isAssisted = param.isAssisted,
+                isGraphInstance = param.isGraphInstance,
+              )
             }
           }
         }

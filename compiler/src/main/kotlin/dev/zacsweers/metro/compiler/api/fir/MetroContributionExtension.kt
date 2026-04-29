@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler.api.fir
 
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
@@ -80,7 +82,10 @@ public interface MetroContributionExtension {
    * @param scopeClassId The scope class ID to get contributions for
    * @return List of contributions for this scope, empty if none
    */
-  public fun getContributions(scopeClassId: ClassId): List<Contribution>
+  public fun getContributions(
+    scopeClassId: ClassId,
+    typeResolverFactory: MetroFirTypeResolver.Factory,
+  ): List<Contribution>
 
   /**
    * Represents a contribution to be merged into a dependency graph.
@@ -114,6 +119,10 @@ public interface MetroContributionExtension {
      * @return A new extension instance, or null if this extension should not participate in this
      *   compilation
      */
-    public fun create(session: FirSession, options: MetroOptions): MetroContributionExtension?
+    public fun create(
+      session: FirSession,
+      options: MetroOptions,
+      compatContext: CompatContext,
+    ): MetroContributionExtension?
   }
 }

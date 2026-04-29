@@ -28,7 +28,6 @@ package dev.zacsweers.metro
   AnnotationTarget.FIELD,
   AnnotationTarget.PROPERTY,
   AnnotationTarget.PROPERTY_GETTER,
-  AnnotationTarget.CLASS,
 )
 @Retention(AnnotationRetention.RUNTIME)
 public annotation class IntoSet

@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.irTemporaryVariable
+import dev.zacsweers.metro.compiler.ir.isImplicitClassKeySentinel
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -25,6 +26,7 @@ import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.FrameworkSymbols
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -34,6 +36,7 @@ import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
@@ -41,6 +44,7 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 
 internal class MultibindingExpressionGenerator(
@@ -251,12 +255,55 @@ internal class MultibindingExpressionGenerator(
     val expression =
       if (!unwrapValue) {
         mapKey
+      } else if (isImplicitClassKeySentinel(mapKey)) {
+        // Implicit class key - generate a class reference for the binding's class
+        val implicitClassType = resolveImplicitClassKeyType(binding)
+        createKClassReference(implicitClassType)
       } else {
         // We can just copy the expression!
         mapKey.arguments[0]!!.deepCopyWithSymbols()
       }
 
     return expression
+  }
+
+  /**
+   * Resolves the implicit class type for a binding with an implicit class key. For injected class
+   * bindings, this is the class itself. For provided/binds bindings, this is the input parameter
+   * type (which should already be populated during contribution code gen for contributions).
+   */
+  private fun resolveImplicitClassKeyType(binding: IrBinding): IrType {
+    return when (binding) {
+      is IrBinding.ConstructorInjected -> binding.type.defaultType
+      is IrBinding.ObjectClass -> binding.type.defaultType
+      is IrBinding.Alias -> binding.aliasedType.type.rawType().defaultType
+      is IrBinding.Provided -> {
+        // For @Binds, the implicit type is the single value parameter type
+        val function = binding.providerFactory.function
+        val paramType =
+          function.extensionReceiverParameterCompat?.type
+            ?: function.regularParameters.firstOrNull()?.type
+        paramType?.rawType()?.defaultType
+          ?: reportCompilerBug(
+            "Cannot resolve implicit class key type for Provided binding $binding"
+          )
+      }
+      else ->
+        reportCompilerBug(
+          "Implicit class keys are only supported on class, binds, or provided bindings, not ${binding::class}"
+        )
+    }
+  }
+
+  private fun createKClassReference(type: IrType): IrExpression {
+    val kClassType = irBuiltIns.kClassClass.typeWith(type)
+    return IrClassReferenceImpl(
+      startOffset = UNDEFINED_OFFSET,
+      endOffset = UNDEFINED_OFFSET,
+      type = kClassType,
+      symbol = type.classOrFail,
+      classType = type,
+    )
   }
 
   context(scope: IrBuilderWithScope)

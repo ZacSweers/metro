@@ -55,6 +55,17 @@ interface EnumQualifierGraph {
   @Provides @By(ByKey.Two) fun provideTwo(): Int = 2
 }
 
+// Contribution provider: exercises getTopLevelClassIds() during IDE indexing
+interface Greeter {
+  fun greet(): String
+}
+
+@ContributesBinding(AppScope::class)
+@Inject
+class GreeterImpl : Greeter {
+  override fun greet(): String = "hello"
+}
+
 // Viewing generated supertypes
 @ContributesTo(AppScope::class)
 interface Base {

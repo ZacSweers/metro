@@ -18,5 +18,5 @@ interface ChildGraph {
   // CharSequence is accessible via the published @Binds alias
   val text: CharSequence
   // String is still @GraphPrivate and should NOT be accessible
-  val <!METRO_ERROR!>directString<!>: String
+  val <!MISSING_BINDING!>directString<!>: String
 }

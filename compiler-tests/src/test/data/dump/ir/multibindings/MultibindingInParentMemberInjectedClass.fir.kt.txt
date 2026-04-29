@@ -15,10 +15,15 @@ class AFragment : Fragment {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(viewModelFactory: Provider<ViewModelFactory>): MembersInjector<AFragment> {
         return MetroMembersInjector(viewModelFactory = viewModelFactory)
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectViewModelFactory(@Assisted instance: AFragment, viewModelFactory: ViewModelFactory) {
         return instance.#viewModelFactory = viewModelFactory
       }
@@ -63,26 +68,35 @@ class AFragmentInjector : Injector {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(memberInjector: Provider<MembersInjector<AFragment>>): Factory<AFragmentInjector> {
         return MetroFactory(memberInjector = memberInjector)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(memberInjector: MembersInjector<AFragment>): AFragmentInjector {
         return AFragmentInjector(memberInjector = memberInjector)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(memberInjector: Provider<MembersInjector<AFragment>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): AFragmentInjector {
       return Companion.newInstance(memberInjector = <this>.#memberInjector.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(memberInjector: MembersInjector<AFragment>): AFragmentInjector {
       return error(message = "Never called")
     }
@@ -129,7 +143,7 @@ class AFragmentInjector : Injector {
 
 @Inject
 @ContributesIntoMap(scope = AppScope::class)
-@ClassKey(value = AViewModel::class)
+@ClassKey
 class AViewModel : ViewModel {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   object MetroFactory : Factory<AViewModel> {
@@ -139,18 +153,26 @@ class AViewModel : ViewModel {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<AViewModel> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): AViewModel {
       return AViewModel()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): AViewModel {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): AViewModel {
       return error(message = "Never called")
     }
@@ -172,8 +194,8 @@ class AViewModel : ViewModel {
       @Binds
       @IntoMap
       @ClassKey(value = AViewModel::class)
-      @CallableMetadata(callableName = "bindIntoMapAsViewModel4203417713", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsViewModel42034177134203417713_intomap(instance: AViewModel): ViewModel
+      @CallableMetadata(callableName = "bindIntoMapAsViewModel2182965618", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindIntoMapAsViewModel21829656184203417713_intomap(instance: AViewModel): ViewModel
 
     }
 
@@ -181,7 +203,7 @@ class AViewModel : ViewModel {
     @Binds
     @ClassKey(value = AViewModel::class)
     @ComptimeOnly
-    abstract fun bindIntoMapAsViewModel4203417713(instance: AViewModel): ViewModel {
+    abstract fun bindIntoMapAsViewModel2182965618(instance: AViewModel): ViewModel {
       return error(message = "Never called")
     }
 
@@ -219,10 +241,15 @@ class BFragment : Fragment {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(viewModelFactory: Provider<ViewModelFactory>): MembersInjector<BFragment> {
         return MetroMembersInjector(viewModelFactory = viewModelFactory)
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectViewModelFactory(@Assisted instance: BFragment, viewModelFactory: ViewModelFactory) {
         return instance.#viewModelFactory = viewModelFactory
       }
@@ -267,26 +294,35 @@ class BFragmentInjector : Injector {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(memberInjector: Provider<MembersInjector<BFragment>>): Factory<BFragmentInjector> {
         return MetroFactory(memberInjector = memberInjector)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(memberInjector: MembersInjector<BFragment>): BFragmentInjector {
         return BFragmentInjector(memberInjector = memberInjector)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(memberInjector: Provider<MembersInjector<BFragment>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): BFragmentInjector {
       return Companion.newInstance(memberInjector = <this>.#memberInjector.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(memberInjector: MembersInjector<BFragment>): BFragmentInjector {
       return error(message = "Never called")
     }
@@ -333,7 +369,7 @@ class BFragmentInjector : Injector {
 
 @Inject
 @ContributesIntoMap(scope = AppScope::class)
-@ClassKey(value = BViewModel::class)
+@ClassKey
 class BViewModel : ViewModel {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   object MetroFactory : Factory<BViewModel> {
@@ -343,18 +379,26 @@ class BViewModel : ViewModel {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<BViewModel> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): BViewModel {
       return BViewModel()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): BViewModel {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): BViewModel {
       return error(message = "Never called")
     }
@@ -376,8 +420,8 @@ class BViewModel : ViewModel {
       @Binds
       @IntoMap
       @ClassKey(value = BViewModel::class)
-      @CallableMetadata(callableName = "bindIntoMapAsViewModel2406466354", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsViewModel24064663542406466354_intomap(instance: BViewModel): ViewModel
+      @CallableMetadata(callableName = "bindIntoMapAsViewModel386014259", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindIntoMapAsViewModel3860142592406466354_intomap(instance: BViewModel): ViewModel
 
     }
 
@@ -385,7 +429,7 @@ class BViewModel : ViewModel {
     @Binds
     @ClassKey(value = BViewModel::class)
     @ComptimeOnly
-    abstract fun bindIntoMapAsViewModel2406466354(instance: BViewModel): ViewModel {
+    abstract fun bindIntoMapAsViewModel386014259(instance: BViewModel): ViewModel {
       return error(message = "Never called")
     }
 
@@ -415,10 +459,15 @@ abstract class BaseActivity : Activity {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(fragmentInjector: Provider<FragmentInjector>): MembersInjector<BaseActivity> {
         return MetroMembersInjector(fragmentInjector = fragmentInjector)
       }
 
+      @JvmStatic
+      @JsStatic
       fun injectFragmentInjector(@Assisted instance: BaseActivity, fragmentInjector: FragmentInjector) {
         return instance.#fragmentInjector = fragmentInjector
       }
@@ -470,26 +519,35 @@ class FragmentInjector {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(injectors: Provider<Map<KClass<*>, Injector>>): Factory<FragmentInjector> {
         return MetroFactory(injectors = injectors)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(injectors: Map<KClass<*>, Injector>): FragmentInjector {
         return FragmentInjector(injectors = injectors)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(injectors: Provider<Map<KClass<*>, Injector>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): FragmentInjector {
       return Companion.newInstance(injectors = <this>.#injectors.invoke())
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(injectors: Map<KClass<*>, Injector>): FragmentInjector {
       return error(message = "Never called")
     }
@@ -524,13 +582,13 @@ open class ViewModel {
 
 @Inject
 class ViewModelFactory {
-  private val viewModels: Map<KClass<*>, Provider<ViewModel>>
+  private val viewModels: Map<KClass<*>, Function0<ViewModel>>
     field = viewModels
     private get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<ViewModelFactory> {
-    private /* final field */ val viewModels: Provider<Map<KClass<*>, Provider<ViewModel>>> = viewModels
+    private /* final field */ val viewModels: Provider<Map<KClass<*>, Function0<ViewModel>>> = viewModels
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -538,33 +596,42 @@ class ViewModelFactory {
 
       }
 
-      fun create(viewModels: Provider<Map<KClass<*>, Provider<ViewModel>>>): Factory<ViewModelFactory> {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(viewModels: Provider<Map<KClass<*>, Function0<ViewModel>>>): Factory<ViewModelFactory> {
         return MetroFactory(viewModels = viewModels)
       }
 
-      fun newInstance(viewModels: Map<KClass<*>, Provider<ViewModel>>): ViewModelFactory {
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(viewModels: Map<KClass<*>, Function0<ViewModel>>): ViewModelFactory {
         return ViewModelFactory(viewModels = viewModels)
       }
 
     }
 
-    private constructor(viewModels: Provider<Map<KClass<*>, Provider<ViewModel>>>) /* primary */ {
+    @HiddenFromObjC
+    private constructor(viewModels: Provider<Map<KClass<*>, Function0<ViewModel>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ViewModelFactory {
       return Companion.newInstance(viewModels = <this>.#viewModels.invoke())
     }
 
-    fun mirrorFunction(viewModels: Map<KClass<*>, Provider<ViewModel>>): ViewModelFactory {
+    @HiddenFromObjC
+    fun mirrorFunction(viewModels: Map<KClass<*>, Function0<ViewModel>>): ViewModelFactory {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(viewModels: Map<KClass<*>, Provider<ViewModel>>) /* primary */ {
+  constructor(viewModels: Map<KClass<*>, Function0<ViewModel>>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -596,8 +663,8 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope, M
         }
       }
 
-    private val mapOfKClass___ToViewModelProvider: Provider<Map<KClass<*>, Provider<ViewModel>>>
-      private get(): Provider<Map<KClass<*>, Provider<ViewModel>>> {
+    private val mapOfKClass___ToViewModelProvider: Provider<Map<KClass<*>, Function0<ViewModel>>>
+      private get(): Provider<Map<KClass<*>, Function0<ViewModel>>> {
         return { // BLOCK
           val tmp_1: Builder<KClass<*>, ViewModel> = Companion.builder<KClass<*>, ViewModel>(size = 2)
           tmp_1.put(key = BViewModel::class, providerOfValue = MetroFactory.create())
@@ -621,6 +688,8 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope, M
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }

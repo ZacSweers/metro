@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -29,6 +28,7 @@ import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
+import dev.zacsweers.metro.compiler.ir.renderDiagnostic
 import dev.zacsweers.metro.compiler.ir.renderLocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeClassOrNull
@@ -93,8 +93,9 @@ internal class SyntheticGraphGenerator(
   private val traceScope: TraceScope,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
 
-  val contributions =
-    sourceAnnotation?.let { contributionMerger.computeContributions(it, originDeclaration) }
+  val contributions = sourceAnnotation?.let {
+    contributionMerger.computeContributions(it, originDeclaration)
+  }
 
   /** Generates a factory implementation class that implements a factory interface. */
   private fun generateFactoryImpl(
@@ -228,13 +229,12 @@ internal class SyntheticGraphGenerator(
     creatorFunction: IrSimpleFunction?,
     storedParams: List<SyntheticGraphParameter> = emptyList(),
   ): CreatedGraphImpl {
-    val graphImpl =
-      irFactory.buildClass {
-        this.name = name
-        this.origin = origin
-        kind = ClassKind.CLASS
-        visibility = DescriptorVisibilities.PRIVATE
-      }
+    val graphImpl = irFactory.buildClass {
+      this.name = name
+      this.origin = origin
+      kind = ClassKind.CLASS
+      visibility = DescriptorVisibilities.PRIVATE
+    }
 
     val graphAnno = buildDependencyGraphAnnotation(targetClass = graphImpl)
 
@@ -295,17 +295,16 @@ internal class SyntheticGraphGenerator(
         }
 
     // If there's an extension, generate it into this impl
-    val factoryImpl =
-      creatorFunction?.let { factory ->
-        // Don't need to do this if the parent implements the factory
-        if (parentGraph?.implements(factory.parentAsClass.classIdOrFail) == true) return@let null
-        generateFactoryImpl(
-          graphImpl = graphImpl,
-          graphCtor = ctor,
-          factoryInterface = factory.parentAsClass,
-          storedParams = storedParams,
-        )
-      }
+    val factoryImpl = creatorFunction?.let { factory ->
+      // Don't need to do this if the parent implements the factory
+      if (parentGraph?.implements(factory.parentAsClass.classIdOrFail) == true) return@let null
+      generateFactoryImpl(
+        graphImpl = graphImpl,
+        graphCtor = ctor,
+        factoryInterface = factory.parentAsClass,
+        storedParams = storedParams,
+      )
+    }
 
     graphImpl.addFakeOverrides(irTypeSystemContext)
 
@@ -324,17 +323,59 @@ internal class SyntheticGraphGenerator(
   // https://github.com/ZacSweers/metro/issues/904
   private fun IrClass.validateOverrides() {
     val sourceGraphName = superTypes.firstOrNull()?.rawTypeOrNull()?.kotlinFqName
+    val typeClashes = mutableListOf<String>()
+    val annotationClashes = mutableListOf<String>()
 
     // Check all fake override properties
     for (property in properties) {
       if (!property.isFakeOverride) continue
-      property.checkOverrideCompatibility(sourceGraphName)
+      property.checkOverrideCompatibility(sourceGraphName, typeClashes, annotationClashes)
     }
 
     // Check all fake override functions
     for (function in functions) {
       if (!function.isFakeOverride) continue
-      function.checkOverrideCompatibility(sourceGraphName)
+      function.checkOverrideCompatibility(sourceGraphName, typeClashes, annotationClashes)
+    }
+
+    // Flush collected clashes
+    if (typeClashes.isNotEmpty()) {
+      val message =
+        if (typeClashes.size == 1) {
+          typeClashes[0]
+        } else {
+          renderDiagnostic {
+            appendLine(
+              "[Metro/IncompatibleReturnTypes] ${bold("${typeClashes.size}")} incompatible return type clashes found:"
+            )
+            for (clash in typeClashes) {
+              appendLine()
+              appendLine(clash)
+            }
+          }
+        }
+      metroContext.reportCompat(
+        originDeclaration,
+        MetroDiagnostics.INCOMPATIBLE_RETURN_TYPES,
+        message,
+      )
+    }
+    if (annotationClashes.isNotEmpty()) {
+      val message =
+        if (annotationClashes.size == 1) {
+          annotationClashes[0]
+        } else {
+          renderDiagnostic {
+            appendLine(
+              "[Metro/IncompatibleOverrides] ${bold("${annotationClashes.size}")} annotation clashes found:"
+            )
+            for (clash in annotationClashes) {
+              appendLine()
+              appendLine(clash)
+            }
+          }
+        }
+      metroContext.reportCompat(originDeclaration, MetroDiagnostics.INCOMPATIBLE_OVERRIDES, message)
     }
   }
 
@@ -362,7 +403,9 @@ internal class SyntheticGraphGenerator(
   // https://github.com/ZacSweers/metro/issues/904
   // https://github.com/ZacSweers/metro/pull/1810
   private fun <S : IrSymbol> IrOverridableDeclaration<S>.checkOverrideCompatibility(
-    sourceGraphName: FqName?
+    sourceGraphName: FqName?,
+    typeClashes: MutableList<String>,
+    annotationClashes: MutableList<String>,
   ) {
     val overriddenSymbols = overriddenSymbols.toList()
     if (overriddenSymbols.size < 2) return
@@ -374,30 +417,27 @@ internal class SyntheticGraphGenerator(
       val annotations: MetroAnnotations<IrAnnotation>,
     )
 
-    val overriddenInfos =
-      overriddenSymbols.mapNotNull { symbol ->
-        val owner = symbol.owner
-        val (returnType, container) =
-          when (owner) {
-            is IrSimpleFunction -> (owner.returnType) to (owner as IrAnnotationContainer)
-            is IrProperty ->
-              (owner.getter?.returnType ?: return@mapNotNull null) to
-                (owner as IrAnnotationContainer)
-            else -> return@mapNotNull null
-          }
-        OverriddenInfo(owner, returnType, metroAnnotationsOf(container))
-      }
+    val overriddenInfos = overriddenSymbols.mapNotNull { symbol ->
+      val owner = symbol.owner
+      val (returnType, container) =
+        when (owner) {
+          is IrSimpleFunction -> (owner.returnType) to (owner as IrAnnotationContainer)
+          is IrProperty ->
+            (owner.getter?.returnType ?: return@mapNotNull null) to (owner as IrAnnotationContainer)
+          else -> return@mapNotNull null
+        }
+      OverriddenInfo(owner, returnType, metroAnnotationsOf(container))
+    }
 
     if (overriddenInfos.size < 2) return
 
     // Check type compatibility - find if there's any type that is compatible with all others
-    val hasCompatibleType =
-      overriddenInfos.any { (_, type1) ->
-        overriddenInfos.all { (_, type2) ->
-          type1.isSubtypeOf(type2, irTypeSystemContext) ||
-            type2.isSubtypeOf(type1, irTypeSystemContext)
-        }
+    val hasCompatibleType = overriddenInfos.any { (_, type1) ->
+      overriddenInfos.all { (_, type2) ->
+        type1.isSubtypeOf(type2, irTypeSystemContext) ||
+          type2.isSubtypeOf(type1, irTypeSystemContext)
       }
+    }
 
     // Check all pairs for type and annotation compatibility
     for (i in overriddenInfos.indices) {
@@ -411,8 +451,8 @@ internal class SyntheticGraphGenerator(
             !info1.returnType.isSubtypeOf(info2.returnType, irTypeSystemContext) &&
             !info2.returnType.isSubtypeOf(info1.returnType, irTypeSystemContext)
         ) {
-          reportTypeClash(info1.decl, info1.returnType, info2.decl, info2.returnType)
-          return // Report only the first clash
+          typeClashes += formatTypeClash(info1.decl, info1.returnType, info2.decl, info2.returnType)
+          return // Report only the first clash per declaration
         }
 
         // Check annotation compatibility
@@ -426,20 +466,22 @@ internal class SyntheticGraphGenerator(
             anno1.isOptionalBinding != anno2.isOptionalBinding ||
             anno1.qualifier != anno2.qualifier
         ) {
-          reportAnnotationClash(sourceGraphName, info1.decl, anno1, info2.decl, anno2)
-          return // Report only the first clash
+          annotationClashes +=
+            formatAnnotationClash(sourceGraphName, info1.decl, anno1, info2.decl, anno2)
+          // Report only the first clash per declaration
+          return
         }
       }
     }
   }
 
-  private fun reportAnnotationClash(
+  private fun formatAnnotationClash(
     sourceGraphName: FqName?,
     decl1: IrOverridableDeclaration<*>,
     anno1: MetroAnnotations<IrAnnotation>,
     decl2: IrOverridableDeclaration<*>,
     anno2: MetroAnnotations<IrAnnotation>,
-  ) {
+  ): String {
     val loc1 = decl1.renderLocationDiagnostic(annotations = anno1)
     val loc2 = decl2.renderLocationDiagnostic(annotations = anno2)
     val parent1 = decl1.parentAsClass.originIfContribution.kotlinFqName
@@ -447,15 +489,15 @@ internal class SyntheticGraphGenerator(
 
     val graphName = sourceGraphName ?: "graph"
 
-    val message = buildString {
+    return renderDiagnostic {
       appendLine(
-        "The following declarations clash with each other when merging supertypes into a generated `$graphName` graph impl class:"
+        "The following declarations clash with each other when merging supertypes into a generated ${bold("`$graphName`")} graph impl class:"
       )
       appendLine()
       appendLine("  ${loc1.location}")
-      loc1.description?.let { appendLine("    $it (defined in '$parent1')") }
+      loc1.description?.let { appendLine("    $it (defined in ${dim("'$parent1'")})") }
       appendLine("  ${loc2.location}")
-      loc2.description?.let { appendLine("    $it (defined in '$parent2')") }
+      loc2.description?.let { appendLine("    $it (defined in ${dim("'$parent2'")})") }
       appendLine()
       append(
         "Declarations with the same name and compatible return types must have compatible DI annotations too. " +
@@ -464,16 +506,14 @@ internal class SyntheticGraphGenerator(
           "disambiguate them."
       )
     }
-
-    metroContext.reportCompat(originDeclaration, MetroDiagnostics.INCOMPATIBLE_OVERRIDES, message)
   }
 
-  private fun reportTypeClash(
+  private fun formatTypeClash(
     decl1: IrOverridableDeclaration<*>,
     type1: IrType,
     decl2: IrOverridableDeclaration<*>,
     type2: IrType,
-  ) {
+  ): String {
     val loc1 = decl1.renderLocationDiagnostic()
     val loc2 = decl2.renderLocationDiagnostic()
     val parent1 = decl1.parentAsClass.originIfContribution.kotlinFqName
@@ -481,13 +521,13 @@ internal class SyntheticGraphGenerator(
     val type1Str = type1.render(short = false)
     val type2Str = type2.render(short = false)
 
-    val message = buildString {
-      appendLine("Incompatible return types: '$type1Str' vs '$type2Str'")
+    return renderDiagnostic {
+      appendLine("Incompatible return types: ${bold("'$type1Str'")} vs ${bold("'$type2Str'")}")
       appendLine()
       appendLine("  ${loc1.location}")
       loc1.description?.let {
         appendLineWithUnderlinedContent(
-          content = "    $it (defined in '$parent1')",
+          content = "    $it (defined in ${dim("'$parent1'")})",
           target = type1Str,
         )
       }
@@ -495,13 +535,11 @@ internal class SyntheticGraphGenerator(
       appendLine("  ${loc2.location}")
       loc2.description?.let {
         appendLineWithUnderlinedContent(
-          content = "    $it (defined in '$parent2')",
+          content = "    $it (defined in ${dim("'$parent2'")})",
           target = type2Str,
         )
       }
     }
-
-    metroContext.reportCompat(originDeclaration, MetroDiagnostics.METRO_ERROR, message)
   }
 
   private val IrClass.originIfContribution: IrClass

@@ -6,6 +6,8 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -56,7 +58,6 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrReturnImpl
-import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
@@ -236,6 +237,7 @@ internal class GenerateProvidesContributionExtension(session: FirSession) :
     override fun create(
       session: FirSession,
       options: MetroOptions,
+      compatContext: CompatContext,
     ): MetroFirDeclarationGenerationExtension = GenerateProvidesContributionExtension(session)
   }
 }
@@ -261,7 +263,8 @@ internal class GenerateProvidesContributionMetroExtension(private val session: F
   }
 
   override fun getContributions(
-    scopeClassId: ClassId
+    scopeClassId: ClassId,
+    typeResolverFactory: MetroFirTypeResolver.Factory,
   ): List<MetroContributionExtension.Contribution> {
     if (scopeClassId != APP_SCOPE_CLASS_ID) return emptyList()
 
@@ -285,7 +288,11 @@ internal class GenerateProvidesContributionMetroExtension(private val session: F
   }
 
   class Factory : MetroContributionExtension.Factory {
-    override fun create(session: FirSession, options: MetroOptions): MetroContributionExtension {
+    override fun create(
+      session: FirSession,
+      options: MetroOptions,
+      compatContext: CompatContext,
+    ): MetroContributionExtension {
       return GenerateProvidesContributionMetroExtension(session)
     }
   }
@@ -297,7 +304,6 @@ class GenerateProvidesContributionIrExtension : IrGenerationExtension {
     val ORIGIN = IrDeclarationOrigin.GeneratedByPlugin(GenerateProvidesContributionExtension.Key)
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
     moduleFragment.transformChildrenVoid(
       object : IrElementTransformerVoid() {

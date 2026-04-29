@@ -2,28 +2,39 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
+import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
+import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
+import dev.zacsweers.metro.compiler.ir.getAnnotation
+import dev.zacsweers.metro.compiler.ir.getAnnotationStringValue
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroMetadata
-import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -34,12 +45,17 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
+import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -53,13 +69,15 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.getAnnotation
-import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
@@ -68,7 +86,11 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 
+@Inject
+@SingleIn(IrScope::class)
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
 internal class InjectedClassTransformer(
   context: IrMetroContext,
   private val membersInjectorTransformer: MembersInjectorTransformer,
@@ -79,13 +101,20 @@ internal class InjectedClassTransformer(
 
   fun visitClass(declaration: IrClass): Boolean {
     val injectableConstructor =
-      declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
-    return if (injectableConstructor != null) {
-      val _ = getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
-      true
-    } else {
-      false
+      declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false) ?: return false
+
+    // Skip factory generation when generateContributionProviders is enabled and the class
+    // has binding contributions — the contribution provider handles construction.
+    // @ExposeImplBinding opts out of this skip.
+    if (declaration.usesContributionProviderPath(options, metroSymbols.classIds)) {
+      // Cache absence so later lookups (e.g., from BindingLookup) return null instead of
+      // attempting to generate after locking.
+      generatedFactories[declaration.classIdOrFail] = Optional.empty()
+      return false
     }
+
+    val _ = getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
+    return true
   }
 
   fun getOrGenerateFactory(
@@ -94,8 +123,8 @@ internal class InjectedClassTransformer(
     doNotErrorOnMissing: Boolean,
   ): ClassFactory? {
     val injectedClassId: ClassId = declaration.classIdOrFail
-    generatedFactories[injectedClassId]?.getOrNull()?.let {
-      return it
+    generatedFactories[injectedClassId]?.let { cached ->
+      return cached.getOrNull()
     }
 
     val isExternal = declaration.isExternalParent
@@ -231,6 +260,45 @@ internal class InjectedClassTransformer(
     val memberInjectParameters = injectors.flatMap { it.requiredParametersByClass.values.flatten() }
 
     val constructorParameters = targetConstructor.parameters()
+
+    val isAssistedInject =
+      listOf(declaration, targetConstructor).any {
+        it.isAnnotatedWithAny(metroSymbols.classIds.assistedInjectAnnotations)
+      }
+
+    if (!isAssistedInject) {
+      // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to read
+      // directly since we'll read the mirror function to get the target type
+      factoryCls.superTypes += metroSymbols.metroFactory.typeWith(declaration.defaultType)
+    }
+
+    // Cannot call addFakeOverrides because FIR2IR has already done that, so we need to add the
+    // invoke override directly later
+    val invokeFunction =
+      factoryCls
+        .addFunction(
+          Symbols.StringNames.INVOKE,
+          declaration.defaultType,
+          isFakeOverride = !isAssistedInject,
+        )
+        .apply {
+          isOperator = true
+          if (!isAssistedInject) {
+            overriddenSymbols = listOf(metroSymbols.providerInvoke)
+          } else {
+            val assistedInvokeParamTypeRemapper =
+              declaration.deepRemapperFor(factoryCls.defaultType)
+            // Add assisted params
+            for (param in constructorParameters.allParameters.filter { it.isAssisted }) {
+              val assistedParamType =
+                assistedInvokeParamTypeRemapper.remapType(param.contextualTypeKey.toIrType())
+              addValueParameter(param.name, assistedParamType)
+            }
+          }
+        }
+    addHiddenFromObjCAnnotation(invokeFunction)
+    metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(invokeFunction)
+
     val allParameters =
       buildList {
           add(constructorParameters)
@@ -243,50 +311,53 @@ internal class InjectedClassTransformer(
     // Deduplicate parameters to match the FIR-generated factory constructor.
     // The FIR side deduplicates by type key, so the factory constructor has fewer
     // parameters when multiple source params share the same type+qualifier.
-    val dedupedParameters =
-      if (options.deduplicateInjectedParams) nonAssistedParameters.dedupeParameters()
-      else nonAssistedParameters
+    val dedupedParameters = nonAssistedParameters.dedupeParameters()
 
-    val ctor = factoryCls.primaryConstructor!!
-
-    val constructorParametersToFields = assignConstructorParamsToFields(ctor, factoryCls)
-
-    // Build a mapping from ALL source parameters to fields, handling the fact that
-    // multiple source params with the same type key share the same deduped field.
-    val dedupedParamToField: Map<Parameter, IrField> =
-      constructorParametersToFields.entries.withIndex().associate { (index, pair) ->
-        val (_, field) = pair
-        val sourceParam = dedupedParameters[index]
-        sourceParam to field
-      }
-    val typeKeyToField: Map<IrTypeKey, IrField> = buildMap {
-      for ((param, field) in dedupedParamToField) {
-        // Params with defaults have their own entries (they're never deduped), so they
-        // don't belong in the type-key map. Only non-default params share fields by type key.
-        if (!param.hasDefault) {
-          putIfAbsent(param.typeKey, field)
-        }
-      }
-    }
-    val sourceParametersToFields: Map<Parameter, IrField> = buildMap {
-      for (param in nonAssistedParameters) {
-        if (param.hasDefault) {
-          // Params with defaults have their own dedicated fields (looked up by identity)
-          dedupedParamToField[param]?.let { put(param, it) }
-        } else {
-          // Non-default params share fields by type key (deduped)
-          typeKeyToField[param.typeKey]?.let { put(param, it) }
-        }
-      }
+    // Use parameter name as the primary field key to correctly handle multiple parameters
+    // with the same type key (e.g., two String params with different defaults).
+    // The typeKey map is kept as a fallback for dedup cases where the original parameter
+    // name was deduped away but shares a type key with the surviving parameter.
+    val nameToField = mutableMapOf<Name, IrField>()
+    val typeKeyToField = mutableMapOf<IrTypeKey, IrField>()
+    val ctor: IrConstructor
+    if (factoryCls.isObject) {
+      // If it's got no parameters we'll generate it in FIR as an object
+      ctor = factoryCls.primaryConstructor!!
+    } else {
+      // Add constructor
+      // Doesn't have to be metadata-visible
+      ctor =
+        factoryCls
+          .addConstructor {
+            visibility = DescriptorVisibilities.PRIVATE
+            isPrimary = true
+          }
+          .apply {
+            val typeRemapper = declaration.deepRemapperFor(factoryCls.defaultType)
+            addParameters(
+              params = dedupedParameters,
+              wrapInProvider = true,
+              stubDefaults = false,
+              typeRemapper = { type -> typeRemapper.remapType(type) },
+            ) { typeKey, irParam ->
+              val field = irParam.addBackingFieldTo(factoryCls)
+              nameToField[irParam.name] = field
+              typeKeyToField[typeKey] = field
+            }
+            addHiddenFromObjCAnnotation(this)
+            body = generateDefaultConstructorBody()
+          }
     }
 
     val newInstanceFunction =
       generateCreators(
+        declaration,
         factoryCls,
         ctor.symbol,
         targetConstructor.symbol,
         constructorParameters,
         allParameters,
+        isAssistedInject,
       )
 
     /*
@@ -307,15 +378,14 @@ internal class InjectedClassTransformer(
     // Provider<Lazy<T>>
     override fun invoke(): Example<T> = newInstance(ProviderOfLazy.create(valueProvider))
     */
-    val invoke = factoryCls.requireSimpleFunction(Symbols.StringNames.INVOKE)
-
     implementFactoryInvokeOrGetBody(
-      invoke.owner,
+      invokeFunction,
       factoryCls.thisReceiverOrFail,
       newInstanceFunction,
       constructorParameters,
       injectors,
-      sourceParametersToFields,
+      nameToField,
+      typeKeyToField,
     )
 
     possiblyImplementInvoke(declaration, constructorParameters)
@@ -359,7 +429,8 @@ internal class InjectedClassTransformer(
     newInstanceFunction: IrSimpleFunction,
     constructorParameters: Parameters,
     injectors: List<MembersInjectorTransformer.MemberInjectClass>,
-    parametersToFields: Map<Parameter, IrField>,
+    nameToField: Map<Name, IrField>,
+    typeKeyToField: Map<IrTypeKey, IrField>,
   ) {
     if (invokeFunction.isFakeOverride) {
       invokeFunction.finalizeFakeOverride(thisReceiver)
@@ -384,7 +455,10 @@ internal class InjectedClassTransformer(
                 val providerInstance =
                   irGetField(
                     irGet(invokeFunction.dispatchReceiverParameter!!),
-                    parametersToFields.getValue(constructorParam),
+                    // Look up by name first (handles multiple params with same type key),
+                    // fall back to type key (handles deduped params where name was removed)
+                    nameToField[constructorParam.name]
+                      ?: typeKeyToField.getValue(constructorParam.typeKey),
                   )
                 val contextKey = targetParam.contextualTypeKey
                 typeAsProviderArgument(
@@ -399,7 +473,10 @@ internal class InjectedClassTransformer(
                 functionParamsByName.getValue(targetParam.originalName)
               }
 
-              else -> reportCompilerBug("Unmatched top level injected function param: $targetParam")
+              else ->
+                reportCompilerBug(
+                  "Unmatched top level injected function param: $targetParam. Available: ${functionParamsByName.keys}"
+                )
             }
           }
 
@@ -436,7 +513,7 @@ internal class InjectedClassTransformer(
                       parametersAsProviderArguments(
                         parameters,
                         invokeFunction.dispatchReceiverParameter!!,
-                        parametersToFields,
+                        typeKeyToField,
                       )
                     )
                   },
@@ -457,7 +534,10 @@ internal class InjectedClassTransformer(
     if (injectedFunctionClass != null) {
       val callableName = injectedFunctionClass.getAnnotationStringValue()!!.asName()
       val callableId = CallableId(declaration.packageFqName!!, callableName)
-      var targetCallable = pluginContext.referenceFunctions(callableId).single()
+      var targetCallable =
+        pluginContext.referenceFunctions(callableId).single {
+          it.owner.isAnnotatedWithAny(metroSymbols.classIds.injectAnnotations)
+        }
 
       // Assign fields
       val constructorParametersToFields =
@@ -495,7 +575,7 @@ internal class InjectedClassTransformer(
                     .filter { it.isAssisted }
                     .map { it.asValueParameter },
                 targetParameters = invokeFunction.nonDispatchParameters,
-                targetGraphParameter = null,
+                containerParameter = null,
                 wrapInProvider = false,
                 isTopLevelFunction = true,
               )
@@ -591,11 +671,13 @@ internal class InjectedClassTransformer(
   }
 
   private fun generateCreators(
+    targetClass: IrClass,
     factoryCls: IrClass,
     factoryConstructor: IrConstructorSymbol,
     targetConstructor: IrConstructorSymbol,
     constructorParameters: Parameters,
     allParameters: List<Parameters>,
+    isAssistedInject: Boolean,
   ): IrSimpleFunction {
     // If this is an object, we can generate directly into this object
     val isObject = factoryCls.kind == ClassKind.OBJECT
@@ -606,26 +688,28 @@ internal class InjectedClassTransformer(
         factoryCls.companionObject()!!
       }
 
-    val mergedParameters =
-      allParameters.reduce { current, next -> current.mergeValueParametersWithUntyped(next) }
+    val mergedParameters = allParameters.reduce { current, next ->
+      current.mergeValueParametersWithUntyped(next)
+    }
 
     // Deduplicate to match the FIR-generated create() function signature
     val dedupedMerged =
       mergedParameters.copy(
-        regularParameters =
-          if (options.deduplicateInjectedParams)
-            mergedParameters.regularParameters.dedupeParameters()
-          else mergedParameters.regularParameters
+        regularParameters = mergedParameters.regularParameters.dedupeParameters()
       )
 
     // Generate create()
-    @Suppress("RETURN_VALUE_NOT_USED")
     generateStaticCreateFunction(
-      parentClass = classToGenerateCreatorsIn,
-      targetClass = factoryCls,
+      objectClassToGenerateIn = classToGenerateCreatorsIn,
+      factoryClass = factoryCls,
+      sourceTypeParameters = targetClass,
+      returnTypeProvider = { typeParams ->
+        metroSymbols.metroFactory.typeWith(targetClass.symbol.typeWithParameters(typeParams))
+      },
       targetConstructor = factoryConstructor,
       parameters = dedupedMerged,
-      providerFunction = null,
+      isAssistedInject = isAssistedInject,
+      sourceFunction = null,
     )
 
     // newInstance() preserves the original constructor signature (no deduplication)
@@ -633,6 +717,8 @@ internal class InjectedClassTransformer(
     val newInstanceFunction =
       generateStaticNewInstanceFunction(
         parentClass = classToGenerateCreatorsIn,
+        sourceTypeParameters = targetClass,
+        returnTypeProvider = { typeParams -> targetClass.symbol.typeWithParameters(typeParams) },
         sourceMetroParameters = constructorParameters,
         sourceParameters = constructorParameters.regularParameters.map { it.asValueParameter },
       ) { function ->

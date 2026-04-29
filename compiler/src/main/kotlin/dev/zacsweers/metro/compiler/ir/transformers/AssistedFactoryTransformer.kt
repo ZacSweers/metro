@@ -2,12 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
+import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
@@ -77,6 +83,9 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
+@Inject
+@SingleIn(IrScope::class)
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
 internal class AssistedFactoryTransformer(
   context: IrMetroContext,
   private val injectedClassTransformer: InjectedClassTransformer,
@@ -291,6 +300,7 @@ internal class AssistedFactoryTransformer(
           val factoryParamType = pluginContext.referenceClass(factoryClassId)!!.defaultType
           addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
 
+          addStaticAnnotations(this)
           // Body will be implemented in implementImplClass
         }
 
@@ -350,13 +360,12 @@ internal class AssistedFactoryTransformer(
       constructorParams.regularParameters.filter { parameter -> parameter.isAssisted }
 
     // Apply substitutions when creating assisted parameter keys
-    val assistedParameterKeys =
-      assistedParameters.map { parameter ->
-        val substitutedTypeKey = parameter.typeKey.remapTypes(remapper)
-        parameter
-          .copy(contextualTypeKey = parameter.contextualTypeKey.withIrTypeKey(substitutedTypeKey))
-          .assistedParameterKey
-      }
+    val assistedParameterKeys = assistedParameters.map { parameter ->
+      val substitutedTypeKey = parameter.typeKey.remapTypes(remapper)
+      parameter
+        .copy(contextualTypeKey = parameter.contextualTypeKey.withIrTypeKey(substitutedTypeKey))
+        .assistedParameterKey
+    }
 
     val ctor = implClass.primaryConstructor!!
     val delegateFactoryField = assignConstructorParamsToFields(ctor, implClass).values.single()
@@ -371,19 +380,18 @@ internal class AssistedFactoryTransformer(
         pluginContext.createIrBuilder(symbol).run {
           // We call the @Inject constructor. Therefore, find for each assisted
           // parameter the function parameter where the keys match.
-          val argumentList =
-            assistedParameterKeys.map { assistedParameterKey ->
-              val param =
-                functionParams[assistedParameterKey]
-                  ?: reportCompilerBug(
-                    "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${
+          val argumentList = assistedParameterKeys.map { assistedParameterKey ->
+            val param =
+              functionParams[assistedParameterKey]
+                ?: reportCompilerBug(
+                  "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${
                         functionParams.keys.joinToString(
                           "\n"
                         )
                       }"
-                  )
-              irGet(param)
-            }
+                )
+            irGet(param)
+          }
 
           irExprBodySafe(
             irInvoke(
@@ -456,8 +464,6 @@ internal class AssistedFactoryTransformer(
               param.toAssistedParameterKey(
                 symbols = context.metroSymbols,
                 typeKey = substitutedTypeKey,
-                useAssistedParamNamesAsIdentifiers =
-                  context.options.useAssistedParamNamesAsIdentifiers,
               )
             },
         )

@@ -13,6 +13,6 @@ abstract class AppScope private constructor()
 
 @SingleIn(AppScope::class)
 @DependencyGraph(AppScope::class)
-interface <!METRO_ERROR!>ExampleGraph<!> {
+interface <!INCOMPATIBLE_SCOPE!>ExampleGraph<!> {
   val myClass: MyClass
 }

@@ -8,7 +8,7 @@ interface B
 interface C
 
 @DependencyGraph
-interface <!METRO_ERROR!>AppGraph<!> {
+interface <!GRAPH_DEPENDENCY_CYCLE!>AppGraph<!> {
   val a: A
 
   // If the reporter tries to link A -> C directly, it will crash.

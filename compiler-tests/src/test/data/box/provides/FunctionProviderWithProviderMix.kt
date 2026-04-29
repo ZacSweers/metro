@@ -1,4 +1,3 @@
-// ENABLE_FUNCTION_PROVIDERS
 @DependencyGraph
 abstract class ExampleGraph {
   var counter = 0
