@@ -205,5 +205,6 @@ internal sealed interface WrappedType<T : Any> {
         is Lazy -> sequenceOf<WrappedType<T>>(this) + innerType.innerTypesSequence
         is Map -> sequenceOf<WrappedType<T>>(this) + valueType.innerTypesSequence
         is Provider -> sequenceOf<WrappedType<T>>(this) + innerType.innerTypesSequence
+        is SuspendProvider -> sequenceOf<WrappedType<T>>(this) + innerType.innerTypesSequence
       }
 }
