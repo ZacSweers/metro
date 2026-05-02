@@ -526,6 +526,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("CircuitFactoryInvocationWithSubtypeScreen.kt")
+      public void testCircuitFactoryInvocationWithSubtypeScreen() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/CircuitFactoryInvocationWithSubtypeScreen.kt");
+      }
+
+      @Test
       @TestMetadata("ParameterOrderDoesNotMatter.kt")
       public void testParameterOrderDoesNotMatter() {
         runTest("compiler-tests/src/test/data/box/api/circuit/ParameterOrderDoesNotMatter.kt");
