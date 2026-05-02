@@ -17,7 +17,7 @@ This is a sample that demonstrates using Metro with [Circuit](https://github.com
 ./gradlew -p samples :circuit-app:jvmRun
 ```
 
-**WASM**
+**Wasm**
 
 ```kotlin
 ./gradlew -p samples :circuit-app:wasmJsBrowserDevelopmentRun --continuous

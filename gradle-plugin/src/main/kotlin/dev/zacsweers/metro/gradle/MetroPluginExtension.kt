@@ -345,7 +345,7 @@ constructor(
    * Enable/disable treating `() -> T` (i.e., `Function0<T>`) as a provider type.
    *
    * When enabled, `() -> T` can be used as an alternative to `Provider<T>` for injecting provider
-   * dependencies. This works because `Provider<T>` implements `() -> T` on JVM, Native, and WASM
+   * dependencies. This works because `Provider<T>` implements `() -> T` on JVM, Native, and Wasm
    * platforms.
    *
    * Note: On JS, `Provider<T>` does not implement `() -> T`, so an ad-hoc wrapping lambda is

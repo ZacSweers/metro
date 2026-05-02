@@ -128,7 +128,7 @@ internal class CoreTransformers(
 
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
-    // Native/WASM/JS compilation hint gen can't be done in IR
+    // Native/Wasm/JS compilation hint gen can't be done in IR
     // https://youtrack.jetbrains.com/issue/KT-75865
     val generateHints = options.generateContributionHints && !options.generateContributionHintsInFir
     if (generateHints) {
