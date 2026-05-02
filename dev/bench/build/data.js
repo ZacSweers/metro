@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777474606457,
+  "lastUpdate": 1777760351128,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -13328,6 +13328,62 @@ window.BENCHMARK_DATA = {
             "value": 28870.291999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.41%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3f4d562b~1",
+          "message": "[before] Add implicit casts where necessary in Circuit for ",
+          "timestamp": "2026-05-02T17:37:00-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3f4d562bb567eec98f8cde0605434b8fc4c1e53a"
+        },
+        "date": 1777760351128,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 29579.915999999997,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3f4d562bb567eec98f8cde0605434b8fc4c1e53a",
+          "message": "[after] Add implicit casts where necessary in Circuit for ",
+          "timestamp": "2026-05-02T17:37:00-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3f4d562bb567eec98f8cde0605434b8fc4c1e53a"
+        },
+        "date": 1777760351129,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 27923.494,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -5.60%"
           }
         ]
       }
