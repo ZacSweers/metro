@@ -1908,7 +1908,7 @@
 <th style="text-align: center;">JVM</th>
 <th>Android</th>
 <th style="text-align: center;">JS</th>
-<th style="text-align: center;">WASM</th>
+<th style="text-align: center;">Wasm</th>
 <th style="text-align: center;">Apple</th>
 <th style="text-align: center;">Linux</th>
 <th style="text-align: center;">Windows</th>
@@ -1986,7 +1986,7 @@
 <td>Multi-module aggregation</td>
 <td style="text-align: center;">✅<br/>Kotlin <code>2.3.0</code>+</td>
 <td>✅<br/>Kotlin <code>2.3.20</code>+</td>
-<td style="text-align: center;">🟡<br/>Kotlin <code>2.3.21</code>+</td>
+<td style="text-align: center;">✅<br/>Kotlin <code>2.3.21</code>+</td>
 <td style="text-align: center;">✅<br/>Kotlin <code>2.3.20</code>+</td>
 <td style="text-align: center;">✅<br/>Kotlin <code>2.3.20</code>+</td>
 <td style="text-align: center;">✅<br/>Kotlin <code>2.3.20</code>+</td>
@@ -1997,7 +1997,7 @@
 <td>Top-level function injection</td>
 <td style="text-align: center;">✅<br/>Kotlin <code>2.3.0</code>+</td>
 <td>✅<br/>Kotlin <code>2.3.20</code>+</td>
-<td style="text-align: center;">🟡<br/>Kotlin <code>2.3.21</code>+</td>
+<td style="text-align: center;">✅<br/>Kotlin <code>2.3.21</code>+</td>
 <td style="text-align: center;">✅<br/>Kotlin <code>2.3.20</code>+</td>
 <td style="text-align: center;">✅<br/>Kotlin <code>2.3.20</code>+</td>
 <td style="text-align: center;">✅<br/>Kotlin <code>2.3.20</code>+</td>
@@ -2006,12 +2006,13 @@
 </tr>
 </tbody>
 </table>
-<p>🟡 — Kotlin/JS does not yet support generating top-level declarations from compiler plugins on any version with incremental compilation enabled. Please star <a href="https://youtrack.jetbrains.com/issue/KT-82395">https://youtrack.jetbrains.com/issue/KT-82395</a> and <a href="https://youtrack.jetbrains.com/issue/KT-82989">https://youtrack.jetbrains.com/issue/KT-82989</a>.</p>
 <p><strong>Legend:</strong></p>
 <ul>
-<li><strong>WASM</strong>:<ul>
-<li><code>wasmJs</code></li>
-<li><code>wasmWasi</code></li>
+<li><strong>Android Native</strong>:<ul>
+<li><code>androidNativeArm32</code></li>
+<li><code>androidNativeArm64</code></li>
+<li><code>androidNativeX86</code></li>
+<li><code>androidNativeX64</code></li>
 </ul>
 </li>
 <li><strong>Apple</strong>:<ul>
@@ -2026,15 +2027,13 @@
 <li><code>linuxArm64</code></li>
 </ul>
 </li>
-<li><strong>Windows</strong>:<ul>
-<li><code>mingwX64</code></li>
+<li><strong>Wasm</strong>:<ul>
+<li><code>wasmJs</code></li>
+<li><code>wasmWasi</code></li>
 </ul>
 </li>
-<li><strong>Android Native</strong>:<ul>
-<li><code>androidNativeArm32</code></li>
-<li><code>androidNativeArm64</code></li>
-<li><code>androidNativeX86</code></li>
-<li><code>androidNativeX64</code></li>
+<li><strong>Windows</strong>:<ul>
+<li><code>mingwX64</code></li>
 </ul>
 </li>
 </ul>
