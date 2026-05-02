@@ -16,6 +16,10 @@ Changelog
 
 - **[FIR]** Resolve copied typerefs (if necessary) in FIR code gen. This _appears_ to help avoid some IDE FIR issues.
 
+### Fixes
+
+- **[IR/circuit]** Insert implicit casts when a generated Circuit `Presenter.Factory`/`Ui.Factory` dispatches its `screen: Screen` parameter to an underlying assisted factory or `@Inject @Composable` function that expects a more specific `Screen` subtype. Some platforms (like JVM) silently tolerate the missing cast, but Kotlin/Wasm rejects it with a `call_ref` precise-type mismatch at load time.
+
 ### Changes
 
 - Metro now uses... Metro! The Metro compiler now uses proper DI internally, bootstrapping itself. This isn't really anything library consumers have to think about, I just think it's neat.
@@ -2000,7 +2004,7 @@ _2025-06-23_
 - **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
 - **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
 - **Fix:** Report member injection dependencies when looking up constructor-injected classes during graph population.
-- **Fix:** Disable IR hint generation on JS targets too, as these now have the same limitation as native/WASM targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
+- **Fix:** Disable IR hint generation on JS targets too, as these now have the same limitation as native/Wasm targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - **Fix:** Ensure private provider function annotations are propagated across compilation boundaries.
 - **Fix:** Substitute copied FIR type parameter symbols with symbols from their target functions.
 - **Fix:** Improved support for generic member injection.
@@ -2210,7 +2214,7 @@ _2025-04-18_
 - **Fix**: Fix Dagger interop issue when calling Javax/Jakarta/Dagger providers from Metro factories.
 - **Fix**: Fix Dagger interop issue when calling `dagger.Lazy` from Metro factories.
 - **Fix**: Preserve the original `Provider` or `Lazy` type used in injected types when generating factory creators.
-- Temporarily disable hint generation in WASM targets to avoid file count mismatches until [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
+- Temporarily disable hint generation in Wasm targets to avoid file count mismatches until [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - Add an Android sample: https://github.com/ZacSweers/metro/tree/main/samples/android-app
 - Add a multiplatform Circuit sample: https://github.com/ZacSweers/metro/tree/main/samples/circuit-app
 - Add samples docs: https://zacsweers.github.io/metro/samples
