@@ -932,6 +932,7 @@ internal class BindingLookupCache {
   private val constructorInjectedBindings =
     ConcurrentHashMap<IrClass, IrBinding.ConstructorInjected>()
   private val assistedFactoryBindings = ConcurrentHashMap<IrClass, IrBinding.AssistedFactory>()
+  private val rawInheritedGraphData = ConcurrentHashMap<IrClass, Any>()
 
   /** Returns a cached binding or computes and caches it. If [irClass] is null, just computes. */
   fun getOrPutConstructorInjected(
@@ -948,4 +949,13 @@ internal class BindingLookupCache {
   ): IrBinding.AssistedFactory =
     if (irClass != null) assistedFactoryBindings.computeIfAbsent(irClass) { compute() }
     else compute()
+
+  /**
+   * Cached unfiltered parent-aggregated graph data for child graphs sharing a parent. The opaque
+   * `Any` value is materialised by [BindingGraphGenerator] to avoid leaking that internal type.
+   */
+  fun <T : Any> getOrPutRawInheritedGraphData(parentSourceGraph: IrClass, compute: () -> T): T {
+    @Suppress("UNCHECKED_CAST")
+    return rawInheritedGraphData.computeIfAbsent(parentSourceGraph) { compute() } as T
+  }
 }
