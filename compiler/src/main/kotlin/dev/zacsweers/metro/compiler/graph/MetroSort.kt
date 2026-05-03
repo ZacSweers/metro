@@ -12,6 +12,7 @@ import androidx.collection.MutableObjectIntMap
 import androidx.collection.ObjectIntMap
 import androidx.collection.ScatterMap
 import androidx.collection.emptyIntSet
+import dev.zacsweers.metro.compiler.calculateInitialCapacity
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -120,6 +121,13 @@ internal data class GraphAdjacency<T>(
  * @param roots optional set of source roots for computing reachability. If null, all keys will be
  *   kept.
  * @param onSortedCycle optional callback reporting (sorted) cycles.
+ * @param useSecondaryTopoSort Reserved toe-hold for a future change. Currently unused. When `true`
+ *   (the only behavior implemented today) we run a Kahn topological sort over the component DAG
+ *   with `PriorityQueue<Int>` tie-breaking by component id. When eventually wired for `false`, the
+ *   function will skip Kahn's and rely on Tarjan's reverse-topological output directly
+ *   (`components.reversed()`) — also a valid topological order, but with different tie-breaking
+ *   (DFS-finish order rather than lowest-id). Re-orders observable codegen output, so flipping the
+ *   default would re-golden every dump test.
  */
 context(traceScope: TraceScope)
 internal fun <V : Comparable<V>> metroSort(
@@ -129,8 +137,9 @@ internal fun <V : Comparable<V>> metroSort(
   roots: SortedSet<V>? = null,
   isImplicitlyDeferrable: (V) -> Boolean = { false },
   onSortedCycle: (List<V>) -> Unit = {},
+  @Suppress("UNUSED_PARAMETER") useSecondaryTopoSort: Boolean = true,
 ): GraphTopology<V> {
-  val deferredTypes = mutableSetOf<V>()
+  val deferredTypes = HashSet<V>()
 
   // Collapse the graph into strongly‑connected components
   // Also builds reachable adjacency (forward and reverse) in the same pass (avoiding separate
@@ -172,7 +181,9 @@ internal fun <V : Comparable<V>> metroSort(
   }
 
   val componentDag =
-    trace("Build component DAG") { buildComponentDag(reachableAdjacency.forward, componentOf) }
+    trace("Build component DAG") {
+      buildComponentDag(reachableAdjacency.forward, componentOf, components.size)
+    }
   val componentOrder =
     trace("Topo sort component DAG") {
       topologicallySortComponentDag(componentDag, components.size)
@@ -253,20 +264,23 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
   isImplicitlyDeferrable: (V) -> Boolean,
 ): Set<V> {
   // Build the SCC-internal adjacency and deferrable edges ONCE upfront
-  // This avoids rebuilding these structures for each candidate test
-  val sccAdjacency = mutableMapOf<V, MutableSet<V>>()
-  val deferrableEdgesFrom = mutableMapOf<V, MutableSet<V>>()
-  val potentialCandidates = mutableSetOf<V>()
+  // This avoids rebuilding these structures for each candidate test.
+  // Each collection here is bounded by the SCC's vertex count, so size them up front.
+  val cap = calculateInitialCapacity(vertices.size)
+  val sccAdjacency = HashMap<V, MutableSet<V>>(cap)
+  val deferrableEdgesFrom = HashMap<V, MutableSet<V>>(cap)
+  val potentialCandidates = HashSet<V>(cap)
 
   for (from in vertices) {
-    val targets = mutableSetOf<V>()
+    // Targets bounded by `from`'s outgoing degree.
+    val targets = LinkedHashSet<V>(calculateInitialCapacity(fullAdjacency[from]?.size ?: 0))
     for (to in fullAdjacency[from].orEmpty()) {
       // Only consider edges that stay inside the SCC
       if (componentOf[to] == componentId) {
         targets.add(to)
         if (isDeferrable(from, to)) {
           // Track deferrable edges and candidates
-          deferrableEdgesFrom.getOrPut(from) { mutableSetOf() }.add(to)
+          deferrableEdgesFrom.getOrPut(from) { HashSet() }.add(to)
           potentialCandidates.add(from)
         }
       }
@@ -318,9 +332,16 @@ private class ReusableCycleChecker<V>(
   private val sccAdjacency: Map<V, Set<V>>,
   private val deferrableEdgesFrom: Map<V, Set<V>>,
 ) {
-  // Reuse these sets across checks to reduce allocations
-  private val visited = mutableSetOf<V>()
-  private val inStack = mutableSetOf<V>()
+  // Reuse these sets across checks to reduce allocations.
+  private val visited: HashSet<V>
+  private val inStack: HashSet<V>
+
+  init {
+    // Sized to the full SCC since the worst case is "every vertex visited."
+    val cap = calculateInitialCapacity(vertices.size)
+    visited = HashSet(cap)
+    inStack = HashSet(cap)
+  }
 
   /**
    * Checks if the graph would be acyclic if we defer the given nodes. When a node is deferred, its
@@ -470,14 +491,15 @@ private fun <V : Comparable<V>> sortVerticesInSCC(
   val inScc = vertices.toSet()
 
   // An edge is "soft" inside this SCC only if it's deferrable and the source is deferred
-  fun isSoftEdge(from: V, to: V): Boolean {
-    return isDeferrable(from, to) && from in deferredInScc
+  val isSoftEdge: (from: V, to: V) -> Boolean = { from, to ->
+    isDeferrable(from, to) && from in deferredInScc
   }
 
-  // v -> hard prereqs (non-soft edges)
-  val hardDeps = mutableMapOf<V, MutableSet<V>>()
-  // prereq -> dependents (via hard edges)
-  val revHard = mutableMapOf<V, MutableSet<V>>()
+  // v -> hard prereqs (non-soft edges). Bounded by SCC size.
+  val cap = calculateInitialCapacity(vertices.size)
+  val hardDeps = HashMap<V, MutableSet<V>>(cap)
+  // prereq -> dependents (via hard edges). Bounded by SCC size.
+  val revHard = HashMap<V, MutableSet<V>>(cap)
 
   for (v in vertices) {
     for (dep in fullAdjacency[v].orEmpty()) {
@@ -491,14 +513,15 @@ private fun <V : Comparable<V>> sortVerticesInSCC(
     }
   }
 
-  val hardIn = vertices.associateWithTo(mutableMapOf()) { hardDeps[it]?.size ?: 0 }
+  val hardIn = vertices.associateWithTo(HashMap(cap)) { hardDeps[it]?.size ?: 0 }
 
   // Sort ready by:
   // 1 - nodes that are in deferredInScc (i.e., emit DelegateFactory before its users)
   // 2 - more hard dependents (unlocks more)
   // 3 - natural order for determinism
+  // The ready set holds at most every vertex in the SCC; size up front.
   val ready =
-    PriorityQueue<V> { a, b ->
+    PriorityQueue<V>(vertices.size) { a, b ->
       val aDef = a in deferredInScc
       val bDef = b in deferredInScc
       if (aDef != bDef) return@PriorityQueue if (aDef) -1 else 1
@@ -710,7 +733,8 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
   var nextIndex = 0
   var nextComponentId = 0
   // Materialised SCC vertex lists (in int form) keyed by component id.
-  val componentMembers = mutableListOf<MutableIntList>()
+  // At most one component per vertex (degenerate case where every vertex is its own SCC).
+  val componentMembers = ArrayList<MutableIntList>(n)
 
   // Iterative Tarjan: a recursive `strongConnect(v)` would blow the JVM stack on deep dependency
   // chains, so we fold the recursion into an explicit (callStack, edgeCursor) pair where each
@@ -896,14 +920,17 @@ private val EMPTY_INT_ARRAY = IntArray(0)
  *
  * @param originalEdges per-vertex outgoing edges of the input graph.
  * @param componentOf vertex -> SCC id, from [computeStronglyConnectedComponents].
+ * @param componentCount total number of components (used to pre-size the result map).
  * @return A map keyed by SCC id whose values are the set of SCC ids that must run **before** the
  *   key (i.e., prerequisites, in Kahn-compatible orientation).
  */
 private fun <V> buildComponentDag(
   originalEdges: Map<V, Set<V>>,
   componentOf: ObjectIntMap<V>,
+  componentCount: Int,
 ): IntObjectMap<IntSet> {
-  val dag = MutableIntObjectMap<MutableIntSet>()
+  // At most one entry per component.
+  val dag = MutableIntObjectMap<MutableIntSet>(calculateInitialCapacity(componentCount, 7f / 8))
 
   for ((fromVertex, outs) in originalEdges) {
     // prerequisite side
@@ -970,9 +997,9 @@ private fun topologicallySortComponentDag(dag: IntObjectMap<IntSet>, componentCo
   dag.forEachValue { children -> children.forEach { child -> inDegree[child]++ } }
 
   // PriorityQueue (not FIFO) so multiple ready nodes are emitted in id order — see the function
-  // KDoc above for why determinism matters here.
+  // KDoc above for why determinism matters here. Holds at most every component at once.
   val queue =
-    PriorityQueue<Int>().apply {
+    PriorityQueue<Int>(componentCount.coerceAtLeast(1)).apply {
       // Seed with every component whose in-degree is 0 (no prerequisites).
       for (id in 0 until componentCount) {
         if (inDegree[id] == 0) {
@@ -981,7 +1008,8 @@ private fun topologicallySortComponentDag(dag: IntObjectMap<IntSet>, componentCo
       }
     }
 
-  val order = MutableIntList()
+  // We emit exactly `componentCount` ids in the success path.
+  val order = MutableIntList(componentCount)
   while (queue.isNotEmpty()) {
     val c = queue.remove()
     order += c
