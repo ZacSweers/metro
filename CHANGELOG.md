@@ -12,6 +12,7 @@ Changelog
 - **[IR]** Make a number of compiler internals lazier, cached, or faster. Improves top-line compiler performance traces ~15%.
     - **[IR]** Do not process platform type supertypes.
     - **[IR]** Compare `IrTypeKey` instances structurally instead of by rendered strings.
+    - **[IR/graph]** Pre-size internal hash collections to avoid resizing during validation.
     - **[IR/graph]** Faster compilation for modules with many `@Binds`/`@ContributesBinding` declarations by batching incremental-compilation lookup tracking per graph rather than per-callable.
     - **[IR/graph]** Small additional compile-time win from using cheaper short-lived working sets during binding-graph population.
     - **[IR/graph]** Significantly faster binding-graph validation on projects with deep or wide dependency graphs (the graph seal drops ~60% in benchmarks).
