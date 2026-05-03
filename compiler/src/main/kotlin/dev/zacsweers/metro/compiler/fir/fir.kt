@@ -478,6 +478,10 @@ private fun renderAnnotationArgument(
         arg.arguments.map { renderAnnotationArgument(session, it, typeResolver) }
       }
 
+      is FirNamedArgumentExpression -> {
+        renderAnnotationArgument(session, arg.expression, typeResolver)
+      }
+
       else -> {
         reportCompilerBug(
           "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"

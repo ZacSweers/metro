@@ -2364,6 +2364,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("NamedAnnotationArgumentClassRef.kt")
+      public void testNamedAnnotationArgumentClassRef() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/NamedAnnotationArgumentClassRef.kt");
+      }
+
+      @Test
       @TestMetadata("OptionalInACycle.kt")
       public void testOptionalInACycle() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/OptionalInACycle.kt");
