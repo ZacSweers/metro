@@ -741,6 +741,9 @@ internal class BindingGraphGenerator(
 
       val alreadyCollectedKeys = providerFactoryKeys + bindsCallableKeys
 
+      // Collect provider factories (non-scoped, not already collected from a closer parent).
+      // Skip @GraphPrivate factories — private contributions should not leak to child graphs.
+      // Dynamic parent bindings take precedence over keys collected up-chain so they can override.
       for ((key, factories) in extendedNode.providerFactories) {
         if (
           key in alreadyCollectedKeys && !(isDynamicParent && key in extendedNode.dynamicTypeKeys)
@@ -756,6 +759,11 @@ internal class BindingGraphGenerator(
         }
       }
 
+      // Collect binds callables.
+      // Skip binds whose source type is graph-private in the parent — the child can't resolve
+      // the private source. The binds result type is promoted to the parent context instead, so
+      // the child resolves it as a GraphDependency.
+      // Dynamic parent bindings take precedence over keys collected up-chain.
       for ((key, callables) in extendedNode.bindsCallables) {
         if (
           key in alreadyCollectedKeys && !(isDynamicParent && key in extendedNode.dynamicTypeKeys)
@@ -770,19 +778,28 @@ internal class BindingGraphGenerator(
         }
       }
 
+      // Collect binding containers (only from Local nodes).
       if (extendedNode is GraphNode.Local) {
         bindingContainers.addAll(extendedNode.bindingContainers)
       }
+
+      // Collect multibinds callables.
       multibindsCallables.addAll(extendedNode.multibindsCallables)
+
+      // Collect optional keys.
       for ((optKey, callables) in extendedNode.optionalKeys) {
         optionalKeys.getOrPut(optKey) { mutableSetOf() }.addAll(callables)
       }
+
+      // Collect supertype aliases for parent graphs.
       for (superType in extendedNode.supertypes) {
         val parentTypeKey = IrTypeKey(superType)
         if (parentTypeKey != typeKey) {
           @Suppress("RETURN_VALUE_NOT_USED") supertypeAliases.putIfAbsent(parentTypeKey, typeKey)
         }
       }
+
+      // Collect multibinding accessors.
       for (accessor in extendedNode.accessors) {
         if (accessor.metroFunction.annotations.isMultibinds) {
           multibindingAccessors.add(accessor)
