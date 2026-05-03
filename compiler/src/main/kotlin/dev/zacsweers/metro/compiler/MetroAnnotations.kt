@@ -406,7 +406,7 @@ private fun IrAnnotationContainer.metroAnnotations(
     exitProcessing()
   }
 
-  val annotations =
+  val initialAnnotations =
     MetroAnnotations(
       isDependencyGraph = isDependencyGraph,
       isDependencyGraphFactory = isDependencyGraphFactory,
@@ -434,10 +434,9 @@ private fun IrAnnotationContainer.metroAnnotations(
 
   val thisContainer = this
 
-  // Imperative merge: 1-3 sources at most, sequence/coroutine state was pure overhead.
-  var merged = annotations
+  var annotations = initialAnnotations
   fun mergeIn(other: MetroAnnotations<IrAnnotation>) {
-    merged = merged.mergeWith(other)
+    annotations = annotations.mergeWith(other)
   }
 
   when (thisContainer) {
@@ -491,7 +490,7 @@ private fun IrAnnotationContainer.metroAnnotations(
     }
   }
 
-  return merged
+  return annotations
 }
 
 internal fun FirBasedSymbol<*>.metroAnnotations(
