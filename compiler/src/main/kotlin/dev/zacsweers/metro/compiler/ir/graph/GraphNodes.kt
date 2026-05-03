@@ -581,13 +581,6 @@ internal class GraphNodes(
             // Platform types can never be binding containers; skip to avoid the per-call trace
             // span overhead and the first-touch cost inside findBindingContainer.
             if (clazz.classId?.isPlatformType() == true) continue
-            // MetroContribution* markers are FIR-generated routing classes, never binding
-            // containers themselves.
-            if (
-              clazz.name.asString().startsWith(Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX)
-            ) {
-              continue
-            }
             trace("findBindingContainer ${clazz.name}") {
               metroDeclarations.findBindingContainer(clazz)?.let(bindingContainers::add)
             }
