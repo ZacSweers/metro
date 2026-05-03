@@ -145,10 +145,18 @@ public fun ClassId.truncate(
   return ClassId(packageFqName, Name.identifier(className)).checkFileLength()
 }
 
+private val md5ThreadLocal: ThreadLocal<MessageDigest> = ThreadLocal.withInitial {
+  MessageDigest.getInstance("MD5")
+}
+
 internal fun md5base64(params: List<Any>): String {
   val md5 =
-    MessageDigest.getInstance("MD5")
-      .apply { params.forEach { update(it.toString().toByteArray()) } }
+    md5ThreadLocal
+      .get()
+      .apply {
+        reset()
+        params.forEach { update(it.toString().toByteArray()) }
+      }
       .digest()
       .copyOfRange(0, 5)
 
