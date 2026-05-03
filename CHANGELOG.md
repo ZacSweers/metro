@@ -17,6 +17,7 @@ Changelog
 - **[IR/tracing]** Add a lot more tracing spans for more granular tracing.
 - **[IR/tracing]** Don't delete previous traces on new compilations. Now traces are just added to the designated directory each compilation when enabled.
 - **[IR]** Faster `SwitchingProvider.invoke()` dispatch: hoist the `id` field into a local before the `when`, allowing the JVM backend to lower it to `tableswitch` (O(1)) instead of a chain of integer compares.
+- **[IR]** Empty `Set` multibindings accessed through a provider now emit `SetFactory.empty()` (a singleton) rather than allocating a builder and an empty backing set on every graph init.
 
 ### Enhancements
 

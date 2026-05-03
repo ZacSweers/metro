@@ -25,6 +25,7 @@ internal interface FrameworkSymbols {
   val providerOfLazyCreate: IrSimpleFunctionSymbol
   val setFactoryBuilder: IrClassSymbol
   val setFactoryBuilderFunction: IrSimpleFunctionSymbol
+  val setFactoryEmptyFunction: IrSimpleFunctionSymbol?
   val setFactoryBuilderAddProviderFunction: IrSimpleFunctionSymbol
   val setFactoryBuilderAddCollectionProviderFunction: IrSimpleFunctionSymbol
   val setFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
@@ -193,6 +194,10 @@ internal class MetroFrameworkSymbols(
 
   override val setFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
     setFactoryCompanionObject.requireSimpleFunction("builder")
+  }
+
+  override val setFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    setFactoryCompanionObject.requireSimpleFunction("empty")
   }
 
   override val mapFactory: IrClassSymbol by lazy {
@@ -521,6 +526,10 @@ internal class DaggerSymbols(
     setFactory.functions.first {
       it.owner.nonDispatchParameters.size == 1 && it.owner.name == Symbols.Names.builder
     }
+  }
+
+  override val setFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    setFactory.requireSimpleFunction("empty")
   }
 
   override val mapFactory: IrClassSymbol by lazy {

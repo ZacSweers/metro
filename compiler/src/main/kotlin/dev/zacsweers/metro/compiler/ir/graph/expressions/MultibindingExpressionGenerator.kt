@@ -420,6 +420,18 @@ internal class MultibindingExpressionGenerator(
       val resultType =
         irBuiltIns.setClass.typeWith(elementType).wrapInProvider(metroSymbols.metroProvider)
 
+      // Empty set provider: emit `SetFactory.empty()` (singleton) instead of allocating a builder
+      // and an empty result Set.
+      if (individualProviders.isEmpty() && collectionProviders.isEmpty()) {
+        valueProviderSymbols.setFactoryEmptyFunction?.let { emptyFn ->
+          return@with irInvoke(
+            callee = emptyFn,
+            typeHint = emptyFn.owner.returnType.rawType().typeWith(elementType),
+            typeArgs = listOf(elementType),
+          )
+        }
+      }
+
       return irBlock(resultType = resultType) {
         // val builder = SetFactory.<String>builder(1, 1)
         val builder =
