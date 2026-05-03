@@ -65,7 +65,7 @@ internal data class GraphAdjacency<T>(
  * │  ┌─────────────────┐│
  * │  │ Find SCCs       ││  ◄─── Detects cycles
  * │  │ Classify cycles ││  ◄─── Hard vs Soft
- * │  │ Build comp DAG  ││  ◄─── collapse the SCCs → nodes
+ * │  │ Build comp DAG  ││  ◄─── collapse the SCCs -> nodes
  * │  └─────────────────┘│
  * └─────────────────────┘
  *      │
@@ -74,7 +74,7 @@ internal data class GraphAdjacency<T>(
  * │  Phase 2: Kahn       │
  * │  ┌──────────────────┐│
  * │  │ Topo sort DAG    ││  ◄─── Deterministic order
- * │  │ Expand components││  ◄─── Components → vertices
+ * │  │ Expand components││  ◄─── Components -> vertices
  * │  └──────────────────┘│
  * └──────────────────────┘
  *      │
@@ -83,6 +83,36 @@ internal data class GraphAdjacency<T>(
  * ├─ sortedKeys (dependency order)
  * └─ deferredTypes (Lazy/Provider)
  * ```
+ *
+ * ### Deferrable (breakable) cycles
+ *
+ * Some DI cycles can be "valid" if at least one edge is wrapped in a deferrable type (e.g.,
+ * `Provider`/`Lazy`/ `() -> T`), which means the dependency is resolved on-demand rather than at
+ * construction. The [isDeferrable] predicate identifies such edges.
+ *
+ * ```
+ *      ┌────── Provider<A> ──────┐
+ *      │     (deferrable edge)   │
+ *      ▼                         │
+ *   ┌─────┐                  ┌───┴───┐
+ *   │  A  ├─────────────────►│   B   │
+ *   └─────┘                  └───────┘
+ *
+ *   Tarjan groups A and B into one SCC because of the back-edge B -> A.
+ *   findMinimalDeferralSet picks B as the deferral candidate (its outgoing
+ *   edge to A is deferrable and that single choice breaks the cycle).
+ *   sortVerticesInSCC then ignores the soft edge B -> A and produces:
+ *
+ *       A, B    (A constructed first; B receives Provider<A>)
+ *
+ *   The deferred set ends up in `deferredTypes` so codegen knows to emit
+ *   a DelegateFactory wrapper for B's view of A.
+ * ```
+ *
+ * If a cycle has **no** deferrable edge, [onCycle] is invoked with the offending vertex list and
+ * the caller decides how to surface it (typically a compilation error). If a cycle has deferrable
+ * edges but no subset of deferring sources actually breaks it (rare, e.g., multiple interleaved
+ * cycles), [onCycle] is also invoked.
  *
  * @param fullAdjacency outgoing‑edge map (every vertex key must be present)
  * @param isDeferrable predicate for "edge may break a cycle"
@@ -148,31 +178,20 @@ internal fun <V : Comparable<V>> metroSort(
       topologicallySortComponentDag(componentDag, components.size)
     }
 
-  // Expand each component back to its original vertices
-  val sortedKeys = ArrayList<V>(fullAdjacency.size)
-  trace("Expand components") {
-    componentOrder.forEach { id ->
-      val component = components[id]
-      if (component.vertices.size == 1) {
-        // Single vertex - no cycle
-        sortedKeys += component.vertices[0]
-      } else {
-        // Multiple vertices in a cycle - sort them respecting non-deferrable dependencies
-        val deferredInScc = component.vertices.filterToSet { it in deferredTypes }
-        sortedKeys +=
-          sortVerticesInSCC(
-              component.vertices,
-              reachableAdjacency.forward,
-              isDeferrable,
-              deferredInScc,
-            )
-            .also { onSortedCycle(it) }
-      }
+  val sortedKeys =
+    trace("Expand components") {
+      expandComponents(
+        componentOrder = componentOrder,
+        components = components,
+        forwardAdjacency = reachableAdjacency.forward,
+        deferredTypes = deferredTypes,
+        isDeferrable = isDeferrable,
+        onSortedCycle = onSortedCycle,
+        expectedSize = fullAdjacency.size,
+      )
     }
-  }
 
   return GraphTopology(
-    // Expand each component back to its original vertices
     sortedKeys,
     deferredTypes,
     reachableAdjacency.forward.keys,
@@ -183,7 +202,48 @@ internal fun <V : Comparable<V>> metroSort(
   )
 }
 
-/** Finds the minimal set of nodes that need to be deferred to break all cycles in the SCC. */
+/**
+ * Picks the smallest set of vertices in this SCC that, when their deferrable outgoing edges are
+ * cut, leaves the remaining graph acyclic.
+ *
+ * "Minimal" matters because every deferred vertex becomes a `DelegateFactory` in generated code:
+ * fewer deferred sources = fewer wrappers = cleaner output and less indirection at runtime.
+ *
+ * ### Strategy
+ *
+ * 1. Walk the SCC and build:
+ *     - `sccAdjacency` — edges that stay inside the SCC (cross-SCC edges can't contribute to its
+ *       internal cycle).
+ *     - `deferrableEdgesFrom` — for each vertex, the set of its outgoing deferrable edges.
+ *     - `potentialCandidates` — every vertex that has at least one outgoing deferrable edge. Only
+ *       these can break the cycle, since deferring a vertex with no deferrable outgoing edge is a
+ *       no-op.
+ * 2. If there are no candidates, the cycle has no soft edges -> return empty (caller treats this as
+ *    a hard cycle).
+ * 3. Try each candidate **alone**, in priority order. The first one whose deferral makes the SCC
+ *    acyclic wins. Single-vertex deferral is the common case (one `Provider<T>` typically breaks a
+ *    2-cycle).
+ * 4. If no individual candidate works, try **all candidates together** as a last resort. Some
+ *    interleaved cycles need multiple soft cuts.
+ * 5. If even that fails, return empty (the available deferrable edges aren't enough to break the
+ *    cycle).
+ *
+ * Candidate priority: implicitly deferrable vertices (e.g. `@AssistedFactory`s, which the user
+ * already marked as constructed-on-demand) come first, then natural order. This keeps generated
+ * code more stable and prefers obvious-on-the-source choices over arbitrary picks.
+ *
+ * Cycle-checking is done via [ReusableCycleChecker], which masks the deferred edges during a
+ * standard recursive DFS instead of materializing a new adjacency map for each candidate test.
+ *
+ * Example: `A <-> B` with `B -> A` deferrable (`Provider<A>`):
+ * ```
+ *   sccAdjacency:        A -> B,  B -> A
+ *   deferrableEdgesFrom: B -> {A}
+ *   candidates:          {B}
+ *
+ *   Try {B}: mask B -> A, remaining edge is A -> B -> acyclic. Return {B}.
+ * ```
+ */
 private fun <V : Comparable<V>> findMinimalDeferralSet(
   vertices: List<V>,
   fullAdjacency: SortedMap<V, SortedSet<V>>,
@@ -310,8 +370,95 @@ private class ReusableCycleChecker<V>(
 }
 
 /**
- * Sorts vertices within an SCC by respecting non-deferrable dependencies. For cycles broken by
- * deferrable edges, we can still maintain a meaningful order.
+ * Expands the topologically sorted list of component IDs back into a flat list of original
+ * vertices.
+ *
+ * For each component (in dependency-respecting order):
+ * - If the component has a single vertex (a non-cycle node, or a cycle of size 1 from a self-loop),
+ *   append it directly.
+ * - If the component has multiple vertices (i.e., it's a cycle), call [sortVerticesInSCC] to order
+ *   the cycle's vertices internally, ignoring the deferrable edges from the chosen deferred
+ *   sources. Notify the caller via [onSortedCycle] so they can record the cycle for diagnostics or
+ *   codegen.
+ *
+ * Visual:
+ * ```
+ *   componentOrder:   [c0, c1, c2]      (Kahn's output: c0 has no deps, c2 depends on c0/c1)
+ *   components[c0]:   {X}               (single vertex)
+ *   components[c1]:   {A, B}            (cycle, B -> A is deferrable; A first then B)
+ *   components[c2]:   {Y}               (single vertex)
+ *
+ *   expanded:         [X, A, B, Y]
+ * ```
+ *
+ * @param componentOrder the topologically-sorted list of component IDs from
+ *   [topologicallySortComponentDag].
+ * @param components vertices grouped by component ID (from [computeStronglyConnectedComponents]).
+ * @param forwardAdjacency the reachable forward adjacency, used by [sortVerticesInSCC] to walk
+ *   intra-SCC dependencies.
+ * @param deferredTypes the set of vertices the caller has elected to defer (sources of soft edges).
+ * @param isDeferrable predicate matching [metroSort]'s parameter.
+ * @param onSortedCycle invoked once per multi-vertex SCC with the sorted cycle vertices.
+ * @param expectedSize total vertex count (used to pre-size the result list).
+ */
+private fun <V : Comparable<V>> expandComponents(
+  componentOrder: IntList,
+  components: List<Component<V>>,
+  forwardAdjacency: SortedMap<V, SortedSet<V>>,
+  deferredTypes: Set<V>,
+  isDeferrable: (V, V) -> Boolean,
+  onSortedCycle: (List<V>) -> Unit,
+  expectedSize: Int,
+): List<V> {
+  val sortedKeys = ArrayList<V>(expectedSize)
+  componentOrder.forEach { id ->
+    val component = components[id]
+    if (component.vertices.size == 1) {
+      // Single vertex (no cycle, or cycle-of-one from a self-loop). Emit it directly.
+      sortedKeys += component.vertices[0]
+    } else {
+      // Multi-vertex SCC: sort the cycle internally, ignoring soft edges from deferred sources.
+      val deferredInScc = component.vertices.filterToSet { it in deferredTypes }
+      sortedKeys +=
+        sortVerticesInSCC(component.vertices, forwardAdjacency, isDeferrable, deferredInScc).also {
+          onSortedCycle(it)
+        }
+    }
+  }
+  return sortedKeys
+}
+
+/**
+ * Orders the vertices **inside a single SCC** (a cycle) into a sensible linear order, ignoring the
+ * deferrable edges that will be cut at codegen time.
+ *
+ * Within an SCC we classify each edge as either **hard** (non-deferrable, or deferrable but the
+ * source isn't in [deferredInScc]) or **soft** (deferrable + source is deferred). Soft edges are
+ * the ones a `DelegateFactory` will paper over at runtime, so we pretend they don't exist when
+ * ordering — the remaining hard edges form a DAG inside the SCC, which we Kahn-sort.
+ *
+ * Example: `A <-> B` cycle, B -> A is deferrable, deferredInScc = {B}.
+ *
+ * ```
+ *   Edges (inside SCC):
+ *     A -> B   (hard: forward edge, A constructs B)
+ *     B -> A   (soft: deferrable AND B is deferred -> ignored)
+ *
+ *   Hard DAG inside SCC:    A -> B
+ *   Kahn output:            [A, B]
+ *
+ *   Generated code:
+ *     A is built normally
+ *     B is built with Provider<A> wrapping A's eventual instance
+ * ```
+ *
+ * The PriorityQueue tie-breaks the "ready" set to keep emission stable and codegen-friendly:
+ * 1. Deferred nodes first (they emit a `DelegateFactory` that their dependents need to wrap).
+ * 2. Then more hard dependents (popping high-fanout nodes earliest unblocks the most work).
+ * 3. Then natural order for determinism.
+ *
+ * @throws IllegalStateException if a hard cycle remains after removing soft edges (shouldn't happen
+ *   — [findMinimalDeferralSet] is supposed to have proved acyclicity).
  */
 private fun <V : Comparable<V>> sortVerticesInSCC(
   vertices: List<V>,
@@ -400,16 +547,101 @@ internal data class TarjanResult<V : Comparable<V>>(
 /**
  * Computes the strongly connected components (SCCs) of a directed graph using Tarjan's algorithm.
  *
- * NOTE: For performance and determinism, this implementation assumes [this] adjacency is already
- * sorted (both keys and each set of values).
+ * An SCC is a maximal subset of vertices in which every vertex can reach every other vertex **and
+ * is reachable from every other vertex** (mutual reachability — one-way reachability is not
+ * enough). A cycle is a single SCC containing every vertex on it; vertices that can be reached but
+ * cannot reach back form their own size-1 SCCs.
  *
- * @param roots An optional input of source roots to walk from. Defaults to this map's keys. This
- *   can be useful to only return accessible nodes.
- * @return A pair where the first element is a list of components (each containing an ID and its
- *   associated vertices) and the second element is a map that associates each vertex with the ID of
- *   its component.
- * @receiver A map representing the directed graph where the keys are vertices of type [V] and the
- *   values are sets of vertices to which each key vertex has outgoing edges.
+ * Example: five vertices forming one cycle plus one terminal vertex ->
+ *
+ * ```
+ *           ┌────────────────────── back-edge ─────────────┐
+ *           │                                              │
+ *           ▼                                              │
+ *       ┌───────┐    ┌───────┐    ┌───────┐    ┌───────┐   │
+ *       │   A   ├───►│   B   ├───►│   D   ├───►│   E   │   │
+ *       └───────┘    └───────┘    └───┬───┘    └───────┘   │
+ *                                     │                    │
+ *                                     ▼                    │
+ *                                 ┌───────┐                │
+ *                                 │   C   ├────────────────┘
+ *                                 └───────┘
+ *
+ *   SCCs:  {A, B, C, D}    cycle  A -> B -> D -> C -> A
+ *          {E}             reachable from the cycle but cannot reach back (no outgoing edge),
+ *                          so E is its own component despite being reachable from A
+ * ```
+ *
+ * Components are returned in **reverse topological order** (a property of Tarjan's): the first
+ * popped SCC is a sink (depends on no later SCC), the last is a source. Callers wanting forward
+ * topological order reverse the list (see how [topologicallySortComponentDag] is used).
+ *
+ * ### How it works
+ *
+ * Tarjan does a single DFS, marking each vertex with two integers:
+ * - `index[v]` — the order in which v was first visited (0, 1, 2, …).
+ * - `lowlink[v]` — the smallest `index` reachable from v's DFS subtree **without leaving the
+ *   current DFS path**.
+ *
+ * `lowlink[v] == index[v]` precisely when v is the root of an SCC: no descendant could reach an
+ * ancestor of v, so everything sitting above v on the SCC stack belongs to v's component.
+ *
+ * Two stacks are needed:
+ * - **DFS stack** — the current call path (`callStack` here, with parallel `edgeCursor` for "which
+ *   outgoing edge of v are we up to"). Pops as the DFS unwinds.
+ * - **SCC stack** — vertices visited but **not yet assigned to a component**, in DFS-discovery
+ *   order (`dfsStack`). When an SCC root finalises, we pop everything down to and including that
+ *   root from this stack — those popped vertices form the SCC.
+ *
+ * The two stacks differ because the SCC stack can hold a long chain across many backtracked DFS
+ * frames. In the example above, when we finish processing C's only outgoing edge (`C -> A`), C
+ * stays on the SCC stack — C still has no SCC assigned. Only when we finally backtrack all the way
+ * to A and find `lowlink[A] == index[A]` do we pop C, D, B, A together as one SCC.
+ *
+ * Walk-through of the example (edges visited in sorted order):
+ * ```
+ *  step  action                           index   lowlink  dfsStack          popped
+ *  ───────────────────────────────────────────────────────────────────────────────────
+ *  1     visit A                          A=0     A=0      [A]
+ *  2     A->B  visit B                     B=1     B=1      [A,B]
+ *  3     B->D  visit D                     D=2     D=2      [A,B,D]
+ *  4     D->C  visit C                     C=3     C=3      [A,B,D,C]
+ *  5     C->A  (A on stack; back-edge)             C=0      [A,B,D,C]
+ *  6     C done; lowlink≠index, don't pop
+ *        D inherits lowlink from C                D=0      [A,B,D,C]
+ *  7     D->E  visit E                     E=4     E=4      [A,B,D,C,E]
+ *  8     E done; lowlink==index -> pop                      [A,B,D,C]         {E}
+ *  9     D done; lowlink≠index, don't pop
+ *  10    B inherits                               B=0      [A,B,D,C]
+ *  11    A inherits                               A=0      [A,B,D,C]
+ *  12    A done; lowlink==index -> pop                      []                {C,D,B,A}
+ * ```
+ *
+ * Result: components = [{E}, {C, D, B, A}] (reverse-topo: sink first, source last).
+ *
+ * ### Implementation notes
+ *
+ * Standard Tarjan is recursive. For deep dependency chains (the 1000-module benchmark hits 1000+
+ * levels) recursion overflows the JVM stack, so we run an explicit iterative DFS using the
+ * `(callStack, edgeCursor)` pair where each frame holds `(v, current edge index)`.
+ *
+ * Vertices are mapped to dense int ids in sorted order. Adjacency, visited flags, and stacks become
+ * primitive `IntArray` / `BooleanArray` / `MutableIntList`s. This is cheaper than per-edge
+ * `IrTypeKey.compareTo` / `equals` work that Metro previously used, which then dominated the inner
+ * loop.
+ *
+ * NOTE: The receiver adjacency (both keys and each value set) is assumed to be already sorted. This
+ * preserves determinism of the int-id mapping and of the per-vertex edge ordering, so a given input
+ * always produces the same output.
+ *
+ * @param roots Optional set of source roots to walk from. If null, every key in the receiver is
+ *   walked (the entire graph is reachable). If provided, only vertices reachable from these roots
+ *   are visited; the rest stay [UNVISITED] and are filtered out of
+ *   [TarjanResult.reachableAdjacency].
+ * @return The list of components (in reverse topological order), the vertex->component-id map, and
+ *   the reachable forward/reverse adjacency over visited vertices only.
+ * @receiver A directed graph as `vertex -> outgoing edges`. Both the key set and each edge set must
+ *   be sorted.
  * @see <a
  *   href="https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm">Tarjan's
  *   algorithm</a>
@@ -434,16 +666,15 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
   val idToVertex = arrayOfNulls<Any>(n)
   val vertexToId = MutableObjectIntMap<V>(n)
   run {
-    var i = 0
-    for (key in keys) {
+    for ((i, key) in keys.withIndex()) {
       idToVertex[i] = key
       vertexToId[key] = i
-      i++
     }
   }
-  fun vertexAt(id: Int): V {
+
+  val vertexAt: (id: Int) -> V = { id ->
     @Suppress("UNCHECKED_CAST")
-    return idToVertex[id] as V
+    idToVertex[id] as V
   }
 
   // Build int-indexed adjacency. Each row is already sorted because the source SortedSet is
@@ -487,8 +718,8 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
   val callStack = MutableIntList(n)
   val edgeCursor = MutableIntList(n)
 
-  fun visit(start: Int) {
-    if (indexOfId[start] != UNVISITED) return
+  val visit: (start: Int) -> Unit = visit@{ start ->
+    if (indexOfId[start] != UNVISITED) return@visit
     // Set the depth index for `start` to the smallest unused index and push the first frame.
     callStack.add(start)
     edgeCursor.add(0)
@@ -578,32 +809,45 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
     components += component
   }
 
-  // Build reachable adjacency in V-space, filtering to only visited vertices.
-  // Build into HashMap/HashSet (O(1) inserts) then convert to the contract's
-  // SortedMap<V, SortedSet<V>> in a single pass at the end. For dense graphs (~6500 edges per
-  // vertex on the benchmark), per-edge TreeSet inserts (O(log m)) added up; HashSet+toSortedSet
-  // does the sort in bulk with much smaller per-edge constants.
+  // ── Build the reachable adjacency in V-space ──
+  //
+  // The original receiver adjacency may include vertices that the DFS never reached (they sit
+  // outside the chosen `roots`). The contract here is to return a `SortedMap<V, SortedSet<V>>`
+  // covering ONLY the vertices the DFS touched, with edges to UNVISITED targets filtered out.
+  //
+  // Build into HashMap/HashSet (O(1) inserts, sized to known counts) and convert to the sorted
+  // contract in a single bulk pass at the end. For dense graphs (~6500 edges per vertex on the
+  // benchmark) per-edge TreeSet inserts (O(log m) each) added up; HashSet -> toSortedSet() does
+  // the sort once per row with much smaller per-edge constants.
   val rawForward = HashMap<V, HashSet<V>>(n)
   val reachableReverse = HashMap<V, MutableSet<V>>(n)
   for (id in 0 until n) {
+    // Skip vertices the DFS never visited — they're not part of the reachable subgraph.
     if (indexOfId[id] == UNVISITED) continue
     val vertex = vertexAt(id)
     val edges = adj[id]!!
     if (edges.isEmpty()) {
+      // Vertex has no outgoing edges. Record an empty set so callers that index into the result
+      // (e.g. `forward[v]`) see a present-but-empty entry rather than null.
       rawForward[vertex] = HashSet(0)
       continue
     }
     val reachableEdges = HashSet<V>(edges.size)
     for (toId in edges) {
+      // Filter out edges that leave the reachable subgraph: if the DFS didn't reach `toId`,
+      // it's not part of the result and any edge into it is dropped.
       if (indexOfId[toId] == UNVISITED) continue
       val toVertex = vertexAt(toId)
       reachableEdges.add(toVertex)
+      // Mirror the edge into the reverse adjacency so consumers can walk dependents.
       reachableReverse.getAndAdd(toVertex, vertex)
     }
     rawForward[vertex] = reachableEdges
   }
 
-  // Sort once at the end.
+  // Convert HashMap<V, HashSet<V>> -> SortedMap<V, SortedSet<V>>. The TreeMap inserts here are
+  // O(log(n)) but they happen once per vertex (not once per edge); per-row sorts via
+  // `toSortedSet()` are O(mlog(m)) in bulk.
   val reachableForward = sortedMapOf<V, SortedSet<V>>()
   for ((vertex, set) in rawForward) {
     reachableForward[vertex] = if (set.isEmpty()) emptySortedSet() else set.toSortedSet()
@@ -616,17 +860,44 @@ private const val UNVISITED = -1
 private val EMPTY_INT_ARRAY = IntArray(0)
 
 /**
- * Builds a DAG of SCCs from the original graph edges.
+ * Collapses the per-vertex graph into a DAG over component IDs. Each SCC becomes a single node;
+ * edges that cross between SCCs become edges in the DAG.
  *
- * In this DAG, nodes represent SCCs of the input graph, and edges represent dependencies between
- * SCCs. The graph is constructed such that arrows are reversed for dependency tracking (Kahn's
- * algorithm compatibility).
+ * **Edge direction is reversed** from the original graph. The original edges read "dependent ->
+ * prerequisite" (a binding's outgoing edges point to what it needs). Kahn's topological sort works
+ * in the opposite direction: we want to process prerequisites first, then nodes whose inputs are
+ * all ready. So for every original edge `from -> to`, we record an edge in the DAG `componentOf[to]
+ * -> componentOf[from]` (read as "prereq -> dependent"). Self-edges within an SCC are dropped since
+ * they collapse onto the same component.
  *
- * @param originalEdges A map representing the edges of the original graph, where the key is a
- *   vertex and the value is a list of vertices it points to.
- * @param componentOf A map associating each vertex with its corresponding SCC number.
- * @return A map representing the DAG, where the key is the SCC number, and the value is a set of
- *   SCCs it depends on.
+ * Example:
+ * ```
+ *   Original (vertex graph):
+ *     X -> A      A and B form an SCC (cycle A -> B -> A);
+ *     A -> B      X is its own SCC; Y is its own SCC;
+ *     B -> A      Y depends on B (so on the SCC).
+ *     B -> Y
+ *
+ *   Components: c0={X}, c1={A,B}, c2={Y}
+ *
+ *   Cross-SCC edges in the original graph:
+ *     X -> A     ->   c0 -> c1
+ *     B -> Y     ->   c1 -> c2
+ *     (A -> B and B -> A stay inside c1; dropped)
+ *
+ *   DAG returned (edges reversed for Kahn's):
+ *     c1 ← c0           reads as "c0 must come before c1"
+ *     c2 ← c1           reads as "c1 must come before c2"
+ *
+ *   So result map looks like:
+ *     c1 -> {c0}
+ *     c2 -> {c1}
+ * ```
+ *
+ * @param originalEdges per-vertex outgoing edges of the input graph.
+ * @param componentOf vertex -> SCC id, from [computeStronglyConnectedComponents].
+ * @return A map keyed by SCC id whose values are the set of SCC ids that must run **before** the
+ *   key (i.e., prerequisites, in Kahn-compatible orientation).
  */
 private fun <V> buildComponentDag(
   originalEdges: Map<V, Set<V>>,
@@ -641,7 +912,7 @@ private fun <V> buildComponentDag(
       // dependent side
       val dependentComp = componentOf[toVertex]
       if (prereqComp != dependentComp) {
-        // Reverse the arrow so Kahn sees "prereq → dependent"
+        // Reverse the arrow so Kahn sees "prereq -> dependent"
         dag.getOrPut(dependentComp, ::MutableIntSet).add(prereqComp)
       }
     }
@@ -651,14 +922,45 @@ private fun <V> buildComponentDag(
 }
 
 /**
- * Performs a Kahn topological sort on the [dag] and returns the sorted order.
+ * Topologically sorts the component DAG using Kahn's algorithm.
  *
- * @param dag A map representing the DAG, where keys are node identifiers and values are sets of
- *   child node identifiers (edges).
- * @param componentCount The total number of components (nodes) in the graph.
- * @return A list of integers representing the topologically sorted order of the nodes. Throws an
- *   exception if a cycle remains in the graph, which should be impossible after a proper SCC
- *   collapse.
+ * At a glance:
+ * 1. Compute the in-degree of every node (how many prereqs point at it).
+ * 2. Seed a worklist with every node whose in-degree is 0 (no prereqs).
+ * 3. Pop a node from the worklist, append it to the output, and decrement the in-degree of each of
+ *    its dependents. Any dependent that drops to in-degree 0 is now ready and joins the worklist.
+ * 4. Repeat until the worklist drains. If fewer nodes were emitted than exist, a cycle was present
+ *    (impossible here since SCC collapse already removed cycles).
+ *
+ * Example using the DAG from [buildComponentDag] (`c1 -> {c0}`, `c2 -> {c1}`):
+ * ```
+ *   in-degrees:  c0=0, c1=1, c2=1
+ *
+ *   step 1: worklist = [c0]                emit c0, decrement c1 -> 0; worklist = [c1]
+ *   step 2: worklist = [c1]                emit c1, decrement c2 -> 0; worklist = [c2]
+ *   step 3: worklist = [c2]                emit c2;                   worklist = []
+ *
+ *   order:    [c0, c1, c2]
+ * ```
+ *
+ * Note the [PriorityQueue] is intentionally keyed by component id. After processing a node,
+ * multiple dependents may become ready at the same time; ordering them by id keeps the output
+ * stable across builds. From the doc on the queue below:
+ * ```
+ *   (0)──▶(2)
+ *    │
+ *    └───▶(1)
+ *
+ *   After processing 0, both 1 and 2 are ready. A FIFO ArrayDeque would emit them in whatever
+ *   order Kahn happens to find them; PriorityQueue dequeues the lowest id first (1 before 2),
+ *   keeping generated code stable.
+ * ```
+ *
+ * @param dag prereq-oriented DAG from [buildComponentDag]: keys are dependent components, values
+ *   are the prerequisite components they depend on.
+ * @param componentCount total number of components (also the upper bound on node ids).
+ * @return Component ids in topological order (prereqs first, dependents last).
+ * @throws IllegalStateException if a cycle remains. Should be impossible after SCC collapse.
  * @see <a href="https://en.wikipedia.org/wiki/Topological_sorting">Topological sorting</a>
  * @see <a href="https://www.interviewcake.com/concept/java/topological-sort">Topological sort</a>
  */
@@ -667,24 +969,11 @@ private fun topologicallySortComponentDag(dag: IntObjectMap<IntSet>, componentCo
   // Avoid temporary list allocation from flatten()
   dag.forEachValue { children -> children.forEach { child -> inDegree[child]++ } }
 
-  /**
-   * Why a [PriorityQueue] instead of a FIFO queue like [ArrayDeque]?
-   *
-   * ```
-   * (0)──▶(2)
-   *  │
-   *  └───▶(1)
-   * ```
-   *
-   * After we process component 0, both 1 and 2 are "ready". A plain ArrayDeque would enqueue them
-   * in whatever order the [dag]'s keys are, which isn't deterministic.
-   *
-   * Using a PriorityQueue means we *always* dequeue the lowest id first (1 before 2 in this
-   * example). That keeps generated code consistent across builds.
-   */
+  // PriorityQueue (not FIFO) so multiple ready nodes are emitted in id order — see the function
+  // KDoc above for why determinism matters here.
   val queue =
     PriorityQueue<Int>().apply {
-      // Seed the work‑queue with every component whose in‑degree is 0.
+      // Seed with every component whose in-degree is 0 (no prerequisites).
       for (id in 0 until componentCount) {
         if (inDegree[id] == 0) {
           add(id)
