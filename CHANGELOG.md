@@ -11,6 +11,7 @@ Changelog
 - **[IR]** Compare `IrTypeKey` instances structurally instead of by rendered strings (improves top-line compiler performance traces ~5–15%).
 - **[IR/graph]** Faster compilation for modules with many `@Binds`/`@ContributesBinding` declarations by batching incremental-compilation lookup tracking per graph rather than per-callable.
 - **[IR/graph]** Small additional compile-time win from using cheaper short-lived working sets during binding-graph population.
+- **[IR]** Significantly faster binding-graph validation on projects with deep or wide dependency graphs (the topological-sort phase drops ~60% in benchmarks).
 - **[IR/graph]** When populating bindings from roots, track a `processedKeys` set so duplicate queue entries don't re-walk dependency lists. This avoids unnecessary extra iterations when doing an initial reachability walk.
 - **[IR/graph]** Merge two annotation walks in supertype collection into a single pass with a per-annotation-class meta-annotation cache, so `@Singleton`/`@Scope`-style annotations appearing across many supertypes are meta-walked once instead of N times.
 - **[IR/tracing]** Add a lot more tracing spans for more granular tracing.
