@@ -27,11 +27,7 @@ private constructor(
   val classId by memoize { type.rawTypeOrNull()?.classId }
 
   private val cachedRender by memoize { render(short = false, includeQualifier = true) }
-  private val cachedHashCode by memoize {
-    var result = type.hashCode()
-    result = 31 * result + (qualifier?.hashCode() ?: 0)
-    result
-  }
+  private val cachedHashCode: Int = (type.hashCode() * 31) + (qualifier?.hashCode() ?: 0)
 
   val hasTypeArgs: Boolean
     get() = type is IrSimpleType && type.arguments.isNotEmpty()
