@@ -180,7 +180,11 @@ internal class BindingGraphGenerator(
     val inheritedProviderFactories = inheritedData.providerFactories
     val inheritedBindsCallableKeys = inheritedData.bindsCallableKeys
 
-    trace("Collect provider factories") {
+    val ownProviderFactoryCount = node.providerFactories.values.sumOf { it.size }
+    val inheritedProviderFactoryCount = inheritedProviderFactories.size
+    trace(
+      "Collect provider factories (own=$ownProviderFactoryCount, inh=$inheritedProviderFactoryCount)"
+    ) {
       // Collect all provider factories to add (flatten from lists)
       val providerFactoriesToAdd = buildList {
         node.providerFactories.values.flatten().forEach { factory ->
@@ -249,7 +253,9 @@ internal class BindingGraphGenerator(
       }
     }
 
-    trace("Collect binds callables") {
+    val ownBindsCount = node.bindsCallables.values.sumOf { it.size }
+    val inheritedBindsCount = inheritedData.bindsCallables.size
+    trace("Collect binds callables (own=$ownBindsCount, inh=$inheritedBindsCount)") {
       // Collect all binds callables to add (flatten from lists)
       val bindsCallablesToAdd = buildList {
         node.bindsCallables.values.flatten().forEach { callable ->
