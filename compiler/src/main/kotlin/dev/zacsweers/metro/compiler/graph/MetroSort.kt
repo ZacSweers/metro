@@ -417,102 +417,182 @@ internal data class TarjanResult<V : Comparable<V>>(
 internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnectedComponents(
   roots: SortedSet<V>? = null
 ): TarjanResult<V> {
+  // Map vertices to dense int ids in sorted order so adjacency lookups, visited bookkeeping, and
+  // the DFS stack can run on primitive arrays. This avoids per-edge string-keyed map lookups
+  // (IrTypeKey.compareTo / equals) inside the recursion.
+  val n = size
+  if (n == 0) {
+    return TarjanResult(
+      components = emptyList(),
+      componentOf = MutableObjectIntMap(),
+      reachableAdjacency = GraphAdjacency(sortedMapOf(), emptyMap()),
+    )
+  }
+
+  // Store as Array<Any?> to avoid array-class cast issues with generic V; we cast individual
+  // elements back to V on read.
+  val idToVertex = arrayOfNulls<Any>(n)
+  val vertexToId = MutableObjectIntMap<V>(n)
+  run {
+    var i = 0
+    for (key in keys) {
+      idToVertex[i] = key
+      vertexToId[key] = i
+      i++
+    }
+  }
+  fun vertexAt(id: Int): V {
+    @Suppress("UNCHECKED_CAST")
+    return idToVertex[id] as V
+  }
+
+  // Build int-indexed adjacency. Each row is already sorted because the source SortedSet is
+  // sorted and ids preserve that order.
+  val adj = arrayOfNulls<IntArray>(n)
+  for ((vertex, edges) in this) {
+    val fromId = vertexToId[vertex]
+    if (edges.isEmpty()) {
+      adj[fromId] = EMPTY_INT_ARRAY
+    } else {
+      val arr = IntArray(edges.size)
+      var i = 0
+      for (e in edges) {
+        arr[i++] = vertexToId[e]
+      }
+      adj[fromId] = arr
+    }
+  }
+
+  // Tarjan state, all primitive-backed.
+  val indexOfId = IntArray(n) { UNVISITED }
+  val lowLinkOfId = IntArray(n)
+  val onStack = BooleanArray(n)
+  val componentOfId = IntArray(n) { UNVISITED }
+  val dfsStack = MutableIntList(n)
+
   var nextIndex = 0
   var nextComponentId = 0
+  // Materialised SCC vertex lists (in int form) keyed by component id.
+  val componentMembers = mutableListOf<MutableIntList>()
 
-  // vertices of the *current* DFS branch
-  val stack = ArrayDeque<V>()
-  val onStack = mutableSetOf<V>()
+  // Iterative Tarjan: avoids recursion-depth blowups on deep graphs.
+  // Each frame holds (v, current edge index).
+  val callStack = MutableIntList(n)
+  val edgeCursor = MutableIntList(n)
 
-  // DFS discovery time of each vertex
-  // Analogous to "v.index" refs in the linked algo
-  val indexMap = MutableObjectIntMap<V>()
-  // The lowest discovery index that v can reach without
-  // leaving the current DFS stack.
-  // Analogous to "v.lowlink" refs in the linked algo
-  val lowLinkMap = MutableObjectIntMap<V>()
-  // Mapping of V to the id of the SCC that v ends up in
-  val componentOf = MutableObjectIntMap<V>()
-  val components = mutableListOf<Component<V>>()
+  fun visit(start: Int) {
+    if (indexOfId[start] != UNVISITED) return
+    callStack.add(start)
+    edgeCursor.add(0)
+    indexOfId[start] = nextIndex
+    lowLinkOfId[start] = nextIndex
+    nextIndex++
+    dfsStack.add(start)
+    onStack[start] = true
 
-  // Build reachable adjacency (forward and reverse) during traversal (avoids separate filtering
-  // pass)
+    while (callStack.isNotEmpty()) {
+      val top = callStack.size - 1
+      val v = callStack[top]
+      val edges = adj[v]!!
+      val cursor = edgeCursor[top]
+
+      if (cursor < edges.size) {
+        edgeCursor[top] = cursor + 1
+        val w = edges[cursor]
+        if (indexOfId[w] == UNVISITED) {
+          // Recurse on w by pushing a new frame.
+          indexOfId[w] = nextIndex
+          lowLinkOfId[w] = nextIndex
+          nextIndex++
+          dfsStack.add(w)
+          onStack[w] = true
+          callStack.add(w)
+          edgeCursor.add(0)
+        } else if (onStack[w]) {
+          if (indexOfId[w] < lowLinkOfId[v]) {
+            lowLinkOfId[v] = indexOfId[w]
+          }
+        }
+        continue
+      }
+
+      // All edges of v processed: pop. If v is an SCC root, materialise the component.
+      if (lowLinkOfId[v] == indexOfId[v]) {
+        val componentId = nextComponentId++
+        val members = MutableIntList()
+        while (true) {
+          val popped = dfsStack.removeAt(dfsStack.size - 1)
+          onStack[popped] = false
+          members.add(popped)
+          componentOfId[popped] = componentId
+          if (popped == v) break
+        }
+        componentMembers.add(members)
+      }
+
+      callStack.removeAt(top)
+      edgeCursor.removeAt(top)
+      // Propagate lowlink up to the parent frame, mirroring the recursive
+      // `lowLinkMap[parent] = min(lowLinkMap[parent], lowLinkMap[v])` step.
+      if (callStack.isNotEmpty()) {
+        val parent = callStack[callStack.size - 1]
+        if (lowLinkOfId[v] < lowLinkOfId[parent]) {
+          lowLinkOfId[parent] = lowLinkOfId[v]
+        }
+      }
+    }
+  }
+
+  if (roots != null) {
+    for (root in roots) {
+      val rootId = vertexToId.getOrDefault(root, UNVISITED)
+      if (rootId != UNVISITED) visit(rootId)
+    }
+  } else {
+    for (id in 0 until n) {
+      visit(id)
+    }
+  }
+
+  // Materialise V-typed Component list and componentOf map.
+  val components = ArrayList<Component<V>>(componentMembers.size)
+  val componentOf = MutableObjectIntMap<V>(n)
+  for ((cid, members) in componentMembers.withIndex()) {
+    val component = Component<V>(cid)
+    members.forEach { id ->
+      val vertex = vertexAt(id)
+      component.vertices += vertex
+      componentOf[vertex] = cid
+    }
+    components += component
+  }
+
+  // Build reachable adjacency in V-space, filtering to only visited vertices.
   val reachableForward = sortedMapOf<V, SortedSet<V>>()
   val reachableReverse = mutableMapOf<V, MutableSet<V>>()
-
-  fun strongConnect(v: V) {
-    // Set the depth index for v to the smallest unused index
-    indexMap[v] = nextIndex
-    lowLinkMap[v] = nextIndex
-    nextIndex++
-
-    stack += v
-    onStack += v
-
-    // Get the edges for this vertex
-    val edges = this[v].orEmpty()
-
-    for (w in edges) {
-      if (w !in indexMap) {
-        // Successor w has not yet been visited; recurse on it
-        strongConnect(w)
-        lowLinkMap[v] = minOf(lowLinkMap[v], lowLinkMap[w])
-      } else if (w in onStack) {
-        // Successor w is in stack S and hence in the current SCC
-        // If w is not on stack, then (v, w) is an edge pointing to an SCC already found and must be
-        // ignored
-        // See below regarding the next line
-        lowLinkMap[v] = minOf(lowLinkMap[v], indexMap[w])
-      }
+  for (id in 0 until n) {
+    if (indexOfId[id] == UNVISITED) continue
+    val vertex = vertexAt(id)
+    val edges = adj[id]!!
+    if (edges.isEmpty()) {
+      reachableForward[vertex] = emptySortedSet()
+      continue
     }
-
-    // If v is a root node, pop the stack and generate an SCC
-    if (lowLinkMap[v] == indexMap[v]) {
-      val component = Component<V>(nextComponentId++)
-      while (true) {
-        val popped = stack.removeLast()
-        onStack -= popped
-        component.vertices += popped
-        componentOf[popped] = component.id
-        if (popped == v) {
-          break
-        }
-      }
-      components += component
+    val reachableEdges = sortedSetOf<V>()
+    for (toId in edges) {
+      if (indexOfId[toId] == UNVISITED) continue
+      val toVertex = vertexAt(toId)
+      reachableEdges += toVertex
+      reachableReverse.getAndAdd(toVertex, vertex)
     }
-  }
-
-  val startVertices = roots ?: keys
-
-  for (v in startVertices) {
-    if (v !in indexMap) {
-      strongConnect(v)
-    }
-  }
-
-  // Build reachable adjacency (forward and reverse) after traversal (we now know which vertices are
-  // reachable)
-  // This is done after traversal because we need to filter edges to only reachable targets
-  indexMap.forEachKey { v ->
-    val edges = this[v]
-    if (edges != null) {
-      // Filter edges to only include reachable targets
-      val reachableEdges = HashSet<V>()
-      for (edge in edges) {
-        if (edge in indexMap) {
-          reachableEdges.add(edge)
-          // Build reverse adjacency: for each edge v -> w, add v to reverse[w]
-          reachableReverse.getAndAdd(edge, v)
-        }
-      }
-      reachableForward[v] = reachableEdges.toSortedSet()
-    } else {
-      reachableForward[v] = emptySortedSet()
-    }
+    reachableForward[vertex] = reachableEdges
   }
 
   return TarjanResult(components, componentOf, GraphAdjacency(reachableForward, reachableReverse))
 }
+
+private const val UNVISITED = -1
+private val EMPTY_INT_ARRAY = IntArray(0)
 
 /**
  * Builds a DAG of SCCs from the original graph edges.
