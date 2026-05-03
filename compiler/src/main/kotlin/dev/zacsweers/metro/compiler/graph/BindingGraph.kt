@@ -249,7 +249,8 @@ internal open class MutableBindingGraph<
           if (typeKey in bindings) continue
           stack.withEntry(stack.newBindingStackEntry(depKey, binding, roots)) {
             // If the binding isn't present, we'll report it later
-            val newBindings = computeBindings(depKey, bindings, stack)
+            val newBindings =
+              trace("Compute new bindings") { computeBindings(depKey, bindings, stack) }
             if (newBindings.isNotEmpty()) {
               for (newBinding in newBindings) {
                 bindingQueue.addLast(newBinding)

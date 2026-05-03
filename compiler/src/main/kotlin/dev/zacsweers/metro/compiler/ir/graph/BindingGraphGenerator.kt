@@ -260,13 +260,15 @@ internal class BindingGraphGenerator(
 
       for ((typeKey, bindsCallable) in bindsCallablesToAdd) {
         // Track IC lookups but don't add bindings yet - they'll be added lazily
-        trackFunctionCall(node.sourceGraph, bindsCallable.function)
-        trackFunctionCall(node.sourceGraph, bindsCallable.callableMetadata.mirrorFunction)
-        trackClassLookup(node.sourceGraph, bindsCallable.function.parentAsClass)
-        trackClassLookup(
-          node.sourceGraph,
-          bindsCallable.callableMetadata.mirrorFunction.parentAsClass,
-        )
+        trace("Track IC for binds") {
+          trackFunctionCall(node.sourceGraph, bindsCallable.function)
+          trackFunctionCall(node.sourceGraph, bindsCallable.callableMetadata.mirrorFunction)
+          trackClassLookup(node.sourceGraph, bindsCallable.function.parentAsClass)
+          trackClassLookup(
+            node.sourceGraph,
+            bindsCallable.callableMetadata.mirrorFunction.parentAsClass,
+          )
+        }
 
         val isInherited = typeKey in inheritedBindsCallableKeys
         if (typeKey in bindingLookup && isInherited) {
@@ -306,7 +308,7 @@ internal class BindingGraphGenerator(
         // Use cached binding if available, otherwise create and cache
         val binding =
           mirrorFunction.cachedAliasBinding
-            ?: run {
+            ?: trace("Resolve binds alias binding") {
               val parameters = bindsCallable.function.parameters()
               val bindsImplType =
                 parameters.extensionOrFirstParameter?.contextualTypeKey
