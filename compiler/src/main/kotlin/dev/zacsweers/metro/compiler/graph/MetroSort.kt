@@ -464,6 +464,12 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
   }
 
   // Tarjan state, all primitive-backed.
+  // indexOfId[v] is v's DFS discovery time (analogous to "v.index" in the classic algorithm).
+  // lowLinkOfId[v] is the lowest discovery index v can reach without leaving the current DFS
+  // stack (analogous to "v.lowlink").
+  // onStack[v] tracks whether v is currently on `dfsStack` (the SCC-membership stack).
+  // componentOfId[v] is filled with the SCC id once v has been assigned to a component.
+  // dfsStack holds vertices of the current DFS branch.
   val indexOfId = IntArray(n) { UNVISITED }
   val lowLinkOfId = IntArray(n)
   val onStack = BooleanArray(n)
@@ -475,13 +481,15 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
   // Materialised SCC vertex lists (in int form) keyed by component id.
   val componentMembers = mutableListOf<MutableIntList>()
 
-  // Iterative Tarjan: avoids recursion-depth blowups on deep graphs.
-  // Each frame holds (v, current edge index).
+  // Iterative Tarjan: a recursive `strongConnect(v)` would blow the JVM stack on deep dependency
+  // chains, so we fold the recursion into an explicit (callStack, edgeCursor) pair where each
+  // frame is `(v, current edge index)`.
   val callStack = MutableIntList(n)
   val edgeCursor = MutableIntList(n)
 
   fun visit(start: Int) {
     if (indexOfId[start] != UNVISITED) return
+    // Set the depth index for `start` to the smallest unused index and push the first frame.
     callStack.add(start)
     edgeCursor.add(0)
     indexOfId[start] = nextIndex
@@ -500,7 +508,7 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
         edgeCursor[top] = cursor + 1
         val w = edges[cursor]
         if (indexOfId[w] == UNVISITED) {
-          // Recurse on w by pushing a new frame.
+          // Successor w has not yet been visited; "recurse" on it by pushing a new frame.
           indexOfId[w] = nextIndex
           lowLinkOfId[w] = nextIndex
           nextIndex++
@@ -509,6 +517,8 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
           callStack.add(w)
           edgeCursor.add(0)
         } else if (onStack[w]) {
+          // Successor w is on the SCC stack and hence in the current SCC. If w is not on the
+          // stack, then (v, w) points to an SCC already finalised and must be ignored.
           if (indexOfId[w] < lowLinkOfId[v]) {
             lowLinkOfId[v] = indexOfId[w]
           }
@@ -516,7 +526,8 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
         continue
       }
 
-      // All edges of v processed: pop. If v is an SCC root, materialise the component.
+      // All edges of v processed. If v is an SCC root (lowlink == index), pop everything down to
+      // and including v from the SCC stack and materialise it as a component.
       if (lowLinkOfId[v] == indexOfId[v]) {
         val componentId = nextComponentId++
         val members = MutableIntList()
@@ -568,24 +579,34 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
   }
 
   // Build reachable adjacency in V-space, filtering to only visited vertices.
-  val reachableForward = sortedMapOf<V, SortedSet<V>>()
-  val reachableReverse = mutableMapOf<V, MutableSet<V>>()
+  // Build into HashMap/HashSet (O(1) inserts) then convert to the contract's
+  // SortedMap<V, SortedSet<V>> in a single pass at the end. For dense graphs (~6500 edges per
+  // vertex on the benchmark), per-edge TreeSet inserts (O(log m)) added up; HashSet+toSortedSet
+  // does the sort in bulk with much smaller per-edge constants.
+  val rawForward = HashMap<V, HashSet<V>>(n)
+  val reachableReverse = HashMap<V, MutableSet<V>>(n)
   for (id in 0 until n) {
     if (indexOfId[id] == UNVISITED) continue
     val vertex = vertexAt(id)
     val edges = adj[id]!!
     if (edges.isEmpty()) {
-      reachableForward[vertex] = emptySortedSet()
+      rawForward[vertex] = HashSet(0)
       continue
     }
-    val reachableEdges = sortedSetOf<V>()
+    val reachableEdges = HashSet<V>(edges.size)
     for (toId in edges) {
       if (indexOfId[toId] == UNVISITED) continue
       val toVertex = vertexAt(toId)
-      reachableEdges += toVertex
+      reachableEdges.add(toVertex)
       reachableReverse.getAndAdd(toVertex, vertex)
     }
-    reachableForward[vertex] = reachableEdges
+    rawForward[vertex] = reachableEdges
+  }
+
+  // Sort once at the end.
+  val reachableForward = sortedMapOf<V, SortedSet<V>>()
+  for ((vertex, set) in rawForward) {
+    reachableForward[vertex] = if (set.isEmpty()) emptySortedSet() else set.toSortedSet()
   }
 
   return TarjanResult(components, componentOf, GraphAdjacency(reachableForward, reachableReverse))
