@@ -6,6 +6,7 @@ Changelog
 
 ### Enhancements
 
+- **[IR / runtime]** For multibound maps/sets with exactly one element, Metro now generates optimized IR that uses optimized `SingletonSet`/`SingletonMap` implementations at runtime and skips the unnecessary throwaway builder allocation. Note that, when using interop, the generated code for Dagger's internal set/map factories still generates the necessary builder intermediary.
 - **[IR]** Do not process platform type supertypes.
 - **[IR]** Make a number of compiler internals lazier and cached.
 - **[IR]** Compare `IrTypeKey` instances structurally instead of by rendered strings (improves top-line compiler performance traces ~5–15%).

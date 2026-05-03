@@ -1091,7 +1091,7 @@ public data class MetroOptions(
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
-    public var enableFastInit: Boolean = base.enableSwitchingProviders
+    public var enableSwitchingProviders: Boolean = base.enableSwitchingProviders
     public var publicScopedProviderSeverity: DiagnosticSeverity = base.publicScopedProviderSeverity
     public var nonPublicContributionSeverity: DiagnosticSeverity =
       base.nonPublicContributionSeverity
@@ -1301,7 +1301,7 @@ public data class MetroOptions(
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
-        enableSwitchingProviders = enableFastInit,
+        enableSwitchingProviders = enableSwitchingProviders,
         publicScopedProviderSeverity = publicScopedProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
@@ -1522,7 +1522,7 @@ public data class MetroOptions(
 
           KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = configuration.getAsInt(entry)
 
-          ENABLE_SWITCHING_PROVIDERS -> enableFastInit = configuration.getAsBoolean(entry)
+          ENABLE_SWITCHING_PROVIDERS -> enableSwitchingProviders = configuration.getAsBoolean(entry)
 
           PUBLIC_SCOPED_PROVIDER_SEVERITY ->
             publicScopedProviderSeverity =

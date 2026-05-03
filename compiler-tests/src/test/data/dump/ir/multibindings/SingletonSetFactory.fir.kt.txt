@@ -1,0 +1,120 @@
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "bindOnly", propertyName = "", startOffset = 279, endOffset = 308)
+    abstract fun String.bindOnly_intoset(): String
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    private val setOfStringProvider: Provider<Set<String>>
+      private get(): Provider<Set<String>> {
+        return Companion.singleton<String>(provider = Companion.create(instance = <this>.#thisGraphInstance))
+      }
+
+    override val tags: Function0<Set<String>>
+      override get(): Function0<Set<String>> {
+        return <this>.<get-setOfStringProvider>()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideOnly", propertyName = "", startOffset = 215, endOffset = 259, newInstanceName = "provideOnly")
+  class ProvideOnlyMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): Factory<String> {
+        return ProvideOnlyMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideOnly(instance: AppGraph): String {
+        return instance.provideOnly()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return Companion.provideOnly(instance = <this>.#instance)
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Binds
+  @IntoSet
+  @ComptimeOnly
+  abstract fun String.bindOnly(): String {
+    return error(message = "Never called")
+  }
+
+  @Provides
+  fun provideOnly(): String {
+    return "only"
+  }
+
+  abstract val tags: Function0<Set<String>>
+    abstract get
+
+}
