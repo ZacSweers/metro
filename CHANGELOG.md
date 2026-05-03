@@ -6,19 +6,19 @@ Changelog
 
 ### Enhancements
 
-- **[IR / runtime]** For multibound maps/sets with exactly one element, Metro now generates optimized IR that uses optimized `SingletonSet`/`SingletonMap` implementations at runtime and skips the unnecessary throwaway builder allocation. Note that, when using interop, the generated code for Dagger's internal set/map factories still generates the necessary builder intermediary.
-- **[IR]** Do not process platform type supertypes.
-- **[IR]** Make a number of compiler internals lazier and cached.
-- **[IR]** Compare `IrTypeKey` instances structurally instead of by rendered strings (improves top-line compiler performance traces ~5–15%).
-- **[IR/graph]** Faster compilation for modules with many `@Binds`/`@ContributesBinding` declarations by batching incremental-compilation lookup tracking per graph rather than per-callable.
-- **[IR/graph]** Small additional compile-time win from using cheaper short-lived working sets during binding-graph population.
-- **[IR]** Significantly faster binding-graph validation on projects with deep or wide dependency graphs (the topological-sort phase drops ~60% in benchmarks).
-- **[IR/graph]** When populating bindings from roots, track a `processedKeys` set so duplicate queue entries don't re-walk dependency lists. This avoids unnecessary extra iterations when doing an initial reachability walk.
-- **[IR/graph]** Merge two annotation walks in supertype collection into a single pass with a per-annotation-class meta-annotation cache, so `@Singleton`/`@Scope`-style annotations appearing across many supertypes are meta-walked once instead of N times.
+- **[IR, runtime]** For multibound maps/sets with exactly one element, Metro now generates optimized IR that uses optimized `SingletonSet`/`SingletonMap` implementations at runtime and skips the unnecessary throwaway builder allocation. Note that, when using interop, the generated code for Dagger's internal set/map factories still generates the necessary builder intermediary.
+- **[IR]** Make `SwitchingProvider.invoke()` faster by hoisting the `id` field into a local before the `when`, allowing the JVM backend to lower it to `tableswitch` (O(1)) instead of a chain of integer compares.
+- **[IR]** Empty `Set` multibindings accessed through a provider now emit `SetFactory.empty()` (a singleton) rather than allocating a builder and an empty backing set on every graph init.
+- **[IR]** Make a number of compiler internals lazier, cached, or faster. Improves top-line compiler performance traces ~15%.
+    - **[IR]** Do not process platform type supertypes.
+    - **[IR]** Compare `IrTypeKey` instances structurally instead of by rendered strings.
+    - **[IR/graph]** Faster compilation for modules with many `@Binds`/`@ContributesBinding` declarations by batching incremental-compilation lookup tracking per graph rather than per-callable.
+    - **[IR/graph]** Small additional compile-time win from using cheaper short-lived working sets during binding-graph population.
+    - **[IR/graph]** Significantly faster binding-graph validation on projects with deep or wide dependency graphs (the graph seal drops ~60% in benchmarks).
+    - **[IR/graph]** When populating bindings from roots, track a `processedKeys` set so duplicate queue entries don't re-walk dependency lists. This avoids unnecessary extra iterations when doing an initial reachability walk.
+    - **[IR/graph]** Merge two annotation walks in supertype collecting into a single pass with a per-annotation-class meta-annotation cache, so `@Qualifier`/`@Scope`-style annotations appearing across many supertypes are meta-walked once instead of N times.
 - **[IR/tracing]** Add a lot more tracing spans for more granular tracing.
 - **[IR/tracing]** Don't delete previous traces on new compilations. Now traces are just added to the designated directory each compilation when enabled.
-- **[IR]** Faster `SwitchingProvider.invoke()` dispatch: hoist the `id` field into a local before the `when`, allowing the JVM backend to lower it to `tableswitch` (O(1)) instead of a chain of integer compares.
-- **[IR]** Empty `Set` multibindings accessed through a provider now emit `SetFactory.empty()` (a singleton) rather than allocating a builder and an empty backing set on every graph init.
 
 ### Enhancements
 
