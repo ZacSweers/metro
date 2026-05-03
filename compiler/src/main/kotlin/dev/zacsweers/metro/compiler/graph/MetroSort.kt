@@ -11,6 +11,7 @@ import androidx.collection.MutableIntSet
 import androidx.collection.MutableObjectIntMap
 import androidx.collection.ObjectIntMap
 import androidx.collection.ScatterMap
+import androidx.collection.emptyIntObjectMap
 import androidx.collection.emptyIntSet
 import dev.zacsweers.metro.compiler.calculateInitialCapacity
 import dev.zacsweers.metro.compiler.filterToSet
@@ -121,13 +122,22 @@ internal data class GraphAdjacency<T>(
  * @param roots optional set of source roots for computing reachability. If null, all keys will be
  *   kept.
  * @param onSortedCycle optional callback reporting (sorted) cycles.
- * @param useSecondaryTopoSort Reserved toe-hold for a future change. Currently unused. When `true`
- *   (the only behavior implemented today) we run a Kahn topological sort over the component DAG
- *   with `PriorityQueue<Int>` tie-breaking by component id. When eventually wired for `false`, the
- *   function will skip Kahn's and rely on Tarjan's reverse-topological output directly
- *   (`components.reversed()`) — also a valid topological order, but with different tie-breaking
- *   (DFS-finish order rather than lowest-id). Re-orders observable codegen output, so flipping the
- *   default would re-golden every dump test.
+ * @param useSecondaryTopoSort Controls how the **component-level** ordering is produced.
+ *     - `true` (default, current behavior): run a secondary Kahn topological sort over the
+ *       component DAG. Tie-breaking among simultaneously-ready components is by lowest component id
+ *       (via `PriorityQueue<Int>`). The component DAG is built and exposed in the result.
+ *     - `false`: skip Kahn's. Tarjan already emits components in reverse-topological order, so
+ *       reversing the id range (`(componentCount - 1) downTo 0`) is itself a valid topological
+ *       order. Tie-breaking falls back to DFS-finish order (the order ids were assigned during SCC
+ *       discovery). The component DAG isn't built — `componentDag` in the result is empty.
+ *
+ *   Both paths produce **valid** topological orders but they generally differ where Kahn's
+ *   priority-queue would have broken a tie differently. Flipping this re-orders observable codegen
+ *   output (field order, init blocks, etc.).
+ *
+ *   Note that the **vertex-level** Kahn pass inside [sortVerticesInSCC] always runs regardless of
+ *   this flag — that's a different sort, ordering vertices within a single SCC by their hard
+ *   intra-SCC edges.
  */
 context(traceScope: TraceScope)
 internal fun <V : Comparable<V>> metroSort(
@@ -137,7 +147,7 @@ internal fun <V : Comparable<V>> metroSort(
   roots: SortedSet<V>? = null,
   isImplicitlyDeferrable: (V) -> Boolean = { false },
   onSortedCycle: (List<V>) -> Unit = {},
-  @Suppress("UNUSED_PARAMETER") useSecondaryTopoSort: Boolean = true,
+  useSecondaryTopoSort: Boolean = true,
 ): GraphTopology<V> {
   val deferredTypes = HashSet<V>()
 
@@ -180,14 +190,34 @@ internal fun <V : Comparable<V>> metroSort(
     }
   }
 
-  val componentDag =
-    trace("Build component DAG") {
-      buildComponentDag(reachableAdjacency.forward, componentOf, components.size)
-    }
-  val componentOrder =
-    trace("Topo sort component DAG") {
-      topologicallySortComponentDag(componentDag, components.size)
-    }
+  val componentDag: IntObjectMap<IntSet>
+  val componentOrder: IntList
+  if (useSecondaryTopoSort) {
+    // Build the component DAG with edges reversed for Kahn (dependent → prereqs) and run a
+    // priority-queued Kahn topological sort over it. Stable across builds: ties are broken by
+    // lowest component id.
+    componentDag =
+      trace("Build component DAG") {
+        buildComponentDag(reachableAdjacency.forward, componentOf, components.size)
+      }
+    componentOrder =
+      trace("Topo sort component DAG") {
+        topologicallySortComponentDag(componentDag, components.size)
+      }
+  } else {
+    // Tarjan emits components in reverse-topological order: id 0 = first popped (a sink),
+    // id n-1 = last popped (a source). Reversing the id range gives forward topological order.
+    // Skip the Kahn pass and the DAG build entirely — `componentDag` ends up empty.
+    componentDag = emptyIntObjectMap()
+    componentOrder =
+      trace("Reverse Tarjan component order") {
+        MutableIntList(components.size).apply {
+          for (id in components.lastIndex downTo 0) {
+            add(id)
+          }
+        }
+      }
+  }
 
   val sortedKeys =
     trace("Expand components") {
