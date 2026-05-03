@@ -117,11 +117,13 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
-    // When the parallel pool isn't engaged, drop memoize() down to LazyThreadSafetyMode.NONE so
-    // the 100+ hot lazy properties skip the per-access CAS/volatile fence cost.
+    // When the parallel pool isn't engaged, drop memoize() down to LazyThreadSafetyMode.NONE
     memoizeThreadSafetyMode =
-      if (options.parallelThreads > 0) LazyThreadSafetyMode.PUBLICATION
-      else LazyThreadSafetyMode.NONE
+      if (options.parallelThreads > 0) {
+        LazyThreadSafetyMode.PUBLICATION
+      } else {
+        LazyThreadSafetyMode.NONE
+      }
 
     if (version != null) {
       val valid =
