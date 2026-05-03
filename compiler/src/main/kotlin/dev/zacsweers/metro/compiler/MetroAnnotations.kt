@@ -434,76 +434,64 @@ private fun IrAnnotationContainer.metroAnnotations(
 
   val thisContainer = this
 
-  return sequence {
-      yield(annotations)
+  // Imperative merge: 1-3 sources at most, sequence/coroutine state was pure overhead.
+  var merged = annotations
+  fun mergeIn(other: MetroAnnotations<IrAnnotation>) {
+    merged = merged.mergeWith(other)
+  }
 
-      // You can fit so many annotations in properties
-      when (thisContainer) {
-        is IrProperty -> {
-          // Retrieve annotations from this property's various accessors
-          getter?.let { getter ->
-            if (getter != callingContainer) {
-              yield(getter.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
-            }
-          }
-          setter?.let { setter ->
-            if (setter != callingContainer) {
-              yield(setter.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
-            }
-          }
-          backingField?.let { field ->
-            if (field != callingContainer) {
-              yield(field.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
-            }
-          }
+  when (thisContainer) {
+    is IrProperty -> {
+      getter?.let { getter ->
+        if (getter != callingContainer) {
+          mergeIn(getter.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
         }
-
-        is IrSimpleFunction -> {
-          correspondingPropertySymbol?.owner?.let { property ->
-            if (property != callingContainer) {
-              val propertyAnnotations =
-                property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
-              yield(propertyAnnotations)
-            }
-          }
+      }
+      setter?.let { setter ->
+        if (setter != callingContainer) {
+          mergeIn(setter.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
         }
-
-        is IrField -> {
-          correspondingPropertySymbol?.owner?.let { property ->
-            if (property != callingContainer) {
-              val propertyAnnotations =
-                property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
-              yield(propertyAnnotations)
-            }
-          }
-        }
-
-        is IrConstructor -> {
-          // Read from the class too
-          parentAsClass.let { parentClass ->
-            if (parentClass != callingContainer) {
-              val classAnnotations =
-                parentClass.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
-              yield(classAnnotations)
-            }
-          }
-        }
-
-        is IrClass -> {
-          // Read from the inject constructor too
-          val constructor =
-            findInjectableConstructor(onlyUsePrimaryConstructor = false, ids.injectAnnotations)
-          if (constructor != null) {
-            if (constructor != callingContainer) {
-              val constructorAnnotations =
-                constructor.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
-              yield(constructorAnnotations)
-            }
-          }
+      }
+      backingField?.let { field ->
+        if (field != callingContainer) {
+          mergeIn(field.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
         }
       }
     }
-    .reduce(MetroAnnotations<IrAnnotation>::mergeWith)
+
+    is IrSimpleFunction -> {
+      correspondingPropertySymbol?.owner?.let { property ->
+        if (property != callingContainer) {
+          mergeIn(property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
+        }
+      }
+    }
+
+    is IrField -> {
+      correspondingPropertySymbol?.owner?.let { property ->
+        if (property != callingContainer) {
+          mergeIn(property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
+        }
+      }
+    }
+
+    is IrConstructor -> {
+      val parentClass = parentAsClass
+      if (parentClass != callingContainer) {
+        mergeIn(parentClass.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
+      }
+    }
+
+    is IrClass -> {
+      val constructor =
+        findInjectableConstructor(onlyUsePrimaryConstructor = false, ids.injectAnnotations)
+      if (constructor != null && constructor != callingContainer) {
+        mergeIn(constructor.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
+      }
+    }
+  }
+
+  return merged
 }
 
 internal fun FirBasedSymbol<*>.metroAnnotations(
