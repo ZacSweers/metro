@@ -11,6 +11,7 @@ Changelog
 - **[IR/graph]** When populating bindings from roots, track a `processedKeys` set so duplicate queue entries don't re-walk dependency lists. This avoids unnecessary extra iterations when doing an initial reachability walk.
 - **[IR/graph]** Merge two annotation walks in supertype collection into a single pass with a per-annotation-class meta-annotation cache, so `@Singleton`/`@Scope`-style annotations appearing across many supertypes are meta-walked once instead of N times.
 - **[IR/tracing]** Add a lot more tracing spans for more granular tracing.
+- **[IR/tracing]** Don't delete previous traces on new compilations. Now traces are just added to the designated directory each compilation when enabled.
 
 ### Enhancements
 

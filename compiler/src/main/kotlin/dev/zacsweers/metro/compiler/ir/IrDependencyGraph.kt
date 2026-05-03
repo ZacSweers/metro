@@ -19,7 +19,6 @@ import java.nio.file.Path
 import java.util.concurrent.ForkJoinPool
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.io.path.appendText
-import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
 import kotlin.io.path.deleteIfExists
 import okio.blackholeSink
@@ -66,8 +65,9 @@ internal interface IrDependencyGraph {
       if (tracePath == null) {
         TraceSink(sequenceId = 1, blackholeSink().buffer(), EmptyCoroutineContext)
       } else {
-        tracePath.deleteIfExists()
-        tracePath.createDirectories()
+        // Dir is already ensured to exist by MetroOptions.traceDir; don't
+        // delete here — that would clobber prior-iteration traces inside a
+        // single Gradle daemon (and throws on a non-empty directory anyway).
         TraceSink(sequenceId = 1, directory = tracePath.toFile())
       }
     return WireTraceDriver(sink = sink, isEnabled = tracePath != null)

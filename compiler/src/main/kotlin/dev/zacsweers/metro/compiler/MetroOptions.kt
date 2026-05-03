@@ -1069,14 +1069,11 @@ public data class MetroOptions(
   public val traceEnabled: Boolean
     get() = rawTraceDestination != null
 
-  @OptIn(ExperimentalPathApi::class)
   public val traceDir: Lazy<Path?> = lazy {
-    rawTraceDestination?.apply {
-      if (exists()) {
-        deleteRecursively()
-      }
-      createDirectories()
-    }
+    // Don't wipe the directory: when a Gradle daemon reruns compilation
+    // (e.g. gradle-profiler iterations), wiping each time loses every
+    // prior trace. Filenames are timestamped, so accumulation is safe.
+    rawTraceDestination?.apply { createDirectories() }
   }
 
   public fun toBuilder(): Builder = Builder(this)
