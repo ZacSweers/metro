@@ -948,15 +948,10 @@ internal class BindingContainerTransformer(
           .toMap()
       }
 
-    // Add any binds callables. If the producer recorded that there's no BindsMirror, skip the
-    // nested-class scan entirely. Older metadata defaults to false (unknown) and falls back.
+    // Add any binds callables
     val bindsMirror =
-      if (graphProto.no_binds_mirror) {
-        null
-      } else {
-        trace("Compute external binds mirror") {
-          bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
-        }
+      trace("Compute external binds mirror") {
+        bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
       }
     val includedBindingContainers =
       graphProto.included_binding_containers.mapToSet { ClassId.fromString(it) }
