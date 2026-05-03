@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.batchTrackForCallingDeclaration
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
@@ -258,17 +259,20 @@ internal class BindingGraphGenerator(
         addAll(inheritedData.bindsCallables)
       }
 
-      for ((typeKey, bindsCallable) in bindsCallablesToAdd) {
-        // Track IC lookups but don't add bindings yet - they'll be added lazily
-        trace("Track IC for binds") {
-          trackFunctionCall(node.sourceGraph, bindsCallable.function)
-          trackFunctionCall(node.sourceGraph, bindsCallable.callableMetadata.mirrorFunction)
-          trackClassLookup(node.sourceGraph, bindsCallable.function.parentAsClass)
-          trackClassLookup(
-            node.sourceGraph,
-            bindsCallable.callableMetadata.mirrorFunction.parentAsClass,
-          )
+      // Track IC lookups for all binds callables in one batch: hoists file-path resolution and
+      // tracker-lock acquisition out of the per-callable loop.
+      trace("Track IC for binds") {
+        batchTrackForCallingDeclaration(node.sourceGraph) {
+          for ((_, bindsCallable) in bindsCallablesToAdd) {
+            trackFunctionCall(bindsCallable.function)
+            trackFunctionCall(bindsCallable.callableMetadata.mirrorFunction)
+            trackClassLookup(bindsCallable.function.parentAsClass)
+            trackClassLookup(bindsCallable.callableMetadata.mirrorFunction.parentAsClass)
+          }
         }
+      }
+
+      for ((typeKey, bindsCallable) in bindsCallablesToAdd) {
 
         val isInherited = typeKey in inheritedBindsCallableKeys
         if (typeKey in bindingLookup && isInherited) {
