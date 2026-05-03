@@ -22,6 +22,12 @@ message DependencyGraphProto {
 
   // Set of all transitively included binding container class IDs (strings)
   repeated string included_binding_containers = 5;
+
+  // If true, the producing compiler determined this class has no BindsMirror nested class
+  // (no @Binds/@Multibinds/@BindsOptionalOf). Consumers can skip the nested-class lookup.
+  // Default false means "unknown, fall back to scanning nested classes" so old metadata still
+  // works.
+  bool no_binds_mirror = 6;
 }
 
 // Extended provider factory entry with visibility metadata.

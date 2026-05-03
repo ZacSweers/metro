@@ -349,15 +349,14 @@ internal class IrGraphGenerator(
           // Finally, generate metadata
           // Use only the graph's own provider factories (not those from binding containers)
           // for metadata. Binding container factories are resolved independently by consumers.
-          val ownProviderFactories =
-            metroDeclarations
-              .findBindingContainer(node.sourceGraph)
-              ?.providerFactories
-              ?.values
-              .orEmpty()
-              .toSet()
+          val ownContainer = metroDeclarations.findBindingContainer(node.sourceGraph)
+          val ownProviderFactories = ownContainer?.providerFactories?.values.orEmpty().toSet()
           val graphProto =
-            node.toProto(bindingGraph = bindingGraph, ownProviderFactories = ownProviderFactories)
+            node.toProto(
+              bindingGraph = bindingGraph,
+              ownProviderFactories = ownProviderFactories,
+              noBindsMirror = ownContainer?.bindsMirror?.isEmpty() ?: true,
+            )
           graphMetadataReporter.write(node, bindingGraph)
           val metroMetadata = createMetroMetadata(dependency_graph = graphProto)
 

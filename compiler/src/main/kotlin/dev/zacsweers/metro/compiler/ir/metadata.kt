@@ -90,6 +90,7 @@ internal var IrClass.metroMetadata: MetroMetadata?
 internal fun GraphNode.toProto(
   bindingGraph: IrBindingGraph,
   ownProviderFactories: Set<ProviderFactory>,
+  noBindsMirror: Boolean = false,
 ): DependencyGraphProto {
   var multibindingAccessors = BitField()
   val accessorNames =
@@ -109,6 +110,7 @@ internal fun GraphNode.toProto(
     providerFactories = ownProviderFactories,
     accessorNames = accessorNames,
     multibindingAccessorIndices = multibindingAccessors.toIntList(),
+    noBindsMirror = noBindsMirror,
   )
 }
 
@@ -117,6 +119,7 @@ internal fun BindingContainer.toProto(): DependencyGraphProto {
     isGraph = false,
     providerFactories = providerFactories.values,
     includedBindingContainers = includes.map { it.asString() },
+    noBindsMirror = bindsMirror == null || bindsMirror.isEmpty(),
   )
 }
 
@@ -128,6 +131,7 @@ private fun createGraphProto(
   accessorNames: Collection<String> = emptyList(),
   multibindingAccessorIndices: List<Int> = emptyList(),
   includedBindingContainers: Collection<String> = emptyList(),
+  noBindsMirror: Boolean = false,
 ): DependencyGraphProto {
   return DependencyGraphProto(
     is_graph = isGraph,
@@ -151,6 +155,7 @@ private fun createGraphProto(
     accessor_callable_names = accessorNames.sorted(),
     multibinding_accessor_indices = multibindingAccessorIndices,
     included_binding_containers = includedBindingContainers.sorted(),
+    no_binds_mirror = noBindsMirror,
   )
 }
 
