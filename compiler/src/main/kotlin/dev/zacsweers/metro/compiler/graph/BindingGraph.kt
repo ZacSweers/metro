@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.graph
 
 import androidx.collection.MutableObjectIntMap
 import androidx.collection.MutableScatterMap
-import androidx.collection.MutableScatterSet
 import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.allElementsAreEqual
@@ -229,7 +228,7 @@ internal open class MutableBindingGraph<
     // Tracks type keys whose dependencies have already been walked. Bindings may appear in the
     // queue more than once (e.g. when multiple paths resolve to the same class-based binding or
     // shared member-injector ancestors) and this avoids re-walking their dependency lists.
-    val visited = MutableScatterSet<TypeKey>(bindings.size)
+    val visited = HashSet<TypeKey>(bindings.size)
 
     trace("Populate bindings") {
       while (bindingQueue.isNotEmpty()) {
