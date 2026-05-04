@@ -17,12 +17,10 @@ import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.proto.ProviderFactoryProto
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
-import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -139,7 +137,6 @@ private fun createGraphProto(
           val factoryClass = factory.factoryClass
           val isInvisible =
             factoryClass.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) == true
-          val offsets = resolveOriginOffsets(factoryClass)
           ProviderFactoryProto(
             class_id = factoryClass.classIdOrFail.protoString,
             invisible = isInvisible,
@@ -148,8 +145,6 @@ private fun createGraphProto(
             property_name =
               if (factory.isPropertyAccessor) factory.callableId.callableName.asString() else "",
             new_instance_name = factory.newInstanceName.asString(),
-            origin_start_offset = offsets?.getOrNull(0) ?: 0,
-            origin_end_offset = offsets?.getOrNull(1) ?: 0,
           )
         }
         .sortedBy { it.class_id },
@@ -161,23 +156,3 @@ private fun createGraphProto(
 
 private val ClassId.protoString: String
   get() = asString()
-
-/**
- * Resolves the origin class source offsets for diagnostic reporting. Uses the inject constructor's
- * offsets if it has parameters, otherwise uses the class declaration's offsets.
- *
- * Returns (startOffset, endOffset) pair or null if not available.
- */
-private fun resolveOriginOffsets(factoryClass: IrClass): IntArray? {
-  val originClass =
-    factoryClass.parentClassOrNull
-      ?.annotationsIn(setOf(Symbols.ClassIds.metroOrigin))
-      ?.firstOrNull()
-      ?.originClassOrNull() ?: return null
-  val target =
-    originClass.primaryConstructor?.takeIf { ctor ->
-      ctor.parameters.any { it.kind == IrParameterKind.Regular }
-    } ?: originClass
-  if (target.startOffset < 0) return null
-  return intArrayOf(target.startOffset, target.endOffset)
-}

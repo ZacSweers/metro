@@ -47,7 +47,6 @@ import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.metroMetadata
-import dev.zacsweers.metro.compiler.ir.originClassOrNull
 import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
@@ -103,7 +102,6 @@ import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
@@ -115,7 +113,6 @@ import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isObject
@@ -1021,26 +1018,14 @@ internal class BindingContainerTransformer(
         mirrorFunction = mirrorFunction,
       )
 
-    val originAnnotation =
-      container.annotationsIn(metroSymbols.classIds.originAnnotations).firstOrNull()
-    val originStub =
-      originAnnotation?.originClassOrNull()
-        // Create a stub declaration for the origin class with correct source offsets.
-        // This allows diagnostic messages to report the original contributing class location
-        // even when the origin class is not directly resolvable (e.g., internal visibility).
-        ?: originAnnotation?.originOrNull()?.let { originClassId ->
-          if (entry.origin_start_offset != 0 || entry.origin_end_offset != 0) {
-            pluginContext.irFactory
-              .buildClass {
-                name = originClassId.shortClassName
-                startOffset = entry.origin_start_offset ?: SYNTHETIC_OFFSET
-                endOffset = entry.origin_end_offset ?: SYNTHETIC_OFFSET
-              }
-              .apply { parent = container.file }
-          } else {
-            null
-          }
-        }
+    // referenceClass bypasses the visibility filter that originClassOrNull() inherits, so
+    // we can resolve internal origin classes from other modules for diagnostic locations.
+    val originClass =
+      container
+        .annotationsIn(metroSymbols.classIds.originAnnotations)
+        .firstOrNull()
+        ?.originOrNull()
+        ?.let { pluginContext.referenceClass(it)?.owner }
 
     return ProviderFactory(
       contextKey = IrContextualTypeKey.from(mirrorFunction),
@@ -1048,7 +1033,7 @@ internal class BindingContainerTransformer(
       mirrorFunction = mirrorFunction,
       sourceAnnotations = sourceAnnotations,
       callableMetadata = callableMetadata,
-      realDeclaration = originStub ?: providesFunction,
+      realDeclaration = originClass ?: providesFunction,
     )
   }
 
