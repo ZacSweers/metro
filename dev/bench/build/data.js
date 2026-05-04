@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777855834245,
+  "lastUpdate": 1777859269705,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -13440,6 +13440,62 @@ window.BENCHMARK_DATA = {
             "value": 31970.532,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.43%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "96dd3d53~1",
+          "message": "[before] Add option for + fix single pass sort (#2237)",
+          "timestamp": "2026-05-04T01:09:24Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/96dd3d5313cd9875c8690f23f6361ce970614670"
+        },
+        "date": 1777859269705,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 28847.97,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "96dd3d5313cd9875c8690f23f6361ce970614670",
+          "message": "[after] Add option for + fix single pass sort (#2237)",
+          "timestamp": "2026-05-04T01:09:24Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/96dd3d5313cd9875c8690f23f6361ce970614670"
+        },
+        "date": 1777859269706,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 29138.246000000003,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.01%"
           }
         ]
       }
