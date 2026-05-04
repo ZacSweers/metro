@@ -89,10 +89,14 @@ fun source(
         appendLine("package $packageName")
 
         // Imports
-        if (includeDefaultImports) {
-          for (import in DEFAULT_IMPORTS + extraImports) {
-            appendLine("import $import")
+        val imports = buildList {
+          if (includeDefaultImports) {
+            addAll(DEFAULT_IMPORTS)
           }
+          addAll(extraImports)
+        }
+        for (import in imports) {
+          appendLine("import $import")
         }
 
         appendLine()
