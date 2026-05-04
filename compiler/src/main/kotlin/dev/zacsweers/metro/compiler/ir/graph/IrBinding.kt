@@ -36,6 +36,7 @@ import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
