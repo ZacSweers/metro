@@ -6345,6 +6345,7 @@
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[IR/circuit]</strong> Insert implicit casts when a generated Circuit <code>Presenter.Factory</code>/<code>Ui.Factory</code> dispatches its <code>screen: Screen</code> parameter to an underlying assisted factory or <code>@Inject @Composable</code> function that expects a more specific <code>Screen</code> subtype. Some platforms (like JVM) silently tolerate the missing cast, but Kotlin/Wasm rejects it with a <code>call_ref</code> precise-type mismatch at load time.</li>
+<li><strong>[IR/circuit]</strong> Propagate qualifier annotations from <code>@CircuitInject</code> declarations to the generated factory classes.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
