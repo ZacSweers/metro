@@ -41,8 +41,16 @@ const val DEBUGGING_ARGS =
 
 fun String.cleanOutputLine(): String = FILE_PATH_REGEX.replace(trimEnd(), "")
 
-fun GradleProject.classLoader(): ClassLoader {
-  val rootClassesDir = rootDir.toPath().resolve("build/classes/kotlin/main").absolute()
+/**
+ * Loads the main classes of a [GradleProject].
+ *
+ * @param target optional KMP target name (e.g. `"jvm"`). When set, classes are read from
+ *   `build/classes/kotlin/<target>/main` to match the multiplatform output layout. When null, the
+ *   plain JVM layout `build/classes/kotlin/main` is used.
+ */
+fun GradleProject.classLoader(target: String? = null): ClassLoader {
+  val pathSuffix = if (target != null) "$target/main" else "main"
+  val rootClassesDir = rootDir.toPath().resolve("build/classes/kotlin/$pathSuffix").absolute()
 
   check(rootClassesDir.exists()) {
     "Root classes dir not found: ${rootClassesDir.toAbsolutePath()}"
@@ -52,7 +60,7 @@ fun GradleProject.classLoader(): ClassLoader {
     val dir =
       rootDir
         .toPath()
-        .resolve("${subproject.name.replace(':', '/')}/build/classes/kotlin/main")
+        .resolve("${subproject.name.replace(':', '/')}/build/classes/kotlin/$pathSuffix")
         .absolute()
     check(rootClassesDir.exists()) {
       "Subproject ${subproject.name} classes dir not found: ${dir.toAbsolutePath()}"
@@ -162,11 +170,18 @@ fun getTestCompilerToolingVersion(): KotlinToolingVersion =
  *
  * @param className the fully qualified class name containing the main function (defaults to
  *   "test.MainKt")
+ * @param target optional KMP target name forwarded to [classLoader]
  * @return the result of invoking the main function, cast to type [T]
  */
-inline fun <reified T> GradleProject.invokeMain(className: String = "test.MainKt"): T {
-  return classLoader().loadClass(className).declaredMethods.first { it.name == "main" }.invoke(null)
-    as T
+inline fun <reified T> GradleProject.invokeMain(
+  className: String = "test.MainKt",
+  target: String? = null,
+): T {
+  return classLoader(target)
+    .loadClass(className)
+    .declaredMethods
+    .first { it.name == "main" }
+    .invoke(null) as T
 }
 
 internal fun File.resolveSafe(relative: String): File {
