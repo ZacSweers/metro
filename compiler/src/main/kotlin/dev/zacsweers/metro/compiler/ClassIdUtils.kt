@@ -2,13 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
-import java.security.MessageDigest
-import java.util.Base64
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-private const val HASH_STRING_LENGTH = 8
 private const val MAX_FILE_NAME_LENGTH =
   255
     .minus(14) // ".kapt_metadata" is the longest extension
@@ -82,22 +79,17 @@ private fun ClassId.checkFileLength(): ClassId = apply {
  * @see ClassId.joinSimpleNames for a version that doesn't truncate the class name.
  */
 public fun ClassId.joinSimpleNamesAndTruncate(
-  hashParams: List<Any> = emptyList(),
   separator: String = "_",
   suffix: String = "",
   innerClassLength: Int = 0,
   camelCase: Boolean = false,
 ): ClassId =
   joinSimpleNamesPrivate(separator = separator, suffix = suffix, camelCase = camelCase)
-    .truncate(
-      hashParams = listOf(this) + hashParams,
-      separator = separator,
-      innerClassLength = innerClassLength,
-    )
+    .truncate(separator = separator, innerClassLength = innerClassLength)
 
 /**
  * Truncates the class name to a valid file name length by removing characters from the end of the
- * class name. The hash of the [hashParams] will be appended to the class name with the given
+ * class name. The [hashSuffix] of this will be appended to the class name with the given
  * [separator]. If the class name is too long, it will be truncated by removing the last characters
  * *before* the hash, but the hash will be unchanged.
  *
@@ -116,16 +108,12 @@ public fun ClassId.joinSimpleNamesAndTruncate(
  * @throws IllegalArgumentException if the resulting class name is too long to be a valid file name
  *   even after truncating.
  */
-public fun ClassId.truncate(
-  hashParams: List<Any>,
-  separator: String = "_",
-  innerClassLength: Int = 0,
-): ClassId {
+public fun ClassId.truncate(separator: String = "_", innerClassLength: Int = 0): ClassId {
 
   val maxLength =
     MAX_FILE_NAME_LENGTH
       // hash suffix with separator: `_a0b2c3d4`
-      .minus(HASH_STRING_LENGTH + separator.length)
+      .minus(HASH_SUFFIX_LENGTH + separator.length)
       // a nested type that will be appended to this canonical name
       // with a '$' separator, like `$ParentComponent`
       .minus(innerClassLength + 1)
@@ -133,75 +121,14 @@ public fun ClassId.truncate(
       // so the lengths of those names must be subtracted from the max length.
       .minus(relativeClassName.pathSegments().dropLast(1).sumOf { it.asString().length + 1 })
 
-  val hash = md5base64(hashParams)
-
   val className =
     relativeClassName
       .asString()
       .take(maxLength)
       // The hash is appended after truncating so that it's always present.
-      .plus("$separator$hash")
+      .plus("$separator$hashSuffix")
 
   return ClassId(packageFqName, Name.identifier(className)).checkFileLength()
-}
-
-private val md5ThreadLocal: ThreadLocal<MessageDigest> = ThreadLocal.withInitial {
-  MessageDigest.getInstance("MD5")
-}
-
-internal fun md5base64(params: List<Any>): String {
-  val md5 =
-    md5ThreadLocal
-      .get()
-      .apply {
-        reset()
-        params.forEach { update(it.toString().toByteArray()) }
-      }
-      .digest()
-      .copyOfRange(0, 5)
-
-  // base64 URL encoder without padding uses exactly the characters allowed in both JVM bytecode and
-  // Dalvik bytecode names
-  return Base64.getUrlEncoder().withoutPadding().encodeToString(md5)
-}
-
-/**
- * Generates a unique hint file name by adding the package name as the first simple name, then
- * joining all simple names with the [separator] and [suffix].
- *
- * @see ClassId.joinSimpleNames for the joining logic
- */
-public fun ClassId.generateHintFileName(
-  separator: String = "",
-  suffix: String = "",
-  capitalizePackage: Boolean = true,
-): String =
-  ClassId(
-      packageFqName,
-      FqName.fromSegments(
-        listOfNotNull(
-          packageFqName
-            .asString()
-            .takeIf { it.isNotEmpty() }
-            ?.replace('.', '_')
-            ?.let { if (capitalizePackage) it.capitalizeUS() else it },
-          *relativeClassName.pathSegments().map { it.asString() }.toTypedArray(),
-        )
-      ),
-      isLocal = false,
-    )
-    .joinSimpleNamesPrivate(separator = separator, suffix = suffix)
-    .truncate(hashParams = listOf(asFqNameString()), innerClassLength = 0)
-    .relativeClassName
-    .asString()
-
-/** For merge-annotated classes, returns the expected [ClassId] of the generated merged class. */
-// TODO eventually also need to account for scope
-public fun ClassId.mergedClassId(): ClassId {
-  return ClassId(
-    packageFqName,
-    Name.identifier("Merged" + relativeClassName.asString().capitalizeUS()),
-  )
 }
 
 public fun ClassId.generatedClass(suffix: String): ClassId {

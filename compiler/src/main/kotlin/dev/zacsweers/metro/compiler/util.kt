@@ -358,3 +358,26 @@ internal fun calculateInitialCapacity(expectedSize: Int, loadFactor: Float = 0.7
     // any large value
     else -> Int.MAX_VALUE
   }
+
+internal const val HASH_SUFFIX_LENGTH = 5
+
+private const val HEX_CHARS = HASH_SUFFIX_LENGTH - 1
+private const val HEX_BITS = HEX_CHARS * 4
+private const val HEX_MASK = (1 shl HEX_BITS) - 1
+
+/**
+ * Computes a unique, deterministic suffix string derived from the object's hash code. This suffix
+ * is Java identifier-safe and file name-safe, ensuring compatibility across use cases where such
+ * constraints are necessary.
+ *
+ * The suffix is a combination of a lowercase alphabetic character followed by a fixed-length hex
+ * representation of a portion of the hash code (length is [HASH_SUFFIX_LENGTH]).
+ */
+internal val Any.hashSuffix: String
+  get() {
+    val hash = hashCode()
+    // Letter + (HASH_SUFFIX_LENGTH - 1) hex chars
+    val first = 'a' + ((hash ushr HEX_BITS) and 0xff) % 26
+    val rest = hash and HEX_MASK
+    return first + rest.toString(16).padStart(HEX_CHARS, '0')
+  }
