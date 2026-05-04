@@ -574,6 +574,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("PresenterClassQualifiedClass.kt")
+      public void testPresenterClassQualifiedClass() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassQualifiedClass.kt");
+      }
+
+      @Test
       @TestMetadata("PresenterClassQualifiedInjection.kt")
       public void testPresenterClassQualifiedInjection() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassQualifiedInjection.kt");
@@ -607,6 +613,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("PresenterFunctionObjectScreen.kt")
       public void testPresenterFunctionObjectScreen() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionObjectScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionQualifiedFunction.kt")
+      public void testPresenterFunctionQualifiedFunction() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionQualifiedFunction.kt");
       }
 
       @Test

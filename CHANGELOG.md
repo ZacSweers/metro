@@ -26,6 +26,7 @@ Changelog
 ### Fixes
 
 - **[IR/circuit]** Insert implicit casts when a generated Circuit `Presenter.Factory`/`Ui.Factory` dispatches its `screen: Screen` parameter to an underlying assisted factory or `@Inject @Composable` function that expects a more specific `Screen` subtype. Some platforms (like JVM) silently tolerate the missing cast, but Kotlin/Wasm rejects it with a `call_ref` precise-type mismatch at load time.
+- **[IR/circuit]** Propagate qualifier annotations from `@CircuitInject` declarations to the generated factory classes.
 
 ### Changes
 
