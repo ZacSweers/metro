@@ -21,6 +21,7 @@ abstract class MetroProject(
   private val metroOptions: MetroOptionOverrides = MetroOptionOverrides(),
   private val reportsEnabled: Boolean = true,
   private val kotlinVersion: String? = null,
+  private val multiplatform: Boolean = false,
 ) : AbstractGradleProject() {
   /**
    * Sources for the default single-module project. Not used when [buildGradleProject] is
@@ -117,7 +118,7 @@ abstract class MetroProject(
             withBuildScript {
               applyMetroDefault()
               if (config.dependencies.isNotEmpty()) {
-                dependencies(*config.dependencies.toTypedArray())
+                dependencies(*config.dependencies.mappedForTarget().toTypedArray())
               }
               config.buildScriptExtra?.invoke(this)
             }
@@ -139,7 +140,7 @@ abstract class MetroProject(
                   applyMetroDefault()
                 }
                 if (config.dependencies.isNotEmpty()) {
-                  dependencies(*config.dependencies.toTypedArray())
+                  dependencies(*config.dependencies.mappedForTarget().toTypedArray())
                 }
                 config.buildScriptExtra?.invoke(this)
               }
@@ -147,6 +148,17 @@ abstract class MetroProject(
           }
         }
         .write()
+    }
+
+    // KMP build scripts can't use the bare `implementation(...)` configuration; rewrite to the
+    // source-set-scoped variant (e.g. `commonMainImplementation`). No-op for plain JVM projects.
+    private fun List<Dependency>.mappedForTarget(): List<Dependency> {
+      if (!multiplatform) return this
+      return map { dep ->
+        dep.copy(
+          configuration = "commonMain" + dep.configuration.replaceFirstChar { it.titlecase() }
+        )
+      }
     }
   }
 
@@ -243,16 +255,29 @@ abstract class MetroProject(
   }
 
   /**
-   * Default setup for simple JVM projects. For KMP or custom setups, override [buildGradleProject].
+   * Default setup for simple projects. JVM-only by default, or KMP with a single `jvm()` target
+   * when [multiplatform] is true. For more custom setups, override [buildGradleProject].
    */
   fun BuildScript.Builder.applyMetroDefault() {
-    plugins(GradlePlugins.Kotlin.jvm(kotlinVersion), GradlePlugins.metro)
-
-    withKotlin(
-      buildString {
-        onBuildScript()
-        append(buildMetroBlock())
-      }
-    )
+    if (multiplatform) {
+      plugins(GradlePlugins.Kotlin.multiplatform(kotlinVersion), GradlePlugins.metro)
+      withKotlin(
+        buildString {
+          onBuildScript()
+          appendLine("kotlin {")
+          appendLine("  jvm()")
+          appendLine("}")
+          append(buildMetroBlock())
+        }
+      )
+    } else {
+      plugins(GradlePlugins.Kotlin.jvm(kotlinVersion), GradlePlugins.metro)
+      withKotlin(
+        buildString {
+          onBuildScript()
+          append(buildMetroBlock())
+        }
+      )
+    }
   }
 }
