@@ -55,6 +55,20 @@ class MapProviderFactoryTest {
     assertSame(empty1, empty2, "Empty factories should be the same instance")
   }
 
+  @Test
+  fun singletonPreservesProvider() {
+    val provider = incrementingIntegerProvider(0)
+    val factory = MapProviderFactory.singleton("only", provider)
+
+    val first = factory()
+    assertEquals(setOf("only"), first.keys)
+    assertSame(provider, first["only"], "Provider should be preserved as-is")
+
+    // Provider is invoked lazily by the consumer, not at map construction
+    assertEquals(0, first.getValue("only")())
+    assertEquals(1, first.getValue("only")())
+  }
+
   companion object {
     private fun incrementingIntegerProvider(seed: Int): Provider<Int> {
       val counter = SimpleCounter(seed)

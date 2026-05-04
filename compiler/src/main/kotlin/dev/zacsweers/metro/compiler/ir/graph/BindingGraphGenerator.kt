@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.batchTrackForCallingDeclaration
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
@@ -179,7 +180,11 @@ internal class BindingGraphGenerator(
     val inheritedProviderFactories = inheritedData.providerFactories
     val inheritedBindsCallableKeys = inheritedData.bindsCallableKeys
 
-    trace("Collect provider factories") {
+    val ownProviderFactoryCount = node.providerFactories.values.sumOf { it.size }
+    val inheritedProviderFactoryCount = inheritedProviderFactories.size
+    trace(
+      "Collect provider factories (own=$ownProviderFactoryCount, inh=$inheritedProviderFactoryCount)"
+    ) {
       // Collect all provider factories to add (flatten from lists)
       val providerFactoriesToAdd = buildList {
         node.providerFactories.values.flatten().forEach { factory ->
@@ -248,7 +253,9 @@ internal class BindingGraphGenerator(
       }
     }
 
-    trace("Collect binds callables") {
+    val ownBindsCount = node.bindsCallables.values.sumOf { it.size }
+    val inheritedBindsCount = inheritedData.bindsCallables.size
+    trace("Collect binds callables (own=$ownBindsCount, inh=$inheritedBindsCount)") {
       // Collect all binds callables to add (flatten from lists)
       val bindsCallablesToAdd = buildList {
         node.bindsCallables.values.flatten().forEach { callable ->
@@ -258,15 +265,20 @@ internal class BindingGraphGenerator(
         addAll(inheritedData.bindsCallables)
       }
 
+      // Track IC lookups for all binds callables in one batch: hoists file-path resolution and
+      // tracker-lock acquisition out of the per-callable loop.
+      trace("Track IC for binds") {
+        batchTrackForCallingDeclaration(node.sourceGraph) {
+          for ((_, bindsCallable) in bindsCallablesToAdd) {
+            trackFunctionCall(bindsCallable.function)
+            trackFunctionCall(bindsCallable.callableMetadata.mirrorFunction)
+            trackClassLookup(bindsCallable.function.parentAsClass)
+            trackClassLookup(bindsCallable.callableMetadata.mirrorFunction.parentAsClass)
+          }
+        }
+      }
+
       for ((typeKey, bindsCallable) in bindsCallablesToAdd) {
-        // Track IC lookups but don't add bindings yet - they'll be added lazily
-        trackFunctionCall(node.sourceGraph, bindsCallable.function)
-        trackFunctionCall(node.sourceGraph, bindsCallable.callableMetadata.mirrorFunction)
-        trackClassLookup(node.sourceGraph, bindsCallable.function.parentAsClass)
-        trackClassLookup(
-          node.sourceGraph,
-          bindsCallable.callableMetadata.mirrorFunction.parentAsClass,
-        )
 
         val isInherited = typeKey in inheritedBindsCallableKeys
         if (typeKey in bindingLookup && isInherited) {
@@ -306,7 +318,7 @@ internal class BindingGraphGenerator(
         // Use cached binding if available, otherwise create and cache
         val binding =
           mirrorFunction.cachedAliasBinding
-            ?: run {
+            ?: trace("Resolve binds alias binding") {
               val parameters = bindsCallable.function.parameters()
               val bindsImplType =
                 parameters.extensionOrFirstParameter?.contextualTypeKey
@@ -694,10 +706,29 @@ internal class BindingGraphGenerator(
 
   /** Collects all inherited data from parent nodes in a single pass. */
   private fun collectInheritedData(node: GraphNode.Local): InheritedGraphData {
-    val providerFactories = mutableSetOf<Pair<IrTypeKey, ProviderFactory>>()
+    val parentSourceGraph = node.parentGraph?.sourceGraph
+    val raw =
+      if (parentSourceGraph != null) {
+        bindingLookupCache.getOrPutRawInheritedGraphData(parentSourceGraph) {
+          computeRawInheritedGraphData(node)
+        }
+      } else {
+        // No parent: compute (will be empty fast-path) without caching.
+        computeRawInheritedGraphData(node)
+      }
+    return raw.applyDirectlyProvidedFilter(node.directlyProvidedKeys)
+  }
+
+  /**
+   * Aggregates parent-chain data with all parent-only filters applied (graph-private exclusions,
+   * scoped exclusions, intra-chain dedup). The per-child `directlyProvidedKeys` filter is applied
+   * later in [RawInheritedGraphData.applyDirectlyProvidedFilter] so siblings can reuse this.
+   */
+  private fun computeRawInheritedGraphData(node: GraphNode.Local): RawInheritedGraphData {
+    val providerFactories = mutableListOf<RawProviderFactoryEntry>()
     val providerFactoryKeys = mutableSetOf<IrTypeKey>()
     val bindsCallableKeys = mutableSetOf<IrTypeKey>()
-    val bindsCallables = mutableListOf<Pair<IrTypeKey, BindsCallable>>()
+    val bindsCallables = mutableListOf<RawBindsCallableEntry>()
     val bindingContainers = mutableSetOf<IrClass>()
     val multibindsCallables = mutableSetOf<MultibindsCallable>()
     val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
@@ -705,60 +736,62 @@ internal class BindingGraphGenerator(
     val multibindingAccessors = mutableListOf<GraphAccessor>()
 
     for ((typeKey, extendedNode) in node.allParentGraphs) {
-      // Collect provider factories (non-scoped, not already directly provided in current node)
-      // Skip @GraphPrivate factories — private contributions should not leak to child graphs.
       val isDynamicParent =
         extendedNode is GraphNode.Local && extendedNode.dynamicTypeKeys.isNotEmpty()
 
       val alreadyCollectedKeys = providerFactoryKeys + bindsCallableKeys
 
+      // Collect provider factories (non-scoped, not already collected from a closer parent).
+      // Skip @GraphPrivate factories — private contributions should not leak to child graphs.
+      // Dynamic parent bindings take precedence over keys collected up-chain so they can override.
       for ((key, factories) in extendedNode.providerFactories) {
-        // Dynamic parent bindings take precedence over child's directly provided keys
-        val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
         if (
-          isDynamicInParent || (key !in node.directlyProvidedKeys && key !in alreadyCollectedKeys)
+          key in alreadyCollectedKeys && !(isDynamicParent && key in extendedNode.dynamicTypeKeys)
         ) {
-          for (factory in factories) {
-            if (!factory.annotations.isScoped && key !in extendedNode.graphPrivateKeys) {
-              providerFactories.add(key to factory)
-              providerFactoryKeys.add(key)
-            }
+          continue
+        }
+        for (factory in factories) {
+          if (!factory.annotations.isScoped && key !in extendedNode.graphPrivateKeys) {
+            val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
+            providerFactories.add(RawProviderFactoryEntry(key, factory, isDynamicInParent))
+            providerFactoryKeys.add(key)
           }
         }
       }
 
-      // Collect binds callables (not already directly provided in current node)
+      // Collect binds callables.
       // Skip binds whose source type is graph-private in the parent — the child can't resolve
-      // the private source. The binds result type is promoted to the parent context instead,
-      // so the child resolves it as a GraphDependency.
+      // the private source. The binds result type is promoted to the parent context instead, so
+      // the child resolves it as a GraphDependency.
+      // Dynamic parent bindings take precedence over keys collected up-chain.
       for ((key, callables) in extendedNode.bindsCallables) {
-        // Dynamic parent bindings take precedence over child's directly provided keys
-        val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
         if (
-          isDynamicInParent || (key !in node.directlyProvidedKeys && key !in alreadyCollectedKeys)
+          key in alreadyCollectedKeys && !(isDynamicParent && key in extendedNode.dynamicTypeKeys)
         ) {
-          for (callable in callables) {
-            if (callable.source in extendedNode.graphPrivateKeys) continue
-            bindsCallableKeys.add(key)
-            bindsCallables.add(key to callable)
-          }
+          continue
+        }
+        for (callable in callables) {
+          if (callable.source in extendedNode.graphPrivateKeys) continue
+          val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
+          bindsCallableKeys.add(key)
+          bindsCallables.add(RawBindsCallableEntry(key, callable, isDynamicInParent))
         }
       }
 
-      // Collect binding containers (only from Local nodes)
+      // Collect binding containers (only from Local nodes).
       if (extendedNode is GraphNode.Local) {
         bindingContainers.addAll(extendedNode.bindingContainers)
       }
 
-      // Collect multibinds callables
+      // Collect multibinds callables.
       multibindsCallables.addAll(extendedNode.multibindsCallables)
 
-      // Collect optional keys
+      // Collect optional keys.
       for ((optKey, callables) in extendedNode.optionalKeys) {
         optionalKeys.getOrPut(optKey) { mutableSetOf() }.addAll(callables)
       }
 
-      // Collect supertype aliases for parent graphs
+      // Collect supertype aliases for parent graphs.
       for (superType in extendedNode.supertypes) {
         val parentTypeKey = IrTypeKey(superType)
         if (parentTypeKey != typeKey) {
@@ -766,7 +799,7 @@ internal class BindingGraphGenerator(
         }
       }
 
-      // Collect multibinding accessors
+      // Collect multibinding accessors.
       for (accessor in extendedNode.accessors) {
         if (accessor.metroFunction.annotations.isMultibinds) {
           multibindingAccessors.add(accessor)
@@ -774,10 +807,8 @@ internal class BindingGraphGenerator(
       }
     }
 
-    return InheritedGraphData(
+    return RawInheritedGraphData(
       providerFactories = providerFactories,
-      providerFactoryKeys = providerFactoryKeys,
-      bindsCallableKeys = bindsCallableKeys,
       bindsCallables = bindsCallables,
       bindingContainers = bindingContainers,
       multibindsCallables = multibindsCallables,
@@ -787,6 +818,62 @@ internal class BindingGraphGenerator(
     )
   }
 }
+
+/**
+ * Pre-aggregated parent-chain data with all parent-only filters applied. Siblings sharing the same
+ * direct parent get the same value via [BindingLookupCache.getOrPutRawInheritedGraphData].
+ */
+private class RawInheritedGraphData(
+  val providerFactories: List<RawProviderFactoryEntry>,
+  val bindsCallables: List<RawBindsCallableEntry>,
+  val bindingContainers: Set<IrClass>,
+  val multibindsCallables: Set<MultibindsCallable>,
+  val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
+  val supertypeAliases: Map<IrTypeKey, IrTypeKey>,
+  val multibindingAccessors: List<GraphAccessor>,
+) {
+  fun applyDirectlyProvidedFilter(directlyProvidedKeys: Set<IrTypeKey>): InheritedGraphData {
+    val outProviderFactories = mutableSetOf<Pair<IrTypeKey, ProviderFactory>>()
+    val outProviderFactoryKeys = mutableSetOf<IrTypeKey>()
+    val outBindsCallableKeys = mutableSetOf<IrTypeKey>()
+    val outBindsCallables = mutableListOf<Pair<IrTypeKey, BindsCallable>>()
+    for ((key, factory, isDynamicInParent) in providerFactories) {
+      if (isDynamicInParent || key !in directlyProvidedKeys) {
+        outProviderFactories.add(key to factory)
+        outProviderFactoryKeys.add(key)
+      }
+    }
+    for ((key, callable, isDynamicInParent) in bindsCallables) {
+      if (isDynamicInParent || key !in directlyProvidedKeys) {
+        outBindsCallableKeys.add(key)
+        outBindsCallables.add(key to callable)
+      }
+    }
+    return InheritedGraphData(
+      providerFactories = outProviderFactories,
+      providerFactoryKeys = outProviderFactoryKeys,
+      bindsCallableKeys = outBindsCallableKeys,
+      bindsCallables = outBindsCallables,
+      bindingContainers = bindingContainers,
+      multibindsCallables = multibindsCallables,
+      optionalKeys = optionalKeys,
+      supertypeAliases = supertypeAliases,
+      multibindingAccessors = multibindingAccessors,
+    )
+  }
+}
+
+private data class RawProviderFactoryEntry(
+  val key: IrTypeKey,
+  val factory: ProviderFactory,
+  val isDynamicInParent: Boolean,
+)
+
+private data class RawBindsCallableEntry(
+  val key: IrTypeKey,
+  val callable: BindsCallable,
+  val isDynamicInParent: Boolean,
+)
 
 /**
  * Data collected from parent nodes in a single pass. Avoids multiple iterations over

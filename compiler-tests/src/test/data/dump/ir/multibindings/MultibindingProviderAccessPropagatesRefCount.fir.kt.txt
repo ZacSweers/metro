@@ -449,11 +449,7 @@ interface TestGraph {
 
     private val mapOfIntToBProvider: Provider<Map<Int, B>>
       private get(): Provider<Map<Int, B>> {
-        return { // BLOCK
-          val tmp_0: Builder<Int, B> = Companion.builder<Int, B>(size = 1)
-          tmp_0.put(key = 1, providerOfValue = Companion.create(x = <this>.#xImplProvider))
-          tmp_0.build()
-        }
+        return Companion.singleton<Int, B>(key = 1, provider = Companion.create(x = <this>.#xImplProvider))
       }
 
     private val mapOfIntToC: Map<Int, Function0<C>>
@@ -476,11 +472,7 @@ interface TestGraph {
 
     private val setOfAProvider: Provider<Set<A>>
       private get(): Provider<Set<A>> {
-        return { // BLOCK
-          val tmp_1: Builder<A> = Companion.builder<A>(individualProviderSize = 1, collectionProviderSize = 0)
-          tmp_1.addProvider(individualProvider = Companion.create(x = <this>.#xImplProvider))
-          tmp_1.build()
-        }
+        return Companion.singleton<A>(provider = Companion.create(x = <this>.#xImplProvider))
       }
 
   }

@@ -45,6 +45,18 @@ scripts/trace-project.sh [--open-in-browser] <project-dir> <gradle-task> [versio
 
 Use this when the user asks for a "fresh trace" / "re-profile" / has just made a Metro change they want profiled against a real-world project.
 
+## Producing a fresh trace from the in-repo benchmark project
+
+For raw-perf iteration on a large generated project (no external repo needed), use `benchmark/trace_compile.sh`. It runs gradle-profiler against a fresh `:app:component:compileKotlin --rerun` of the benchmark project, with Metro's perfetto tracing enabled, and picks the iteration whose duration is closest to the measured-mean — so a single representative trace lands in `tmp/traces/` (and `tmp/traces/LATEST` is updated).
+
+```
+benchmark/trace_compile.sh                  # run + pick + copy
+benchmark/trace_compile.sh --open-in-browser  # also open in ui.perfetto.dev
+TRACE=$(cat tmp/traces/LATEST)              # chain into analysis
+```
+
+Prereqs: the benchmark project must be generated for metro mode (`cd benchmark && kotlin generate-projects.main.kts --mode metro`). gradle-profiler is auto-installed on first run. Use this for "raw compile perf on a 500-module project" iteration loops where you don't need a real-world app like CatchUp.
+
 ## Tooling
 
 Use the **`perfetto` python library**. It's available via pip but installed against a specific python — on this machine it's Python 3.13, not the default 3.14:

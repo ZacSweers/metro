@@ -511,6 +511,36 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public void testMultibindingSourcesGetRefcountedViaFactoryPath() {
       runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingSourcesGetRefcountedViaFactoryPath.kt");
     }
+
+    @Test
+    @TestMetadata("SingletonMapFactory.kt")
+    public void testSingletonMapFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonMapLazyFactory.kt")
+    public void testSingletonMapLazyFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapLazyFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonMapProviderFactory.kt")
+    public void testSingletonMapProviderFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapProviderFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonMapProviderLazyFactory.kt")
+    public void testSingletonMapProviderLazyFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapProviderLazyFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonSetFactory.kt")
+    public void testSingletonSetFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonSetFactory.kt");
+    }
   }
 
   @Nested

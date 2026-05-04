@@ -125,7 +125,9 @@ abstract class MetroCompilerTest {
               UNUSED_GRAPH_INPUTS_SEVERITY ->
                 processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
               ENABLE_SWITCHING_PROVIDERS ->
-                processor.option(entry.raw.cliOption, enableSwitchingProviders)
+                processor.option(entry.raw.cliOption, this@toPluginOptions.enableSwitchingProviders)
+              USE_SECONDARY_TOPO_SORT ->
+                processor.option(entry.raw.cliOption, this@toPluginOptions.useSecondaryTopoSort)
               LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })

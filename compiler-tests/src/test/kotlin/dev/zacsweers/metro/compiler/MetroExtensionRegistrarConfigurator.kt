@@ -85,9 +85,13 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
         keysPerGraphShard = it
       }
-      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_SWITCHING_PROVIDERS)?.let {
-        enableFastInit = it
-      }
+      enableSwitchingProviders =
+        // Weird but necessary because we may set a default in default configurations that we
+        // override in the test, so just take the last one from the file
+        module.directives[MetroDirectives.ENABLE_SWITCHING_PROVIDERS]
+          .lastOrNull()
+          ?.toString()
+          ?.toBoolean() ?: false
       enableFullBindingGraphValidation =
         MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
       enableGraphImplClassAsReturnType =

@@ -1,0 +1,122 @@
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoMap
+    @IntKey(value = 1)
+    @CallableMetadata(callableName = "bindValue", propertyName = "", startOffset = 310, endOffset = 334)
+    abstract fun Int.bindValue4013004649_intomap(): Int
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val ints: Function0<Map<Int, Function0<Int>>>
+      override get(): Function0<Map<Int, Function0<Int>>> {
+        return <this>.<get-mapOfIntToIntProvider>()
+      }
+
+    private val mapOfIntToIntProvider: Provider<Map<Int, Function0<Int>>>
+      private get(): Provider<Map<Int, Function0<Int>>> {
+        return Companion.singleton<Int, Int>(key = 1, provider = Companion.create(instance = <this>.#thisGraphInstance))
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideValue", propertyName = "", startOffset = 242, endOffset = 279, newInstanceName = "provideValue")
+  class ProvideValueMetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideValueMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideValue(instance: AppGraph): Int {
+        return instance.provideValue()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return Companion.provideValue(instance = <this>.#instance)
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Binds
+  @IntoMap
+  @IntKey(value = 1)
+  @ComptimeOnly
+  abstract fun Int.bindValue(): Int {
+    return error(message = "Never called")
+  }
+
+  @Provides
+  fun provideValue(): Int {
+    return 1
+  }
+
+  abstract val ints: Function0<Map<Int, Function0<Int>>>
+    abstract get
+
+}

@@ -47,6 +47,7 @@ import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.metroMetadata
+import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -1017,13 +1018,22 @@ internal class BindingContainerTransformer(
         mirrorFunction = mirrorFunction,
       )
 
+    // referenceClass bypasses the visibility filter that originClassOrNull() inherits, so
+    // we can resolve internal origin classes from other modules for diagnostic locations.
+    val originClass =
+      container
+        .annotationsIn(metroSymbols.classIds.originAnnotations)
+        .firstOrNull()
+        ?.originOrNull()
+        ?.let { pluginContext.referenceClass(it)?.owner }
+
     return ProviderFactory(
       contextKey = IrContextualTypeKey.from(mirrorFunction),
       clazz = stub,
       mirrorFunction = mirrorFunction,
       sourceAnnotations = sourceAnnotations,
       callableMetadata = callableMetadata,
-      realDeclaration = providesFunction,
+      realDeclaration = originClass ?: providesFunction,
     )
   }
 

@@ -117,20 +117,16 @@ interface AppGraph {
     @Named(name = "first")
     private val setOfIntProvider: Provider<Set<Int>>
       private get(): Provider<Set<Int>> {
-        return { // BLOCK
-          val tmp_0: Builder<Int> = Companion.builder<Int>(individualProviderSize = 1, collectionProviderSize = 0)
-          tmp_0.addProvider(individualProvider = <this>.#provideIntProvider)
-          tmp_0.build()
-        }
+        return Companion.singleton<Int>(provider = <this>.#provideIntProvider)
       }
 
     @Named(name = "second")
     private val setOfIntProvider2: Provider<Set<Int>>
       private get(): Provider<Set<Int>> {
         return { // BLOCK
-          val tmp_1: Builder<Int> = Companion.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp_1.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider>())
-          tmp_1.build()
+          val tmp_0: Builder<Int> = Companion.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
+          tmp_0.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider>())
+          tmp_0.build()
         }
       }
 
@@ -138,9 +134,9 @@ interface AppGraph {
     private val setOfIntProvider3: Provider<Set<Int>>
       private get(): Provider<Set<Int>> {
         return { // BLOCK
-          val tmp_2: Builder<Int> = Companion.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp_2.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider2>())
-          tmp_2.build()
+          val tmp_1: Builder<Int> = Companion.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
+          tmp_1.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider2>())
+          tmp_1.build()
         }
       }
 

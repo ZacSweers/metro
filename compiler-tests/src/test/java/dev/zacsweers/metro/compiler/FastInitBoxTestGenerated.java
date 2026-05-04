@@ -574,6 +574,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("PresenterClassQualifiedClass.kt")
+      public void testPresenterClassQualifiedClass() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassQualifiedClass.kt");
+      }
+
+      @Test
       @TestMetadata("PresenterClassQualifiedInjection.kt")
       public void testPresenterClassQualifiedInjection() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassQualifiedInjection.kt");
@@ -607,6 +613,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("PresenterFunctionObjectScreen.kt")
       public void testPresenterFunctionObjectScreen() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionObjectScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionQualifiedFunction.kt")
+      public void testPresenterFunctionQualifiedFunction() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionQualifiedFunction.kt");
       }
 
       @Test
@@ -750,6 +762,22 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("TransitiveContributedContainersInRootGraphs.kt")
     public void testTransitiveContributedContainersInRootGraphs() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/TransitiveContributedContainersInRootGraphs.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/bytecode")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Bytecode {
+    @Test
+    public void testAllFilesPresentInBytecode() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bytecode"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("SwitchingProvidersGenerateTableSwitch.kt")
+    public void testSwitchingProvidersGenerateTableSwitch() {
+      runTest("compiler-tests/src/test/data/box/bytecode/SwitchingProvidersGenerateTableSwitch.kt");
     }
   }
 
