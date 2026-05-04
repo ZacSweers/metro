@@ -6345,11 +6345,22 @@
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[IR, runtime]</strong> For multibound maps/sets with exactly one element, Metro now generates optimized IR that uses optimized <code>SingletonSet</code>/<code>SingletonMap</code> implementations at runtime and skips the unnecessary throwaway builder allocation. Note that, when using interop, the generated code for Dagger&rsquo;s internal set/map factories still generates the necessary builder intermediary.</li>
+<li><strong>[IR]</strong> Make <code>SwitchingProvider.invoke()</code> faster by hoisting the <code>id</code> field into a local before the <code>when</code>, allowing the JVM backend to lower it to <code>tableswitch</code> (O(1)) instead of a chain of integer compares.</li>
+<li><strong>[IR]</strong> Empty <code>Set</code> multibindings accessed through a provider now emit <code>SetFactory.empty()</code> (a singleton) rather than allocating a builder and an empty backing set on every graph init.</li>
+<li><strong>[IR]</strong> Make a number of compiler internals lazier, cached, or faster. Improves top-line compiler performance traces ~5–15%.<ul>
 <li><strong>[IR]</strong> Do not process platform type supertypes.</li>
-<li><strong>[IR]</strong> Make a number of compiler internals lazier and cached.</li>
+<li><strong>[IR]</strong> Compare <code>IrTypeKey</code> instances structurally instead of by rendered strings.</li>
+<li><strong>[IR/graph]</strong> Pre-size internal hash collections to avoid resizing during validation.</li>
+<li><strong>[IR/graph]</strong> Faster compilation for modules with many <code>@Binds</code>/<code>@ContributesBinding</code> declarations by batching incremental-compilation lookup tracking per graph rather than per-callable.</li>
+<li><strong>[IR/graph]</strong> Small additional compile-time win from using cheaper short-lived working sets during binding-graph population.</li>
+<li><strong>[IR/graph]</strong> Significantly faster binding-graph validation on projects with deep or wide dependency graphs (the graph seal drops ~60% in benchmarks).</li>
 <li><strong>[IR/graph]</strong> When populating bindings from roots, track a <code>processedKeys</code> set so duplicate queue entries don&rsquo;t re-walk dependency lists. This avoids unnecessary extra iterations when doing an initial reachability walk.</li>
-<li><strong>[IR/graph]</strong> Merge two annotation walks in supertype collection into a single pass with a per-annotation-class meta-annotation cache, so <code>@Singleton</code>/<code>@Scope</code>-style annotations appearing across many supertypes are meta-walked once instead of N times.</li>
+<li><strong>[IR/graph]</strong> Merge two annotation walks in supertype collecting into a single pass with a per-annotation-class meta-annotation cache, so <code>@Qualifier</code>/<code>@Scope</code>-style annotations appearing across many supertypes are meta-walked once instead of N times.</li>
+</ul>
+</li>
 <li><strong>[IR/tracing]</strong> Add a lot more tracing spans for more granular tracing.</li>
+<li><strong>[IR/tracing]</strong> Don&rsquo;t delete previous traces on new compilations. Now traces are just added to the designated directory each compilation when enabled.</li>
 </ul>
 <h3 id="enhancements_1">Enhancements<a class="headerlink" href="#enhancements_1" title="Permanent link">&para;</a></h3>
 <ul>
