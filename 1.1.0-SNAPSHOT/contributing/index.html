@@ -2250,7 +2250,8 @@
 <li><code>:compose-viewmodels</code> — A multi-module integration test.</li>
 </ol>
 <p>To include the <code>samples</code> project in IntelliJ, open the Gradle tab and just add it as another project. It depends on the regular artifacts as included build dependencies.</p>
-<p>Git hooks for code formatting are automatically configured on the first Gradle invocation via <code>config/git/.gitconfig</code>. The formatter binaries in <code>config/bin/</code> can be updated by running <code>scripts/update-binaries.sh</code>.</p>
+<p>Code formatting is handled by <a href="https://github.com/ZacSweers/kempt">kempt</a>, which wraps ktfmt + google-java-format and is configured via <code>.kempt.toml</code>. Install with <code>brew install ZacSweers/tap/kempt-fmt</code> or <code>cargo install kempt-fmt</code>.</p>
+<p>Git hooks for code formatting are automatically configured on the first Gradle invocation via <code>config/git/.gitconfig</code>. The pre-commit hook delegates to <code>kempt hook</code>. The formatter versions are pinned in <code>.kempt.toml</code> and bumped automatically by Renovate; bump them manually with <code>kempt upgrade</code>.</p>
 <p>There is a useful <code>./metrow</code> helper CLI that can perform a few common commands across the various subprojects. See its <code>--help</code> usage for more details.</p>
 <p>There are some standard IntelliJ run configurations checked in to <code>.run</code> that should be automatically picked up, covering a few common test scenarios.</p>
 <div class="admonition tip">
