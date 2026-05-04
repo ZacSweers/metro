@@ -5,5 +5,3 @@
     Repository is requested at
         [AppGraph] AppGraph.repo
 
-(Hint)
-This dependency is required by RepositoryImpl, contributed via a @Contributes-like annotation to the graph.
