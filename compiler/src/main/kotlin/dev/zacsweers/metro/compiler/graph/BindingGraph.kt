@@ -105,8 +105,8 @@ internal open class MutableBindingGraph<
    * This operation runs in O(V+E). After calling this function, the binding graph becomes
    * immutable.
    *
-   * Calls [onError] if a strict dependency cycle or missing binding is encountered during
-   * validation.
+   * Reports errors to [errorReporter] if a strict dependency cycle or missing binding is
+   * encountered during validation.
    *
    * @param onPopulated a callback for when the graph is fully populated but not yet validated.
    * @param validateBindings a callback to perform optional extra validation on bindings
@@ -118,6 +118,7 @@ internal open class MutableBindingGraph<
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     keep: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     shrinkUnusedBindings: Boolean = true,
+    useSecondaryTopoSort: Boolean = true,
     onPopulated: () -> Unit = {},
     onSortedCycle: (List<TypeKey>) -> Unit = {},
     validateBindings:
@@ -179,7 +180,7 @@ internal open class MutableBindingGraph<
           } else {
             fullAdjacency.keys + keep.keys.mapToSet { it.typeKey }
           }
-        sortAndValidate(roots, allKeeps, fullAdjacency, stack, onSortedCycle)
+        sortAndValidate(roots, allKeeps, fullAdjacency, stack, useSecondaryTopoSort, onSortedCycle)
       }
 
     // Validate bindings using the reachable adjacency computed during topo sort.
@@ -273,6 +274,7 @@ internal open class MutableBindingGraph<
     keep: Set<TypeKey>,
     fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
+    useSecondaryTopoSort: Boolean,
     onSortedCycle: (List<TypeKey>) -> Unit,
   ): GraphTopology<TypeKey> {
     val sortedRootKeys =
@@ -334,6 +336,7 @@ internal open class MutableBindingGraph<
             reportCycle(entriesInCycle, stack)
           },
           isImplicitlyDeferrable = { key -> bindings.getValue(key).isImplicitlyDeferrable },
+          useSecondaryTopoSort = useSecondaryTopoSort,
         )
       }
 
