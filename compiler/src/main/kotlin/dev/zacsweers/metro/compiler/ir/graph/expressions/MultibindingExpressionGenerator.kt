@@ -727,7 +727,7 @@ internal class MultibindingExpressionGenerator(
           // allocation. Falls back to the builder path when the framework runtime doesn't expose
           // a singleton helper (e.g., Dagger interop).
           if (sourceBindings.size == 1 && singletonFunction != null) {
-            val sourceBinding = sourceBindings.single()
+            val sourceBinding =       sourceBindings.single()
             val providerType = singletonFunction.owner.nonDispatchParameters[1].type.rawType()
             val singletonInvoke =
               irInvoke(
