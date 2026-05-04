@@ -123,17 +123,19 @@ internal data class GraphAdjacency<T>(
  *   kept.
  * @param onSortedCycle optional callback reporting (sorted) cycles.
  * @param useSecondaryTopoSort Controls how the **component-level** ordering is produced.
- *     - `true` (default, current behavior): run a secondary Kahn topological sort over the
- *       component DAG. Tie-breaking among simultaneously-ready components is by lowest component id
- *       (via `PriorityQueue<Int>`). The component DAG is built and exposed in the result.
- *     - `false`: skip Kahn's. Tarjan already emits components in reverse-topological order, so
- *       reversing the id range (`(componentCount - 1) downTo 0`) is itself a valid topological
- *       order. Tie-breaking falls back to DFS-finish order (the order ids were assigned during SCC
- *       discovery). The component DAG isn't built — `componentDag` in the result is empty.
+ *     - `true` (default): build the component DAG and run a Kahn topological sort over it. Ties
+ *       among simultaneously-ready components are broken by lowest component id (via
+ *       `PriorityQueue<Int>`). The component DAG is exposed in the result.
+ *     - `false`: skip the DAG build and Kahn's pass. Tarjan emits components in finish order (id 0
+ *       = first-popped = a leaf with no outgoing dep edges, i.e. depends on nothing), which in this
+ *       codebase's adjacency orientation IS the desired init order — prereqs first, dependents
+ *       last. Tie-breaking is by DFS finish order, but **since Kahn assigns its tie-break by
+ *       component id and Tarjan ids ARE finish-order, both paths produce the same order**. The
+ *       component DAG isn't built — `componentDag` in the result is empty.
  *
- *   Both paths produce **valid** topological orders but they generally differ where Kahn's
- *   priority-queue would have broken a tie differently. Flipping this re-orders observable codegen
- *   output (field order, init blocks, etc.).
+ *   Both paths produce **the same `sortedKeys` order** in practice. The `false` path is purely a
+ *   cheaper way to compute it for graphs that don't need the materialised `componentDag`. If you
+ *   need `GraphTopology.componentDag` populated for downstream analysis, leave this `true`.
  *
  *   Note that the **vertex-level** Kahn pass inside [sortVerticesInSCC] always runs regardless of
  *   this flag — that's a different sort, ordering vertices within a single SCC by their hard
@@ -205,14 +207,12 @@ internal fun <V : Comparable<V>> metroSort(
         topologicallySortComponentDag(componentDag, components.size)
       }
   } else {
-    // Tarjan emits components in reverse-topological order: id 0 = first popped (a sink),
-    // id n-1 = last popped (a source). Reversing the id range gives forward topological order.
-    // Skip the Kahn pass and the DAG build entirely — `componentDag` ends up empty.
+    // Tarjan finish-order matches Kahn-with-id-priority output (see KDoc); skip the DAG build.
     componentDag = emptyIntObjectMap()
     componentOrder =
-      trace("Reverse Tarjan component order") {
+      trace("Component order from Tarjan finish order") {
         MutableIntList(components.size).apply {
-          for (id in components.lastIndex downTo 0) {
+          for (id in components.indices) {
             add(id)
           }
         }
