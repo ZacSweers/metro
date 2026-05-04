@@ -30,8 +30,22 @@ jobs:
           distribution: 'zulu'
           java-version-file: .github/workflows/.java-version
 
+      - name: Cache kempt formatter binaries
+        uses: actions/cache@v5
+        with:
+          path: ~/.kempt/cache
+          key: kempt-${{ hashFiles('.kempt.toml') }}
+
+      - name: Install kempt
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://github.com/ZacSweers/kempt/releases/latest/download/kempt-fmt-installer.sh | sh
+
+      - name: Pre-warm kempt cache
+        run: kempt update
+
       - name: Check formatting
-        run: ./scripts/format.sh --check
+        run: kempt check
 
   generate-matrix:
     name: "⊹ generate compiler matrix ⊹"
