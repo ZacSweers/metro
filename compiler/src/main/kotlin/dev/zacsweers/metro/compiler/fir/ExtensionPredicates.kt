@@ -16,9 +16,6 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
   internal val qualifiersPredicate = DeclarationPredicate.create {
     metaAnnotated(classIds.qualifierAnnotations.asFqNames(), includeItself = false)
   }
-  internal val scopesPredicate = DeclarationPredicate.create {
-    metaAnnotated(classIds.scopeAnnotations.asFqNames(), includeItself = false)
-  }
   internal val mapKeysPredicate = DeclarationPredicate.create {
     metaAnnotated(classIds.mapKeyAnnotations.asFqNames(), includeItself = false)
   }

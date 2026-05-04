@@ -148,6 +148,7 @@ dependencies {
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
   daggerRuntimeClasspath(libs.dagger.runtime)
   kiAnvilRuntimeClasspath(libs.kotlinInject.anvil.runtime)
+  kiAnvilRuntimeClasspath(libs.kotlinInject.runtime)
   circuitRuntimeClasspath(libs.circuit.runtime.presenter)
   circuitRuntimeClasspath(libs.circuit.runtime.ui)
   circuitRuntimeClasspath(libs.circuit.codegenAnnotations)
@@ -199,7 +200,7 @@ tasks.withType<Test> {
 
   // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
   minHeapSize = "512m"
-  maxHeapSize = if (largeTestMode) "4g" else "2g"
+  maxHeapSize = if (largeTestMode) "5g" else "2g"
   jvmArgs(
     "-ea",
     "-XX:+UseCodeCacheFlushing",

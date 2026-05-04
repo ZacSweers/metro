@@ -8,6 +8,8 @@ import dev.zacsweers.metro.compiler.applyIf
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
+import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
@@ -112,6 +114,8 @@ internal fun generateStaticCreateFunction(
           copyQualifiers = true,
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
+        addHiddenFromObjCAnnotation(this)
+        addStaticAnnotations(this)
         context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
       }
   transformStaticCreateFunction(
@@ -254,28 +258,10 @@ internal fun generateStaticNewInstanceFunction(
           copyQualifiers = true,
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
+        addHiddenFromObjCAnnotation(this)
+        addStaticAnnotations(this)
         context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
       }
-  transformStaticNewInstanceFunction(
-    sourceMetroParameters = sourceMetroParameters,
-    sourceParameters = sourceParameters,
-    targetFunction = targetFunction,
-    newInstanceFunction = newInstanceFunction,
-    buildBody = buildBody,
-  )
-  return newInstanceFunction
-}
-
-context(context: IrMetroContext)
-internal fun transformStaticNewInstanceFunction(
-  parentClass: IrClass,
-  sourceMetroParameters: Parameters,
-  sourceParameters: List<IrValueParameter>,
-  targetFunction: IrFunction? = null,
-  buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
-): IrSimpleFunction {
-  val newInstanceFunction =
-    parentClass.functions.first { it.origin == Origins.FactoryNewInstanceFunction }
   transformStaticNewInstanceFunction(
     sourceMetroParameters = sourceMetroParameters,
     sourceParameters = sourceParameters,
@@ -385,6 +371,7 @@ internal fun generateMetadataVisibleMirrorFunction(
         // this for
         body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
       }
+  addHiddenFromObjCAnnotation(function)
   if (registerAsMetadataVisible) {
     context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
   }
@@ -416,6 +403,7 @@ internal fun generateStubCreatorFunctions(
     .apply {
       setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
       addParameters(params, wrapInProvider = true, copyQualifiers = true)
+      addStaticAnnotations(this)
       body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
     }
 
@@ -423,6 +411,7 @@ internal fun generateStubCreatorFunctions(
   creatorClass.addFunction(callableName, returnType).apply {
     setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
     addParameters(params, wrapInProvider = false, copyQualifiers = true)
+    addStaticAnnotations(this)
     body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
   }
 }

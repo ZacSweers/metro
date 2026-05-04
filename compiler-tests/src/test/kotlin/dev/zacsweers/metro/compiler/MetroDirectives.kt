@@ -73,21 +73,20 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive(
       "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations."
     )
-  val USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS by
-    valueDirective(
-      "When enabled, Metro's native @Assisted annotation uses the parameter name as the default identifier."
-    ) {
-      it.toBoolean()
-    }
   val PARALLEL_THREADS by
     valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
-  val ENABLE_FUNCTION_PROVIDERS by directive("Enable () -> T as a provider type.")
+  val DESUGARED_PROVIDER_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of uses of the desugared `Provider<T>` form. Prefer the function syntax form `() -> T` instead."
+    )
   val ENABLE_KCLASS_TO_CLASS_INTEROP by
     directive("Enable KClass/Class interop for multibinding map keys.")
   val GENERATE_CONTRIBUTION_PROVIDERS by
-    directive(
+    valueDirective(
       "Generate top-level contribution provider classes with @Provides functions instead of nested @Binds interfaces."
-    )
+    ) {
+      it.toBoolean()
+    }
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

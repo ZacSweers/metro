@@ -208,7 +208,8 @@ fi
 all_kt_files=("${src_kt_files[@]}" "${kts_files[@]}")
 if [[ ${#all_kt_files[@]} -gt 0 ]]; then
   echo "==> ktfmt (${#all_kt_files[@]} files)"
-  ktfmt_args=(--google-style)
+  # --quiet suppresses per-file "Done formatting" progress on stderr so real errors stay visible.
+  ktfmt_args=(--google-style --quiet)
   if $CHECK_ONLY; then
     ktfmt_args+=(--set-exit-if-changed --dry-run)
   fi
@@ -220,16 +221,12 @@ if [[ ${#all_kt_files[@]} -gt 0 ]]; then
   done
 
   if [[ ${#abs_kt_files[@]} -gt 0 ]]; then
-    if ! "$REPO_ROOT/config/bin/ktfmt" "${ktfmt_args[@]}" "${abs_kt_files[@]}" 2>/dev/null; then
-      if $CHECK_ONLY; then
-        fail "ktfmt: some files need formatting"
-      else
-        # Re-run verbosely on failure
-        fail "ktfmt formatting failed, re-running verbosely:"
-        "$REPO_ROOT/config/bin/ktfmt" "${ktfmt_args[@]}" "${abs_kt_files[@]}" || true
-      fi
-    else
+    if "$REPO_ROOT/config/bin/ktfmt" "${ktfmt_args[@]}" "${abs_kt_files[@]}"; then
       ok "  Done"
+    elif $CHECK_ONLY; then
+      fail "ktfmt: some files need formatting"
+    else
+      fail "ktfmt formatting failed (see errors above)"
     fi
   fi
 else
@@ -253,15 +250,12 @@ if [[ ${#src_java_files[@]} -gt 0 ]]; then
   done
 
   if [[ ${#abs_java_files[@]} -gt 0 ]]; then
-    if ! "$REPO_ROOT/config/bin/gjf" "${gjf_args[@]}" "${abs_java_files[@]}" 2>/dev/null; then
-      if $CHECK_ONLY; then
-        fail "gjf: some files need formatting"
-      else
-        fail "gjf formatting failed, re-running verbosely:"
-        "$REPO_ROOT/config/bin/gjf" "${gjf_args[@]}" "${abs_java_files[@]}" || true
-      fi
-    else
+    if "$REPO_ROOT/config/bin/gjf" "${gjf_args[@]}" "${abs_java_files[@]}"; then
       ok "  Done"
+    elif $CHECK_ONLY; then
+      fail "gjf: some files need formatting"
+    else
+      fail "gjf formatting failed (see errors above)"
     fi
   fi
 else

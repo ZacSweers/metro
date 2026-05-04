@@ -145,6 +145,7 @@ public abstract interface annotation class dev/zacsweers/metro/OptionalBinding :
 }
 
 public abstract interface annotation class dev/zacsweers/metro/Origin : java/lang/annotation/Annotation {
+	public abstract fun context ()Ljava/lang/String;
 	public abstract fun value ()Ljava/lang/Class;
 }
 

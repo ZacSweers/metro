@@ -10,6 +10,7 @@ data object HomeScreen : Screen
 
 data class HomeState(val message: String) : CircuitUiState
 
+@Inject
 @CircuitInject(HomeScreen::class, AppScope::class)
 class HomePresenter : Presenter<HomeState> {
   @Composable

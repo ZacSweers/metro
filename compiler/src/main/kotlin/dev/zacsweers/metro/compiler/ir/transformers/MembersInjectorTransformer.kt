@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
@@ -11,6 +15,7 @@ import dev.zacsweers.metro.compiler.escapeIfNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
@@ -48,6 +53,8 @@ import dev.zacsweers.metro.compiler.proto.MemberInjectionsProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
@@ -82,8 +89,11 @@ import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
-internal class MembersInjectorTransformer(context: IrMetroContext) :
-  IrMetroContext by context, Lockable by Lockable() {
+@Inject
+@SingleIn(IrScope::class)
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
+internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: TraceScope) :
+  IrMetroContext by context, TraceScope by traceScope, Lockable by Lockable() {
 
   data class MemberInjectClass(
     val sourceClass: IrClass,
@@ -256,7 +266,11 @@ internal class MembersInjectorTransformer(context: IrMetroContext) :
 
     val companionObject = injectorClass.companionObject()!!
 
-    val memberInjectClass = computeMemberInjectClass(injectorClass, isDagger = false)
+    val memberInjectClass =
+      trace("computeMemberInjectClass") {
+        computeMemberInjectClass(injectorClass, isDagger = false)
+      }
+
     if (isExternal) {
       return memberInjectClass.also { generatedInjectors[injectedClassId] = Optional.of(it) }
     }
@@ -269,7 +283,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext) :
     val allParameters =
       injectedMembersByClass.values.flatMap { it.flatMap(Parameters::regularParameters) }
 
-    val constructorParametersToFields = assignConstructorParamsToFields(ctor, injectorClass)
+    val constructorParametersToFields =
+      trace("assignConstructorParamsToFields") {
+        assignConstructorParamsToFields(ctor, injectorClass)
+      }
 
     // TODO This is ugly. Can we just source all the params directly from the FIR class now?
     val sourceParametersToFields: Map<Parameter, IrField> =
@@ -280,109 +297,121 @@ internal class MembersInjectorTransformer(context: IrMetroContext) :
       }
 
     // Static create()
-    @Suppress("RETURN_VALUE_NOT_USED")
-    transformStaticCreateFunction(
-      objectClassToGenerateIn = companionObject,
-      factoryClass = injectorClass,
-      targetConstructor = ctor.symbol,
-      parameters =
-        injectedMembersByClass.values
-          .flatten()
-          .reduce { current, next -> current.mergeValueParametersWith(next) }
-          .let {
-            Parameters(
-              Parameters.empty().callableId,
-              null,
-              null,
-              it.regularParameters,
-              it.contextParameters,
-            )
-          },
-      providerFunction = null,
-      patchCreationParams = false, // TODO when we support absent
-      copyQualifiers = true,
-    )
+    trace("Generate static create()") {
+      @Suppress("RETURN_VALUE_NOT_USED")
+      transformStaticCreateFunction(
+        objectClassToGenerateIn = companionObject,
+        factoryClass = injectorClass,
+        targetConstructor = ctor.symbol,
+        parameters =
+          injectedMembersByClass.values
+            .flatten()
+            .reduce { current, next -> current.mergeValueParametersWith(next) }
+            .let {
+              Parameters(
+                Parameters.empty().callableId,
+                null,
+                null,
+                it.regularParameters,
+                it.contextParameters,
+              )
+            },
+        providerFunction = null,
+        patchCreationParams = false, // TODO when we support absent
+        copyQualifiers = true,
+      )
+    }
 
     // Implement static inject{name}() for each declared callable in this class
-    for ((function, params) in memberInjectClass.declaredInjectFunctions) {
-      function.apply {
-        val instanceParam = regularParameters[0]
+    trace("Generate inject() functions") {
+      for ((function, params) in memberInjectClass.declaredInjectFunctions) {
+        function.apply {
+          val instanceParam = regularParameters[0]
 
-        // Copy any qualifier annotations over to propagate them
-        regularParameters.drop(1).forEachIndexed { i, param ->
-          val injectedParam = params.regularParameters[i]
-          injectedParam.typeKey.qualifier?.let { qualifier ->
-            metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
-              param,
-              listOf(qualifier.ir.deepCopyWithSymbols()),
-            )
+          // Copy any qualifier annotations over to propagate them
+          regularParameters.drop(1).forEachIndexed { i, param ->
+            val injectedParam = params.regularParameters[i]
+            injectedParam.typeKey.qualifier?.let { qualifier ->
+              metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
+                param,
+                listOf(qualifier.ir.deepCopyWithSymbols()),
+              )
+            }
           }
-        }
 
-        body =
-          pluginContext.createIrBuilder(symbol).run {
-            val bodyExpression: IrExpression =
-              if (params.isProperty) {
-                val value = regularParameters[1]
-                val irField = params.irProperty!!.backingField
-                if (irField == null) {
+          body =
+            pluginContext.createIrBuilder(symbol).run {
+              val bodyExpression: IrExpression =
+                if (params.isProperty) {
+                  val value = regularParameters[1]
+                  val irField = params.irProperty!!.backingField
+                  if (irField == null) {
+                    irInvoke(
+                      irGet(instanceParam),
+                      callee = params.ir!!.symbol,
+                      args = listOf(irGet(value)),
+                    )
+                  } else {
+                    irSetField(irGet(instanceParam), irField, irGet(value))
+                  }
+                } else {
                   irInvoke(
                     irGet(instanceParam),
                     callee = params.ir!!.symbol,
-                    args = listOf(irGet(value)),
+                    args = regularParameters.drop(1).map { irGet(it) },
                   )
-                } else {
-                  irSetField(irGet(instanceParam), irField, irGet(value))
                 }
-              } else {
-                irInvoke(
-                  irGet(instanceParam),
-                  callee = params.ir!!.symbol,
-                  args = regularParameters.drop(1).map { irGet(it) },
-                )
-              }
-            irExprBodySafe(bodyExpression)
+              irExprBodySafe(bodyExpression)
+            }
+        }
+      }
+    }
+
+    // Build up the inject functions map recursively from supertypes. The `requireInjector` call
+    // may recurse into this whole flow for each supertype, so this span naturally contains those
+    // nested injector generations too — useful for seeing hierarchy-induced cost.
+    val inheritedInjectFunctions: Map<IrSimpleFunction, Parameters> =
+      trace("Collect inherited inject funcs") {
+        buildMap {
+          // Locate function refs for supertypes
+          for ((classId, injectedMembers) in injectedMembersByClass) {
+            if (classId == injectedClassId) continue
+            if (injectedMembers.isEmpty()) continue
+
+            // This is what generates supertypes lazily as needed
+            val functions =
+              requireInjector(pluginContext.referenceClass(classId)!!.owner).declaredInjectFunctions
+
+            putAll(functions)
           }
+        }
       }
-    }
-
-    val inheritedInjectFunctions: Map<IrSimpleFunction, Parameters> = buildMap {
-      // Locate function refs for supertypes
-      for ((classId, injectedMembers) in injectedMembersByClass) {
-        if (classId == injectedClassId) continue
-        if (injectedMembers.isEmpty()) continue
-
-        // This is what generates supertypes lazily as needed
-        val functions =
-          requireInjector(pluginContext.referenceClass(classId)!!.owner).declaredInjectFunctions
-
-        putAll(functions)
-      }
-    }
 
     val injectFunctions = inheritedInjectFunctions + memberInjectClass.declaredInjectFunctions
 
     // Override injectMembers()
-    injectorClass.requireSimpleFunction(Symbols.StringNames.INJECT_MEMBERS).owner.apply {
-      finalizeFakeOverride(injectorClass.thisReceiverOrFail)
-      val typeArgs = declaration.typeParameters.map { it.defaultType }
-      body =
-        pluginContext.createIrBuilder(symbol).irBlockBody {
-          addMemberInjection(
-            typeArgs = typeArgs,
-            callingFunction = this@apply,
-            instanceReceiver = regularParameters[0],
-            injectorReceiver = dispatchReceiverParameter!!,
-            injectFunctions = injectFunctions,
-            parametersToFields = sourceParametersToFields,
-          )
-        }
+    trace("Override injectMembers()") {
+      injectorClass.requireSimpleFunction(Symbols.StringNames.INJECT_MEMBERS).owner.apply {
+        finalizeFakeOverride(injectorClass.thisReceiverOrFail)
+        val typeArgs = declaration.typeParameters.map { it.defaultType }
+        body =
+          pluginContext.createIrBuilder(symbol).irBlockBody {
+            addMemberInjection(
+              typeArgs = typeArgs,
+              callingFunction = this@apply,
+              instanceReceiver = regularParameters[0],
+              injectorReceiver = dispatchReceiverParameter!!,
+              injectFunctions = injectFunctions,
+              parametersToFields = sourceParametersToFields,
+            )
+          }
+      }
     }
 
     injectorClass.dumpToMetroLog()
 
     // Write metadata to indicate Metro generated this injector
-    declaration.writeMetadata(memberInjectClass)
+    trace("Write injector metadata") { declaration.writeMetadata(memberInjectClass) }
 
     return memberInjectClass.also { generatedInjectors[injectedClassId] = Optional.of(it) }
   }

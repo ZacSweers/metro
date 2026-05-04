@@ -18,7 +18,6 @@ package dev.zacsweers.metro.test.integration
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Includes
-import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.Qualifier
 import dev.zacsweers.metro.Scope
@@ -55,7 +54,7 @@ class DoubleCheckCycleTest {
   @BindingContainer
   class OverrideModule(
     private val provideAny: () -> Any = { fail("This method should be overridden in tests") },
-    private val provideReentrantAny: (Provider<Any>) -> Any = {
+    private val provideReentrantAny: (() -> Any) -> Any = {
       fail("This method should be overridden in tests")
     },
   ) {
@@ -69,7 +68,7 @@ class DoubleCheckCycleTest {
     @Provides
     @SingleIn(ReentrantScope::class)
     @Reentrant
-    fun provideReentrantAny(@Reentrant provider: Provider<Any>): Any {
+    fun provideReentrantAny(@Reentrant provider: () -> Any): Any {
       return provideReentrantAny.invoke(provider)
     }
   }

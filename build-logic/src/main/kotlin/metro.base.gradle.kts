@@ -156,14 +156,14 @@ pluginManager.withPlugin("org.jetbrains.dokka") {
       documentedVisibilities.add(VisibilityModifier.Public)
       reportUndocumented.convention(true)
       perPackageOption {
-        matchingRegex.convention(".*\\.internal.*")
-        suppress.convention(true)
+        matchingRegex.set(".*\\.internal.*")
+        suppress.set(true)
       }
       sourceLink {
         localDirectory.convention(layout.projectDirectory.dir("src"))
         val relPath = rootProject.projectDir.toPath().relativize(projectDir.toPath())
         remoteUrl(
-          providers.gradleProperty("POM_SCM_URL").map { scmUrl -> "$scmUrl/tree/main/$relPath/src" }
+          providers.gradleProperty("POM_SCM_URL").map { scmUrl -> "$scmUrl/tree/main/$relPath" }
         )
         remoteLineSuffix.convention("#L")
       }

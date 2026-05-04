@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.BitField
+import dev.zacsweers.metro.compiler.BitFieldBuilder
 import dev.zacsweers.metro.compiler.METADATA_VERSION
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -93,7 +93,7 @@ internal fun GraphNode.toProto(
   bindingGraph: IrBindingGraph,
   ownProviderFactories: Set<ProviderFactory>,
 ): DependencyGraphProto {
-  var multibindingAccessors = BitField()
+  val multibindingAccessors = BitFieldBuilder()
   val accessorNames =
     accessors
       .sortedBy { it.metroFunction.ir.name.asString() }
@@ -101,7 +101,7 @@ internal fun GraphNode.toProto(
         val isMultibindingAccessor =
           bindingGraph.requireBinding(contextKey) is IrBinding.Multibinding
         if (isMultibindingAccessor) {
-          multibindingAccessors = multibindingAccessors.withSet(index)
+          multibindingAccessors.set(index)
         }
       }
       .map { it.metroFunction.ir.name.asString() }
@@ -110,7 +110,7 @@ internal fun GraphNode.toProto(
     isGraph = true,
     providerFactories = ownProviderFactories,
     accessorNames = accessorNames,
-    multibindingAccessorIndices = multibindingAccessors.toIntList(),
+    multibindingAccessorIndices = multibindingAccessors.build().toIntList(),
   )
 }
 

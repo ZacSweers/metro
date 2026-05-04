@@ -11,6 +11,7 @@ data object HomeScreen : Screen {
   data class State(val message: String) : CircuitUiState
 }
 
+@Inject
 @CircuitInject(HomeScreen::class, AppScope::class)
 class HomeUi : Ui<HomeScreen.State> {
   @Composable

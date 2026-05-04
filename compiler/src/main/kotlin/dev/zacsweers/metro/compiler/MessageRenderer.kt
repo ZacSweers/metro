@@ -82,7 +82,7 @@ internal class MessageRenderer(val richOutput: Boolean = RICH_OUTPUT_ENABLED) {
 
     fun codeBlock(text: String, indent: String = "    "): String = renderer.codeBlock(text, indent)
 
-    fun append(text: String) = apply { sb.append(text) }
+    @IgnorableReturnValue fun append(text: String) = apply { sb.append(text) }
 
     override fun append(csq: CharSequence?): MessageBuilder = apply { sb.append(csq) }
 
@@ -92,32 +92,39 @@ internal class MessageRenderer(val richOutput: Boolean = RICH_OUTPUT_ENABLED) {
 
     override fun append(c: Char): MessageBuilder = apply { sb.append(c) }
 
-    fun appendLine(text: String = "") = apply { sb.appendLine(text) }
+    @IgnorableReturnValue fun appendLine(text: String = "") = apply { sb.appendLine(text) }
 
-    fun appendBold(text: String) = apply { sb.append(renderer.bold(text)) }
+    @IgnorableReturnValue fun appendBold(text: String) = apply { sb.append(renderer.bold(text)) }
 
+    @IgnorableReturnValue
     fun appendItalic(text: String) = apply { sb.append(renderer.italic(text)) }
 
-    fun appendRed(text: String) = apply { sb.append(renderer.red(text)) }
+    @IgnorableReturnValue fun appendRed(text: String) = apply { sb.append(renderer.red(text)) }
 
-    fun appendGreen(text: String) = apply { sb.append(renderer.green(text)) }
+    @IgnorableReturnValue fun appendGreen(text: String) = apply { sb.append(renderer.green(text)) }
 
+    @IgnorableReturnValue
     fun appendYellow(text: String) = apply { sb.append(renderer.yellow(text)) }
 
+    @IgnorableReturnValue
     fun appendUnderline(text: String) = apply { sb.append(renderer.underline(text)) }
 
+    @IgnorableReturnValue
     fun appendCurlyUnderline(text: String) = apply { sb.append(renderer.curlyUnderline(text)) }
 
-    fun appendDim(text: String) = apply { sb.append(renderer.dim(text)) }
+    @IgnorableReturnValue fun appendDim(text: String) = apply { sb.append(renderer.dim(text)) }
 
+    @IgnorableReturnValue
     fun appendStrikethrough(text: String) = apply { sb.append(renderer.strikethrough(text)) }
 
-    fun appendCode(text: String) = apply { sb.append(renderer.code(text)) }
+    @IgnorableReturnValue fun appendCode(text: String) = apply { sb.append(renderer.code(text)) }
 
+    @IgnorableReturnValue
     fun appendCodeBlock(text: String, indent: String = "    ") = apply {
       sb.append(renderer.codeBlock(text, indent))
     }
 
+    @IgnorableReturnValue
     fun appendLineWithUnderlinedContent(
       content: String,
       target: String = content,

@@ -420,6 +420,50 @@ internal class MultibindingExpressionGenerator(
       val resultType =
         irBuiltIns.setClass.typeWith(elementType).wrapInProvider(metroSymbols.metroProvider)
 
+      // Empty set provider: emit `SetFactory.empty()` (singleton) instead of allocating a builder
+      // and an empty result Set.
+      if (individualProviders.isEmpty() && collectionProviders.isEmpty()) {
+        valueProviderSymbols.setFactoryEmptyFunction?.let { emptyFn ->
+          return@with irInvoke(
+            callee = emptyFn,
+            typeHint = emptyFn.owner.returnType.rawType().typeWith(elementType),
+            typeArgs = listOf(elementType),
+          )
+        }
+      }
+
+      // Single individual provider: emit `SetFactory.singleton(p)` to skip the Builder allocation.
+      // Falls back to the builder path when the framework runtime doesn't expose a singleton
+      // helper (e.g., Dagger interop).
+      if (
+        individualProviders.size == 1 &&
+          collectionProviders.isEmpty() &&
+          valueProviderSymbols.setFactorySingletonFunction != null
+      ) {
+        val singletonFunction = valueProviderSymbols.setFactorySingletonFunction!!
+        val provider = individualProviders.single()
+        val providerArg =
+          parentGenerator.generateBindingCode(
+            provider,
+            provider.contextualTypeKey.wrapInProvider(providerClass),
+            accessType = AccessType.PROVIDER,
+            fieldInitKey = fieldInitKey,
+          )
+        val invoked =
+          irInvoke(
+            callee = singletonFunction,
+            typeHint = singletonFunction.owner.returnType.rawType().typeWith(elementType),
+            typeArgs = listOf(elementType),
+            args = listOf(providerArg),
+          )
+        return@with with(metroSymbols.providerTypeConverter) {
+          invoked.convertTo(
+            IrContextualTypeKey(IrTypeKey(irBuiltIns.setClass.typeWith(elementType)))
+              .wrapInProvider()
+          )
+        }
+      }
+
       return irBlock(resultType = resultType) {
         // val builder = SetFactory.<String>builder(1, 1)
         val builder =
@@ -671,6 +715,43 @@ internal class MultibindingExpressionGenerator(
           // - Map<K, Provider<V>> -> MapProviderFactory
           // - Map<K, Lazy<V>> -> MapLazyFactory
           // - Map<K, Provider<Lazy<V>>> -> MapProviderLazyFactory
+          val singletonFunction =
+            when {
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactorySingletonFunction
+              valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactorySingletonFunction
+              valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactorySingletonFunction
+              else -> valueProviderSymbols.mapFactorySingletonFunction
+            }
+
+          // Single entry: emit `XxxFactory.singleton(key, provider)` to skip the Builder
+          // allocation. Falls back to the builder path when the framework runtime doesn't expose
+          // a singleton helper (e.g., Dagger interop).
+          if (sourceBindings.size == 1 && singletonFunction != null) {
+            val sourceBinding = sourceBindings.single()
+            val providerType = singletonFunction.owner.nonDispatchParameters[1].type.rawType()
+            val singletonInvoke =
+              irInvoke(
+                callee = singletonFunction,
+                typeHint =
+                  singletonFunction.owner.returnType.rawType().typeWith(keyType, valueType),
+                typeArgs = listOf(keyType, valueType),
+                args =
+                  listOf(
+                    generateMapKeyLiteral(sourceBinding),
+                    generateMultibindingArgument(
+                      sourceBinding,
+                      canonicalValueContextKey
+                        .wrapInProvider(providerType)
+                        .withIrTypeKey(sourceBinding.typeKey),
+                      fieldInitKey,
+                      accessType = AccessType.PROVIDER,
+                    ),
+                  ),
+              )
+            return with(metroSymbols.providerTypeConverter) {
+              singletonInvoke.convertTo(contextualTypeKey)
+            }
+          }
           val builderFunction =
             when {
               valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderFunction

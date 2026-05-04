@@ -3226,7 +3226,7 @@ class AggregationTest : MetroCompilerTest() {
 
         @Inject @SingleIn(AppScope::class) class Singleton
 
-        @Inject class Wrapper(val provider: Provider<Set<ContributedInterface>>)
+        @Inject class Wrapper(val provider: () -> Set<ContributedInterface>)
 
         @DependencyGraph(AppScope::class)
         interface ExampleGraph {

@@ -55,4 +55,8 @@ Metro provides Gradle tasks for generating interactive HTML visualizations of yo
 
 ## Decompiled Bytecode
 
-Compiled java class files of Metro-generated types are fairly friendly to the IntelliJ "decompile to Java" action. Simply open the class file in the IDE (usually seen as a Kotlin bytecode class) then run the "decompile to Java" action. For JVM projects they are under `build/classes`. For Android projects, it's `build/tmp/kotlin-classes`.
+Compiled java class files of Metro-generated types are fairly friendly to the IntelliJ "decompile to Java" action. Simply open the class file in the IDE (usually seen as a Kotlin bytecode class) then run the "decompile to Java" action.
+
+For JVM projects they are under `build/classes`.
+
+For Android projects, it's `build/intermediates/built_in_kotlinc` or `build/tmp/kotlin-classes` (legacy, pre AGP 9).

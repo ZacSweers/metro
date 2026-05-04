@@ -2,6 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
+// Bootstrap: add the Metro compiler plugin JAR to the buildscript classpath from Maven Central.
+// Buildscript resolution is NOT subject to project-level composite build dependency substitution,
+// which avoids the circular task dependency (compileKotlin → shadowJar → compileKotlin) that
+// occurs when Gradle substitutes dev.zacsweers.metro:compiler with project(:compiler).
+buildscript {
+  repositories { mavenCentral() }
+  val bootstrapVersion =
+    extra.properties["METRO_BOOTSTRAP_VERSION"]?.toString()
+      ?: error("METRO_BOOTSTRAP_VERSION not set in gradle.properties")
+  dependencies {
+    classpath("dev.zacsweers.metro:compiler:$bootstrapVersion") { isTransitive = false }
+  }
+}
+
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.poko)
@@ -9,7 +23,29 @@ plugins {
   alias(libs.plugins.wire)
   alias(libs.plugins.shadow) apply false
   id("metro.publish")
+  // apply false to put metro on the classpath. Conditionally applied below.
+  alias(libs.plugins.metro)
 }
+
+metro {
+  generateAssistedFactories.set(true)
+  // We embed and shade the runtime in the compiler's shadow JAR
+  automaticallyAddRuntimeDependencies.set(false)
+}
+
+// Extract the bootstrap compiler JAR from the buildscript classpath
+val bootstrapVersion = extra.properties["METRO_BOOTSTRAP_VERSION"]?.toString()!!
+val bootstrapJar =
+  buildscript.configurations.getByName("classpath").files.single {
+    it.name == "compiler-$bootstrapVersion.jar"
+  }
+
+configurations
+  .matching { it.name.startsWith("kotlinCompilerPluginClasspath") }
+  .configureEach {
+    exclude(group = "dev.zacsweers.metro", module = "compiler")
+    dependencies.add(project.dependencies.create(files(bootstrapJar)))
+  }
 
 buildConfig {
   generateAtSync = true
@@ -89,6 +125,10 @@ val shadowJar =
       "dev.zacsweers.metro.compiler.shaded.com.jakewharton.crossword",
     )
     relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
+    // Relocate the metro runtime while excluding the compiler's own package
+    relocate("dev.zacsweers.metro", "dev.zacsweers.metro.compiler.shaded.metro") {
+      exclude("dev.zacsweers.metro.compiler.**")
+    }
   }
 
 /**
@@ -121,6 +161,7 @@ dependencies {
   compileOnly(libs.poko.annotations)
   compileOnly(libs.androidx.collection)
 
+  add(embedded.name, project(":runtime"))
   add(embedded.name, libs.androidx.collection)
   add(embedded.name, libs.androidx.tracing.wire)
   add(embedded.name, libs.picnic)
@@ -135,7 +176,6 @@ dependencies {
 
   testCompileOnly(libs.poko.annotations)
 
-  testImplementation(project(":runtime"))
   testImplementation(project(":interop-dagger"))
   testImplementation(libs.kotlin.reflect)
   testImplementation(libs.kotlin.stdlib)

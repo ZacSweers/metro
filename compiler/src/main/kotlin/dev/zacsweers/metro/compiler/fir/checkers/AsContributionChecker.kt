@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AS_CONTRIBUTION_ERROR
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
@@ -58,14 +59,14 @@ internal object AsContributionChecker : FirFunctionCallChecker(MppCheckerKind.Co
           reporter.reportOn(
             typeArg.source ?: source,
             AS_CONTRIBUTION_ERROR,
-            "`asContribution` type argument '${contributedType.classId?.asFqNameString()}' is the same as its receiver type. This is a useless cast.",
+            "`asContribution` type argument '${contributedType.classId?.diagnosticString}' is the same as its receiver type. This is a useless cast.",
           )
           return
         } else if (!mergedGraph.isSubtypeOf(contributedType, session, false)) {
           reporter.reportOn(
             typeArg.source ?: source,
             AS_CONTRIBUTION_ERROR,
-            "`asContribution` type argument '${contributedType.classId?.asFqNameString()}' is not a merged supertype of ${mergedGraph.classId?.asFqNameString()}.",
+            "`asContribution` type argument '${contributedType.classId?.diagnosticString}' is not a merged supertype of ${mergedGraph.classId?.asFqNameString()}.",
           )
           return
         }

@@ -10,9 +10,11 @@ import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidersInGraphIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidesInGraphExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
@@ -83,9 +85,13 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
         keysPerGraphShard = it
       }
-      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_SWITCHING_PROVIDERS)?.let {
-        enableFastInit = it
-      }
+      enableSwitchingProviders =
+        // Weird but necessary because we may set a default in default configurations that we
+        // override in the test, so just take the last one from the file
+        module.directives[MetroDirectives.ENABLE_SWITCHING_PROVIDERS]
+          .lastOrNull()
+          ?.toString()
+          ?.toBoolean() ?: false
       enableFullBindingGraphValidation =
         MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
       enableGraphImplClassAsReturnType =
@@ -124,18 +130,23 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         reportsDestination =
           Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
       }
-      module.directives
-        .singleOrZeroValue(MetroDirectives.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS)
-        ?.let { useAssistedParamNamesAsIdentifiers = it }
       module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
         parallelThreads = it
       }
       contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
-      enableFunctionProviders = MetroDirectives.ENABLE_FUNCTION_PROVIDERS in module.directives
+      module.directives.singleOrZeroValue(MetroDirectives.DESUGARED_PROVIDER_SEVERITY)?.let {
+        desugaredProviderSeverity = it
+      }
       enableKClassToClassInterop =
         MetroDirectives.ENABLE_KCLASS_TO_CLASS_INTEROP in module.directives
+
       generateContributionProviders =
-        MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS in module.directives
+        // Weird but necessary because we may set a default in default configurations that we
+        // override in the test, so just take the last one from the file
+        module.directives[MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS]
+          .lastOrNull()
+          ?.toString()
+          ?.toBoolean() ?: false
 
       // Configure interop annotations using builder helper methods
       if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
@@ -196,6 +207,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
             )
             add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
+            add(GenerateProvidesInGraphExtension.Factory().create(session, options, compatContext))
             if (options.enableCircuitCodegen) {
               add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
             }
@@ -225,6 +237,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     }
     IrGenerationExtension.registerExtension(GenerateImplIrExtension())
     IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
+    IrGenerationExtension.registerExtension(GenerateProvidersInGraphIrExtension())
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector = configuration.messageCollector,

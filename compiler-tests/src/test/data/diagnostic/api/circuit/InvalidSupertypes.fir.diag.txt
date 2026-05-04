@@ -1,1 +1,1 @@
-/InvalidSupertypes.kt:(544,553): error: @CircuitInject-annotated class must implement Presenter or Ui.
+/InvalidSupertypes.kt:(552,561): error: @CircuitInject-annotated class must implement Presenter or Ui.

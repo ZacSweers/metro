@@ -1,5 +1,5 @@
 // https://github.com/ZacSweers/metro/issues/1069
-@Inject class MyIntUser(val ints: Map<String, Provider<Int>>)
+@Inject class MyIntUser(val ints: Map<String, () -> Int>)
 
 @DependencyGraph
 interface AppGraph {
@@ -17,16 +17,16 @@ interface AppGraph {
 
   @Provides
   @IntoSet
-  fun provideLargeIntEntry(@Named("Large") int: Provider<Int>): Pair<String, Provider<Int>> =
+  fun provideLargeIntEntry(@Named("Large") int: () -> Int): Pair<String, () -> Int> =
     "Large" to int
 
   @Provides
   @IntoSet
-  fun provideSmallIntEntry(@Named("Small") int: Provider<Int>): Pair<String, Provider<Int>> =
+  fun provideSmallIntEntry(@Named("Small") int: () -> Int): Pair<String, () -> Int> =
     "Small" to int
 
   @Provides
-  fun provideSomeMap(ints: Set<Pair<String, Provider<Int>>>): Map<String, Provider<Int>> =
+  fun provideSomeMap(ints: Set<Pair<String, () -> Int>>): Map<String, () -> Int> =
     ints.toMap()
 }
 

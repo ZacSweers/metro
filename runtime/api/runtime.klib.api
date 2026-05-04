@@ -187,8 +187,10 @@ open annotation class dev.zacsweers.metro/OptionalBinding : kotlin/Annotation { 
 }
 
 open annotation class dev.zacsweers.metro/Origin : kotlin/Annotation { // dev.zacsweers.metro/Origin|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/Origin.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
+    constructor <init>(kotlin.reflect/KClass<*>, kotlin/String = ...) // dev.zacsweers.metro/Origin.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.String){}[0]
 
+    final val context // dev.zacsweers.metro/Origin.context|{}context[0]
+        final fun <get-context>(): kotlin/String // dev.zacsweers.metro/Origin.context.<get-context>|<get-context>(){}[0]
     final val value // dev.zacsweers.metro/Origin.value|{}value[0]
         final fun <get-value>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/Origin.value.<get-value>|<get-value>(){}[0]
 }

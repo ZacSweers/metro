@@ -17,27 +17,36 @@ class ChildDependency {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(dep: Provider<Dependency>): Factory<ChildDependency> {
         return MetroFactory(dep = dep)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(dep: Dependency): ChildDependency {
         return ChildDependency(dep = dep)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(dep: Provider<Dependency>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): ChildDependency {
       return Companion.newInstance(dep = <this>.#dep.invoke())
     }
 
     @SingleIn(scope = LoggedInScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(dep: Dependency): ChildDependency {
       return error(message = "Never called")
     }
@@ -62,19 +71,27 @@ class Dependency {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<Dependency> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): Dependency {
       return Dependency()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Dependency {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): Dependency {
       return error(message = "Never called")
     }
@@ -95,7 +112,7 @@ interface ExampleGraph : MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : ExampleGraph {
-    private val thisGraphInstance: ExampleGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     private val dependencyProvider: Provider<Dependency>
@@ -142,6 +159,8 @@ interface ExampleGraph : MetroContributionToAppScope {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): ExampleGraph {
       return Impl()
     }

@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
@@ -9,6 +12,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
@@ -16,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
+import dev.zacsweers.metro.compiler.ir.withPopulatedImplicitClassKey
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -31,6 +36,7 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -40,6 +46,8 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
  * Transforms binding mirror classes generated in FIR by adding mirror functions for `@Binds` and
  * `@Multibinds` declarations.
  */
+@Inject
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
 internal class BindsMirrorClassTransformer(context: IrMetroContext) :
   IrMetroContext by context, Lockable by Lockable() {
   private val cache = mutableMapOf<ClassId, Optional<BindsMirror>>()
@@ -102,12 +110,32 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
 
   fun processFunction(declaration: IrSimpleFunction) {
     if (!declaration.isFakeOverride) {
-      val metroFunction = metroFunctionOf(declaration)
+      val originalFunction = metroFunctionOf(declaration)
       if (
-        metroFunction.annotations.isBinds ||
-          metroFunction.annotations.isMultibinds ||
-          metroFunction.annotations.isBindsOptionalOf
+        originalFunction.annotations.isBinds ||
+          originalFunction.annotations.isMultibinds ||
+          originalFunction.annotations.isBindsOptionalOf
       ) {
+        // For @Binds with an implicit class key map key, resolve the sentinel to the bound
+        // source type (the single non-dispatch parameter) once, so it flows into both the
+        // mirror class's IR annotations and the BindsCallable's MetroAnnotations that
+        // IrBinding.Alias ultimately reads from.
+        var metroFunction = originalFunction
+        if (originalFunction.annotations.isBinds && originalFunction.annotations.mapKey != null) {
+          declaration.nonDispatchParameters.singleOrNull()?.type?.let { sourceType ->
+            val newAnnotations =
+              originalFunction.annotations.withPopulatedImplicitClassKey(sourceType)
+            if (newAnnotations !== originalFunction.annotations) {
+              metroFunction =
+                MetroSimpleFunction(
+                  ir = declaration,
+                  annotations = newAnnotations,
+                  callableId = originalFunction.callableId,
+                )
+            }
+          }
+        }
+
         // Add stub body and @ComptimeOnly annotation to the original binds declaration
         // This provides a default implementation so graph impl classes don't need to
         // implement fake overrides

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
@@ -14,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
@@ -105,14 +108,16 @@ private data class ExtensionValidationTask(
   val usedContextKeys: Set<IrContextualTypeKey>,
 )
 
+@Inject
+@SingleIn(IrScope::class)
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
   private val contributionData: IrContributionData,
-  traceScope: TraceScope,
   private val forkJoinPool: ForkJoinPool?,
   private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
   private val boundTypeResolver: IrBoundTypeResolver,
+  traceScope: TraceScope,
 ) : IrMetroContext by context, TraceScope by traceScope {
 
   private val bindingLookupCache = BindingLookupCache()
@@ -560,7 +565,8 @@ internal class DependencyGraphTransformer(
   }
 
   private fun IrBindingGraph.BindingGraphResult.reportUnusedInputs(graphDeclaration: IrClass) {
-    val severity = options.unusedGraphInputsSeverity
+    // IR runs in CLI-only contexts, so IDE-only severities resolve to NONE here.
+    val severity = options.unusedGraphInputsSeverity.resolve(isIde = false)
     if (!severity.isEnabled) return
 
     if (unusedKeys.isEmpty()) return
@@ -570,7 +576,7 @@ internal class DependencyGraphTransformer(
         WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
         ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
         // Already checked above, but for exhaustive when
-        NONE -> return
+        else -> return
       }
 
     val unusedGraphInputs = unusedKeys.values.filterNotNull().sortedBy { it.typeKey }
@@ -663,9 +669,12 @@ internal class DependencyGraphTransformer(
 
     trace("[${metroGraph.kotlinFqName.shortName().asString()}] Generate graph") {
       try {
-        // Generate this graph's implementation
-        val bindingPropertyContext =
-          IrGraphGenerator(
+        // Generate this graph's implementation. The generator's constructor does non-trivial
+        // work (name-allocator preallocation over graph properties/nested classes), so trace it
+        // separately from generate() to keep that cost visible instead of an opaque leading gap.
+        val generator =
+          trace("Construct IrGraphGenerator") {
+            IrGraphGenerator(
               metroContext = metroContext,
               traceScope = this,
               diagnosticTag = metroGraph.diagnosticTag,
@@ -678,7 +687,8 @@ internal class DependencyGraphTransformer(
               graphExtensionGenerator = validationResult.graphExtensionGenerator,
               parentBindingContext = parentBindingContext,
             )
-            .generate()
+          }
+        val bindingPropertyContext = generator.generate()
 
         // Generate child graphs with this graph's binding context as their parent
         for (childResult in validationResult.childValidationResults) {

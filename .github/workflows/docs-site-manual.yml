@@ -110,8 +110,6 @@ jobs:
           fi
 
           echo "✅ Successfully deployed docs for tag: $TAG_NAME"
-        env:
-          SITE_URL: https://zacsweers.github.io/metro/
 
       - name: Show updated mike versions
         run: |

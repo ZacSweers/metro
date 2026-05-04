@@ -1,5 +1,5 @@
 class Target {
-  @Inject lateinit var strings: Map<Int, Provider<String>>
+  @Inject lateinit var strings: Map<Int, () -> String>
 }
 
 interface Bindings {
@@ -17,7 +17,7 @@ interface TestGraph2 : Bindings {
   // Mixed scalar/provider roots, trigger provider getter
   fun inject(target: Target)
 
-  val strings: Provider<Map<Int, Provider<String>>>
+  val strings: () -> Map<Int, () -> String>
 }
 
 @DependencyGraph
@@ -25,17 +25,17 @@ interface TestGraph3 : Bindings {
   // Both scalar roots, triggers scalar getter
   fun inject(target: Target)
 
-  val strings: Map<Int, Provider<String>>
+  val strings: Map<Int, () -> String>
 }
 
 @DependencyGraph
 interface TestGraph4 : Bindings {
   // Only a Provider accessor, triggers Provider getter
-  val strings: Provider<Map<Int, Provider<String>>>
+  val strings: () -> Map<Int, () -> String>
 }
 
 @DependencyGraph
 interface TestGraph5 : Bindings {
   // Only a scalar accessor, triggers scalar getter
-  val strings: Map<Int, Provider<String>>
+  val strings: Map<Int, () -> String>
 }

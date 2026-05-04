@@ -10,13 +10,18 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.isIntrinsicType
 import dev.zacsweers.metro.compiler.fir.isResolved
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.isPlatformType
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -24,10 +29,13 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.fullyExpandedClassId
 import org.jetbrains.kotlin.fir.analysis.checkers.toClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.name.ClassId
 
 internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.Common) {
   private val NON_INCLUDES_KINDS = setOf(ClassKind.ENUM_CLASS, ClassKind.ANNOTATION_CLASS)
@@ -135,7 +143,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         reporter.reportOn(
           graphFactoryAnnotation.source ?: declaration.source,
           MetroDiagnostics.GRAPH_CREATORS_ERROR,
-          "${annotationClassId.relativeClassName.asString()} declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to '${overlapping.map { it.asFqNameString() }.single()}'.",
+          "${annotationClassId.relativeClassName.asString()} declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to '${overlapping.map { it.diagnosticString }.single()}'.",
         )
         return
       }
@@ -162,6 +170,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       }
 
       var isIncludes = false
+      var providesAnnotationClassId: ClassId? = null
       var isProvides = false
       var isGraphPrivate = false
 
@@ -174,6 +183,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           }
 
           in classIds.providesAnnotations -> {
+            providesAnnotationClassId = annotationClassId
             isProvides = true
           }
 
@@ -235,7 +245,35 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         }
 
         isProvides -> {
-          // TODO anything?
+          // Reject intrinsic parameter types (Provider, Lazy, MembersInjector, and Function0
+          // when `enableFunctionProviders` is on). Metro generates the provider wrapper for the
+          // bound instance itself, so a pre-wrapped parameter would silently double-wrap.
+          // Mirrors Dagger's BindingElementValidator.checkFrameworkType for @BindsInstance params.
+          val paramType = param.resolvedReturnTypeRef.coneType
+          val paramClassId = paramType.fullyExpandedClassId(session)
+          if (paramClassId.isIntrinsicType(session)) {
+            val rendered = paramType.render(short = true)
+            val base =
+              "`@${providesAnnotationClassId?.shortClassName}` graph factory parameters may not be intrinsic types, but " +
+                "`${param.name.asString()}` is `$rendered`. " +
+                "Remove the wrapper and let Metro handle the underlying type directly."
+            val message =
+              if (
+                session.metroFirBuiltIns.options.enableFunctionProviders &&
+                  paramClassId == Symbols.ClassIds.function0
+              ) {
+                base +
+                  " Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function literal types " +
+                  "are treated as provider types by Metro and cannot be unique bindings on the graph."
+              } else {
+                base
+              }
+            reporter.reportOn(
+              param.resolvedReturnTypeRef.source ?: param.source,
+              MetroDiagnostics.INTRINSIC_BINDING_ERROR,
+              message,
+            )
+          }
         }
 
         else -> {

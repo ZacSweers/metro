@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ADHOC_GRAPH_EXTENSION_FACTORY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AGGREGATION_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AMBIGUOUS_INJECT_CONSTRUCTOR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_WARNING
@@ -22,6 +23,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_LAZY_CLASS_KEY_E
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEFAULT_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DESUGARED_PROVIDER_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DESUGARED_PROVIDER_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DUPLICATE_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DUPLICATE_MAP_KEY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.EMPTY_MULTIBINDING
@@ -38,6 +41,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTRINSIC_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INVALID_ASSISTED_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_WARNING
@@ -67,6 +71,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLA
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PRIVATE_BINDING_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PRIVATE_CONTRIBUTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDER_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_COULD_BE_BINDS
@@ -137,6 +142,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val SUGGEST_CLASS_INJECTION by warning0<KtElement>(NAME_IDENTIFIER)
 
   // Inject/assisted constructor errors
+  val AMBIGUOUS_INJECT_CONSTRUCTOR by error1<KtElement, String>(NAME_IDENTIFIER)
   val CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS by error0<KtElement>(NAME_IDENTIFIER)
   val CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS by error0<KtElement>(NAME_IDENTIFIER)
   val ASSISTED_FACTORIES_CANNOT_BE_LAZY by error2<KtElement, String, String>(NAME_IDENTIFIER)
@@ -164,11 +170,13 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val SUSPICIOUS_AGGREGATION_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
   val BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val INTRINSIC_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPICIOUS_SET_INTO_SET by warning1<KtElement, String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val DEFAULT_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val PRIVATE_CONTRIBUTION_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val NON_PUBLIC_CONTRIBUTION_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val NON_PUBLIC_CONTRIBUTION_WARNING by warning1<KtElement, String>(VISIBILITY_MODIFIER)
   val EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS by
@@ -202,6 +210,10 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   // Interop warnings
   val INTEROP_ANNOTATION_ARGS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val INTEROP_ANNOTATION_ARGS_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
+
+  // Desugared provider diagnostics
+  val DESUGARED_PROVIDER_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val DESUGARED_PROVIDER_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
   // IR errors
   val GRAPH_DEPENDENCY_CYCLE by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -275,6 +287,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         )
 
         // Inject/assisted Constructor errors
+        put(AMBIGUOUS_INJECT_CONSTRUCTOR, "{0}", STRING)
         put(
           CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
           "Only one `@Inject` constructor is allowed.",
@@ -314,6 +327,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(SUSPICIOUS_AGGREGATION_SCOPE, "{0}", STRING)
         put(AGGREGATION_ERROR, "{0}", STRING)
         put(DEFAULT_BINDING_ERROR, "{0}", STRING)
+        put(PRIVATE_CONTRIBUTION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_ERROR, "{0}", STRING)
         put(NON_PUBLIC_CONTRIBUTION_WARNING, "{0}", STRING)
         put(EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS, "{0}", STRING)
@@ -329,6 +343,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(BINDING_ERROR, "{0}", STRING)
         put(BINDS_ERROR, "{0}", STRING)
         put(BINDS_OPTIONAL_OF_ERROR, "{0}", STRING)
+        put(INTRINSIC_BINDING_ERROR, "{0}", STRING)
         put(BINDS_OPTIONAL_OF_WARNING, "{0}", STRING)
         put(SUSPICIOUS_SET_INTO_SET, "{0}", STRING)
         put(MULTIBINDS_ERROR, "{0}", STRING)
@@ -350,6 +365,8 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(OPTIONAL_BINDING_ERROR, "{0}", STRING)
         put(INTEROP_ANNOTATION_ARGS_ERROR, "{0}", STRING)
         put(INTEROP_ANNOTATION_ARGS_WARNING, "{0}", STRING)
+        put(DESUGARED_PROVIDER_ERROR, "{0}", STRING)
+        put(DESUGARED_PROVIDER_WARNING, "{0}", STRING)
         put(
           PROVIDER_OVERRIDES,
           "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",

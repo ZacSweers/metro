@@ -1,7 +1,7 @@
 // ENABLE_TOP_LEVEL_FUNCTION_INJECTION
 
 @Inject
-fun <T : Any> App(value: T, valueProvider: Provider<T>): T {
+fun <T : Any> App(value: T, valueProvider: () -> T): T {
   return valueProvider()
 }
 

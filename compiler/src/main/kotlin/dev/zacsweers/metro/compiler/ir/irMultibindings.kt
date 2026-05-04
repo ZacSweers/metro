@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -159,6 +160,22 @@ internal fun populateImplicitClassKey(mapKey: IrConstructorCall, implicitType: I
       symbol = implicitType.classOrNull ?: return,
       classType = implicitType,
     )
+}
+
+/**
+ * Returns a new [MetroAnnotations] whose [MetroAnnotations.mapKey] has its implicit class key
+ * populated with a reference to [implicitType]. Returns `this` if there is no map key or the map
+ * key is not using the implicit class key sentinel.
+ */
+context(context: IrMetroContext)
+internal fun MetroAnnotations<IrAnnotation>.withPopulatedImplicitClassKey(
+  implicitType: IrType
+): MetroAnnotations<IrAnnotation> {
+  val mapKey = this.mapKey ?: return this
+  if (!isImplicitClassKeySentinel(mapKey.ir)) return this
+  val copied = mapKey.ir.deepCopyWithSymbols()
+  populateImplicitClassKey(copied, implicitType)
+  return copy(mapKey = IrAnnotation(copied))
 }
 
 context(context: IrMetroContext)

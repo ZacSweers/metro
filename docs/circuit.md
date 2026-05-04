@@ -1,6 +1,6 @@
 # Circuit Integration
 
-Metro includes built-in support for [Circuit](https://slackhq.github.io/circuit/), a Compose-first architecture for building kotlin apps. This integration generates `Presenter.Factory` and `Ui.Factory` implementations from `@CircuitInject`-annotated classes and functions, similar to Circuit's existing KSP code generator but running entirely within Metro's compiler plugin. These factories then contribute into `Set<Presenter.Factory>` and `Set<Presenter.Factory` multibindings.
+Metro includes built-in support for [Circuit](https://slackhq.github.io/circuit/), a Compose-first architecture for building kotlin apps. This integration generates `Presenter.Factory` and `Ui.Factory` implementations from `@CircuitInject`-annotated classes and functions, similar to Circuit's existing KSP code generator but running entirely within Metro's compiler plugin. These factories then contribute into `Set<Presenter.Factory>` and `Set<Presenter.Factory>` multibindings.
 
 ## Setup
 
@@ -40,7 +40,7 @@ class HomePresenter(
 Metro generates a `Presenter.Factory` (or `Ui.Factory`) that:
 
 - Is annotated with `@Inject` and `@ContributesIntoSet(scope)`
-- Has a constructor that accepts a `Provider<HomePresenter>`
+- Has a constructor that accepts a `() -> HomePresenter` function
 - Implements `create()` with screen matching and delegation to the provider
 
 ### Function-based Presenters and UIs
@@ -54,13 +54,13 @@ Annotate a top-level `@Composable` function:
 fun HomePresenter(
   screen: HomeScreen,      // Circuit-provided
   navigator: Navigator,    // Circuit-provided
-  repository: UserRepository,  // Injected as Provider<UserRepository>
+  repository: UserRepository,  // Injected as () -> UserRepository
 ): HomeState {
   // ...
 }
 ```
 
-Metro generates a factory class whose constructor accepts `Provider`-wrapped parameters for injected dependencies. At `create()` time, providers are invoked _once_ (outside the composition) and passed to the function body along with any Circuit-provided parameters.
+Metro generates a factory class whose constructor accepts provider-wrapped parameters (`() -> T`) for injected dependencies. At `create()` time, providers are invoked _once_ (outside the composition) and passed to the function body along with any Circuit-provided parameters.
 
 **UI functions** return `Unit` and must have a `Modifier` parameter:
 
@@ -118,9 +118,9 @@ Some parameter types are provided by Circuit at runtime and should not be inject
 | `CircuitUiState` (and subtypes) | UI only        |
 | `Modifier`                      | UI only        |
 
-All other parameter types are treated as injected dependencies and wrapped in `Provider<T>` on the generated factory's constructor.
+All other parameter types are treated as injected dependencies and wrapped in `() -> T` on the generated factory's constructor.
 
-Parameters already wrapped in `Provider<T>`, `Lazy<T>`, or function types are passed through as-is without additional wrapping.
+Parameters already wrapped in `() -> T`, `Provider<T>`, `Lazy<T>`, or function types are passed through as-is without additional wrapping.
 
 **`CircuitContext`** is intentionally excluded from the circuit-provided set. It is a factory-level concept and should not be accepted by presenters or UIs.
 

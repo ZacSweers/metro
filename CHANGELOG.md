@@ -4,22 +4,213 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[FIR]** Resolve copied typerefs (if necessary) in FIR code gen. This _appears_ to help avoid some IDE FIR issues.
+- **[IR, runtime]** For multibound maps/sets with exactly one element, Metro now generates optimized IR that uses optimized `SingletonSet`/`SingletonMap` implementations at runtime and skips the unnecessary throwaway builder allocation. Note that, when using interop, the generated code for Dagger's internal set/map factories still generates the necessary builder intermediary.
+- **[IR]** Make `SwitchingProvider.invoke()` faster by hoisting the `id` field into a local before the `when`, allowing the JVM backend to lower it to `tableswitch` (O(1)) instead of a chain of integer compares.
+- **[IR]** Empty `Set` multibindings accessed through a provider now emit `SetFactory.empty()` (a singleton) rather than allocating a builder and an empty backing set on every graph init.
+- **[IR]** Make a number of compiler internals lazier, cached, or faster. Improves top-line compiler performance traces ~5–15%.
+    - **[IR]** Do not process platform type supertypes.
+    - **[IR]** Compare `IrTypeKey` instances structurally instead of by rendered strings.
+    - **[IR/graph]** Pre-size internal hash collections to avoid resizing during validation.
+    - **[IR/graph]** Faster compilation for modules with many `@Binds`/`@ContributesBinding` declarations by batching incremental-compilation lookup tracking per graph rather than per-callable.
+    - **[IR/graph]** Small additional compile-time win from using cheaper short-lived working sets during binding-graph population.
+    - **[IR/graph]** Significantly faster binding-graph validation on projects with deep or wide dependency graphs (the graph seal drops ~60% in benchmarks).
+    - **[IR/graph]** When populating bindings from roots, track a `processedKeys` set so duplicate queue entries don't re-walk dependency lists. This avoids unnecessary extra iterations when doing an initial reachability walk.
+    - **[IR/graph]** Merge two annotation walks in supertype collecting into a single pass with a per-annotation-class meta-annotation cache, so `@Qualifier`/`@Scope`-style annotations appearing across many supertypes are meta-walked once instead of N times.
+- **[IR/tracing]** Add a lot more tracing spans for more granular tracing.
+- **[IR/tracing]** Don't delete previous traces on new compilations. Now traces are just added to the designated directory each compilation when enabled.
+
 ### Fixes
 
-- **[FIR]** Fix missing contribution hints for assisted factories
+- **[IR/circuit]** Insert implicit casts when a generated Circuit `Presenter.Factory`/`Ui.Factory` dispatches its `screen: Screen` parameter to an underlying assisted factory or `@Inject @Composable` function that expects a more specific `Screen` subtype. Some platforms (like JVM) silently tolerate the missing cast, but Kotlin/Wasm rejects it with a `call_ref` precise-type mismatch at load time.
+
+### Changes
+
+- Metro now uses... Metro! The Metro compiler now uses proper DI internally, bootstrapping itself. This isn't really anything library consumers have to think about, I just think it's neat.
+
+1.0.0
+-----
+
+_2026-04-27_
+
+This is the first stable release of Metro!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) are now API stable unless annotated with an experimental annotation.
+
+**See the [announcement post](https://www.zacsweers.dev/metro-is-stable/)!**
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+_Changes since RC4_
+
+### New
+
+- **[runtime]** Add an optional `@Origin.context` property, allowing generators to attach extra context to an origin if they want.
+
+### Enhancements
+
+- **[IR]** When a missing binding is a generated contribution provider for an unexposed impl class, include a hint about that in the `MissingBinding` error message.
+
+### Fixes
+
+- **[FIR]** Fix diagnostic reporting for injection sites referring to contribution classes is not annotated `@ExposeImplBinding` and `generateContributionProviders` is enabled. Previously it didn't report on all cases.
+- **[IR]** When reporting binding errors with `generateContributionProviders` enabled, if the referenced declaration is a `@Contributes*` binding then report the original declaration rather than the (source-less) generated declaration.
+
+### Changes
+
+- **[compiler]** Test Kotlin `2.3.21`.
+- **[ide]** Test IntelliJ `2026.1.1`.
+- **[ide]** Test Android Studio Panda 4.
+- **[ide]** Test Android Studio Quail canaries.
+
+1.0.0-RC4
+---------
+
+_2026-04-24_
+
+This is the fourth release candidate for Metro 1.0!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) will be API stable unless annotated with an experimental annotation.
+
+_Changes since RC3_
+
+### Fixes
+
+- **[FIR]** Avoid duplicate contributed graph supertypes when merging contributions by checking against explicitly declared supertypes.
+- **[IR]** Fix default value transformation for function types when `enableFunctionProviders` is enabled.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@vRallev](https://github.com/vRallev)
+
+1.0.0-RC3
+---------
+
+_2026-04-23_
+
+This is the third release candidate for Metro 1.0!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) will be API stable unless annotated with an experimental annotation.
+
+_Changes since RC2_
+
+### `enableFunctionProviders` enabled by default
+
+This release promotes `enableFunctionProviders` (i.e. `() -> T` syntax for providers) to stable, enables it by default, and marks usage of Metro's native `Provider` as a warning.
+
+This may require some migration in existing codebases. To help with this, there's a [new section in docs](https://zacsweers.github.io/metro/latest/adoption/#migrating-providert-to-function-syntax) with information as well as a helper script: adoption docs guidance here too.
+
+### New
+
+- Add a new `desugaredProviderSeverity` option (default: `WARN`) that reports a diagnostic when `Provider<T>` is used instead of the preferred `() -> T` form. Set this to `NONE` to disable the warning during migration, or `ERROR` to enforce the new style. Automatically treated as `NONE` when `enableFunctionProviders` is disabled.
+- **[FIR]** Add diagnostic checks against providing intrinsic types (`Provider`, `Lazy`, etc.) from `@Provides` declarations.
+- **[Gradle]** Introduce a new `compilerOptions {}` DSL for free Metro compiler options and flags.
+- **[Gradle]** Add `IDE_WARN` and `IDE_ERROR` members to `DiagnosticSeverity` to allow configuring some diagnostics to _only_ run in IDE sessions. Useful for diagnostics you only want to surface to readers in the IDE without emitting compiler warnings in real (CLI) compilations.
+
+### Enhancements
+
+- **[FIR]** Add a new diagnostic for ambiguous inject constructors. Namely, cases where a class is annotated with `@Inject`, defines a secondary constructor but no primary constructor. This is ambiguous, metro now asks you to pick a lane.
+- **[FIR]** Add a new diagnostic for check against `private` contributions.
+- **[FIR]** When rendering diagnostics in the IDE, use short names for classes since they are shown in context already.
+- **[JVM/JS]** Generate `@JvmStatic` and `@JsStatic` annotations onto static-ish functions for better staticization on those platforms.
+- **[docs]** Migrate doc site to Zensical. Works the same, fresh-ish coat of paint!
+
+### Fixes
+
+- **[FIR]** Fix not recognizing `FirDeclarationOrigin.Precompiled` origins when checking resolved default binding types. Previously we only considered `FirDeclarationOrigin.Library`, but incremental compilation uses `FirDeclarationOrigin.Precompiled` to differentiate. This would result in misreads of default binding types in some cases during IC.
+- **[FIR]** When merging `@ContributesTo` types to graph supertypes, add the original interface as well. This ensures they are visible in ObjC exports, as the metro-generated contribution interfaces are normally excluded.
+- **[IR]** Fix secondary inject constructors support when `generateContributionProviders` is enabled.
+- **[IR]** Fix implicit class key lookup for map keys on source-declared `@Binds` declarations.
+- **[IR]** Fix `implementsProviderType()` check in the compiler to only exactly match `Function0` types when `enableFunctionProviders` is enabled.
+- **[IR]** Set `thisGraphInstance` field types as the graph impl type to avoid a Wasm issue.
+- **[interop]** Fix `@ContributesSubcomponent.Factory` interop with square/anvil.
+- **[interop]** Fix `@MergeSubcomponent.Factory` interop with zacsweers/anvil (anvil-ksp).
+- **[docs]** Fix source links in Dokka API docs.
+- **[docs]** Don't publish `**.internal.**` APIs in Dokka API docs.
+
+### Changes
+
+- `enableFunctionProviders` (i.e. `() -> T` syntax for providers) is now enabled by default. Previously this required opting in. The function-syntax form is now the **recommended** way to declare provider dependencies; `Provider<T>` is still supported but treated as a desugared alternative and a **warning** by default, similar to if you were to use `Function0` instead of `() -> T` syntax for functions. See the [metro-intrinsics](docs/metro-intrinsics.md) docs for more details.
+- **[IR]** Remove deprecated `indexInOldValueParameters` use in IR for better `2.4.0`+ support.
+- **[Gradle]** Promote `enableFunctionProviders` to stable.
+- **[Gradle]** Remove deprecated `useAssistedParamNamesAsIdentifiers` property.
+- **[Gradle]** Remove `deduplicateInjectedParams` property.
+- **[Gradle]** Remove `enableKlibParamsCheck` property, use the new `compilerOptions` API.
+- **[Gradle]** Remove `enableFullBindingGraphValidation` property, use the new `compilerOptions` API.
+- **[Gradle]** Remove `enableGraphImplClassAsReturnType` property, use the new `compilerOptions` API.
+- **[Gradle]** Remove `shrinkUnusedBindings` property, use the new `compilerOptions` API.
+- **[metrox-android]** Change `MetroAppComponentProviders` accessor multibindings to expose function types instead of `Provider` types.
+- **[metrox-viewmodel]** Change `MetroViewModelFactory` and `MetroViewModelMultibindings` accessor multibindings to expose function types instead of `Provider` types.
+- Support Kotlin `2.4.0-Beta2`.
+- Update embedded androidx.tracing to `2.0.0-alpha06`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@anddani](https://github.com/anddani)
+- [@jonamireh](https://github.com/jonamireh)
+
+1.0.0-RC2
+---------
+
+_2026-04-15_
+
+This is the second release candidate for Metro 1.0!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) will be API stable unless annotated with an experimental annotation.
+
+_Changes since RC1_
+
+### Fixes
+
+- **[FIR/IR]** Propagate `@HiddenFromObjC` annotations to more generated Metro classes' member declarations. This is a workaround to help avoid some gaps in K/N klib deserialization of generated files.
+- **[IR]** Fix implicit bound type cache collisions.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@Daiji256](https://github.com/Daiji256)
+- [@vRallev](https://github.com/vRallev)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+1.0.0-RC1
+---------
+
+_2026-04-13_
+
+This is the first release candidate for Metro 1.0!
+
+This means that its _runtime_ APIs (`runtime`, `metrox` artifacts, Gradle plugin, etc) will be API stable unless annotated with an experimental annotation.
+
+### Enhancements
+
+- **[FIR]** Detect and report circuit factory class name collisions from overloads of conflicting `@CircuitInject`-annotated functions.
+
+### Fixes
+
+- **[FIR]** Fix missing contribution hints for assisted factories.
 - **[FIR]** Fix not propagating map keys and qualifiers if they're on the bound type arg rather than the class when `generateContributionProviders` is enabled.
 - **[FIR]** Gracefully handle unresolved generic supertype type args.
 - **[FIR]** Disable contribution providers on private constructors.
 - **[FIR]** Fix cross-module resolution of `@DefaultBinding`.
 - **[FIR]** Fix another eager `allSessions` lookup to avoid lockups in the IDE.
 - **[FIR/IR]** Ensure qualifier annotations on explicit binding params are propagated to generated providers when `generateContributionProviders` is enabled.
-- **[FIR/IR/Circuit]** Fix support for `@CircuitInject` on non-`@Inject`-annotated classes.
+- **[FIR/IR/Circuit]** Check for `@CircuitInject` on non-`@Inject`-annotated classes + improve diagnostic messaging.
 - **[IR]** Check for matching parameter's default value first when copying default value expressions. Previously, if multiple parameters with the same type had default values, only one would be used.
 
 ### Changes
 
 - Mark generated Circuit factories as `@Deprecated(HIDDEN)` + disable them in IDE as they're not necessary there.
 - Add back deprecated `macosX64()`, `tvosX64()`, and `watchosX64()` targets for now due to [KT-78660 (comment)](https://youtrack.jetbrains.com/issue/KT-78660#focus=Comments-27-13603171.0-0).
+- Test Android Studio Panda 3 stable.
+- Test Android Studio Panda 4 canaries.
 
 ### Contributors
 
@@ -30,6 +221,8 @@ Special thanks to the following contributors for contributing to this release!
 - [@kevinguitar](https://github.com/kevinguitar)
 - [@LionZXY](https://github.com/LionZXY)
 - [@Sultan1993](https://github.com/Sultan1993)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 0.13.2
 ------
@@ -139,7 +332,7 @@ class HomeFactory(...) : BaseFactory<HomeFactory>
 
 ### Changes
 
-- Support Kotlin `2.4.0-Beta1`
+- Support Kotlin `2.4.0-Beta1`.
 - Removed `@Assisted.value`. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#assisted-injection) on why in case you missed this! TL;DR, Metro matches by parameter names going forward.
 - Remove deprecated compiler options and Gradle extension properties.
     - `chunkFieldInits`
@@ -1818,7 +2011,7 @@ _2025-06-23_
 - **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
 - **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
 - **Fix:** Report member injection dependencies when looking up constructor-injected classes during graph population.
-- **Fix:** Disable IR hint generation on JS targets too, as these now have the same limitation as native/WASM targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
+- **Fix:** Disable IR hint generation on JS targets too, as these now have the same limitation as native/Wasm targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - **Fix:** Ensure private provider function annotations are propagated across compilation boundaries.
 - **Fix:** Substitute copied FIR type parameter symbols with symbols from their target functions.
 - **Fix:** Improved support for generic member injection.
@@ -2028,7 +2221,7 @@ _2025-04-18_
 - **Fix**: Fix Dagger interop issue when calling Javax/Jakarta/Dagger providers from Metro factories.
 - **Fix**: Fix Dagger interop issue when calling `dagger.Lazy` from Metro factories.
 - **Fix**: Preserve the original `Provider` or `Lazy` type used in injected types when generating factory creators.
-- Temporarily disable hint generation in WASM targets to avoid file count mismatches until [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
+- Temporarily disable hint generation in Wasm targets to avoid file count mismatches until [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - Add an Android sample: https://github.com/ZacSweers/metro/tree/main/samples/android-app
 - Add a multiplatform Circuit sample: https://github.com/ZacSweers/metro/tree/main/samples/circuit-app
 - Add samples docs: https://zacsweers.github.io/metro/samples

@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
-import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.assertDiagnostics
@@ -486,7 +485,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     // One aspect of provider fields is we want to reuse them if they're used from multiple places
     // even if they're unscoped
     //
-    // private val stringProvider: Provider<String> = StringProvider_Factory.create(...)
+    // private val stringProvider: () -> String = StringProvider_Factory.create(...)
     // private val stringUserProvider = StringUserProviderFactory.create(stringProvider)
     // private val stringUserProvider2 = StringUserProvider2Factory.create(stringProvider)
     compile(
@@ -501,7 +500,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           fun provideValue(): String = "Hello, world!"
 
           @Provides
-          fun provideValueLengths(value: Provider<String>, value2: Provider<String>): Int = value().length + value2().length
+          fun provideValueLengths(value: () -> String, value2: () -> String): Int = value().length + value2().length
         }
 
         """
@@ -516,7 +515,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
       // Get its instance
       @Suppress("UNCHECKED_CAST")
-      val provideValueProvider = provideValueField.get(graph) as Provider<String>
+      val provideValueProvider = provideValueField.get(graph) as () -> String
 
       // Get its computed value to plug in below
       val providerValue = provideValueProvider()
@@ -674,7 +673,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           fun provideCacheDirName(): String = "cache"
         }
 
-        @Inject @SingleIn(AppScope::class) class Cache(fileSystem: FileSystem, @Named("cache-dir-name") cacheDirName: Provider<String>)
+        @Inject @SingleIn(AppScope::class) class Cache(fileSystem: FileSystem, @Named("cache-dir-name") cacheDirName: () -> String)
         @Inject @SingleIn(AppScope::class) class HttpClient(cache: Cache)
         @Inject @SingleIn(AppScope::class) class ApiClient(httpClient: Lazy<HttpClient>)
         @Inject class Repository(apiClient: ApiClient)
@@ -697,9 +696,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           var counter = 0
 
           abstract val scalar: Int
-          abstract val provider: Provider<Int>
+          abstract val provider: () -> Int
           abstract val lazy: Lazy<Int>
-          abstract val providerOfLazy: Provider<Lazy<Int>>
+          abstract val providerOfLazy: () -> Lazy<Int>
 
           @Provides
           fun provideInt(): Int = counter++
@@ -2443,7 +2442,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         @DependencyGraph
         interface ExampleGraph {
-          val ints: Map<Int, Provider<Int>>
+          val ints: Map<Int, () -> Int>
 
           @Provides @IntoMap @IntKey(0) fun provideInt0(): Int = 0
           @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
@@ -2454,7 +2453,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       )
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
-      val ints = graph.callProperty<Map<Int, Provider<Int>>>("ints")
+      val ints = graph.callProperty<Map<Int, () -> Int>>("ints")
       assertThat(ints.mapValues { (_, value) -> value() }).containsExactly(0, 0, 1, 1, 2, 2)
     }
   }
@@ -2469,21 +2468,21 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Multibinds(allowEmpty = true)
           val ints: Map<Int, Int>
 
-          val intsProvider: Map<Int, Provider<Int>>
+          val intsProvider: Map<Int, () -> Int>
 
-          val providerOfInts: Provider<Map<Int, Int>>
+          val providerOfInts: () -> Map<Int, Int>
         }
         """
           .trimIndent()
       )
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
-      val intsProvider = graph.callProperty<Map<Int, Provider<Int>>>("intsProvider")
+      val intsProvider = graph.callProperty<Map<Int, () -> Int>>("intsProvider")
       // Use toString() because on JVM this may be inlined
       assertThat(intsProvider.toString()).isEqualTo(MapProviderFactory.empty<Int, Int>().toString())
       val ints = graph.callProperty<Map<Int, Int>>("ints")
       assertThat(ints.toString()).isEqualTo(MapFactory.empty<Int, Int>().toString())
-      val providerOfInts = graph.callProperty<Provider<Map<Int, Int>>>("providerOfInts")
+      val providerOfInts = graph.callProperty<() -> Map<Int, Int>>("providerOfInts")
       assertThat(providerOfInts.toString()).isEqualTo(MapFactory.empty<Int, Int>().toString())
     }
   }
@@ -2495,7 +2494,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         @DependencyGraph
         interface ExampleGraph {
-          val ints: Map<Int, Provider<Lazy<Int>>>
+          val ints: Map<Int, () -> Lazy<Int>>
 
           @Provides @IntoMap @IntKey(0) fun provideInt0(): Int = 0
           @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
@@ -2506,7 +2505,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       )
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
-      val ints = graph.callProperty<Map<Int, Provider<Lazy<Int>>>>("ints")
+      val ints = graph.callProperty<Map<Int, () -> Lazy<Int>>>("ints")
       assertThat(ints.mapValues { (_, value) -> value().value }).containsExactly(0, 0, 1, 1, 2, 2)
     }
   }
@@ -2528,14 +2527,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
         }
 
-        @Inject class ExampleClass(val ints: Map<Int, Provider<Int>>)
+        @Inject class ExampleClass(val ints: Map<Int, () -> Int>)
         """
           .trimIndent()
       )
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val exampleClass = graph.callProperty<Any>("exampleClass")
-      val ints = exampleClass.callProperty<Map<Int, Provider<Int>>>("ints")
+      val ints = exampleClass.callProperty<Map<Int, () -> Int>>("ints")
       assertThat(ints.mapValues { (_, value) -> value() }).containsExactly(0, 0, 1, 1, 2, 2)
     }
   }
@@ -2553,7 +2552,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         @ContributesTo(AppScope::class)
         interface IntsBinding {
           @Multibinds(allowEmpty = true)
-          val ints: Map<Int, Provider<Int>>
+          val ints: Map<Int, () -> Int>
         }
 
         fun interface IntHolder {
@@ -2567,14 +2566,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           override fun value(): Int = 0
         }
 
-        @Inject class ExampleClass(val ints: Map<Int, Provider<IntHolder>>)
+        @Inject class ExampleClass(val ints: Map<Int, () -> IntHolder>)
         """
           .trimIndent()
       )
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val exampleClass = graph.callProperty<Any>("exampleClass")
-      val ints = exampleClass.callProperty<Map<Int, Provider<Any>>>("ints")
+      val ints = exampleClass.callProperty<Map<Int, () -> Any>>("ints")
       assertThat(ints.mapValues { (_, value) -> value().invokeInstanceMethod<Int>("value") })
         .containsExactly(0, 0)
     }
@@ -2695,8 +2694,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
             @Inject
             class Y(
-              val mapOfProvidersOfX: Map<String, Provider<X>>,
-              val mapOfProvidersOfY: Map<String, Provider<Y>>,
+              val mapOfProvidersOfX: Map<String, () -> X>,
+              val mapOfProvidersOfY: Map<String, () -> Y>,
             )
 
             @DependencyGraph

@@ -118,8 +118,6 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, publicScopedProviderSeverity)
               NON_PUBLIC_CONTRIBUTION_SEVERITY ->
                 processor.option(entry.raw.cliOption, nonPublicContributionSeverity)
-              USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS ->
-                processor.option(entry.raw.cliOption, useAssistedParamNamesAsIdentifiers)
               WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
@@ -127,7 +125,9 @@ abstract class MetroCompilerTest {
               UNUSED_GRAPH_INPUTS_SEVERITY ->
                 processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
               ENABLE_SWITCHING_PROVIDERS ->
-                processor.option(entry.raw.cliOption, enableSwitchingProviders)
+                processor.option(entry.raw.cliOption, this@toPluginOptions.enableSwitchingProviders)
+              USE_SECONDARY_TOPO_SORT ->
+                processor.option(entry.raw.cliOption, this@toPluginOptions.useSecondaryTopoSort)
               LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
@@ -283,9 +283,6 @@ abstract class MetroCompilerTest {
               CONTRIBUTES_AS_INJECT -> {
                 processor.option(entry.raw.cliOption, contributesAsInject)
               }
-              DEDUPLICATE_INJECTED_PARAMS -> {
-                processor.option(entry.raw.cliOption, deduplicateInjectedParams)
-              }
               ENABLE_KLIB_PARAMS_CHECK -> {
                 processor.option(entry.raw.cliOption, enableKlibParamsCheck)
               }
@@ -342,6 +339,9 @@ abstract class MetroCompilerTest {
               ENABLE_FUNCTION_PROVIDERS -> {
                 processor.option(entry.raw.cliOption, enableFunctionProviders)
               }
+              DESUGARED_PROVIDER_SEVERITY -> {
+                processor.option(entry.raw.cliOption, desugaredProviderSeverity)
+              }
               ENABLE_KCLASS_TO_CLASS_INTEROP -> {
                 processor.option(
                   entry.raw.cliOption,
@@ -359,6 +359,12 @@ abstract class MetroCompilerTest {
               }
               RICH_DIAGNOSTICS -> {
                 processor.option(entry.raw.cliOption, richDiagnostics)
+              }
+              GENERATE_STATIC_ANNOTATIONS -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.generateStaticAnnotations,
+                )
               }
             }
           yield(option)

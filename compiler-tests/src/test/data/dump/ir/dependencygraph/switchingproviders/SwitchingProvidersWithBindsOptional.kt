@@ -11,8 +11,8 @@ interface Bindings {
 
 @DependencyGraph(AppScope::class, bindingContainers = [Bindings::class])
 interface AppGraph {
-  val int: Provider<Optional<Int>>
-  val int2: Provider<Optional<Int>>
+  val int: () -> Optional<Int>
+  val int2: () -> Optional<Int>
 
   @SingleIn(AppScope::class)
   @Provides

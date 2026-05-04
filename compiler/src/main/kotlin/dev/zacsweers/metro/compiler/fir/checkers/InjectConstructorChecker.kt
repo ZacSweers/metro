@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.findInjectConstructor
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.validateBindingSource
@@ -21,8 +22,10 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 
 internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common) {
 
@@ -50,6 +53,28 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
       ) {
         return
       }
+
+    if (injectedConstructor == null && classInjectLikeAnnotations.isNotEmpty()) {
+      // We have a class inject annotation but not a secondary
+      var hasSecondary = false
+      var hasPrimary = false
+      for (ctor in declaration.constructors(session)) {
+        if (ctor.isPrimary) {
+          hasPrimary = true
+          break // Nothing else to do
+        } else {
+          hasSecondary = true
+        }
+      }
+      if (!hasPrimary && hasSecondary) {
+        reporter.reportOn(
+          source,
+          MetroDiagnostics.AMBIGUOUS_INJECT_CONSTRUCTOR,
+          "Class '${declaration.classId.diagnosticString}' is annotated with an @Inject-like annotation but does not have a primary constructor. It does have one or more secondary instructions. Did you mean to annotate one of them with @Inject instead?",
+        )
+        return
+      }
+    }
 
     val isInjected = classInjectLikeAnnotations.isNotEmpty() || injectedConstructor != null
     if (!isInjected) return

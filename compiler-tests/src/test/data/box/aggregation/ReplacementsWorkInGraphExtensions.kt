@@ -1,3 +1,5 @@
+// GENERATE_CONTRIBUTION_PROVIDERS: false
+
 // Regression test for https://github.com/ZacSweers/metro/issues/1197
 interface Dependency
 

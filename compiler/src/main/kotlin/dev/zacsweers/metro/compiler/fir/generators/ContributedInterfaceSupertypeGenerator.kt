@@ -31,14 +31,18 @@ import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
+import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeMap
 import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.descriptors.isInterface
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
+import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
@@ -110,6 +114,7 @@ internal class ContributedInterfaceSupertypeGenerator(
             )
           }
           .filterIsInstance<FirRegularClassSymbol>()
+          .filterNot { it.visibility == Visibilities.Private }
           .toList()
 
       getScopedContributions(contributingClasses, scopeClassId, typeResolver)
@@ -260,7 +265,11 @@ internal class ContributedInterfaceSupertypeGenerator(
   ): List<ConeKotlinType> {
     // For generated @DependencyGraph classes (from external FIR extensions), FIR calls this
     // method instead of computeAdditionalSupertypes. Delegate to the shared implementation.
-    return computeContributionSupertypes(klass, typeResolver)
+    return computeContributionSupertypes(
+      classLikeDeclaration = klass,
+      typeResolver = typeResolver,
+      existingSupertypeClassIds = emptySet(),
+    )
   }
 
   override fun computeAdditionalSupertypes(
@@ -268,12 +277,17 @@ internal class ContributedInterfaceSupertypeGenerator(
     resolvedSupertypes: List<FirResolvedTypeRef>,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    return computeContributionSupertypes(classLikeDeclaration, typeResolver)
+    return computeContributionSupertypes(
+      classLikeDeclaration = classLikeDeclaration,
+      typeResolver = typeResolver,
+      existingSupertypeClassIds = resolvedSupertypes.mapNotNullToSet { it.coneType.classId },
+    )
   }
 
   private fun computeContributionSupertypes(
     classLikeDeclaration: FirClassLikeDeclaration,
     typeResolver: TypeResolveService,
+    existingSupertypeClassIds: Set<ClassId>,
   ): List<ConeKotlinType> {
     val graphAnnotation = classLikeDeclaration.graphAnnotation() ?: return emptyList()
 
@@ -546,6 +560,12 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
     val declarationClassId = classLikeDeclaration.classId
+    // Used to avoid promoting parents whose visibility is narrower than the graph. The generated
+    // MetroContributionTo<Scope> intermediate is @Deprecated(HIDDEN) so it's invisible to
+    // Kotlin's exposure check; MergedContributionChecker reports the Metro-specific error. But
+    // promoting the parent directly would additionally trigger the builtin exposure diagnostic.
+    // Effective visibility isn't resolved yet at supertype generation, so use raw visibility.
+    val declarationVisibility = (classLikeDeclaration as? FirClass)?.visibility
 
     // Collect external contribution supertypes (they don't need the same filtering as native ones)
     val externalSupertypes =
@@ -556,16 +576,54 @@ internal class ContributedInterfaceSupertypeGenerator(
         .map { it.supertype }
         .toSet()
 
-    return contributions.values
-      .filter { metroContribution ->
+    return contributions
+      .flatMap { (parentClassId, metroContribution) ->
         // External contributions pass through directly
         if (metroContribution in externalSupertypes) {
-          return@filter true
+          return@flatMap listOf(metroContribution)
         }
-        // Filter out binding containers at the end, they participate in replacements but not in
-        // supertypes
-        metroContribution.classId?.parentClassId?.parentClassId != declarationClassId &&
-          contributionMappingsByClassId[metroContribution.classId] != true
+        // Filter out binding containers and self-references — they participate in replacements
+        // but not in supertypes
+        if (
+          metroContribution.classId?.parentClassId?.parentClassId == declarationClassId ||
+            contributionMappingsByClassId[metroContribution.classId] == true
+        ) {
+          return@flatMap emptyList()
+        }
+
+        // For @ContributesTo interfaces, also emit the parent contributing interface directly
+        // alongside the generated MetroContributionTo<Scope> intermediate. Kotlin/Native's
+        // Objective-C framework exporter hides the @Deprecated(HIDDEN) intermediates and does
+        // not transitively hoist their non-hidden supertypes into the child class's
+        // superprotocol list, so the parent has to be a direct supertype to appear in
+        // Swift/ObjC framework headers. Graph extension factories are excluded — they're
+        // contributed via @ContributesTo but aren't meant to be inherited by the graph.
+        // https://github.com/ZacSweers/metro/issues/2185
+        val parentSymbol =
+          parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+            ?: return@flatMap listOf(metroContribution)
+
+        val contributesToThisScope =
+          parentSymbol.annotationsIn(session, session.classIds.contributesToAnnotations).any {
+            it.resolvedScopeClassId(session, typeResolver) in scopes
+          }
+        if (!contributesToThisScope) return@flatMap listOf(metroContribution)
+
+        val promoteParent =
+          parentSymbol.classKind.isInterface &&
+            parentClassId !in existingSupertypeClassIds &&
+            !parentSymbol.isAnnotatedWithAny(
+              session,
+              session.classIds.graphExtensionFactoryAnnotations,
+            ) &&
+            (declarationVisibility == null ||
+              !parentSymbol.exposesNarrowerVisibilityThan(declarationVisibility))
+
+        if (promoteParent) {
+          listOf(metroContribution, parentClassId.constructClassLikeType(emptyArray()))
+        } else {
+          listOf(metroContribution)
+        }
       }
       // Deduplicate by classId. The same contribution type can appear under different keys when
       // discovered via both hint-based and external extension paths.
@@ -661,5 +719,31 @@ internal class ContributedInterfaceSupertypeGenerator(
       }
 
     return resolveDefaultBindingType(session) ?: supertypes.singleOrNull()
+  }
+
+  /**
+   * Walks this symbol and its containing-class chain and returns the narrowest raw visibility. Used
+   * as a coarse stand-in for `effectiveVisibility`, which is not yet resolved during supertype
+   * generation.
+   */
+  private fun FirClassLikeSymbol<*>.narrowestContainerVisibility(): Visibility {
+    var narrowest: Visibility = visibility
+    var current: FirClassLikeSymbol<*>? = getContainingClassSymbol()
+    while (current != null) {
+      val v = current.visibility
+      if ((Visibilities.compare(v, narrowest) ?: 0) < 0) narrowest = v
+      current = current.getContainingClassSymbol()
+    }
+    return narrowest
+  }
+
+  /**
+   * Returns true if adding this symbol as a supertype of a declaration with [declarationVisibility]
+   * would trigger Kotlin's builtin exposure diagnostic.
+   */
+  private fun FirClassLikeSymbol<*>.exposesNarrowerVisibilityThan(
+    declarationVisibility: Visibility
+  ): Boolean {
+    return (Visibilities.compare(declarationVisibility, narrowestContainerVisibility()) ?: 0) > 0
   }
 }

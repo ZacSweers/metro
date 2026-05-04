@@ -1,3 +1,5 @@
+// GENERATE_CONTRIBUTION_PROVIDERS: false
+
 // https://github.com/ZacSweers/metro/issues/1549
 // The important conditions in this test case:
 // - There is a class RealImpl with one or more bindings

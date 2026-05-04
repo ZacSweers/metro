@@ -474,6 +474,133 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     assertThat(secondOutput).isEqualTo("modified,1,key1,from-module")
   }
 
+  /**
+   * Regression test for https://github.com/ZacSweers/metro/issues/2150
+   *
+   * Reproduces an IC issue with a multibinding that uses `@DefaultBinding` on an abstract supertype
+   * while `generateContributionProviders` is enabled. Sequence from the linked repro:
+   * 1. Build with `Set<ViewModel<*, *>>` accessor and its usage in main — succeeds.
+   * 2. Comment out the accessor and its usage — rebuild succeeds.
+   * 3. Restore both — rebuild should succeed but IC fails.
+   */
+  @Test
+  fun defaultBindingIntoSetWithContributionProvidersIc() {
+    val fixture =
+      object :
+        MetroProject(metroOptions = MetroOptionOverrides(generateContributionProviders = true)) {
+        override fun sources() = listOf(viewModel, baseViewModel, mainViewModel, appGraph, main)
+
+        val viewModel =
+          source(
+            """
+            interface ViewModel<S, E>
+            """
+              .trimIndent()
+          )
+
+        val baseViewModel =
+          source(
+            """
+            @DefaultBinding<ViewModel<*, *>>
+            abstract class BaseViewModel<S, E> : ViewModel<S, E>
+            """
+              .trimIndent()
+          )
+
+        private val mainViewModel =
+          source(
+            """
+            @Inject
+            @ContributesIntoSet(AppScope::class)
+            class MainViewModel : BaseViewModel<String, Int>()
+            """
+              .trimIndent()
+          )
+
+        val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val viewModels: Set<ViewModel<*, *>>
+            }
+            """
+              .trimIndent()
+          )
+
+        val main =
+          source(
+            """
+            fun main(): Int {
+              val graph = createGraph<AppGraph>()
+              return graph.viewModels.size
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // 1. Initial build with accessor + usage — should succeed and see one ViewModel.
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<Int>()).isEqualTo(1)
+
+    // 2. Comment out the `viewModels` accessor and its use in main.
+    project.modify(
+      fixture.appGraph,
+      """
+      @DependencyGraph(AppScope::class)
+      interface AppGraph {
+        // val viewModels: Set<ViewModel<*, *>>
+      }
+      """
+        .trimIndent(),
+    )
+    project.modify(
+      fixture.main,
+      """
+      fun main(): Int {
+        val graph = createGraph<AppGraph>()
+        // return graph.viewModels.size
+        return 0
+      }
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = project.compileKotlin()
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<Int>()).isEqualTo(0)
+
+    // 3. Restore both — IC rebuild should still succeed and see the ViewModel again.
+    project.modify(
+      fixture.appGraph,
+      """
+      @DependencyGraph(AppScope::class)
+      interface AppGraph {
+        val viewModels: Set<ViewModel<*, *>>
+      }
+      """
+        .trimIndent(),
+    )
+    project.modify(
+      fixture.main,
+      """
+      fun main(): Int {
+        val graph = createGraph<AppGraph>()
+        return graph.viewModels.size
+      }
+      """
+        .trimIndent(),
+    )
+
+    val thirdBuildResult = project.compileKotlin()
+    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<Int>()).isEqualTo(1)
+  }
+
   private fun File.classFileSnapshot(): Map<String, FileSnapshot> {
     val root = this
     return walkTopDown()

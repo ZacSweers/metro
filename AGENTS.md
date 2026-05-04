@@ -44,7 +44,7 @@ Metro is a compile-time dependency injection framework implemented as a Kotlin c
 **runtime/** - Multiplatform annotations and runtime support
 - Public annotation APIs: `@DependencyGraph`, `@Inject`, `@Provides`, `@Binds`, `@Scope`
 - `internal/` - Runtime support classes (factories, providers, double-check)
-- Supports JVM, JS, Native, and WASM targets
+- Supports JVM, JS, Native, and Wasm targets
 
 **gradle-plugin/** - Gradle integration
 - `MetroGradleSubplugin.kt` - Main plugin implementation

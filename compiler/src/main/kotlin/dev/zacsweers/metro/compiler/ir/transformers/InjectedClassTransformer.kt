@@ -2,14 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
+import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
@@ -82,6 +88,9 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
+@Inject
+@SingleIn(IrScope::class)
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
 internal class InjectedClassTransformer(
   context: IrMetroContext,
   private val membersInjectorTransformer: MembersInjectorTransformer,
@@ -287,6 +296,7 @@ internal class InjectedClassTransformer(
             }
           }
         }
+    addHiddenFromObjCAnnotation(invokeFunction)
     metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(invokeFunction)
 
     val allParameters =
@@ -301,12 +311,7 @@ internal class InjectedClassTransformer(
     // Deduplicate parameters to match the FIR-generated factory constructor.
     // The FIR side deduplicates by type key, so the factory constructor has fewer
     // parameters when multiple source params share the same type+qualifier.
-    val dedupedParameters =
-      if (options.deduplicateInjectedParams) {
-        nonAssistedParameters.dedupeParameters()
-      } else {
-        nonAssistedParameters
-      }
+    val dedupedParameters = nonAssistedParameters.dedupeParameters()
 
     // Use parameter name as the primary field key to correctly handle multiple parameters
     // with the same type key (e.g., two String params with different defaults).
@@ -339,6 +344,7 @@ internal class InjectedClassTransformer(
               nameToField[irParam.name] = field
               typeKeyToField[typeKey] = field
             }
+            addHiddenFromObjCAnnotation(this)
             body = generateDefaultConstructorBody()
           }
     }
@@ -689,10 +695,7 @@ internal class InjectedClassTransformer(
     // Deduplicate to match the FIR-generated create() function signature
     val dedupedMerged =
       mergedParameters.copy(
-        regularParameters =
-          if (options.deduplicateInjectedParams)
-            mergedParameters.regularParameters.dedupeParameters()
-          else mergedParameters.regularParameters
+        regularParameters = mergedParameters.regularParameters.dedupeParameters()
       )
 
     // Generate create()

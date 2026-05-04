@@ -9,8 +9,10 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
+import dev.zacsweers.metro.compiler.fir.buildHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
+import dev.zacsweers.metro.compiler.fir.buildStaticAnnotations
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
@@ -41,7 +43,6 @@ import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
-import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.hasAnnotationWithClassId
 import org.jetbrains.kotlin.fir.declarations.origin
@@ -171,7 +172,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           buildList {
             add(buildInjectAnnotation())
             add(buildInjectedFunctionClassAnnotation(function.callableId))
-            buildHiddenFromObjCAnnotation()?.let(::add)
+            buildHiddenFromObjCAnnotation(session)?.let(::add)
             annotations.qualifier?.fir?.let(::add)
             if (annotations.isComposable) {
               add(buildStableAnnotation())
@@ -727,11 +728,15 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             }
             @OptIn(SymbolInternals::class)
             contextParams +=
-              buildValueParameterCopy(original.fir) {
+              buildValueParameterCopyCompat(original.fir) {
                   name = original.name
                   origin = Keys.RegularParameter.origin
                   symbol = FirValueParameterSymbol()
                   containingDeclarationSymbol = this@apply.symbol
+                  // Force a resolved type ref. The source context param can still be at
+                  // ANNOTATION_ARGUMENTS under LL FIR, in which case its returnTypeRef would be a
+                  // FirUserTypeRef and break later argument resolution.
+                  returnTypeRef = original.resolvedReturnTypeRef
                 }
                 .apply { replaceAnnotationsSafe(original.annotations) }
           }
@@ -834,6 +839,10 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                 valueParameters[0].apply {
                   replaceAnnotationsSafe(annotations + buildAssistedAnnotation())
                 }
+                val staticAnnotations = buildStaticAnnotations(session)
+                if (staticAnnotations.isNotEmpty()) {
+                  replaceAnnotationsSafe(annotations + staticAnnotations)
+                }
               }
               .symbol as FirNamedFunctionSymbol
           }
@@ -884,10 +893,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
 
   private fun buildStableAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.metroFirBuiltIns.stableClassSymbol }
-  }
-
-  private fun buildHiddenFromObjCAnnotation(): FirAnnotation? {
-    return session.metroFirBuiltIns.hiddenFromObjCClassSymbol?.let { buildSimpleAnnotation { it } }
   }
 
   private fun buildNonRestartableAnnotation(): FirAnnotation {

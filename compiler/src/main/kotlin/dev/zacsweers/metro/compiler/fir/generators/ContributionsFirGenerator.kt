@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.buildClassReference
+import dev.zacsweers.metro.compiler.fir.buildHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSimpleValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -239,7 +240,10 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     return createTopLevelClass(classId, Keys.ContributionProviderHolderDeclaration) {
         modality = Modality.ABSTRACT
       }
-      .apply { markAsDeprecatedHidden(session) }
+      .apply {
+        buildHiddenFromObjCAnnotation(session)?.let { replaceAnnotationsSafe(listOf(it)) }
+        markAsDeprecatedHidden(session)
+      }
       .symbol
   }
 
@@ -446,7 +450,14 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
             functionBuilder = this,
             sourceParameters = constructorParams,
             copyParameterDefaults = true,
-          )
+          ) { original ->
+            // Force a resolved type ref. The source constructor's value parameters can still be at
+            // ANNOTATION_ARGUMENTS under LL FIR, so copying their returnTypeRef directly would
+            // leave a FirUserTypeRef on the generated parameter and crash later argument
+            // resolution. Use the symbol's resolvedReturnTypeRef to preserve the declared type
+            // (including Provider/Lazy wrappers) — typeKey.type strips those.
+            this.returnTypeRef = original.symbol.resolvedReturnTypeRef
+          }
         }
       }
 
@@ -870,8 +881,13 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
                 )
               }
             )
-            // @Origin(<ContributingClass>::class)
-            add(buildOriginAnnotation(contributionHolder.contributingClassId))
+            // @Origin(<ContributingClass>::class, context = "contribution_provider")
+            add(
+              buildOriginAnnotation(
+                contributionHolder.contributingClassId,
+                context = Symbols.StringNames.CONTRIBUTION_PROVIDER_ORIGIN_CONTEXT,
+              )
+            )
             // @BindingContainer
             add(buildBindingContainerAnnotation())
             // @IROnlyFactories — provider factories are generated in IR, not FIR
@@ -989,7 +1005,10 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       }
   }
 
-  private fun buildOriginAnnotation(originClassId: ClassId): FirAnnotation {
+  private fun buildOriginAnnotation(
+    originClassId: ClassId,
+    context: String? = null,
+  ): FirAnnotation {
     val originAnnotationSymbol =
       session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroOrigin)
         as FirRegularClassSymbol
@@ -999,6 +1018,15 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           buildAnnotationArgumentMapping {
             mapping[StandardNames.DEFAULT_VALUE_PARAMETER] =
               buildClassReference(session, originClassId)
+            if (context != null) {
+              mapping[Symbols.Names.context] =
+                buildLiteralExpression(
+                  source = null,
+                  kind = ConstantValueKind.String,
+                  value = context,
+                  setType = true,
+                )
+            }
           }
         )
       }

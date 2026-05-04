@@ -3,6 +3,9 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.ERROR
+import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.NONE
+import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.WARN
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -110,16 +113,21 @@ internal fun validateInjectionSiteType(
     checkProviderOfLazy(session, contextKey, typeRef, source)
   }
 
-  // Check if we're directly injecting a qualifier type
-  if (qualifier == null) {
-    val clazz = type.classLikeLookupTagIfAny?.toClassSymbolCompat(session) ?: return false
+  if (contextKey.wrappedType !is WrappedType.Canonical) {
+    checkDesugaredProviderUse(session, contextKey, typeRef, source)
+  }
 
+  val clazz = type.classLikeLookupTagIfAny?.toClassSymbolCompat(session)
+
+  // Object/assisted-injection diagnostics only apply to unqualified injections — qualifying the
+  // injection signals an intentional non-default usage.
+  if (qualifier == null && clazz != null) {
     if (clazz.classKind.isObject) {
       // Injecting a plain object doesn't really make sense when it's a singleton
       reporter.reportOn(
         typeRef.source ?: source,
         MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING,
-        "Suspicious injection of an unqualified object type '${clazz.classId.asFqNameString()}'. This is probably unnecessary or unintentional.",
+        "Suspicious injection of an unqualified object type '${clazz.classId.diagnosticString}'. This is probably unnecessary or unintentional.",
       )
     } else {
       val isAssistedInject =
@@ -138,16 +146,16 @@ internal fun validateInjectionSiteType(
               ?.symbol
 
         val message = buildString {
-          val fqName = clazz.classId.asFqNameString()
+          val fqName = clazz.classId.diagnosticString
           append(
-            "[Metro/InvalidBinding] '$fqName' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead."
+            "'$fqName' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead."
           )
           if (nestedFactory != null) {
             appendLine()
             appendLine()
             appendLine("(Hint)")
             appendLine(
-              "It looks like the @AssistedFactory for '$fqName' may be '${nestedFactory.classId.asFqNameString()}'."
+              "It looks like the @AssistedFactory for '$fqName' may be '${nestedFactory.classId.diagnosticString}'."
             )
           }
         }
@@ -156,18 +164,29 @@ internal fun validateInjectionSiteType(
           MetroDiagnostics.ASSISTED_INJECTION_ERROR,
           message,
         )
-      } else if (clazz.usesContributionProviderPath(session)) {
-        val fqName = clazz.classId.asFqNameString()
-        reporter.reportOn(
-          typeRef.source ?: source,
-          MetroDiagnostics.NON_EXPOSED_IMPL_TYPE,
-          "Directly injecting '$fqName' (which has one or more `@Contributes*` annotations) and will not be " +
-            "visible since `generateContributionProviders` is enabled. This is probably a bug! " +
-            "Inject the bound supertype instead, or annotate '$fqName' with `@ExposeImplBinding` " +
-            "to expose the underlying binding.",
-        )
       }
     }
+  }
+
+  // Warn whenever an impl class is injected directly while hidden behind a generated contribution
+  // provider — this is qualifier-independent because qualifying the injection still doesn't make
+  // the impl a binding on the graph. Skipped for objects (covered above) and assisted-inject
+  // classes (the assisted-injection error is more actionable).
+  if (
+    clazz != null &&
+      !clazz.classKind.isObject &&
+      clazz.findAssistedInjectConstructors(session, checkClass = true).isEmpty() &&
+      clazz.usesContributionProviderPath(session)
+  ) {
+    val fqName = clazz.classId.diagnosticString
+    reporter.reportOn(
+      typeRef.source ?: source,
+      MetroDiagnostics.NON_EXPOSED_IMPL_TYPE,
+      "Directly injecting '$fqName' (which has one or more `@Contributes*` annotations) and will not be " +
+        "visible since `generateContributionProviders` is enabled. This is probably a bug! " +
+        "Inject the bound supertype instead, or annotate '$fqName' with `@ExposeImplBinding` " +
+        "to expose the underlying binding.",
+    )
   }
 
   if (!isAccessor && (isOptionalBinding || hasDefault)) {
@@ -241,7 +260,7 @@ private fun checkLazyAssistedFactory(
       typeRef.source ?: source,
       MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY,
       canonicalClass.name.asString(),
-      canonicalClass.classId.asFqNameString(),
+      canonicalClass.classId.diagnosticString,
     )
   }
 }
@@ -270,4 +289,32 @@ private fun checkProviderOfLazy(
       lazyType.lazyType.asString(),
     )
   }
+}
+
+context(context: CheckerContext, reporter: DiagnosticReporter)
+private fun checkDesugaredProviderUse(
+  session: FirSession,
+  contextKey: FirContextualTypeKey,
+  typeRef: FirTypeRef,
+  source: KtSourceElement?,
+) {
+  val options = session.metroFirBuiltIns.options
+  val severity = options.desugaredProviderSeverity.resolve(session.isIde())
+  if (severity == NONE) return
+  val hasDesugaredProvider =
+    contextKey.wrappedType.innerTypesSequence.any {
+      it is WrappedType.Provider && it.providerType == Symbols.ClassIds.metroProvider
+    }
+  if (!hasDesugaredProvider) return
+  val factory =
+    when (severity) {
+      ERROR -> MetroDiagnostics.DESUGARED_PROVIDER_ERROR
+      WARN -> MetroDiagnostics.DESUGARED_PROVIDER_WARNING
+      else -> return
+    }
+  reporter.reportOn(
+    typeRef.source ?: source,
+    factory,
+    "Using the desugared `Provider<T>` type is discouraged. Prefer the function syntax form `() -> T` instead.",
+  )
 }

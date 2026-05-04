@@ -110,12 +110,8 @@ import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
-import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
 import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -347,14 +343,6 @@ internal fun <Container, T> Container.repeatableAnnotationsIn(
 
 internal fun IrAnnotationContainer.findAnnotations(classId: ClassId): Sequence<IrConstructorCall> {
   return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId == classId }
-}
-
-internal fun IrAnnotationContainer.annotationsAnnotatedWithAny(
-  names: Set<ClassId>
-): Sequence<IrConstructorCall> {
-  return annotations.asSequence().filter { annotationCall ->
-    annotationCall.isAnnotatedWithAny(names)
-  }
 }
 
 internal fun IrConstructorCall.isAnnotatedWithAny(names: Set<ClassId>): Boolean {
@@ -1108,10 +1096,6 @@ internal fun IrClass.originClassId(): ClassId? {
     ?.originOrNull()
 }
 
-internal fun IrConstructorCall.requireOrigin(): ClassId {
-  return originOrNull() ?: reportCompilerBug("No origin found for ${dumpKotlinLike()}")
-}
-
 internal fun IrConstructorCall.originOrNull(): ClassId? {
   return originClassOrNull()?.classIdOrFail
 }
@@ -1121,6 +1105,11 @@ internal fun IrConstructorCall.originClassOrNull(): IrClass? {
     ?.expectAsOrNull<IrClassReference>()
     ?.classType
     ?.rawTypeOrNull()
+}
+
+/** Reads the `context` argument of an `@Origin` annotation, or `null` if unset. */
+internal fun IrConstructorCall.originContextOrNull(): String? {
+  return (getValueArgument(Symbols.Names.context) as? IrConst)?.value as? String
 }
 
 internal fun IrBuilderWithScope.kClassReference(symbol: IrClassSymbol): IrClassReference {
@@ -1440,6 +1429,34 @@ internal fun buildAnnotation(
   }
 }
 
+/**
+ * Adds `@HiddenFromObjC` to [function] if the annotation is available (K/N only).
+ *
+ * We do this because there's a bunch of places where K/N linking breaks on generated symbols.
+ *
+ * https://github.com/ZacSweers/metro/issues/2137
+ */
+context(context: IrMetroContext)
+internal fun addHiddenFromObjCAnnotation(function: IrFunction) {
+  val ctor = context.metroSymbols.hiddenFromObjCAnnotationConstructor ?: return
+  function.annotations += buildAnnotation(function.symbol, ctor)
+}
+
+/**
+ * Adds `@JvmStatic` and `@JsStatic` to [function] when [MetroOptions.generateStaticAnnotations] is
+ * enabled and the annotations are available on the current classpath.
+ */
+context(context: IrMetroContext)
+internal fun addStaticAnnotations(function: IrFunction) {
+  if (!context.options.generateStaticAnnotations) return
+  context.metroSymbols.jvmStaticAnnotationConstructor?.let { ctor ->
+    function.annotations += buildAnnotation(function.symbol, ctor)
+  }
+  context.metroSymbols.jsStaticAnnotationConstructor?.let { ctor ->
+    function.annotations += buildAnnotation(function.symbol, ctor)
+  }
+}
+
 internal val IrClass.metroGraphOrFail: IrClass
   get() = metroGraphOrNull ?: reportCompilerBug("No generated MetroGraph found: $classId")
 
@@ -1479,34 +1496,6 @@ internal val IrClass.sourceGraphIfMetroGraph: IrClass
     }
   }
 
-// Adapted from compose-compiler
-// https://github.com/JetBrains/kotlin/blob/d36a97bb4b935c719c44b76dc8de952579404f91/plugins/compose/compiler-hosted/src/main/java/androidx/compose/compiler/plugins/kotlin/lower/AbstractComposeLowering.kt#L1608
-context(context: IrMetroContext)
-internal fun hiddenDeprecated(
-  message: String = "This synthesized declaration should not be used directly"
-): IrConstructorCall {
-  return IrConstructorCallImpl.fromSymbolOwner(
-      type = context.metroSymbols.deprecated.defaultType,
-      constructorSymbol = context.metroSymbols.deprecatedAnnotationConstructor,
-    )
-    .also {
-      it.arguments[0] =
-        IrConstImpl.string(
-          SYNTHETIC_OFFSET,
-          SYNTHETIC_OFFSET,
-          context.irBuiltIns.stringType,
-          message,
-        )
-      it.arguments[2] =
-        IrGetEnumValueImpl(
-          SYNTHETIC_OFFSET,
-          SYNTHETIC_OFFSET,
-          context.metroSymbols.deprecationLevel.defaultType,
-          context.metroSymbols.hiddenDeprecationLevel,
-        )
-    }
-}
-
 internal val IrFunction.extensionReceiverParameterCompat: IrValueParameter?
   get() {
     return parameters.firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }
@@ -1528,7 +1517,6 @@ private fun IrFunction.setReceiverParameter(kind: IrParameterKind, value: IrValu
   var reindexSubsequent = false
   if (index >= 0) {
     val old = parameters[index]
-    old.indexInOldValueParameters = -1
     old.indexInParameters = -1
 
     if (value != null) {
@@ -1548,7 +1536,6 @@ private fun IrFunction.setReceiverParameter(kind: IrParameterKind, value: IrValu
   }
 
   if (value != null) {
-    value.indexInOldValueParameters = -1
     value.indexInParameters = index
     value.kind = kind
   }
@@ -1606,6 +1593,16 @@ internal val IrFunction.isNamedCopy: Boolean
 
 private val COMPONENT_FUNCTION_REGEX = Regex(StandardNames.DATA_CLASS_COMPONENT_PREFIX + "[0-9]*")
 
+// private fun isComponentNMethod(method: CallableMemberDescriptor): Boolean {
+//    if ((method as? FunctionDescriptor)?.isOperator != true) return false
+//    val parent = method.containingDeclaration
+//    if (parent is ClassDescriptor && parent.isData &&
+// DataClassResolver.isComponentLike(method.name)) {
+//        // componentN method of data class.
+//        return true
+//    }
+//    return false
+// }
 internal val IrFunction.isComponentOperator: Boolean
   get() {
     return this is IrSimpleFunction &&
@@ -2232,9 +2229,6 @@ internal fun <T : Any> IrPluginContext.withIrBuilder(
 ): T {
   return createIrBuilder(symbol).run(block)
 }
-
-internal val IrProperty.reportableDeclaration: IrDeclarationParent?
-  get() = backingField ?: getter
 
 internal fun IrBuilderWithScope.irGetProperty(
   receiver: IrExpression,

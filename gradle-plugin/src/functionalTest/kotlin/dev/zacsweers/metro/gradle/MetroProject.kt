@@ -230,7 +230,7 @@ abstract class MetroProject(
     }
     val options = buildList {
       metroOptions.enableFullBindingGraphValidation?.let {
-        add("enableFullBindingGraphValidation.set($it)")
+        add("compilerOptions.enable(\"enable-full-binding-graph-validation\")")
       }
       metroOptions.generateContributionProviders?.let {
         add("generateContributionProviders.set($it)")

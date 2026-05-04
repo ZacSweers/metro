@@ -16,10 +16,9 @@
 package dev.zacsweers.metro
 
 /**
- * The declaration's return type forms the type argument for the value of a `Map<K, Provider<V>>`,
- * and the combination of the annotated key and the returned value is contributed to the map as a
- * key/value pair. The `Map<K, Provider<V>>` produced from the accumulation of values will be
- * immutable.
+ * The declaration's return type forms the type argument for the value of a `Map<K, () -> V>`, and
+ * the combination of the annotated key and the returned value is contributed to the map as a
+ * key/value pair. The `Map<K, () -> V>` produced from the accumulation of values will be immutable.
  */
 @MustBeDocumented
 @Target(
