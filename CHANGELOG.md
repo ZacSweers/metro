@@ -6,6 +6,7 @@ Changelog
 
 ### Enhancements
 
+- **[FIR]** Resolve copied typerefs (if necessary) in FIR code gen. This _appears_ to help avoid some IDE FIR issues.
 - **[IR, runtime]** For multibound maps/sets with exactly one element, Metro now generates optimized IR that uses optimized `SingletonSet`/`SingletonMap` implementations at runtime and skips the unnecessary throwaway builder allocation. Note that, when using interop, the generated code for Dagger's internal set/map factories still generates the necessary builder intermediary.
 - **[IR]** Make `SwitchingProvider.invoke()` faster by hoisting the `id` field into a local before the `when`, allowing the JVM backend to lower it to `tableswitch` (O(1)) instead of a chain of integer compares.
 - **[IR]** Empty `Set` multibindings accessed through a provider now emit `SetFactory.empty()` (a singleton) rather than allocating a builder and an empty backing set on every graph init.
@@ -20,10 +21,6 @@ Changelog
     - **[IR/graph]** Merge two annotation walks in supertype collecting into a single pass with a per-annotation-class meta-annotation cache, so `@Qualifier`/`@Scope`-style annotations appearing across many supertypes are meta-walked once instead of N times.
 - **[IR/tracing]** Add a lot more tracing spans for more granular tracing.
 - **[IR/tracing]** Don't delete previous traces on new compilations. Now traces are just added to the designated directory each compilation when enabled.
-
-### Enhancements
-
-- **[FIR]** Resolve copied typerefs (if necessary) in FIR code gen. This _appears_ to help avoid some IDE FIR issues.
 
 ### Fixes
 
