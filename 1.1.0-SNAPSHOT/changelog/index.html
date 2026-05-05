@@ -6317,6 +6317,7 @@
 </li>
 <li><strong>[IR/tracing]</strong> Add a lot more tracing spans for more granular tracing.</li>
 <li><strong>[IR/tracing]</strong> Don&rsquo;t delete previous traces on new compilations. Now traces are just added to the designated directory each compilation when enabled.</li>
+<li><strong>[FIR/tracing]</strong> Tracing now also covers the FIR phase. Each FIR session and each IR module fragment writes its own <code>.perfetto-trace</code> file. All files from a single compilation share an id prefix and use the naming <code>&lt;id&gt;-&lt;phase&gt;-&lt;moduleName&gt;.perfetto-trace</code> (e.g. <code>260505-133503-fir-commonMain.perfetto-trace</code>, <code>260505-133503-ir-main.perfetto-trace</code>).</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
