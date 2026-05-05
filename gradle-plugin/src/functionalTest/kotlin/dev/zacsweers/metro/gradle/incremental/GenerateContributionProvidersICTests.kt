@@ -105,8 +105,8 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(firstBuildResult.task(":lib:compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor("lib"))?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Verify first build runs correctly
     val firstOutput = project.invokeMain<String>()
@@ -133,7 +133,7 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     // Snapshot root project class file identity before the second build.
     // We track both the file key (inode) and last modified time to detect if files were
     // deleted and recreated (same content/timestamp but different inode).
-    val rootClassesDir = project.rootDir.resolve("build/classes/kotlin/main")
+    val rootClassesDir = project.rootDir.resolve("build/classes/kotlin/jvm/main")
     val classSnapshotsBefore = rootClassesDir.classFileSnapshot()
 
     // Second build: lib should recompile. The Kotlin compiler's IC should determine
@@ -141,7 +141,8 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     // Gradle may still run the task (classpath snapshot path changed), but no actual
     // source recompilation should happen.
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":lib:compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor("lib"))?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
 
     // Verify no root project class files were recompiled by checking inode + timestamp
     val classSnapshotsAfter = rootClassesDir.classFileSnapshot()
@@ -220,7 +221,7 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     val firstOutput = project.invokeMain<String>()
     assertThat(firstOutput).isEqualTo("Impl")
@@ -311,7 +312,7 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val buildResult = project.compileKotlin()
-    assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(buildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     val output = project.invokeMain<String>()
     assertThat(output).isEqualTo("same")
@@ -447,7 +448,7 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
 
     // First build
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     val firstOutput = project.invokeMain<String>()
     assertThat(firstOutput).isEqualTo("binding,1,key1,from-module")
@@ -468,7 +469,8 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed (not fail with IC cache errors)
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":lib:compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor("lib"))?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
 
     val secondOutput = project.invokeMain<String>()
     assertThat(secondOutput).isEqualTo("modified,1,key1,from-module")
@@ -544,7 +546,7 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
 
     // 1. Initial build with accessor + usage — should succeed and see one ViewModel.
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.invokeMain<Int>()).isEqualTo(1)
 
     // 2. Comment out the `viewModels` accessor and its use in main.
@@ -571,7 +573,7 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     )
 
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.invokeMain<Int>()).isEqualTo(0)
 
     // 3. Restore both — IC rebuild should still succeed and see the ViewModel again.
@@ -597,7 +599,7 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     )
 
     val thirdBuildResult = project.compileKotlin()
-    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.invokeMain<Int>()).isEqualTo(1)
   }
 
