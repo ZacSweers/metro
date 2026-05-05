@@ -7,6 +7,7 @@ import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.RootProject
 import com.autonomousapps.kit.Source
+import com.autonomousapps.kit.Source.Companion.DEFAULT_SOURCE_SET
 import com.autonomousapps.kit.gradle.BuildScript
 import com.autonomousapps.kit.gradle.Dependency
 import com.autonomousapps.kit.gradle.DependencyResolutionManagement
@@ -15,14 +16,40 @@ import com.autonomousapps.kit.gradle.PluginManagement
 import com.autonomousapps.kit.gradle.Repositories
 import com.autonomousapps.kit.gradle.Repository
 import com.google.errorprone.annotations.CanIgnoreReturnValue
+import org.intellij.lang.annotations.Language
 
 abstract class MetroProject(
   private val debug: Boolean = false,
   private val metroOptions: MetroOptionOverrides = MetroOptionOverrides(),
   private val reportsEnabled: Boolean = true,
   private val kotlinVersion: String? = null,
-  private val multiplatform: Boolean = false,
+  private val multiplatform: Boolean = true,
 ) : AbstractGradleProject() {
+
+  /** Source set this project's [source] declarations target by default. */
+  private val defaultSourceSet: String = if (multiplatform) "commonMain" else DEFAULT_SOURCE_SET
+
+  /**
+   * Mirror of the top-level [dev.zacsweers.metro.gradle.source] helper that picks the appropriate
+   * source set ([defaultSourceSet]) for this project. Shadows the top-level helper for fixture
+   * subclasses so call sites don't have to repeat `sourceSet = ...`.
+   */
+  protected fun source(
+    @Language("kotlin") source: String,
+    fileNameWithoutExtension: String? = null,
+    packageName: String = "test",
+    includeDefaultImports: Boolean = true,
+    vararg extraImports: String,
+  ): Source =
+    source(
+      source = source,
+      fileNameWithoutExtension = fileNameWithoutExtension,
+      packageName = packageName,
+      sourceSet = defaultSourceSet,
+      includeDefaultImports = includeDefaultImports,
+      extraImports = extraImports,
+    )
+
   /**
    * Sources for the default single-module project. Not used when [buildGradleProject] is
    * overridden.
