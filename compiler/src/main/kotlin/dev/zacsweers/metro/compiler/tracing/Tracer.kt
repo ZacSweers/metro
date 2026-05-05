@@ -55,6 +55,10 @@ internal inline fun <T> FirSession.trace(
   }
 }
 
+internal object TraceCategories {
+  const val FIR_CHECKER = "fir-checker"
+}
+
 internal interface TraceScope {
   val tracer: Tracer
 

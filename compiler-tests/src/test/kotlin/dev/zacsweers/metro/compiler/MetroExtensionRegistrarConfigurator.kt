@@ -27,6 +27,7 @@ import dev.zacsweers.metro.compiler.interop.configureDaggerAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
 import dev.zacsweers.metro.compiler.interop.configureGuiceInterop
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
+import dev.zacsweers.metro.compiler.tracing.TraceContext
 import kotlin.io.path.Path
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
@@ -130,6 +131,18 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         reportsDestination =
           Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
       }
+      // Use explicit TRACE_DESTINATION or default if CHECK_TRACES is present
+      val tracesDir =
+        module.directives.singleOrZeroValue(MetroDirectives.TRACE_DESTINATION)
+          ?: if (MetroDirectives.CHECK_TRACES in module.directives) {
+            MetroReportsChecker.DEFAULT_TRACES_DIR
+          } else {
+            null
+          }
+      tracesDir?.let {
+        traceDestination =
+          Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
+      }
       module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
         parallelThreads = it
       }
@@ -190,12 +203,14 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
 
     val classIds = ClassIds.fromOptions(options)
     val compatContext = CompatContext.create()
+    val traceContext = TraceContext(options)
     FirExtensionRegistrarAdapter.registerExtension(
       MetroFirExtensionRegistrar(
         classIds = classIds,
         options = options,
         isIde = false,
         compatContext = compatContext,
+        traceContext = traceContext,
         loadExternalDeclarationExtensions = { session, options, compatContext ->
           buildList {
             add(GenerateImplExtension.Factory().create(session, options, compatContext))
@@ -247,6 +262,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         lookupTracker = null,
         expectActualTracker = ExpectActualTracker.DoNothing,
         compatContext = compatContext,
+        traceContext = traceContext,
       )
     )
     if (options.enableCircuitCodegen) {
