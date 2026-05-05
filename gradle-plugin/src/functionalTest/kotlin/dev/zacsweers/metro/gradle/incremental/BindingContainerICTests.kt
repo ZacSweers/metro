@@ -6,18 +6,27 @@ package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.assertOutputContains
 import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.invokeMain
-import dev.zacsweers.metro.gradle.source
 import dev.zacsweers.metro.gradle.toKotlinVersion
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assume.assumeTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 
-class BindingContainerICTests : BaseIncrementalCompilationTest() {
+@RunWith(Parameterized::class)
+class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
+
+  companion object {
+    @JvmStatic
+    @Parameterized.Parameters(name = "{0}")
+    fun targets(): List<KmpTarget> = KmpTarget.entries
+  }
 
   @Test
   fun addingNewBindingToExistingBindingContainer() {
@@ -1552,7 +1561,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output)
       .contains(
         """
-        Target.kt:7:14 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+        Target.kt:6:14 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
 
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
@@ -1718,7 +1727,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        MyBindingContainer.kt:9:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+        MyBindingContainer.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
 
         If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
         """
@@ -1927,10 +1936,10 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       """
       [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
 
-        BindingContainerA.kt:9:3
+        BindingContainerA.kt:8:3
           @Provides fun provideString(): kotlin.String
                                          ~~~~~~~~~~~~~
-        BindingContainerB.kt:9:3
+        BindingContainerB.kt:8:3
           @Provides fun provideString(): kotlin.String
                                          ~~~~~~~~~~~~~
       """
@@ -2010,23 +2019,21 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]")
-
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]") }
     // Remove contributing module from the build
     libProject.delete(project.rootDir, fixture.appModule)
 
     // Second build should succeed
     val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("[]")
-
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("[]") }
     // Restore contributing module to the build
     libProject.modify(project.rootDir, fixture.appModule, fixture.appModuleContent)
 
     // Third build should succeed
     val thirdBuildResult = project.compileKotlin()
     assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]")
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]") }
   }
 
   @Test

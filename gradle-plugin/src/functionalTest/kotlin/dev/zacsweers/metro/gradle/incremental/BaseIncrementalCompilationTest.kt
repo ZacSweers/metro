@@ -7,6 +7,7 @@ import com.autonomousapps.kit.GradleBuilder.buildAndFail
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.Subproject
+import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.KotlinToolingVersion
 import dev.zacsweers.metro.gradle.copy
 import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
@@ -23,7 +24,7 @@ private const val KOTLIN_DEBUG_ARGS =
 /** Minimum Kotlin version that supports incremental compilation for KMP projects. */
 private val MULTIPLATFORM_IC_MIN_VERSION = KotlinToolingVersion("2.3.21")
 
-abstract class BaseIncrementalCompilationTest {
+abstract class BaseIncrementalCompilationTest(protected val target: KmpTarget) {
 
   @Before
   fun assumeMultiplatformIcSupported() {
@@ -33,11 +34,12 @@ abstract class BaseIncrementalCompilationTest {
     )
   }
 
-  /** Compile task name for the JVM target of the KMP project. */
-  protected open val targetCompileTaskName: String = "compileKotlinJvm"
+  /** Compile task name for the [target]'s main compilation, e.g. `compileKotlinJvm`. */
+  protected val targetCompileTaskName: String
+    get() = target.compileTaskName
 
   /**
-   * Returns the fully-qualified Gradle task path for the current target's compile task. Pass an
+   * Returns the fully-qualified Gradle task path for the current [target]'s compile task. Pass an
    * empty [projectPath] for the root project, or a name like `"lib"` / `":lib"` for a subproject.
    */
   protected fun compileTaskFor(projectPath: String = ""): String {
@@ -47,6 +49,11 @@ abstract class BaseIncrementalCompilationTest {
     } else {
       ":$normalized:$targetCompileTaskName"
     }
+  }
+
+  /** Runs [block] only when the current parameter [target] is [KmpTarget.JVM]. */
+  protected inline fun ifJvmTarget(block: () -> Unit) {
+    if (target == KmpTarget.JVM) block()
   }
 
   protected val GradleProject.asMetroProject: MetroGradleProject
@@ -67,10 +74,10 @@ abstract class BaseIncrementalCompilationTest {
   protected fun MetroGradleProject.reports(compilation: String): Reports =
     metroDir.resolveSafe(compilation).let(::Reports)
 
-  // Metro's reports layout is `{reportsDestination}/{targetName}/{compilationName}/`. For KMP the
-  // JVM target's main compilation lives under `jvm/main`.
+  // Metro's reports layout is `{reportsDestination}/{targetName}/{compilationName}/`, so the
+  // current parameterized target picks the `<target>/main` slice.
   protected val MetroGradleProject.mainReports: Reports
-    get() = reports("jvm/main")
+    get() = reports("${target.gradleTargetName}/main")
 
   protected val MetroGradleProject.appGraphReports: GraphReports
     get() = mainReports.forGraph("test/AppGraph/Impl")

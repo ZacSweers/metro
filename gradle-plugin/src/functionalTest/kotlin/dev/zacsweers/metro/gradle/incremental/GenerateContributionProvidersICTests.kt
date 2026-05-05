@@ -5,20 +5,30 @@ package dev.zacsweers.metro.gradle.incremental
 import com.autonomousapps.kit.gradle.Dependency.Companion.implementation
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.FileSnapshot
+import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.snapshot
-import dev.zacsweers.metro.gradle.source
 import dev.zacsweers.metro.gradle.toKotlinVersion
 import java.io.File
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 
-class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
+@RunWith(Parameterized::class)
+class GenerateContributionProvidersICTests(target: KmpTarget) :
+  BaseIncrementalCompilationTest(target) {
+
+  companion object {
+    @JvmStatic
+    @Parameterized.Parameters(name = "{0}")
+    fun targets(): List<KmpTarget> = KmpTarget.entries
+  }
 
   @Before
   fun setup() {
@@ -109,8 +119,10 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.task(compileTaskFor("lib"))?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Verify first build runs correctly
-    val firstOutput = project.invokeMain<String>()
-    assertThat(firstOutput).isEqualTo("original")
+    ifJvmTarget {
+      val firstOutput = project.invokeMain<String>()
+      assertThat(firstOutput).isEqualTo("original")
+    }
 
     // Modify the internal Impl class with an ABI change (add a public method).
     // If Impl were public, this would cause downstream recompilation because the class's ABI
@@ -149,8 +161,10 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     assertThat(classSnapshotsAfter).isEqualTo(classSnapshotsBefore)
 
     // Verify second build still runs correctly with the modified impl
-    val secondOutput = project.invokeMain<String>()
-    assertThat(secondOutput).isEqualTo("modified42")
+    ifJvmTarget {
+      val secondOutput = project.invokeMain<String>()
+      assertThat(secondOutput).isEqualTo("modified42")
+    }
   }
 
   /**
@@ -223,8 +237,10 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    val firstOutput = project.invokeMain<String>()
-    assertThat(firstOutput).isEqualTo("Impl")
+    ifJvmTarget {
+      val firstOutput = project.invokeMain<String>()
+      assertThat(firstOutput).isEqualTo("Impl")
+    }
 
     // Change the scope from AppScope to Unit (a different scope).
     // The root graph at AppScope should no longer find the binding.
@@ -314,8 +330,10 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     val buildResult = project.compileKotlin()
     assertThat(buildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    val output = project.invokeMain<String>()
-    assertThat(output).isEqualTo("same")
+    ifJvmTarget {
+      val output = project.invokeMain<String>()
+      assertThat(output).isEqualTo("same")
+    }
   }
 
   /**
@@ -450,8 +468,10 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    val firstOutput = project.invokeMain<String>()
-    assertThat(firstOutput).isEqualTo("binding,1,key1,from-module")
+    ifJvmTarget {
+      val firstOutput = project.invokeMain<String>()
+      assertThat(firstOutput).isEqualTo("binding,1,key1,from-module")
+    }
 
     // Modify the binding impl — should trigger incremental recompilation without IC errors
     libProject.modify(
@@ -472,8 +492,10 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.task(compileTaskFor("lib"))?.outcome)
       .isEqualTo(TaskOutcome.SUCCESS)
 
-    val secondOutput = project.invokeMain<String>()
-    assertThat(secondOutput).isEqualTo("modified,1,key1,from-module")
+    ifJvmTarget {
+      val secondOutput = project.invokeMain<String>()
+      assertThat(secondOutput).isEqualTo("modified,1,key1,from-module")
+    }
   }
 
   /**
@@ -547,8 +569,7 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
     // 1. Initial build with accessor + usage — should succeed and see one ViewModel.
     val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<Int>()).isEqualTo(1)
-
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(1) }
     // 2. Comment out the `viewModels` accessor and its use in main.
     project.modify(
       fixture.appGraph,
@@ -574,8 +595,7 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
 
     val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<Int>()).isEqualTo(0)
-
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(0) }
     // 3. Restore both — IC rebuild should still succeed and see the ViewModel again.
     project.modify(
       fixture.appGraph,
@@ -600,7 +620,7 @@ class GenerateContributionProvidersICTests : BaseIncrementalCompilationTest() {
 
     val thirdBuildResult = project.compileKotlin()
     assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<Int>()).isEqualTo(1)
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(1) }
   }
 
   private fun File.classFileSnapshot(): Map<String, FileSnapshot> {

@@ -28,12 +28,7 @@ import org.intellij.lang.annotations.Language
 // TODO dedupe with MetroCompilerTest
 private val CLASS_NAME_REGEX = Regex("(class|object|interface) (?<name>[a-zA-Z0-9_]+)")
 private val FUNCTION_NAME_REGEX = Regex("fun( <[a-zA-Z0-9_]+>)? (?<name>[a-zA-Z0-9_]+)")
-private val DEFAULT_IMPORTS =
-  listOf(
-    "dev.zacsweers.metro.*",
-    // For Callable access
-    "java.util.concurrent.*",
-  )
+private val DEFAULT_IMPORTS = listOf("dev.zacsweers.metro.*")
 private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
 
 const val DEBUGGING_ARGS =

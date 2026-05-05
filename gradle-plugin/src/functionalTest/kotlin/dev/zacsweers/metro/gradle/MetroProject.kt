@@ -282,8 +282,9 @@ abstract class MetroProject(
   }
 
   /**
-   * Default setup for simple projects. JVM-only by default, or KMP with a single `jvm()` target
-   * when [multiplatform] is true. For more custom setups, override [buildGradleProject].
+   * Default setup for simple projects. JVM-only by default, or KMP with the targets emitted by
+   * [multiplatformTargetsBlock] when [multiplatform] is true. For more custom setups, override
+   * [buildGradleProject].
    */
   fun BuildScript.Builder.applyMetroDefault() {
     if (multiplatform) {
@@ -291,9 +292,7 @@ abstract class MetroProject(
       withKotlin(
         buildString {
           onBuildScript()
-          appendLine("kotlin {")
-          appendLine("  jvm()")
-          appendLine("}")
+          append(multiplatformTargetsBlock())
           append(buildMetroBlock())
         }
       )
@@ -306,5 +305,19 @@ abstract class MetroProject(
         }
       )
     }
+  }
+
+  /**
+   * Returns the `kotlin { ... }` targets block written into multiplatform projects. Override to
+   * scope down the target set; the default emits every [KmpTarget] entry so a single project can be
+   * exercised against the full parameter matrix.
+   */
+  protected open fun multiplatformTargetsBlock(): String = buildString {
+    appendLine("kotlin {")
+    appendLine("  jvm()")
+    appendLine("  js { nodejs() }")
+    appendLine("  wasmJs { nodejs() }")
+    appendLine("  iosSimulatorArm64()")
+    appendLine("}")
   }
 }
