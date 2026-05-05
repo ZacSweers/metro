@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.CoreTransformers
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.Lockable
 import dev.zacsweers.metro.compiler.ir.transformers.MutableMetroGraphData
+import dev.zacsweers.metro.compiler.tracing.TraceContext
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.concurrent.ForkJoinPool
@@ -24,32 +25,37 @@ internal class MetroIrPipeline(
   private val graphData: MutableMetroGraphData,
   private val contributionData: IrContributionData,
   private val lockableTransformers: Set<Lockable>,
+  private val traceContext: TraceContext,
   traceScope: TraceScope,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
   fun run() {
+    // FIR is done by the time IR begins, so finalize any FIR-side trace files now. Idempotent
+    // across multi-fragment IR runs.
+    traceContext.close()
+    // This fragment's own IR driver is closed at the end of run() via .use {}.
     traceDriver.use {
       if (forkJoinPool != null) {
         forkJoinPool.use { runTraced(moduleFragment) }
       } else {
         runTraced(moduleFragment)
       }
+    }
 
-      if (options.traceEnabled) {
-        // Find and print the most-recent trace file. Traces accumulate
-        // across reruns, so always pick the freshest by mtime.
-        options.traceDir.value?.let { traceDir ->
-          traceDir
-            .toFile()
-            .walkTopDown()
-            .filter { it.extension == "perfetto-trace" }
-            .maxByOrNull { it.lastModified() }
-            ?.let {
-              log(
-                // Trailing space intentional for terminal linkifying
-                "Metro trace written to file://${it.absolutePath} "
-              )
-            }
-        }
+    if (options.traceEnabled) {
+      // Find and print the most-recent trace file. Traces accumulate
+      // across reruns, so always pick the freshest by mtime.
+      options.traceDir.value?.let { traceDir ->
+        traceDir
+          .toFile()
+          .walkTopDown()
+          .filter { it.extension == "perfetto-trace" }
+          .maxByOrNull { it.lastModified() }
+          ?.let {
+            log(
+              // Trailing space intentional for terminal linkifying
+              "Metro trace written to file://${it.absolutePath} "
+            )
+          }
       }
     }
   }

@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
+import dev.zacsweers.metro.compiler.tracing.TraceContext
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.nio.file.Path
 import java.util.concurrent.ForkJoinPool
@@ -59,18 +60,19 @@ internal interface IrDependencyGraph {
 
   @Provides
   @SingleIn(IrScope::class)
-  fun provideTraceDriver(options: MetroOptions): AbstractTraceDriver {
-    val tracePath = options.traceDir.value
-    val sink =
-      if (tracePath == null) {
-        TraceSink(sequenceId = 1, blackholeSink().buffer(), EmptyCoroutineContext)
-      } else {
-        // Dir is already ensured to exist by MetroOptions.traceDir; don't
-        // delete here — that would clobber prior-iteration traces inside a
-        // single Gradle daemon (and throws on a non-empty directory anyway).
-        TraceSink(sequenceId = 1, directory = tracePath.toFile())
-      }
-    return WireTraceDriver(sink = sink, isEnabled = tracePath != null)
+  fun provideTraceDriver(
+    traceContext: TraceContext,
+    moduleFragment: IrModuleFragment,
+  ): AbstractTraceDriver {
+    // One IR driver per fragment (per IrScope), with filename `<id>-ir-<moduleName>.perfetto-trace`
+    // sharing the holder's compilation id.
+    traceContext.newIrDriverOrNull(moduleFragment.name.asString())?.let {
+      return it
+    }
+    return WireTraceDriver(
+      sink = TraceSink(sequenceId = 1, blackholeSink().buffer(), EmptyCoroutineContext),
+      isEnabled = false,
+    )
   }
 
   @Provides
@@ -126,9 +128,9 @@ internal interface IrDependencyGraph {
     traceDriver: AbstractTraceDriver,
     moduleFragment: IrModuleFragment,
   ): TraceScope {
-    val name = moduleFragment.name.asString().removePrefix("<").removeSuffix(">")
-    check(name.isNotBlank()) { "Category must not be blank" }
-    return TraceScope(traceDriver.tracer, name)
+    val moduleName =
+      moduleFragment.name.asString().removePrefix("<").removeSuffix(">").ifBlank { "ir" }
+    return TraceScope(traceDriver.tracer, "ir-$moduleName")
   }
 
   @DependencyGraph.Factory
@@ -142,6 +144,7 @@ internal interface IrDependencyGraph {
       @Provides compatContext: CompatContext,
       @Provides moduleFragment: IrModuleFragment,
       @Provides pluginContext: IrPluginContext,
+      @Provides traceContext: TraceContext,
     ): IrDependencyGraph
   }
 }

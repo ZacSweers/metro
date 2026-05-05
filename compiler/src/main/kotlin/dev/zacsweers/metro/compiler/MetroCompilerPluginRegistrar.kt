@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
+import dev.zacsweers.metro.compiler.tracing.TraceContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -133,9 +134,11 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       if (!valid) return
     }
 
+    val traceContext = TraceContext(options)
+
     with(compatContext) {
       registerFirExtensionCompat(
-        MetroFirExtensionRegistrar(classIds, options, isIde, compatContext)
+        MetroFirExtensionRegistrar(classIds, options, isIde, compatContext, traceContext)
       )
     }
 
@@ -159,6 +162,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             lookupTracker = lookupTracker,
             expectActualTracker = expectActualTracker,
             compatContext = compatContext,
+            traceContext = traceContext,
           )
         )
       }

@@ -26,6 +26,7 @@ import dev.zacsweers.metro.compiler.fir.generators.LoggingFirSupertypeGeneration
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.kotlinOnly
 import dev.zacsweers.metro.compiler.letIf
+import dev.zacsweers.metro.compiler.tracing.TraceContext
 import java.util.ServiceLoader
 import kotlin.io.path.appendText
 import kotlin.io.path.createFile
@@ -41,6 +42,7 @@ public class MetroFirExtensionRegistrar(
   private val options: MetroOptions,
   private val isIde: Boolean,
   private val compatContext: CompatContext,
+  private val traceContext: TraceContext,
   private val loadExternalDeclarationExtensions:
     (FirSession, MetroOptions, CompatContext) -> List<MetroFirDeclarationGenerationExtension> =
     ::loadExternalDeclarationExtensions,
@@ -49,7 +51,7 @@ public class MetroFirExtensionRegistrar(
     ::loadExternalContributionExtensions,
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
-    +MetroFirBuiltIns.getFactory(classIds, options, compatContext)
+    +MetroFirBuiltIns.getFactory(classIds, options, compatContext, traceContext)
     +::MetroFirCheckers
     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, false)
     +supertypeGenerator(
