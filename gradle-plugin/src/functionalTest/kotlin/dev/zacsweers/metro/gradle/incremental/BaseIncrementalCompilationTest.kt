@@ -27,14 +27,14 @@ private const val KOTLIN_DEBUG_ARGS =
 private val MULTIPLATFORM_IC_MIN_VERSION = KotlinToolingVersion("2.3.21")
 
 /**
- * Kotlin/JS IC trips on top-level declaration generation in these specific Kotlin builds (Metro
- * uses top-level declarations by default for `enableTopLevelFunctionInjection` /
+ * Kotlin/JS and Kotlin/Wasm IC trip on top-level declaration generation in these specific Kotlin
+ * builds (Metro uses top-level declarations by default for `enableTopLevelFunctionInjection` /
  * `generateContributionHints` / `generateContributionHintsInFir`).
  *
  * See https://youtrack.jetbrains.com/issue/KT-82395 and
  * https://youtrack.jetbrains.com/issue/KT-82989.
  */
-private val JS_IC_TOP_LEVEL_BROKEN_VERSIONS = setOf("2.4.0-Beta1", "2.4.0-dev-2124")
+private val JS_WASM_IC_TOP_LEVEL_BROKEN_VERSIONS = setOf("2.4.0-Beta1", "2.4.0-dev-2124")
 
 abstract class BaseIncrementalCompilationTest(protected val target: KmpTarget) {
 
@@ -47,12 +47,12 @@ abstract class BaseIncrementalCompilationTest(protected val target: KmpTarget) {
   }
 
   @Before
-  fun assumeJsTopLevelDeclarationsSupported() {
-    if (target != KmpTarget.JS) return
+  fun assumeJsAndWasmTopLevelDeclarationsSupported() {
+    if (target != KmpTarget.JS && target != KmpTarget.WASM_JS) return
     assumeFalse(
-      "Kotlin/JS IC cannot generate top-level declarations on ${getTestCompilerVersion()} " +
-        "(KT-82395, KT-82989)",
-      getTestCompilerVersion() in JS_IC_TOP_LEVEL_BROKEN_VERSIONS,
+      "Kotlin/$target IC cannot generate top-level declarations on " +
+        "${getTestCompilerVersion()} (KT-82395, KT-82989)",
+      getTestCompilerVersion() in JS_WASM_IC_TOP_LEVEL_BROKEN_VERSIONS,
     )
   }
 
