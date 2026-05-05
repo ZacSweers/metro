@@ -7,16 +7,47 @@ import com.autonomousapps.kit.GradleBuilder.buildAndFail
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.Subproject
+import dev.zacsweers.metro.gradle.KotlinToolingVersion
 import dev.zacsweers.metro.gradle.copy
+import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
 import dev.zacsweers.metro.gradle.resolveSafe
 import java.io.File
 import org.intellij.lang.annotations.Language
+import org.junit.Assume.assumeTrue
+import org.junit.Before
 
 private const val GRADLE_DEBUG_ARGS = "-Dorg.gradle.debug=true"
 private const val KOTLIN_DEBUG_ARGS =
   """-Dkotlin.daemon.jvm.options="-agentlib:jdwp=transport=dt_socket\,server=n\,suspend=y\,address=5005""""
 
+/** Minimum Kotlin version that supports incremental compilation for KMP projects. */
+private val MULTIPLATFORM_IC_MIN_VERSION = KotlinToolingVersion("2.3.21")
+
 abstract class BaseIncrementalCompilationTest {
+
+  @Before
+  fun assumeMultiplatformIcSupported() {
+    assumeTrue(
+      "KMP incremental compilation requires Kotlin $MULTIPLATFORM_IC_MIN_VERSION+",
+      getTestCompilerToolingVersion() >= MULTIPLATFORM_IC_MIN_VERSION,
+    )
+  }
+
+  /** Compile task name for the JVM target of the KMP project. */
+  protected open val targetCompileTaskName: String = "compileKotlinJvm"
+
+  /**
+   * Returns the fully-qualified Gradle task path for the current target's compile task. Pass an
+   * empty [projectPath] for the root project, or a name like `"lib"` / `":lib"` for a subproject.
+   */
+  protected fun compileTaskFor(projectPath: String = ""): String {
+    val normalized = projectPath.trim(':')
+    return if (normalized.isEmpty()) {
+      ":$targetCompileTaskName"
+    } else {
+      ":$normalized:$targetCompileTaskName"
+    }
+  }
 
   protected val GradleProject.asMetroProject: MetroGradleProject
     get() = MetroGradleProject(rootDir)
@@ -36,8 +67,10 @@ abstract class BaseIncrementalCompilationTest {
   protected fun MetroGradleProject.reports(compilation: String): Reports =
     metroDir.resolveSafe(compilation).let(::Reports)
 
+  // Metro's reports layout is `{reportsDestination}/{targetName}/{compilationName}/`. For KMP the
+  // JVM target's main compilation lives under `jvm/main`.
   protected val MetroGradleProject.mainReports: Reports
-    get() = reports("main")
+    get() = reports("jvm/main")
 
   protected val MetroGradleProject.appGraphReports: GraphReports
     get() = mainReports.forGraph("test/AppGraph/Impl")
@@ -150,13 +183,13 @@ abstract class BaseIncrementalCompilationTest {
   }
 
   protected fun GradleProject.delete(source: Source) {
-    val filePath = "src/main/kotlin/${source.path}/${source.name}.kt"
+    val filePath = "src/commonMain/kotlin/${source.path}/${source.name}.kt"
     rootDir.resolve(filePath).delete()
   }
 
   protected fun GradleProject.modify(source: Source, @Language("kotlin") content: String) {
     val newSource = source.copy(content)
-    val filePath = "src/main/kotlin/${newSource.path}/${newSource.name}.kt"
+    val filePath = "src/commonMain/kotlin/${newSource.path}/${newSource.name}.kt"
     rootDir.resolve(filePath).writeText(newSource.source)
   }
 
@@ -167,13 +200,13 @@ abstract class BaseIncrementalCompilationTest {
     includeDefaultImports: Boolean = true,
   ) {
     val newSource = source.copy(content, includeDefaultImports)
-    val filePath = "src/main/kotlin/${newSource.path}/${newSource.name}.kt"
+    val filePath = "src/commonMain/kotlin/${newSource.path}/${newSource.name}.kt"
     val projectPath = rootDir.resolve(this.name.removePrefix(":").replace(":", "/"))
     projectPath.resolve(filePath).writeText(newSource.source)
   }
 
   protected fun Subproject.delete(rootDir: File, source: Source) {
-    val filePath = "src/main/kotlin/${source.path}/${source.name}.kt"
+    val filePath = "src/commonMain/kotlin/${source.path}/${source.name}.kt"
     val projectPath = rootDir.resolve(this.name.removePrefix(":").replace(":", "/"))
     projectPath.resolve(filePath).delete()
   }
@@ -185,32 +218,32 @@ abstract class BaseIncrementalCompilationTest {
     @Language("kotlin") content: String,
   ) {
     val packageDir = packageName.replace('.', '/')
-    val filePath = "src/main/kotlin/$packageDir/$fileName"
+    val filePath = "src/commonMain/kotlin/$packageDir/$fileName"
     rootDir.resolve(filePath).writeText(content)
   }
 
   protected fun GradleProject.compileKotlin(
-    task: String = "compileKotlin",
+    task: String = compileTaskFor(),
     debug: Boolean = false,
     vararg args: String,
   ) = compileKotlin(rootDir, task, debug, *args)
 
   protected fun GradleProject.compileKotlinAndFail(
-    task: String = "compileKotlin",
+    task: String = compileTaskFor(),
     debug: Boolean = false,
     vararg args: String,
   ) = compileKotlinAndFail(rootDir, task, debug, *args)
 
   protected fun compileKotlin(
     projectDir: File,
-    task: String = "compileKotlin",
+    task: String = compileTaskFor(),
     enableDebugger: Boolean = false,
     vararg args: String,
   ) = build(projectDir, *buildArgs(task, enableDebugger, quiet = true, *args))
 
   protected fun compileKotlinAndFail(
     projectDir: File,
-    task: String = "compileKotlin",
+    task: String = compileTaskFor(),
     enableDebugger: Boolean = false,
     vararg args: String,
   ) = buildAndFail(projectDir, *buildArgs(task, enableDebugger, quiet = true, *args))
