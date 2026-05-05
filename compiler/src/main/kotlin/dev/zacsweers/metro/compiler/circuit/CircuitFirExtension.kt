@@ -133,6 +133,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     register(CircuitSymbols.circuitInjectPredicate)
     register(session.predicates.assistedAnnotationPredicate)
     register(session.predicates.assistedFactoryAnnotationPredicate)
+    register(session.predicates.qualifiersPredicate)
   }
 
   // Top-level circuit functions
@@ -351,6 +352,10 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
       // @ContributesIntoSet(scope)
       add(buildContributesIntoSetAnnotation(target.scopeClassId))
+
+      // Propagate any qualifier annotation from the source declaration.
+      val qualifierSource: FirBasedSymbol<*>? = target.classSymbol ?: target.originalFunctionSymbol
+      qualifierSource?.qualifierAnnotation(session)?.fir?.let(::add)
     }
 
     context(session.compatContext) { factoryClass.replaceAnnotationsSafe(annotations) }

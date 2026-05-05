@@ -723,7 +723,7 @@ class DependencyGraphProcessingTest {
     assertEquals(mapOf(Seasoning.SPICY to 1, Seasoning.REGULAR to 2), graph.seasoningAmounts)
     assertEquals(mapOf(1 to 1, 2 to 2), graph.ints)
     assertEquals(mapOf("1" to 1, "2" to 2), graph.strings)
-    // TODO WASM annotation classes don't implement equals correctly
+    // TODO Wasm annotation classes don't implement equals correctly
     if (!isWasm()) {
       assertEquals(
         mapOf(

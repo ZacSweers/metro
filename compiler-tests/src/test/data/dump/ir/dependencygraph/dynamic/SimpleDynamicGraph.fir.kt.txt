@@ -1,10 +1,10 @@
 class Example {
   val propGraph: AppGraph
-    field = DynamicAppGraphImpl_6fU3C9Y(container0 = TestIntProvider(value = 4))
+    field = DynamicAppGraphImpl_s15c0(container0 = TestIntProvider(value = 4))
     get
 
   @DependencyGraph
-  private class DynamicAppGraphImpl_6fU3C9Y : AppGraph {
+  private class DynamicAppGraphImpl_s15c0 : AppGraph {
     private val container0Instance: TestIntProvider
       field = container0
 
@@ -31,7 +31,7 @@ class Example {
   }
 
   fun someTest(value: Int): Int {
-    val testGraph: AppGraph = DynamicAppGraphImpl_6fU3C9Y(container0 = TestIntProvider(value = value))
+    val testGraph: AppGraph = DynamicAppGraphImpl_s15c0(container0 = TestIntProvider(value = value))
     return testGraph.<get-int>()
   }
 
@@ -196,6 +196,6 @@ interface AppGraph {
 }
 
 fun example() {
-  check(value = EQEQ(arg0 = 5, arg1 = DynamicAppGraphImpl_6fU3C9Y(container0 = TestIntProvider(value = 5)).<get-int>()))
+  check(value = EQEQ(arg0 = 5, arg1 = DynamicAppGraphImpl_s15c0(container0 = TestIntProvider(value = 5)).<get-int>()))
 }
 

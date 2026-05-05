@@ -29,46 +29,14 @@ if [[ $? == 0 ]]; then
     exit
 fi
 
-RED='\033[0;31m'
-NC='\033[0m' # No Color
-REPO_ROOT_DIR="$(git rev-parse --show-toplevel)"
-
-#### Store Original State section
-function partially_staged_chksum() {
-    staged_files=$(git diff --cached --name-only --diff-filter=ACMR "-G.*" | grep -Ei "(\.kt(s)?)|(.*java)$" | sort)
-    unstaged_files=$(git diff --name-only --diff-filter=ACM | grep -Ei "(\.kt(s)?)|(.*java)$" | sort)
-    comm -12 <(echo "$staged_files") <(echo "$unstaged_files") | xargs cksum
-}
-
-original_partially_staged_chksum=$(partially_staged_chksum)
-original_partially_staged_filenames=$(echo "$original_partially_staged_chksum" | grep -oE '[^ ]+$')
-
-#### Run unified formatter on staged files
-"${REPO_ROOT_DIR}/scripts/format.sh"
-
-#### Re-stage fully-staged files that were modified by formatting
-all_files="$(git diff --cached --name-only --diff-filter=ACMR "-G.*" | grep -Ei "(\.kt(s)?)|(.*java)$")"
-for file in ${all_files}; do
-    if [[ -f ${file} && ! "${original_partially_staged_filenames}" == *"${file}"* ]]; then
-        git add "${file}"
-    fi
-done
-
-#### Check that all fixes were staged section
-modified_partially_staged_filenames=$(comm -13 \
-  <(partially_staged_chksum) \
-  <(echo "$original_partially_staged_chksum") |
-  grep -oE '[^ ]+$')
-
-modified_partially_staged_filenames=$(comm -12 \
-  <(partially_staged_chksum | grep -oE '[^ ]+$') \
-  <(echo "$modified_partially_staged_filenames"))
-
-if [ -n "$modified_partially_staged_filenames" ]; then
-  printf "%bCould not automatically add all fixed files to commit: some files had unstaged changes:%b\n" "$RED" "$NC"
-  echo "$modified_partially_staged_filenames"
-  echo "Manually stage the fixes that were just made and try again."
-  exit 2
+# Delegate to kempt: it runs ktfmt + gjf + license headers + whitespace on
+# the staged set, refuses to run on partial-stage files, and re-stages the
+# results. See https://github.com/ZacSweers/kempt.
+if ! command -v kempt &> /dev/null; then
+    echo 'Warning: kempt not found on PATH. Install with `brew install ZacSweers/tap/kempt-fmt` or `cargo install kempt-fmt`. Skipping pre-commit format.'
+    exit
 fi
+
+exec kempt hook
 
 ######## FORMAT HOOK END ########

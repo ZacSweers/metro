@@ -35,12 +35,14 @@ internal class MetroIrPipeline(
       }
 
       if (options.traceEnabled) {
-        // Find and print the trace file
+        // Find and print the most-recent trace file. Traces accumulate
+        // across reruns, so always pick the freshest by mtime.
         options.traceDir.value?.let { traceDir ->
           traceDir
             .toFile()
             .walkTopDown()
-            .find { it.extension == "perfetto-trace" }
+            .filter { it.extension == "perfetto-trace" }
+            .maxByOrNull { it.lastModified() }
             ?.let {
               log(
                 // Trailing space intentional for terminal linkifying

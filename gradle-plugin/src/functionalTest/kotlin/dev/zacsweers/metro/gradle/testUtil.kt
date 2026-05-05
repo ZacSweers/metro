@@ -28,12 +28,7 @@ import org.intellij.lang.annotations.Language
 // TODO dedupe with MetroCompilerTest
 private val CLASS_NAME_REGEX = Regex("(class|object|interface) (?<name>[a-zA-Z0-9_]+)")
 private val FUNCTION_NAME_REGEX = Regex("fun( <[a-zA-Z0-9_]+>)? (?<name>[a-zA-Z0-9_]+)")
-private val DEFAULT_IMPORTS =
-  listOf(
-    "dev.zacsweers.metro.*",
-    // For Callable access
-    "java.util.concurrent.*",
-  )
+private val DEFAULT_IMPORTS = listOf("dev.zacsweers.metro.*")
 private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
 
 const val DEBUGGING_ARGS =
@@ -41,8 +36,16 @@ const val DEBUGGING_ARGS =
 
 fun String.cleanOutputLine(): String = FILE_PATH_REGEX.replace(trimEnd(), "")
 
-fun GradleProject.classLoader(): ClassLoader {
-  val rootClassesDir = rootDir.toPath().resolve("build/classes/kotlin/main").absolute()
+/**
+ * Loads the main classes of a [GradleProject].
+ *
+ * @param target KMP target name (defaults to `"jvm"`). Classes are read from
+ *   `build/classes/kotlin/<target>/main` to match the multiplatform output layout. Pass `null` for
+ *   the plain JVM layout `build/classes/kotlin/main`.
+ */
+fun GradleProject.classLoader(target: String? = "jvm"): ClassLoader {
+  val pathSuffix = if (target != null) "$target/main" else "main"
+  val rootClassesDir = rootDir.toPath().resolve("build/classes/kotlin/$pathSuffix").absolute()
 
   check(rootClassesDir.exists()) {
     "Root classes dir not found: ${rootClassesDir.toAbsolutePath()}"
@@ -52,7 +55,7 @@ fun GradleProject.classLoader(): ClassLoader {
     val dir =
       rootDir
         .toPath()
-        .resolve("${subproject.name.replace(':', '/')}/build/classes/kotlin/main")
+        .resolve("${subproject.name.replace(':', '/')}/build/classes/kotlin/$pathSuffix")
         .absolute()
     check(rootClassesDir.exists()) {
       "Subproject ${subproject.name} classes dir not found: ${dir.toAbsolutePath()}"
@@ -89,10 +92,14 @@ fun source(
         appendLine("package $packageName")
 
         // Imports
-        if (includeDefaultImports) {
-          for (import in DEFAULT_IMPORTS + extraImports) {
-            appendLine("import $import")
+        val imports = buildList {
+          if (includeDefaultImports) {
+            addAll(DEFAULT_IMPORTS)
           }
+          addAll(extraImports)
+        }
+        for (import in imports) {
+          appendLine("import $import")
         }
 
         appendLine()
@@ -158,11 +165,18 @@ fun getTestCompilerToolingVersion(): KotlinToolingVersion =
  *
  * @param className the fully qualified class name containing the main function (defaults to
  *   "test.MainKt")
+ * @param target optional KMP target name forwarded to [classLoader]
  * @return the result of invoking the main function, cast to type [T]
  */
-inline fun <reified T> GradleProject.invokeMain(className: String = "test.MainKt"): T {
-  return classLoader().loadClass(className).declaredMethods.first { it.name == "main" }.invoke(null)
-    as T
+inline fun <reified T> GradleProject.invokeMain(
+  className: String = "test.MainKt",
+  target: String? = "jvm",
+): T {
+  return classLoader(target)
+    .loadClass(className)
+    .declaredMethods
+    .first { it.name == "main" }
+    .invoke(null) as T
 }
 
 internal fun File.resolveSafe(relative: String): File {

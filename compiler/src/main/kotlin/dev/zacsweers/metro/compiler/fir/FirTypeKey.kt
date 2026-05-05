@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
-import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.fir.FirSession
@@ -18,19 +17,27 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
 
-// TODO cache these?
-@Poko
 internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnotation? = null) :
   Comparable<FirTypeKey> {
+  private val cachedHashCode: Int = (type.hashCode() * 31) + (qualifier?.hashCode() ?: 0)
   private val cachedToString by memoize {
     render(short = false, includeAbbreviation = true, includeQualifier = true)
   }
 
   override fun toString(): String = cachedToString
 
+  override fun hashCode(): Int = cachedHashCode
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is FirTypeKey) return false
+    if (cachedHashCode != other.cachedHashCode) return false
+    return type == other.type && qualifier == other.qualifier
+  }
+
   override fun compareTo(other: FirTypeKey): Int {
-    if (this == other) return 0
-    return toString().compareTo(other.toString())
+    if (this === other) return 0
+    return cachedToString.compareTo(other.cachedToString)
   }
 
   fun render(

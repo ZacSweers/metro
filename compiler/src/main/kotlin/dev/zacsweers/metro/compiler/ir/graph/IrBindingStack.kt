@@ -38,6 +38,7 @@ import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.FqName
 
@@ -503,9 +504,12 @@ internal fun bindingStackEntryForDependency(
       )
     }
     is Provided -> {
+      // For contribution provider bindings, use the origin class constructor for the
+      // diagnostic trace instead of the generated provides function
+      val originConstructor = callingBinding.originClass?.primaryConstructor
       Entry.injectedAt(
         contextKey,
-        callingBinding.providerFactory.function,
+        originConstructor ?: callingBinding.providerFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
         isMirrorFunction = false,
