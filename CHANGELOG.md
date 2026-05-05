@@ -35,6 +35,13 @@ Changelog
 - Metro now uses... Metro! The Metro compiler now uses proper DI internally, bootstrapping itself. This isn't really anything library consumers have to think about, I just think it's neat.
 - Metro now runs IC integration tests on all major platforms it targets.
 
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@aitorvs](https://github.com/aitorvs)
+- [@hossain-khan](https://github.com/hossain-khan)
+
 1.0.0
 -----
 
