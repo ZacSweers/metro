@@ -450,6 +450,11 @@ private fun renderAnnotationArgument(
           }
       }
 
+      is FirNamedArgumentExpression -> {
+        // Ignore the name for the hash, it's the value we want
+        renderAnnotationArgument(session, arg.expression, typeResolver)
+      }
+
       // Enum entry reference or const val reference.
       // Use toResolvedCallableSymbol() (not toResolvedPropertySymbol()) because
       // enum entries are FirEnumEntrySymbol, not FirPropertySymbol.
@@ -465,8 +470,7 @@ private fun renderAnnotationArgument(
           evaluated.value
         } else {
           // May have been something like a GetClass expression, which can fall through here in 2.4+
-          // but isn't
-          // "evaluatable"
+          // but isn't "evaluatable"
           null
         }
       }
@@ -479,9 +483,10 @@ private fun renderAnnotationArgument(
       }
 
       else -> {
-        reportCompilerBug(
+        System.err.println(
           "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"
         )
+        null
       }
     }
   }
