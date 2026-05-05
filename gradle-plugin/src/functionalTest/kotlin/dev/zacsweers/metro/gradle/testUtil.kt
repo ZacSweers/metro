@@ -44,11 +44,11 @@ fun String.cleanOutputLine(): String = FILE_PATH_REGEX.replace(trimEnd(), "")
 /**
  * Loads the main classes of a [GradleProject].
  *
- * @param target optional KMP target name (e.g. `"jvm"`). When set, classes are read from
- *   `build/classes/kotlin/<target>/main` to match the multiplatform output layout. When null, the
- *   plain JVM layout `build/classes/kotlin/main` is used.
+ * @param target KMP target name (defaults to `"jvm"`). Classes are read from
+ *   `build/classes/kotlin/<target>/main` to match the multiplatform output layout. Pass `null` for
+ *   the plain JVM layout `build/classes/kotlin/main`.
  */
-fun GradleProject.classLoader(target: String? = null): ClassLoader {
+fun GradleProject.classLoader(target: String? = "jvm"): ClassLoader {
   val pathSuffix = if (target != null) "$target/main" else "main"
   val rootClassesDir = rootDir.toPath().resolve("build/classes/kotlin/$pathSuffix").absolute()
 
@@ -175,7 +175,7 @@ fun getTestCompilerToolingVersion(): KotlinToolingVersion =
  */
 inline fun <reified T> GradleProject.invokeMain(
   className: String = "test.MainKt",
-  target: String? = null,
+  target: String? = "jvm",
 ): T {
   return classLoader(target)
     .loadClass(className)
