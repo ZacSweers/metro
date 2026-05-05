@@ -15,7 +15,7 @@ class MetroArtifactsTest {
   @Test
   fun `generateMetroGraphMetadata task creates aggregated JSON output`() {
     val fixture =
-      object : MetroProject() {
+      object : MetroProject(multiplatform = false) {
         override fun sources() =
           listOf(
             source(
@@ -112,7 +112,7 @@ class MetroArtifactsTest {
   @Test
   fun `analyzeMetroGraph task for graph with just injectors`() {
     val fixture =
-      object : MetroProject() {
+      object : MetroProject(multiplatform = false) {
         override fun sources() =
           listOf(
             source(
