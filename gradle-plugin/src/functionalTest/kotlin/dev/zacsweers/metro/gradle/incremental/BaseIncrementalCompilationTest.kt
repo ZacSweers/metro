@@ -11,9 +11,11 @@ import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.KotlinToolingVersion
 import dev.zacsweers.metro.gradle.copy
 import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
+import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.resolveSafe
 import java.io.File
 import org.intellij.lang.annotations.Language
+import org.junit.Assume.assumeFalse
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 
@@ -24,6 +26,16 @@ private const val KOTLIN_DEBUG_ARGS =
 /** Minimum Kotlin version that supports incremental compilation for KMP projects. */
 private val MULTIPLATFORM_IC_MIN_VERSION = KotlinToolingVersion("2.3.21")
 
+/**
+ * Kotlin/JS IC trips on top-level declaration generation in these specific Kotlin builds (Metro
+ * uses top-level declarations by default for `enableTopLevelFunctionInjection` /
+ * `generateContributionHints` / `generateContributionHintsInFir`).
+ *
+ * See https://youtrack.jetbrains.com/issue/KT-82395 and
+ * https://youtrack.jetbrains.com/issue/KT-82989.
+ */
+private val JS_IC_TOP_LEVEL_BROKEN_VERSIONS = setOf("2.4.0-Beta1", "2.4.0-dev-2124")
+
 abstract class BaseIncrementalCompilationTest(protected val target: KmpTarget) {
 
   @Before
@@ -31,6 +43,16 @@ abstract class BaseIncrementalCompilationTest(protected val target: KmpTarget) {
     assumeTrue(
       "KMP incremental compilation requires Kotlin $MULTIPLATFORM_IC_MIN_VERSION+",
       getTestCompilerToolingVersion() >= MULTIPLATFORM_IC_MIN_VERSION,
+    )
+  }
+
+  @Before
+  fun assumeJsTopLevelDeclarationsSupported() {
+    if (target != KmpTarget.JS) return
+    assumeFalse(
+      "Kotlin/JS IC cannot generate top-level declarations on ${getTestCompilerVersion()} " +
+        "(KT-82395, KT-82989)",
+      getTestCompilerVersion() in JS_IC_TOP_LEVEL_BROKEN_VERSIONS,
     )
   }
 
