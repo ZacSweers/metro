@@ -12,15 +12,19 @@ description: Query and analyze Metro's perfetto compiler traces to find real hot
 
 ## Where metro writes traces
 
-Metro writes a perfetto trace per compilation into each module's build dir:
+Metro writes perfetto traces into the configured `traceDestination` directory. As of the FIR + IR tracing rework, **one compilation produces multiple files** — one per FIR session and one per IR module fragment — all sharing a common id prefix:
 
 ```
-<module>/build/metro/trace/<variant>/perfetto-<timestamp>.perfetto-trace
+<traceDestination>/<id>-<phase>-<moduleName>.perfetto-trace
 ```
 
-e.g. `app-scaffold/build/metro/trace/debug/perfetto-2026-04-24-01-31-36-0.perfetto-trace`.
+- `<id>` is a `yyMMdd-HHmmss` timestamp generated once per compilation. Every file from the same compilation invocation shares it, so you can group them by prefix.
+- `<phase>` is `fir` or `ir`.
+- `<moduleName>` is the FIR session name (`commonMain`, `jvmMain`, etc.) or the IR `IrModuleFragment.name` (often `main`). Filesystem-unsafe characters in module names are replaced with `_`.
 
-If there are multiple, they're one per compilation invocation — pick the most recent unless the user points at a specific file.
+Examples: `260505-133503-fir-commonMain.perfetto-trace`, `260505-133503-ir-main.perfetto-trace`.
+
+When asked "look at the trace", first decide which phase the user is asking about. FIR-side time (checkers, generators, supertype computation) lives in the `fir-*` files; IR-side time (graph processing, transformers) lives in the `ir-*` files. They are **separate timelines** — not a unified trace — so you cannot directly compare durations across files. If multiple older invocations exist in the directory, pick the freshest `<id>` group unless the user points at a specific file.
 
 ## Producing a fresh trace from a local Metro change
 

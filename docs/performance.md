@@ -167,9 +167,11 @@ metro {
 }
 ```
 
-This will output a Perfetto trace file after the compilation that you can then load into https://ui.perfetto.dev.
+This will output one or more Perfetto trace files after the compilation that you can then load into https://ui.perfetto.dev.
 
-Note that these traces probably do require a bit of familiarity with the Metro compiler internals and only trace the IR transformation layer.
+Filenames follow the pattern `<id>-<phase>-<moduleName>.perfetto-trace`, where `<id>` is a `yyMMdd-HHmmss` timestamp shared across every file produced by the same compilation, `<phase>` is `fir` or `ir`, and `<moduleName>` identifies the FIR session or IR module fragment. KMP source-set hierarchies and multi-fragment IR each produce their own files. Load whichever file corresponds to the phase you want to inspect.
+
+Note that these traces probably do require a bit of familiarity with the Metro compiler internals.
 
 !!! warning
 
