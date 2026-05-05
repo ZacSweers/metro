@@ -4,15 +4,10 @@ package dev.zacsweers.metro.compiler.tracing
 
 import androidx.tracing.EventMetadata
 import androidx.tracing.Tracer
-import androidx.tracing.wire.TraceDriver as WireTraceDriver
-import androidx.tracing.wire.TraceSink
 import dev.zacsweers.metro.compiler.fir.MetroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
-import kotlin.coroutines.EmptyCoroutineContext
-import okio.blackholeSink
-import okio.buffer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -74,16 +69,7 @@ internal interface TraceScope {
  * disabled. Nested `trace(...)` calls inside the block hit this scope's no-op [Tracer], so they
  * remain valid but do no work.
  */
-internal val NoopTraceScope: TraceScope by lazy {
-  TraceScope(
-    WireTraceDriver(
-        sink = TraceSink(sequenceId = 0, blackholeSink().buffer(), EmptyCoroutineContext),
-        isEnabled = false,
-      )
-      .tracer,
-    "noop",
-  )
-}
+internal val NoopTraceScope: TraceScope by lazy { emptyTraceScope("noop") }
 
 internal val IrClass.diagnosticTag: String
   get() = kotlinFqName.asString().replace('.', '_')
