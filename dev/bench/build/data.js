@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777998799357,
+  "lastUpdate": 1778007958169,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -13776,6 +13776,62 @@ window.BENCHMARK_DATA = {
             "value": 32051.332000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +4.14%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "ce588325~1",
+          "message": "[before] Add TraceContext for shared tracing infra (#2250)",
+          "timestamp": "2026-05-05T18:25:36+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/ce5883253b47c1ed6e9a6f30edd3c20a6492a2c7"
+        },
+        "date": 1778007958169,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 29907.206,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "ce5883253b47c1ed6e9a6f30edd3c20a6492a2c7",
+          "message": "[after] Add TraceContext for shared tracing infra (#2250)",
+          "timestamp": "2026-05-05T18:25:36+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/ce5883253b47c1ed6e9a6f30edd3c20a6492a2c7"
+        },
+        "date": 1778007958170,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 30248.803999999996,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.14%"
           }
         ]
       }
