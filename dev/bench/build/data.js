@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778048486283,
+  "lastUpdate": 1778095962277,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -13888,6 +13888,62 @@ window.BENCHMARK_DATA = {
             "value": 24436.29,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -8.98%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f0705937~1",
+          "message": "[before] Handle Map Providers in JS with function types (#2",
+          "timestamp": "2026-05-06T18:51:48+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f07059377377fec8c763762041aa94e36d1d4aca"
+        },
+        "date": 1778095962277,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 33386.64599999999,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f07059377377fec8c763762041aa94e36d1d4aca",
+          "message": "[after] Handle Map Providers in JS with function types (#2",
+          "timestamp": "2026-05-06T18:51:48+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f07059377377fec8c763762041aa94e36d1d4aca"
+        },
+        "date": 1778095962278,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31273.086,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -6.33%"
           }
         ]
       }
