@@ -11,6 +11,8 @@ import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.tracing.trace
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -34,8 +36,15 @@ internal object FunctionInjectionChecker : FirCallableDeclarationChecker(MppChec
     if (declaration !is FirFunction) return
     val session = context.session
     if (!with(session.compatContext) { declaration.isNamedFunction() }) return
-
     val source = declaration.source ?: return
+    session.trace(name = { "FunctionInjectionChecker(${declaration.symbol.callableId})" }) {
+      checkImpl(declaration, source)
+    }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkImpl(declaration: FirFunction, source: KtSourceElement) {
+    val session = context.session
     val classIds = session.classIds
 
     if (declaration.dispatchReceiverType != null) return // Instance function, setter injection
