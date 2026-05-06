@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataKey
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataRegistry
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -18,6 +20,13 @@ internal object MetroFirAttributes {
    * generate top-level classes from other generated top-level classes.
    */
   object IsExtensionGenerated : FirDeclarationDataKey()
+
+  /**
+   * Caches the full-kinds [MetroAnnotations] resolution for a declaration. Only populated through
+   * the `context(CheckerContext)` overload of `metroAnnotations` as this isn't safe to cache in FIR
+   * gen..
+   */
+  object MetroAnnotationsCache : FirDeclarationDataKey()
 }
 
 internal var FirClass.isExtensionGenerated: Boolean? by
@@ -25,3 +34,6 @@ internal var FirClass.isExtensionGenerated: Boolean? by
 
 internal val IrClass.isExtensionGenerated: Boolean
   get() = (metadata as? FirMetadataSource.Class)?.fir?.isExtensionGenerated == true
+
+internal var FirDeclaration.metroAnnotationsCache: MetroAnnotations<MetroFirAnnotation>? by
+  FirDeclarationDataRegistry.data(MetroFirAttributes.MetroAnnotationsCache)
