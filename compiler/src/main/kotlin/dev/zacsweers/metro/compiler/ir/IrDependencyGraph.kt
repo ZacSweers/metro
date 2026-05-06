@@ -3,8 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import androidx.tracing.AbstractTraceDriver
-import androidx.tracing.wire.TraceDriver as WireTraceDriver
-import androidx.tracing.wire.TraceSink
+import androidx.tracing.wire.TraceDriver
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.Qualifier
@@ -18,12 +17,9 @@ import dev.zacsweers.metro.compiler.tracing.TraceContext
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.nio.file.Path
 import java.util.concurrent.ForkJoinPool
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.io.path.appendText
 import kotlin.io.path.createFile
 import kotlin.io.path.deleteIfExists
-import okio.blackholeSink
-import okio.buffer
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
@@ -66,13 +62,8 @@ internal interface IrDependencyGraph {
   ): AbstractTraceDriver {
     // One IR driver per fragment (per IrScope), with filename `<id>-ir-<moduleName>.perfetto-trace`
     // sharing the holder's compilation id.
-    traceContext.newIrDriverOrNull(moduleFragment.name.asString())?.let {
-      return it
-    }
-    return WireTraceDriver(
-      sink = TraceSink(sequenceId = 1, blackholeSink().buffer(), EmptyCoroutineContext),
-      isEnabled = false,
-    )
+    return traceContext.newIrDriverOrNull(moduleFragment.name.asString())
+      ?: TraceDriver.getStubTraceDriver()
   }
 
   @Provides

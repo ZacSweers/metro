@@ -65,10 +65,7 @@ public class TraceContext(private val options: MetroOptions) : Closeable {
     // delete here — that would clobber prior-iteration traces inside a
     // single Gradle daemon (and throws on a non-empty directory anyway).
     val file = tracePath.resolve("$id-$phase-${moduleName.sanitize()}.perfetto-trace").toFile()
-    return WireTraceDriver(
-      sink = TraceSink(sequenceId = 1, file.sink().buffer(), EmptyCoroutineContext),
-      isEnabled = true,
-    )
+    return WireTraceDriver(TraceSink(sequenceId = 1, file.sink().buffer(), EmptyCoroutineContext))
   }
 
   private companion object {
