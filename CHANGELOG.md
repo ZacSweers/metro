@@ -77,6 +77,7 @@ _Changes since RC4_
 - **[ide]** Test IntelliJ `2026.1.1`.
 - **[ide]** Test Android Studio Panda 4.
 - **[ide]** Test Android Studio Quail canaries.
+- Update shaded androidx.tracing version to `2.0.0-alpha07`.
 
 1.0.0-RC4
 ---------
