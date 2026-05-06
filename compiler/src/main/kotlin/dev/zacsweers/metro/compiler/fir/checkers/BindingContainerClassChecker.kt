@@ -17,6 +17,8 @@ import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedIncludesClassIds
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateVisibility
+import dev.zacsweers.metro.compiler.tracing.trace
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -53,12 +55,24 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
-    context(context.session.compatContext) { checkImpl(declaration) }
+    val source = declaration.source ?: return
+    val session = context.session
+    val classIds = session.classIds
+    // Skip classes that aren't relevant — must have either a @BindingContainer-like or a
+    // @DependencyGraph-like annotation for any of this checker's logic to apply.
+    if (
+      !declaration.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations) &&
+        !declaration.isAnnotatedWithAny(session, classIds.graphLikeAnnotations)
+    ) {
+      return
+    }
+    session.trace(name = { "BindingContainerClassChecker(${declaration.classId})" }) {
+      context(session.compatContext) { checkImpl(declaration, source) }
+    }
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
-  private fun checkImpl(declaration: FirClass) {
-    val source = declaration.source ?: return
+  private fun checkImpl(declaration: FirClass, source: KtSourceElement) {
     val session = context.session
     val classIds = session.classIds
 
