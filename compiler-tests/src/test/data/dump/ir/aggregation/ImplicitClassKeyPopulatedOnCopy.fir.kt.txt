@@ -40,6 +40,8 @@ class ExplicitKeyImpl : Base {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
+  @BindingContainer
+  @Origin(value = ExplicitKeyImpl::class)
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @ComptimeOnly
@@ -116,6 +118,8 @@ class ImplicitKeyImpl : Base {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
+  @BindingContainer
+  @Origin(value = ImplicitKeyImpl::class)
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @ComptimeOnly
