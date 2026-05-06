@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.tracing
 
 import androidx.tracing.AbstractTraceDriver
-import androidx.tracing.wire.TraceDriver as WireTraceDriver
+import androidx.tracing.wire.TraceDriver
 import androidx.tracing.wire.TraceSink
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.ir.MetroIrPipeline
@@ -41,14 +41,14 @@ public class TraceContext(private val options: MetroOptions) : Closeable {
   /** Creates a new FIR driver for the given session/module. Null when tracing is disabled. */
   public fun newFirDriverOrNull(moduleName: String): AbstractTraceDriver? {
     if (firClosed) return null
-    val driver = newDriverOrNull(phase = "fir", moduleName) ?: return null
+    val driver = newDriver(phase = "fir", moduleName)
     firDrivers.add(driver)
     return driver
   }
 
-  /** Creates a new IR driver for the given module fragment. Null when tracing is disabled. */
-  public fun newIrDriverOrNull(moduleName: String): AbstractTraceDriver? =
-    newDriverOrNull(phase = "ir", moduleName)
+  /** Creates a new IR driver for the given module fragment. */
+  public fun newIrDriver(moduleName: String): AbstractTraceDriver =
+    newDriver(phase = "ir", moduleName)
 
   /** Closes all open FIR drivers. Idempotent; safe to call from each IR fragment. */
   override fun close() {
@@ -58,14 +58,14 @@ public class TraceContext(private val options: MetroOptions) : Closeable {
     firDrivers.clear()
   }
 
-  private fun newDriverOrNull(phase: String, moduleName: String): AbstractTraceDriver? {
-    if (!options.traceEnabled) return null
-    val tracePath = options.traceDir.value ?: return null
+  private fun newDriver(phase: String, moduleName: String): AbstractTraceDriver {
+    if (!options.traceEnabled) return TraceDriver.getStubTraceDriver()
+    val tracePath = options.traceDir.value ?: return TraceDriver.getStubTraceDriver()
     // Dir is already ensured to exist by MetroOptions.traceDir; don't
     // delete here — that would clobber prior-iteration traces inside a
     // single Gradle daemon (and throws on a non-empty directory anyway).
     val file = tracePath.resolve("$id-$phase-${moduleName.sanitize()}.perfetto-trace").toFile()
-    return WireTraceDriver(TraceSink(sequenceId = 1, file.sink().buffer(), EmptyCoroutineContext))
+    return TraceDriver(TraceSink(sequenceId = 1, file.sink().buffer(), EmptyCoroutineContext))
   }
 
   private companion object {

@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import androidx.tracing.AbstractTraceDriver
-import androidx.tracing.wire.TraceDriver
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.Qualifier
@@ -62,8 +61,7 @@ internal interface IrDependencyGraph {
   ): AbstractTraceDriver {
     // One IR driver per fragment (per IrScope), with filename `<id>-ir-<moduleName>.perfetto-trace`
     // sharing the holder's compilation id.
-    return traceContext.newIrDriverOrNull(moduleFragment.name.asString())
-      ?: TraceDriver.getStubTraceDriver()
+    return traceContext.newIrDriver(moduleFragment.name.asString())
   }
 
   @Provides
