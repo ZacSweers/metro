@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker.FirAssistedParameterKey.Companion.toAssistedParameterKey
-import dev.zacsweers.metro.compiler.fir.checkers.InjectConstructorChecker.isConstructorInjected
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
@@ -18,6 +17,7 @@ import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.mapToSetWithDupes
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.builtins.StandardNames
@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
@@ -46,7 +47,16 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass) {
     val source = declaration.source ?: return
     val session = context.session
-    if (!isConstructorInjected(declaration, session)) {
+    // Relevance: @AssistedFactory class, OR a class with class-level @AssistedInject (sugars to
+    // primary-ctor injection), OR a class with any @AssistedInject ctor. Note we do NOT gate on
+    // `isConstructorInjected` — that helper only covers @Inject/@Contributes*, not
+    // @AssistedFactory.
+    val classAnnotations = declaration.symbol.metroAnnotations()
+    if (
+      !classAnnotations.isAssistedFactory &&
+        !classAnnotations.isAssistedInject &&
+        declaration.constructors(session).none { it.metroAnnotations().isAssistedInject }
+    ) {
       return
     }
     session.trace(name = { "AssistedInjectChecker(${declaration.classId})" }) {
@@ -60,8 +70,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     val classIds = session.classIds
 
     // Check if this is an assisted factory
-    val isAssistedFactory =
-      declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
+    val isAssistedFactory = declaration.symbol.metroAnnotations().isAssistedFactory
 
     if (isAssistedFactory) {
       checkAssistedFactory(declaration, source, session, classIds)

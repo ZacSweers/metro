@@ -81,7 +81,7 @@ internal object BindingContainerCallableChecker :
     val session = context.session
     // Single-pass annotation extraction. checkImpl reuses this so we don't walk the annotation
     // list more than once per call.
-    val annotations = declaration.symbol.metroAnnotations(session)
+    val annotations = declaration.symbol.metroAnnotations()
     // Constructors are handled by checkImpl based on whether their containing class is a binding
     // container. For other callables, only enter the body if an annotation it actually checks
     // for is present.
@@ -94,7 +94,10 @@ internal object BindingContainerCallableChecker :
         annotations.isIntoMap ||
         annotations.isBindsOptionalOf ||
         annotations.isGraphPrivate ||
-        annotations.lazyClassKey != null
+        annotations.lazyClassKey != null ||
+        // Overrides may inherit @Provides from a supertype declaration; checkImpl reports the
+        // PROVIDER_OVERRIDES diagnostic on these even when this declaration isn't annotated.
+        declaration.isOverride
     if (declaration !is FirConstructor && !isRelevant) return
     session.trace(name = { "BindingContainerCallableChecker(${declaration.symbol.callableId})" }) {
       checkImpl(declaration, source, annotations)
@@ -527,13 +530,7 @@ internal object BindingContainerCallableChecker :
             with(session.compatContext) { declaration.isNamedFunction() }
         ) {
           for (parameter in declaration.valueParameters) {
-            val annotations =
-              parameter.symbol.metroAnnotations(
-                session,
-                MetroAnnotations.Kind.OptionalBinding,
-                MetroAnnotations.Kind.Assisted,
-                MetroAnnotations.Kind.Qualifier,
-              )
+            val annotations = parameter.symbol.metroAnnotations()
 
             val assistedAnnotation = annotations.assisted
             if (assistedAnnotation != null) {

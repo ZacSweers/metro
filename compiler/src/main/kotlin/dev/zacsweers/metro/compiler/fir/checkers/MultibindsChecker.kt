@@ -58,7 +58,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     val session = context.session
     // Single-pass annotation extraction. checkImpl reuses this so we don't walk the annotation
     // list more than once per call.
-    val annotations = declaration.symbol.metroAnnotations(session)
+    val annotations = declaration.symbol.metroAnnotations()
     val isRelevant =
       annotations.isMultibinds ||
         annotations.isElementsIntoSet ||

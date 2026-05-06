@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
@@ -91,7 +90,7 @@ internal object FunctionInjectionChecker : FirCallableDeclarationChecker(MppChec
       }
     }
 
-    val scope = declaration.symbol.metroAnnotations(session).scope
+    val scope = declaration.symbol.metroAnnotations().scope
 
     if (scope != null) {
       reporter.reportOn(
@@ -102,13 +101,7 @@ internal object FunctionInjectionChecker : FirCallableDeclarationChecker(MppChec
     }
 
     for (param in declaration.valueParameters) {
-      val annotations =
-        param.symbol.metroAnnotations(
-          session,
-          MetroAnnotations.Kind.OptionalBinding,
-          MetroAnnotations.Kind.Assisted,
-          MetroAnnotations.Kind.Qualifier,
-        )
+      val annotations = param.symbol.metroAnnotations()
       if (annotations.isAssisted) continue
       validateInjectionSiteType(
         session = session,

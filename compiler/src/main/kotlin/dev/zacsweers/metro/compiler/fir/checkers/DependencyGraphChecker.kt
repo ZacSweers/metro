@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
@@ -148,21 +147,31 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       for (supertypeRef in declaration.superTypeRefs) {
         val supertype = supertypeRef.coneType as? ConeClassLikeType ?: continue
         val supertypeClass = supertype.lookupTag.toSymbolCompat(session) ?: continue
-        if (supertypeClass.isAnnotatedWithAny(session, classIds.graphLikeAnnotations)) {
+        // Single-pass annotation walk: one trip resolves both flags instead of calling
+        // `isAnnotatedWithAny` twice (once for graph-like, once for graph-extension-factory).
+        // Walks `resolvedCompilerAnnotationsWithClassIds` to match `isAnnotatedWithAny`'s view.
+        var isGraphLike = false
+        var isGraphExtensionFactory = false
+        for (anno in supertypeClass.resolvedCompilerAnnotationsWithClassIds) {
+          val cid = anno.toAnnotationClassIdSafe(session) ?: continue
+          if (cid in classIds.graphLikeAnnotations) {
+            isGraphLike = true
+          } else if (cid in classIds.graphExtensionFactoryAnnotations) {
+            isGraphExtensionFactory = true
+          }
+        }
+        if (isGraphLike) {
           reporter.reportOn(
             supertypeRef.source ?: declaration.source,
             MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
             "Graph class '${declaration.classId.asSingleFqName()}' may not directly extend graph class '${supertypeClass.classId.asSingleFqName()}'. Use @GraphExtension instead.",
           )
           return true
-        } else {
-          scopeAnnotations +=
-            supertypeClass.resolvedAnnotationsWithArguments.scopeAnnotations(session)
-          if (
-            supertypeClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
-          ) {
-            graphExtensionFactorySupertypes[supertypeRef] = supertypeClass
-          }
+        }
+        scopeAnnotations +=
+          supertypeClass.resolvedAnnotationsWithArguments.scopeAnnotations(session)
+        if (isGraphExtensionFactory) {
+          graphExtensionFactorySupertypes[supertypeRef] = supertypeClass
         }
       }
       return false
@@ -175,10 +184,11 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     if (graphExtensionFactorySupertypes.isNotEmpty()) {
       fun validateGraphExtensions() {
         for ((supertypeRef, graphExtensionFactoryClass) in graphExtensionFactorySupertypes) {
+          // Top-level @GraphExtension.Factory classes have no containing class. That's already
+          // reported by DependencyGraphCreatorChecker; skip rather than crashing here.
           val graphExtensionClass =
-            with(session.compatContext) {
-              graphExtensionFactoryClass.requireContainingClassSymbol()
-            }
+            with(session.compatContext) { graphExtensionFactoryClass.getContainingClassSymbol() }
+              ?: continue
           validateGraphExtension(
             session = session,
             classIds = classIds,
@@ -205,16 +215,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
     fun walkCallables() {
       for (callable in declaration.symbol.callableSymbols()) {
-        val annotations =
-          callable.metroAnnotations(
-            session,
-            MetroAnnotations.Kind.OptionalBinding,
-            MetroAnnotations.Kind.Provides,
-            MetroAnnotations.Kind.Binds,
-            // For checks on binding refs
-            MetroAnnotations.Kind.Qualifier,
-            MetroAnnotations.Kind.Scope,
-          )
+        val annotations = callable.metroAnnotations()
 
         val isEffectivelyOpen = with(session.compatContext) { callable.isEffectivelyOpen() }
 
@@ -299,11 +300,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           // If it's an optionaldep, ensure annotations are propagated
           if (!annotations.isOptionalBinding) {
             callable.directOverriddenSymbolsSafe().forEach { overridden ->
-              if (
-                overridden
-                  .metroAnnotations(session, MetroAnnotations.Kind.OptionalBinding)
-                  .isOptionalBinding
-              ) {
+              if (overridden.metroAnnotations().isOptionalBinding) {
                 reporter.reportOn(
                   callable.source,
                   MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,

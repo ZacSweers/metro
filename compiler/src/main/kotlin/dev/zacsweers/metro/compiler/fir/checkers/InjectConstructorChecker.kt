@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -130,13 +129,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
       injectedConstructor?.constructor ?: declaration.primaryConstructorIfAny(session) ?: return
 
     for (parameter in constructorToValidate.valueParameterSymbols) {
-      val annotations =
-        parameter.metroAnnotations(
-          session,
-          MetroAnnotations.Kind.OptionalBinding,
-          MetroAnnotations.Kind.Assisted,
-          MetroAnnotations.Kind.Qualifier,
-        )
+      val annotations = parameter.metroAnnotations()
       if (annotations.isAssisted) continue
       validateInjectionSiteType(
         session,

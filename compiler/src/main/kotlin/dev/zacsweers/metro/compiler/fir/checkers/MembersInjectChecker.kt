@@ -68,7 +68,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     for (callable in declaration.symbol.directCallableSymbols()) {
       if (callable is FirConstructorSymbol || callable is FirEnumEntrySymbol) continue
-      val annotations = callable.metroAnnotations(session)
+      val annotations = callable.metroAnnotations()
       if (!annotations.isInject) continue
 
       if (!isInClass) {
