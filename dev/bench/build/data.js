@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778095962277,
+  "lastUpdate": 1778096032441,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -13944,6 +13944,62 @@ window.BENCHMARK_DATA = {
             "value": 31273.086,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -6.33%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3afc716e~1",
+          "message": "[before] Make pure binding contributions containers instead",
+          "timestamp": "2026-05-06T18:54:50+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3afc716e1d2a747a55737971a3358744b6359b78"
+        },
+        "date": 1778096032441,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 28671.008,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3afc716e1d2a747a55737971a3358744b6359b78",
+          "message": "[after] Make pure binding contributions containers instead",
+          "timestamp": "2026-05-06T18:54:50+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3afc716e1d2a747a55737971a3358744b6359b78"
+        },
+        "date": 1778096032442,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 33060.566,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +15.31%"
           }
         ]
       }
