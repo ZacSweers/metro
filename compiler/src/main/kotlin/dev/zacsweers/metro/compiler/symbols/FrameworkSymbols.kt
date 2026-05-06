@@ -296,6 +296,42 @@ internal class MetroFrameworkSymbols(
   override val mapProviderLazyFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderLazyFactoryCompanionObject.requireSimpleFunction("singleton")
   }
+
+  // MapFunctionFactory is JS-only — see runtime/src/jsMain/.../MapFunctionFactory.kt.
+  // Only access these symbols from code paths gated on `platform.isJs()`.
+  val mapFunctionFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntimeInternal.packageFqName, "MapFunctionFactory".asName())
+    )!!
+  }
+
+  private val mapFunctionFactoryCompanionObject: IrClassSymbol by lazy {
+    mapFunctionFactory.owner.companionObject()!!.symbol
+  }
+
+  val mapFunctionFactoryBuilder: IrClassSymbol by lazy {
+    mapFunctionFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
+
+  val mapFunctionFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapFunctionFactoryCompanionObject.requireSimpleFunction("builder")
+  }
+
+  val mapFunctionFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapFunctionFactoryCompanionObject.requireSimpleFunction("empty")
+  }
+
+  val mapFunctionFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
+    mapFunctionFactoryCompanionObject.requireSimpleFunction("singleton")
+  }
+
+  val mapFunctionFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
+    mapFunctionFactoryBuilder.requireSimpleFunction("put")
+  }
+
+  val mapFunctionFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+    mapFunctionFactoryBuilder.requireSimpleFunction("build")
+  }
 }
 
 internal class JavaxSymbols(
