@@ -99,9 +99,8 @@ internal class ContributedInterfaceSupertypeGenerator(
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
     session.firCachesFactory.createCache { scopeClassId, typeResolver ->
-      // Trace the cache miss only — `getValue` callers don't pay this on hits.
       session.trace(
-        { "In-compilation contributions for $scopeClassId" },
+        name = { "In-compilation contributions for $scopeClassId" },
         category = TraceCategories.FIR_SUPERTYPE,
       ) {
         // In a KMP compilation we want to capture _all_ sessions' symbols. For example, if we are
@@ -132,7 +131,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
     session.firCachesFactory.createCache { scopeClassId, typeResolver ->
       session.trace(
-        { "Classpath contributions for $scopeClassId" },
+        name = { "Classpath contributions for $scopeClassId" },
         category = TraceCategories.FIR_SUPERTYPE,
       ) {
         val scopeHintFqName = Symbols.FqNames.scopeHint(scopeClassId)
