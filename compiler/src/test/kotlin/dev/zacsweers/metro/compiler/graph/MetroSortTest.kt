@@ -21,7 +21,6 @@ package dev.zacsweers.metro.compiler.graph
 import androidx.collection.MutableScatterMap
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.emptyTraceScope
 import java.util.SortedSet
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -31,7 +30,7 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 import org.jetbrains.annotations.TestOnly
 
-class MetroSortTest : TraceScope by emptyTraceScope("\"test\"") {
+class MetroSortTest : TraceScope by TraceScope.noop() {
   @Test
   fun emptyEdges() {
     val unsorted = listOf("a", "b", "c")
@@ -664,7 +663,7 @@ private fun <T : Comparable<T>> Iterable<T>.topologicalSort(
       }
     }
   val fullAdjacency = buildFullAdjacency(fakeMap, sourceToTarget, onMissing)
-  val topology = with(emptyTraceScope("test")) { metroSort(fullAdjacency, isDeferrable, onCycle) }
+  val topology = with(TraceScope.noop()) { metroSort(fullAdjacency, isDeferrable, onCycle) }
   return topology.sortedKeys
 }
 

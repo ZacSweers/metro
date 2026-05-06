@@ -79,6 +79,10 @@ internal interface TraceScope {
   companion object {
     operator fun invoke(tracer: Tracer, category: String): TraceScope =
       TraceScopeImpl(tracer, category)
+
+    fun noop(): TraceScope {
+      return NoopTraceScope
+    }
   }
 }
 
@@ -90,7 +94,7 @@ internal class TraceScopeImpl(override val tracer: Tracer, override val category
  * disabled. Nested `trace(...)` calls inside the block hit this scope's no-op [Tracer], so they
  * remain valid but do no work.
  */
-internal val NoopTraceScope: TraceScope by lazy { emptyTraceScope("noop") }
+internal val NoopTraceScope: TraceScope by lazy { TraceScope(Tracer.getStubTracer(), "noop") }
 
 internal val IrClass.diagnosticTag: String
   get() = kotlinFqName.asString().replace('.', '_')
