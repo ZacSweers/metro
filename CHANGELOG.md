@@ -4,12 +4,16 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- **[FIR]** Add a diagnostic warning that `@Module.subcomponents` is ignored by Metro (when Dagger interop is enabled).
+
 ### Enhancements
 
-- **[FIR/IR]** Pure binding contributions (`@ContributesBinding`/`@ContributesIntoSet`/`@ContributesIntoMap` without `@ContributesTo`) are now routed through as binding containers instead of being merged into graphs as supertypes. This avoids one synthetic supertype per contributing class on the merged graph. This is the default behavior now. If you have any issues, you can temporarily disable via `metro.compilerOptions.disable("binding-contributions-as-containers")` to restore the supertype-merge behavior.
 - **[FIR]** Resolve copied typerefs (if necessary) in FIR code gen. This _appears_ to help avoid some IDE FIR issues.
 - **[FIR]** Make `renderAnnotationArgument()` more lenient.
 - **[FIR]** Handle `FirNamedArgumentExpression` in `renderAnnotationArgument()`.
+- **[FIR/IR]** Pure binding contributions (`@ContributesBinding`/`@ContributesIntoSet`/`@ContributesIntoMap` without `@ContributesTo`) are now routed through as binding containers instead of being merged into graphs as supertypes. This avoids one synthetic supertype per contributing class on the merged graph. This is the default behavior now. If you have any issues, you can temporarily disable via `metro.compilerOptions.disable("binding-contributions-as-containers")` to restore the supertype-merge behavior.
 - **[IR, runtime]** For multibound maps/sets with exactly one element, Metro now generates optimized IR that uses optimized `SingletonSet`/`SingletonMap` implementations at runtime and skips the unnecessary throwaway builder allocation. Note that, when using interop, the generated code for Dagger's internal set/map factories still generates the necessary builder intermediary.
 - **[IR]** Make `SwitchingProvider.invoke()` faster by hoisting the `id` field into a local before the `when`, allowing the JVM backend to lower it to `tableswitch` (O(1)) instead of a chain of integer compares.
 - **[IR]** Empty `Set` multibindings accessed through a provider now emit `SetFactory.empty()` (a singleton) rather than allocating a builder and an empty backing set on every graph init.

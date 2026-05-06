@@ -1051,6 +1051,9 @@ internal fun FirAnnotation.bindingContainerClasses(
 internal fun FirAnnotation.includesArgument(session: FirSession) =
   arrayArgument(session, Symbols.Names.includes, index = 0)
 
+internal fun FirAnnotation.subcomponentsArgument(session: FirSession) =
+  arrayArgument(session, Symbols.Names.subcomponents, index = 1)
+
 internal fun FirAnnotation.allScopeClassIds(session: FirSession): Set<ClassId> =
   buildSet {
       resolvedScopeClassId(session)?.let(::add)

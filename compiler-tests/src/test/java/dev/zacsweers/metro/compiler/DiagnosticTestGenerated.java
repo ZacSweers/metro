@@ -1036,6 +1036,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("DaggerModuleSubcomponentsIsIgnored.kt")
+      public void testDaggerModuleSubcomponentsIsIgnored() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/DaggerModuleSubcomponentsIsIgnored.kt");
+      }
+
+      @Test
       @TestMetadata("DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt")
       public void testDoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject() {
         runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt");

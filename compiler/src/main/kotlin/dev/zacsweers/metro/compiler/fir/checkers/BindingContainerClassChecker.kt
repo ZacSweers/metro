@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_MODULE_SUBCOMPONENTS_WARNING
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -15,8 +16,10 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.resolvedBindingContainersClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedIncludesClassIds
+import dev.zacsweers.metro.compiler.fir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateVisibility
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -119,6 +122,20 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       } else if (with(compatContext) { declaration.isLocalCompat }) {
         report("Local classes")
         return
+      }
+
+      if (
+        session.metroFirBuiltIns.options.enableDaggerRuntimeInterop &&
+          bindingContainerAnno.toAnnotationClassIdSafe(session) ==
+            DaggerSymbols.ClassIds.DAGGER_MODULE
+      ) {
+        val subcomponentsArg = bindingContainerAnno.subcomponentsArgument(session)
+        if (subcomponentsArg != null && subcomponentsArg.argumentList.arguments.isNotEmpty()) {
+          reporter.reportOn(
+            subcomponentsArg.source ?: bindingContainerAnno.source ?: source,
+            DAGGER_MODULE_SUBCOMPONENTS_WARNING,
+          )
+        }
       }
     }
 
