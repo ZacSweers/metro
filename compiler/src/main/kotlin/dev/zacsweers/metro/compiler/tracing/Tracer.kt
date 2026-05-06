@@ -17,13 +17,14 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 context(scope: TraceScope)
 internal inline fun <T> trace(
   name: String,
-  category: String = "main",
+  category: String = scope.category,
   crossinline metadataBlock: EventMetadata.() -> Unit = {},
   crossinline block: TraceScope.() -> T,
 ): T {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
+  val innerScope = if (category == scope.category) scope else TraceScope(scope.tracer, category)
   return scope.tracer.trace(category = category, name = name, metadataBlock = metadataBlock) {
-    scope.block()
+    innerScope.block()
   }
 }
 
@@ -32,37 +33,57 @@ internal inline fun <T> trace(
  * disabled (IDE or no `traceDestination`), invokes [block] against [NoopTraceScope] without
  * touching the real tracer or evaluating [metadataBlock].
  *
- * The block exposes [TraceScope] as its receiver so nested IR-style `trace(...)` calls inside the
- * lambda resolve through the same scope (and the same propagation token) as the outer span.
+ * The block exposes a [TraceScope] receiver tagged with [category] so nested `trace(...)` calls
+ * inside the lambda inherit it by default.
  */
 @Suppress("LEAKED_IN_PLACE_LAMBDA", "WRONG_INVOCATION_KIND")
 @IgnorableReturnValue
 internal inline fun <T> FirSession.trace(
-  name: String,
-  category: String = "fir",
+  name: () -> String,
+  category: String = TraceCategories.FIR_CHECKER,
   crossinline metadataBlock: EventMetadata.() -> Unit = {},
   crossinline block: TraceScope.() -> T,
 ): T {
-  contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-  val scope = metroFirBuiltIns.traceScope ?: return NoopTraceScope.block()
-  return scope.tracer.trace(category = category, name = name, metadataBlock = metadataBlock) {
-    scope.block()
+  contract {
+    callsInPlace(name, InvocationKind.AT_MOST_ONCE)
+    callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    callsInPlace(metadataBlock, InvocationKind.EXACTLY_ONCE)
+  }
+  // Note: name is deferred so the no-op path below never has to build the name string.
+  val outerScope = metroFirBuiltIns.traceScope ?: return NoopTraceScope.block()
+  val innerScope =
+    if (category == outerScope.category) {
+      outerScope
+    } else {
+      TraceScope(outerScope.tracer, category)
+    }
+  return outerScope.tracer.trace(
+    category = category,
+    name = name(),
+    metadataBlock = metadataBlock,
+  ) {
+    innerScope.block()
   }
 }
 
 internal object TraceCategories {
   const val FIR_CHECKER = "fir-checker"
+  const val FIR_GEN = "fir-gen"
+  const val FIR_SUPERTYPE = "fir-supertype"
 }
 
 internal interface TraceScope {
   val tracer: Tracer
+  val category: String
 
   companion object {
-    operator fun invoke(tracer: Tracer, category: String): TraceScope = TraceScopeImpl(tracer)
+    operator fun invoke(tracer: Tracer, category: String): TraceScope =
+      TraceScopeImpl(tracer, category)
   }
 }
 
-@JvmInline internal value class TraceScopeImpl(override val tracer: Tracer) : TraceScope
+internal class TraceScopeImpl(override val tracer: Tracer, override val category: String) :
+  TraceScope
 
 /**
  * Singleton no-op [TraceScope] used as the receiver when [FirSession.trace] runs with tracing
