@@ -157,6 +157,7 @@ class BazImpl : BazMiddle {
   @MetroContribution(scope = AppScope::class)
   @BindingContainer
   @Origin(value = BazImpl::class)
+  @ComptimeOnly
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @ComptimeOnly
@@ -230,6 +231,7 @@ class FooImpl : Foo {
   @MetroContribution(scope = AppScope::class)
   @BindingContainer
   @Origin(value = FooImpl::class)
+  @ComptimeOnly
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @ComptimeOnly

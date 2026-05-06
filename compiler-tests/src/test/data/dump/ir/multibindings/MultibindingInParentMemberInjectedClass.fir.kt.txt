@@ -107,6 +107,7 @@ class AFragmentInjector : Injector {
   @MetroContribution(scope = AppScope::class)
   @BindingContainer
   @Origin(value = AFragmentInjector::class)
+  @ComptimeOnly
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @ComptimeOnly
@@ -185,6 +186,7 @@ class AViewModel : ViewModel {
   @MetroContribution(scope = AppScope::class)
   @BindingContainer
   @Origin(value = AViewModel::class)
+  @ComptimeOnly
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @ComptimeOnly
@@ -337,6 +339,7 @@ class BFragmentInjector : Injector {
   @MetroContribution(scope = AppScope::class)
   @BindingContainer
   @Origin(value = BFragmentInjector::class)
+  @ComptimeOnly
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @ComptimeOnly
@@ -415,6 +418,7 @@ class BViewModel : ViewModel {
   @MetroContribution(scope = AppScope::class)
   @BindingContainer
   @Origin(value = BViewModel::class)
+  @ComptimeOnly
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @ComptimeOnly

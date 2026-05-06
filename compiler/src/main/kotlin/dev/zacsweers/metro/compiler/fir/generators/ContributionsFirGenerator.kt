@@ -939,6 +939,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           if (generateAsContainer) {
             add(buildBindingContainerAnnotation())
             add(buildOriginAnnotation(owner.classId))
+            add(buildComptimeOnlyAnnotation())
           }
         }
         replaceAnnotations(annotations + newAnnotations)
@@ -994,9 +995,16 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
   }
 
   private fun buildBindingContainerAnnotation(): FirAnnotation {
-    val classId = ClassId(Symbols.FqNames.metroRuntimePackage, Name.identifier("BindingContainer"))
+    val classId = ClassId(Symbols.FqNames.metroRuntimePackage, "BindingContainer".asName())
     return buildSimpleAnnotation {
       session.symbolProvider.getClassLikeSymbolByClassId(classId) as FirRegularClassSymbol
+    }
+  }
+
+  private fun buildComptimeOnlyAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation {
+      session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.ComptimeOnly)
+        as FirRegularClassSymbol
     }
   }
 
