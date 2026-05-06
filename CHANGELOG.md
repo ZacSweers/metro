@@ -6,6 +6,7 @@ Changelog
 
 ### Enhancements
 
+- **[FIR/IR]** Pure binding contributions (`@ContributesBinding`/`@ContributesIntoSet`/`@ContributesIntoMap` without `@ContributesTo`) are now routed through as binding containers instead of being merged into graphs as supertypes. This avoids one synthetic supertype per contributing class on the merged graph. This is the default behavior now. If you have any issues, you can temporarily disable via `metro.compilerOptions.disable("binding-contributions-as-containers")` to restore the supertype-merge behavior.
 - **[FIR]** Resolve copied typerefs (if necessary) in FIR code gen. This _appears_ to help avoid some IDE FIR issues.
 - **[FIR]** Make `renderAnnotationArgument()` more lenient.
 - **[FIR]** Handle `FirNamedArgumentExpression` in `renderAnnotationArgument()`.
