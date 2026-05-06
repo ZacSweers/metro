@@ -3,23 +3,22 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
-import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_WARNING
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker.FirAssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.mapToSetWithDupes
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -29,9 +28,10 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.findArgumentByName
+import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
@@ -45,18 +45,32 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
-    context(context.session.compatContext) { checkImpl(declaration) }
+    val source = declaration.source ?: return
+    val session = context.session
+    // Relevance: @AssistedFactory class, OR a class with class-level @AssistedInject (sugars to
+    // primary-ctor injection), OR a class with any @AssistedInject ctor. Note we do NOT gate on
+    // `isConstructorInjected` — that helper only covers @Inject/@Contributes*, not
+    // @AssistedFactory.
+    val classAnnotations = declaration.symbol.metroAnnotations()
+    if (
+      !classAnnotations.isAssistedFactory &&
+        !classAnnotations.isAssistedInject &&
+        declaration.constructors(session).none { it.metroAnnotations().isAssistedInject }
+    ) {
+      return
+    }
+    session.trace(name = { "AssistedInjectChecker(${declaration.classId})" }) {
+      context(session.compatContext) { checkImpl(declaration, source) }
+    }
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
-  private fun checkImpl(declaration: FirClass) {
-    val source = declaration.source ?: return
+  private fun checkImpl(declaration: FirClass, source: KtSourceElement) {
     val session = context.session
     val classIds = session.classIds
 
     // Check if this is an assisted factory
-    val isAssistedFactory =
-      declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
+    val isAssistedFactory = declaration.symbol.metroAnnotations().isAssistedFactory
 
     if (isAssistedFactory) {
       checkAssistedFactory(declaration, source, session, classIds)
@@ -232,14 +246,12 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     override fun toString() = cachedToString
 
     companion object {
-      context(context: CheckerContext, reporter: DiagnosticReporter)
       fun FirValueParameterSymbol.toAssistedParameterKey(
         session: FirSession,
         typeKey: FirTypeKey,
       ): FirAssistedParameterKey {
         val paramName = name.asString()
         val classIds = session.classIds
-        val options = session.metroFirBuiltIns.options
 
         val assistedAnnotation =
           resolvedCompilerAnnotationsWithClassIds
@@ -252,40 +264,17 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         val isNativeMetroAssisted =
           assistedAnnotation != null &&
             assistedAnnotation.toAnnotationClassIdSafe(session) == classIds.metroAssisted
-        val hasCustomAssistedAnnotation = assistedAnnotation != null && !isNativeMetroAssisted
-
-        val useParamNames =
-          if (hasCustomAssistedAnnotation) {
-            true
-          } else {
-            options.useAssistedParamNamesAsIdentifiers
-          }
 
         val explicitIdentifier =
-          assistedAnnotation
-            ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
-            ?.takeUnless { it.isBlank() }
+          if (isNativeMetroAssisted) {
+            paramName
+          } else {
+            assistedAnnotation
+              ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
+              ?.takeUnless { it.isBlank() } ?: paramName
+          }
 
-        if (
-          useParamNames &&
-            explicitIdentifier != null &&
-            options.assistedIdentifierSeverity.isEnabled
-        ) {
-          val rawArg = assistedAnnotation.findArgumentByName(StandardNames.DEFAULT_VALUE_PARAMETER)
-          val diagnostic =
-            when (options.assistedIdentifierSeverity) {
-              MetroOptions.DiagnosticSeverity.ERROR -> ASSISTED_INJECTION_ERROR
-              else -> ASSISTED_INJECTION_WARNING
-            }
-          reporter.reportOn(
-            rawArg?.source,
-            diagnostic,
-            "Explicit @Assisted identifiers are deprecated. Use matching parameter names instead.",
-          )
-        }
-
-        val defaultIdentifier = if (useParamNames) paramName else ""
-        return FirAssistedParameterKey(typeKey, explicitIdentifier ?: defaultIdentifier)
+        return FirAssistedParameterKey(typeKey, explicitIdentifier)
       }
     }
   }

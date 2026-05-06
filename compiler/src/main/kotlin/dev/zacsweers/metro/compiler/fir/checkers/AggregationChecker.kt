@@ -9,9 +9,11 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.isIde
 import dev.zacsweers.metro.compiler.fir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.isResolved
@@ -24,6 +26,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
@@ -69,6 +72,22 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass) {
     declaration.source ?: return
     val session = context.session
+    if (
+      !declaration.isAnnotatedWithAny(
+        session,
+        session.classIds.allContributesAnnotationsWithContainers,
+      )
+    ) {
+      return
+    }
+    session.trace(name = { "AggregationChecker(${declaration.classId})" }) {
+      checkImpl(declaration)
+    }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkImpl(declaration: FirClass) {
+    val session = context.session
     val classIds = session.classIds
     // TODO
     //  validate map key with intomap (class or bound type)
@@ -80,141 +99,164 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val classQualifier = declaration.annotations.qualifierAnnotation(session)
 
-    for (annotation in declaration.annotations) {
-      if (!annotation.isResolved) continue
-      val classId = annotation.toAnnotationClassId(session) ?: continue
-      if (classId in classIds.allContributesAnnotations) {
-        val scope = annotation.resolvedScopeClassId(session) ?: continue
+    // Returns true if checkImpl should bail early after the walk.
+    fun walkAnnotations(): Boolean {
+      for (annotation in declaration.annotations) {
+        if (!annotation.isResolved) continue
+        val classId = annotation.toAnnotationClassId(session) ?: continue
+        if (classId in classIds.allContributesAnnotations) {
+          val scope = annotation.resolvedScopeClassId(session) ?: continue
 
-        // Check if the target looks suspicious
-        // - If it's a `@Scope` annotation class that's prolly not right
-        // - If it's a graph class
-        val scopeClass = scope.toLookupTag().toClassSymbolCompat(session) ?: continue
-        if (scopeClass.classKind == ClassKind.ANNOTATION_CLASS) {
-          scopeClass.annotationsIn(session, classIds.scopeAnnotations).firstOrNull()?.let {
-            reporter.reportOn(
-              annotation.scopeArgument(session)?.source ?: annotation.source,
-              MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
-              "Suspicious aggregation scope '${scope.asFqNameString()}' is a concrete `@Scope` annotation type, and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
-            )
-          }
-        } else {
-          for (graphLikeAnno in scopeClass.annotationsIn(session, classIds.graphLikeAnnotations)) {
-            if (graphLikeAnno !is FirAnnotationCall) continue
-            reporter.reportOn(
-              annotation.scopeArgument(session)?.source ?: annotation.source,
-              MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
-              "Suspicious aggregation scope '${scope.asFqNameString()}' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
-            )
-          }
-        }
-
-        val replaces = emptySet<ClassId>() // TODO implement
-        val checkIntoSet by memoize {
-          checkBindingContribution(
-            session,
-            ContributionKind.CONTRIBUTES_INTO_SET,
-            declaration,
-            classQualifier,
-            annotation,
-            scope,
-            classId,
-            contributesIntoSetAnnotations,
-            isMapBinding = false,
-          ) { bindingType, _ ->
-            Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, bindingType)
-          }
-        }
-        val checkIntoMap by memoize {
-          checkBindingContribution(
-            session,
-            ContributionKind.CONTRIBUTES_INTO_MAP,
-            declaration,
-            classQualifier,
-            annotation,
-            scope,
-            classId,
-            contributesIntoMapAnnotations,
-            isMapBinding = true,
-          ) { bindingType, mapKey ->
-            Contribution.ContributesIntoMap(
-              declaration,
-              annotation,
-              scope,
-              replaces,
-              bindingType,
-              mapKey!!,
-            )
-          }
-        }
-        when (classId) {
-          in classIds.contributesToAnnotations -> {
-            val contribution = Contribution.ContributesTo(declaration, annotation, scope, replaces)
-            addContributionAndCheckForDuplicate(
-              session,
-              contribution,
-              ContributionKind.CONTRIBUTES_TO,
-              contributesToAnnotations,
-              annotation,
-              scope,
-            ) {
-              return
+          // Check if the target looks suspicious
+          // - If it's a `@Scope` annotation class that's prolly not right
+          // - If it's a graph class
+          val scopeClass = scope.toLookupTag().toClassSymbolCompat(session) ?: continue
+          if (scopeClass.classKind == ClassKind.ANNOTATION_CLASS) {
+            scopeClass.annotationsIn(session, classIds.scopeAnnotations).firstOrNull()?.let {
+              reporter.reportOn(
+                annotation.scopeArgument(session)?.source ?: annotation.source,
+                MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
+                "Suspicious aggregation scope '${scope.diagnosticString}' is a concrete `@Scope` annotation type, and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+              )
+            }
+          } else {
+            for (graphLikeAnno in
+              scopeClass.annotationsIn(session, classIds.graphLikeAnnotations)) {
+              if (graphLikeAnno !is FirAnnotationCall) continue
+              reporter.reportOn(
+                annotation.scopeArgument(session)?.source ?: annotation.source,
+                MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
+                "Suspicious aggregation scope '${scope.diagnosticString}' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+              )
             }
           }
 
-          in classIds.contributesBindingAnnotations -> {
-            if (annotation.isKiaIntoMultibinding(session)) {
-              if (!checkIntoSet) {
-                return
+          val replaces = emptySet<ClassId>() // TODO implement
+          val checkIntoSet by memoize {
+            checkBindingContribution(
+              session,
+              ContributionKind.CONTRIBUTES_INTO_SET,
+              declaration,
+              classQualifier,
+              annotation,
+              scope,
+              classId,
+              contributesIntoSetAnnotations,
+              isMapBinding = false,
+            ) { bindingType, _ ->
+              Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, bindingType)
+            }
+          }
+          val checkIntoMap by memoize {
+            checkBindingContribution(
+              session,
+              ContributionKind.CONTRIBUTES_INTO_MAP,
+              declaration,
+              classQualifier,
+              annotation,
+              scope,
+              classId,
+              contributesIntoMapAnnotations,
+              isMapBinding = true,
+            ) { bindingType, mapKey ->
+              Contribution.ContributesIntoMap(
+                declaration,
+                annotation,
+                scope,
+                replaces,
+                bindingType,
+                mapKey!!,
+              )
+            }
+          }
+          when (classId) {
+            in classIds.contributesToAnnotations -> {
+              val contribution =
+                Contribution.ContributesTo(declaration, annotation, scope, replaces)
+              addContributionAndCheckForDuplicate(
+                session,
+                contribution,
+                ContributionKind.CONTRIBUTES_TO,
+                contributesToAnnotations,
+                annotation,
+                scope,
+              ) {
+                return true
               }
-            } else {
-              val valid =
-                checkBindingContribution(
-                  session,
-                  ContributionKind.CONTRIBUTES_BINDING,
-                  declaration,
-                  classQualifier,
-                  annotation,
-                  scope,
-                  classId,
-                  contributesBindingAnnotations,
-                  isMapBinding = false,
-                ) { bindingType, _ ->
-                  Contribution.ContributesBinding(
+            }
+
+            in classIds.contributesBindingAnnotations -> {
+              if (annotation.isKiaIntoMultibinding(session)) {
+                if (!checkIntoSet) {
+                  return true
+                }
+              } else {
+                val valid =
+                  checkBindingContribution(
+                    session,
+                    ContributionKind.CONTRIBUTES_BINDING,
                     declaration,
+                    classQualifier,
                     annotation,
                     scope,
-                    replaces,
-                    bindingType,
-                  )
+                    classId,
+                    contributesBindingAnnotations,
+                    isMapBinding = false,
+                  ) { bindingType, _ ->
+                    Contribution.ContributesBinding(
+                      declaration,
+                      annotation,
+                      scope,
+                      replaces,
+                      bindingType,
+                    )
+                  }
+                if (!valid) {
+                  return true
                 }
-              if (!valid) {
-                return
               }
             }
-          }
 
-          in classIds.contributesIntoSetAnnotations -> {
-            if (!checkIntoSet) {
-              return
+            in classIds.contributesIntoSetAnnotations -> {
+              if (!checkIntoSet) {
+                return true
+              }
             }
-          }
 
-          in classIds.contributesIntoMapAnnotations -> {
-            if (!checkIntoMap) {
-              return
+            in classIds.contributesIntoMapAnnotations -> {
+              if (!checkIntoMap) {
+                return true
+              }
             }
-          }
 
-          in classIds.customContributesIntoSetAnnotations -> {
-            val isMapBinding = declaration.annotations.mapKeyAnnotation(session) != null
-            val valid = if (isMapBinding) checkIntoMap else checkIntoSet
-            if (!valid) {
-              return
+            in classIds.customContributesIntoSetAnnotations -> {
+              val isMapBinding = declaration.annotations.mapKeyAnnotation(session) != null
+              val valid = if (isMapBinding) checkIntoMap else checkIntoSet
+              if (!valid) {
+                return true
+              }
             }
           }
         }
       }
+      return false
+    }
+
+    val bailFromAnnotationWalk = session.trace({ "Walk class annotations" }) { walkAnnotations() }
+    if (bailFromAnnotationWalk) return
+
+    // Warn if @ExposeImplBinding is used but generateContributionProviders is not enabled
+    if (!session.metroFirBuiltIns.options.generateContributionProviders) {
+      declaration
+        .annotationsIn(session, setOf(classIds.exposeImplBindingAnnotation))
+        .firstOrNull()
+        ?.let { exposeAnnotation ->
+          reporter.reportOn(
+            exposeAnnotation.source,
+            MetroDiagnostics.EXPOSE_IMPL_TYPE_WITHOUT_CONTRIBUTION_PROVIDERS,
+            "`@ExposeImplBinding` has no effect when `generateContributionProviders` is not enabled.",
+          )
+        }
     }
   }
 
@@ -320,7 +362,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             reporter.reportOn(
               annotation.source,
               MetroDiagnostics.AGGREGATION_ERROR,
-              "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `binding` type but ambiguously has multiple supertypes that declare a `@DefaultBinding` (${result.types.joinToString { it.classId!!.asFqNameString() }}). You must define an explicit bound type in this scenario.",
+              "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `binding` type but ambiguously has multiple supertypes that declare a `@DefaultBinding` (${result.types.joinToString { it.classId!!.diagnosticString }}). You must define an explicit bound type in this scenario.",
             )
             return false
           }
@@ -423,7 +465,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       onError()
     }
     // Check for non-public contributions
-    checkNonPublicContribution(session, contribution.declaration, annotation, kind, scope)
+    checkContributionVisibility(session, contribution.declaration, annotation, kind, scope)
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -457,6 +499,8 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
   }
 
   /**
+   * Checks if a contribution has valid visibility. Private is never allowed.
+   *
    * Checks if a contributed class (or any containing class) has non-public effective visibility. If
    * it does, and the scope is not also non-public, reports a diagnostic based on the configured
    * severity.
@@ -466,18 +510,28 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
    * outside its class hierarchy, making it unsuitable for contributions to public scopes.
    */
   context(context: CheckerContext, reporter: DiagnosticReporter)
-  private fun checkNonPublicContribution(
+  private fun checkContributionVisibility(
     session: FirSession,
     declaration: FirClass,
     annotation: FirAnnotation,
     kind: ContributionKind,
     scope: ClassId,
   ) {
+    val effectiveVisibility = declaration.effectiveVisibility
+
+    if (effectiveVisibility.privateApi) {
+      reporter.reportOn(
+        declaration.source,
+        MetroDiagnostics.PRIVATE_CONTRIBUTION_ERROR,
+        "@Contributes*-annotated classes cannot be private.",
+      )
+      return
+    }
+
     val options = session.metroFirBuiltIns.options
-    val severity = options.nonPublicContributionSeverity
+    val severity = options.nonPublicContributionSeverity.resolve(session.isIde())
     if (severity == MetroOptions.DiagnosticSeverity.NONE) return
 
-    val effectiveVisibility = declaration.effectiveVisibility
     // Treat protected as non-public for contributions - a protected class can't be accessed
     // from outside its class hierarchy, making it unsuitable for contributions to public scopes
     val isProtected = effectiveVisibility.toVisibility() == Visibilities.Protected
@@ -503,7 +557,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       when (severity) {
         ERROR -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_ERROR
         WARN -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_WARNING
-        NONE -> return
+        else -> return
       }
     reporter.reportOn(declaration.source, diagnosticFactory, message)
   }

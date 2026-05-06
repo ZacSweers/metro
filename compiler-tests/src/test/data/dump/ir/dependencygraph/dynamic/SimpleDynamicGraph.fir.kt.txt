@@ -1,10 +1,10 @@
 class Example {
   val propGraph: AppGraph
-    field = DynamicAppGraphImpl_6fU3C9Y(container0 = TestIntProvider(value = 4))
+    field = DynamicAppGraphImpl_s15c0(container0 = TestIntProvider(value = 4))
     get
 
   @DependencyGraph
-  private class DynamicAppGraphImpl_6fU3C9Y : AppGraph {
+  private class DynamicAppGraphImpl_s15c0 : AppGraph {
     private val container0Instance: TestIntProvider
       field = container0
 
@@ -31,7 +31,7 @@ class Example {
   }
 
   fun someTest(value: Int): Int {
-    val testGraph: AppGraph = DynamicAppGraphImpl_6fU3C9Y(container0 = TestIntProvider(value = value))
+    val testGraph: AppGraph = DynamicAppGraphImpl_s15c0(container0 = TestIntProvider(value = value))
     return testGraph.<get-int>()
   }
 
@@ -54,26 +54,35 @@ class TestIntProvider {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: TestIntProvider): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: TestIntProvider): Int {
         return instance.provideInt()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: TestIntProvider) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
@@ -98,7 +107,7 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: AppGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -122,6 +131,8 @@ interface AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -139,26 +150,35 @@ interface AppGraph {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: AppGraph): Int {
         return instance.provideInt()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
@@ -176,6 +196,6 @@ interface AppGraph {
 }
 
 fun example() {
-  check(value = EQEQ(arg0 = 5, arg1 = DynamicAppGraphImpl_6fU3C9Y(container0 = TestIntProvider(value = 5)).<get-int>()))
+  check(value = EQEQ(arg0 = 5, arg1 = DynamicAppGraphImpl_s15c0(container0 = TestIntProvider(value = 5)).<get-int>()))
 }
 

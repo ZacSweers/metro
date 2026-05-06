@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
@@ -14,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
@@ -57,6 +60,7 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.diagnosticTag
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.concurrent.ForkJoinPool
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -104,14 +108,16 @@ private data class ExtensionValidationTask(
   val usedContextKeys: Set<IrContextualTypeKey>,
 )
 
+@Inject
+@SingleIn(IrScope::class)
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
   private val contributionData: IrContributionData,
-  traceScope: TraceScope,
   private val forkJoinPool: ForkJoinPool?,
   private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
   private val boundTypeResolver: IrBoundTypeResolver,
+  traceScope: TraceScope,
 ) : IrMetroContext by context, TraceScope by traceScope {
 
   private val bindingLookupCache = BindingLookupCache()
@@ -460,6 +466,8 @@ internal class DependencyGraphTransformer(
 
     // Validate that no accessor exposes a @GraphPrivate binding
     if (node.graphPrivateKeys.isNotEmpty()) {
+      // Batch by declaration to avoid kotlinc diagnostic deduplication
+      val privateBindingErrors = mutableMapOf<IrDeclaration, MutableList<String>>()
       for (accessor in node.accessors) {
         if (accessor.contextKey.typeKey in node.graphPrivateKeys) {
           // Resolve to the source declaration (the user-authored property/function in the
@@ -468,14 +476,20 @@ internal class DependencyGraphTransformer(
           val sourceDeclaration: IrDeclaration =
             accessorIr.correspondingPropertySymbol?.owner?.resolveOverriddenTypeIfAny()
               ?: accessorIr.resolveOverriddenTypeIfAny()
+          privateBindingErrors.getOrPut(sourceDeclaration) { mutableListOf() } +=
+            "Cannot expose @GraphPrivate binding '${accessor.contextKey.typeKey.renderForDiagnostic(short = false)}' as a graph accessor. @GraphPrivate bindings are confined to the graph they are provided in."
+        }
+      }
+      if (privateBindingErrors.isNotEmpty()) {
+        for ((sourceDeclaration, messages) in privateBindingErrors) {
+          val combinedMessage = messages.joinToString(separator = "\n\n")
           reportCompat(
             irDeclarations = sequenceOf(sourceDeclaration, dependencyGraphDeclaration),
             factory = MetroDiagnostics.PRIVATE_BINDING_ERROR,
-            a =
-              "Cannot expose @GraphPrivate binding '${accessor.contextKey.typeKey.renderForDiagnostic(short = false)}' as a graph accessor. @GraphPrivate bindings are confined to the graph they are provided in.",
+            a = combinedMessage,
           )
-          hasErrors = true
         }
+        hasErrors = true
       }
     }
 
@@ -491,13 +505,17 @@ internal class DependencyGraphTransformer(
 
     val sealResult =
       bindingGraph.seal(childGraphScopes) { errors ->
-        for ((declaration, message) in errors) {
-          reportCompat(
-            irDeclarations = sequenceOf(declaration, dependencyGraphDeclaration),
-            factory = MetroDiagnostics.METRO_ERROR,
-            a = message,
-          )
-        }
+        errors
+          .groupBy { it.factory to it.declaration }
+          .forEach { (key, grouped) ->
+            val (factory, declaration) = key
+            val combinedMessage = grouped.joinToString(separator = "\n\n") { it.message }
+            reportCompat(
+              irDeclarations = sequenceOf(declaration, dependencyGraphDeclaration),
+              factory = factory,
+              a = combinedMessage,
+            )
+          }
       }
 
     sealResult.reportUnusedInputs(dependencyGraphDeclaration)
@@ -547,7 +565,8 @@ internal class DependencyGraphTransformer(
   }
 
   private fun IrBindingGraph.BindingGraphResult.reportUnusedInputs(graphDeclaration: IrClass) {
-    val severity = options.unusedGraphInputsSeverity
+    // IR runs in CLI-only contexts, so IDE-only severities resolve to NONE here.
+    val severity = options.unusedGraphInputsSeverity.resolve(isIde = false)
     if (!severity.isEnabled) return
 
     if (unusedKeys.isEmpty()) return
@@ -557,12 +576,19 @@ internal class DependencyGraphTransformer(
         WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
         ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
         // Already checked above, but for exhaustive when
-        NONE -> return
+        else -> return
       }
 
     val unusedGraphInputs = unusedKeys.values.filterNotNull().sortedBy { it.typeKey }
 
-    for (unusedBinding in unusedGraphInputs) {
+    // Group messages by target to avoid kotlinc diagnostic deduplication
+    data class UnusedInputReport(
+      val message: String,
+      val irElement: IrElement?,
+      val reportableDeclaration: IrDeclaration?,
+    )
+
+    val reports = unusedGraphInputs.map { unusedBinding ->
       val message = buildString {
         appendLine("Graph input '${unusedBinding.typeKey}' is unused and can be removed.")
 
@@ -583,11 +609,22 @@ internal class DependencyGraphTransformer(
           }
         }
       }
-      unusedBinding.irElement?.let { irElement ->
-        diagnosticReporter.at(irElement, graphDeclaration.file).report(diagnosticFactory, message)
-        continue
-      }
+      UnusedInputReport(message, unusedBinding.irElement, unusedBinding.reportableDeclaration)
+    }
 
+    // Partition: reports with irElement can be reported directly (unique per element)
+    // Reports without irElement need batching by declaration
+    val (withElement, withoutElement) = reports.partition { it.irElement != null }
+    for (report in withElement) {
+      diagnosticReporter.reportAt(
+        report.irElement!!,
+        graphDeclaration.file,
+        diagnosticFactory,
+        report.message,
+      )
+    }
+
+    if (withoutElement.isNotEmpty()) {
       val graphDeclarationSource =
         if (graphDeclaration.origin.isGraphImpl) {
           graphDeclaration.getAllSuperclasses().find {
@@ -597,11 +634,17 @@ internal class DependencyGraphTransformer(
           graphDeclaration
         }
 
-      reportCompat(
-        irDeclarations = sequenceOf(unusedBinding.reportableDeclaration, graphDeclarationSource),
-        factory = diagnosticFactory,
-        a = message,
-      )
+      // Group by reportable declaration to batch messages targeting same element
+      withoutElement
+        .groupBy { it.reportableDeclaration }
+        .forEach { (reportableDecl, grouped) ->
+          val combinedMessage = grouped.joinToString(separator = "\n\n") { it.message }
+          reportCompat(
+            irDeclarations = sequenceOf(reportableDecl, graphDeclarationSource),
+            factory = diagnosticFactory,
+            a = combinedMessage,
+          )
+        }
     }
   }
 
@@ -626,9 +669,12 @@ internal class DependencyGraphTransformer(
 
     trace("[${metroGraph.kotlinFqName.shortName().asString()}] Generate graph") {
       try {
-        // Generate this graph's implementation
-        val bindingPropertyContext =
-          IrGraphGenerator(
+        // Generate this graph's implementation. The generator's constructor does non-trivial
+        // work (name-allocator preallocation over graph properties/nested classes), so trace it
+        // separately from generate() to keep that cost visible instead of an opaque leading gap.
+        val generator =
+          trace("Construct IrGraphGenerator") {
+            IrGraphGenerator(
               metroContext = metroContext,
               traceScope = this,
               diagnosticTag = metroGraph.diagnosticTag,
@@ -641,7 +687,8 @@ internal class DependencyGraphTransformer(
               graphExtensionGenerator = validationResult.graphExtensionGenerator,
               parentBindingContext = parentBindingContext,
             )
-            .generate()
+          }
+        val bindingPropertyContext = generator.generate()
 
         // Generate child graphs with this graph's binding context as their parent
         for (childResult in validationResult.childValidationResults) {

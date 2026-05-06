@@ -6,15 +6,27 @@ package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.assertOutputContains
+import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.invokeMain
-import dev.zacsweers.metro.gradle.source
+import dev.zacsweers.metro.gradle.toKotlinVersion
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.Assume.assumeTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 
-class BindingContainerICTests : BaseIncrementalCompilationTest() {
+@RunWith(Parameterized::class)
+class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
+
+  companion object {
+    @JvmStatic
+    @Parameterized.Parameters(name = "{0}")
+    fun targets(): List<KmpTarget> = KmpTarget.entries
+  }
 
   @Test
   fun addingNewBindingToExistingBindingContainer() {
@@ -87,7 +99,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Add a new binding to the container
     project.modify(
@@ -108,7 +120,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed with the new binding available
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.asMetroProject.appGraphReports.keysPopulated)
       .containsAtLeastElementsIn(setOf("test.InterfaceB", "test.ImplB"))
   }
@@ -179,7 +191,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove a binding that's being used
     project.modify(
@@ -272,7 +284,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.asMetroProject.appGraphReports.keysPopulated)
       .doesNotContain("test.InterfaceB")
 
@@ -378,7 +390,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed with the binding container included
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
   @Test
@@ -429,7 +441,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove the binding container from the graph
     project.modify(
@@ -507,7 +519,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.asMetroProject.appGraphReports.scopedProviderPropertyKeys).isEmpty()
 
     // Add scope to the provider method
@@ -526,7 +538,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed with the scoped provider
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.asMetroProject.appGraphReports.scopedProviderPropertyKeys)
       .contains("kotlin.String")
   }
@@ -580,7 +592,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove the binding from the container
     project.modify(
@@ -678,7 +690,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change the binding in the container
     libProject.modify(
@@ -787,7 +799,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove a binding from the parent container
     project.modify(
@@ -875,7 +887,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change the provides method
     project.modify(
@@ -986,7 +998,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed with only ContainerA
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Add ContainerB to the array
     project.modify(
@@ -1002,7 +1014,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // Second build should still succeed with both containers
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove ContainerA from the array
     project.modify(
@@ -1119,7 +1131,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed with ParentContainerA included
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Add ParentContainerB to the includes array
     project.modify(
@@ -1136,7 +1148,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // Second build should still succeed with both parents included
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove ParentContainerA from the includes array
     project.modify(
@@ -1269,7 +1281,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed with all containers
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove multiple containers at once, keeping only ContainerA
     project.modify(
@@ -1385,7 +1397,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed - A includes B, B includes C
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove ContainerC from ContainerB's includes
     project.modify(
@@ -1430,7 +1442,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // Third build should succeed again - ContainerC is now directly included in ContainerA
     val thirdBuildResult = project.compileKotlin()
-    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
   @Test
@@ -1476,7 +1488,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed with empty set
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove the binding
     project.modify(
@@ -1549,7 +1561,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output)
       .contains(
         """
-        Target.kt:7:14 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+        Target.kt:6:14 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
 
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
@@ -1574,7 +1586,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed with empty set
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
   @Test
@@ -1620,7 +1632,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed with empty set
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Add a qualifier annotation to the multibinds method
     project.modify(
@@ -1695,7 +1707,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed with empty set
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove allowEmpty
     project.modify(
@@ -1715,7 +1727,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        MyBindingContainer.kt:9:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+        MyBindingContainer.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
 
         If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
         """
@@ -1779,7 +1791,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed with unscoped provider
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Add scope to the provider in the binding container
     project.modify(
@@ -1797,7 +1809,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed with scoped provider
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove scope from the provider
     project.modify(
@@ -1814,7 +1826,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // Third build should succeed with unscoped provider again
     val thirdBuildResult = project.compileKotlin()
-    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
   @Test
@@ -1889,7 +1901,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed with BindingContainerA
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change to use BindingContainerB
     project.modify(
@@ -1904,7 +1916,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed with BindingContainerB
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change to use both containers (should fail due to duplicate String binding)
     project.modify(
@@ -1924,12 +1936,12 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       """
       [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
 
-        test.BindingContainerA
-          fun provideString(): kotlin.String
-                               ~~~~~~~~~~~~~
-        test.BindingContainerB
-          fun provideString(): kotlin.String
-                               ~~~~~~~~~~~~~
+        BindingContainerA.kt:8:3
+          @Provides fun provideString(): kotlin.String
+                                         ~~~~~~~~~~~~~
+        BindingContainerB.kt:8:3
+          @Provides fun provideString(): kotlin.String
+                                         ~~~~~~~~~~~~~
       """
         .trimIndent()
     )
@@ -2006,24 +2018,22 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]")
-
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]") }
     // Remove contributing module from the build
     libProject.delete(project.rootDir, fixture.appModule)
 
     // Second build should succeed
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("[]")
-
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("[]") }
     // Restore contributing module to the build
     libProject.modify(project.rootDir, fixture.appModule, fixture.appModuleContent)
 
     // Third build should succeed
     val thirdBuildResult = project.compileKotlin()
-    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]")
+    assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]") }
   }
 
   @Test
@@ -2084,7 +2094,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build succeed and caches hint about StringModule
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change contribution target scope, which should stop contributing to AppGraph
     libProject.modify(project.rootDir, fixture.bindingContainer, fixture.changedContribution)
@@ -2148,12 +2158,135 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
     // First build succeed and caches hint about StringModule
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove contribution
     libProject.modify(project.rootDir, fixture.bindingContainer, fixture.removedContribution)
 
     // Build is expected to fail due to missing contribution
+    project.compileKotlinAndFail()
+  }
+
+  @Test
+  fun contributesToScopeChangeWithInterfaceBindingMultimodule() {
+    // Requires FIR hint generation which is available in Kotlin 2.3.20+
+    assumeTrue(getTestCompilerVersion().toKotlinVersion() >= KotlinVersion(2, 3, 20))
+
+    val fixture =
+      object : MetroProject() {
+        val userApi =
+          source(
+            """
+            interface UserApi {
+              fun getCurrentUser(): String
+            }
+            """
+              .trimIndent()
+          )
+
+        val userService =
+          source(
+            """
+            interface UserService {
+              fun doWork(): String
+            }
+            """
+              .trimIndent()
+          )
+
+        val userServiceImpl =
+          source(
+            """
+            @ContributesBinding(AppScope::class)
+            class UserServiceImpl @Inject constructor(
+              private val userApi: UserApi
+            ) : UserService {
+              override fun doWork() = userApi.getCurrentUser()
+            }
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            @ContributesTo(AppScope::class)
+            object UserApiModule {
+              @Provides
+              fun provideUserApi(): UserApi = object : UserApi {
+                override fun getCurrentUser() = "user"
+              }
+            }
+            """
+              .trimIndent()
+          )
+
+        val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val userService: UserService
+            }
+            """
+              .trimIndent()
+          )
+
+        override fun sources() = listOf(appGraph)
+
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph)
+            dependencies(Dependency.implementation(":lib"))
+          }
+          subproject("lib") { sources(userApi, userService, userServiceImpl, bindingContainer) }
+        }
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    project.compileKotlin()
+
+    // Change UserApiModule to a different scope to trigger the change
+    // This should break UserServiceImpl (which is in AppScope)
+    libProject.modify(
+      project.rootDir,
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      @ContributesTo(Unit::class)
+      object UserApiModule {
+        @Provides
+        fun provideUserApi(): UserApi = object : UserApi {
+          override fun getCurrentUser() = "user"
+        }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Expect failure: UserServiceImpl needs UserApi, but UserApi is now in Unit scope
+    project.compileKotlinAndFail()
+
+    // Remove @ContributesTo entirely
+    libProject.modify(
+      project.rootDir,
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      object UserApiModule {
+        @Provides
+        fun provideUserApi(): UserApi = object : UserApi {
+          override fun getCurrentUser() = "user"
+        }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Expect failure: UserApi is not in any scope at all
     project.compileKotlinAndFail()
   }
 }

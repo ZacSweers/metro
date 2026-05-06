@@ -1,6 +1,6 @@
 @DependencyGraph
 interface ExampleGraph {
-  val provider: Provider<String>
+  val provider: () -> String
 
   @Provides
   fun provideValue(): String = "Hello, world!"

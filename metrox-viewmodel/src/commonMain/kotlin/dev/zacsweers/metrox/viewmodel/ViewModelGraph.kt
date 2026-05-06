@@ -4,7 +4,6 @@ package dev.zacsweers.metrox.viewmodel
 
 import androidx.lifecycle.ViewModel
 import dev.zacsweers.metro.Multibinds
-import dev.zacsweers.metro.Provider
 import kotlin.reflect.KClass
 
 /**
@@ -20,15 +19,14 @@ import kotlin.reflect.KClass
  */
 public interface MetroViewModelMultibindings {
   @Multibinds(allowEmpty = true)
-  public val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>>
+  public val viewModelProviders: Map<KClass<out ViewModel>, () -> ViewModel>
 
   @Multibinds(allowEmpty = true)
-  public val assistedFactoryProviders:
-    Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>>
+  public val assistedFactoryProviders: Map<KClass<out ViewModel>, () -> ViewModelAssistedFactory>
 
   @Multibinds(allowEmpty = true)
   public val manualAssistedFactoryProviders:
-    Map<KClass<out ManualViewModelAssistedFactory>, Provider<ManualViewModelAssistedFactory>>
+    Map<KClass<out ManualViewModelAssistedFactory>, () -> ManualViewModelAssistedFactory>
 }
 
 /**

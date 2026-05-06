@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.hasImplicitClassKey
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.mapKeyClassValueExpression
@@ -14,6 +16,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.isAnnotationClass
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -53,8 +56,29 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     if (declaration is FirValueParameter) return
     val source = declaration.source ?: return
     val session = context.session
+    // Single-pass annotation extraction. checkImpl reuses this so we don't walk the annotation
+    // list more than once per call.
+    val annotations = declaration.symbol.metroAnnotations()
+    val isRelevant =
+      annotations.isMultibinds ||
+        annotations.isElementsIntoSet ||
+        annotations.isIntoMap ||
+        annotations.isIntoSet ||
+        annotations.mapKey != null
+    if (!isRelevant) return
+    session.trace(name = { "MultibindsChecker(${declaration.symbol.callableId})" }) {
+      checkImpl(declaration, source, annotations)
+    }
+  }
 
-    val annotations = declaration.symbol.metroAnnotations(session)
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkImpl(
+    declaration: FirCallableDeclaration,
+    source: KtSourceElement,
+    annotations: MetroAnnotations<MetroFirAnnotation>,
+  ) {
+    val session = context.session
+
     val isMultibinds = annotations.isMultibinds
     val isElementsIntoSet = annotations.isElementsIntoSet
     val isIntoMap = annotations.isIntoMap
@@ -169,7 +193,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
                         reporter.reportOn(
                           declaration.returnTypeRef.source ?: source,
                           MetroDiagnostics.MULTIBINDS_ERROR,
-                          "Multibinding map key '${keyClass.classId.asFqNameString()}' is not annotated with @MapKey(unwrapValue = false).",
+                          "Multibinding map key '${keyClass.classId.diagnosticString}' is not annotated with @MapKey(unwrapValue = false).",
                         )
                       } else if (
                         mapKey.getBooleanArgument(Symbols.Names.unwrapValue, session) != false
@@ -177,7 +201,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
                         reporter.reportOn(
                           declaration.returnTypeRef.source ?: source,
                           MetroDiagnostics.MULTIBINDS_ERROR,
-                          "Multibinding map key '${keyClass.classId.asFqNameString()}' is annotated with @MapKey but does not set MapKey.unwrapValue to false. This is necessary to use wrapped values as multibinding map keys.",
+                          "Multibinding map key '${keyClass.classId.diagnosticString}' is annotated with @MapKey but does not set MapKey.unwrapValue to false. This is necessary to use wrapped values as multibinding map keys.",
                         )
                       }
                     } else {
@@ -336,7 +360,7 @@ internal fun checkImplicitClassKeyUsage(
     reporter.reportOn(
       argSource,
       MetroDiagnostics.MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY,
-      "Explicit class key value '${valueClassId.asFqNameString()}::class' is the same as the implicit class key and can be omitted.",
+      "Explicit class key value '${valueClassId.diagnosticString}::class' is the same as the implicit class key and can be omitted.",
     )
   }
 }

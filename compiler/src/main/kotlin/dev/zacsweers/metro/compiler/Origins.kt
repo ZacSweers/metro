@@ -27,6 +27,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphFactoryCompanionGetter)
   val MetroContributionClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroContributionClassDeclaration)
+  val ContributionProviderHolderDeclaration: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.ContributionProviderHolderDeclaration)
   val MetroContributionCallableDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroContributionCallableDeclaration)
   val InjectConstructorFactoryClassDeclaration: IrDeclarationOrigin =

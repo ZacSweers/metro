@@ -20,12 +20,6 @@ You can upgrade your Kotlin version (including across minor updates) or use diff
 
 In short — it's a wide, moving window of support that periodically raises the minimum, which isn't terribly dissimilar from any other tool.
 
-### **Metro is not a stable API, is Metro safe to use?**
-
-Yes, Metro is _functionally_ stable and ready for production use. Its runtime and Gradle plugin APIs are not yet _stabilized_, which is not the same as being unstable for use
-
-See the [stability docs](stability.md) for more details.
-
 ### **Why doesn't Metro support kotlin-inject-style `@IntoMap` bindings?**
 
 !!! tip "Some technical context"
@@ -35,18 +29,41 @@ See the [stability docs](stability.md) for more details.
 This allows some dynamism with keys but has some downsides. A few different reasons Metro doesn't use this approach
 
 - Duplicate key checking becomes a runtime failure rather than compile-time.
-- It breaks the ability to expose `Map<Key, Provider<Value>>` unless you start manually managing `Provider` types yourself.
+- It breaks the ability to expose `Map<Key, () -> Value>` (or `Map<Key, Provider<Value>>`) unless you start manually managing function/provider types yourself.
 - You allocate and throw away a `Pair` instance each time it's called.
 
-### **Will Metro add support for dagger-android features or dagger-android interop?**
+### **Why doesn't Metro support functions with parameters for assisted injection?**
 
-No.
+!!! tip "Some technical context"
+
+    Metro supports use of function types like `() -> T` for deferred initialization of injected dependencies. Another idea in the same vein is to support function syntax for _assisted_ injection, such that `(String) -> T` could be an implicit assisted factory type for assisted-inject type `T`.
+
+There's a few reasons! Mainly, this is harder to maintain in codebases.
+
+- It makes injection sites _also_ responsible for declaring all the input parameters to that type, vs. just callers to its SAM function. This means that if you change the parameters, you then either have two compiler errors (one missing binding from metro, another to callsites) or you have to spend time finding them all and doing the prop-drilling that generated DI strives to spare you from.
+- They are harder to find (no "find usages" support from your assisted type).
+- They are harder to read (they are nameless).
+
 
 ### **I'm seeing a `ReservedStackAccess` stack overflow warning from the JVM at runtime?**
 
 This is a spurious JVM warning related to `ReentrantLock` (used internally by Metro's `DoubleCheck` for scoped bindings). It is not an actual stack overflow and can be safely ignored. You can suppress it by increasing the thread stack size with (i.e., `-Xss1m`) in your JVM args.
 
+### **Would you consider putting Metro into a foundation? My team has concerns about solo maintainers**
+
+I would only do this if it makes sense for the project, not for optics. Most open source software is maintained by one person. This probably includes many libraries your team already uses.
+
+This usually comes up in comparison to Dagger. Dagger is also usually only maintained by one or two people at Google. That level of backing is a luxury, not the standard.
+
+Moving to a foundation would not change the maintenance story — it would still be me. If your management requires a different GitHub URL to feel secure, they likely misunderstand how their dependencies are built. I prefer to focus on the project and its surrounding community rather than managing a facade :)
+
+[The best way to support Metro's continued maintenance is to sponsor it](https://www.zacsweers.dev/sponsoring-metro/)!
+
 ## Dagger/Hilt FAQ
+
+### **Will Metro add support for dagger-android features or dagger-android interop?**
+
+No. Much of this infra can be recreated as needed in codebases that use it but dagger-android is long-deprecated at this point.
 
 ### **In Dagger I could make declarations `internal` and it worked, why doesn't that work in Metro?**
 

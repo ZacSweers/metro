@@ -1,10 +1,13 @@
+// WITH_DAGGER
 // GENERATE_ASSISTED_FACTORIES
-// ASSISTED_IDENTIFIER_SEVERITY: NONE
+
+// Tests that assisted factory gen handles identifiers in interop
+
 @Suppress("DEPRECATION")
 @AssistedInject
 class ExampleClass(
-  @Assisted("1") val count1: Int,
-  @Assisted("2") val count2: Int,
+  @dagger.assisted.Assisted("1") val count1: Int,
+  @dagger.assisted.Assisted("2") val count2: Int,
   val message: String,
 ) {
   fun call(): String = message + count1 + " " + count2

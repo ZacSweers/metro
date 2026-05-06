@@ -8,6 +8,7 @@ Pre-release versions are normally only tested during their development cycle. Af
 
 | Kotlin version  | Metro versions (inclusive) | Notes                                |
 |-----------------|----------------------------|--------------------------------------|
+| 2.4.0-Beta1     | 0.13.0 -                   |                                      |
 | 2.4.0-dev-2124  | 0.12.0 -                   |                                      |
 | 2.4.0-dev-539   | 0.10.3 - [0.11.3]          |                                      |
 | 2.3.20          | 0.10.0 -                   |                                      |
@@ -63,6 +64,10 @@ The following Kotlin versions are tested via CI:
 | Kotlin Version |
 |----------------|
 | 2.4.0-dev-2124 |
+| 2.4.0-Beta2    |
+| 2.4.0-Beta1    |
+| 2.3.21-RC2     |
+| 2.3.21-RC      |
 | 2.3.20         |
 | 2.3.10         |
 | 2.3.0          |
@@ -81,8 +86,10 @@ The following IDE versions are tested via IDE integration tests:
 | IntelliJ IDEA | Android Studio                |
 |---------------|-------------------------------|
 | 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1)  |
-| 261.22158.182 | 2025.3.2.6 (Panda 2)          |
-|               | 2025.3.3.2 (Panda 3 Canary 2) |
+| 2026.1.1      | 2025.3.2.6 (Panda 2)          |
+|               | 2025.3.3.6 (Panda 3)          |
+|               | 2025.3.4.6 (Panda 4)          |
+|               | 2026.1.1.2 (Quail 1 Canary 2) |
 
 ## Runtime Compatibility
 

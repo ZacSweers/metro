@@ -2,19 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.buildFullSubstitutionMap
+import dev.zacsweers.metro.compiler.fir.buildHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSimpleValueParameter
+import dev.zacsweers.metro.compiler.fir.buildStaticAnnotations
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
-import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
@@ -44,7 +44,6 @@ import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
-import org.jetbrains.kotlin.name.Name
 
 internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
   context: MemberGenerationContext,
@@ -107,22 +106,6 @@ internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
       }
       .also { it.containingClassForStaticMemberAttr = owner.toLookupTag() }
   }
-
-internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
-  context: MemberGenerationContext,
-  returnType: ConeKotlinType,
-  instanceReceiver: ConeClassLikeType?,
-  extensionReceiver: ConeClassLikeType?,
-  valueParameters: List<MetroFirValueParameter>,
-): FirNamedFunctionSymbol {
-  return buildFactoryCreateFunction(
-    context,
-    { returnType },
-    instanceReceiver,
-    extensionReceiver,
-    valueParameters,
-  )
-}
 
 @OptIn(SymbolInternals::class)
 internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
@@ -208,105 +191,17 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
               .toFirResolvedTypeRef()
         }
       }
-      .symbol as FirNamedFunctionSymbol
-  }
-
-@OptIn(SymbolInternals::class)
-internal fun FirDeclarationGenerationExtension.buildNewInstanceFunction(
-  context: MemberGenerationContext,
-  name: Name,
-  returnType: ConeKotlinType,
-  instanceReceiver: ConeClassLikeType?,
-  extensionReceiver: ConeClassLikeType?,
-  valueParameters: List<MetroFirValueParameter>,
-): FirNamedFunctionSymbol =
-  with(session.compatContext) {
-    return generateMemberFunction(
-        context.owner,
-        returnType.toFirResolvedTypeRef(),
-        CallableId(context.owner.classId, name),
-        origin = Keys.FactoryNewInstanceFunction.origin,
-      ) {
-        val thisFunctionSymbol = symbol
-
-        val containingClassSymbol = context.owner.getContainingClassSymbol()!!
-        val ownerToCopyTypeParametersFrom: FirClassSymbol<*> =
-          if (context.owner.isCompanion) {
-            // companion -> class factory -> original class
-            containingClassSymbol.getContainingClassSymbol()!!
-          } else {
-            // object factory -> original class
-            containingClassSymbol
-          }
-            as FirClassSymbol<*>
-
-        val classTypeArgsToReplace = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
-        for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
-          typeParameters +=
-            buildTypeParameterCopy(typeParameter.fir) {
-                origin = Keys.Default.origin
-                this.symbol = FirTypeParameterSymbol()
-                containingDeclarationSymbol = thisFunctionSymbol
-              }
-              .also { classTypeArgsToReplace[typeParameter] = it.symbol.constructType() }
+      .also { func ->
+        val extraAnnotations = buildList {
+          buildHiddenFromObjCAnnotation(session)?.let(::add)
+          addAll(buildStaticAnnotations(session))
         }
-
-        instanceReceiver?.let {
-          this.valueParameters +=
-            buildSimpleValueParameter(
-              name = Symbols.Names.instance,
-              type = it.toFirResolvedTypeRef(),
-              containingFunctionSymbol = thisFunctionSymbol,
-              origin = Keys.InstanceParameter.origin,
-            )
-        }
-        extensionReceiver?.let {
-          this.valueParameters +=
-            buildSimpleValueParameter(
-              name = Symbols.Names.receiver,
-              type = it.toFirResolvedTypeRef(),
-              containingFunctionSymbol = thisFunctionSymbol,
-              origin = Keys.ReceiverParameter.origin,
-            )
-        }
-
-        copyParameters(
-          functionBuilder = this,
-          sourceParameters = valueParameters,
-          // Will be copied in IR
-          copyParameterDefaults = false,
-        ) { original ->
-          val type = original.contextKey.originalType(session)
-          val substitutor = substitutorByMap(classTypeArgsToReplace, session)
-          val copiedType = substitutor.substituteOrNull(type) ?: type
-          this.returnTypeRef = copiedType.toFirResolvedTypeRef()
+        if (extraAnnotations.isNotEmpty()) {
+          func.replaceAnnotationsSafe(func.annotations + extraAnnotations)
         }
       }
       .symbol as FirNamedFunctionSymbol
   }
-
-/**
- * Deduplicates parameters by [IrTypeKey], keeping one parameter per unique key. Parameters that are
- * always kept (never deduped):
- * - Assisted parameters: each is a distinct caller-provided value
- * - Parameters with [dev.zacsweers.metro.compiler.fir.FirContextualTypeKey.hasDefault]: their
- *   defaults may differ
- */
-internal fun List<MetroFirValueParameter>.dedupeParameters(
-  session: FirSession
-): List<MetroFirValueParameter> {
-  if (!session.metroFirBuiltIns.options.deduplicateInjectedParams) return this
-  val seenKeys = HashSet<FirTypeKey>(size)
-  return buildList {
-    for (param in this@dedupeParameters) {
-      if (
-        param.isAssisted || param.contextKey.hasDefault || seenKeys.add(param.contextKey.typeKey)
-      ) {
-        add(param)
-      }
-    }
-  }
-}
 
 internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirFunctionSymbol<*>? {
   return collectAbstractFunctions(session, exitOnAbstractProperties = true)?.singleOrNull()

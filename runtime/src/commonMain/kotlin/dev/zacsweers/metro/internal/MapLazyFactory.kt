@@ -66,5 +66,22 @@ public class MapLazyFactory<K : Any, V : Any> private constructor(map: Map<K, Pr
       @Suppress("UNCHECKED_CAST")
       return EMPTY as Provider<Map<K, Lazy<V>>>
     }
+
+    /**
+     * Returns a [Factory] for a single-entry `Map<K, Lazy<V>>`. Each [invoke] wraps [provider] in a
+     * fresh [DoubleCheck]-backed [Lazy] just like the builder path. Skips the [Builder] allocation.
+     */
+    public fun <K : Any, V : Any> singleton(
+      key: K,
+      provider: Provider<V>,
+    ): Factory<Map<K, Lazy<V>>> = SingletonMapLazyFactory(key, provider)
   }
+}
+
+private class SingletonMapLazyFactory<K : Any, V : Any>(
+  private val key: K,
+  private val provider: Provider<V>,
+) : Factory<Map<K, Lazy<V>>> {
+  override fun invoke(): Map<K, Lazy<V>> =
+    SingletonMap(key, DoubleCheck.lazy<Provider<V>, V>(provider))
 }

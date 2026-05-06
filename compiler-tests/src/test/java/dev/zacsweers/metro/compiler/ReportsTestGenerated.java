@@ -34,6 +34,12 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Test
+  @TestMetadata("SimpleTraceGeneration.kt")
+  public void testSimpleTraceGeneration() {
+    runTest("compiler-tests/src/test/data/dump/reports/SimpleTraceGeneration.kt");
+  }
+
+  @Test
   @TestMetadata("UnmatchedReplacement.kt")
   public void testUnmatchedReplacement() {
     runTest("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement.kt");

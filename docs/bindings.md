@@ -124,13 +124,13 @@ interface MapMultibinding {
 
 Multibinding collections are immutable at runtime and cannot be defined as mutable at request sites.
 
-Map multibindings support injecting *map providers*, where the value type can be wrapped in `Provider`.
+Map multibindings support injecting *map providers*, where the value type can be wrapped in a function (`() -> V`).
 
 ```kotlin
 @DependencyGraph
 interface MapMultibinding {
   @Multibinds(allowEmpty = true)
-  val ints: Map<Int, Provider<Int>>
+  val ints: Map<Int, () -> Int>
 }
 ```
 

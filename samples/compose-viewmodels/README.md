@@ -25,7 +25,7 @@ ViewModels are contributed to a multibinding map using `@ContributesIntoMap` and
 
 ```kotlin
 @Inject
-@ViewModelKey(HomeViewModel::class)
+@ViewModelKey
 @ContributesIntoMap(ViewModelScope::class)
 class HomeViewModel : ViewModel() {
   // ...

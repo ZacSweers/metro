@@ -21,7 +21,6 @@ android {
 
 @OptIn(ExperimentalMetroGradleApi::class, DelicateMetroGradleApi::class, RequiresIdeSupport::class)
 metro {
-  enableFunctionProviders.set(true)
   // Until it's possible to disable JS IC
   // https://youtrack.jetbrains.com/issue/KT-82989
   enableTopLevelFunctionInjection.set(false)
@@ -34,17 +33,7 @@ kotlin {
   androidTarget()
   jvm()
 
-  js {
-    browser()
-    // https://youtrack.jetbrains.com/issue/KT-82989
-    compilations.configureEach {
-      compileTaskProvider.configure {
-        incremental = false
-        @Suppress("INVISIBLE_REFERENCE")
-        incrementalJsKlib = false
-      }
-    }
-  }
+  js { browser() }
 
   wasmJs { browser() }
   wasmWasi { nodejs() }

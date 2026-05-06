@@ -2,15 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.GraphToProcess
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.allScopes
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ScopeWithIr
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -30,11 +34,12 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
  * An [IrTransformer] that runs all of Metro's core transformers _before_ Graph validation. This
  * covers
  */
+@Inject
+@SingleIn(IrScope::class)
 internal class CoreTransformers(
   private val context: IrMetroContext,
-  traceScope: TraceScope,
   private val data: MutableMetroGraphData,
-  private val contributionTransformer: ContributionTransformer,
+  private val contributionTransformer: ContributionIrTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val injectedClassTransformer: InjectedClassTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
@@ -42,6 +47,7 @@ internal class CoreTransformers(
   private val contributionHintIrTransformer: Lazy<ContributionHintIrTransformer>,
   private val createGraphTransformer: CreateGraphTransformer,
   private val defaultBindingMirrorTransformer: DefaultBindingMirrorTransformer,
+  traceScope: TraceScope,
 ) :
   IrElementTransformerVoidWithContext(),
   TransformerContextAccess,
@@ -111,35 +117,41 @@ internal class CoreTransformers(
       return
     }
 
-    log("Reading ${declaration.kotlinFqName}")
+    log { "Reading ${declaration.kotlinFqName}" }
 
     // Populate DefaultBindingMirror for classes with @DefaultBinding (for cross-module use)
-    defaultBindingMirrorTransformer.visitClass(declaration)
+    trace("DefaultBindingMirror") { defaultBindingMirrorTransformer.visitClass(declaration) }
 
+    // ContributionIrTransformer opens its own trace span internally ("Visit X"), so don't wrap
+    // again here — that would produce same-named nested spans and confuse the profile.
     contributionTransformer.visitClass(declaration, data.contributionData)
 
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
-    // Native/WASM/JS compilation hint gen can't be done in IR
+    // Native/Wasm/JS compilation hint gen can't be done in IR
     // https://youtrack.jetbrains.com/issue/KT-75865
     val generateHints = options.generateContributionHints && !options.generateContributionHintsInFir
     if (generateHints) {
-      contributionHintIrTransformer.value.visitClass(declaration)
+      trace("ContributionHint") { contributionHintIrTransformer.value.visitClass(declaration) }
     }
-    val memberTransformed = membersInjectorTransformer.visitClass(declaration)
-    val injectTransformed = injectedClassTransformer.visitClass(declaration)
+    val memberTransformed =
+      trace("MembersInjector") { membersInjectorTransformer.visitClass(declaration) }
+    val injectTransformed =
+      trace("InjectedClass") { injectedClassTransformer.visitClass(declaration) }
     // Need to always run member and class inject both
     if (memberTransformed || injectTransformed) {
       return
     }
-    if (assistedFactoryTransformer.visitClass(declaration)) return
+    if (trace("AssistedFactory") { assistedFactoryTransformer.visitClass(declaration) }) return
 
     if (!declaration.isCompanionObject) {
       // Companion objects are only processed in the context of their parent classes
-      bindingContainerTransformer.findContainer(declaration)?.let {
-        if (!it.isGraph) {
-          return
+      val container =
+        trace("BindingContainer lookup ${declaration.name}") {
+          bindingContainerTransformer.findContainer(declaration)
         }
+      if (container != null && !container.isGraph) {
+        return
       }
     }
 

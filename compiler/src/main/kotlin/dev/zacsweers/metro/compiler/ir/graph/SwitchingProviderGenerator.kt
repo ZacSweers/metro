@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.irTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
@@ -30,6 +31,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addTypeParameter
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
+import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irBranch
 import org.jetbrains.kotlin.ir.builders.irConcat
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
@@ -361,45 +363,48 @@ internal class SwitchingProviderGenerator(
           parentShardIndex = shardExprContext?.currentShardIndex,
         )
 
-      // Build branches for each switching binding in this chunk
-      val branches = ArrayList<IrBranch>(bindings.size + 1)
+      // Hoist `this.id` into a local so the JVM backend recognises the dense int-equals branches
+      // and lowers them to `tableswitch` instead of a chain of `if_icmpne` re-fetches.
+      return irBlock(resultType = typeParam.defaultType) {
+        val idLocal =
+          irTemporaryVariable(
+            value = irGetProperty(irGet(switchingProviderThisReceiver), idProperty),
+            nameHint = "id",
+          )
+        +idLocal
 
-      branches += bindings.map { switchingBinding ->
-        val condition =
-          irEquals(
-            irGetProperty(irGet(switchingProviderThisReceiver), idProperty),
-            irInt(switchingBinding.id),
-          )
-        val result =
-          irImplicitCast(
-            generateBindingExpression(
-              switchingBinding,
-              switchingProviderThisReceiver,
-              switchingProviderContext,
-            ),
-            typeParam.defaultType,
-          )
-        irBranch(condition, result)
-      }
+        val branches = ArrayList<IrBranch>(bindings.size + 1)
 
-      // For the else branch: either call the next chunk function or throw an error
-      val elseBranchExpr =
-        if (isLast) {
-          // Last chunk: throw an error for unexpected IDs
-          val errorString = irConcat()
-          errorString.addArgument(irString("Unexpected SwitchingProvider id: "))
-          errorString.addArgument(irGetProperty(irGet(switchingProviderThisReceiver), idProperty))
-          irThrow(irInvoke(callee = metroSymbols.stdlibErrorFunction, args = listOf(errorString)))
-        } else {
-          // Not the last chunk: call the next function
-          irInvoke(
-            dispatchReceiver = irGet(switchingProviderThisReceiver),
-            callee = nextFunction!!.symbol,
-          )
+        branches += bindings.map { switchingBinding ->
+          val condition = irEquals(irGet(idLocal), irInt(switchingBinding.id))
+          val result =
+            irImplicitCast(
+              generateBindingExpression(
+                switchingBinding,
+                switchingProviderThisReceiver,
+                switchingProviderContext,
+              ),
+              typeParam.defaultType,
+            )
+          irBranch(condition, result)
         }
-      branches += irElseBranch(elseBranchExpr)
 
-      return irWhen(typeParam.defaultType, branches)
+        val elseBranchExpr =
+          if (isLast) {
+            val errorString = irConcat()
+            errorString.addArgument(irString("Unexpected SwitchingProvider id: "))
+            errorString.addArgument(irGet(idLocal))
+            irThrow(irInvoke(callee = metroSymbols.stdlibErrorFunction, args = listOf(errorString)))
+          } else {
+            irInvoke(
+              dispatchReceiver = irGet(switchingProviderThisReceiver),
+              callee = nextFunction!!.symbol,
+            )
+          }
+        branches += irElseBranch(elseBranchExpr)
+
+        +irWhen(typeParam.defaultType, branches)
+      }
     }
 
   /** Generates the expression to create the binding instance. */

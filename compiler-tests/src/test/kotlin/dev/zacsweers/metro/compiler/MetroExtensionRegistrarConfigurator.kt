@@ -2,15 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import androidx.compose.compiler.plugins.kotlin.ComposePluginRegistrar
+import androidx.compose.compiler.plugins.kotlin.k2.ComposeFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidersInGraphIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
+import dev.zacsweers.metro.compiler.api.GenerateProvidesInGraphExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
+import dev.zacsweers.metro.compiler.circuit.configureCircuit
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
@@ -19,6 +27,7 @@ import dev.zacsweers.metro.compiler.interop.configureDaggerAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
 import dev.zacsweers.metro.compiler.interop.configureGuiceInterop
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
+import dev.zacsweers.metro.compiler.tracing.TraceContext
 import kotlin.io.path.Path
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
@@ -47,6 +56,7 @@ fun TestConfigurationBuilder.configurePlugin() {
   configureDaggerAnnotations()
   configureDaggerInterop()
   configureGuiceInterop()
+  configureCircuit()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
   useAfterAnalysisCheckers(::MetroReportsChecker)
 }
@@ -62,16 +72,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       // Set non-annotation properties (only when directive is present or value is non-default)
       enabled = MetroDirectives.DISABLE_METRO !in module.directives
       generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
-      module.directives.singleOrZeroValue(MetroDirectives.TRANSFORM_PROVIDERS_TO_PRIVATE)?.let {
-        transformProvidersToPrivate = it
-      }
       enableTopLevelFunctionInjection =
         MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives
       module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)?.let {
         shrinkUnusedBindings = it
-      }
-      module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS)?.let {
-        chunkFieldInits = it
       }
       module.directives.singleOrZeroValue(MetroDirectives.STATEMENTS_PER_INIT_FUN)?.let {
         statementsPerInitFun = it
@@ -82,9 +86,13 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
         keysPerGraphShard = it
       }
-      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_SWITCHING_PROVIDERS)?.let {
-        enableFastInit = it
-      }
+      enableSwitchingProviders =
+        // Weird but necessary because we may set a default in default configurations that we
+        // override in the test, so just take the last one from the file
+        module.directives[MetroDirectives.ENABLE_SWITCHING_PROVIDERS]
+          .lastOrNull()
+          ?.toString()
+          ?.toBoolean() ?: false
       enableFullBindingGraphValidation =
         MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
       enableGraphImplClassAsReturnType =
@@ -93,12 +101,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
       generateContributionHintsInFir =
         MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
-      if (transformProvidersToPrivate) {
-        publicScopedProviderSeverity = MetroOptions.DiagnosticSeverity.NONE
-      } else {
-        module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
-          publicScopedProviderSeverity = it
-        }
+      module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
+        publicScopedProviderSeverity = it
       }
       module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)?.let {
         optionalBindingBehavior = it
@@ -127,19 +131,35 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         reportsDestination =
           Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
       }
-      module.directives
-        .singleOrZeroValue(MetroDirectives.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS)
-        ?.let { useAssistedParamNamesAsIdentifiers = it }
-      module.directives.singleOrZeroValue(MetroDirectives.ASSISTED_IDENTIFIER_SEVERITY)?.let {
-        assistedIdentifierSeverity = it
+      // Use explicit TRACE_DESTINATION or default if CHECK_TRACES is present
+      val tracesDir =
+        module.directives.singleOrZeroValue(MetroDirectives.TRACE_DESTINATION)
+          ?: if (MetroDirectives.CHECK_TRACES in module.directives) {
+            MetroReportsChecker.DEFAULT_TRACES_DIR
+          } else {
+            null
+          }
+      tracesDir?.let {
+        traceDestination =
+          Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
       }
       module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
         parallelThreads = it
       }
       contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
-      enableFunctionProviders = MetroDirectives.ENABLE_FUNCTION_PROVIDERS in module.directives
+      module.directives.singleOrZeroValue(MetroDirectives.DESUGARED_PROVIDER_SEVERITY)?.let {
+        desugaredProviderSeverity = it
+      }
       enableKClassToClassInterop =
         MetroDirectives.ENABLE_KCLASS_TO_CLASS_INTEROP in module.directives
+
+      generateContributionProviders =
+        // Weird but necessary because we may set a default in default configurations that we
+        // override in the test, so just take the last one from the file
+        module.directives[MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS]
+          .lastOrNull()
+          ?.toString()
+          ?.toBoolean() ?: false
 
       // Configure interop annotations using builder helper methods
       if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
@@ -173,34 +193,66 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       if (MetroDirectives.enableGuiceInterop(module.directives)) {
         enableGuiceRuntimeInterop = true
       }
+
+      if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
+        enableCircuitCodegen = true
+      }
     }
 
     if (!options.enabled) return
 
     val classIds = ClassIds.fromOptions(options)
     val compatContext = CompatContext.create()
+    val traceContext = TraceContext(options)
     FirExtensionRegistrarAdapter.registerExtension(
       MetroFirExtensionRegistrar(
         classIds = classIds,
         options = options,
         isIde = false,
         compatContext = compatContext,
-        loadExternalDeclarationExtensions = { session, options ->
-          listOf(
-            GenerateImplExtension.Factory().create(session, options),
-            GenerateProvidesContributionExtension.Factory().create(session, options),
-            GenerateBindsContributionExtension.Factory().create(session, options),
-            GenerateDependencyGraphExtension.Factory().create(session, options),
-          )
+        traceContext = traceContext,
+        loadExternalDeclarationExtensions = { session, options, compatContext ->
+          buildList {
+            add(GenerateImplExtension.Factory().create(session, options, compatContext))
+            add(
+              GenerateProvidesContributionExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            add(
+              GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
+            )
+            add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
+            add(GenerateProvidesInGraphExtension.Factory().create(session, options, compatContext))
+            if (options.enableCircuitCodegen) {
+              add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
+            }
+          }
         },
-      ) { session, options ->
-        listOf(
-          GenerateImplContributionExtension.Factory().create(session, options),
-          GenerateProvidesContributionMetroExtension.Factory().create(session, options),
-          GenerateBindsContributionMetroExtension.Factory().create(session, options),
-        )
-      }
+        loadExternalContributionExtensions = { session, options, compatContext ->
+          buildList {
+            add(GenerateImplContributionExtension.Factory().create(session, options, compatContext))
+            add(
+              GenerateProvidesContributionMetroExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            add(
+              GenerateBindsContributionMetroExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            if (options.enableCircuitCodegen) {
+              add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
+            }
+          }
+        },
+      )
     )
+    if (options.enableCircuitCodegen) {
+      FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
+      IrGenerationExtension.registerExtension(CircuitIrExtension(compatContext))
+    }
+    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
+    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
+    IrGenerationExtension.registerExtension(GenerateProvidersInGraphIrExtension())
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector = configuration.messageCollector,
@@ -210,9 +262,13 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         lookupTracker = null,
         expectActualTracker = ExpectActualTracker.DoNothing,
         compatContext = compatContext,
+        traceContext = traceContext,
       )
     )
-    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
-    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
+    if (options.enableCircuitCodegen) {
+      IrGenerationExtension.registerExtension(
+        ComposePluginRegistrar.createComposeIrExtension(configuration)
+      )
+    }
   }
 }

@@ -177,32 +177,12 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  TRANSFORM_PROVIDERS_TO_PRIVATE(
-    RawMetroOption.boolean(
-      name = "transform-providers-to-private",
-      defaultValue = false,
-      valueDescription = "<true | false>",
-      description = "Enable/disable automatic transformation of providers to be private.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   SHRINK_UNUSED_BINDINGS(
     RawMetroOption.boolean(
       name = "shrink-unused-bindings",
       defaultValue = true,
       valueDescription = "<true | false>",
       description = "Enable/disable shrinking of unused bindings from binding graphs.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
-  CHUNK_FIELD_INITS(
-    RawMetroOption.boolean(
-      name = "chunk-field-inits",
-      defaultValue = true,
-      valueDescription = "<true | false>",
-      description = "Enable/disable chunking of field initializers in binding graphs.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -251,11 +231,26 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  USE_SECONDARY_TOPO_SORT(
+    RawMetroOption.boolean(
+      name = "use-secondary-topo-sort",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "When true (default), the binding graph runs a secondary Kahn topological sort over " +
+          "the component DAG produced by Tarjan's SCC pass, with PriorityQueue tie-breaking " +
+          "by component id. When false, Tarjan's reverse-topological output is used directly " +
+          "(componentDag is empty in the result). Both produce valid orders but with different " +
+          "tie-breaking, so flipping this re-orders observable codegen output.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_SCOPED_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-scoped-provider-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
-      valueDescription = "NONE|WARN|ERROR",
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
         "Control diagnostic severity reporting of public scoped providers. Only applies if `transform-providers-to-private` is false.",
       required = false,
@@ -267,7 +262,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
     RawMetroOption(
       name = "non-public-contribution-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
-      valueDescription = "NONE|WARN|ERROR",
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
         "Control diagnostic severity reporting of @Contributes*-annotated declarations that are non-public.",
       required = false,
@@ -290,7 +285,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
     RawMetroOption(
       name = "interop-annotations-named-arg-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
-      valueDescription = "NONE|WARN|ERROR",
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
         "Control diagnostic severity reporting of interop annotations using positional arguments instead of named arguments.",
       required = false,
@@ -301,8 +296,8 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   UNUSED_GRAPH_INPUTS_SEVERITY(
     RawMetroOption(
       name = "unused-graph-inputs-severity",
-      defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
-      valueDescription = "NONE|WARN|ERROR",
+      defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
         "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph).",
       required = false,
@@ -331,29 +326,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.toInt() },
-    )
-  ),
-  USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS(
-    RawMetroOption.boolean(
-      name = "use-assisted-param-names-as-identifiers",
-      defaultValue = true,
-      valueDescription = "<true | false>",
-      description =
-        "When enabled, Metro's native @Assisted annotation uses the parameter name as the default identifier. When disabled, defaults to an empty string (legacy Dagger behavior). Only affects Metro's own @Assisted annotation, not custom/interop annotations.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
-  ASSISTED_IDENTIFIER_SEVERITY(
-    RawMetroOption(
-      name = "assisted-identifier-severity",
-      defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
-      valueDescription = "NONE|WARN|ERROR",
-      description =
-        "Control diagnostic severity when explicit @Assisted(\"value\") identifiers are used on Metro's native @Assisted annotation. Only meaningful when use-assisted-param-names-as-identifiers is true.",
-      required = false,
-      allowMultipleOccurrences = false,
-      valueMapper = { it },
     )
   ),
   CUSTOM_PROVIDER(
@@ -679,21 +651,10 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   CONTRIBUTES_AS_INJECT(
     RawMetroOption.boolean(
       name = "contributes-as-inject",
-      defaultValue = false,
-      valueDescription = "<true | false>",
-      description =
-        "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
-  DEDUPLICATE_INJECTED_PARAMS(
-    RawMetroOption.boolean(
-      name = "deduplicate-injected-params",
       defaultValue = true,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable deduplication of injected parameters with the same type key in generated factories.",
+        "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -712,7 +673,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   PATCH_KLIB_PARAMS(
     RawMetroOption.boolean(
       name = "patch-klib-params",
-      defaultValue = false,
+      defaultValue = true,
       valueDescription = "<true | false>",
       description =
         "Enable/disable patching of klib parameter qualifiers to work around kotlinc bug. Only applies when enable-klib-params-check is also enabled.",
@@ -863,11 +824,23 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   ENABLE_FUNCTION_PROVIDERS(
     RawMetroOption.boolean(
       name = "enable-function-providers",
-      defaultValue = false,
+      defaultValue = true,
       valueDescription = "<true | false>",
       description = "Enable/disable treating () -> T as a provider type.",
       required = false,
       allowMultipleOccurrences = false,
+    )
+  ),
+  DESUGARED_PROVIDER_SEVERITY(
+    RawMetroOption(
+      name = "desugared-provider-severity",
+      defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
+      description =
+        "Control diagnostic severity reporting of uses of the desugared `Provider<T>` form as a provider type. Prefer the function syntax form `() -> T` instead. Only applies if `enable-function-providers` is enabled; otherwise this is treated as NONE.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
     )
   ),
   ENABLE_KCLASS_TO_CLASS_INTEROP(
@@ -877,6 +850,50 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueDescription = "<true | false>",
       description =
         "Enable/disable KClass/Class interop for multibinding map keys. When enabled, java.lang.Class and kotlin.reflect.KClass are treated as interchangeable in map key types.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  GENERATE_CONTRIBUTION_PROVIDERS(
+    RawMetroOption.boolean(
+      name = "generate-contribution-providers",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "When enabled, generates top-level contribution provider classes with @Provides functions instead of nested @Binds interfaces. This allows implementation classes to remain internal.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  ENABLE_CIRCUIT_CODEGEN(
+    RawMetroOption.boolean(
+      name = "enable-circuit-codegen",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable Metro-native Circuit code generation for @CircuitInject-annotated classes and functions.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  RICH_DIAGNOSTICS(
+    RawMetroOption.boolean(
+      name = "rich-diagnostics",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable rich diagnostic formatting (ANSI bold, colors, etc.) in error messages. The metro.richDiagnostics system property takes priority over this option if set.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  GENERATE_STATIC_ANNOTATIONS(
+    RawMetroOption.boolean(
+      name = "generate-static-annotations",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "When enabled, annotates generated static-ish factory functions (e.g. create, newInstance, inject{Name}) with @JvmStatic and @JsStatic so they compile to true static methods on JVM/JS.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -908,11 +925,8 @@ public data class MetroOptions(
     MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
   public val generateContributionHintsInFir: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
-  public val transformProvidersToPrivate: Boolean =
-    MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   public val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
-  public val chunkFieldInits: Boolean = MetroOption.CHUNK_FIELD_INITS.raw.defaultValue.expectAs(),
   public val statementsPerInitFun: Int =
     MetroOption.STATEMENTS_PER_INIT_FUN.raw.defaultValue.expectAs(),
   public val enableGraphSharding: Boolean =
@@ -920,13 +934,11 @@ public data class MetroOptions(
   public val keysPerGraphShard: Int = MetroOption.KEYS_PER_GRAPH_SHARD.raw.defaultValue.expectAs(),
   public val enableSwitchingProviders: Boolean =
     MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
+  public val useSecondaryTopoSort: Boolean =
+    MetroOption.USE_SECONDARY_TOPO_SORT.raw.defaultValue.expectAs(),
   public val publicScopedProviderSeverity: DiagnosticSeverity =
-    if (transformProvidersToPrivate) {
-      DiagnosticSeverity.NONE
-    } else {
-      MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
-        DiagnosticSeverity.valueOf(it)
-      }
+    MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
     },
   public val nonPublicContributionSeverity: DiagnosticSeverity =
     MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY.raw.defaultValue.expectAs<String>().let {
@@ -953,12 +965,6 @@ public data class MetroOptions(
     },
   public val unusedGraphInputsSeverity: DiagnosticSeverity =
     MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY.raw.defaultValue.expectAs<String>().let {
-      DiagnosticSeverity.valueOf(it)
-    },
-  public val useAssistedParamNamesAsIdentifiers: Boolean =
-    MetroOption.USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS.raw.defaultValue.expectAs(),
-  public val assistedIdentifierSeverity: DiagnosticSeverity =
-    MetroOption.ASSISTED_IDENTIFIER_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
     },
   public val enabledLoggers: Set<MetroLogger.Type> =
@@ -1032,8 +1038,6 @@ public data class MetroOptions(
     MetroOption.CUSTOM_OPTIONAL_BINDING.raw.defaultValue.expectAs(),
   public val contributesAsInject: Boolean =
     MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
-  public val deduplicateInjectedParams: Boolean =
-    MetroOption.DEDUPLICATE_INJECTED_PARAMS.raw.defaultValue.expectAs(),
   public val enableKlibParamsCheck: Boolean =
     MetroOption.ENABLE_KLIB_PARAMS_CHECK.raw.defaultValue.expectAs(),
   public val patchKlibParams: Boolean = MetroOption.PATCH_KLIB_PARAMS.raw.defaultValue.expectAs(),
@@ -1051,8 +1055,19 @@ public data class MetroOptions(
   public val parallelThreads: Int = MetroOption.PARALLEL_THREADS.raw.defaultValue.expectAs(),
   public val enableFunctionProviders: Boolean =
     MetroOption.ENABLE_FUNCTION_PROVIDERS.raw.defaultValue.expectAs(),
+  public val desugaredProviderSeverity: DiagnosticSeverity =
+    MetroOption.DESUGARED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
+    },
   public val enableKClassToClassInterop: Boolean =
     MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP.raw.defaultValue.expectAs(),
+  public val generateContributionProviders: Boolean =
+    MetroOption.GENERATE_CONTRIBUTION_PROVIDERS.raw.defaultValue.expectAs(),
+  val enableCircuitCodegen: Boolean =
+    MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
+  public val richDiagnostics: Boolean = MetroOption.RICH_DIAGNOSTICS.raw.defaultValue.expectAs(),
+  public val generateStaticAnnotations: Boolean =
+    MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1071,14 +1086,11 @@ public data class MetroOptions(
   public val traceEnabled: Boolean
     get() = rawTraceDestination != null
 
-  @OptIn(ExperimentalPathApi::class)
   public val traceDir: Lazy<Path?> = lazy {
-    rawTraceDestination?.apply {
-      if (exists()) {
-        deleteRecursively()
-      }
-      createDirectories()
-    }
+    // Don't wipe the directory: when a Gradle daemon reruns compilation
+    // (e.g. gradle-profiler iterations), wiping each time loses every
+    // prior trace. Filenames are timestamped, so accumulation is safe.
+    rawTraceDestination?.apply { createDirectories() }
   }
 
   public fun toBuilder(): Builder = Builder(this)
@@ -1092,19 +1104,16 @@ public data class MetroOptions(
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
     public var generateContributionHints: Boolean = base.generateContributionHints
     public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
-    public var transformProvidersToPrivate: Boolean = base.transformProvidersToPrivate
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
-    public var chunkFieldInits: Boolean = base.chunkFieldInits
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
-    public var enableFastInit: Boolean = base.enableSwitchingProviders
+    public var enableSwitchingProviders: Boolean = base.enableSwitchingProviders
+    public var useSecondaryTopoSort: Boolean = base.useSecondaryTopoSort
     public var publicScopedProviderSeverity: DiagnosticSeverity = base.publicScopedProviderSeverity
     public var nonPublicContributionSeverity: DiagnosticSeverity =
       base.nonPublicContributionSeverity
     public var optionalBindingBehavior: OptionalBindingBehavior = base.optionalBindingBehavior
-    public var useAssistedParamNamesAsIdentifiers: Boolean = base.useAssistedParamNamesAsIdentifiers
-    public var assistedIdentifierSeverity: DiagnosticSeverity = base.assistedIdentifierSeverity
     public var warnOnInjectAnnotationPlacement: Boolean = base.warnOnInjectAnnotationPlacement
     public var interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
       base.interopAnnotationsNamedArgSeverity
@@ -1165,7 +1174,6 @@ public data class MetroOptions(
     public var customOptionalBindingAnnotations: MutableSet<ClassId> =
       base.customOptionalBindingAnnotations.toMutableSet()
     public var contributesAsInject: Boolean = base.contributesAsInject
-    public var deduplicateInjectedParams: Boolean = base.deduplicateInjectedParams
     public var enableKlibParamsCheck: Boolean = base.enableKlibParamsCheck
     public var patchKlibParams: Boolean = base.patchKlibParams
     public var forceEnableFirInIde: Boolean = base.forceEnableFirInIde
@@ -1174,7 +1182,12 @@ public data class MetroOptions(
     public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
     public var parallelThreads: Int = base.parallelThreads
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
+    public var desugaredProviderSeverity: DiagnosticSeverity = base.desugaredProviderSeverity
     public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
+    public var generateContributionProviders: Boolean = base.generateContributionProviders
+    public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
+    public var richDiagnostics: Boolean = base.richDiagnostics
+    public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1242,8 +1255,11 @@ public data class MetroOptions(
       customContributesToAnnotations.add(anvilPackage.classId("ContributesTo"))
       customGraphAnnotations.add(anvilPackage.classId("MergeComponent"))
       customGraphExtensionAnnotations.add(anvilPackage.classId("ContributesSubcomponent"))
+      customGraphExtensionFactoryAnnotations.add(
+        anvilPackage.classId("ContributesSubcomponent.Factory")
+      )
+      customGraphExtensionFactoryAnnotations.add(anvilPackage.classId("MergeSubcomponent.Factory"))
       customGraphExtensionAnnotations.add(anvilPackage.classId("MergeSubcomponent"))
-      // Anvil for Dagger doesn't have MergeSubcomponent.Factory
       customGraphFactoryAnnotations.add(anvilPackage.classId("MergeComponent.Factory"))
       includeDaggerAnnotations()
     }
@@ -1299,18 +1315,15 @@ public data class MetroOptions(
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
         generateContributionHints = generateContributionHints,
         generateContributionHintsInFir = generateContributionHintsInFir,
-        transformProvidersToPrivate = transformProvidersToPrivate,
         shrinkUnusedBindings = shrinkUnusedBindings,
-        chunkFieldInits = chunkFieldInits,
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
-        enableSwitchingProviders = enableFastInit,
+        enableSwitchingProviders = enableSwitchingProviders,
+        useSecondaryTopoSort = useSecondaryTopoSort,
         publicScopedProviderSeverity = publicScopedProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
-        useAssistedParamNamesAsIdentifiers = useAssistedParamNamesAsIdentifiers,
-        assistedIdentifierSeverity = assistedIdentifierSeverity,
         warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement,
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
         unusedGraphInputsSeverity = unusedGraphInputsSeverity,
@@ -1347,7 +1360,6 @@ public data class MetroOptions(
         customOriginAnnotations = customOriginAnnotations,
         customOptionalBindingAnnotations = customOptionalBindingAnnotations,
         contributesAsInject = contributesAsInject,
-        deduplicateInjectedParams = deduplicateInjectedParams,
         enableKlibParamsCheck = enableKlibParamsCheck,
         patchKlibParams = patchKlibParams,
         forceEnableFirInIde = forceEnableFirInIde,
@@ -1356,7 +1368,17 @@ public data class MetroOptions(
         compilerVersionAliases = compilerVersionAliases,
         parallelThreads = parallelThreads,
         enableFunctionProviders = enableFunctionProviders,
+        desugaredProviderSeverity =
+          if (enableFunctionProviders) {
+            desugaredProviderSeverity
+          } else {
+            DiagnosticSeverity.NONE
+          },
         enableKClassToClassInterop = enableKClassToClassInterop,
+        generateContributionProviders = generateContributionProviders,
+        enableCircuitCodegen = enableCircuitCodegen,
+        richDiagnostics = richDiagnostics,
+        generateStaticAnnotations = generateStaticAnnotations,
       )
     }
 
@@ -1386,7 +1408,24 @@ public data class MetroOptions(
     if (!validateKotlinJsIC(compilerVersion, configuration, onError)) {
       valid = false
     }
-    // Future validations go here
+
+    val contributionProvidersAreEnabledWithoutFirHintGen =
+      generateContributionProviders && generateContributionHints && !generateContributionHintsInFir
+    if (contributionProvidersAreEnabledWithoutFirHintGen) {
+      onError(
+        "generateContributionProviders with generateContributionHints requires " +
+          "generateContributionHintsInFir to also be enabled."
+      )
+      valid = false
+    }
+
+    if (unusedGraphInputsSeverity.isIdeOnly) {
+      onError(
+        "unusedGraphInputsSeverity (set to ${unusedGraphInputsSeverity.name}) does not support IDE_WARN/IDE_ERROR " +
+          "because the underlying check only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead."
+      )
+      valid = false
+    }
     return valid
   }
 
@@ -1494,12 +1533,7 @@ public data class MetroOptions(
           GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
             generateContributionHintsInFir = configuration.getAsBoolean(entry)
 
-          TRANSFORM_PROVIDERS_TO_PRIVATE ->
-            transformProvidersToPrivate = configuration.getAsBoolean(entry)
-
           SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = configuration.getAsBoolean(entry)
-
-          CHUNK_FIELD_INITS -> chunkFieldInits = configuration.getAsBoolean(entry)
 
           STATEMENTS_PER_INIT_FUN -> statementsPerInitFun = configuration.getAsInt(entry)
 
@@ -1507,7 +1541,9 @@ public data class MetroOptions(
 
           KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = configuration.getAsInt(entry)
 
-          ENABLE_SWITCHING_PROVIDERS -> enableFastInit = configuration.getAsBoolean(entry)
+          ENABLE_SWITCHING_PROVIDERS -> enableSwitchingProviders = configuration.getAsBoolean(entry)
+
+          USE_SECONDARY_TOPO_SORT -> useSecondaryTopoSort = configuration.getAsBoolean(entry)
 
           PUBLIC_SCOPED_PROVIDER_SEVERITY ->
             publicScopedProviderSeverity =
@@ -1548,15 +1584,6 @@ public data class MetroOptions(
             enableGuiceRuntimeInterop = configuration.getAsBoolean(entry)
 
           MAX_IR_ERRORS_COUNT -> maxIrErrorsCount = configuration.getAsInt(entry)
-
-          USE_ASSISTED_PARAM_NAMES_AS_IDENTIFIERS ->
-            useAssistedParamNamesAsIdentifiers = configuration.getAsBoolean(entry)
-
-          ASSISTED_IDENTIFIER_SEVERITY ->
-            assistedIdentifierSeverity =
-              configuration.getAsString(entry).let {
-                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
-              }
 
           // Intrinsics
           CUSTOM_PROVIDER -> customProviderTypes.addAll(configuration.getAsSet(entry))
@@ -1615,9 +1642,6 @@ public data class MetroOptions(
 
           CONTRIBUTES_AS_INJECT -> contributesAsInject = configuration.getAsBoolean(entry)
 
-          DEDUPLICATE_INJECTED_PARAMS ->
-            deduplicateInjectedParams = configuration.getAsBoolean(entry)
-
           ENABLE_KLIB_PARAMS_CHECK -> enableKlibParamsCheck = configuration.getAsBoolean(entry)
 
           PATCH_KLIB_PARAMS -> patchKlibParams = configuration.getAsBoolean(entry)
@@ -1656,8 +1680,20 @@ public data class MetroOptions(
           }
           PARALLEL_THREADS -> parallelThreads = configuration.getAsInt(entry)
           ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = configuration.getAsBoolean(entry)
+          DESUGARED_PROVIDER_SEVERITY ->
+            desugaredProviderSeverity =
+              configuration.getAsString(entry).let {
+                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
+              }
           ENABLE_KCLASS_TO_CLASS_INTEROP ->
             enableKClassToClassInterop = configuration.getAsBoolean(entry)
+          GENERATE_CONTRIBUTION_PROVIDERS ->
+            generateContributionProviders = configuration.getAsBoolean(entry)
+          MetroOption.ENABLE_CIRCUIT_CODEGEN ->
+            enableCircuitCodegen = configuration.getAsBoolean(entry)
+          RICH_DIAGNOSTICS -> richDiagnostics = configuration.getAsBoolean(entry)
+          GENERATE_STATIC_ANNOTATIONS ->
+            generateStaticAnnotations = configuration.getAsBoolean(entry)
         }
       }
     }
@@ -1691,9 +1727,44 @@ public data class MetroOptions(
   public enum class DiagnosticSeverity {
     NONE,
     WARN,
-    ERROR;
+    ERROR,
+
+    /**
+     * Like [WARN], but only reports when Metro is running inside an IDE FirSession. CLI
+     * compilations treat this as [NONE].
+     *
+     * Useful for diagnostics you only want to surface to readers in the IDE without emitting
+     * compiler warnings in real (CLI) compilations.
+     */
+    IDE_WARN,
+
+    /**
+     * Like [ERROR], but only reports when Metro is running inside an IDE FirSession. CLI
+     * compilations treat this as [NONE].
+     *
+     * Useful for diagnostics you only want to surface to readers in the IDE without failing real
+     * (CLI) compilations.
+     */
+    IDE_ERROR;
 
     public val isEnabled: Boolean
       get() = this != NONE
+
+    public val isIdeOnly: Boolean
+      get() = this == IDE_ERROR || this == IDE_WARN
+
+    /**
+     * Resolves this severity against the current environment. [IDE_WARN] and [IDE_ERROR] resolve to
+     * [WARN] or [ERROR] respectively only when [isIde] is true; otherwise they resolve to [NONE].
+     * All other values resolve to themselves.
+     */
+    public fun resolve(isIde: Boolean): DiagnosticSeverity =
+      when (this) {
+        NONE,
+        WARN,
+        ERROR -> this
+        IDE_WARN -> if (isIde) WARN else NONE
+        IDE_ERROR -> if (isIde) ERROR else NONE
+      }
   }
 }

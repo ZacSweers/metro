@@ -14,10 +14,13 @@ import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
+import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
@@ -26,6 +29,9 @@ import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
+import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
+import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
+import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.result
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpressionEvaluator
@@ -42,13 +48,20 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.ir.IrDiagnosticReporter
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.builders.IrBuilder
 import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.name.CallableId
@@ -479,6 +492,29 @@ public interface CompatContext {
   }
 
   @CompatApi(
+    since = "2.2.20",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "Stable wrapper over IrDiagnosticReporter.at().report() chain",
+  )
+  public fun <A : Any> IrDiagnosticReporter.reportAt(
+    declaration: IrDeclaration,
+    factory: KtDiagnosticFactory1<A>,
+    a: A,
+  )
+
+  @CompatApi(
+    since = "2.2.20",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "Stable wrapper over IrDiagnosticReporter.at().report() chain",
+  )
+  public fun <A : Any> IrDiagnosticReporter.reportAt(
+    element: IrElement,
+    file: IrFile,
+    factory: KtDiagnosticFactory1<A>,
+    a: A,
+  )
+
+  @CompatApi(
     since = "2.3.0",
     reason = CompatApi.Reason.COMPAT,
     message = "2.3 moved APIs around here",
@@ -528,11 +564,47 @@ public interface CompatContext {
   @CompatApi(
     since = "2.4.0",
     reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 introduced IrAnnotation for IrConstructorCall",
+  )
+  fun IrBuilder.irAnnotationCompat(
+    callee: IrConstructorSymbol,
+    typeArguments: List<IrType>,
+  ): IrConstructorCall {
+    return irCallConstructor(callee, typeArguments)
+  }
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
     message = "2.4 changed the inline API's use of .result",
   )
   fun <T : FirElement> FirExpression.evaluateAsCompat(session: FirSession, tKlass: KClass<T>): T? {
     @Suppress("UNCHECKED_CAST") @OptIn(PrivateConstantEvaluatorAPI::class, PrivateForInline::class)
     return FirExpressionEvaluator.evaluateExpression(this, session)?.result as? T
+  }
+
+  @CompatApi(
+    since = "2.4.0-Beta2",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 changed to use more specific receivers",
+  )
+  fun FirAnnotationContainer.getDeprecationsProviderCompat(
+    session: FirSession
+  ): DeprecationsProvider? {
+    return getDeprecationsProvider(session)
+  }
+
+  @CompatApi(
+    since = "2.4.0-Beta2",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      "This is an inline API and it used some ABI-changed internal logic. This is a non-inline one",
+  )
+  fun buildValueParameterCopyCompat(
+    original: FirValueParameter,
+    init: FirValueParameterBuilder.() -> Unit,
+  ): FirValueParameter {
+    return buildValueParameterCopy(original, init)
   }
 }
 

@@ -11,7 +11,7 @@ class Example2(@OptionalBinding val value: String? = null)
 @DependencyGraph
 interface AppGraph {
   val example: Example
-  val exampleFactory: Provider<Example>
+  val exampleFactory: () -> Example
   val example2: Example2
   val int: Int
 

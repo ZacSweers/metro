@@ -210,11 +210,11 @@ class CompositeCache(private val caches: Map<String, Cache>) {
   val remote: Cache = caches["remote"]
 }
 
-// Alternatively, specify Provider in the map type to lazily-initialize the implementations
+// Alternatively, use a function in the map value type to instantiate the implementations on-demand
 @Inject
-class CompositeCacheAlternate(private val caches: Map<String, Provider<Cache>>) {
+class CompositeCacheAlternate(private val caches: Map<String, () -> Cache>) {
   val local: Cache = caches["local"]()
-  val remote: Provider<Cache> = caches["remote"]
+  val remote: () -> Cache = caches["remote"]
   
   fun someTimeLater() {
     remote().doSomethingWithCache()
@@ -308,6 +308,26 @@ interface BaseFactory<T : BaseFactory<T>>
 @Inject
 class HomeFactory(...) : BaseFactory<HomeFactory>
 ```
+
+## `generateContributionProviders`
+
+If you enable the new `generateContributionProviders` feature, Metro will instead generate top-level `@Provides` declarations that mirror the injected class's inputs but only return its _bound type_. This means the annotated class can remain `internal`, which both helps encapsulation and incremental compilation.
+
+```
+interface Base
+
+@ContributesBinding(AppScope::class)
+@Inject
+internal class Impl : Base
+
+// Works across modules!
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  val base: Base
+}
+```
+
+The tradeoff is that `Impl` is no longer available directly on the graph.
 
 ## Implementation notes
 

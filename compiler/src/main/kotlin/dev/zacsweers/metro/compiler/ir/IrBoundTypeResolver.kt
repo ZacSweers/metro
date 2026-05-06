@@ -2,17 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
-import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.name.StandardClassIds
+
+internal interface DefaultBindingLookup {
+  fun lookupBinding(declaration: IrDeclarationWithName, clazz: IrClass): IrTypeKey?
+}
 
 /**
  * Resolves the bound type for a contributing class annotated with `@ContributesBinding`,
@@ -23,12 +27,14 @@ import org.jetbrains.kotlin.name.StandardClassIds
  * 2. Single supertype (excluding `Any`)
  * 3. `@DefaultBinding` on a supertype (via [defaultBindingLookup])
  */
+@Inject
+@SingleIn(IrScope::class)
 internal class IrBoundTypeResolver(
-  private val pluginContext: IrPluginContext,
-  private val defaultBindingLookup: (IrDeclarationWithName, IrClass) -> IrType?,
+  private val metroContext: IrMetroContext,
+  private val defaultBindingLookup: DefaultBindingLookup,
 ) {
 
-  private val implicitBoundTypeCache = mutableMapOf<ClassId, Optional<IrType>>()
+  private val implicitBoundTypeCache = mutableMapOf<IrTypeKey, Optional<IrTypeKey>>()
 
   /**
    * Resolves the bound type for [contributingClass] given its contributing [annotation].
@@ -43,16 +49,15 @@ internal class IrBoundTypeResolver(
     contributingClass: IrClass,
     annotation: IrConstructorCall,
   ): BoundTypeResult? {
-    val (explicitBindingType, ignoreQualifier) =
-      with(pluginContext) { annotation.bindingTypeOrNull() }
+    val ignoreQualifier = annotation.anvilIgnoreQualifier()
+    val explicitBindingType =
+      with(metroContext) { annotation.bindingTypeOrNull(contributingClass, ignoreQualifier) }
 
     val boundType =
-      explicitBindingType ?: resolveImplicitBoundType(contributingClass) ?: return null
-    return BoundTypeResult(
-      type = boundType,
-      explicitBindingType = explicitBindingType,
-      ignoreQualifier = ignoreQualifier,
-    )
+      explicitBindingType
+        ?: resolveImplicitBoundType(contributingClass, ignoreQualifier)
+        ?: return null
+    return BoundTypeResult(typeKey = boundType, explicitBindingType = explicitBindingType)
   }
 
   /**
@@ -60,13 +65,27 @@ internal class IrBoundTypeResolver(
    * (e.g., from FIR annotation processing). Falls back to implicit resolution if
    * [explicitBindingType] is null.
    */
-  fun resolveBoundType(contributingClass: IrClass, explicitBindingType: IrType?): IrType? {
-    return explicitBindingType ?: resolveImplicitBoundType(contributingClass)
+  fun resolveBoundType(
+    contributingClass: IrClass,
+    explicitBindingType: IrTypeKey?,
+    ignoreQualifier: Boolean,
+  ): IrTypeKey? {
+    return explicitBindingType ?: resolveImplicitBoundType(contributingClass, ignoreQualifier)
   }
 
-  private fun resolveImplicitBoundType(clazz: IrClass): IrType? {
+  private fun resolveImplicitBoundType(clazz: IrClass, ignoreQualifier: Boolean): IrTypeKey? {
+    val cacheKey =
+      IrTypeKey(
+        type = clazz.defaultType,
+        qualifier =
+          if (ignoreQualifier) {
+            null
+          } else {
+            with(metroContext) { clazz.qualifierAnnotation() }
+          },
+      )
     return implicitBoundTypeCache
-      .getOrPut(clazz.classIdOrFail) {
+      .getOrPut(cacheKey) { // TODO iter once
         val supertypesExcludingAny =
           clazz.superTypes
             .mapNotNull {
@@ -78,11 +97,21 @@ internal class IrBoundTypeResolver(
               }
             }
             .associate { it }
+
         // Check @DefaultBinding first — it takes priority over implicit single-supertype
         // resolution and establishes IC links. Fall back to single supertype if no default found.
         val result =
           resolveDefaultBinding(clazz, supertypesExcludingAny)
-            ?: supertypesExcludingAny.keys.singleOrNull()
+            ?: supertypesExcludingAny.keys.singleOrNull()?.let {
+              IrTypeKey(
+                it,
+                if (ignoreQualifier) {
+                  null
+                } else {
+                  with(metroContext) { clazz.qualifierAnnotation() }
+                },
+              )
+            }
         Optional.ofNullable(result)
       }
       .getOrNull()
@@ -92,23 +121,18 @@ internal class IrBoundTypeResolver(
   private fun resolveDefaultBinding(
     caller: IrDeclarationWithName,
     supertypes: Map<IrType, IrClass>,
-  ): IrType? {
+  ): IrTypeKey? {
     for ((_, supertypeClass) in supertypes) {
-      val bindingType = defaultBindingLookup(caller, supertypeClass) ?: continue
-      return bindingType
+      val bindingTypeKey = defaultBindingLookup.lookupBinding(caller, supertypeClass) ?: continue
+      return bindingTypeKey
     }
     return null
   }
 
   /**
-   * @property type The resolved bound type.
+   * @property typeKey The resolved bound type key.
    * @property explicitBindingType The explicit binding type from the annotation's `binding`
    *   parameter, or null if the type was implicitly resolved.
-   * @property ignoreQualifier Whether the qualifier should be ignored (Anvil interop).
    */
-  data class BoundTypeResult(
-    val type: IrType,
-    val explicitBindingType: IrType?,
-    val ignoreQualifier: Boolean,
-  )
+  data class BoundTypeResult(val typeKey: IrTypeKey, val explicitBindingType: IrTypeKey?)
 }

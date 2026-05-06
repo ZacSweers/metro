@@ -27,6 +27,9 @@ constructor(
 
   public val interop: InteropHandler = objects.newInstance(InteropHandler::class.java)
 
+  public val compilerOptions: CompilerOptionsHandler =
+    objects.newInstance(CompilerOptionsHandler::class.java)
+
   /** Controls whether Metro's compiler plugin will be enabled on this project. */
   public val enabled: Property<Boolean> = objects.booleanProperty("metro.enabled", true)
 
@@ -54,9 +57,6 @@ constructor(
   @RequiresIdeSupport
   public val generateAssistedFactories: Property<Boolean> =
     objects.booleanProperty("metro.generateAssistedFactories", false)
-
-  @Deprecated("This does not do anything anymore and will be removed")
-  public abstract val generateThrowsAnnotations: Property<Boolean>
 
   /**
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
@@ -158,34 +158,6 @@ constructor(
       )
 
   /**
-   * Enable/disable full validation of bindings. If enabled, _all_ declared `@Provides` and `@Binds`
-   * bindings will be validated even if they are not used by the graph. Disabled by default.
-   *
-   * This is equivalent to Dagger's `-Adagger.fullBindingGraphValidation` option, though there are
-   * no controls for diagnostic severity.
-   */
-  @DelicateMetroGradleApi("This may slow down your build since it may perform extra work!")
-  public val enableFullBindingGraphValidation: Property<Boolean> =
-    objects.booleanProperty("metro.enableFullBindingGraphValidation", false)
-
-  /**
-   * If true changes the return type of generated Graph Factories from the declared interface type
-   * to the generated Metro graph type. This is helpful for Dagger/Anvil interop.
-   */
-  public val enableGraphImplClassAsReturnType: Property<Boolean> =
-    objects.booleanProperty("metro.enableGraphImplClassAsReturnType", false)
-
-  /** Enable/disable shrinking of unused bindings. Enabled by default. */
-  @DelicateMetroGradleApi("This may slow down your build since it may perform extra work!")
-  public val shrinkUnusedBindings: Property<Boolean> =
-    objects.booleanProperty("metro.shrinkUnusedBindings", true)
-
-  /** Enable/disable chunking of field initializers. Enabled by default. */
-  @Deprecated("This is the default and the option will be removed", level = DeprecationLevel.ERROR)
-  public val chunkFieldInits: Property<Boolean> =
-    objects.booleanProperty("metro.chunkFieldInits", true)
-
-  /**
    * Maximum number of statements per init function when chunking field initializers. Default is 25,
    * must be > 0.
    */
@@ -224,21 +196,6 @@ constructor(
     objects
       .property(OptionalBindingBehavior::class.java)
       .convention(OptionalBindingBehavior.DEFAULT)
-
-  /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
-  @Deprecated(
-    "Transforming providers to private is deprecated as it results in less efficient code generation",
-    level = DeprecationLevel.ERROR,
-  )
-  public val transformProvidersToPrivate: Property<Boolean> =
-    objects.booleanProperty("metro.transformProvidersToPrivate", false)
-
-  @Deprecated(
-    "This is just a proxy to publicScopedProviderSeverity now",
-    replaceWith = ReplaceWith("publicScopedProviderSeverity"),
-  )
-  public val publicProviderSeverity: Property<DiagnosticSeverity>
-    get() = publicScopedProviderSeverity
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
@@ -299,6 +256,10 @@ constructor(
    * used by the graph).
    *
    * WARN by default.
+   *
+   * Note: [DiagnosticSeverity.IDE_WARN] and [DiagnosticSeverity.IDE_ERROR] are **not** supported
+   * here because unused-input detection only runs during IR (a CLI-only phase). Attempting to set
+   * an IDE-only severity will fail the build with a validation error.
    */
   public val unusedGraphInputsSeverity: Property<DiagnosticSeverity> =
     objects.enumProperty<DiagnosticSeverity>("unusedGraphInputsSeverity", DiagnosticSeverity.WARN)
@@ -311,19 +272,6 @@ constructor(
    */
   public val contributesAsInject: Property<Boolean> =
     objects.booleanProperty("metro.contributesAsInject", true)
-
-  /**
-   * Enable/disable deduplication of injected parameters with the same type key in generated
-   * factories. When enabled, if multiple injected parameters share the same type key, only one
-   * parameter is generated in the factory.
-   *
-   * Note that parameters with default values are always included.
-   *
-   * Enabled by default.
-   */
-  @ExperimentalMetroGradleApi // Will Eventually become the default
-  public val deduplicateInjectedParams: Property<Boolean> =
-    objects.booleanProperty("metro.deduplicateInjectedParams", true)
 
   /**
    * Enable/disable klib parameter qualifier checking.
@@ -380,24 +328,6 @@ constructor(
   public val compilerVersion: Property<String> = objects.metroProperty("metro.compilerVersion", "")
 
   /**
-   * When enabled, Metro's native `@Assisted` annotation uses the parameter name as the default
-   * assisted identifier. When disabled, defaults to an empty string (legacy/Dagger behavior).
-   *
-   * This only affects Metro's own `@Assisted` annotation, not custom/interop annotations which may
-   * use the legacy empty-string default.
-   *
-   * Enabled by default.
-   */
-  public val useAssistedParamNamesAsIdentifiers: Property<Boolean> =
-    objects.booleanProperty("metro.useAssistedParamNamesAsIdentifiers", true)
-
-  @Deprecated(
-    "The `Assisted.value` property is now formally deprecated and this control no longer does anything."
-  )
-  public val assistedIdentifierSeverity: Property<DiagnosticSeverity> =
-    objects.enumProperty<DiagnosticSeverity>("assistedIdentifierSeverity", DiagnosticSeverity.WARN)
-
-  /**
    * Compiler version aliases mapping fake IDE versions to their real compiler versions.
    *
    * This is useful for IDE builds (e.g., Android Studio canary) that report a fake Kotlin compiler
@@ -412,31 +342,32 @@ constructor(
     objects.mapProperty(String::class.java, String::class.java).convention(emptyMap())
 
   /**
-   * Number of threads to use for Metro's compiler.
-   *
-   * 0 (default) disables parallelism.
-   */
-  @ExperimentalMetroGradleApi
-  @DangerousMetroGradleApi(
-    "Parallelization in Metro is _extremely_ experimental and may break your build"
-  )
-  public val parallelThreads: Property<Int> = objects.intProperty("metro.parallelThreads", 0)
-
-  /**
    * Enable/disable treating `() -> T` (i.e., `Function0<T>`) as a provider type.
    *
    * When enabled, `() -> T` can be used as an alternative to `Provider<T>` for injecting provider
-   * dependencies. This works because `Provider<T>` implements `() -> T` on JVM, Native, and WASM
+   * dependencies. This works because `Provider<T>` implements `() -> T` on JVM, Native, and Wasm
    * platforms.
    *
    * Note: On JS, `Provider<T>` does not implement `() -> T`, so an ad-hoc wrapping lambda is
    * generated.
    *
-   * Disabled by default.
+   * Enabled by default.
    */
-  @ExperimentalMetroGradleApi
   public val enableFunctionProviders: Property<Boolean> =
-    objects.booleanProperty("metro.enableFunctionProviders", false)
+    objects.booleanProperty("metro.enableFunctionProviders", true)
+
+  /**
+   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters uses of
+   * the desugared `Provider<T>` form as a provider type. Prefer the function syntax form `() -> T`
+   * instead.
+   *
+   * Only applies when [enableFunctionProviders] is enabled; treated as [DiagnosticSeverity.NONE]
+   * otherwise.
+   *
+   * `WARN` by default.
+   */
+  public val desugaredProviderSeverity: Property<DiagnosticSeverity> =
+    objects.enumProperty<DiagnosticSeverity>("desugaredProviderSeverity", DiagnosticSeverity.WARN)
 
   /**
    * Enable/disable [kotlin.reflect.KClass]/[Class] interop for multibinding map keys. When enabled,
@@ -452,6 +383,75 @@ constructor(
    */
   public val enableKClassToClassMapKeyInterop: Property<Boolean> =
     objects.booleanProperty("metro.enableKClassToClassMapKeyInterop", false)
+
+  /**
+   * When enabled, generates top-level contribution provider classes with `@Provides` functions
+   * instead of nested `@Binds` interfaces for `@ContributesBinding`, `@ContributesIntoSet`, and
+   * `@ContributesIntoMap`. This allows implementation classes to remain `internal` since the
+   * generated provider directly constructs them (which in turn allows for finer grained IC).
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val generateContributionProviders: Property<Boolean> =
+    objects.booleanProperty("metro.generateContributionProviders", false)
+
+  /**
+   * Enable/disable Metro-native Circuit code generation. When enabled, Metro will generate
+   * `Ui.Factory` and `Presenter.Factory` implementations for `@CircuitInject`-annotated classes and
+   * functions.
+   *
+   * Note this will eventually move to a separate plugin.
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val enableCircuitCodegen: Property<Boolean> =
+    objects.booleanProperty("metro.enableCircuitCodegen", false)
+
+  /**
+   * Configures Metro options for misc compiler options that don't necessarily warrant dedicated API
+   * controls.
+   */
+  public fun compilerOptions(action: Action<CompilerOptionsHandler>) {
+    action.execute(compilerOptions)
+  }
+
+  @MetroExtensionMarker
+  public abstract class CompilerOptionsHandler @Inject constructor(objects: ObjectFactory) {
+    public val rawOptions: MapProperty<String, String> =
+      objects.mapProperty(String::class.java, String::class.java)
+
+    /** Puts a given [key] with [value] in [rawOptions]. */
+    public fun put(key: String, value: String) {
+      rawOptions.put(key, value)
+    }
+
+    /** Puts a given [key] with [value] in [rawOptions]. */
+    public fun put(key: String, value: Provider<String>) {
+      rawOptions.put(key, value)
+    }
+
+    /** Puts a given [key] with [value] in [rawOptions]. */
+    public fun put(key: String, value: Boolean) {
+      rawOptions.put(key, value.toString())
+    }
+
+    /** Enables a given [key] as a boolean flag in [rawOptions] */
+    public fun enable(key: String) {
+      rawOptions.put(key, "true")
+    }
+
+    /** Enables a given [key] as a boolean flag in [rawOptions] */
+    public fun disable(key: String) {
+      rawOptions.put(key, "false")
+    }
+
+    /** Puts a given diagnostic option [key] with [severity] in [rawOptions]. */
+    public fun put(key: String, severity: DiagnosticSeverity) {
+      rawOptions.put(key, severity.name)
+    }
+  }
 
   /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency

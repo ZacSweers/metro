@@ -1,11 +1,11 @@
 // https://github.com/ZacSweers/metro/issues/1069
-@Inject class MyIntUser(val ints: Map<String, Provider<Int>>)
+@Inject class MyIntUser(val ints: Map<String, () -> Int>)
 
 @DependencyGraph
 interface AppGraph {
   val user: MyIntUser
 
-  @Provides fun provideSomeMap(): Map<String, Provider<Int>> = emptyMap()
+  @Provides fun provideSomeMap(): Map<String, () -> Int> = emptyMap()
 }
 
 fun box(): String {

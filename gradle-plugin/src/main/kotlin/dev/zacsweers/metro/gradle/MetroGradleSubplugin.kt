@@ -39,6 +39,8 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
 
     private const val COMPILER_VERSION_OVERRIDE = "metro.compilerVersionOverride"
     private const val COMPILER_VERSION_OVERRIDE_PROPERTY = "metroCompilerVersionOverride"
+    private const val CIRCUIT_ANNOTATIONS_DEP =
+      "com.slack.circuit:circuit-codegen-annotations:0.33.0"
   }
 
   private val problemReporter = problems.reporter
@@ -233,29 +235,26 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
         kotlinCompilation.target.platformType == KotlinPlatformType.androidJvm
 
     if (extension.automaticallyAddRuntimeDependencies.get()) {
-      project.dependencies.add(
-        kotlinCompilation.defaultSourceSet.implementationConfigurationName,
-        "dev.zacsweers.metro:runtime:$VERSION",
-      )
-      if (
-        kotlinCompilation.defaultSourceSet.implementationConfigurationName ==
-          "metadataCompilationImplementation"
-      ) {
+      val implConfig = kotlinCompilation.defaultSourceSet.implementationConfigurationName
+      val circuitEnabled = extension.enableCircuitCodegen.getOrElse(false)
+      project.dependencies.add(implConfig, "dev.zacsweers.metro:runtime:$VERSION")
+      if (circuitEnabled) {
+        project.dependencies.add(implConfig, CIRCUIT_ANNOTATIONS_DEP)
+      }
+
+      if (implConfig == "metadataCompilationImplementation") {
         project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
+        if (circuitEnabled) {
+          project.dependencies.add("commonMainImplementation", CIRCUIT_ANNOTATIONS_DEP)
+        }
       }
 
       if (isJvmTarget) {
         if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
-          project.dependencies.add(
-            kotlinCompilation.defaultSourceSet.implementationConfigurationName,
-            "dev.zacsweers.metro:interop-dagger:$VERSION",
-          )
+          project.dependencies.add(implConfig, "dev.zacsweers.metro:interop-dagger:$VERSION")
         }
         if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
-          project.dependencies.add(
-            kotlinCompilation.defaultSourceSet.implementationConfigurationName,
-            "dev.zacsweers.metro:interop-guice:$VERSION",
-          )
+          project.dependencies.add(implConfig, "dev.zacsweers.metro:interop-guice:$VERSION")
         }
       }
     }
@@ -311,23 +310,6 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.generateContributionHintsInFir,
             )
           )
-          add(
-            lazyOption(
-              "enable-full-binding-graph-validation",
-              extension.enableFullBindingGraphValidation,
-            )
-          )
-          add(
-            lazyOption(
-              "enable-graph-impl-class-as-return-type",
-              extension.enableGraphImplClassAsReturnType.orElse(false),
-            )
-          )
-          @Suppress("DEPRECATION_ERROR")
-          add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
-          add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
-          @Suppress("DEPRECATION_ERROR")
-          add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
           add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
           add(lazyOption("enable-graph-sharding", extension.enableGraphSharding))
           add(lazyOption("keys-per-graph-shard", extension.keysPerGraphShard))
@@ -349,7 +331,18 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.interopAnnotationsNamedArgSeverity,
             )
           )
-          add(lazyOption("unused-graph-inputs-severity", extension.unusedGraphInputsSeverity))
+          add(
+            lazyOption(
+              "unused-graph-inputs-severity",
+              extension.unusedGraphInputsSeverity.map { severity ->
+                check(!severity.isIdeOnly) {
+                  "metro.unusedGraphInputsSeverity (set to ${severity.name}) does not support ${severity.name} " +
+                    "because unused-input detection only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead."
+                }
+                severity
+              },
+            )
+          )
           add(
             lazyOption(
               "enable-top-level-function-injection",
@@ -357,7 +350,6 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
             )
           )
           add(lazyOption("contributes-as-inject", extension.contributesAsInject))
-          add(lazyOption("deduplicate-injected-params", extension.deduplicateInjectedParams))
           add(lazyOption("enable-klib-params-check", extension.enableKlibParamsCheck))
           add(lazyOption("patch-klib-params", extension.patchKlibParams))
           add(lazyOption("force-enable-fir-in-ide", extension.forceEnableFirInIde))
@@ -370,14 +362,12 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               },
             )
           )
-          add(
-            lazyOption(
-              "use-assisted-param-names-as-identifiers",
-              extension.useAssistedParamNamesAsIdentifiers,
-            )
-          )
-          add(lazyOption("parallel-threads", extension.parallelThreads))
           add(lazyOption("enable-function-providers", extension.enableFunctionProviders))
+          add(lazyOption("desugared-provider-severity", extension.desugaredProviderSeverity))
+          add(
+            lazyOption("generate-contribution-providers", extension.generateContributionProviders)
+          )
+          add(lazyOption("enable-circuit-codegen", extension.enableCircuitCodegen))
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
           reportsDir.orNull
@@ -407,6 +397,12 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
                 extension.enableKClassToClassMapKeyInterop,
               )
             )
+          }
+
+          val compilerOptions = extension.compilerOptions.rawOptions
+          for (key in compilerOptions.keySet().orNull.orEmpty().sorted()) {
+            val valueProvider = compilerOptions.getting(key)
+            add(lazyOption(key, valueProvider))
           }
 
           with(extension.interop) {

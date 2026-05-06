@@ -3,6 +3,7 @@
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.buildConfig)
+  id("metro.publish")
 }
 
 buildConfig {

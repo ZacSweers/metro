@@ -5,7 +5,7 @@
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val <!METRO_ERROR!>multibindings<!>: Map<String, String>
+  val <!DUPLICATE_MAP_KEY!>multibindings<!>: Map<String, String>
 }
 
 @BindingContainer

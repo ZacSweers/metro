@@ -24,12 +24,4 @@ package dev.zacsweers.metro
 @MustBeDocumented
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.VALUE_PARAMETER)
-public annotation class Assisted(
-  @Deprecated(
-    "Parameter names must match between the factory method and the constructor. " +
-      "Explicit identifiers via `value` are deprecated and will be removed in a future release. " +
-      "Use matching parameter names instead.",
-    level = DeprecationLevel.ERROR,
-  )
-  val value: String = ""
-)
+public annotation class Assisted

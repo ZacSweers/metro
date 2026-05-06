@@ -35,6 +35,7 @@ public class ClassIds(
   customOptionalBindingAnnotations: Set<ClassId> = emptySet(),
   private val contributesAsInject: Boolean = false,
   private val enableFunctionProviders: Boolean = false,
+  private val enableDaggerRuntimeInterop: Boolean = false,
 ) {
   public companion object {
     public fun fromOptions(options: MetroOptions): ClassIds =
@@ -66,6 +67,7 @@ public class ClassIds(
         customOptionalBindingAnnotations = options.customOptionalBindingAnnotations,
         contributesAsInject = options.contributesAsInject,
         enableFunctionProviders = options.enableFunctionProviders,
+        enableDaggerRuntimeInterop = options.enableDaggerRuntimeInterop,
       )
   }
 
@@ -117,6 +119,15 @@ public class ClassIds(
 
   internal val graphPrivateAnnotation =
     Symbols.FqNames.metroRuntimePackage.classIdOf("GraphPrivate")
+
+  internal val exposeImplBindingAnnotation = Symbols.ClassIds.ExposeImplBinding
+
+  internal val contributionProviderExclusionAnnotations by memoize {
+    buildSet {
+      add(exposeImplBindingAnnotation)
+      addAll(assistedFactoryAnnotations)
+    }
+  }
 
   internal val optionalBindingAnnotations =
     setOf(
@@ -192,6 +203,16 @@ public class ClassIds(
   internal val contributesBindingAnnotationsWithContainers =
     contributesBindingAnnotations + contributesBindingAnnotations.toContainerAnnotations()
 
+  /** All binding-like contributes annotations (everything except `@ContributesTo`). */
+  internal val contributesBindingLikeAnnotations =
+    contributesBindingAnnotations +
+      contributesIntoSetAnnotations +
+      contributesIntoMapAnnotations +
+      customContributesIntoSetAnnotations
+
+  internal val contributesBindingLikeAnnotationsWithContainers =
+    contributesBindingLikeAnnotations + contributesBindingLikeAnnotations.toContainerAnnotations()
+
   private fun Set<ClassId>.toContainerAnnotations() = mapToSet {
     it.createNestedClassId(Symbols.Names.Container)
   }
@@ -229,6 +250,9 @@ public class ClassIds(
       add(Symbols.ClassIds.function0)
     }
   }
+
+  internal val nonFunctionProviderTypes by memoize { providerTypes - Symbols.ClassIds.function0 }
+
   internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses
 
   internal val includes = setOf(Symbols.ClassIds.metroIncludes)

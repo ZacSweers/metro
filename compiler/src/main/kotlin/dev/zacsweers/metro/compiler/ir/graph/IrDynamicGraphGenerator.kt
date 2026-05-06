@@ -2,12 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.hashSuffix
+import dev.zacsweers.metro.compiler.ir.GraphToProcess
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.SyntheticGraphs
+import dev.zacsweers.metro.compiler.ir.allScopes
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.rawType
@@ -15,7 +22,6 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.transformers.TransformerContextAccess
 import dev.zacsweers.metro.compiler.mapToSet
-import dev.zacsweers.metro.compiler.md5base64
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -31,13 +37,19 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
+@Inject
+@SingleIn(IrScope::class)
 internal class IrDynamicGraphGenerator(
   metroContext: IrMetroContext,
   private val bindingContainerResolver: IrBindingContainerResolver,
   private val contributionMerger: IrContributionMerger,
-  private val onGraphGenerated: (graphImpl: IrClass, graphAnno: IrConstructorCall) -> Unit,
+  @SyntheticGraphs syntheticGraphs: MutableList<GraphToProcess>,
 ) : IrMetroContext by metroContext {
 
+  private val onGraphGenerated: (graphImpl: IrClass, graphAnno: IrConstructorCall) -> Unit =
+    { impl, anno ->
+      syntheticGraphs += GraphToProcess(impl, anno, impl, anno.allScopes())
+    }
   private val generatedClassesCache = mutableMapOf<CacheKey, IrClass>()
 
   private data class CacheKey(val targetGraphClassId: ClassId, val containerKeys: Set<IrTypeKey>)
@@ -166,12 +178,11 @@ internal class IrDynamicGraphGenerator(
 
     // Compute stable hash from target graph and sorted containers
     val hash =
-      md5base64(
-        buildList {
+      buildList {
           add(targetGraphClassId)
           addAll(sortedIds)
         }
-      )
+        .hashSuffix
 
     val targetSimpleName = targetGraphClassId.shortClassName.asString()
     return "Dynamic${targetSimpleName}Impl_${hash}".asName()

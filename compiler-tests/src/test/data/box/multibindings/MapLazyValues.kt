@@ -11,7 +11,7 @@ interface ExampleGraph {
   val lazyInts: Map<Int, Lazy<Int>>
 
   // Provider wrapping map with Lazy values
-  val providerOfLazyInts: Provider<Map<Int, Lazy<Int>>>
+  val providerOfLazyInts: () -> Map<Int, Lazy<Int>>
 
   // Class that injects the lazy map
   val consumer: LazyMapConsumer
@@ -26,7 +26,7 @@ fun box(): String {
   val lazyInts = graph.lazyInts
   assertEquals(mapOf(0 to 0, 1 to 1, 2 to 2), lazyInts.mapValues { (_, lazy) -> lazy.value })
 
-  // Test Provider<Map<Int, Lazy<Int>>>
+  // Test () -> Map<Int, Lazy<Int>>
   val providerOfLazyInts = graph.providerOfLazyInts
   assertEquals(
     mapOf(0 to 0, 1 to 1, 2 to 2),

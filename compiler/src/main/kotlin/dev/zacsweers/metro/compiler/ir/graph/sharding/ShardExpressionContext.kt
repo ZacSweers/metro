@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph.sharding
 import androidx.collection.IntObjectMap
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.parentGraphInstanceProperty
+import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext.Companion.SWITCHING_PROVIDER_SHARD_INDEX
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 

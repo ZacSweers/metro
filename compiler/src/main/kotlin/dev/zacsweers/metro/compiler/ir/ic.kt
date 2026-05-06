@@ -52,9 +52,21 @@ internal fun linkDeclarationsInCompilation(callingElement: IrElement, calleeDecl
 
 context(context: IrMetroContext)
 internal fun linkDeclarationsInCompilation(callingFile: IrFile?, calleeDeclaration: IrClass) {
-  val expectedFile = calleeDeclaration.fileOrNull?.getIoFile() ?: return
   val actualFile = callingFile?.getIoFile() ?: return
+  val expectedFile = calleeDeclaration.fileOrNull?.getIoFile() ?: return
   if (expectedFile == actualFile) return
+  if (!expectedFile.isAbsolute) {
+    // This is a generated declaration!
+    // Does it have an origin?
+    val origin = calleeDeclaration.originClassId()
+    if (origin != null) {
+      val originClass = context.referenceClass(origin)?.owner
+      if (originClass != null) {
+        linkDeclarationsInCompilation(callingFile = callingFile, calleeDeclaration = originClass)
+      }
+    }
+    return
+  }
   context.expectActualTracker.report(expectedFile = expectedFile, actualFile = actualFile)
 }
 
@@ -175,7 +187,56 @@ internal inline fun withLookupTracker(body: LookupTracker.() -> Unit) {
   context.lookupTracker?.let { tracker -> synchronized(tracker) { tracker.body() } }
 }
 
-private fun IrDeclaration.withAnalyzableKtFile(body: (filePath: String) -> Unit) {
+/**
+ * Run [body] with a [BindsTrackerScope] that has resolved [callingDeclaration]'s file path and
+ * acquired the lookup tracker lock once. Lets a tight loop over many lookups pay both costs once
+ * instead of per-call.
+ */
+context(context: IrMetroContext)
+internal inline fun batchTrackForCallingDeclaration(
+  callingDeclaration: IrDeclaration,
+  body: BindsTrackerScope.() -> Unit,
+) {
+  callingDeclaration.withAnalyzableKtFile { filePath ->
+    context.lookupTracker?.let { tracker ->
+      synchronized(tracker) { BindsTrackerScope(tracker, filePath).body() }
+    }
+  }
+}
+
+internal class BindsTrackerScope(private val tracker: LookupTracker, private val filePath: String) {
+  fun trackFunctionCall(calleeFunction: IrFunction) {
+    val callee =
+      if (calleeFunction is IrOverridableDeclaration<*> && calleeFunction.isFakeOverride) {
+        calleeFunction.resolveFakeOverrideMaybeAbstract() ?: calleeFunction
+      } else {
+        calleeFunction
+      }
+    val declaration: IrDeclarationWithName =
+      (callee as? IrSimpleFunction)?.correspondingPropertySymbol?.owner ?: callee
+    tracker.record(
+      filePath = filePath,
+      position = Position.NO_POSITION,
+      scopeFqName = callee.parent.kotlinFqName.asString(),
+      scopeKind = ScopeKind.CLASSIFIER,
+      name = declaration.name.asString(),
+    )
+  }
+
+  fun trackClassLookup(calleeClass: IrClass) {
+    val classId = calleeClass.classId ?: return
+    val container = classId.outerClassId?.asSingleFqName() ?: classId.packageFqName
+    tracker.record(
+      filePath = filePath,
+      position = Position.NO_POSITION,
+      scopeFqName = container.asString(),
+      scopeKind = ScopeKind.PACKAGE,
+      name = classId.shortClassName.asString(),
+    )
+  }
+}
+
+private inline fun IrDeclaration.withAnalyzableKtFile(body: (filePath: String) -> Unit) {
   val callingDeclaration = this
   val ktFile = callingDeclaration.fileParentOrNull?.getKtFile()
   if ((ktFile != null && ktFile.doNotAnalyze == null) || ktFile == null) {

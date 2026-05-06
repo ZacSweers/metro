@@ -20,7 +20,7 @@ MODULE_COUNT=500
 START_TIME=$(date +%s)
 
 # Default modes to benchmark
-MODES="metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil"
+MODES="metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
 
 # Git refs
 SINGLE_REF=""
@@ -108,8 +108,8 @@ show_usage() {
     echo ""
     echo "Options:"
     echo "  --modes <list>          Comma-separated list of modes to benchmark"
-    echo "                          Available: metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil"
-    echo "                          Default: metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil"
+    echo "                          Available: metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin"
+    echo "                          Default: metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
     echo "  --count <n>             Number of modules to generate (default: 500)"
     echo "  --timestamp <ts>        Use specific timestamp for results directory"
     echo "  --include-macrobenchmark  Include Android macrobenchmarks (startup time)"
@@ -206,6 +206,9 @@ get_generator_args() {
         kotlin-inject-anvil)
             args="--mode kotlin_inject_anvil"
             ;;
+        koin)
+            args="--mode koin"
+            ;;
         *)
             print_error "Unknown mode: $mode"
             exit 1
@@ -244,6 +247,11 @@ get_gradle_args() {
         dagger-ksp|dagger-kapt|kotlin-inject-anvil)
             # Disable incremental processing and build cache to avoid flaky KSP/KAPT builds
             args="--no-build-cache -Pksp.incremental=false -Pkotlin.incremental=false"
+            ;;
+        koin)
+            # Koin uses a K2 compiler plugin (no KSP); disable build cache to keep startup
+            # benchmarks measuring cold compilation parity with the KSP-using modes.
+            args="--no-build-cache -Pkotlin.incremental=false"
             ;;
         *)
             args=""
@@ -1324,7 +1332,7 @@ HTMLHEAD
 
     cat >> "$html_file" << 'HTMLTAIL'
 ;
-const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
+const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
 let selectedBaseline = 'metro';
 
 function formatTime(ms, unit) {
@@ -1348,8 +1356,8 @@ function calculateVsBaseline(value, baselineValue) {
 
 function renderSummaryStats() {
     const container = document.getElementById('summary-stats');
-    let totalSpeedup = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0 };
-    let counts = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0 };
+    let totalSpeedup = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0, koin: 0 };
+    let counts = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0, koin: 0 };
     benchmarkData.benchmarks.forEach(benchmark => {
         const metroResult = benchmark.results.find(r => r.key === 'metro');
         if (!metroResult || !metroResult.value) return;
@@ -1361,7 +1369,7 @@ function renderSummaryStats() {
         });
     });
     let html = '';
-    const names = { 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject' };
+    const names = { 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin' };
     Object.keys(totalSpeedup).forEach(key => {
         if (counts[key] > 0) {
             const avgSpeedup = (totalSpeedup[key] / counts[key]).toFixed(1);
@@ -1442,6 +1450,8 @@ function renderMetadata() {
                     <dt>kotlin-inject</dt><dd>${m.versions?.kotlinInject || '—'}</dd>
                     <dt>Anvil</dt><dd>${m.versions?.anvil || '—'}</dd>
                     <dt>kotlin-inject-anvil</dt><dd>${m.versions?.kotlinInjectAnvil || '—'}</dd>
+                    <dt>Koin</dt><dd>${m.versions?.koin || '—'}</dd>
+                    <dt>Koin Compiler</dt><dd>${m.versions?.koinCompiler || '—'}</dd>
                 </dl>
             </div>
             <div class="metadata-group">
@@ -1515,6 +1525,8 @@ build_non_ref_benchmark_json() {
     local kotlin_inject_version=$(get_toml_version "kotlinInject")
     local anvil_version=$(get_toml_version "anvil")
     local kotlin_inject_anvil_version=$(get_toml_version "kotlinInject-anvil")
+    local koin_version=$(get_toml_version "koin")
+    local koin_compiler_version=$(get_toml_version "koin-compiler")
     local jvm_target=$(get_toml_version "jvmTarget")
 
     # JMH and benchmark versions
@@ -1549,7 +1561,9 @@ build_non_ref_benchmark_json() {
     echo '      "ksp": "'"$ksp_version"'",'
     echo '      "kotlinInject": "'"$kotlin_inject_version"'",'
     echo '      "anvil": "'"$anvil_version"'",'
-    echo '      "kotlinInjectAnvil": "'"$kotlin_inject_anvil_version"'"'
+    echo '      "kotlinInjectAnvil": "'"$kotlin_inject_anvil_version"'",'
+    echo '      "koin": "'"$koin_version"'",'
+    echo '      "koinCompiler": "'"$koin_compiler_version"'"'
     echo '    },'
     echo '    "build": {'
     echo '      "jdk": "'"$java_version"'",'
@@ -1591,6 +1605,7 @@ build_non_ref_benchmark_json() {
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                 *) continue ;;
             esac
 
@@ -1654,6 +1669,7 @@ build_non_ref_benchmark_json() {
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                     *) continue ;;
                 esac
 
@@ -1720,6 +1736,7 @@ build_non_ref_benchmark_json() {
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                     *) continue ;;
                 esac
 
@@ -1763,6 +1780,7 @@ build_non_ref_benchmark_json() {
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                 *) continue ;;
             esac
 
@@ -3124,6 +3142,8 @@ build_startup_benchmark_json() {
     local kotlin_inject_version=$(get_toml_version "kotlinInject")
     local anvil_version=$(get_toml_version "anvil")
     local kotlin_inject_anvil_version=$(get_toml_version "kotlinInject-anvil")
+    local koin_version=$(get_toml_version "koin")
+    local koin_compiler_version=$(get_toml_version "koin-compiler")
     local jvm_target=$(get_toml_version "jvmTarget")
 
     # JMH and benchmark versions
@@ -3158,7 +3178,9 @@ build_startup_benchmark_json() {
     echo '      "ksp": "'"$ksp_version"'",'
     echo '      "kotlinInject": "'"$kotlin_inject_version"'",'
     echo '      "anvil": "'"$anvil_version"'",'
-    echo '      "kotlinInjectAnvil": "'"$kotlin_inject_anvil_version"'"'
+    echo '      "kotlinInjectAnvil": "'"$kotlin_inject_anvil_version"'",'
+    echo '      "koin": "'"$koin_version"'",'
+    echo '      "koinCompiler": "'"$koin_compiler_version"'"'
     echo '    },'
     echo '    "build": {'
     echo '      "jdk": "'"$java_version"'",'
@@ -3212,6 +3234,7 @@ build_startup_benchmark_json() {
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                 *) continue ;;
             esac
 
@@ -3275,6 +3298,7 @@ build_startup_benchmark_json() {
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                     *) continue ;;
                 esac
 
@@ -3344,6 +3368,7 @@ build_startup_benchmark_json() {
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                     *) continue ;;
                 esac
 
@@ -3396,6 +3421,7 @@ build_startup_benchmark_json() {
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                 *) continue ;;
             esac
 
@@ -3446,6 +3472,7 @@ build_startup_benchmark_json() {
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
             *) continue ;;
         esac
 
@@ -3505,6 +3532,7 @@ build_startup_benchmark_json() {
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
             *) continue ;;
         esac
 
@@ -3561,6 +3589,7 @@ build_startup_benchmark_json() {
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
             *) continue ;;
         esac
 
@@ -3705,7 +3734,7 @@ HTMLHEAD
 
     cat >> "$html_file" << 'HTMLTAIL'
 ;
-const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
+const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
 
 // State for selectable baseline
 let selectedBaseline = 'metro';
@@ -3755,8 +3784,8 @@ function renderRefsInfo() {
 function renderSummaryStats() {
     const container = document.getElementById('summary-stats');
     // Calculate average speedup vs other frameworks across all benchmarks
-    let totalSpeedup = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0 };
-    let counts = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0 };
+    let totalSpeedup = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0, koin: 0 };
+    let counts = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0, koin: 0 };
     benchmarkData.benchmarks.forEach(benchmark => {
         const metroResult = benchmark.results.find(r => r.key === 'metro');
         if (!metroResult || !metroResult.ref1) return;
@@ -3768,7 +3797,7 @@ function renderSummaryStats() {
         });
     });
     let html = '';
-    const names = { 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject' };
+    const names = { 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin' };
     Object.keys(totalSpeedup).forEach(key => {
         if (counts[key] > 0) {
             const avgSpeedup = (totalSpeedup[key] / counts[key]).toFixed(1);
@@ -3866,6 +3895,8 @@ function renderMetadata() {
                         <dt>kotlin-inject</dt><dd>${m.versions?.kotlinInject || '—'}</dd>
                         <dt>Anvil</dt><dd>${m.versions?.anvil || '—'}</dd>
                         <dt>kotlin-inject-anvil</dt><dd>${m.versions?.kotlinInjectAnvil || '—'}</dd>
+                    <dt>Koin</dt><dd>${m.versions?.koin || '—'}</dd>
+                    <dt>Koin Compiler</dt><dd>${m.versions?.koinCompiler || '—'}</dd>
                     </dl>
                 </div>
                 <div class="metadata-group">

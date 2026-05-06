@@ -15,11 +15,11 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrAnnotationImpl
 internal value class IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
   private val delegate: IrGeneratedDeclarationsRegistrar
 ) : IrGeneratedDeclarationsRegistrarCompat {
+  @Suppress("UNCHECKED_CAST")
   override fun getMetadataVisibleAnnotationsForElement(
     declaration: IrDeclaration
   ): MutableList<IrConstructorCall> =
-    @Suppress("UNCHECKED_CAST") delegate.getMetadataVisibleAnnotationsForElement(declaration)
-      as MutableList<IrConstructorCall>
+    delegate.getMetadataVisibleAnnotationsForElement(declaration) as MutableList<IrConstructorCall>
 
   override fun addMetadataVisibleAnnotationsToElement(
     declaration: IrDeclaration,

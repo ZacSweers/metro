@@ -2,14 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
+import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
@@ -39,6 +45,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -79,7 +86,11 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 
+@Inject
+@SingleIn(IrScope::class)
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
 internal class InjectedClassTransformer(
   context: IrMetroContext,
   private val membersInjectorTransformer: MembersInjectorTransformer,
@@ -90,13 +101,20 @@ internal class InjectedClassTransformer(
 
   fun visitClass(declaration: IrClass): Boolean {
     val injectableConstructor =
-      declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
-    return if (injectableConstructor != null) {
-      val _ = getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
-      true
-    } else {
-      false
+      declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false) ?: return false
+
+    // Skip factory generation when generateContributionProviders is enabled and the class
+    // has binding contributions — the contribution provider handles construction.
+    // @ExposeImplBinding opts out of this skip.
+    if (declaration.usesContributionProviderPath(options, metroSymbols.classIds)) {
+      // Cache absence so later lookups (e.g., from BindingLookup) return null instead of
+      // attempting to generate after locking.
+      generatedFactories[declaration.classIdOrFail] = Optional.empty()
+      return false
     }
+
+    val _ = getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
+    return true
   }
 
   fun getOrGenerateFactory(
@@ -105,8 +123,8 @@ internal class InjectedClassTransformer(
     doNotErrorOnMissing: Boolean,
   ): ClassFactory? {
     val injectedClassId: ClassId = declaration.classIdOrFail
-    generatedFactories[injectedClassId]?.getOrNull()?.let {
-      return it
+    generatedFactories[injectedClassId]?.let { cached ->
+      return cached.getOrNull()
     }
 
     val isExternal = declaration.isExternalParent
@@ -278,6 +296,7 @@ internal class InjectedClassTransformer(
             }
           }
         }
+    addHiddenFromObjCAnnotation(invokeFunction)
     metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(invokeFunction)
 
     val allParameters =
@@ -292,13 +311,13 @@ internal class InjectedClassTransformer(
     // Deduplicate parameters to match the FIR-generated factory constructor.
     // The FIR side deduplicates by type key, so the factory constructor has fewer
     // parameters when multiple source params share the same type+qualifier.
-    val dedupedParameters =
-      if (options.deduplicateInjectedParams) {
-        nonAssistedParameters.dedupeParameters()
-      } else {
-        nonAssistedParameters
-      }
+    val dedupedParameters = nonAssistedParameters.dedupeParameters()
 
+    // Use parameter name as the primary field key to correctly handle multiple parameters
+    // with the same type key (e.g., two String params with different defaults).
+    // The typeKey map is kept as a fallback for dedup cases where the original parameter
+    // name was deduped away but shares a type key with the surviving parameter.
+    val nameToField = mutableMapOf<Name, IrField>()
     val typeKeyToField = mutableMapOf<IrTypeKey, IrField>()
     val ctor: IrConstructor
     if (factoryCls.isObject) {
@@ -321,8 +340,11 @@ internal class InjectedClassTransformer(
               stubDefaults = false,
               typeRemapper = { type -> typeRemapper.remapType(type) },
             ) { typeKey, irParam ->
-              typeKeyToField[typeKey] = irParam.addBackingFieldTo(factoryCls)
+              val field = irParam.addBackingFieldTo(factoryCls)
+              nameToField[irParam.name] = field
+              typeKeyToField[typeKey] = field
             }
+            addHiddenFromObjCAnnotation(this)
             body = generateDefaultConstructorBody()
           }
     }
@@ -362,6 +384,7 @@ internal class InjectedClassTransformer(
       newInstanceFunction,
       constructorParameters,
       injectors,
+      nameToField,
       typeKeyToField,
     )
 
@@ -406,7 +429,8 @@ internal class InjectedClassTransformer(
     newInstanceFunction: IrSimpleFunction,
     constructorParameters: Parameters,
     injectors: List<MembersInjectorTransformer.MemberInjectClass>,
-    fields: Map<IrTypeKey, IrField>,
+    nameToField: Map<Name, IrField>,
+    typeKeyToField: Map<IrTypeKey, IrField>,
   ) {
     if (invokeFunction.isFakeOverride) {
       invokeFunction.finalizeFakeOverride(thisReceiver)
@@ -431,7 +455,10 @@ internal class InjectedClassTransformer(
                 val providerInstance =
                   irGetField(
                     irGet(invokeFunction.dispatchReceiverParameter!!),
-                    fields.getValue(constructorParam.typeKey),
+                    // Look up by name first (handles multiple params with same type key),
+                    // fall back to type key (handles deduped params where name was removed)
+                    nameToField[constructorParam.name]
+                      ?: typeKeyToField.getValue(constructorParam.typeKey),
                   )
                 val contextKey = targetParam.contextualTypeKey
                 typeAsProviderArgument(
@@ -486,7 +513,7 @@ internal class InjectedClassTransformer(
                       parametersAsProviderArguments(
                         parameters,
                         invokeFunction.dispatchReceiverParameter!!,
-                        fields,
+                        typeKeyToField,
                       )
                     )
                   },
@@ -668,10 +695,7 @@ internal class InjectedClassTransformer(
     // Deduplicate to match the FIR-generated create() function signature
     val dedupedMerged =
       mergedParameters.copy(
-        regularParameters =
-          if (options.deduplicateInjectedParams)
-            mergedParameters.regularParameters.dedupeParameters()
-          else mergedParameters.regularParameters
+        regularParameters = mergedParameters.regularParameters.dedupeParameters()
       )
 
     // Generate create()

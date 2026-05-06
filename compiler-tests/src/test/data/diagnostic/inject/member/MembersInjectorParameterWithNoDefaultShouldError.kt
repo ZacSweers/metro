@@ -11,7 +11,7 @@ interface TestGraph {
   @Provides
   fun provideGenericMembersInjector(
     // No default value, we should report this missing
-    <!METRO_ERROR!>instance: MembersInjector<ClassWithoutMembersInjector><!>
+    <!MISSING_BINDING!>instance: MembersInjector<ClassWithoutMembersInjector><!>
   ): MembersInjector<*> {
     return instance
   }

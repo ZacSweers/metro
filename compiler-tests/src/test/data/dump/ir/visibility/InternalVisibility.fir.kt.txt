@@ -3,7 +3,7 @@ abstract class AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: AppGraph
+    private val thisGraphInstance: Impl
       field = <this>
 
     private constructor() /* primary */ {
@@ -32,6 +32,8 @@ abstract class AppGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): AppGraph {
       return Impl()
     }
@@ -49,26 +51,35 @@ abstract class AppGraph {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(instance: AppGraph): Factory<Int> {
         return ProvideIntMetroFactory(instance = instance)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun provideInt(instance: AppGraph): Int {
         return instance.provideInt()
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance)
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
@@ -104,18 +115,26 @@ class InternalClass {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<InternalClass> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): InternalClass {
       return InternalClass()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): InternalClass {
       return MetroFactory.newInstance()
     }
 
+    @HiddenFromObjC
     fun mirrorFunction(): InternalClass {
       return error(message = "Never called")
     }

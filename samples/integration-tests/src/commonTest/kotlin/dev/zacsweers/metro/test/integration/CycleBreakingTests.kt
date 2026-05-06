@@ -4,7 +4,6 @@ package dev.zacsweers.metro.test.integration
 
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
-import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.createGraphFactory
 import kotlin.test.Test
@@ -36,7 +35,7 @@ class CycleBreakingTests {
     }
 
     @Inject
-    class Foo(val barProvider: Provider<Bar>) : Callable<String> {
+    class Foo(val barProvider: () -> Bar) : Callable<String> {
       override fun call() = barProvider().call()
     }
 
@@ -74,7 +73,7 @@ class CycleBreakingTests {
     }
 
     @Inject
-    class Foo(val barProvider: Provider<Bar>) : Callable<String> {
+    class Foo(val barProvider: () -> Bar) : Callable<String> {
       override fun call() = barProvider().call()
     }
 
@@ -152,7 +151,7 @@ class CycleBreakingTests {
     }
 
     @Inject
-    class Foo(val barLazyProvider: Provider<Lazy<Bar>>) : Callable<String> {
+    class Foo(val barLazyProvider: () -> Lazy<Bar>) : Callable<String> {
       override fun call() = barLazyProvider().value.call()
     }
 
@@ -193,7 +192,7 @@ class CycleBreakingTests {
 
     @Singleton
     @Inject
-    class Foo(val barProvider: Provider<Bar>) : Callable<String> {
+    class Foo(val barProvider: () -> Bar) : Callable<String> {
       override fun call(): String {
         val bar = barProvider()
         check(bar.foo === this)
@@ -234,12 +233,12 @@ class CycleBreakingTests {
         fun create(@Provides message: String): Graph
       }
 
-      @Provides private fun provideFoo(barProvider: Provider<Bar>): Foo = Foo(barProvider)
+      @Provides private fun provideFoo(barProvider: () -> Bar): Foo = Foo(barProvider)
 
       @Provides private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
     }
 
-    class Foo(val barProvider: Provider<Bar>) : Callable<String> {
+    class Foo(val barProvider: () -> Bar) : Callable<String> {
       override fun call() = barProvider().call()
     }
 
@@ -326,13 +325,12 @@ class CycleBreakingTests {
         fun create(@Provides message: String): Graph
       }
 
-      @Provides
-      private fun provideFoo(barLazyProvider: Provider<Lazy<Bar>>): Foo = Foo(barLazyProvider)
+      @Provides private fun provideFoo(barLazyProvider: () -> Lazy<Bar>): Foo = Foo(barLazyProvider)
 
       @Provides private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
     }
 
-    class Foo(val barLazyProvider: Provider<Lazy<Bar>>) : Callable<String> {
+    class Foo(val barLazyProvider: () -> Lazy<Bar>) : Callable<String> {
       override fun call() = barLazyProvider().value.call()
     }
 
@@ -374,14 +372,12 @@ class CycleBreakingTests {
         fun create(@Provides message: String): Graph
       }
 
-      @Singleton
-      @Provides
-      private fun provideFoo(barProvider: Provider<Bar>): Foo = Foo(barProvider)
+      @Singleton @Provides private fun provideFoo(barProvider: () -> Bar): Foo = Foo(barProvider)
 
       @Provides private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
     }
 
-    class Foo(val barProvider: Provider<Bar>) : Callable<String> {
+    class Foo(val barProvider: () -> Bar) : Callable<String> {
       override fun call(): String {
         val bar = barProvider()
         check(bar.foo === this)

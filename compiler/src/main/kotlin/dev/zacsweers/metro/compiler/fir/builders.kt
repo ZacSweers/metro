@@ -16,7 +16,6 @@ import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameter
-import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.buildResolvedArgumentList
@@ -82,6 +81,7 @@ internal fun FirDeclarationGenerationExtension.generateMemberFunction(
 }
 
 @OptIn(SymbolInternals::class)
+context(compatContext: CompatContext)
 internal fun FirDeclarationGenerationExtension.copyParameters(
   functionBuilder: CompatContext.FunctionBuilderScope,
   sourceParameters: List<MetroFirValueParameter>,
@@ -120,24 +120,27 @@ internal fun FirDeclarationGenerationExtension.copyParameters(
             }
         }
         else -> {
-          buildValueParameterCopy(originalFir as FirValueParameter) {
-              name = original.name
-              origin = Keys.RegularParameter.origin
-              symbol = FirValueParameterSymbol()
-              containingDeclarationSymbol = functionBuilder.symbol
-              parameterInit(original)
-              if (originalFir.symbol.hasDefaultValue) {
-                if (originalFir.symbol.hasMetroDefault(session)) {
-                  if (!copyParameterDefaults) {
-                    defaultValue = buildSafeDefaultValueStub(session)
+          with(compatContext) {
+              buildValueParameterCopyCompat(originalFir as FirValueParameter) {
+                name = original.name
+                origin = Keys.RegularParameter.origin
+                symbol = FirValueParameterSymbol()
+                containingDeclarationSymbol = functionBuilder.symbol
+                parameterInit(original)
+                if (originalFir.symbol.hasDefaultValue) {
+                  if (originalFir.symbol.hasMetroDefault(session)) {
+                    if (!copyParameterDefaults) {
+                      defaultValue = buildSafeDefaultValueStub(session)
+                    }
+                  } else {
+                    defaultValue = null
                   }
-                } else {
-                  defaultValue = null
                 }
+                // We don't assign a source here. Even using fakeElement() still sometimes results
+                // in
+                // using mismatched offsets, regardless of the kind
+                source = null
               }
-              // We don't assign a source here. Even using fakeElement() still sometimes results in
-              // using mismatched offsets, regardless of the kind
-              source = null
             }
             .apply {
               context(session.compatContext) { replaceAnnotationsSafe(original.symbol.annotations) }

@@ -34,4 +34,4 @@ interface IntProvider {
 }
 
 @DependencyGraph(AppScope::class)
-interface <!METRO_ERROR, METRO_ERROR!>AppGraph<!>
+interface <!INCOMPATIBLE_RETURN_TYPES!>AppGraph<!>

@@ -101,6 +101,11 @@ On Android, the differences become more pronounced. Metro and Dagger perform sim
 
 Below are some results from real-world projects, shared with the developers' permission.
 
+!!! note "Square"
+    Square wrote a blog post about their migration to Metro: [Metro Migration at Square Android](https://engineering.block.xyz/blog/metro-migration-at-square-android)
+
+    > How Square Android migrated its monorepo from Dagger 2 and Anvil to Metro over nine months and saved thousands of hours of build time.
+
 !!! note "Cash App"
     Cash App wrote a blog post about their migration to Metro: [Cash App Moves to Metro](https://code.cash.app/cash-android-moves-to-metro)
 
@@ -162,9 +167,11 @@ metro {
 }
 ```
 
-This will output a Perfetto trace file after the compilation that you can then load into https://ui.perfetto.dev.
+This will output one or more Perfetto trace files after the compilation that you can then load into https://ui.perfetto.dev.
 
-Note that these traces probably do require a bit of familiarity with the Metro compiler internals and only trace the IR transformation layer.
+Filenames follow the pattern `<id>-<phase>-<moduleName>.perfetto-trace`, where `<id>` is a `yyMMdd-HHmmss` timestamp shared across every file produced by the same compilation, `<phase>` is `fir` or `ir`, and `<moduleName>` identifies the FIR session or IR module fragment. KMP source-set hierarchies and multi-fragment IR each produce their own files. Load whichever file corresponds to the phase you want to inspect.
+
+Note that these traces probably do require a bit of familiarity with the Metro compiler internals.
 
 !!! warning
 

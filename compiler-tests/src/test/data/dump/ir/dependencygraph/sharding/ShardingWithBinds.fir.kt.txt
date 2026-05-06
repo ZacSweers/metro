@@ -11,19 +11,27 @@ class RepositoryImpl : Repository {
 
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun create(): Factory<RepositoryImpl> {
       return MetroFactory
     }
 
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
     fun newInstance(): RepositoryImpl {
       return RepositoryImpl()
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): RepositoryImpl {
       return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(): RepositoryImpl {
       return error(message = "Never called")
     }
@@ -55,27 +63,36 @@ class Service {
 
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun create(repo: Provider<Repository>): Factory<Service> {
         return MetroFactory(repo = repo)
       }
 
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
       fun newInstance(repo: Repository): Service {
         return Service(repo = repo)
       }
 
     }
 
+    @HiddenFromObjC
     private constructor(repo: Provider<Repository>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
+    @HiddenFromObjC
     override operator fun invoke(): Service {
       return Companion.newInstance(repo = <this>.#repo.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
     fun mirrorFunction(repo: Repository): Service {
       return error(message = "Never called")
     }
@@ -179,6 +196,8 @@ interface TestGraph {
     }
 
     @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
     operator fun invoke(): TestGraph {
       return Impl()
     }

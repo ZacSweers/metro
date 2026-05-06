@@ -1,7 +1,7 @@
 @DependencyGraph
 interface AppGraph {
 
-  // Provider<Set<...>
+  // () -> Set<...>
   //   .. depends on ElementsIntoSet
   //   .. depends on another ElementsIntoSet
   //   .. depends on thing
@@ -31,7 +31,7 @@ interface AppGraph {
 }
 
 @Inject
-class FinalThing(@Named("final") val ints: Provider<Set<Int>>)
+class FinalThing(@Named("final") val ints: () -> Set<Int>)
 
 fun box(): String {
   val graph = createGraph<AppGraph>()

@@ -10,7 +10,7 @@ interface AppGraph {
   val loggedInGraph: LoggedInGraph
 }
 
-@Inject @SingleIn(AppScope::class) class Foo(val fooProvider: Provider<Foo>)
+@Inject @SingleIn(AppScope::class) class Foo(val fooProvider: () -> Foo)
 
 fun box(): String {
   val graph = createGraph<AppGraph>()

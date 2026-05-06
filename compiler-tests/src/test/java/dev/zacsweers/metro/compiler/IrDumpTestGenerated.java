@@ -55,6 +55,18 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ContributionProviders_BasicDump.kt")
+    public void testContributionProviders_BasicDump() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributionProviders_BasicDump.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionProviders_ScopedMultipleBindings.kt")
+    public void testContributionProviders_ScopedMultipleBindings() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributionProviders_ScopedMultipleBindings.kt");
+    }
+
+    @Test
     @TestMetadata("ContributorsWithSameSimpleNames.kt")
     public void testContributorsWithSameSimpleNames() {
       runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributorsWithSameSimpleNames.kt");
@@ -498,6 +510,36 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("MultibindingSourcesGetRefcountedViaFactoryPath.kt")
     public void testMultibindingSourcesGetRefcountedViaFactoryPath() {
       runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingSourcesGetRefcountedViaFactoryPath.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonMapFactory.kt")
+    public void testSingletonMapFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonMapLazyFactory.kt")
+    public void testSingletonMapLazyFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapLazyFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonMapProviderFactory.kt")
+    public void testSingletonMapProviderFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapProviderFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonMapProviderLazyFactory.kt")
+    public void testSingletonMapProviderLazyFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapProviderLazyFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonSetFactory.kt")
+    public void testSingletonSetFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonSetFactory.kt");
     }
   }
 
