@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker.FirAssistedParameterKey.Companion.toAssistedParameterKey
+import dev.zacsweers.metro.compiler.fir.checkers.InjectConstructorChecker.isConstructorInjected
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
@@ -17,6 +18,7 @@ import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.mapToSetWithDupes
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -28,6 +30,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
@@ -41,12 +44,18 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
-    context(context.session.compatContext) { checkImpl(declaration) }
+    val source = declaration.source ?: return
+    val session = context.session
+    if (!isConstructorInjected(declaration, session)) {
+      return
+    }
+    session.trace(name = { "AssistedInjectChecker(${declaration.classId})" }) {
+      context(session.compatContext) { checkImpl(declaration, source) }
+    }
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
-  private fun checkImpl(declaration: FirClass) {
-    val source = declaration.source ?: return
+  private fun checkImpl(declaration: FirClass, source: KtSourceElement) {
     val session = context.session
     val classIds = session.classIds
 
