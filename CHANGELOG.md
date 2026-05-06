@@ -28,6 +28,7 @@ Changelog
 
 ### Fixes
 
+- **[IR]** Fix `Map<K, () -> V>` multibindings on Kotlin/JS. `Provider` does not extend `() -> T` on JS, so when such a map was consumed via `Provider<Map<K, () -> V>>` the values were Metro `Provider` instances and weren't callable as JS functions, surfacing at runtime as `TypeError: ... is not a function`. Metro now uses a JS-only runtime `MapFunctionFactory` for these cases that stores correct `() -> V` lambdas.
 - **[IR/circuit]** Insert implicit casts when a generated Circuit `Presenter.Factory`/`Ui.Factory` dispatches its `screen: Screen` parameter to an underlying assisted factory or `@Inject @Composable` function that expects a more specific `Screen` subtype. Some platforms (like JVM) silently tolerate the missing cast, but Kotlin/Wasm rejects it with a `call_ref` precise-type mismatch at load time.
 - **[IR/circuit]** Propagate qualifier annotations from `@CircuitInject` declarations to the generated factory classes.
 
