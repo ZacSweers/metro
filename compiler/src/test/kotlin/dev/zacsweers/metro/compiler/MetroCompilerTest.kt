@@ -366,6 +366,12 @@ abstract class MetroCompilerTest {
                   this@toPluginOptions.generateStaticAnnotations,
                 )
               }
+              BINDING_CONTRIBUTIONS_AS_CONTAINERS -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.bindingContributionsAsContainers,
+                )
+              }
             }
           yield(option)
         }

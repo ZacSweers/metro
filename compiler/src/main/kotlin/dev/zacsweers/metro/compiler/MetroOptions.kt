@@ -897,6 +897,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  BINDING_CONTRIBUTIONS_AS_CONTAINERS(
+    RawMetroOption.boolean(
+      name = "binding-contributions-as-containers",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "When enabled, pure binding contributions (@ContributesBinding/@ContributesIntoSet/@ContributesIntoMap without @ContributesTo) are routed as a @BindingContainer instead of being merged into graphs as supertypes. Disable to restore the supertype-merge behavior.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -1068,6 +1079,8 @@ public data class MetroOptions(
   public val richDiagnostics: Boolean = MetroOption.RICH_DIAGNOSTICS.raw.defaultValue.expectAs(),
   public val generateStaticAnnotations: Boolean =
     MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
+  public val bindingContributionsAsContainers: Boolean =
+    MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1188,6 +1201,7 @@ public data class MetroOptions(
     public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
     public var richDiagnostics: Boolean = base.richDiagnostics
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
+    public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1379,6 +1393,7 @@ public data class MetroOptions(
         enableCircuitCodegen = enableCircuitCodegen,
         richDiagnostics = richDiagnostics,
         generateStaticAnnotations = generateStaticAnnotations,
+        bindingContributionsAsContainers = bindingContributionsAsContainers,
       )
     }
 
@@ -1694,6 +1709,8 @@ public data class MetroOptions(
           RICH_DIAGNOSTICS -> richDiagnostics = configuration.getAsBoolean(entry)
           GENERATE_STATIC_ANNOTATIONS ->
             generateStaticAnnotations = configuration.getAsBoolean(entry)
+          BINDING_CONTRIBUTIONS_AS_CONTAINERS ->
+            bindingContributionsAsContainers = configuration.getAsBoolean(entry)
         }
       }
     }
