@@ -155,4 +155,9 @@ internal class TracingFirSupertypeGenerationExtension(
     ) {
       delegate.computeAdditionalSupertypesForGeneratedNestedClass(klass, typeResolver)
     }
+
+  override fun FirDeclarationPredicateRegistrar.registerPredicates() {
+    val registrar = this
+    with(delegate) { registrar.registerPredicates() }
+  }
 }
