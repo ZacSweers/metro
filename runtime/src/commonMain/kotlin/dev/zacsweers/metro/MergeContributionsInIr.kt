@@ -17,7 +17,7 @@ package dev.zacsweers.metro
  * - Kotlin/Native ObjC framework export will not include contributed interfaces in the graph's
  *   superprotocol list.
  *
- * Pair with the `chunk-merged-supertypes` compiler option for very large graphs that exceed JVM
+ * Pair with the `merged-supertype-chunk-size` compiler option for very large graphs that exceed JVM
  * signature-byte limits even after IR-only merging.
  */
 @DelicateMetroApi
