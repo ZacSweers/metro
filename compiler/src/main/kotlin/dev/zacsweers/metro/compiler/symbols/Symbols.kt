@@ -182,6 +182,8 @@ internal class Symbols(
     val metroIntoMap = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_MAP.asName())
     val metroIntoSet = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_SET.asName())
     val metroImplMarker = ClassId(FqNames.metroRuntimeInternalPackage, "MetroImplMarker".asName())
+    val mergeContributionsInIr =
+      ClassId(FqNames.metroRuntimePackage, "MergeContributionsInIr".asName())
     val irOnlyFactories = ClassId(FqNames.metroRuntimeInternalPackage, "IROnlyFactories".asName())
     val metroOrigin = ClassId(FqNames.metroRuntimePackage, "Origin".asName())
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
