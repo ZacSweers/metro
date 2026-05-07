@@ -141,6 +141,11 @@ internal class BindingGraphGenerator(
       // Add aliases for all its supertypes
       // TODO dedupe supertype iteration
       node.supertypes.forEach { superType ->
+        // Synthetic chunk interfaces just regroup contribution supertypes for JVM signature
+        // bounds. They are not real bindings and must not become aliases.
+        if (superType.rawTypeOrNull()?.origin == Origins.ContributionSupertypeChunk) {
+          return@forEach
+        }
         val superTypeKey = IrTypeKey(superType)
         @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
       }
@@ -793,6 +798,10 @@ internal class BindingGraphGenerator(
 
       // Collect supertype aliases for parent graphs.
       for (superType in extendedNode.supertypes) {
+        // Skip synthetic chunk interfaces, see Iterate supertypes above.
+        if (superType.rawTypeOrNull()?.origin == Origins.ContributionSupertypeChunk) {
+          continue
+        }
         val parentTypeKey = IrTypeKey(superType)
         if (parentTypeKey != typeKey) {
           @Suppress("RETURN_VALUE_NOT_USED") supertypeAliases.putIfAbsent(parentTypeKey, typeKey)
