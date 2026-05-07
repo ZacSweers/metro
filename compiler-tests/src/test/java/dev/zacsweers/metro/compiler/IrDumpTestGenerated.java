@@ -55,6 +55,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ChunkMergedSupertypes.kt")
+    public void testChunkMergedSupertypes() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ChunkMergedSupertypes.kt");
+    }
+
+    @Test
     @TestMetadata("ContributionProviders_BasicDump.kt")
     public void testContributionProviders_BasicDump() {
       runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributionProviders_BasicDump.kt");
@@ -88,6 +94,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("ImplicitClassKeyPopulatedOnCopy.kt")
     public void testImplicitClassKeyPopulatedOnCopy() {
       runTest("compiler-tests/src/test/data/dump/ir/aggregation/ImplicitClassKeyPopulatedOnCopy.kt");
+    }
+
+    @Test
+    @TestMetadata("MergeContributionsInIrOptIn.kt")
+    public void testMergeContributionsInIrOptIn() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/MergeContributionsInIrOptIn.kt");
     }
 
     @Test

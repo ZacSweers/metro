@@ -43,6 +43,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ChunkMergedSupertypesBasic.kt")
+    public void testChunkMergedSupertypesBasic() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ChunkMergedSupertypesBasic.kt");
+    }
+
+    @Test
+    @TestMetadata("ChunkMergedSupertypesWithBindings.kt")
+    public void testChunkMergedSupertypesWithBindings() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ChunkMergedSupertypesWithBindings.kt");
+    }
+
+    @Test
     @TestMetadata("ComputedPropertiesIntoSet.kt")
     public void testComputedPropertiesIntoSet() {
       runTest("compiler-tests/src/test/data/box/aggregation/ComputedPropertiesIntoSet.kt");
@@ -199,9 +211,27 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("LargeContributionGraphSignatureLimitStressTest.kt")
+    public void testLargeContributionGraphSignatureLimitStressTest() {
+      runTest("compiler-tests/src/test/data/box/aggregation/LargeContributionGraphSignatureLimitStressTest.kt");
+    }
+
+    @Test
     @TestMetadata("MapKeyNotCopiedForNonIntoMapBinding.kt")
     public void testMapKeyNotCopiedForNonIntoMapBinding() {
       runTest("compiler-tests/src/test/data/box/aggregation/MapKeyNotCopiedForNonIntoMapBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("MergeContributionsInIrBasic.kt")
+    public void testMergeContributionsInIrBasic() {
+      runTest("compiler-tests/src/test/data/box/aggregation/MergeContributionsInIrBasic.kt");
+    }
+
+    @Test
+    @TestMetadata("MergeContributionsInIrWithBindings.kt")
+    public void testMergeContributionsInIrWithBindings() {
+      runTest("compiler-tests/src/test/data/box/aggregation/MergeContributionsInIrWithBindings.kt");
     }
 
     @Test

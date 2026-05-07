@@ -1,0 +1,166 @@
+// FILE: ChunkMergedSupertypes.kt
+
+@MergeContributionsInIr
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph, ContributionChunk_0, ContributionChunk_1 {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    interface ContributionChunk_0 : ContributedA, MetroContributionToAppScope, ContributedB, MetroContributionToAppScope {
+    }
+
+    interface ContributionChunk_1 : ContributedC, MetroContributionToAppScope {
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val a: String
+      override get(): String {
+        return <this>.#thisGraphInstance.provideA()
+      }
+
+    override val b: String
+      override get(): String {
+        return <this>.#thisGraphInstance.provideA()
+      }
+
+    override val c: String
+      override get(): String {
+        return <this>.#thisGraphInstance.provideA()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideA", propertyName = "", startOffset = 373, endOffset = 411, newInstanceName = "provideA")
+  class ProvideAMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): Factory<String> {
+        return ProvideAMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideA(instance: AppGraph): String {
+        return instance.provideA()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return Companion.provideA(instance = <this>.#instance)
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  fun provideA(): String {
+    return "a"
+  }
+
+}
+
+@ContributesTo(scope = AppScope::class)
+interface ContributedA {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface MetroContributionToAppScope : ContributedA {
+  }
+
+  abstract val a: String
+    abstract get
+
+}
+
+@ContributesTo(scope = AppScope::class)
+interface ContributedB {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface MetroContributionToAppScope : ContributedB {
+  }
+
+  abstract val b: String
+    abstract get
+
+}
+
+@ContributesTo(scope = AppScope::class)
+interface ContributedC {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface MetroContributionToAppScope : ContributedC {
+  }
+
+  abstract val c: String
+    abstract get
+
+}
+
+// FILE: contributedAAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: ContributedA) {
+  return error(message = "Never called")
+}
+
+// FILE: contributedBAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: ContributedB) {
+  return error(message = "Never called")
+}
+
+// FILE: contributedCAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: ContributedC) {
+  return error(message = "Never called")
+}
+
