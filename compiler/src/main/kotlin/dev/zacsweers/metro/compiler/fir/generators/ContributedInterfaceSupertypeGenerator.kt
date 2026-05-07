@@ -252,6 +252,11 @@ internal class ContributedInterfaceSupertypeGenerator(
     // visible to the predicate-based provider.
     val graphAnnotation = declaration.graphAnnotation() ?: return false
 
+    // @MergeContributionsInIr opts the graph out of FIR-side merging entirely.
+    if (declaration.isAnnotatedWithAny(session, setOf(Symbols.ClassIds.mergeContributionsInIr))) {
+      return false
+    }
+
     // Can't check the scope class ID here but we'll check in computeAdditionalSupertypes
     return graphAnnotation.scopeArgument(session) != null
   }
@@ -265,6 +270,7 @@ internal class ContributedInterfaceSupertypeGenerator(
         qualifiersPredicate,
         bindingContainerPredicate,
         originPredicate,
+        mergeContributionsInIrPredicate,
       )
     }
     // Register predicates from external contribution extensions
@@ -280,6 +286,9 @@ internal class ContributedInterfaceSupertypeGenerator(
   ): List<ConeKotlinType> {
     // For generated @DependencyGraph classes (from external FIR extensions), FIR calls this
     // method instead of computeAdditionalSupertypes. Delegate to the shared implementation.
+    if (klass.isAnnotatedWithAny(session, setOf(Symbols.ClassIds.mergeContributionsInIr))) {
+      return emptyList()
+    }
     return computeContributionSupertypes(
       classLikeDeclaration = klass,
       typeResolver = typeResolver,

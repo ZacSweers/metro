@@ -68,4 +68,7 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val defaultBindingAnnotationPredicate =
     annotated(classIds.defaultBindingAnnotation.asSingleFqName())
+
+  internal val mergeContributionsInIrPredicate =
+    annotated(Symbols.ClassIds.mergeContributionsInIr.asSingleFqName())
 }
