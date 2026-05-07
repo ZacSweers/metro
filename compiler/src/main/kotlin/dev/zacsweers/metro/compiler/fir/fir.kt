@@ -46,9 +46,9 @@ import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getTargetType
-import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.utils.classId
@@ -204,9 +204,9 @@ internal fun FirBasedSymbol<*>.isGraphFactory(session: FirSession): Boolean {
 
 internal fun FirAnnotationContainer.isAnnotatedWithAny(
   session: FirSession,
-  names: Collection<ClassId>,
+  names: Set<ClassId>,
 ): Boolean {
-  return names.any { hasAnnotation(it, session) }
+  return annotations.any { it.isResolved && it.toAnnotationClassId(session) in names }
 }
 
 internal fun FirAnnotationContainer.annotationsIn(
