@@ -140,4 +140,8 @@ internal object Keys {
   data object GeneratedAssistedFactoryCreateFunction : GeneratedDeclarationKey() {
     override fun toString() = "GeneratedAssistedFactoryCreateFunction"
   }
+
+  data object ContributionSupertypeChunk : GeneratedDeclarationKey() {
+    override fun toString() = "ContributionSupertypeChunk"
+  }
 }
