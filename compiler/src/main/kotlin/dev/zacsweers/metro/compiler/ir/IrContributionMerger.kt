@@ -413,6 +413,31 @@ internal data class IrContributions(
 )
 
 /**
+ * Returns [contributions]'s `MetroContribution` markers plus their parent contributing interfaces
+ * promoted as direct supertypes. Each marker in [IrContributions.supertypes] is already a
+ * `@MetroContribution(scope = X)` for an X in `allScopes`, so the parent is unconditionally a
+ * legitimate contribution; we just add it alongside the marker. Skips parents already present in
+ * [ownerGraph]'s supertypes.
+ */
+internal fun contributionsWithPromotedParents(
+  contributions: IrContributions,
+  ownerGraph: IrClass,
+): SortedSet<IrType> {
+  val combined = contributions.supertypes.toMutableSet()
+
+  val existing = ownerGraph.superTypes.mapNotNullTo(mutableSetOf()) { it.rawTypeOrNull()?.classId }
+
+  for (marker in contributions.supertypes) {
+    val parentClass = marker.rawType().parentAsClass
+    val parentClassId = parentClass.classId ?: continue
+    if (!existing.add(parentClassId)) continue
+    combined.add(parentClass.symbol.defaultType)
+  }
+
+  return combined.toSortedSet(compareBy { it.rawType().classIdOrFail.toString() })
+}
+
+/**
  * Groups [supertypes] into synthetic chunk interfaces nested under [ownerGraph]. Returns the list
  * to actually attach to the graph. When the `merged-supertype-chunk-size` option is below 2 or the
  * input fits in a single chunk, the input list is returned unchanged.

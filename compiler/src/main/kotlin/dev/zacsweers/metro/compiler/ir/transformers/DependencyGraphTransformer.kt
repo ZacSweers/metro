@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.UsedKeyCollector
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.chunkSupertypesIfNeeded
+import dev.zacsweers.metro.compiler.ir.contributionsWithPromotedParents
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
@@ -166,9 +167,10 @@ internal class DependencyGraphTransformer(
       contributionMerger.computeContributions(graphAnnotation, graphDeclaration) ?: return
     if (contributions.supertypes.isEmpty()) return
 
+    val supertypesWithParents = contributionsWithPromotedParents(contributions, metroGraph)
     metroGraph.superTypes =
-      metroGraph.superTypes + chunkSupertypesIfNeeded(contributions.supertypes, metroGraph)
-    contributions.supertypes.forEach { contribution ->
+      metroGraph.superTypes + chunkSupertypesIfNeeded(supertypesWithParents, metroGraph)
+    supertypesWithParents.forEach { contribution ->
       contribution.rawTypeOrNull()?.let { trackClassLookup(graphDeclaration, it) }
     }
   }
