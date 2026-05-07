@@ -25,7 +25,7 @@ import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.UsedKeyCollector
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.chunkSupertypesIfNeeded
-import dev.zacsweers.metro.compiler.ir.contributionsWithPromotedParents
+import dev.zacsweers.metro.compiler.ir.computePromotedParents
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
@@ -47,6 +47,7 @@ import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.rebuildFakeOverrides
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -167,11 +168,22 @@ internal class DependencyGraphTransformer(
       contributionMerger.computeContributions(graphAnnotation, graphDeclaration) ?: return
     if (contributions.supertypes.isEmpty()) return
 
-    val supertypesWithParents = contributionsWithPromotedParents(contributions, metroGraph)
-    metroGraph.superTypes =
-      metroGraph.superTypes + chunkSupertypesIfNeeded(supertypesWithParents, metroGraph)
-    supertypesWithParents.forEach { contribution ->
-      contribution.rawTypeOrNull()?.let { trackClassLookup(graphDeclaration, it) }
+    val promotedParents = computePromotedParents(contributions, metroGraph)
+    metroGraph.superTypes +=
+      chunkSupertypesIfNeeded(contributions.supertypes, metroGraph, promotedParents)
+    // FIR2IR populated metroGraph's fake overrides before this transformer ran, so the contribution
+    // accessors we just added through new supertypes (markers, promoted parents, or chunks) are
+    // missing. Rebuilding reconciles existing fake overrides with the new supertype hierarchy so
+    // Metro's downstream IR pipeline can discover the accessors and synthesize implementations,
+    // without producing duplicates for members like equals that already had FIR2IR overrides bound
+    // to a different supertype path.
+    metroGraph.rebuildFakeOverrides(irTypeSystemContext)
+
+    contributions.supertypes.forEach { marker ->
+      marker.rawTypeOrNull()?.let { trackClassLookup(graphDeclaration, it) }
+    }
+    promotedParents.values.forEach { parent ->
+      parent.rawTypeOrNull()?.let { trackClassLookup(graphDeclaration, it) }
     }
   }
 
