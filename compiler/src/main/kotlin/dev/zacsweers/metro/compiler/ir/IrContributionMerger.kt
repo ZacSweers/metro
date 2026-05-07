@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
 import dev.zacsweers.metro.compiler.fir.replacesArgument
@@ -15,14 +16,21 @@ import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.SortedMap
 import java.util.SortedSet
 import java.util.concurrent.ConcurrentHashMap
+import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.ClassId
 
@@ -403,3 +411,42 @@ internal data class IrContributions(
   // Deterministic sort
   val bindingContainers: SortedMap<ClassId, IrClass>,
 )
+
+/**
+ * Groups [supertypes] into synthetic chunk interfaces nested under [ownerGraph]. Returns the list
+ * to actually attach to the graph. When the `merged-supertype-chunk-size` option is below 2 or the
+ * input fits in a single chunk, the input list is returned unchanged.
+ *
+ * Chunks carry [Origins.ContributionSupertypeChunk] so downstream supertype walkers (notably
+ * binding-alias creation) can identify and skip them.
+ */
+context(traceScope: TraceScope)
+internal fun IrMetroContext.chunkSupertypesIfNeeded(
+  supertypes: SortedSet<IrType>,
+  ownerGraph: IrClass,
+): Collection<IrType> {
+  val chunkSize = options.mergedSupertypeChunkSize
+  if (chunkSize < 2 || supertypes.size <= chunkSize) return supertypes
+  return trace("Chunk merged supertypes") {
+    supertypes.chunked(chunkSize).mapIndexed { index, chunk ->
+      val chunkClass =
+        irFactory
+          .buildClass {
+            name = "ContributionChunk_$index".asName()
+            kind = ClassKind.INTERFACE
+            modality = Modality.ABSTRACT
+            // Match the owner graph impl so the chunks aren't more or less visible than the
+            // class that references them.
+            visibility = ownerGraph.visibility
+            origin = Origins.ContributionSupertypeChunk
+          }
+          .apply {
+            createThisReceiverParameter()
+            superTypes = chunk
+            ownerGraph.addChild(this)
+            addFakeOverrides(irTypeSystemContext)
+          }
+      chunkClass.symbol.defaultType
+    }
+  }
+}
