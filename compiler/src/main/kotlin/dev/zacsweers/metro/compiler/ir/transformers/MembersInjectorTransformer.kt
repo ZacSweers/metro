@@ -67,7 +67,6 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
@@ -393,11 +392,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     trace("Override injectMembers()") {
       injectorClass.requireSimpleFunction(Symbols.StringNames.INJECT_MEMBERS).owner.apply {
         finalizeFakeOverride(injectorClass.thisReceiverOrFail)
-        val typeArgs = declaration.typeParameters.map { it.defaultType }
         body =
           pluginContext.createIrBuilder(symbol).irBlockBody {
             addMemberInjection(
-              typeArgs = typeArgs,
               callingFunction = this@apply,
               instanceReceiver = regularParameters[0],
               injectorReceiver = dispatchReceiverParameter!!,
@@ -750,7 +747,6 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
 context(context: IrMetroContext)
 internal fun IrBlockBodyBuilder.addMemberInjection(
-  typeArgs: List<IrType>?,
   callingFunction: IrSimpleFunction,
   injectFunctions: Map<IrSimpleFunction, Parameters>,
   parametersToFields: Map<Parameter, IrField>,
@@ -761,7 +757,7 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
     trackFunctionCall(callingFunction, function)
     +irInvoke(
       callee = function.symbol,
-      typeArgs = typeArgs,
+      typeArgs = function.typeParameters.map { it.defaultType },
       args =
         buildList {
           add(irGet(instanceReceiver))

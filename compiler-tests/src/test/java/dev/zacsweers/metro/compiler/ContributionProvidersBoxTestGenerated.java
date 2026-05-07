@@ -2120,6 +2120,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("GenericMemberInjectionWithFewerParentTypeParameters.kt")
+      public void testGenericMemberInjectionWithFewerParentTypeParameters() {
+        runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjectionWithFewerParentTypeParameters.kt");
+      }
+
+      @Test
       @TestMetadata("GenericMemberInjectionWithWildcard.kt")
       public void testGenericMemberInjectionWithWildcard() {
         runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjectionWithWildcard.kt");
