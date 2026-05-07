@@ -18,13 +18,18 @@ import java.util.SortedSet
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
+import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
@@ -413,47 +418,79 @@ internal data class IrContributions(
 )
 
 /**
- * Returns [contributions]'s `MetroContribution` markers plus their parent contributing interfaces
- * promoted as direct supertypes. Each marker in [IrContributions.supertypes] is already a
- * `@MetroContribution(scope = X)` for an X in `allScopes`, so the parent is unconditionally a
- * legitimate contribution; we just add it alongside the marker. Skips parents already present in
- * [ownerGraph]'s supertypes.
+ * For each `MetroContribution` marker in [contributions], returns its parent contributing interface
+ * if that parent is not already a direct supertype of [ownerGraph]. Each marker in
+ * [IrContributions.supertypes] is already a `@MetroContribution(scope = X)` for an X in
+ * `allScopes`, so the parent is unconditionally a legitimate contribution.
  */
-internal fun contributionsWithPromotedParents(
+internal fun computePromotedParents(
   contributions: IrContributions,
   ownerGraph: IrClass,
-): SortedSet<IrType> {
-  val combined = contributions.supertypes.toMutableSet()
-
+): Map<IrType, IrType> {
   val existing = ownerGraph.superTypes.mapNotNullTo(mutableSetOf()) { it.rawTypeOrNull()?.classId }
-
-  for (marker in contributions.supertypes) {
-    val parentClass = marker.rawType().parentAsClass
-    val parentClassId = parentClass.classId ?: continue
-    if (!existing.add(parentClassId)) continue
-    combined.add(parentClass.symbol.defaultType)
+  return buildMap {
+    for (marker in contributions.supertypes) {
+      val parentClass = marker.rawType().parentAsClass
+      val parentClassId = parentClass.classId ?: continue
+      if (!existing.add(parentClassId)) continue
+      put(marker, parentClass.symbol.defaultType)
+    }
   }
-
-  return combined.toSortedSet(compareBy { it.rawType().classIdOrFail.toString() })
 }
 
 /**
- * Groups [supertypes] into synthetic chunk interfaces nested under [ownerGraph]. Returns the list
- * to actually attach to the graph. When the `merged-supertype-chunk-size` option is below 2 or the
- * input fits in a single chunk, the input list is returned unchanged.
+ * Rebuilds fake overrides on this class against its current supertypes, reconciling existing
+ * declarations with the supertype hierarchy. Use after mutating [IrClass.superTypes] post-FIR2IR;
+ * the public `addFakeOverrides` extension only adds new fake overrides for super members not in
+ * existing declarations' `overriddenSymbols`, which produces duplicates when a new supertype path
+ * exposes a member that an existing fake override already covers via a different path (e.g.
+ * `equals` reachable both via the original supertype and via newly added chunks).
+ */
+internal fun IrClass.rebuildFakeOverrides(typeSystem: IrTypeSystemContext) {
+  IrFakeOverrideBuilder(typeSystem, MetroFakeOverrideBuilderStrategy, emptyList())
+    .buildFakeOverridesForClass(this, oldSignatures = false)
+}
+
+private object MetroFakeOverrideBuilderStrategy :
+  FakeOverrideBuilderStrategy.BindToPrivateSymbols() {
+  override fun postProcessGeneratedFakeOverride(
+    fakeOverride: IrOverridableDeclaration<*>,
+    clazz: IrClass,
+  ) {}
+
+  override fun shouldSeeInternals(
+    thisModule: ModuleDescriptor,
+    memberModule: ModuleDescriptor,
+  ): Boolean {
+    return thisModule.name.asStringStripSpecialMarkers() ==
+      memberModule.name.asStringStripSpecialMarkers()
+  }
+}
+
+/**
+ * Groups [markers] into synthetic chunk interfaces nested under [ownerGraph]. Each chunk holds at
+ * most `merged-supertype-chunk-size` markers, so the chunk count tracks the contribution count
+ * rather than the raw supertype count. When [promotedParents] supplies a parent for a marker, the
+ * parent goes into the same chunk as its marker.
+ *
+ * When the option is below 2 or the input fits in a single chunk, the input is returned flat
+ * (markers and any promoted parents inline) without producing chunk classes.
  *
  * Chunks carry [Origins.ContributionSupertypeChunk] so downstream supertype walkers (notably
  * binding-alias creation) can identify and skip them.
  */
 context(traceScope: TraceScope)
 internal fun IrMetroContext.chunkSupertypesIfNeeded(
-  supertypes: SortedSet<IrType>,
+  markers: SortedSet<IrType>,
   ownerGraph: IrClass,
+  promotedParents: Map<IrType, IrType> = emptyMap(),
 ): Collection<IrType> {
   val chunkSize = options.mergedSupertypeChunkSize
-  if (chunkSize < 2 || supertypes.size <= chunkSize) return supertypes
+  if (chunkSize < 2 || markers.size <= chunkSize) {
+    return markers.flatMap { listOfNotNull(it, promotedParents[it]) }
+  }
   return trace("Chunk merged supertypes") {
-    supertypes.chunked(chunkSize).mapIndexed { index, chunk ->
+    markers.chunked(chunkSize).mapIndexed { index, chunk ->
       val chunkClass =
         irFactory
           .buildClass {
@@ -467,7 +504,7 @@ internal fun IrMetroContext.chunkSupertypesIfNeeded(
           }
           .apply {
             createThisReceiverParameter()
-            superTypes = chunk
+            superTypes = chunk.flatMap { marker -> listOfNotNull(marker, promotedParents[marker]) }
             ownerGraph.addChild(this)
             addFakeOverrides(irTypeSystemContext)
           }
