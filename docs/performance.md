@@ -157,6 +157,32 @@ Below are some results from real-world projects, shared with the developers' per
 
     > Metro consolidated all the best practices from other popular frameworks, while leaving out the not-so-best practices on the side, allowed us to enable K2 and immediately experience significant build time improvements, while also unlocking incremental compilation, which means that the builds will be getting even faster
 
+## Scaling to Very Large Graphs
+
+For graphs aggregating thousands of contributions, two opt-in knobs help work around JVM and Kotlin metadata size limits. Both are power-user features and unnecessary for typical graphs.
+
+### `@MergeContributionsInIr`
+
+Annotating a graph with `@MergeContributionsInIr` opts it out of FIR-side contribution-supertype merging. Contributions are still merged into the graph during IR, so runtime behavior is unchanged. The trade-off is that contributions become invisible in the graph's Kotlin metadata:
+
+- Code consuming the graph as an `@Includes` dependency will not see contributed members.
+- IDE support will not surface contributed members on the graph type.
+- Kotlin/Native ObjC framework export will not include contributed interfaces in the graph's supertype list.
+
+This annotation is `@DelicateMetroApi` and requires explicit opt-in. You should only use this if you have a very specific reason to.
+
+### `merged-supertype-chunk-size`
+
+The `merged-supertype-chunk-size` Metro compiler option groups merged contribution supertypes into synthetic intermediate interfaces of at most N contributions each. This is useful for graphs whose merged supertype list would otherwise exceed the JVM's 65535-byte class signature limit, which the JVM emits whenever at least one supertype is generic.
+
+```kotlin
+metro {
+  compilerOptions.put("merged-supertype-chunk-size", "200")
+}
+```
+
+Default `0` disables chunking. Each chunk holds up to N contributions plus their promoted parent interfaces, so the chunk count tracks the contribution count rather than the raw supertype count. Most useful paired with `@MergeContributionsInIr` for the largest graphs.
+
 ## Tracing
 
 If you want to investigate the performance of Metro's compiler pipeline, you can enable tracing in the Gradle DSL.
