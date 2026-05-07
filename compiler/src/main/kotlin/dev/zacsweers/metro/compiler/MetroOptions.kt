@@ -221,6 +221,22 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.toInt() },
     )
   ),
+  MERGED_SUPERTYPE_CHUNK_SIZE(
+    RawMetroOption(
+      name = "merged-supertype-chunk-size",
+      defaultValue = 0,
+      valueDescription = "<count>",
+      description =
+        "Maximum number of contribution supertypes per chunk when merging contributions in IR." +
+          " When set, the IR contribution merger groups merged supertypes into synthetic intermediate" +
+          " interfaces of at most this size, which is useful for graphs whose merged supertype list" +
+          " exceeds the JVM's 65k class signature byte limit. Default 0 disables chunking. Values < 2" +
+          " are treated as disabled.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.toInt() },
+    )
+  ),
   ENABLE_SWITCHING_PROVIDERS(
     RawMetroOption.boolean(
       name = "enable-switching-providers",
@@ -943,6 +959,8 @@ public data class MetroOptions(
   public val enableGraphSharding: Boolean =
     MetroOption.ENABLE_GRAPH_SHARDING.raw.defaultValue.expectAs(),
   public val keysPerGraphShard: Int = MetroOption.KEYS_PER_GRAPH_SHARD.raw.defaultValue.expectAs(),
+  public val mergedSupertypeChunkSize: Int =
+    MetroOption.MERGED_SUPERTYPE_CHUNK_SIZE.raw.defaultValue.expectAs(),
   public val enableSwitchingProviders: Boolean =
     MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
   public val useSecondaryTopoSort: Boolean =
@@ -1121,6 +1139,7 @@ public data class MetroOptions(
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
+    public var mergedSupertypeChunkSize: Int = base.mergedSupertypeChunkSize
     public var enableSwitchingProviders: Boolean = base.enableSwitchingProviders
     public var useSecondaryTopoSort: Boolean = base.useSecondaryTopoSort
     public var publicScopedProviderSeverity: DiagnosticSeverity = base.publicScopedProviderSeverity
@@ -1333,6 +1352,7 @@ public data class MetroOptions(
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
+        mergedSupertypeChunkSize = mergedSupertypeChunkSize,
         enableSwitchingProviders = enableSwitchingProviders,
         useSecondaryTopoSort = useSecondaryTopoSort,
         publicScopedProviderSeverity = publicScopedProviderSeverity,
@@ -1555,6 +1575,8 @@ public data class MetroOptions(
           ENABLE_GRAPH_SHARDING -> enableGraphSharding = configuration.getAsBoolean(entry)
 
           KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = configuration.getAsInt(entry)
+
+          MERGED_SUPERTYPE_CHUNK_SIZE -> mergedSupertypeChunkSize = configuration.getAsInt(entry)
 
           ENABLE_SWITCHING_PROVIDERS -> enableSwitchingProviders = configuration.getAsBoolean(entry)
 

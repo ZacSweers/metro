@@ -37,6 +37,12 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Maximum number of binding keys per graph shard when sharding is enabled.") {
       it.toInt()
     }
+  val MERGED_SUPERTYPE_CHUNK_SIZE by
+    valueDirective(
+      "Maximum number of contribution supertypes per chunk when merging contributions in IR. 0 disables chunking."
+    ) {
+      it.toInt()
+    }
   val ENABLE_SWITCHING_PROVIDERS by
     valueDirective("Enable SwitchingProviders for deferred class loading.") { it.toBoolean() }
   val ENABLE_FULL_BINDING_GRAPH_VALIDATION by

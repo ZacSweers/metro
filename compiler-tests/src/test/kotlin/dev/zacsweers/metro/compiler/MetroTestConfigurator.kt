@@ -68,6 +68,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
 
 fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
   OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroApi")
+  OPT_IN.with("dev.zacsweers.metro.DelicateMetroApi")
 }
 
 /**

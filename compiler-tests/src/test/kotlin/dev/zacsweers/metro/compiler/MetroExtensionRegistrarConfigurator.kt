@@ -86,6 +86,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
         keysPerGraphShard = it
       }
+      module.directives.singleOrZeroValue(MetroDirectives.MERGED_SUPERTYPE_CHUNK_SIZE)?.let {
+        mergedSupertypeChunkSize = it
+      }
       enableSwitchingProviders =
         // Weird but necessary because we may set a default in default configurations that we
         // override in the test, so just take the last one from the file
