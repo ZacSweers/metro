@@ -58,4 +58,5 @@
 # Android Studio Quail 1 | 2026.1.1 Canary 1 (canary)
 # Android Studio Quail 1 | 2026.1.1 Canary 2 (canary)
 # Android Studio Quail 1 | 2026.1.1 Canary 3 (canary)
+# Android Studio Quail 1 | 2026.1.1 Canary 4 (canary)
 2.4.255-dev-255=2.4.0-dev-2631
