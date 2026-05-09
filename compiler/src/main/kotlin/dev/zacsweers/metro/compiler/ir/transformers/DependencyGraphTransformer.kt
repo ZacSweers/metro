@@ -47,7 +47,6 @@ import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
-import dev.zacsweers.metro.compiler.ir.rebuildFakeOverrides
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -177,7 +176,7 @@ internal class DependencyGraphTransformer(
     // Metro's downstream IR pipeline can discover the accessors and synthesize implementations,
     // without producing duplicates for members like equals that already had FIR2IR overrides bound
     // to a different supertype path.
-    metroGraph.rebuildFakeOverrides(irTypeSystemContext)
+    metroGraph.rebuildFakeOverridesCompat(irTypeSystemContext)
 
     contributions.supertypes.forEach { marker ->
       marker.rawTypeOrNull()?.let { trackClassLookup(graphDeclaration, it) }

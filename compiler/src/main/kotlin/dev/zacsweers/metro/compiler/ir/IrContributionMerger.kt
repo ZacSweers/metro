@@ -18,18 +18,13 @@ import java.util.SortedSet
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
-import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
-import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
@@ -435,35 +430,6 @@ internal fun computePromotedParents(
       if (!existing.add(parentClassId)) continue
       put(marker, parentClass.symbol.defaultType)
     }
-  }
-}
-
-/**
- * Rebuilds fake overrides on this class against its current supertypes, reconciling existing
- * declarations with the supertype hierarchy. Use after mutating [IrClass.superTypes] post-FIR2IR;
- * the public `addFakeOverrides` extension only adds new fake overrides for super members not in
- * existing declarations' `overriddenSymbols`, which produces duplicates when a new supertype path
- * exposes a member that an existing fake override already covers via a different path (e.g.
- * `equals` reachable both via the original supertype and via newly added chunks).
- */
-internal fun IrClass.rebuildFakeOverrides(typeSystem: IrTypeSystemContext) {
-  IrFakeOverrideBuilder(typeSystem, MetroFakeOverrideBuilderStrategy, emptyList())
-    .buildFakeOverridesForClass(this, oldSignatures = false)
-}
-
-private object MetroFakeOverrideBuilderStrategy :
-  FakeOverrideBuilderStrategy.BindToPrivateSymbols() {
-  override fun postProcessGeneratedFakeOverride(
-    fakeOverride: IrOverridableDeclaration<*>,
-    clazz: IrClass,
-  ) {}
-
-  override fun shouldSeeInternals(
-    thisModule: ModuleDescriptor,
-    memberModule: ModuleDescriptor,
-  ): Boolean {
-    return thisModule.name.asStringStripSpecialMarkers() ==
-      memberModule.name.asStringStripSpecialMarkers()
   }
 }
 
