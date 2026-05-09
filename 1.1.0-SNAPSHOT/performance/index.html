@@ -1413,6 +1413,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#scaling-to-very-large-graphs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scaling to Very Large Graphs
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scaling to Very Large Graphs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mergecontributionsinir" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>@MergeContributionsInIr</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#merged-supertype-chunk-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>merged-supertype-chunk-size</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#tracing" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2121,6 +2160,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#scaling-to-very-large-graphs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scaling to Very Large Graphs
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scaling to Very Large Graphs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mergecontributionsinir" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>@MergeContributionsInIr</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#merged-supertype-chunk-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>merged-supertype-chunk-size</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#tracing" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2346,6 +2424,23 @@
 <p>Metro consolidated all the best practices from other popular frameworks, while leaving out the not-so-best practices on the side, allowed us to enable K2 and immediately experience significant build time improvements, while also unlocking incremental compilation, which means that the builds will be getting even faster</p>
 </blockquote>
 </div>
+<h2 id="scaling-to-very-large-graphs">Scaling to Very Large Graphs<a class="headerlink" href="#scaling-to-very-large-graphs" title="Permanent link">&para;</a></h2>
+<p>For graphs aggregating thousands of contributions, two opt-in knobs help work around JVM and Kotlin metadata size limits. Both are power-user features and unnecessary for typical graphs.</p>
+<h3 id="mergecontributionsinir"><code>@MergeContributionsInIr</code><a class="headerlink" href="#mergecontributionsinir" title="Permanent link">&para;</a></h3>
+<p>Annotating a graph with <code>@MergeContributionsInIr</code> opts it out of FIR-side contribution-supertype merging. Contributions are still merged into the graph during IR, so runtime behavior is unchanged. The trade-off is that contributions become invisible in the graph&rsquo;s Kotlin metadata:</p>
+<ul>
+<li>Code consuming the graph as an <code>@Includes</code> dependency will not see contributed members.</li>
+<li>IDE support will not surface contributed members on the graph type.</li>
+<li>Kotlin/Native ObjC framework export will not include contributed interfaces in the graph&rsquo;s supertype list.</li>
+</ul>
+<p>This annotation is <code>@DelicateMetroApi</code> and requires explicit opt-in. You should only use this if you have a very specific reason to.</p>
+<h3 id="merged-supertype-chunk-size"><code>merged-supertype-chunk-size</code><a class="headerlink" href="#merged-supertype-chunk-size" title="Permanent link">&para;</a></h3>
+<p>The <code>merged-supertype-chunk-size</code> Metro compiler option groups merged contribution supertypes into synthetic intermediate interfaces of at most N contributions each. This is useful for graphs whose merged supertype list would otherwise exceed the JVM&rsquo;s 65535-byte class signature limit, which the JVM emits whenever at least one supertype is generic.</p>
+<div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">compilerOptions</span><span class="p">.</span><span class="na">put</span><span class="p">(</span><span class="s">&quot;merged-supertype-chunk-size&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;200&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Default <code>0</code> disables chunking. Each chunk holds up to N contributions plus their promoted parent interfaces, so the chunk count tracks the contribution count rather than the raw supertype count. Most useful paired with <code>@MergeContributionsInIr</code> for the largest graphs.</p>
 <h2 id="tracing">Tracing<a class="headerlink" href="#tracing" title="Permanent link">&para;</a></h2>
 <p>If you want to investigate the performance of Metro&rsquo;s compiler pipeline, you can enable tracing in the Gradle DSL.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>

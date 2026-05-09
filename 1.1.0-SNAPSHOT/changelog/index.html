@@ -6342,6 +6342,7 @@
 <li><strong>[IR/graph]</strong> Merge two annotation walks in supertype collecting into a single pass with a per-annotation-class meta-annotation cache, so <code>@Qualifier</code>/<code>@Scope</code>-style annotations appearing across many supertypes are meta-walked once instead of N times.</li>
 </ul>
 </li>
+<li><strong>[IR]</strong> Add (advanced use only) support for chunking supertype merging in graphs. This is only for extraordinarily large graphs that may contribute more supertypes than fit in a JVM class. See <a href="https://zacsweers.github.io/metro/latest/performance#scaling-to-very-large-graphs">performance docs</a></li>
 <li><strong>[IR/tracing]</strong> Add a lot more tracing spans for more granular tracing.</li>
 <li><strong>[IR/tracing]</strong> Don&rsquo;t delete previous traces on new compilations. Now traces are just added to the designated directory each compilation when enabled.</li>
 <li><strong>[IR/runtime]</strong> For multibound maps/sets with exactly one element, Metro now generates optimized IR that uses optimized <code>SingletonSet</code>/<code>SingletonMap</code> implementations at runtime and skips the unnecessary throwaway builder allocation. Note that, when using interop, the generated code for Dagger&rsquo;s internal set/map factories still generates the necessary builder intermediary.</li>
