@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778101282761,
+  "lastUpdate": 1778358864214,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -14112,6 +14112,62 @@ window.BENCHMARK_DATA = {
             "value": 30009.588,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -11.07%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f70914d2~1",
+          "message": "[before] Add support for chunking merged supertypes (#2259)",
+          "timestamp": "2026-05-09T19:55:33+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f70914d2f7f22580bb816f431ac68324238431a0"
+        },
+        "date": 1778358864214,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 30567.914,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f70914d2f7f22580bb816f431ac68324238431a0",
+          "message": "[after] Add support for chunking merged supertypes (#2259)",
+          "timestamp": "2026-05-09T19:55:33+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f70914d2f7f22580bb816f431ac68324238431a0"
+        },
+        "date": 1778358864215,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 30290.724,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.91%"
           }
         ]
       }

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778101282612,
+  "lastUpdate": 1778358864089,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -14112,6 +14112,62 @@ window.BENCHMARK_DATA = {
             "value": 0.24529339332829742,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +1.87%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f70914d2~1",
+          "message": "[before] Add support for chunking merged supertypes (#2259)",
+          "timestamp": "2026-05-09T19:55:33+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f70914d2f7f22580bb816f431ac68324238431a0"
+        },
+        "date": 1778358864089,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2398448422329101,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f70914d2f7f22580bb816f431ac68324238431a0",
+          "message": "[after] Add support for chunking merged supertypes (#2259)",
+          "timestamp": "2026-05-09T19:55:33+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f70914d2f7f22580bb816f431ac68324238431a0"
+        },
+        "date": 1778358864090,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.24010680111769736,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.11%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
