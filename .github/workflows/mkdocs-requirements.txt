@@ -1,6 +1,6 @@
 # Zensical - used for local dev and CI validation builds
 # https://zensical.org/
-zensical==0.0.40
+zensical==0.0.41
 
 # MkDocs + Material - transitive dependencies of the mike fork (not used directly)
 # Can be removed once zensical ships native versioning and the mike fork is dropped
