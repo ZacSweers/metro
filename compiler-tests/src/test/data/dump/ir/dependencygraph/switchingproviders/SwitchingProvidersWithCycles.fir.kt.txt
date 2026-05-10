@@ -13,7 +13,7 @@ interface AppGraph {
       field = DelegateFactory<String>()
 
     private val provideLongProvider: Provider<Long>
-      field = Companion.provider<Provider<Long>, Long>(delegate = SwitchingProvider<Long>(graph = <this>, id = 1))
+      field = DoubleCheck/* companion */.provider<Provider<Long>, Long>(delegate = SwitchingProvider<Long>(graph = <this>, id = 1))
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
       private val graph: Impl
@@ -28,12 +28,12 @@ interface AppGraph {
 
       override fun invoke(): T {
         return { // BLOCK
-          val tmp_0: Int = <this>.#id
+          val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp_0, arg1 = 3) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
-            EQEQ(arg0 = tmp_0, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString(int = <this>.#graph.#provideIntProvider.invoke(), long = Companion.lazy<Lazy<Long>, Long>(provider = Companion.lazy<Provider<Long>, Long>(provider = <this>.#graph.#provideLongProvider))) /*as T */
-            EQEQ(arg0 = tmp_0, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideLong(string = <this>.#graph.#provideStringProvider.invoke()) /*as T */
-            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp_0)
+            EQEQ(arg0 = tmp0_id, arg1 = 3) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString(int = <this>.#graph.#provideIntProvider.invoke(), long = DoubleCheck/* companion */.lazy<Lazy<Long>, Long>(provider = DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#graph.#provideLongProvider))) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideLong(string = <this>.#graph.#provideStringProvider.invoke()) /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
       }
@@ -44,7 +44,7 @@ interface AppGraph {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<String>(delegateFactory = <this>.#provideStringProvider, delegate = Companion.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 2)))
+      DelegateFactory/* companion */.setDelegate<String>(delegateFactory = <this>.#provideStringProvider, delegate = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 2)))
     }
 
     override val long: Long
@@ -111,7 +111,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -158,7 +158,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Long {
-      return Companion.provideLong(instance = <this>.#instance, string = <this>.#string.invoke())
+      return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance, string = <this>.#string.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -207,7 +207,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance, int = <this>.#int.invoke(), long = Companion.lazy<Provider<Long>, Long>(provider = <this>.#long))
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance, int = <this>.#int.invoke(), long = DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#long))
     }
 
     @SingleIn(scope = AppScope::class)

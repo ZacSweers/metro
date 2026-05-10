@@ -30,7 +30,7 @@ interface AppGraph {
 
     private val setOfStringProvider: Provider<Set<String>>
       private get(): Provider<Set<String>> {
-        return Companion.singleton<String>(provider = Companion.create(instance = <this>.#thisGraphInstance))
+        return SetFactory/* companion */.singleton<String>(provider = ProvideOnlyMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
       }
 
     override val tags: Function0<Set<String>>
@@ -92,7 +92,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): String {
-      return Companion.provideOnly(instance = <this>.#instance)
+      return ProvideOnlyMetroFactory/* companion */.provideOnly(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -118,3 +118,4 @@ interface AppGraph {
     abstract get
 
 }
+

@@ -36,7 +36,7 @@ interface AppGraph {
 
     private val mapOfIntToIntProvider: Provider<Map<Int, Int>>
       private get(): Provider<Map<Int, Int>> {
-        return Companion.singleton<Int, Int>(key = 1, provider = Companion.create(instance = <this>.#thisGraphInstance))
+        return MapFactory/* companion */.singleton<Int, Int>(key = 1, provider = ProvideValueMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
       }
 
   }
@@ -93,7 +93,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideValue(instance = <this>.#instance)
+      return ProvideValueMetroFactory/* companion */.provideValue(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -120,3 +120,4 @@ interface AppGraph {
     abstract get
 
 }
+

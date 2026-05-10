@@ -9,10 +9,10 @@ interface AppGraph {
     private val thisGraphInstance: Impl
       field = <this>
 
-    interface ContributionChunk_0 : ContributedA, MetroContributionToAppScope, ContributedB, MetroContributionToAppScope {
+    interface ContributionChunk_0 : ContributedA, ContributedA.MetroContributionToAppScope, ContributedB, ContributedB.MetroContributionToAppScope {
     }
 
-    interface ContributionChunk_1 : ContributedC, MetroContributionToAppScope {
+    interface ContributionChunk_1 : ContributedC, ContributedC.MetroContributionToAppScope {
     }
 
     private constructor() /* primary */ {
@@ -90,7 +90,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): String {
-      return Companion.provideA(instance = <this>.#instance)
+      return ProvideAMetroFactory/* companion */.provideA(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
