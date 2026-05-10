@@ -46,9 +46,9 @@ import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getTargetType
-import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.utils.classId
@@ -204,9 +204,9 @@ internal fun FirBasedSymbol<*>.isGraphFactory(session: FirSession): Boolean {
 
 internal fun FirAnnotationContainer.isAnnotatedWithAny(
   session: FirSession,
-  names: Collection<ClassId>,
+  names: Set<ClassId>,
 ): Boolean {
-  return names.any { hasAnnotation(it, session) }
+  return annotations.any { it.isResolved && it.toAnnotationClassId(session) in names }
 }
 
 internal fun FirAnnotationContainer.annotationsIn(
@@ -450,6 +450,11 @@ private fun renderAnnotationArgument(
           }
       }
 
+      is FirNamedArgumentExpression -> {
+        // Ignore the name for the hash, it's the value we want
+        renderAnnotationArgument(session, arg.expression, typeResolver)
+      }
+
       // Enum entry reference or const val reference.
       // Use toResolvedCallableSymbol() (not toResolvedPropertySymbol()) because
       // enum entries are FirEnumEntrySymbol, not FirPropertySymbol.
@@ -465,8 +470,7 @@ private fun renderAnnotationArgument(
           evaluated.value
         } else {
           // May have been something like a GetClass expression, which can fall through here in 2.4+
-          // but isn't
-          // "evaluatable"
+          // but isn't "evaluatable"
           null
         }
       }
@@ -479,9 +483,10 @@ private fun renderAnnotationArgument(
       }
 
       else -> {
-        reportCompilerBug(
+        System.err.println(
           "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"
         )
+        null
       }
     }
   }
@@ -1045,6 +1050,9 @@ internal fun FirAnnotation.bindingContainerClasses(
 
 internal fun FirAnnotation.includesArgument(session: FirSession) =
   arrayArgument(session, Symbols.Names.includes, index = 0)
+
+internal fun FirAnnotation.subcomponentsArgument(session: FirSession) =
+  arrayArgument(session, Symbols.Names.subcomponents, index = 1)
 
 internal fun FirAnnotation.allScopeClassIds(session: FirSession): Set<ClassId> =
   buildSet {

@@ -24,8 +24,11 @@ import dev.zacsweers.metro.compiler.fir.generators.InjectedClassFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.LoggingFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.LoggingFirSupertypeGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactoryFirGenerator
+import dev.zacsweers.metro.compiler.fir.generators.TracingFirDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.fir.generators.TracingFirSupertypeGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.kotlinOnly
 import dev.zacsweers.metro.compiler.letIf
+import dev.zacsweers.metro.compiler.tracing.TraceContext
 import java.util.ServiceLoader
 import kotlin.io.path.appendText
 import kotlin.io.path.createFile
@@ -41,6 +44,7 @@ public class MetroFirExtensionRegistrar(
   private val options: MetroOptions,
   private val isIde: Boolean,
   private val compatContext: CompatContext,
+  private val traceContext: TraceContext,
   private val loadExternalDeclarationExtensions:
     (FirSession, MetroOptions, CompatContext) -> List<MetroFirDeclarationGenerationExtension> =
     ::loadExternalDeclarationExtensions,
@@ -49,7 +53,7 @@ public class MetroFirExtensionRegistrar(
     ::loadExternalContributionExtensions,
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
-    +MetroFirBuiltIns.getFactory(classIds, options, compatContext)
+    +MetroFirBuiltIns.getFactory(classIds, options, compatContext, traceContext)
     +::MetroFirCheckers
     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, false)
     +supertypeGenerator(
@@ -182,11 +186,14 @@ public class MetroFirExtensionRegistrar(
         } else {
           MetroLogger.NONE
         }
-      if (logger == MetroLogger.NONE) {
-        factory(session, compatContext)
-      } else {
-        LoggingFirDeclarationGenerationExtension(session, logger, factory(session, compatContext))
-      }
+      val withLogging =
+        if (logger == MetroLogger.NONE) {
+          factory(session, compatContext)
+        } else {
+          LoggingFirDeclarationGenerationExtension(session, logger, factory(session, compatContext))
+        }
+      // Tracing wrapper is no-op when tracing is disabled, so always wrap.
+      TracingFirDeclarationGenerationExtension(session, tag, withLogging)
     }
   }
 
@@ -231,13 +238,14 @@ public class MetroFirExtensionRegistrar(
         } else {
           MetroLogger.NONE
         }
-      val extension =
+      val withLogging =
         if (logger == MetroLogger.NONE) {
           delegate(session, compatContext)
         } else {
           LoggingFirSupertypeGenerationExtension(session, logger, delegate(session, compatContext))
         }
-      extension.kotlinOnly()
+      // Tracing wrapper is no-op when tracing is disabled, so always wrap.
+      TracingFirSupertypeGenerationExtension(session, tag, withLogging).kotlinOnly()
     }
   }
 }

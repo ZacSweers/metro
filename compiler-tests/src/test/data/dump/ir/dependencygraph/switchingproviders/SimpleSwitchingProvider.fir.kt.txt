@@ -73,11 +73,14 @@ interface AppGraph {
       }
 
       override fun invoke(): T {
-        return when {
-          EQEQ(arg0 = <this>.#id, arg1 = 2) -> ScopedClass() /*as T */
-          EQEQ(arg0 = <this>.#id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideReusedInt() /*as T */
-          EQEQ(arg0 = <this>.#id, arg1 = 0) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
-          else -> throw error(message = "Unexpected SwitchingProvider id: " + <this>.#id)
+        return { // BLOCK
+          val tmp_0: Int = <this>.#id
+          when {
+            EQEQ(arg0 = tmp_0, arg1 = 2) -> ScopedClass() /*as T */
+            EQEQ(arg0 = tmp_0, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideReusedInt() /*as T */
+            EQEQ(arg0 = tmp_0, arg1 = 0) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp_0)
+          }
         }
       }
 

@@ -370,6 +370,14 @@ public interface CompatContext {
   @CompatApi(
     since = "2.3.0",
     reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "FakeOverrideBuilderStrategy.BindToPrivateSymbols dropped its friendModules ctor param and added an abstract shouldSeeInternals method in 2.3.0",
+  )
+  public fun IrClass.rebuildFakeOverridesCompat(typeSystem: IrTypeSystemContext)
+
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
     message = "added inventUniqueName param",
   )
   public fun Scope.createTemporaryVariableDeclarationCompat(

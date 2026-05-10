@@ -37,6 +37,12 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Maximum number of binding keys per graph shard when sharding is enabled.") {
       it.toInt()
     }
+  val MERGED_SUPERTYPE_CHUNK_SIZE by
+    valueDirective(
+      "Maximum number of contribution supertypes per chunk when merging contributions in IR. 0 disables chunking."
+    ) {
+      it.toInt()
+    }
   val ENABLE_SWITCHING_PROVIDERS by
     valueDirective("Enable SwitchingProviders for deferred class loading.") { it.toBoolean() }
   val ENABLE_FULL_BINDING_GRAPH_VALIDATION by
@@ -141,6 +147,15 @@ object MetroDirectives : SimpleDirectivesContainer() {
       "Specifies report file names to verify against expected files. Can be specified multiple times. " +
         "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir/test/AppGraph'. " +
         "Expected files should be named '<testFile>/<diagnosticKey>/<path>/<reportName>.txt'."
+    )
+  val TRACE_DESTINATION by
+    stringDirective(
+      "Relative path to a directory to dump Metro trace files. Example: 'metro/traces'."
+    )
+  val CHECK_TRACES by
+    directive(
+      "Verifies that Metro trace files were generated and follow the expected naming pattern. " +
+        "Verification runs inside MetroReportsChecker."
     )
   val ENABLE_CIRCUIT by directive("Enables Circuit code gen.")
   val METRO_DUMP_KT_IR by

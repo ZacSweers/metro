@@ -26,6 +26,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
@@ -71,6 +72,22 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass) {
     declaration.source ?: return
     val session = context.session
+    if (
+      !declaration.isAnnotatedWithAny(
+        session,
+        session.classIds.allContributesAnnotationsWithContainers,
+      )
+    ) {
+      return
+    }
+    session.trace(name = { "AggregationChecker(${declaration.classId})" }) {
+      checkImpl(declaration)
+    }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkImpl(declaration: FirClass) {
+    val session = context.session
     val classIds = session.classIds
     // TODO
     //  validate map key with intomap (class or bound type)
@@ -82,142 +99,151 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val classQualifier = declaration.annotations.qualifierAnnotation(session)
 
-    for (annotation in declaration.annotations) {
-      if (!annotation.isResolved) continue
-      val classId = annotation.toAnnotationClassId(session) ?: continue
-      if (classId in classIds.allContributesAnnotations) {
-        val scope = annotation.resolvedScopeClassId(session) ?: continue
+    // Returns true if checkImpl should bail early after the walk.
+    fun walkAnnotations(): Boolean {
+      for (annotation in declaration.annotations) {
+        if (!annotation.isResolved) continue
+        val classId = annotation.toAnnotationClassId(session) ?: continue
+        if (classId in classIds.allContributesAnnotations) {
+          val scope = annotation.resolvedScopeClassId(session) ?: continue
 
-        // Check if the target looks suspicious
-        // - If it's a `@Scope` annotation class that's prolly not right
-        // - If it's a graph class
-        val scopeClass = scope.toLookupTag().toClassSymbolCompat(session) ?: continue
-        if (scopeClass.classKind == ClassKind.ANNOTATION_CLASS) {
-          scopeClass.annotationsIn(session, classIds.scopeAnnotations).firstOrNull()?.let {
-            reporter.reportOn(
-              annotation.scopeArgument(session)?.source ?: annotation.source,
-              MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
-              "Suspicious aggregation scope '${scope.diagnosticString}' is a concrete `@Scope` annotation type, and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
-            )
-          }
-        } else {
-          for (graphLikeAnno in scopeClass.annotationsIn(session, classIds.graphLikeAnnotations)) {
-            if (graphLikeAnno !is FirAnnotationCall) continue
-            reporter.reportOn(
-              annotation.scopeArgument(session)?.source ?: annotation.source,
-              MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
-              "Suspicious aggregation scope '${scope.diagnosticString}' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
-            )
-          }
-        }
-
-        val replaces = emptySet<ClassId>() // TODO implement
-        val checkIntoSet by memoize {
-          checkBindingContribution(
-            session,
-            ContributionKind.CONTRIBUTES_INTO_SET,
-            declaration,
-            classQualifier,
-            annotation,
-            scope,
-            classId,
-            contributesIntoSetAnnotations,
-            isMapBinding = false,
-          ) { bindingType, _ ->
-            Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, bindingType)
-          }
-        }
-        val checkIntoMap by memoize {
-          checkBindingContribution(
-            session,
-            ContributionKind.CONTRIBUTES_INTO_MAP,
-            declaration,
-            classQualifier,
-            annotation,
-            scope,
-            classId,
-            contributesIntoMapAnnotations,
-            isMapBinding = true,
-          ) { bindingType, mapKey ->
-            Contribution.ContributesIntoMap(
-              declaration,
-              annotation,
-              scope,
-              replaces,
-              bindingType,
-              mapKey!!,
-            )
-          }
-        }
-        when (classId) {
-          in classIds.contributesToAnnotations -> {
-            val contribution = Contribution.ContributesTo(declaration, annotation, scope, replaces)
-            addContributionAndCheckForDuplicate(
-              session,
-              contribution,
-              ContributionKind.CONTRIBUTES_TO,
-              contributesToAnnotations,
-              annotation,
-              scope,
-            ) {
-              return
+          // Check if the target looks suspicious
+          // - If it's a `@Scope` annotation class that's prolly not right
+          // - If it's a graph class
+          val scopeClass = scope.toLookupTag().toClassSymbolCompat(session) ?: continue
+          if (scopeClass.classKind == ClassKind.ANNOTATION_CLASS) {
+            scopeClass.annotationsIn(session, classIds.scopeAnnotations).firstOrNull()?.let {
+              reporter.reportOn(
+                annotation.scopeArgument(session)?.source ?: annotation.source,
+                MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
+                "Suspicious aggregation scope '${scope.diagnosticString}' is a concrete `@Scope` annotation type, and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+              )
+            }
+          } else {
+            for (graphLikeAnno in
+              scopeClass.annotationsIn(session, classIds.graphLikeAnnotations)) {
+              if (graphLikeAnno !is FirAnnotationCall) continue
+              reporter.reportOn(
+                annotation.scopeArgument(session)?.source ?: annotation.source,
+                MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE,
+                "Suspicious aggregation scope '${scope.diagnosticString}' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.",
+              )
             }
           }
 
-          in classIds.contributesBindingAnnotations -> {
-            if (annotation.isKiaIntoMultibinding(session)) {
-              if (!checkIntoSet) {
-                return
+          val replaces = emptySet<ClassId>() // TODO implement
+          val checkIntoSet by memoize {
+            checkBindingContribution(
+              session,
+              ContributionKind.CONTRIBUTES_INTO_SET,
+              declaration,
+              classQualifier,
+              annotation,
+              scope,
+              classId,
+              contributesIntoSetAnnotations,
+              isMapBinding = false,
+            ) { bindingType, _ ->
+              Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, bindingType)
+            }
+          }
+          val checkIntoMap by memoize {
+            checkBindingContribution(
+              session,
+              ContributionKind.CONTRIBUTES_INTO_MAP,
+              declaration,
+              classQualifier,
+              annotation,
+              scope,
+              classId,
+              contributesIntoMapAnnotations,
+              isMapBinding = true,
+            ) { bindingType, mapKey ->
+              Contribution.ContributesIntoMap(
+                declaration,
+                annotation,
+                scope,
+                replaces,
+                bindingType,
+                mapKey!!,
+              )
+            }
+          }
+          when (classId) {
+            in classIds.contributesToAnnotations -> {
+              val contribution =
+                Contribution.ContributesTo(declaration, annotation, scope, replaces)
+              addContributionAndCheckForDuplicate(
+                session,
+                contribution,
+                ContributionKind.CONTRIBUTES_TO,
+                contributesToAnnotations,
+                annotation,
+                scope,
+              ) {
+                return true
               }
-            } else {
-              val valid =
-                checkBindingContribution(
-                  session,
-                  ContributionKind.CONTRIBUTES_BINDING,
-                  declaration,
-                  classQualifier,
-                  annotation,
-                  scope,
-                  classId,
-                  contributesBindingAnnotations,
-                  isMapBinding = false,
-                ) { bindingType, _ ->
-                  Contribution.ContributesBinding(
+            }
+
+            in classIds.contributesBindingAnnotations -> {
+              if (annotation.isKiaIntoMultibinding(session)) {
+                if (!checkIntoSet) {
+                  return true
+                }
+              } else {
+                val valid =
+                  checkBindingContribution(
+                    session,
+                    ContributionKind.CONTRIBUTES_BINDING,
                     declaration,
+                    classQualifier,
                     annotation,
                     scope,
-                    replaces,
-                    bindingType,
-                  )
+                    classId,
+                    contributesBindingAnnotations,
+                    isMapBinding = false,
+                  ) { bindingType, _ ->
+                    Contribution.ContributesBinding(
+                      declaration,
+                      annotation,
+                      scope,
+                      replaces,
+                      bindingType,
+                    )
+                  }
+                if (!valid) {
+                  return true
                 }
-              if (!valid) {
-                return
               }
             }
-          }
 
-          in classIds.contributesIntoSetAnnotations -> {
-            if (!checkIntoSet) {
-              return
+            in classIds.contributesIntoSetAnnotations -> {
+              if (!checkIntoSet) {
+                return true
+              }
             }
-          }
 
-          in classIds.contributesIntoMapAnnotations -> {
-            if (!checkIntoMap) {
-              return
+            in classIds.contributesIntoMapAnnotations -> {
+              if (!checkIntoMap) {
+                return true
+              }
             }
-          }
 
-          in classIds.customContributesIntoSetAnnotations -> {
-            val isMapBinding = declaration.annotations.mapKeyAnnotation(session) != null
-            val valid = if (isMapBinding) checkIntoMap else checkIntoSet
-            if (!valid) {
-              return
+            in classIds.customContributesIntoSetAnnotations -> {
+              val isMapBinding = declaration.annotations.mapKeyAnnotation(session) != null
+              val valid = if (isMapBinding) checkIntoMap else checkIntoSet
+              if (!valid) {
+                return true
+              }
             }
           }
         }
       }
+      return false
     }
+
+    val bailFromAnnotationWalk = session.trace({ "Walk class annotations" }) { walkAnnotations() }
+    if (bailFromAnnotationWalk) return
 
     // Warn if @ExposeImplBinding is used but generateContributionProviders is not enabled
     if (!session.metroFirBuiltIns.options.generateContributionProviders) {

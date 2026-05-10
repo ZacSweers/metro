@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
-import dev.zacsweers.metro.compiler.BitField
+import dev.zacsweers.metro.compiler.BitFieldBuilder
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
@@ -264,7 +264,7 @@ internal class GraphNodes(
     }
 
     private fun buildCreator(diagnosticTag: String): GraphNode.Creator? {
-      var bindingContainerFields = BitField()
+      val bindingContainerFields = BitFieldBuilder()
       fun populateBindingContainerFields(parameters: Parameters) {
         for ((i, parameter) in parameters.regularParameters.withIndex()) {
           if (parameter.isIncludes) {
@@ -274,7 +274,7 @@ internal class GraphNodes(
 
             // Check if the parameter is a binding container
             if (parameterClass.isBindingContainer()) {
-              bindingContainerFields = bindingContainerFields.withSet(i)
+              bindingContainerFields.set(i)
             }
           }
         }
@@ -289,7 +289,7 @@ internal class GraphNodes(
             graphDeclaration,
             graphDeclaration.primaryConstructor!!,
             ctorParams,
-            bindingContainerFields,
+            bindingContainerFields.build(),
           )
         } else {
           // TODO since we already check this in FIR can we leave a more specific breadcrumb
@@ -303,7 +303,12 @@ internal class GraphNodes(
               val createFunction = factory.singleAbstractFunction()
               val parameters = createFunction.parameters()
               populateBindingContainerFields(parameters)
-              GraphNode.Creator.Factory(factory, createFunction, parameters, bindingContainerFields)
+              GraphNode.Creator.Factory(
+                factory,
+                createFunction,
+                parameters,
+                bindingContainerFields.build(),
+              )
             }
         }
 
@@ -1029,12 +1034,12 @@ internal class GraphNodes(
                     val createFunction = factory.singleAbstractFunction()
                     val parameters = createFunction.parameters()
                     // Compute binding container fields similar to buildCreator
-                    var bindingContainerFields = BitField()
+                    val bindingContainerFields = BitFieldBuilder()
                     for ((i, parameter) in parameters.regularParameters.withIndex()) {
                       if (parameter.isIncludes) {
                         val parameterClass = parameter.typeKey.type.classOrNull?.owner ?: continue
                         if (parameterClass.isBindingContainer()) {
-                          bindingContainerFields = bindingContainerFields.withSet(i)
+                          bindingContainerFields.set(i)
                         }
                       }
                     }
@@ -1042,7 +1047,7 @@ internal class GraphNodes(
                         factory,
                         createFunction,
                         parameters,
-                        bindingContainerFields,
+                        bindingContainerFields.build(),
                       )
                       .also { factory.cachedFactoryCreator = it }
                   }

@@ -43,6 +43,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContributionProviderMissingBindingShowsOrigin.kt")
+    public void testContributionProviderMissingBindingShowsOrigin() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributionProviderMissingBindingShowsOrigin.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionProviderMissingBindingShowsOriginInternal.kt")
+    public void testContributionProviderMissingBindingShowsOriginInternal() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributionProviderMissingBindingShowsOriginInternal.kt");
+    }
+
+    @Test
     @TestMetadata("CrossModuleContributionProviderHidesImplHint.kt")
     public void testCrossModuleContributionProviderHidesImplHint() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/CrossModuleContributionProviderHidesImplHint.kt");
@@ -1021,6 +1033,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("BindsOptionalOfDiagnostics.kt")
       public void testBindsOptionalOfDiagnostics() {
         runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/BindsOptionalOfDiagnostics.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerModuleSubcomponentsIsIgnored.kt")
+      public void testDaggerModuleSubcomponentsIsIgnored() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/DaggerModuleSubcomponentsIsIgnored.kt");
       }
 
       @Test

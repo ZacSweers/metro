@@ -1,0 +1,1 @@
+/DaggerModuleSubcomponentsIsIgnored.kt:(203,229): warning: Dagger's `Module.subcomponents` is ignored by Metro in interop. Expose an accessor for the subcomponent (or its `@Subcomponent.Factory`) on the parent graph, or contribute its factory via `@ContributesTo(<parent scope>::class)`.

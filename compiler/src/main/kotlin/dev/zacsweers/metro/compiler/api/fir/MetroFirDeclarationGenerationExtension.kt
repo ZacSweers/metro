@@ -70,7 +70,7 @@ public abstract class MetroFirDeclarationGenerationExtension(session: FirSession
   FirDeclarationGenerationExtension(session) {
 
   /** Enable only if this extension generates code in FIR that should be visible in the IDE. */
-  public val enableFirInIde: Boolean
+  public open val enableFirInIde: Boolean
     get() = false
 
   /**

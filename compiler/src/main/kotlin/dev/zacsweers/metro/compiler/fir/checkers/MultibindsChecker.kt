@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -15,6 +16,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.isAnnotationClass
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -54,8 +56,29 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     if (declaration is FirValueParameter) return
     val source = declaration.source ?: return
     val session = context.session
+    // Single-pass annotation extraction. checkImpl reuses this so we don't walk the annotation
+    // list more than once per call.
+    val annotations = declaration.symbol.metroAnnotations()
+    val isRelevant =
+      annotations.isMultibinds ||
+        annotations.isElementsIntoSet ||
+        annotations.isIntoMap ||
+        annotations.isIntoSet ||
+        annotations.mapKey != null
+    if (!isRelevant) return
+    session.trace(name = { "MultibindsChecker(${declaration.symbol.callableId})" }) {
+      checkImpl(declaration, source, annotations)
+    }
+  }
 
-    val annotations = declaration.symbol.metroAnnotations(session)
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkImpl(
+    declaration: FirCallableDeclaration,
+    source: KtSourceElement,
+    annotations: MetroAnnotations<MetroFirAnnotation>,
+  ) {
+    val session = context.session
+
     val isMultibinds = annotations.isMultibinds
     val isElementsIntoSet = annotations.isElementsIntoSet
     val isIntoMap = annotations.isIntoMap

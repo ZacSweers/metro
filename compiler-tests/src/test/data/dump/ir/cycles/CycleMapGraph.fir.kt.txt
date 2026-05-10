@@ -39,7 +39,7 @@ class X {
 
     @HiddenFromObjC
     override operator fun invoke(): X {
-      return MetroFactory/* companion */.newInstance(y = <this>.#y.invoke())
+      return Companion.newInstance(y = <this>.#y.invoke())
     }
 
     @HiddenFromObjC
@@ -103,7 +103,7 @@ class Y {
 
     @HiddenFromObjC
     override operator fun invoke(): Y {
-      return MetroFactory/* companion */.newInstance(mapOfProvidersOfX = <this>.#mapOfProvidersOfX.invoke(), mapOfProvidersOfY = <this>.#mapOfProvidersOfY.invoke())
+      return Companion.newInstance(mapOfProvidersOfX = <this>.#mapOfProvidersOfX.invoke(), mapOfProvidersOfY = <this>.#mapOfProvidersOfY.invoke())
     }
 
     @HiddenFromObjC
@@ -156,7 +156,7 @@ interface CycleMapGraph {
       super/*Any*/()
       /* <init>() */
 
-      DelegateFactory/* companion */.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Y.MetroFactory/* companion */.create(mapOfProvidersOfX = <this>.<get-mapOfStringToXProvider>(), mapOfProvidersOfY = <this>.<get-mapOfStringToYProvider>()))
+      Companion.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Companion.create(mapOfProvidersOfX = <this>.<get-mapOfStringToXProvider>(), mapOfProvidersOfY = <this>.<get-mapOfStringToYProvider>()))
     }
 
     override fun y(): Y {
@@ -165,20 +165,12 @@ interface CycleMapGraph {
 
     private val mapOfStringToXProvider: Provider<Map<String, Function0<X>>>
       private get(): Provider<Map<String, Function0<X>>> {
-        return { // BLOCK
-          val tmp0_builder: MapProviderFactory.Builder<String, X> = MapProviderFactory/* companion */.builder<String, X>(size = 1)
-          tmp0_builder.put(key = "X", providerOfValue = X.MetroFactory/* companion */.create(y = <this>.#yProvider))
-          tmp0_builder.build()
-        }
+        return Companion.singleton<String, X>(key = "X", provider = Companion.create(y = <this>.#yProvider))
       }
 
     private val mapOfStringToYProvider: Provider<Map<String, Function0<Y>>>
       private get(): Provider<Map<String, Function0<Y>>> {
-        return { // BLOCK
-          val tmp0_builder: MapProviderFactory.Builder<String, Y> = MapProviderFactory/* companion */.builder<String, Y>(size = 1)
-          tmp0_builder.put(key = "Y", providerOfValue = <this>.#yProvider)
-          tmp0_builder.build()
-        }
+        return Companion.singleton<String, Y>(key = "Y", provider = <this>.#yProvider)
       }
 
   }

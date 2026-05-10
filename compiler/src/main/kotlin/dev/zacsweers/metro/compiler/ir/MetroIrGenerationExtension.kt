@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.tracing.TraceContext
 import dev.zacsweers.metro.createGraphFactory
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -23,6 +24,7 @@ public class MetroIrGenerationExtension(
   private val lookupTracker: LookupTracker?,
   private val expectActualTracker: ExpectActualTracker,
   private val compatContext: CompatContext,
+  private val traceContext: TraceContext,
 ) : IrGenerationExtension {
 
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
@@ -37,6 +39,7 @@ public class MetroIrGenerationExtension(
           compatContext,
           moduleFragment,
           pluginContext,
+          traceContext,
         )
     graph.pipeline.run()
   }

@@ -8,11 +8,13 @@
 #   2. Updates the target project's gradle/libs.versions.toml metro version.
 #   3. Runs the given Gradle compile task with
 #      -Pmetro.traceDestination=metro/trace and --rerun so the compile is
-#      fresh and the plugin writes a trace under build/metro/trace/<variant>/.
-#   4. Locates the freshest .perfetto-trace produced during the run (the
-#      variant subdir depends on the compile target, so we find by mtime
-#      rather than hard-coding a path).
-#   5. Copies it into tmp/traces/ (gitignored) and prints the path.
+#      fresh and the plugin writes traces under build/metro/trace/<variant>/.
+#   4. Locates the freshest .perfetto-trace produced during the run, extracts
+#      its `<yyMMdd-HHmmss>` id prefix, and finds every sibling file sharing
+#      that id. Metro emits one file per FIR session and one per IR fragment.
+#   5. Copies all matching files into tmp/traces/ (gitignored). Filenames
+#      preserve phase + module info (e.g. `__ir--app-scaffold.perfetto-trace`).
+#      LATEST points at the IR file when one exists.
 #
 # Usage:
 #   scripts/trace-project.sh [options] <project-dir> <gradle-task> [version]
@@ -131,8 +133,11 @@ else
   if [[ -f "$COUNTER_FILE" ]]; then
     PREV=$(<"$COUNTER_FILE")
   else
-    CURRENT=$(grep -E '^metro = "1\.0\.0-LOCAL[0-9]+"' "$VERSIONS_TOML" | head -1 \
-              | sed -E 's/.*LOCAL([0-9]+).*/\1/')
+    # `|| true` so a no-match grep under set -e + pipefail doesn't abort the
+    # script (target projects that pin a non-LOCAL metro version trip this).
+    CURRENT=$(grep -E '^metro = "1\.0\.0-LOCAL[0-9]+"' "$VERSIONS_TOML" 2>/dev/null \
+              | head -1 \
+              | sed -E 's/.*LOCAL([0-9]+).*/\1/' || true)
     PREV=${CURRENT:-999}
   fi
   NEXT=$((PREV + 1))
@@ -181,20 +186,22 @@ pushd "$PROJECT_DIR" > /dev/null
 popd > /dev/null
 
 # -- Locate the freshest trace produced ------------------------------------
-# The target file lives at <projectOrSubmodule>/build/metro/trace/<variant>/
-# but the submodule segment varies with $GRADLE_TASK (e.g., :app vs
-# :feature:foo) and the variant subdir differs too. So we just take "any
-# .perfetto-trace file under $PROJECT_DIR created after the sentinel,
-# prefer the freshest". On BSD find (macOS), we use `-newer $SENTINEL`.
-echo "==> Locating fresh trace"
-SRC_TRACE=$(
+# Metro now emits one trace file per FIR session and one per IR fragment, all
+# sharing a `<yyMMdd-HHmmss>` id prefix in the basename:
+#   <id>-fir-<moduleName>.perfetto-trace
+#   <id>-ir-<moduleName>.perfetto-trace
+# The target dir lives at <projectOrSubmodule>/build/metro/trace/<variant>/
+# but the submodule + variant segments vary with $GRADLE_TASK, so we find by
+# mtime: take the freshest `.perfetto-trace` produced after the sentinel,
+# extract its id prefix, then collect every sibling file with the same id.
+echo "==> Locating fresh traces"
+FRESHEST=$(
   find "$PROJECT_DIR" \
        -type f \
        -name '*.perfetto-trace' \
        -newer "$SENTINEL" \
        -print 2>/dev/null \
   | while IFS= read -r f; do
-      # Pair each trace file with its mtime (BSD stat syntax).
       stat -f '%m %N' "$f" 2>/dev/null
     done \
   | sort -rn \
@@ -202,23 +209,58 @@ SRC_TRACE=$(
   | cut -d' ' -f2-
 )
 
-if [[ -z "${SRC_TRACE:-}" ]]; then
+if [[ -z "${FRESHEST:-}" ]]; then
   echo "ERROR: no .perfetto-trace file was produced under $PROJECT_DIR" >&2
   echo "  Did the compile actually run (not up-to-date)?" >&2
   echo "  Is the Metro plugin applied to the target module?" >&2
   exit 1
 fi
 
-# -- Copy trace into tmp/traces/ -------------------------------------------
+SRC_DIR=$(dirname "$FRESHEST")
+SRC_BASENAME=$(basename "$FRESHEST")
+# Pull the `<yyMMdd-HHmmss>` id prefix out of the basename. Falls back to the
+# whole basename if the format doesn't match (e.g. older traces with a
+# different naming scheme), in which case we just copy that one file.
+ID_PREFIX=$(echo "$SRC_BASENAME" | sed -E 's/^([0-9]{6}-[0-9]{6})-.*/\1/')
+if [[ "$ID_PREFIX" == "$SRC_BASENAME" ]]; then
+  echo "==> Warning: filename '$SRC_BASENAME' doesn't match <id>-<phase>-<module>.perfetto-trace; copying just the freshest" >&2
+  SIBLINGS=("$FRESHEST")
+else
+  SIBLINGS=()
+  while IFS= read -r f; do
+    SIBLINGS+=("$f")
+  done < <(find "$SRC_DIR" -maxdepth 1 -type f -name "${ID_PREFIX}-*.perfetto-trace" | sort)
+fi
+
+# -- Copy traces into tmp/traces/ ------------------------------------------
 TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
 SAFE_TASK=$(echo "$GRADLE_TASK" | tr ':/' '__')
-DST_TRACE="$TRACES_DIR/${TIMESTAMP}-${VERSION}${SAFE_TASK}.perfetto-trace"
-cp "$SRC_TRACE" "$DST_TRACE"
-echo "$DST_TRACE" > "$LATEST_FILE"
+DST_BASE="${TIMESTAMP}-${VERSION}${SAFE_TASK}"
 
-echo "==> Source:   $SRC_TRACE"
-echo "==> Copied:   $DST_TRACE"
-echo "==> LATEST → $LATEST_FILE"
+LATEST_DST=""
+for src in "${SIBLINGS[@]}"; do
+  src_basename=$(basename "$src")
+  # Strip the id prefix so the destination name keeps phase + module info,
+  # e.g. `__ir--app-scaffold.perfetto-trace`.
+  if [[ "$src_basename" == "$ID_PREFIX-"* ]]; then
+    suffix="${src_basename#${ID_PREFIX}-}"
+    dst="$TRACES_DIR/${DST_BASE}__${suffix}"
+  else
+    dst="$TRACES_DIR/${DST_BASE}.perfetto-trace"
+  fi
+  cp "$src" "$dst"
+  echo "==> Copied: $src -> $dst"
+  # Prefer the IR file as the LATEST target; fall back to whatever's last.
+  if [[ "$src_basename" == "${ID_PREFIX}-ir-"* || -z "$LATEST_DST" ]]; then
+    LATEST_DST="$dst"
+  fi
+done
+
+echo "$LATEST_DST" > "$LATEST_FILE"
+echo "==> LATEST → $LATEST_FILE -> $LATEST_DST"
+
+# Keep DST_TRACE in scope for downstream --open-in-browser logic.
+DST_TRACE="$LATEST_DST"
 
 # -- Optionally open in ui.perfetto.dev ------------------------------------
 if [[ "$OPEN_IN_BROWSER" == "true" ]]; then

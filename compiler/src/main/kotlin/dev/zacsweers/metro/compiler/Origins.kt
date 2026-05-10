@@ -57,6 +57,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ParentGraphParam)
   val GeneratedAssistedFactoryCreateFunction: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedAssistedFactoryCreateFunction)
+  val ContributionSupertypeChunk: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.ContributionSupertypeChunk)
 
   object FirstParty {
     // in 2.3.20, Kotlin changed the types of origins like IrDeclarationOrigin.DEFINED to

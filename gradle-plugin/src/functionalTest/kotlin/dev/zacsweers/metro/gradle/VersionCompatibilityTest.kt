@@ -14,7 +14,7 @@ class VersionCompatibilityTest {
   @Test
   fun `supported kotlin version shows no warning`() {
     val fixture =
-      object : MetroProject() {
+      object : MetroProject(multiplatform = false) {
         override fun sources() = listOf(appGraph)
 
         private val appGraph =
@@ -37,7 +37,7 @@ class VersionCompatibilityTest {
   @Test
   fun `version compatibility check can be disabled`() {
     val fixture =
-      object : MetroProject() {
+      object : MetroProject(multiplatform = false) {
         override fun sources() = listOf(appGraph)
 
         private val appGraph =
@@ -65,7 +65,7 @@ class VersionCompatibilityTest {
   @Test
   fun `kotlin version below minimum shows warning`() {
     val fixture =
-      object : MetroProject(kotlinVersion = "2.0.0") {
+      object : MetroProject(kotlinVersion = "2.0.0", multiplatform = false) {
         override fun sources() = listOf(appGraph)
 
         private val appGraph =
@@ -88,7 +88,7 @@ class VersionCompatibilityTest {
   @Test
   fun `unrecognized kotlin version shows warning with supported versions`() {
     val fixture =
-      object : MetroProject(kotlinVersion = "2.9.0") {
+      object : MetroProject(kotlinVersion = "2.9.0", multiplatform = false) {
         override fun sources() = listOf(appGraph)
 
         private val appGraph =
@@ -110,7 +110,7 @@ class VersionCompatibilityTest {
   @Test
   fun `targeting language version 1_9 is an error`() {
     val fixture =
-      object : MetroProject() {
+      object : MetroProject(multiplatform = false) {
         override fun sources() = listOf(appGraph)
 
         private val appGraph =

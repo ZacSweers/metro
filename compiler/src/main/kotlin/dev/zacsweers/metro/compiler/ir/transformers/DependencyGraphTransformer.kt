@@ -25,6 +25,8 @@ import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.UsedKeyCollector
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.betterDumpKotlinLike
+import dev.zacsweers.metro.compiler.ir.chunkSupertypesIfNeeded
+import dev.zacsweers.metro.compiler.ir.computePromotedParents
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
@@ -52,6 +54,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.mapToSet
@@ -75,6 +78,7 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.getAllSuperclasses
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -134,6 +138,7 @@ internal class DependencyGraphTransformer(
     graphImpl: IrClass,
   ) {
     try {
+      applyIrContributionMergeIfNeeded(dependencyGraphDeclaration, dependencyGraphAnno, graphImpl)
       @Suppress("RETURN_VALUE_NOT_USED")
       processGraphInner(
         dependencyGraphDeclaration,
@@ -143,6 +148,41 @@ internal class DependencyGraphTransformer(
       )
     } catch (_: ExitProcessingException) {
       // End processing, don't fail up because this would've been warned before
+    }
+  }
+
+  /**
+   * For graphs annotated with `@MergeContributionsInIr`, FIR skipped the contribution-supertype
+   * merge entirely. Run the merger here in IR and append the merged supertypes onto the generated
+   * `$$Impl` so the binding graph builder picks them up via `allSupertypesSequence`.
+   */
+  private fun applyIrContributionMergeIfNeeded(
+    graphDeclaration: IrClass,
+    graphAnnotation: IrConstructorCall,
+    metroGraph: IrClass,
+  ) {
+    if (!graphDeclaration.hasAnnotation(Symbols.ClassIds.mergeContributionsInIr)) return
+
+    val contributions =
+      contributionMerger.computeContributions(graphAnnotation, graphDeclaration) ?: return
+    if (contributions.supertypes.isEmpty()) return
+
+    val promotedParents = computePromotedParents(contributions, metroGraph)
+    metroGraph.superTypes +=
+      chunkSupertypesIfNeeded(contributions.supertypes, metroGraph, promotedParents)
+    // FIR2IR populated metroGraph's fake overrides before this transformer ran, so the contribution
+    // accessors we just added through new supertypes (markers, promoted parents, or chunks) are
+    // missing. Rebuilding reconciles existing fake overrides with the new supertype hierarchy so
+    // Metro's downstream IR pipeline can discover the accessors and synthesize implementations,
+    // without producing duplicates for members like equals that already had FIR2IR overrides bound
+    // to a different supertype path.
+    metroGraph.rebuildFakeOverridesCompat(irTypeSystemContext)
+
+    contributions.supertypes.forEach { marker ->
+      marker.rawTypeOrNull()?.let { trackClassLookup(graphDeclaration, it) }
+    }
+    promotedParents.values.forEach { parent ->
+      parent.rawTypeOrNull()?.let { trackClassLookup(graphDeclaration, it) }
     }
   }
 

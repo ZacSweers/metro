@@ -114,6 +114,8 @@ abstract class MetroCompilerTest {
               STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
               ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)
               KEYS_PER_GRAPH_SHARD -> processor.option(entry.raw.cliOption, keysPerGraphShard)
+              MERGED_SUPERTYPE_CHUNK_SIZE ->
+                processor.option(entry.raw.cliOption, mergedSupertypeChunkSize)
               PUBLIC_SCOPED_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicScopedProviderSeverity)
               NON_PUBLIC_CONTRIBUTION_SEVERITY ->
@@ -125,7 +127,9 @@ abstract class MetroCompilerTest {
               UNUSED_GRAPH_INPUTS_SEVERITY ->
                 processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
               ENABLE_SWITCHING_PROVIDERS ->
-                processor.option(entry.raw.cliOption, enableSwitchingProviders)
+                processor.option(entry.raw.cliOption, this@toPluginOptions.enableSwitchingProviders)
+              USE_SECONDARY_TOPO_SORT ->
+                processor.option(entry.raw.cliOption, this@toPluginOptions.useSecondaryTopoSort)
               LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
@@ -362,6 +366,12 @@ abstract class MetroCompilerTest {
                 processor.option(
                   entry.raw.cliOption,
                   this@toPluginOptions.generateStaticAnnotations,
+                )
+              }
+              BINDING_CONTRIBUTIONS_AS_CONTAINERS -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.bindingContributionsAsContainers,
                 )
               }
             }

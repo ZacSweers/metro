@@ -3,8 +3,6 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import java.util.Optional
-import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirFile
@@ -162,13 +160,19 @@ public sealed interface MetroFirTypeResolver {
 internal fun MetroFirTypeResolver.Factory.caching(): MetroFirTypeResolver.Factory {
   return object : MetroFirTypeResolver.Factory by this {
     private val delegate = this@caching
-    private val typeResolverCache =
-      mutableMapOf<FirClassLikeSymbol<*>, Optional<MetroFirTypeResolver>>()
+    private val typeResolverCache = mutableMapOf<FirClassLikeSymbol<*>, Any>()
 
     override fun create(classSymbol: FirClassLikeSymbol<*>): MetroFirTypeResolver? {
-      return typeResolverCache
-        .getOrPut(classSymbol) { Optional.ofNullable(delegate.create(classSymbol)) }
-        .getOrNull()
+      val cached = typeResolverCache[classSymbol]
+      if (cached != null) {
+        @Suppress("UNCHECKED_CAST")
+        return if (cached === NULL_SENTINEL) null else cached as MetroFirTypeResolver
+      }
+      val computed = delegate.create(classSymbol)
+      typeResolverCache[classSymbol] = computed ?: NULL_SENTINEL
+      return computed
     }
   }
 }
+
+private val NULL_SENTINEL = Any()

@@ -6,6 +6,7 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.hashSuffix
 import dev.zacsweers.metro.compiler.ir.GraphToProcess
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
@@ -21,7 +22,6 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.transformers.TransformerContextAccess
 import dev.zacsweers.metro.compiler.mapToSet
-import dev.zacsweers.metro.compiler.md5base64
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -178,12 +178,11 @@ internal class IrDynamicGraphGenerator(
 
     // Compute stable hash from target graph and sorted containers
     val hash =
-      md5base64(
-        buildList {
+      buildList {
           add(targetGraphClassId)
           addAll(sortedIds)
         }
-      )
+        .hashSuffix
 
     val targetSimpleName = targetGraphClassId.shortClassName.asString()
     return "Dynamic${targetSimpleName}Impl_${hash}".asName()

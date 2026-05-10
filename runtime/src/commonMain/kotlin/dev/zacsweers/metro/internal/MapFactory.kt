@@ -65,5 +65,19 @@ public class MapFactory<K : Any, V> private constructor(map: Map<K, Provider<V>>
       @Suppress("UNCHECKED_CAST") // safe contravariant cast
       return EMPTY as Provider<Map<K, V>>
     }
+
+    /**
+     * Returns a [Factory] for a single-entry `Map<K, V>` whose value is sourced from [provider].
+     * Skips the [Builder] allocation for the size-1 case.
+     */
+    public fun <K : Any, V : Any> singleton(key: K, provider: Provider<V>): Factory<Map<K, V>> =
+      SingletonMapFactory(key, provider)
   }
+}
+
+private class SingletonMapFactory<K : Any, V : Any>(
+  private val key: K,
+  private val provider: Provider<V>,
+) : Factory<Map<K, V>> {
+  override fun invoke(): Map<K, V> = SingletonMap(key, provider())
 }

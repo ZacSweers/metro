@@ -43,6 +43,18 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("ChunkMergedSupertypesBasic.kt")
+    public void testChunkMergedSupertypesBasic() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ChunkMergedSupertypesBasic.kt");
+    }
+
+    @Test
+    @TestMetadata("ChunkMergedSupertypesWithBindings.kt")
+    public void testChunkMergedSupertypesWithBindings() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ChunkMergedSupertypesWithBindings.kt");
+    }
+
+    @Test
     @TestMetadata("ComputedPropertiesIntoSet.kt")
     public void testComputedPropertiesIntoSet() {
       runTest("compiler-tests/src/test/data/box/aggregation/ComputedPropertiesIntoSet.kt");
@@ -199,9 +211,27 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("LargeContributionGraphSignatureLimitStressTest.kt")
+    public void testLargeContributionGraphSignatureLimitStressTest() {
+      runTest("compiler-tests/src/test/data/box/aggregation/LargeContributionGraphSignatureLimitStressTest.kt");
+    }
+
+    @Test
     @TestMetadata("MapKeyNotCopiedForNonIntoMapBinding.kt")
     public void testMapKeyNotCopiedForNonIntoMapBinding() {
       runTest("compiler-tests/src/test/data/box/aggregation/MapKeyNotCopiedForNonIntoMapBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("MergeContributionsInIrBasic.kt")
+    public void testMergeContributionsInIrBasic() {
+      runTest("compiler-tests/src/test/data/box/aggregation/MergeContributionsInIrBasic.kt");
+    }
+
+    @Test
+    @TestMetadata("MergeContributionsInIrWithBindings.kt")
+    public void testMergeContributionsInIrWithBindings() {
+      runTest("compiler-tests/src/test/data/box/aggregation/MergeContributionsInIrWithBindings.kt");
     }
 
     @Test
@@ -526,6 +556,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("CircuitFactoryInvocationWithSubtypeScreen.kt")
+      public void testCircuitFactoryInvocationWithSubtypeScreen() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/CircuitFactoryInvocationWithSubtypeScreen.kt");
+      }
+
+      @Test
       @TestMetadata("ParameterOrderDoesNotMatter.kt")
       public void testParameterOrderDoesNotMatter() {
         runTest("compiler-tests/src/test/data/box/api/circuit/ParameterOrderDoesNotMatter.kt");
@@ -568,6 +604,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("PresenterClassQualifiedClass.kt")
+      public void testPresenterClassQualifiedClass() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassQualifiedClass.kt");
+      }
+
+      @Test
       @TestMetadata("PresenterClassQualifiedInjection.kt")
       public void testPresenterClassQualifiedInjection() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterClassQualifiedInjection.kt");
@@ -601,6 +643,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       @TestMetadata("PresenterFunctionObjectScreen.kt")
       public void testPresenterFunctionObjectScreen() {
         runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionObjectScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionQualifiedFunction.kt")
+      public void testPresenterFunctionQualifiedFunction() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/PresenterFunctionQualifiedFunction.kt");
       }
 
       @Test
@@ -744,6 +792,22 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("TransitiveContributedContainersInRootGraphs.kt")
     public void testTransitiveContributedContainersInRootGraphs() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/TransitiveContributedContainersInRootGraphs.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/bytecode")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Bytecode {
+    @Test
+    public void testAllFilesPresentInBytecode() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bytecode"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("SwitchingProvidersGenerateTableSwitch.kt")
+    public void testSwitchingProvidersGenerateTableSwitch() {
+      runTest("compiler-tests/src/test/data/box/bytecode/SwitchingProvidersGenerateTableSwitch.kt");
     }
   }
 
@@ -2361,6 +2425,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       @TestMetadata("MultibindingMapOfProvidersEmpty.kt")
       public void testMultibindingMapOfProvidersEmpty() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/MultibindingMapOfProvidersEmpty.kt");
+      }
+
+      @Test
+      @TestMetadata("NamedAnnotationArgumentClassRef.kt")
+      public void testNamedAnnotationArgumentClassRef() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/NamedAnnotationArgumentClassRef.kt");
       }
 
       @Test

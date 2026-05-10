@@ -237,4 +237,54 @@ class FunctionProviderTest {
     assertEquals(2, consumer.map["counter"]!!())
     assertEquals(42, consumer.map["fixed"]!!())
   }
+
+  // Map<K, () -> V> consumed by a *scoped* @Provides
+  // Regression test for https://github.com/ZacSweers/metro/issues/2243.
+  // Scoping forces Metro through the @Provides factory path (no canBypassFactory optimization),
+  // so the factory takes `Provider<Map<K, () -> V>>` and the map is built via provider access.
+  // That's the path that needs MapFunctionFactory on JS. Without it, the map values are Metro
+  // Provider instances which aren't callable as JS functions.
+
+  abstract class MapOfFunctionsScope private constructor()
+
+  @DependencyGraph(MapOfFunctionsScope::class)
+  interface ScopedMultiboundMapOfFunctionsProvidesGraph {
+    val holder: JoinedHolder
+
+    @Provides @IntoMap @StringKey("a") fun provideA(): Int = 1
+
+    @Provides @IntoMap @StringKey("b") fun provideB(): Int = 2
+
+    @Provides
+    @SingleIn(MapOfFunctionsScope::class)
+    fun provideHolder(map: Map<String, () -> Int>): JoinedHolder =
+      JoinedHolder(map.entries.sortedBy { it.key }.joinToString { "${it.key}=${it.value()}" })
+  }
+
+  class JoinedHolder(val value: String)
+
+  @Test
+  fun `multibound map of functions consumed by scoped Provides`() {
+    val graph = createGraph<ScopedMultiboundMapOfFunctionsProvidesGraph>()
+    assertEquals("a=1, b=2", graph.holder.value)
+  }
+
+  @DependencyGraph(MapOfFunctionsScope::class)
+  interface ScopedSingleEntryMapOfFunctionsProvidesGraph {
+    val holder: JoinedHolder
+
+    @Provides @IntoMap @StringKey("only") fun provideOnly(): Int = 7
+
+    @Provides
+    @SingleIn(MapOfFunctionsScope::class)
+    fun provideHolder(map: Map<String, () -> Int>): JoinedHolder =
+      JoinedHolder(map.entries.joinToString { "${it.key}=${it.value()}" })
+  }
+
+  @Test
+  fun `single-entry map of functions consumed by scoped Provides`() {
+    // Hits the MapFunctionFactory.singleton path on JS.
+    val graph = createGraph<ScopedSingleEntryMapOfFunctionsProvidesGraph>()
+    assertEquals("only=7", graph.holder.value)
+  }
 }

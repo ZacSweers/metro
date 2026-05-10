@@ -39,7 +39,7 @@ class A {
 
     @HiddenFromObjC
     override operator fun invoke(): A {
-      return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
+      return Companion.newInstance(x = <this>.#x.invoke())
     }
 
     @HiddenFromObjC
@@ -98,7 +98,7 @@ class B {
 
     @HiddenFromObjC
     override operator fun invoke(): B {
-      return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
+      return Companion.newInstance(x = <this>.#x.invoke())
     }
 
     @HiddenFromObjC
@@ -157,7 +157,7 @@ class C {
 
     @HiddenFromObjC
     override operator fun invoke(): C {
-      return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
+      return Companion.newInstance(x = <this>.#x.invoke())
     }
 
     @HiddenFromObjC
@@ -216,7 +216,7 @@ class MapConsumer {
 
     @HiddenFromObjC
     override operator fun invoke(): MapConsumer {
-      return MetroFactory/* companion */.newInstance(map = <this>.#map)
+      return Companion.newInstance(map = <this>.#map)
     }
 
     @HiddenFromObjC
@@ -275,7 +275,7 @@ class ProviderMapConsumer {
 
     @HiddenFromObjC
     override operator fun invoke(): ProviderMapConsumer {
-      return MetroFactory/* companion */.newInstance(map = <this>.#map.invoke())
+      return Companion.newInstance(map = <this>.#map.invoke())
     }
 
     @HiddenFromObjC
@@ -334,7 +334,7 @@ class SetConsumer {
 
     @HiddenFromObjC
     override operator fun invoke(): SetConsumer {
-      return MetroFactory/* companion */.newInstance(set = <this>.#set)
+      return Companion.newInstance(set = <this>.#set)
     }
 
     @HiddenFromObjC
@@ -434,7 +434,7 @@ interface TestGraph {
   @MetroImplMarker
   class Impl : TestGraph {
     private val xImplProvider: Provider<XImpl>
-      field = XImpl.MetroFactory.create()
+      field = MetroFactory.create()
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -449,17 +449,13 @@ interface TestGraph {
 
     private val mapOfIntToBProvider: Provider<Map<Int, B>>
       private get(): Provider<Map<Int, B>> {
-        return { // BLOCK
-          val tmp0_builder: MapFactory.Builder<Int, B> = MapFactory/* companion */.builder<Int, B>(size = 1)
-          tmp0_builder.put(key = 1, providerOfValue = B.MetroFactory/* companion */.create(x = <this>.#xImplProvider))
-          tmp0_builder.build()
-        }
+        return Companion.singleton<Int, B>(key = 1, provider = Companion.create(x = <this>.#xImplProvider))
       }
 
     private val mapOfIntToC: Map<Int, Function0<C>>
       private get(): Map<Int, Function0<C>> {
         return buildMap<Int, Function0<C>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<C>>.<anonymous>() {
-          $receiver.put(key = 1, value = C.MetroFactory/* companion */.create(x = <this>.#xImplProvider))
+          $receiver.put(key = 1, value = Companion.create(x = <this>.#xImplProvider))
         }
 )
       }
@@ -476,11 +472,7 @@ interface TestGraph {
 
     private val setOfAProvider: Provider<Set<A>>
       private get(): Provider<Set<A>> {
-        return { // BLOCK
-          val tmp0_builder: SetFactory.Builder<A> = SetFactory/* companion */.builder<A>(individualProviderSize = 1, collectionProviderSize = 0)
-          tmp0_builder.addProvider(individualProvider = A.MetroFactory/* companion */.create(x = <this>.#xImplProvider))
-          tmp0_builder.build()
-        }
+        return Companion.singleton<A>(provider = Companion.create(x = <this>.#xImplProvider))
       }
 
   }

@@ -62,5 +62,22 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
     @Suppress("UNCHECKED_CAST")
     public fun <K : Any, V : Any> empty(): Provider<Map<K, Provider<V>>> =
       EMPTY as Provider<Map<K, Provider<V>>>
+
+    /**
+     * Returns a [Factory] for a single-entry `Map<K, Provider<V>>`. The provider is preserved
+     * as-is, matching the existing builder-based contract. Skips the [Builder] allocation for the
+     * size-1 case.
+     */
+    public fun <K : Any, V : Any> singleton(
+      key: K,
+      provider: Provider<V>,
+    ): Factory<Map<K, Provider<V>>> = SingletonMapProviderFactory(key, provider)
   }
+}
+
+private class SingletonMapProviderFactory<K : Any, V : Any>(key: K, provider: Provider<V>) :
+  Factory<Map<K, Provider<V>>> {
+  private val map: Map<K, Provider<V>> = SingletonMap(key, provider)
+
+  override fun invoke(): Map<K, Provider<V>> = map
 }

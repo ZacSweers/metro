@@ -194,7 +194,7 @@ case "$1" in
        ;;
 
    "format")
-       ./scripts/format.sh --all
+       kempt format --all
        ;;
 
    "regen")
@@ -205,7 +205,7 @@ case "$1" in
        rm -rf kotlin-js-store samples/kotlin-js-store
 
        run_gradle_all "clean --quiet"
-       ./scripts/format.sh --all
+       kempt format --all
 
        # apiDump only exists in root project
        ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet
