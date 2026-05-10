@@ -196,6 +196,9 @@ public class CompatContextImpl : CompatContext by DelegateType() {
 
   override fun defaultKotlinLikeDumpOptions(): KotlinLikeDumpOptions = KotlinLikeDumpOptions()
 
+  override fun printVariableInitializersCompat(options: KotlinLikeDumpOptions): Boolean =
+    options.printVariableInitializers
+
   override fun Scope.createTemporaryVariableDeclarationCompat(
     irType: IrType,
     nameHint: String?,

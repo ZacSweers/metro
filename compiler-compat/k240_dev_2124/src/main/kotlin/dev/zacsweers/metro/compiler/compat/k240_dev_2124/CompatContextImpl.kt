@@ -70,7 +70,9 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   }
 }
 
-fun <T : FirElement> FirEvaluatorResult.unwrapOr(action: (CompileTimeException) -> Unit): T? {
+public fun <T : FirElement> FirEvaluatorResult.unwrapOr(
+  action: (CompileTimeException) -> Unit
+): T? {
   @Suppress("UNCHECKED_CAST")
   when (this) {
     is CompileTimeException -> action(this)

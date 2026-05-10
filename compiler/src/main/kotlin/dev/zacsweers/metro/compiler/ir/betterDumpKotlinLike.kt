@@ -173,7 +173,13 @@ public fun IrElement.betterDumpKotlinLike(
     ::nestedClassNameRenderer,
 ): String {
   val sb = StringBuilder()
-  BetterKotlinLikeDumper(Printer(sb, 1, "  "), options, classNameTransformer).printElement(this)
+  BetterKotlinLikeDumper(
+      Printer(sb, 1, "  "),
+      options,
+      compat.printVariableInitializersCompat(options),
+      classNameTransformer,
+    )
+    .printElement(this)
   return sb.toString()
 }
 
@@ -206,6 +212,9 @@ private fun List<IrDeclaration>.stableOrdered(): List<IrDeclaration> {
 private class BetterKotlinLikeDumper(
   val p: Printer,
   val options: KotlinLikeDumpOptions,
+  // METRO CHANGE: routed through CompatContext.printVariableInitializersCompat because the
+  // underlying KotlinLikeDumpOptions field doesn't exist in Kotlin < 2.3.0.
+  val printVariableInitializers: Boolean,
   // METRO CHANGE: customizable class name rendering
   val classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
 ) : IrVisitor<Unit, IrDeclaration?>() {
@@ -1067,7 +1076,7 @@ private class BetterKotlinLikeDumper(
       p(declaration.isConst, "const")
       declaration.run { printVariable(isVar, name.asString(), type) }
 
-      if (options.printVariableInitializers) {
+      if (printVariableInitializers) {
         declaration.initializer?.let {
           p.printWithNoIndent(" = ")
           it.accept(this, declaration)
