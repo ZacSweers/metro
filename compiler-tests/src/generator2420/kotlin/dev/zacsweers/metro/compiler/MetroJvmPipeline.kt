@@ -13,8 +13,9 @@ import org.jetbrains.kotlin.test.configuration.setupJvmPipelineSteps
  * (KT-85292): `commonConfigurationForJvmTest` -> `setupJvmPipelineSteps`. Each generator source set
  * provides a version-appropriate body; the test sources just call this single name.
  *
- * Note: `setupJvmPipelineSteps` already invokes `configureFirParser` internally, unlike the legacy
- * `commonConfigurationForJvmTest`. So no separate parser-config call here.
+ * `setupJvmPipelineSteps` already invokes `configureFirParser` internally. Callers may end up
+ * calling `configureFirParser` themselves (e.g. via `additionalK2ConfigurationForIrTextTest`); the
+ * 2.4.20+ framework's `singleOrZeroValue.distinct()` makes those duplicates harmless.
  */
 fun TestConfigurationBuilder.setupMetroJvmPipeline(parser: FirParser) {
   setupJvmPipelineSteps(parser)

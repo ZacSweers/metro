@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirective
 import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.LANGUAGE
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.LATEST_PHASE_IN_PIPELINE
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.RUN_PIPELINE_TILL
+import org.jetbrains.kotlin.test.directives.configureFirParser
 import org.jetbrains.kotlin.test.frontend.fir.TagsGeneratorChecker
 import org.jetbrains.kotlin.test.frontend.fir.handlers.FirCfgConsistencyHandler
 import org.jetbrains.kotlin.test.frontend.fir.handlers.FirCfgDumpHandler
@@ -84,6 +85,7 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
       }
 
       setupMetroJvmPipeline(FirParser.LightTree)
+      configureFirParser(FirParser.LightTree)
       configureCommonDiagnosticTestPaths()
 
       configureFirHandlersStep {
