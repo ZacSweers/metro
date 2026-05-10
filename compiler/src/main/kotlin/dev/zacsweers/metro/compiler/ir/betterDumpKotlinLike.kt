@@ -30,6 +30,7 @@ package dev.zacsweers.metro.compiler.ir
 // METRO CHANGE: removed com.intellij.openapi.util.text.StringUtil dependency,
 // replaced with local escapeString/escapeChar helpers below.
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
@@ -155,7 +156,9 @@ import org.jetbrains.kotlin.utils.Printer
 
 /**
  * Like [org.jetbrains.kotlin.ir.util.dumpKotlinLike] but supports a [classNameTransformer] hook for
- * customizing how class names are rendered in expressions.
+ * customizing how class names are rendered in expressions. Requires a [CompatContext] so the
+ * version-specific [KotlinLikeDumpOptions] default constructor lives in a compat module compiled
+ * against the matching Kotlin runtime.
  *
  * The default transformer renders nested class names with their full enclosing class chain (e.g.
  * `ExampleGraph.Impl` instead of just `Impl`).
@@ -163,8 +166,9 @@ import org.jetbrains.kotlin.utils.Printer
  * @param classNameTransformer receives the current container declaration (scope) and the class
  *   whose name is being rendered. Returns the string to print.
  */
+context(compat: CompatContext)
 public fun IrElement.betterDumpKotlinLike(
-  options: KotlinLikeDumpOptions = KotlinLikeDumpOptions(),
+  options: KotlinLikeDumpOptions = compat.defaultKotlinLikeDumpOptions(),
   classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String =
     ::nestedClassNameRenderer,
 ): String {
@@ -510,8 +514,9 @@ private class BetterKotlinLikeDumper(
   private fun filterAnnotations(
     annotations: List<IrConstructorCall>,
     container: IrAnnotationContainer,
-  ): List<IrConstructorCall> =
-    annotations.filter { options.customDumpStrategy.shouldPrintAnnotation(it, container) }
+  ): List<IrConstructorCall> = annotations.filter {
+    options.customDumpStrategy.shouldPrintAnnotation(it, container)
+  }
 
   private fun IrAnnotationContainer.printAnnotationsWithNoIndent() {
     filterAnnotations(annotations, this).forEach {

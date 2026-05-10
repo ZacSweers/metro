@@ -64,6 +64,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
+import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.util.PrivateForInline
@@ -374,6 +375,19 @@ public interface CompatContext {
       "FakeOverrideBuilderStrategy.BindToPrivateSymbols dropped its friendModules ctor param and added an abstract shouldSeeInternals method in 2.3.0",
   )
   public fun IrClass.rebuildFakeOverridesCompat(typeSystem: IrTypeSystemContext)
+
+  /**
+   * Returns a default-constructed [KotlinLikeDumpOptions] for the active Kotlin version. The
+   * primary constructor of [KotlinLikeDumpOptions] gains/loses fields between Kotlin releases (e.g.
+   * `printVariableInitializers` was added after 2.2.20).
+   */
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "KotlinLikeDumpOptions gained the printVariableInitializers field after 2.2.20 (and may gain more)",
+  )
+  public fun defaultKotlinLikeDumpOptions(): KotlinLikeDumpOptions
 
   @CompatApi(
     since = "2.3.0",
