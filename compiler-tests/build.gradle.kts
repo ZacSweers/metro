@@ -17,6 +17,7 @@ sourceSets {
   register("generator230")
   register("generator2320")
   register("generator240")
+  register("generator2420")
 }
 
 val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVersion")
@@ -28,6 +29,11 @@ val testKotlinVersion = KotlinToolingVersion(testCompilerVersion)
 val kotlin23 = KotlinToolingVersion(KotlinVersion(2, 3))
 
 val kotlin24Beta1 = KotlinToolingVersion(KotlinVersion(2, 4), "Beta1")
+
+// First 2.4.20 dev build that ships KT-85292: `commonConfigurationForJvmTest` was renamed to
+// `setupJvmPipelineSteps`, and the diagnostic / IR dump golden file extensions lost their `.fir.`
+// infix. Anything < this still uses the legacy names + helper.
+val kotlin2420Dev835 = KotlinToolingVersion(KotlinVersion(2, 4, 20), "dev-835")
 
 buildConfig {
   generateAtSync = true
@@ -88,7 +94,9 @@ var generatorConfigToUse: String
 
 if (testKotlinVersion >= kotlin23) {
   generatorConfigToUse =
-    if (testKotlinVersion >= kotlin24Beta1) {
+    if (testKotlinVersion >= kotlin2420Dev835) {
+      "generator2420"
+    } else if (testKotlinVersion >= kotlin24Beta1) {
       "generator240"
     } else if (testKotlinVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)) {
       "generator2320"
@@ -119,6 +127,11 @@ dependencies {
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta1"
   )
   "generator240CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.4.0-Beta1")
+  // 2.4.20-dev-835 renamed `commonConfigurationForJvmTest` to `setupJvmPipelineSteps`.
+  "generator2420CompileOnly"(
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.20-dev-835"
+  )
+  "generator2420CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.4.20-dev-835")
 
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
   testImplementation(
