@@ -16,7 +16,8 @@ val artifactIdProvider =
 
 extension.artifactId.convention(artifactIdProvider)
 
-if (!isCompilerProject) {
+// Compiler-compat artifacts get explicit API mode too; only the main :compiler module is exempt.
+if (project.path != ":compiler") {
   plugins.withType<KotlinBasePlugin> { configure<KotlinProjectExtension> { explicitApi() } }
 }
 

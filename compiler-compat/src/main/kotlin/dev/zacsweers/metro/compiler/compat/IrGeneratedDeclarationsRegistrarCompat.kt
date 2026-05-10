@@ -12,33 +12,37 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
  * Compat wrapper around the real [IrGeneratedDeclarationsRegistrar] with compat for the
  * IrAnnotation migration
  */
-interface IrGeneratedDeclarationsRegistrarCompat {
-  fun getMetadataVisibleAnnotationsForElement(
+public interface IrGeneratedDeclarationsRegistrarCompat {
+  public fun getMetadataVisibleAnnotationsForElement(
     declaration: IrDeclaration
   ): MutableList<IrConstructorCall>
 
-  fun addMetadataVisibleAnnotationsToElement(
+  public fun addMetadataVisibleAnnotationsToElement(
     declaration: IrDeclaration,
     annotations: List<IrConstructorCall>,
   )
 
-  fun addMetadataVisibleAnnotationsToElement(
+  public fun addMetadataVisibleAnnotationsToElement(
     declaration: IrDeclaration,
     vararg annotations: IrConstructorCall,
   ) {
     addMetadataVisibleAnnotationsToElement(declaration, annotations.toList())
   }
 
-  fun registerFunctionAsMetadataVisible(irFunction: IrSimpleFunction)
+  public fun registerFunctionAsMetadataVisible(irFunction: IrSimpleFunction)
 
-  fun registerConstructorAsMetadataVisible(irConstructor: IrConstructor)
+  public fun registerConstructorAsMetadataVisible(irConstructor: IrConstructor)
 
   // TODO: KT-63881
-  // fun registerPropertyAsMetadataVisible(irProperty: IrProperty)
+  // public fun registerPropertyAsMetadataVisible(irProperty: IrProperty)
 
-  fun addCustomMetadataExtension(irDeclaration: IrDeclaration, pluginId: String, data: ByteArray)
+  public fun addCustomMetadataExtension(
+    irDeclaration: IrDeclaration,
+    pluginId: String,
+    data: ByteArray,
+  )
 
-  fun getCustomMetadataExtension(irDeclaration: IrDeclaration, pluginId: String): ByteArray?
+  public fun getCustomMetadataExtension(irDeclaration: IrDeclaration, pluginId: String): ByteArray?
 }
 
 @JvmInline
