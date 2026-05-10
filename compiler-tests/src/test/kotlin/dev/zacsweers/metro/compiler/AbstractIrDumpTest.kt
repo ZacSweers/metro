@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import kotlin.getValue
 import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.test.FirParser
@@ -59,11 +60,14 @@ open class AbstractIrDumpTest : AbstractKotlinCompilerWithTargetBackendTest(Targ
       additionalK2ConfigurationForIrTextTest(FirParser.LightTree)
 
       // Register IR handlers with our custom handler instead of IrPrettyKotlinDumpHandler
+      val compatContext = CompatContext.create()
       configureIrHandlersStep {
         useHandlers(
           ::IrTextDumpHandler,
           ::IrTreeVerifierHandler,
-          ::MetroIrPrettyKotlinDumpHandler,
+          { testServices, artifactKind ->
+            MetroIrPrettyKotlinDumpHandler(testServices, artifactKind, compatContext)
+          },
           ::IrSourceRangesDumpHandler,
         )
       }
@@ -74,7 +78,7 @@ open class AbstractIrDumpTest : AbstractKotlinCompilerWithTargetBackendTest(Targ
       )
       enableMetaInfoHandler()
 
-      configurePlugin()
+      configurePlugin(compatContext)
 
       defaultDirectives {
         JVM_TARGET.with(JvmTarget.JVM_11)

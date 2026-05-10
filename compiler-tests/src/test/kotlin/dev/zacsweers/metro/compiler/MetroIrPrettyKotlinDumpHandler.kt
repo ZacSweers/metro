@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.ir.betterDumpKotlinLike
 import org.jetbrains.kotlin.ir.util.FakeOverridesStrategy
 import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
@@ -24,13 +25,14 @@ import org.jetbrains.kotlin.test.utils.withExtension
  * Like [org.jetbrains.kotlin.test.backend.handlers.IrPrettyKotlinDumpHandler] but uses
  * [betterDumpKotlinLike] so that nested class names are fully qualified in the dump output.
  *
- * Triggered by [MetroDirectives.METRO_DUMP_KT_IR] instead of `DUMP_KT_IR` to avoid conflicts
- * with the built-in handler.
+ * Triggered by [MetroDirectives.METRO_DUMP_KT_IR] instead of `DUMP_KT_IR` to avoid conflicts with
+ * the built-in handler.
  */
 class MetroIrPrettyKotlinDumpHandler(
   testServices: TestServices,
   artifactKind: BackendKind<IrBackendInput>,
-) : AbstractIrHandler(testServices, artifactKind) {
+  compatContext: CompatContext,
+) : AbstractIrHandler(testServices, artifactKind), CompatContext by compatContext {
   companion object {
     const val DUMP_EXTENSION = "kt.txt"
   }
