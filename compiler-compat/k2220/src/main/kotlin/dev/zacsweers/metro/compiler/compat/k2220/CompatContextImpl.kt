@@ -70,6 +70,7 @@ import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
 import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
+import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
@@ -197,6 +198,12 @@ public class CompatContextImpl : CompatContext {
     IrFakeOverrideBuilder(typeSystem, MetroFakeOverrideBuilderStrategy, emptyList())
       .buildFakeOverridesForClass(this, oldSignatures = false)
   }
+
+  override fun defaultKotlinLikeDumpOptions(): KotlinLikeDumpOptions = KotlinLikeDumpOptions()
+
+  // The printVariableInitializers field was added in 2.3.0; 2.2.20 has no such option and always
+  // prints initializers. Returning true matches the pre-2.3.0 behavior.
+  override fun printVariableInitializersCompat(options: KotlinLikeDumpOptions): Boolean = true
 
   override fun Scope.createTemporaryVariableDeclarationCompat(
     irType: IrType,

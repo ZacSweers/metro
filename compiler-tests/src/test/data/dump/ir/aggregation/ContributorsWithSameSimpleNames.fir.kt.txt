@@ -41,7 +41,7 @@ fun AppScope(contributed: ContributedInterface) {
 // FILE: module_main_ContributorsWithSameSimpleNames.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : ContributedInterface, MetroContributionToAppScope, ContributedInterface, MetroContributionToAppScope {
+interface ExampleGraph : ContributedInterface, ContributedInterface.MetroContributionToAppScope, ContributedInterface, ContributedInterface.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : ExampleGraph {

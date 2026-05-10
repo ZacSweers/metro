@@ -42,7 +42,7 @@ class Collector {
 
     @HiddenFromObjC
     override operator fun invoke(): Collector {
-      return Companion.newInstance(services = <this>.#services.invoke())
+      return MetroFactory/* companion */.newInstance(services = <this>.#services.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -172,9 +172,9 @@ interface TestGraph {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#service1Provider = Companion.provider<Provider<Service1>, Service1>(delegate = MetroFactory.create())
-        <this>.#provideService1Provider = Companion.provider<Provider<Any>, Any>(delegate = Companion.create(s1 = <this>.#service1Provider))
-        <this>.#service2Provider = Companion.provider<Provider<Service2>, Service2>(delegate = MetroFactory.create())
+        <this>.#service1Provider = DoubleCheck/* companion */.provider<Provider<Service1>, Service1>(delegate = Service1.MetroFactory.create())
+        <this>.#provideService1Provider = DoubleCheck/* companion */.provider<Provider<Any>, Any>(delegate = Module1.ProvideService1MetroFactory/* companion */.create(s1 = <this>.#service1Provider))
+        <this>.#service2Provider = DoubleCheck/* companion */.provider<Provider<Service2>, Service2>(delegate = Service2.MetroFactory.create())
       }
 
     }
@@ -190,17 +190,17 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#provideService2Provider = Companion.provider<Provider<Any>, Any>(delegate = Companion.create(s2 = <this>.#graph.#shard1.#service2Provider))
-        <this>.#collectorProvider = Companion.provider<Provider<Collector>, Collector>(delegate = Companion.create(services = <this>.<get-setOfAnyProvider>()))
+        <this>.#provideService2Provider = DoubleCheck/* companion */.provider<Provider<Any>, Any>(delegate = Module2.ProvideService2MetroFactory/* companion */.create(s2 = <this>.#graph.#shard1.#service2Provider))
+        <this>.#collectorProvider = DoubleCheck/* companion */.provider<Provider<Collector>, Collector>(delegate = Collector.MetroFactory/* companion */.create(services = <this>.<get-setOfAnyProvider>()))
       }
 
       internal val setOfAnyProvider: Provider<Set<Any>>
         internal get(): Provider<Set<Any>> {
           return { // BLOCK
-            val tmp_0: Builder<Any> = Companion.builder<Any>(individualProviderSize = 2, collectionProviderSize = 0)
-            tmp_0.addProvider(individualProvider = <this>.#graph.#shard1.#provideService1Provider)
-            tmp_0.addProvider(individualProvider = <this>.#provideService2Provider)
-            tmp_0.build()
+            val tmp0_builder: SetFactory.Builder<Any> = SetFactory/* companion */.builder<Any>(individualProviderSize = 2, collectionProviderSize = 0)
+            tmp0_builder.addProvider(individualProvider = <this>.#graph.#shard1.#provideService1Provider)
+            tmp0_builder.addProvider(individualProvider = <this>.#provideService2Provider)
+            tmp0_builder.build()
           }
         }
 
@@ -281,7 +281,7 @@ object Module1 {
 
     @HiddenFromObjC
     override operator fun invoke(): Any {
-      return Companion.provideService1(s1 = <this>.#s1.invoke())
+      return ProvideService1MetroFactory/* companion */.provideService1(s1 = <this>.#s1.invoke())
     }
 
     @IntoSet
@@ -347,7 +347,7 @@ object Module2 {
 
     @HiddenFromObjC
     override operator fun invoke(): Any {
-      return Companion.provideService2(s2 = <this>.#s2.invoke())
+      return ProvideService2MetroFactory/* companion */.provideService2(s2 = <this>.#s2.invoke())
     }
 
     @IntoSet

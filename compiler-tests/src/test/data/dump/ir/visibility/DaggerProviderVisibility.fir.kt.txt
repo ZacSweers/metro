@@ -9,7 +9,7 @@ interface ExampleGraph {
       field = ModuleWithInternal()
 
     private val moduleWithInternalInstanceProvider: Provider<ModuleWithInternal>
-      field = Companion.invoke<ModuleWithInternal>(value = <this>.#moduleWithInternalInstance)
+      field = InstanceFactory/* companion */.invoke<ModuleWithInternal>(value = <this>.#moduleWithInternalInstance)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -101,7 +101,7 @@ class ModuleWithInternal {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC

@@ -189,7 +189,7 @@ class ChildService1 {
 
     @HiddenFromObjC
     override operator fun invoke(): ChildService1 {
-      return Companion.newInstance(app1 = <this>.#app1.invoke())
+      return MetroFactory/* companion */.newInstance(app1 = <this>.#app1.invoke())
     }
 
     @SingleIn(scope = ChildScope::class)
@@ -250,7 +250,7 @@ class ChildService2 {
 
     @HiddenFromObjC
     override operator fun invoke(): ChildService2 {
-      return Companion.newInstance(child1 = <this>.#child1.invoke())
+      return MetroFactory/* companion */.newInstance(child1 = <this>.#child1.invoke())
     }
 
     @SingleIn(scope = ChildScope::class)
@@ -311,7 +311,7 @@ class ChildService3 {
 
     @HiddenFromObjC
     override operator fun invoke(): ChildService3 {
-      return Companion.newInstance(child2 = <this>.#child2.invoke())
+      return MetroFactory/* companion */.newInstance(child2 = <this>.#child2.invoke())
     }
 
     @SingleIn(scope = ChildScope::class)
@@ -386,7 +386,7 @@ class GrandchildService1 {
 
     @HiddenFromObjC
     override operator fun invoke(): GrandchildService1 {
-      return Companion.newInstance(app2 = <this>.#app2.invoke(), child3 = <this>.#child3.invoke())
+      return MetroFactory/* companion */.newInstance(app2 = <this>.#app2.invoke(), child3 = <this>.#child3.invoke())
     }
 
     @SingleIn(scope = GrandchildScope::class)
@@ -447,7 +447,7 @@ class GrandchildService2 {
 
     @HiddenFromObjC
     override operator fun invoke(): GrandchildService2 {
-      return Companion.newInstance(gc1 = <this>.#gc1.invoke())
+      return MetroFactory/* companion */.newInstance(gc1 = <this>.#gc1.invoke())
     }
 
     @SingleIn(scope = GrandchildScope::class)
@@ -467,7 +467,7 @@ class GrandchildService2 {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : MetroContributionToAppScope {
+interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
@@ -485,7 +485,7 @@ interface AppGraph : MetroContributionToAppScope {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#appService1Provider = Companion.provider<Provider<AppService1>, AppService1>(delegate = MetroFactory.create())
+        <this>.#appService1Provider = DoubleCheck/* companion */.provider<Provider<AppService1>, AppService1>(delegate = AppService1.MetroFactory.create())
       }
 
     }
@@ -495,7 +495,7 @@ interface AppGraph : MetroContributionToAppScope {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#appService2Provider = Companion.provider<Provider<AppService2>, AppService2>(delegate = MetroFactory.create())
+        <this>.#appService2Provider = DoubleCheck/* companion */.provider<Provider<AppService2>, AppService2>(delegate = AppService2.MetroFactory.create())
       }
 
     }
@@ -505,13 +505,13 @@ interface AppGraph : MetroContributionToAppScope {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#appService3Provider = Companion.provider<Provider<AppService3>, AppService3>(delegate = MetroFactory.create())
+        <this>.#appService3Provider = DoubleCheck/* companion */.provider<Provider<AppService3>, AppService3>(delegate = AppService3.MetroFactory.create())
       }
 
     }
 
     @DependencyGraph(scope = ChildScope::class)
-    private class ChildGraphImpl : ChildGraph, MetroContributionToChildScope {
+    private class ChildGraphImpl : ChildGraph, GrandchildGraph.Factory.MetroContributionToChildScope {
       private val appGraphImpl: Impl
         field = appGraphImpl
 
@@ -532,7 +532,7 @@ interface AppGraph : MetroContributionToAppScope {
         constructor(graph: ChildGraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#graph = graph
-          <this>.#childService1Provider = Companion.provider<Provider<ChildService1>, ChildService1>(delegate = Companion.create(app1 = <this>.#graph.#appGraphImpl.#shard1.#appService1Provider))
+          <this>.#childService1Provider = DoubleCheck/* companion */.provider<Provider<ChildService1>, ChildService1>(delegate = ChildService1.MetroFactory/* companion */.create(app1 = <this>.#graph.#appGraphImpl.#shard1.#appService1Provider))
         }
 
       }
@@ -545,7 +545,7 @@ interface AppGraph : MetroContributionToAppScope {
         constructor(graph: ChildGraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#graph = graph
-          <this>.#childService2Provider = Companion.provider<Provider<ChildService2>, ChildService2>(delegate = Companion.create(child1 = <this>.#graph.#shard1.#childService1Provider))
+          <this>.#childService2Provider = DoubleCheck/* companion */.provider<Provider<ChildService2>, ChildService2>(delegate = ChildService2.MetroFactory/* companion */.create(child1 = <this>.#graph.#shard1.#childService1Provider))
         }
 
       }
@@ -558,7 +558,7 @@ interface AppGraph : MetroContributionToAppScope {
         constructor(graph: ChildGraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#graph = graph
-          <this>.#childService3Provider = Companion.provider<Provider<ChildService3>, ChildService3>(delegate = Companion.create(child2 = <this>.#graph.#shard2.#childService2Provider))
+          <this>.#childService3Provider = DoubleCheck/* companion */.provider<Provider<ChildService3>, ChildService3>(delegate = ChildService3.MetroFactory/* companion */.create(child2 = <this>.#graph.#shard2.#childService2Provider))
         }
 
       }
@@ -580,7 +580,7 @@ interface AppGraph : MetroContributionToAppScope {
           constructor(graph: GrandchildGraphImpl) /* primary */ {
             super/*Any*/()
             <this>.#graph = graph
-            <this>.#grandchildService1Provider = Companion.provider<Provider<GrandchildService1>, GrandchildService1>(delegate = Companion.create(app2 = <this>.#graph.#childGraphImpl.#appGraphImpl.#shard2.#appService2Provider, child3 = <this>.#graph.#childGraphImpl.#shard3.#childService3Provider))
+            <this>.#grandchildService1Provider = DoubleCheck/* companion */.provider<Provider<GrandchildService1>, GrandchildService1>(delegate = GrandchildService1.MetroFactory/* companion */.create(app2 = <this>.#graph.#childGraphImpl.#appGraphImpl.#shard2.#appService2Provider, child3 = <this>.#graph.#childGraphImpl.#shard3.#childService3Provider))
           }
 
         }
@@ -593,7 +593,7 @@ interface AppGraph : MetroContributionToAppScope {
           constructor(graph: GrandchildGraphImpl) /* primary */ {
             super/*Any*/()
             <this>.#graph = graph
-            <this>.#grandchildService2Provider = Companion.provider<Provider<GrandchildService2>, GrandchildService2>(delegate = Companion.create(gc1 = <this>.#graph.#shard1.#grandchildService1Provider))
+            <this>.#grandchildService2Provider = DoubleCheck/* companion */.provider<Provider<GrandchildService2>, GrandchildService2>(delegate = GrandchildService2.MetroFactory/* companion */.create(gc1 = <this>.#graph.#shard1.#grandchildService1Provider))
           }
 
         }
@@ -631,8 +631,8 @@ interface AppGraph : MetroContributionToAppScope {
           return <this>.#shard3.#childService3Provider.invoke()
         }
 
-      override val grandchildFactory: Factory
-        override get(): Factory {
+      override val grandchildFactory: GrandchildGraph.Factory
+        override get(): GrandchildGraph.Factory {
           return <this>.#thisGraphInstance
         }
 
@@ -666,8 +666,8 @@ interface AppGraph : MetroContributionToAppScope {
         return <this>.#shard3.#appService3Provider.invoke()
       }
 
-    override val childFactory: Factory
-      override get(): Factory {
+    override val childFactory: ChildGraph.Factory
+      override get(): ChildGraph.Factory {
         return <this>.#thisGraphInstance
       }
 
@@ -698,14 +698,14 @@ interface AppGraph : MetroContributionToAppScope {
   abstract val appService3: AppService3
     abstract get
 
-  abstract val childFactory: Factory
+  abstract val childFactory: ChildGraph.Factory
     abstract get
 
 }
 
 @GraphExtension(scope = ChildScope::class)
 interface ChildGraph {
-  @Factory
+  @GraphExtension.Factory
   @ContributesTo(scope = AppScope::class)
   fun interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -720,14 +720,14 @@ interface ChildGraph {
   abstract val childService3: ChildService3
     abstract get
 
-  abstract val grandchildFactory: Factory
+  abstract val grandchildFactory: GrandchildGraph.Factory
     abstract get
 
 }
 
 @GraphExtension(scope = GrandchildScope::class)
 interface GrandchildGraph {
-  @Factory
+  @GraphExtension.Factory
   @ContributesTo(scope = ChildScope::class)
   fun interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -747,14 +747,14 @@ interface GrandchildGraph {
 // FILE: childGraphFactoryAppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Factory) {
+fun AppScope(contributed: ChildGraph.Factory) {
   return error(message = "Never called")
 }
 
 // FILE: grandchildGraphFactoryChildScope.kt
 package metro.hints
 
-fun ChildScope(contributed: Factory) {
+fun ChildScope(contributed: GrandchildGraph.Factory) {
   return error(message = "Never called")
 }
 

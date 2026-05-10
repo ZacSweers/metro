@@ -7,10 +7,10 @@ interface AppGraph {
       field = <this>
 
     private val provideIntProvider: Provider<Int>
-      field = Companion.create(instance = <this>.#thisGraphInstance)
+      field = ProvideIntMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance)
 
     private val provideLongProvider: Provider<Long>
-      field = Companion.create(instance = <this>.#thisGraphInstance)
+      field = ProvideLongMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -30,12 +30,12 @@ interface AppGraph {
 
     override val long1: Lazy<Long>
       override get(): Lazy<Long> {
-        return Companion.lazy<Lazy<Long>, Long>(provider = Companion.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider))
+        return DoubleCheck/* companion */.lazy<Lazy<Long>, Long>(provider = DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider))
       }
 
     override val long2: Lazy<Long>
       override get(): Lazy<Long> {
-        return Companion.lazy<Lazy<Long>, Long>(provider = Companion.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider))
+        return DoubleCheck/* companion */.lazy<Lazy<Long>, Long>(provider = DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider))
       }
 
   }
@@ -92,7 +92,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -138,7 +138,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Long {
-      return Companion.provideLong(instance = <this>.#instance)
+      return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance)
     }
 
     @HiddenFromObjC

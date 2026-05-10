@@ -7,7 +7,7 @@ interface AppGraph {
       field = <this>
 
     private val provideIntProvider: Provider<Int>
-      field = Companion.provider<Provider<Int>, Int>(delegate = SwitchingProvider<Int>(graph = <this>, id = 1))
+      field = DoubleCheck/* companion */.provider<Provider<Int>, Int>(delegate = SwitchingProvider<Int>(graph = <this>, id = 1))
 
     private val optionalIntProvider: Provider<Optional<Int>>
       field = SwitchingProvider<Optional<Int>>(graph = <this>, id = 0)
@@ -25,11 +25,11 @@ interface AppGraph {
 
       override fun invoke(): T {
         return { // BLOCK
-          val tmp_0: Int = <this>.#id
+          val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp_0, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
-            EQEQ(arg0 = tmp_0, arg1 = 0) -> of<Int>(p0 = <this>.#graph.#provideIntProvider.invoke()) /*as T */
-            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp_0)
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> of<Int>(p0 = <this>.#graph.#provideIntProvider.invoke()) /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
       }
@@ -106,7 +106,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)

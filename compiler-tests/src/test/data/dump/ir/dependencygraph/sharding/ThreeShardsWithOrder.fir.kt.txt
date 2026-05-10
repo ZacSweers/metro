@@ -178,7 +178,7 @@ class S4 {
 
     @HiddenFromObjC
     override operator fun invoke(): S4 {
-      return Companion.newInstance(s1 = <this>.#s1.invoke())
+      return MetroFactory/* companion */.newInstance(s1 = <this>.#s1.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -239,7 +239,7 @@ class S5 {
 
     @HiddenFromObjC
     override operator fun invoke(): S5 {
-      return Companion.newInstance(s4 = <this>.#s4.invoke())
+      return MetroFactory/* companion */.newInstance(s4 = <this>.#s4.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -276,8 +276,8 @@ interface TestGraph {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#s1Provider = Companion.provider<Provider<S1>, S1>(delegate = MetroFactory.create())
-        <this>.#s2Provider = Companion.provider<Provider<S2>, S2>(delegate = MetroFactory.create())
+        <this>.#s1Provider = DoubleCheck/* companion */.provider<Provider<S1>, S1>(delegate = S1.MetroFactory.create())
+        <this>.#s2Provider = DoubleCheck/* companion */.provider<Provider<S2>, S2>(delegate = S2.MetroFactory.create())
       }
 
     }
@@ -292,8 +292,8 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#s3Provider = Companion.provider<Provider<S3>, S3>(delegate = MetroFactory.create())
-        <this>.#s4Provider = Companion.provider<Provider<S4>, S4>(delegate = Companion.create(s1 = <this>.#graph.#shard1.#s1Provider))
+        <this>.#s3Provider = DoubleCheck/* companion */.provider<Provider<S3>, S3>(delegate = S3.MetroFactory.create())
+        <this>.#s4Provider = DoubleCheck/* companion */.provider<Provider<S4>, S4>(delegate = S4.MetroFactory/* companion */.create(s1 = <this>.#graph.#shard1.#s1Provider))
       }
 
     }
@@ -306,7 +306,7 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#s5Provider = Companion.provider<Provider<S5>, S5>(delegate = Companion.create(s4 = <this>.#graph.#shard2.#s4Provider))
+        <this>.#s5Provider = DoubleCheck/* companion */.provider<Provider<S5>, S5>(delegate = S5.MetroFactory/* companion */.create(s4 = <this>.#graph.#shard2.#s4Provider))
       }
 
     }

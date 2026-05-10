@@ -43,8 +43,13 @@ import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
 
-fun TestConfigurationBuilder.configurePlugin() {
-  useConfigurators(::MetroExtensionRegistrarConfigurator, ::MetroRuntimeEnvironmentConfigurator)
+fun TestConfigurationBuilder.configurePlugin(
+  compatContext: CompatContext = CompatContext.create()
+) {
+  useConfigurators(
+    { MetroExtensionRegistrarConfigurator(it, compatContext) },
+    ::MetroRuntimeEnvironmentConfigurator,
+  )
 
   useDirectives(MetroDirectives)
 
@@ -61,8 +66,10 @@ fun TestConfigurationBuilder.configurePlugin() {
   useAfterAnalysisCheckers(::MetroReportsChecker)
 }
 
-class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
-  EnvironmentConfigurator(testServices) {
+class MetroExtensionRegistrarConfigurator(
+  testServices: TestServices,
+  private val compatContext: CompatContext,
+) : EnvironmentConfigurator(testServices) {
   @OptIn(ExperimentalCompilerApi::class)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerCompilerExtensions(
     module: TestModule,
@@ -205,7 +212,6 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     if (!options.enabled) return
 
     val classIds = ClassIds.fromOptions(options)
-    val compatContext = CompatContext.create()
     val traceContext = TraceContext(options)
     FirExtensionRegistrarAdapter.registerExtension(
       MetroFirExtensionRegistrar(

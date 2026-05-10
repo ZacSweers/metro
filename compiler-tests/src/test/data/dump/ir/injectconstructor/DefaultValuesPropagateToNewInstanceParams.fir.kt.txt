@@ -38,7 +38,7 @@ class ValueHolder {
 
     @HiddenFromObjC
     override operator fun invoke(): ValueHolder {
-      return Companion.newInstance(stringValue = <this>.#stringValue.invoke())
+      return MetroFactory/* companion */.newInstance(stringValue = <this>.#stringValue.invoke())
     }
 
     @HiddenFromObjC

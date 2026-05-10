@@ -40,7 +40,7 @@ class FinalThing {
 
     @HiddenFromObjC
     override operator fun invoke(): FinalThing {
-      return Companion.newInstance(ints = <this>.#ints)
+      return MetroFactory/* companion */.newInstance(ints = <this>.#ints)
     }
 
     @HiddenFromObjC
@@ -96,7 +96,7 @@ interface AppGraph {
       field = <this>
 
     private val provideIntProvider: Provider<Int>
-      field = Companion.create(instance = <this>.#thisGraphInstance)
+      field = ProvideIntMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -117,16 +117,16 @@ interface AppGraph {
     @Named(name = "first")
     private val setOfIntProvider: Provider<Set<Int>>
       private get(): Provider<Set<Int>> {
-        return Companion.singleton<Int>(provider = <this>.#provideIntProvider)
+        return SetFactory/* companion */.singleton<Int>(provider = <this>.#provideIntProvider)
       }
 
     @Named(name = "second")
     private val setOfIntProvider2: Provider<Set<Int>>
       private get(): Provider<Set<Int>> {
         return { // BLOCK
-          val tmp_0: Builder<Int> = Companion.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp_0.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider>())
-          tmp_0.build()
+          val tmp0_builder: SetFactory.Builder<Int> = SetFactory/* companion */.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
+          tmp0_builder.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider>())
+          tmp0_builder.build()
         }
       }
 
@@ -134,9 +134,9 @@ interface AppGraph {
     private val setOfIntProvider3: Provider<Set<Int>>
       private get(): Provider<Set<Int>> {
         return { // BLOCK
-          val tmp_1: Builder<Int> = Companion.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp_1.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider2>())
-          tmp_1.build()
+          val tmp0_builder: SetFactory.Builder<Int> = SetFactory/* companion */.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
+          tmp0_builder.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider2>())
+          tmp0_builder.build()
         }
       }
 
@@ -194,7 +194,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC

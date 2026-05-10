@@ -158,6 +158,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
         "Verification runs inside MetroReportsChecker."
     )
   val ENABLE_CIRCUIT by directive("Enables Circuit code gen.")
+  val METRO_DUMP_KT_IR by
+    directive("Like DUMP_KT_IR but uses betterDumpKotlinLike() for nested class name rendering.")
 
   fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
     return WITH_DAGGER in directives ||

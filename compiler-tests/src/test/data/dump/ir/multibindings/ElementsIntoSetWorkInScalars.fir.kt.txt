@@ -20,9 +20,9 @@ interface AppGraph {
     private val setOfInt: Set<Int>
       private get(): Set<Int> {
         return { // BLOCK
-          val tmp_0: Set<Int> = <this>.#thisGraphInstance.provideInts()
-          buildSet<Int>(capacity = tmp_0.<get-size>(), builderAction = local fun MutableSet<Int>.<anonymous>() {
-            $receiver.addAll(elements = tmp_0)
+          val tmp0: Set<Int> = <this>.#thisGraphInstance.provideInts()
+          buildSet<Int>(capacity = tmp0.<get-size>(), builderAction = local fun MutableSet<Int>.<anonymous>() {
+            $receiver.addAll(elements = tmp0)
           }
 )
         }
@@ -82,7 +82,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Set<Int> {
-      return Companion.provideInts(instance = <this>.#instance)
+      return ProvideIntsMetroFactory/* companion */.provideInts(instance = <this>.#instance)
     }
 
     @ElementsIntoSet

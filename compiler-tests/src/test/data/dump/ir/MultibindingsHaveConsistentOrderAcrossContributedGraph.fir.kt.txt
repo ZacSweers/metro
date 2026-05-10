@@ -107,7 +107,7 @@ class TaskImpl4 : Task {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : MetroContributionToAppScope {
+interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @ComptimeOnly
   abstract class BindsMirror {
@@ -248,7 +248,7 @@ interface ExampleGraph : MetroContributionToAppScope {
 
     @HiddenFromObjC
     override operator fun invoke(): Task {
-      return Companion.provide3(instance = <this>.#instance)
+      return Provide3MetroFactory/* companion */.provide3(instance = <this>.#instance)
     }
 
     @IntoSet
@@ -295,7 +295,7 @@ interface ExampleGraph : MetroContributionToAppScope {
 
     @HiddenFromObjC
     override operator fun invoke(): Task {
-      return Companion.provide4(instance = <this>.#instance)
+      return Provide4MetroFactory/* companion */.provide4(instance = <this>.#instance)
     }
 
     @IntoSet
@@ -337,7 +337,7 @@ interface ExampleGraph : MetroContributionToAppScope {
 
 @GraphExtension(scope = Unit::class)
 interface LoggedInGraph {
-  @Factory
+  @GraphExtension.Factory
   @ContributesTo(scope = AppScope::class)
   interface Factory1 {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -369,7 +369,7 @@ object AppScope {
 // FILE: loggedInGraphFactory1AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Factory1) {
+fun AppScope(contributed: LoggedInGraph.Factory1) {
   return error(message = "Never called")
 }
 

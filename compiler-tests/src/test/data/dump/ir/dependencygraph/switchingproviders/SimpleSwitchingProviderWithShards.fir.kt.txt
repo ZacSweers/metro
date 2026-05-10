@@ -74,10 +74,10 @@ interface AppGraph {
 
         override fun invoke(): T {
           return { // BLOCK
-            val tmp_0: Int = <this>.#id
+            val tmp0_id: Int = <this>.#id
             when {
-              EQEQ(arg0 = tmp_0, arg1 = 2) -> ScopedClass() /*as T */
-              else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp_0)
+              EQEQ(arg0 = tmp0_id, arg1 = 2) -> ScopedClass() /*as T */
+              else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
             }
           }
         }
@@ -86,7 +86,7 @@ interface AppGraph {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#scopedClassProvider = Companion.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 2))
+        <this>.#scopedClassProvider = DoubleCheck/* companion */.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 2))
       }
 
     }
@@ -109,10 +109,10 @@ interface AppGraph {
 
         override fun invoke(): T {
           return { // BLOCK
-            val tmp_1: Int = <this>.#id
+            val tmp0_id: Int = <this>.#id
             when {
-              EQEQ(arg0 = tmp_1, arg1 = 1) -> <this>.#graph.#graph.#thisGraphInstance.provideReusedInt() /*as T */
-              else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp_1)
+              EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#graph.#thisGraphInstance.provideReusedInt() /*as T */
+              else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
             }
           }
         }
@@ -145,10 +145,10 @@ interface AppGraph {
 
         override fun invoke(): T {
           return { // BLOCK
-            val tmp_2: Int = <this>.#id
+            val tmp0_id: Int = <this>.#id
             when {
-              EQEQ(arg0 = tmp_2, arg1 = 0) -> <this>.#graph.#graph.#thisGraphInstance.provideString() /*as T */
-              else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp_2)
+              EQEQ(arg0 = tmp0_id, arg1 = 0) -> <this>.#graph.#graph.#thisGraphInstance.provideString() /*as T */
+              else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
             }
           }
         }
@@ -158,7 +158,7 @@ interface AppGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#provideStringProvider = Companion.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
+        <this>.#provideStringProvider = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
       }
 
     }
@@ -246,7 +246,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideReusedInt(instance = <this>.#instance)
+      return ProvideReusedIntMetroFactory/* companion */.provideReusedInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -292,7 +292,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)

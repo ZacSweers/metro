@@ -37,7 +37,7 @@ class AFragment : Fragment {
     }
 
     override fun injectMembers(instance: AFragment) {
-      Companion.injectViewModelFactory(instance = instance, viewModelFactory = <this>.#viewModelFactory.invoke())
+      MetroMembersInjector/* companion */.injectViewModelFactory(instance = instance, viewModelFactory = <this>.#viewModelFactory.invoke())
     }
 
   }
@@ -93,7 +93,7 @@ class AFragmentInjector : Injector {
 
     @HiddenFromObjC
     override operator fun invoke(): AFragmentInjector {
-      return Companion.newInstance(memberInjector = <this>.#memberInjector.invoke())
+      return MetroFactory/* companion */.newInstance(memberInjector = <this>.#memberInjector.invoke())
     }
 
     @HiddenFromObjC
@@ -269,7 +269,7 @@ class BFragment : Fragment {
     }
 
     override fun injectMembers(instance: BFragment) {
-      Companion.injectViewModelFactory(instance = instance, viewModelFactory = <this>.#viewModelFactory.invoke())
+      MetroMembersInjector/* companion */.injectViewModelFactory(instance = instance, viewModelFactory = <this>.#viewModelFactory.invoke())
     }
 
   }
@@ -325,7 +325,7 @@ class BFragmentInjector : Injector {
 
     @HiddenFromObjC
     override operator fun invoke(): BFragmentInjector {
-      return Companion.newInstance(memberInjector = <this>.#memberInjector.invoke())
+      return MetroFactory/* companion */.newInstance(memberInjector = <this>.#memberInjector.invoke())
     }
 
     @HiddenFromObjC
@@ -493,7 +493,7 @@ abstract class BaseActivity : Activity {
     }
 
     override fun injectMembers(instance: BaseActivity) {
-      Companion.injectFragmentInjector(instance = instance, fragmentInjector = <this>.#fragmentInjector.invoke())
+      MetroMembersInjector/* companion */.injectFragmentInjector(instance = instance, fragmentInjector = <this>.#fragmentInjector.invoke())
     }
 
   }
@@ -556,7 +556,7 @@ class FragmentInjector {
 
     @HiddenFromObjC
     override operator fun invoke(): FragmentInjector {
-      return Companion.newInstance(injectors = <this>.#injectors.invoke())
+      return MetroFactory/* companion */.newInstance(injectors = <this>.#injectors.invoke())
     }
 
     @HiddenFromObjC
@@ -633,7 +633,7 @@ class ViewModelFactory {
 
     @HiddenFromObjC
     override operator fun invoke(): ViewModelFactory {
-      return Companion.newInstance(viewModels = <this>.#viewModels.invoke())
+      return MetroFactory/* companion */.newInstance(viewModels = <this>.#viewModels.invoke())
     }
 
     @HiddenFromObjC
@@ -652,12 +652,12 @@ class ViewModelFactory {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope, MetroContributionToAppScope, MetroContributionToAppScope {
+interface AppGraph : AFragmentInjector.MetroContributionToAppScope, AViewModel.MetroContributionToAppScope, BFragmentInjector.MetroContributionToAppScope, BViewModel.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
     private val viewModelFactoryProvider: Provider<ViewModelFactory>
-      field = Companion.create(viewModels = <this>.<get-mapOfKClass___ToViewModelProvider>())
+      field = ViewModelFactory.MetroFactory/* companion */.create(viewModels = <this>.<get-mapOfKClass___ToViewModelProvider>())
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -668,26 +668,26 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope, M
     private val mapOfKClass___ToInjectorProvider: Provider<Map<KClass<*>, Injector>>
       private get(): Provider<Map<KClass<*>, Injector>> {
         return { // BLOCK
-          val tmp_0: Builder<KClass<*>, Injector> = Companion.builder<KClass<*>, Injector>(size = 2)
-          tmp_0.put(key = BFragment::class, providerOfValue = Companion.create(memberInjector = Companion.invoke<MembersInjector<BFragment>>(value = Companion.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
-          tmp_0.put(key = AFragment::class, providerOfValue = Companion.create(memberInjector = Companion.invoke<MembersInjector<AFragment>>(value = Companion.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
-          tmp_0.build()
+          val tmp0_builder: MapFactory.Builder<KClass<*>, Injector> = MapFactory/* companion */.builder<KClass<*>, Injector>(size = 2)
+          tmp0_builder.put(key = BFragment::class, providerOfValue = BFragmentInjector.MetroFactory/* companion */.create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<BFragment>>(value = BFragment.MetroMembersInjector/* companion */.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
+          tmp0_builder.put(key = AFragment::class, providerOfValue = AFragmentInjector.MetroFactory/* companion */.create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<AFragment>>(value = AFragment.MetroMembersInjector/* companion */.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
+          tmp0_builder.build()
         }
       }
 
     private val mapOfKClass___ToViewModelProvider: Provider<Map<KClass<*>, Function0<ViewModel>>>
       private get(): Provider<Map<KClass<*>, Function0<ViewModel>>> {
         return { // BLOCK
-          val tmp_1: Builder<KClass<*>, ViewModel> = Companion.builder<KClass<*>, ViewModel>(size = 2)
-          tmp_1.put(key = BViewModel::class, providerOfValue = MetroFactory.create())
-          tmp_1.put(key = AViewModel::class, providerOfValue = MetroFactory.create())
-          tmp_1.build()
+          val tmp0_builder: MapProviderFactory.Builder<KClass<*>, ViewModel> = MapProviderFactory/* companion */.builder<KClass<*>, ViewModel>(size = 2)
+          tmp0_builder.put(key = BViewModel::class, providerOfValue = BViewModel.MetroFactory.create())
+          tmp0_builder.put(key = AViewModel::class, providerOfValue = AViewModel.MetroFactory.create())
+          tmp0_builder.build()
         }
       }
 
     override val memberInjector: MembersInjector<MyActivity>
       override get(): MembersInjector<MyActivity> {
-        return Companion.create(fragmentInjector = Companion.create(injectors = <this>.<get-mapOfKClass___ToInjectorProvider>()))
+        return BaseActivity.MetroMembersInjector/* companion */.create(fragmentInjector = FragmentInjector.MetroFactory/* companion */.create(injectors = <this>.<get-mapOfKClass___ToInjectorProvider>()))
       }
 
   }

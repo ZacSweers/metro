@@ -9,7 +9,7 @@ class Example {
       field = container0
 
     private val container0InstanceProvider: Provider<TestIntProvider>
-      field = Companion.invoke<TestIntProvider>(value = <this>.#container0Instance)
+      field = InstanceFactory/* companion */.invoke<TestIntProvider>(value = <this>.#container0Instance)
 
     constructor(container0: TestIntProvider) /* primary */ {
       super/*Any*/()
@@ -31,7 +31,7 @@ class Example {
   }
 
   fun someTest(value: Int): Int {
-    val testGraph: AppGraph = DynamicAppGraphImpl_s15c0(container0 = TestIntProvider(value = value))
+    val testGraph: AppGraph = Example.DynamicAppGraphImpl_s15c0(container0 = TestIntProvider(value = value))
     return testGraph.<get-int>()
   }
 
@@ -79,7 +79,7 @@ class TestIntProvider {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -175,7 +175,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -196,6 +196,6 @@ interface AppGraph {
 }
 
 fun example() {
-  check(value = EQEQ(arg0 = 5, arg1 = DynamicAppGraphImpl_s15c0(container0 = TestIntProvider(value = 5)).<get-int>()))
+  check(value = EQEQ(arg0 = 5, arg1 = Example.DynamicAppGraphImpl_s15c0(container0 = TestIntProvider(value = 5)).<get-int>()))
 }
 

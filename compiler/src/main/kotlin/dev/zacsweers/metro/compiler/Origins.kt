@@ -77,6 +77,7 @@ internal object Origins {
     val IR_TEMPORARY_VARIABLE: IrDeclarationOrigin by getConstant("IR_TEMPORARY_VARIABLE")
     val IR_EXTERNAL_JAVA_DECLARATION_STUB: IrDeclarationOrigin by
       getConstant("IR_EXTERNAL_JAVA_DECLARATION_STUB")
+    val DEFAULT_PROPERTY_ACCESSOR: IrDeclarationOrigin by getConstant("DEFAULT_PROPERTY_ACCESSOR")
   }
 }
 

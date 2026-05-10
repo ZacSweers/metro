@@ -34,7 +34,7 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
 
     @HiddenFromObjC
     override operator fun invoke(): ClassWithBackRefs<T, V, E> {
-      return Companion.newInstance<ClassWithBackRefs<T, V, E>, /* null */, /* null */>()
+      return MetroFactory/* companion */.newInstance<ClassWithBackRefs<T, V, E>, /* null */, /* null */>()
     }
 
     @HiddenFromObjC
@@ -88,7 +88,7 @@ class ClassWithBounds<T : Any> {
 
     @HiddenFromObjC
     override operator fun invoke(): ClassWithBounds<T> {
-      return Companion.newInstance<ClassWithBounds<T>>()
+      return MetroFactory/* companion */.newInstance<ClassWithBounds<T>>()
     }
 
     @HiddenFromObjC
@@ -142,7 +142,7 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
 
     @HiddenFromObjC
     override operator fun invoke(): ClassWithMultiple<T, V, E> {
-      return Companion.newInstance<ClassWithMultiple<T, V, E>, /* null */, /* null */>()
+      return MetroFactory/* companion */.newInstance<ClassWithMultiple<T, V, E>, /* null */, /* null */>()
     }
 
     @HiddenFromObjC
@@ -196,7 +196,7 @@ class ClassWithNullable<T : Any?, E : T?> {
 
     @HiddenFromObjC
     override operator fun invoke(): ClassWithNullable<T, E> {
-      return Companion.newInstance<ClassWithNullable<T, E>, /* null */>()
+      return MetroFactory/* companion */.newInstance<ClassWithNullable<T, E>, /* null */>()
     }
 
     @HiddenFromObjC
@@ -250,7 +250,7 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
 
     @HiddenFromObjC
     override operator fun invoke(): ClassWithWheres<T, V, E> {
-      return Companion.newInstance<ClassWithWheres<T, V, E>, /* null */, /* null */>()
+      return MetroFactory/* companion */.newInstance<ClassWithWheres<T, V, E>, /* null */, /* null */>()
     }
 
     @HiddenFromObjC
@@ -304,7 +304,7 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
 
     @HiddenFromObjC
     override operator fun invoke(): ComplexMonster<T, V, E, LongName, NullableLongName> {
-      return Companion.newInstance<ComplexMonster<T, V, E, LongName, NullableLongName>, /* null */, /* null */, /* null */, /* null */>()
+      return MetroFactory/* companion */.newInstance<ComplexMonster<T, V, E, LongName, NullableLongName>, /* null */, /* null */, /* null */, /* null */>()
     }
 
     @HiddenFromObjC
@@ -358,7 +358,7 @@ class SimpleClass<T : Any?> {
 
     @HiddenFromObjC
     override operator fun invoke(): SimpleClass<T> {
-      return Companion.newInstance<SimpleClass<T>>()
+      return MetroFactory/* companion */.newInstance<SimpleClass<T>>()
     }
 
     @HiddenFromObjC

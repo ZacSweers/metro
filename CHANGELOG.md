@@ -28,6 +28,7 @@ Changelog
     - **[IR/graph]** When populating bindings from roots, track a `processedKeys` set so duplicate queue entries don't re-walk dependency lists. This avoids unnecessary extra iterations when doing an initial reachability walk.
     - **[IR/graph]** Merge two annotation walks in supertype collecting into a single pass with a per-annotation-class meta-annotation cache, so `@Qualifier`/`@Scope`-style annotations appearing across many supertypes are meta-walked once instead of N times.
 - **[IR]** Add (advanced use only) support for chunking supertype merging in graphs. This is only for extraordinarily large graphs that may contribute more supertypes than fit in a JVM class. See [performance docs](https://zacsweers.github.io/metro/latest/performance#scaling-to-very-large-graphs)
+- **[IR/reports]** Improve readability of Kotlin IR dumps in reporting.
 - **[IR/tracing]** Add a lot more tracing spans for more granular tracing.
 - **[IR/tracing]** Don't delete previous traces on new compilations. Now traces are just added to the designated directory each compilation when enabled.
 - **[IR/runtime]** For multibound maps/sets with exactly one element, Metro now generates optimized IR that uses optimized `SingletonSet`/`SingletonMap` implementations at runtime and skips the unnecessary throwaway builder allocation. Note that, when using interop, the generated code for Dagger's internal set/map factories still generates the necessary builder intermediary.

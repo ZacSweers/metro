@@ -231,6 +231,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("NestedClassNamesInDump.kt")
+    public void testNestedClassNamesInDump() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/NestedClassNamesInDump.kt");
+    }
+
+    @Test
     @TestMetadata("OptionalBindingsHaveValidFieldNames.kt")
     public void testOptionalBindingsHaveValidFieldNames() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/OptionalBindingsHaveValidFieldNames.kt");

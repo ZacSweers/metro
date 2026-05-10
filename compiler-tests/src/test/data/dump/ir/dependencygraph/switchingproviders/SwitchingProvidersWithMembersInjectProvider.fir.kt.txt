@@ -35,7 +35,7 @@ class Injectable {
     }
 
     override fun injectMembers(instance: Injectable) {
-      Companion.injectString(instance = instance, string = <this>.#string.invoke())
+      MetroMembersInjector/* companion */.injectString(instance = instance, string = <this>.#string.invoke())
     }
 
   }
@@ -94,7 +94,7 @@ class ScopedClass {
 
     @HiddenFromObjC
     override operator fun invoke(): ScopedClass {
-      return Companion.newInstance(injectable = <this>.#injectable.invoke(), injectable2 = <this>.#injectable.invoke())
+      return MetroFactory/* companion */.newInstance(injectable = <this>.#injectable.invoke(), injectable2 = <this>.#injectable.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -122,13 +122,13 @@ interface AppGraph {
       field = <this>
 
     private val provideStringProvider: Provider<String>
-      field = Companion.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 2))
+      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 2))
 
     private val injectableMembersInjectorProvider: Provider<MembersInjector<Injectable>>
       field = SwitchingProvider<MembersInjector<Injectable>>(graph = <this>, id = 1)
 
     private val scopedClassProvider: Provider<ScopedClass>
-      field = Companion.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 0))
+      field = DoubleCheck/* companion */.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 0))
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
       private val graph: Impl
@@ -143,12 +143,12 @@ interface AppGraph {
 
       override fun invoke(): T {
         return { // BLOCK
-          val tmp_0: Int = <this>.#id
+          val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp_0, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
-            EQEQ(arg0 = tmp_0, arg1 = 1) -> Companion.create(string = <this>.#graph.#provideStringProvider) /*as T */
-            EQEQ(arg0 = tmp_0, arg1 = 0) -> ScopedClass(injectable = <this>.#graph.#injectableMembersInjectorProvider.invoke(), injectable2 = <this>.#graph.#injectableMembersInjectorProvider.invoke()) /*as T */
-            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp_0)
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> Injectable.MetroMembersInjector/* companion */.create(string = <this>.#graph.#provideStringProvider) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> ScopedClass(injectable = <this>.#graph.#injectableMembersInjectorProvider.invoke(), injectable2 = <this>.#graph.#injectableMembersInjectorProvider.invoke()) /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
       }
@@ -220,7 +220,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)

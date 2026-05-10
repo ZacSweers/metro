@@ -64,6 +64,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
+import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.util.PrivateForInline
@@ -375,6 +376,32 @@ public interface CompatContext {
   )
   public fun IrClass.rebuildFakeOverridesCompat(typeSystem: IrTypeSystemContext)
 
+  /**
+   * Returns a default-constructed [KotlinLikeDumpOptions] for the active Kotlin version. The
+   * primary constructor of [KotlinLikeDumpOptions] gains/loses fields between Kotlin releases (e.g.
+   * `printVariableInitializers` was added after 2.2.20).
+   */
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "KotlinLikeDumpOptions gained the printVariableInitializers field after 2.2.20 (and may gain more)",
+  )
+  public fun defaultKotlinLikeDumpOptions(): KotlinLikeDumpOptions
+
+  /**
+   * Reads [KotlinLikeDumpOptions.printVariableInitializers] when the active Kotlin version exposes
+   * it, otherwise falls back to the legacy "always print" behavior. The getter only exists in
+   * Kotlin 2.3.0+, so cross-version field accesses on this property cause `NoSuchMethodError` at
+   * runtime against older runtimes.
+   */
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "KotlinLikeDumpOptions.printVariableInitializers was added after 2.2.20",
+  )
+  public fun printVariableInitializersCompat(options: KotlinLikeDumpOptions): Boolean
+
   @CompatApi(
     since = "2.3.0",
     reason = CompatApi.Reason.ABI_CHANGE,
@@ -561,7 +588,7 @@ public interface CompatContext {
     reason = CompatApi.Reason.ABI_CHANGE,
     message = "2.4 introduced IrAnnotation for IrConstructorCall",
   )
-  fun createIrGeneratedDeclarationsRegistrar(
+  public fun createIrGeneratedDeclarationsRegistrar(
     pluginContext: IrPluginContext
   ): IrGeneratedDeclarationsRegistrarCompat {
     return IrConstructorCallIrGeneratedDeclarationsRegistrarCompat(
@@ -574,7 +601,7 @@ public interface CompatContext {
     reason = CompatApi.Reason.ABI_CHANGE,
     message = "2.4 introduced IrAnnotation for IrConstructorCall",
   )
-  fun IrBuilder.irAnnotationCompat(
+  public fun IrBuilder.irAnnotationCompat(
     callee: IrConstructorSymbol,
     typeArguments: List<IrType>,
   ): IrConstructorCall {
@@ -586,7 +613,10 @@ public interface CompatContext {
     reason = CompatApi.Reason.ABI_CHANGE,
     message = "2.4 changed the inline API's use of .result",
   )
-  fun <T : FirElement> FirExpression.evaluateAsCompat(session: FirSession, tKlass: KClass<T>): T? {
+  public fun <T : FirElement> FirExpression.evaluateAsCompat(
+    session: FirSession,
+    tKlass: KClass<T>,
+  ): T? {
     @Suppress("UNCHECKED_CAST") @OptIn(PrivateConstantEvaluatorAPI::class, PrivateForInline::class)
     return FirExpressionEvaluator.evaluateExpression(this, session)?.result as? T
   }
@@ -596,7 +626,7 @@ public interface CompatContext {
     reason = CompatApi.Reason.ABI_CHANGE,
     message = "2.4 changed to use more specific receivers",
   )
-  fun FirAnnotationContainer.getDeprecationsProviderCompat(
+  public fun FirAnnotationContainer.getDeprecationsProviderCompat(
     session: FirSession
   ): DeprecationsProvider? {
     return getDeprecationsProvider(session)
@@ -608,7 +638,7 @@ public interface CompatContext {
     message =
       "This is an inline API and it used some ABI-changed internal logic. This is a non-inline one",
   )
-  fun buildValueParameterCopyCompat(
+  public fun buildValueParameterCopyCompat(
     original: FirValueParameter,
     init: FirValueParameterBuilder.() -> Unit,
   ): FirValueParameter {

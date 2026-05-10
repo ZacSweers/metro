@@ -7,7 +7,7 @@ interface AppGraph {
       field = <this>
 
     private val provideStringProvider: Provider<String>
-      field = Companion.create(instance = <this>.#thisGraphInstance, int = Companion.create(instance = <this>.#thisGraphInstance))
+      field = ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, int = ProvideIntMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -84,7 +84,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -131,7 +131,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance, int = <this>.#int.invoke())
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance, int = <this>.#int.invoke())
     }
 
     @HiddenFromObjC

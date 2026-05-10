@@ -53,13 +53,13 @@ interface AppGraph {
       field = <this>
 
     private val scopedClassProvider: Provider<ScopedClass>
-      field = Companion.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 2))
+      field = DoubleCheck/* companion */.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 2))
 
     private val provideReusedIntProvider: Provider<Int>
       field = SwitchingProvider<Int>(graph = <this>, id = 1)
 
     private val provideStringProvider: Provider<String>
-      field = Companion.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
+      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
       private val graph: Impl
@@ -74,12 +74,12 @@ interface AppGraph {
 
       override fun invoke(): T {
         return { // BLOCK
-          val tmp_0: Int = <this>.#id
+          val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp_0, arg1 = 2) -> ScopedClass() /*as T */
-            EQEQ(arg0 = tmp_0, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideReusedInt() /*as T */
-            EQEQ(arg0 = tmp_0, arg1 = 0) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
-            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp_0)
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> ScopedClass() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideReusedInt() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
       }
@@ -166,7 +166,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideReusedInt(instance = <this>.#instance)
+      return ProvideReusedIntMetroFactory/* companion */.provideReusedInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -212,7 +212,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)

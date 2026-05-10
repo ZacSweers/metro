@@ -83,7 +83,7 @@ abstract class ImplContributions {
 
       @HiddenFromObjC
       override operator fun invoke(): Base {
-        return Companion.provideImplAsBase(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = Companion.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = Companion.create<Double>(provider = <this>.#providerOfLazyDouble))
+        return ProvideImplAsBaseMetroFactory/* companion */.provideImplAsBase(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = DoubleCheck/* companion */.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = ProviderOfLazy/* companion */.create<Double>(provider = <this>.#providerOfLazyDouble))
       }
 
       @HiddenFromObjC
@@ -118,7 +118,7 @@ abstract class ImplContributions {
 package metro.hints
 
 @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-fun AppScope(contributed: ToAppScope) {
+fun AppScope(contributed: ImplContributions.ToAppScope) {
   return error(message = "Never called")
 }
 

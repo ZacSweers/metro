@@ -7,7 +7,7 @@ interface AppGraph {
       field = <this>
 
     private val stringProvider: Provider<String>
-      field = Companion.provider<Provider<String>, String>(delegate = Companion.create(instance = <this>.#thisGraphInstance))
+      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = StringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -74,7 +74,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): String {
-      return Companion.string(instance = <this>.#instance)
+      return StringMetroFactory/* companion */.string(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)

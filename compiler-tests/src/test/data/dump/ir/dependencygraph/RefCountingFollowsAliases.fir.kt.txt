@@ -39,7 +39,7 @@ class BarA {
 
     @HiddenFromObjC
     override operator fun invoke(): BarA {
-      return Companion.newInstance(foo = <this>.#foo)
+      return MetroFactory/* companion */.newInstance(foo = <this>.#foo)
     }
 
     @HiddenFromObjC
@@ -98,7 +98,7 @@ class BarB {
 
     @HiddenFromObjC
     override operator fun invoke(): BarB {
-      return Companion.newInstance(foo = <this>.#foo)
+      return MetroFactory/* companion */.newInstance(foo = <this>.#foo)
     }
 
     @HiddenFromObjC
@@ -321,7 +321,7 @@ class Main {
 
     @HiddenFromObjC
     override operator fun invoke(): Main {
-      return Companion.newInstance(barA = <this>.#barA, barB = <this>.#barB, quxA = <this>.#quxA, quxB = <this>.#quxB)
+      return MetroFactory/* companion */.newInstance(barA = <this>.#barA, barB = <this>.#barB, quxA = <this>.#quxA, quxB = <this>.#quxB)
     }
 
     @SingleIn(scope = AppScope::class)
@@ -381,7 +381,7 @@ class QuxA {
 
     @HiddenFromObjC
     override operator fun invoke(): QuxA {
-      return Companion.newInstance(baz = <this>.#baz)
+      return MetroFactory/* companion */.newInstance(baz = <this>.#baz)
     }
 
     @HiddenFromObjC
@@ -440,7 +440,7 @@ class QuxB {
 
     @HiddenFromObjC
     override operator fun invoke(): QuxB {
-      return Companion.newInstance(baz = <this>.#baz)
+      return MetroFactory/* companion */.newInstance(baz = <this>.#baz)
     }
 
     @HiddenFromObjC
@@ -459,7 +459,7 @@ class QuxB {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
+interface AppGraph : BazImpl.MetroContributionToAppScope, FooImpl.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @ComptimeOnly
   abstract class BindsMirror {
@@ -479,13 +479,13 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
   @MetroImplMarker
   class Impl : AppGraph {
     private val fooImplProvider: Provider<FooImpl>
-      field = MetroFactory.create()
+      field = FooImpl.MetroFactory.create()
 
     private val bazImplProvider: Provider<BazImpl>
-      field = MetroFactory.create()
+      field = BazImpl.MetroFactory.create()
 
     private val mainProvider: Provider<Main>
-      field = Companion.provider<Provider<Main>, Main>(delegate = Companion.create(barA = Companion.create(foo = <this>.#fooImplProvider), barB = Companion.create(foo = <this>.#fooImplProvider), quxA = Companion.create(baz = <this>.#bazImplProvider), quxB = Companion.create(baz = <this>.#bazImplProvider)))
+      field = DoubleCheck/* companion */.provider<Provider<Main>, Main>(delegate = Main.MetroFactory/* companion */.create(barA = BarA.MetroFactory/* companion */.create(foo = <this>.#fooImplProvider), barB = BarB.MetroFactory/* companion */.create(foo = <this>.#fooImplProvider), quxA = QuxA.MetroFactory/* companion */.create(baz = <this>.#bazImplProvider), quxB = QuxB.MetroFactory/* companion */.create(baz = <this>.#bazImplProvider)))
 
     private constructor() /* primary */ {
       super/*Any*/()

@@ -58,7 +58,7 @@ interface ExampleGraph {
 
   }
 
-  @Factory
+  @DependencyGraph.Factory
   interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @MetroImplMarker

@@ -35,7 +35,7 @@ class Target {
     }
 
     override fun injectMembers(instance: Target) {
-      Companion.injectStrings(instance = instance, strings = <this>.#strings.invoke())
+      MetroMembersInjector/* companion */.injectStrings(instance = instance, strings = <this>.#strings.invoke())
     }
 
   }
@@ -85,7 +85,7 @@ interface Bindings {
 
     @HiddenFromObjC
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     @IntoMap
@@ -121,13 +121,13 @@ interface TestGraph1 : Bindings {
     }
 
     override fun inject(target: Target) {
-      Companion.injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
+      Target.MetroMembersInjector/* companion */.injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
     }
 
     private val mapOfIntToString: Map<Int, Function0<String>>
       private get(): Map<Int, Function0<String>> {
         return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = Companion.create(instance = <this>.#thisGraphInstance))
+          $receiver.put(key = 1, value = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
         }
 )
       }
@@ -169,12 +169,12 @@ interface TestGraph2 : Bindings {
     }
 
     override fun inject(target: Target) {
-      Companion.injectStrings(instance = target, strings = <this>.<get-mapOfIntToStringProvider>().invoke())
+      Target.MetroMembersInjector/* companion */.injectStrings(instance = target, strings = <this>.<get-mapOfIntToStringProvider>().invoke())
     }
 
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
       private get(): Provider<Map<Int, Function0<String>>> {
-        return Companion.singleton<Int, String>(key = 1, provider = Companion.create(instance = <this>.#thisGraphInstance))
+        return MapProviderFactory/* companion */.singleton<Int, String>(key = 1, provider = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
       }
 
     override val strings: Function0<Map<Int, Function0<String>>>
@@ -222,13 +222,13 @@ interface TestGraph3 : Bindings {
     }
 
     override fun inject(target: Target) {
-      Companion.injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
+      Target.MetroMembersInjector/* companion */.injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
     }
 
     private val mapOfIntToString: Map<Int, Function0<String>>
       private get(): Map<Int, Function0<String>> {
         return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = Companion.create(instance = <this>.#thisGraphInstance))
+          $receiver.put(key = 1, value = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
         }
 )
       }
@@ -279,7 +279,7 @@ interface TestGraph4 : Bindings {
 
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
       private get(): Provider<Map<Int, Function0<String>>> {
-        return Companion.singleton<Int, String>(key = 1, provider = Companion.create(instance = <this>.#thisGraphInstance))
+        return MapProviderFactory/* companion */.singleton<Int, String>(key = 1, provider = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
       }
 
     override val strings: Function0<Map<Int, Function0<String>>>
@@ -327,7 +327,7 @@ interface TestGraph5 : Bindings {
     private val mapOfIntToString: Map<Int, Function0<String>>
       private get(): Map<Int, Function0<String>> {
         return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = Companion.create(instance = <this>.#thisGraphInstance))
+          $receiver.put(key = 1, value = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
         }
 )
       }

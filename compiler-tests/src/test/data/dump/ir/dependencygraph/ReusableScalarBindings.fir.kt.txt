@@ -83,7 +83,7 @@ class Reused {
 
     @HiddenFromObjC
     override operator fun invoke(): Reused {
-      return Companion.newInstance(nonReused = <this>.#nonReused.invoke())
+      return MetroFactory/* companion */.newInstance(nonReused = <this>.#nonReused.invoke())
     }
 
     @HiddenFromObjC
@@ -195,7 +195,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Double {
-      return Companion.provideDouble(instance = <this>.#instance, long = <this>.#long.invoke(), long2 = <this>.#long.invoke())
+      return ProvideDoubleMetroFactory/* companion */.provideDouble(instance = <this>.#instance, long = <this>.#long.invoke(), long2 = <this>.#long.invoke())
     }
 
     @HiddenFromObjC
@@ -241,7 +241,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -288,7 +288,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Long {
-      return Companion.provideLong(instance = <this>.#instance, int = <this>.#int.invoke(), int2 = <this>.#int.invoke())
+      return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance, int = <this>.#int.invoke(), int2 = <this>.#int.invoke())
     }
 
     @HiddenFromObjC

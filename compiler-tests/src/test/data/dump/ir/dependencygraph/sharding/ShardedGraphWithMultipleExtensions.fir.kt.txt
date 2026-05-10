@@ -281,7 +281,7 @@ class Feature1Service2 {
 
     @HiddenFromObjC
     override operator fun invoke(): Feature1Service2 {
-      return Companion.newInstance(f1s1 = <this>.#f1s1.invoke())
+      return MetroFactory/* companion */.newInstance(f1s1 = <this>.#f1s1.invoke())
     }
 
     @SingleIn(scope = Feature1Scope::class)
@@ -342,7 +342,7 @@ class Feature1Service3 {
 
     @HiddenFromObjC
     override operator fun invoke(): Feature1Service3 {
-      return Companion.newInstance(f1s2 = <this>.#f1s2.invoke())
+      return MetroFactory/* companion */.newInstance(f1s2 = <this>.#f1s2.invoke())
     }
 
     @SingleIn(scope = Feature1Scope::class)
@@ -412,7 +412,7 @@ class Feature2Service1 {
 
     @HiddenFromObjC
     override operator fun invoke(): Feature2Service1 {
-      return Companion.newInstance(app = <this>.#app.invoke())
+      return MetroFactory/* companion */.newInstance(app = <this>.#app.invoke())
     }
 
     @SingleIn(scope = Feature2Scope::class)
@@ -473,7 +473,7 @@ class Feature2Service2 {
 
     @HiddenFromObjC
     override operator fun invoke(): Feature2Service2 {
-      return Companion.newInstance(f2s1 = <this>.#f2s1.invoke())
+      return MetroFactory/* companion */.newInstance(f2s1 = <this>.#f2s1.invoke())
     }
 
     @SingleIn(scope = Feature2Scope::class)
@@ -534,7 +534,7 @@ class Feature2Service3 {
 
     @HiddenFromObjC
     override operator fun invoke(): Feature2Service3 {
-      return Companion.newInstance(f2s2 = <this>.#f2s2.invoke())
+      return MetroFactory/* companion */.newInstance(f2s2 = <this>.#f2s2.invoke())
     }
 
     @SingleIn(scope = Feature2Scope::class)
@@ -554,7 +554,7 @@ class Feature2Service3 {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
+interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2Graph.Factory.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
@@ -572,7 +572,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#appService1Provider = Companion.provider<Provider<AppService1>, AppService1>(delegate = MetroFactory.create())
+        <this>.#appService1Provider = DoubleCheck/* companion */.provider<Provider<AppService1>, AppService1>(delegate = AppService1.MetroFactory.create())
       }
 
     }
@@ -584,8 +584,8 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#appService2Provider = Companion.provider<Provider<AppService2>, AppService2>(delegate = MetroFactory.create())
-        <this>.#appService3Provider = Companion.provider<Provider<AppService3>, AppService3>(delegate = MetroFactory.create())
+        <this>.#appService2Provider = DoubleCheck/* companion */.provider<Provider<AppService2>, AppService2>(delegate = AppService2.MetroFactory.create())
+        <this>.#appService3Provider = DoubleCheck/* companion */.provider<Provider<AppService3>, AppService3>(delegate = AppService3.MetroFactory.create())
       }
 
     }
@@ -595,7 +595,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#appService4Provider = Companion.provider<Provider<AppService4>, AppService4>(delegate = MetroFactory.create())
+        <this>.#appService4Provider = DoubleCheck/* companion */.provider<Provider<AppService4>, AppService4>(delegate = AppService4.MetroFactory.create())
       }
 
     }
@@ -616,8 +616,8 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
         constructor() /* primary */ {
           super/*Any*/()
-          <this>.#feature1Service1Provider = Companion.provider<Provider<Feature1Service1>, Feature1Service1>(delegate = MetroFactory.create())
-          <this>.#feature1Service2Provider = Companion.provider<Provider<Feature1Service2>, Feature1Service2>(delegate = Companion.create(f1s1 = <this>.#feature1Service1Provider))
+          <this>.#feature1Service1Provider = DoubleCheck/* companion */.provider<Provider<Feature1Service1>, Feature1Service1>(delegate = Feature1Service1.MetroFactory.create())
+          <this>.#feature1Service2Provider = DoubleCheck/* companion */.provider<Provider<Feature1Service2>, Feature1Service2>(delegate = Feature1Service2.MetroFactory/* companion */.create(f1s1 = <this>.#feature1Service1Provider))
         }
 
       }
@@ -630,7 +630,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
         constructor(graph: Feature1GraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#graph = graph
-          <this>.#feature1Service3Provider = Companion.provider<Provider<Feature1Service3>, Feature1Service3>(delegate = Companion.create(f1s2 = <this>.#graph.#shard1.#feature1Service2Provider))
+          <this>.#feature1Service3Provider = DoubleCheck/* companion */.provider<Provider<Feature1Service3>, Feature1Service3>(delegate = Feature1Service3.MetroFactory/* companion */.create(f1s2 = <this>.#graph.#shard1.#feature1Service2Provider))
         }
 
       }
@@ -667,7 +667,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
         constructor(graph: Feature2GraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#graph = graph
-          <this>.#feature2Service1Provider = Companion.provider<Provider<Feature2Service1>, Feature2Service1>(delegate = Companion.create(app = <this>.#graph.#appGraphImpl.#shard1.#appService1Provider))
+          <this>.#feature2Service1Provider = DoubleCheck/* companion */.provider<Provider<Feature2Service1>, Feature2Service1>(delegate = Feature2Service1.MetroFactory/* companion */.create(app = <this>.#graph.#appGraphImpl.#shard1.#appService1Provider))
         }
 
       }
@@ -682,8 +682,8 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
         constructor(graph: Feature2GraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#graph = graph
-          <this>.#feature2Service2Provider = Companion.provider<Provider<Feature2Service2>, Feature2Service2>(delegate = Companion.create(f2s1 = <this>.#graph.#shard1.#feature2Service1Provider))
-          <this>.#feature2Service3Provider = Companion.provider<Provider<Feature2Service3>, Feature2Service3>(delegate = Companion.create(f2s2 = <this>.#feature2Service2Provider))
+          <this>.#feature2Service2Provider = DoubleCheck/* companion */.provider<Provider<Feature2Service2>, Feature2Service2>(delegate = Feature2Service2.MetroFactory/* companion */.create(f2s1 = <this>.#graph.#shard1.#feature2Service1Provider))
+          <this>.#feature2Service3Provider = DoubleCheck/* companion */.provider<Provider<Feature2Service3>, Feature2Service3>(delegate = Feature2Service3.MetroFactory/* companion */.create(f2s2 = <this>.#feature2Service2Provider))
         }
 
       }
@@ -740,13 +740,13 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
         return <this>.#shard3.#appService4Provider.invoke()
       }
 
-    override val feature1Factory: Factory
-      override get(): Factory {
+    override val feature1Factory: Feature1Graph.Factory
+      override get(): Feature1Graph.Factory {
         return <this>.#thisGraphInstance
       }
 
-    override val feature2Factory: Factory
-      override get(): Factory {
+    override val feature2Factory: Feature2Graph.Factory
+      override get(): Feature2Graph.Factory {
         return <this>.#thisGraphInstance
       }
 
@@ -780,17 +780,17 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
   abstract val appService4: AppService4
     abstract get
 
-  abstract val feature1Factory: Factory
+  abstract val feature1Factory: Feature1Graph.Factory
     abstract get
 
-  abstract val feature2Factory: Factory
+  abstract val feature2Factory: Feature2Graph.Factory
     abstract get
 
 }
 
 @GraphExtension(scope = Feature1Scope::class)
 interface Feature1Graph {
-  @Factory
+  @GraphExtension.Factory
   @ContributesTo(scope = AppScope::class)
   fun interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -809,7 +809,7 @@ interface Feature1Graph {
 
 @GraphExtension(scope = Feature2Scope::class)
 interface Feature2Graph {
-  @Factory
+  @GraphExtension.Factory
   @ContributesTo(scope = AppScope::class)
   fun interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -829,14 +829,14 @@ interface Feature2Graph {
 // FILE: feature1GraphFactoryAppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Factory) {
+fun AppScope(contributed: Feature1Graph.Factory) {
   return error(message = "Never called")
 }
 
 // FILE: feature2GraphFactoryAppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Factory) {
+fun AppScope(contributed: Feature2Graph.Factory) {
   return error(message = "Never called")
 }
 

@@ -86,7 +86,7 @@ class B {
 
     @HiddenFromObjC
     override operator fun invoke(): B {
-      return Companion.newInstance(a = <this>.#a.invoke())
+      return MetroFactory/* companion */.newInstance(a = <this>.#a.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -147,7 +147,7 @@ class C {
 
     @HiddenFromObjC
     override operator fun invoke(): C {
-      return Companion.newInstance(b = <this>.#b.invoke())
+      return MetroFactory/* companion */.newInstance(b = <this>.#b.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -208,7 +208,7 @@ class D {
 
     @HiddenFromObjC
     override operator fun invoke(): D {
-      return Companion.newInstance(c = <this>.#c.invoke())
+      return MetroFactory/* companion */.newInstance(c = <this>.#c.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -269,7 +269,7 @@ class E {
 
     @HiddenFromObjC
     override operator fun invoke(): E {
-      return Companion.newInstance(d = <this>.#d.invoke())
+      return MetroFactory/* companion */.newInstance(d = <this>.#d.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -330,7 +330,7 @@ class F {
 
     @HiddenFromObjC
     override operator fun invoke(): F {
-      return Companion.newInstance(e = <this>.#e.invoke())
+      return MetroFactory/* companion */.newInstance(e = <this>.#e.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -374,13 +374,13 @@ interface TestGraph {
       }
 
       private fun init() {
-        <this>.#aProvider = Companion.provider<Provider<A>, A>(delegate = MetroFactory.create())
-        <this>.#bProvider = Companion.provider<Provider<B>, B>(delegate = Companion.create(a = <this>.#aProvider))
+        <this>.#aProvider = DoubleCheck/* companion */.provider<Provider<A>, A>(delegate = A.MetroFactory.create())
+        <this>.#bProvider = DoubleCheck/* companion */.provider<Provider<B>, B>(delegate = B.MetroFactory/* companion */.create(a = <this>.#aProvider))
       }
 
       private fun init2() {
-        <this>.#cProvider = Companion.provider<Provider<C>, C>(delegate = Companion.create(b = <this>.#bProvider))
-        <this>.#dProvider = Companion.provider<Provider<D>, D>(delegate = Companion.create(c = <this>.#cProvider))
+        <this>.#cProvider = DoubleCheck/* companion */.provider<Provider<C>, C>(delegate = C.MetroFactory/* companion */.create(b = <this>.#bProvider))
+        <this>.#dProvider = DoubleCheck/* companion */.provider<Provider<D>, D>(delegate = D.MetroFactory/* companion */.create(c = <this>.#cProvider))
       }
 
     }
@@ -395,8 +395,8 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#eProvider = Companion.provider<Provider<E>, E>(delegate = Companion.create(d = <this>.#graph.#shard1.#dProvider))
-        <this>.#fProvider = Companion.provider<Provider<F>, F>(delegate = Companion.create(e = <this>.#eProvider))
+        <this>.#eProvider = DoubleCheck/* companion */.provider<Provider<E>, E>(delegate = E.MetroFactory/* companion */.create(d = <this>.#graph.#shard1.#dProvider))
+        <this>.#fProvider = DoubleCheck/* companion */.provider<Provider<F>, F>(delegate = F.MetroFactory/* companion */.create(e = <this>.#eProvider))
       }
 
     }

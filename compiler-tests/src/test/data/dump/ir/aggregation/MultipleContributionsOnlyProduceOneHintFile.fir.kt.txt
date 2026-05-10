@@ -116,12 +116,12 @@ class Base1Impl : Base1, Base2, Base3 {
 // FILE: file2.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : MetroContributionToAppScope {
+interface ExampleGraph : Base1Impl.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : ExampleGraph {
     private val base1ImplProvider: Provider<Base1Impl>
-      field = Companion.provider<Provider<Base1Impl>, Base1Impl>(delegate = MetroFactory.create())
+      field = DoubleCheck/* companion */.provider<Provider<Base1Impl>, Base1Impl>(delegate = Base1Impl.MetroFactory.create())
 
     private constructor() /* primary */ {
       super/*Any*/()

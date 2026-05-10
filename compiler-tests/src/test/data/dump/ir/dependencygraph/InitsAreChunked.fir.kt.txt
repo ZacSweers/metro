@@ -86,7 +86,7 @@ class Service10 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service10 {
-      return Companion.newInstance(s9 = <this>.#s9.invoke())
+      return MetroFactory/* companion */.newInstance(s9 = <this>.#s9.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -147,7 +147,7 @@ class Service11 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service11 {
-      return Companion.newInstance(s10 = <this>.#s10.invoke())
+      return MetroFactory/* companion */.newInstance(s10 = <this>.#s10.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -208,7 +208,7 @@ class Service12 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service12 {
-      return Companion.newInstance(s11 = <this>.#s11.invoke())
+      return MetroFactory/* companion */.newInstance(s11 = <this>.#s11.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -269,7 +269,7 @@ class Service13 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service13 {
-      return Companion.newInstance(s12 = <this>.#s12.invoke())
+      return MetroFactory/* companion */.newInstance(s12 = <this>.#s12.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -330,7 +330,7 @@ class Service14 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service14 {
-      return Companion.newInstance(s13 = <this>.#s13.invoke())
+      return MetroFactory/* companion */.newInstance(s13 = <this>.#s13.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -391,7 +391,7 @@ class Service15 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service15 {
-      return Companion.newInstance(s14 = <this>.#s14.invoke())
+      return MetroFactory/* companion */.newInstance(s14 = <this>.#s14.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -452,7 +452,7 @@ class Service16 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service16 {
-      return Companion.newInstance(s15 = <this>.#s15.invoke())
+      return MetroFactory/* companion */.newInstance(s15 = <this>.#s15.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -513,7 +513,7 @@ class Service17 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service17 {
-      return Companion.newInstance(s16 = <this>.#s16.invoke())
+      return MetroFactory/* companion */.newInstance(s16 = <this>.#s16.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -574,7 +574,7 @@ class Service18 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service18 {
-      return Companion.newInstance(s17 = <this>.#s17.invoke())
+      return MetroFactory/* companion */.newInstance(s17 = <this>.#s17.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -635,7 +635,7 @@ class Service19 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service19 {
-      return Companion.newInstance(s18 = <this>.#s18.invoke())
+      return MetroFactory/* companion */.newInstance(s18 = <this>.#s18.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -696,7 +696,7 @@ class Service2 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service2 {
-      return Companion.newInstance(s1 = <this>.#s1.invoke())
+      return MetroFactory/* companion */.newInstance(s1 = <this>.#s1.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -757,7 +757,7 @@ class Service20 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service20 {
-      return Companion.newInstance(s19 = <this>.#s19.invoke())
+      return MetroFactory/* companion */.newInstance(s19 = <this>.#s19.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -818,7 +818,7 @@ class Service21 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service21 {
-      return Companion.newInstance(s20 = <this>.#s20.invoke())
+      return MetroFactory/* companion */.newInstance(s20 = <this>.#s20.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -879,7 +879,7 @@ class Service22 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service22 {
-      return Companion.newInstance(s21 = <this>.#s21.invoke())
+      return MetroFactory/* companion */.newInstance(s21 = <this>.#s21.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -940,7 +940,7 @@ class Service23 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service23 {
-      return Companion.newInstance(s22 = <this>.#s22.invoke())
+      return MetroFactory/* companion */.newInstance(s22 = <this>.#s22.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1001,7 +1001,7 @@ class Service24 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service24 {
-      return Companion.newInstance(s23 = <this>.#s23.invoke())
+      return MetroFactory/* companion */.newInstance(s23 = <this>.#s23.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1062,7 +1062,7 @@ class Service25 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service25 {
-      return Companion.newInstance(s24 = <this>.#s24.invoke())
+      return MetroFactory/* companion */.newInstance(s24 = <this>.#s24.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1123,7 +1123,7 @@ class Service26 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service26 {
-      return Companion.newInstance(s25 = <this>.#s25.invoke())
+      return MetroFactory/* companion */.newInstance(s25 = <this>.#s25.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1184,7 +1184,7 @@ class Service27 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service27 {
-      return Companion.newInstance(s26 = <this>.#s26.invoke())
+      return MetroFactory/* companion */.newInstance(s26 = <this>.#s26.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1245,7 +1245,7 @@ class Service28 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service28 {
-      return Companion.newInstance(s27 = <this>.#s27.invoke())
+      return MetroFactory/* companion */.newInstance(s27 = <this>.#s27.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1306,7 +1306,7 @@ class Service29 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service29 {
-      return Companion.newInstance(s28 = <this>.#s28.invoke())
+      return MetroFactory/* companion */.newInstance(s28 = <this>.#s28.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1367,7 +1367,7 @@ class Service3 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service3 {
-      return Companion.newInstance(s2 = <this>.#s2.invoke())
+      return MetroFactory/* companion */.newInstance(s2 = <this>.#s2.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1428,7 +1428,7 @@ class Service30 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service30 {
-      return Companion.newInstance(s29 = <this>.#s29.invoke())
+      return MetroFactory/* companion */.newInstance(s29 = <this>.#s29.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1489,7 +1489,7 @@ class Service4 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service4 {
-      return Companion.newInstance(s3 = <this>.#s3.invoke())
+      return MetroFactory/* companion */.newInstance(s3 = <this>.#s3.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1550,7 +1550,7 @@ class Service5 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service5 {
-      return Companion.newInstance(s4 = <this>.#s4.invoke())
+      return MetroFactory/* companion */.newInstance(s4 = <this>.#s4.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1611,7 +1611,7 @@ class Service6 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service6 {
-      return Companion.newInstance(s5 = <this>.#s5.invoke())
+      return MetroFactory/* companion */.newInstance(s5 = <this>.#s5.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1672,7 +1672,7 @@ class Service7 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service7 {
-      return Companion.newInstance(s6 = <this>.#s6.invoke())
+      return MetroFactory/* companion */.newInstance(s6 = <this>.#s6.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1733,7 +1733,7 @@ class Service8 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service8 {
-      return Companion.newInstance(s7 = <this>.#s7.invoke())
+      return MetroFactory/* companion */.newInstance(s7 = <this>.#s7.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1794,7 +1794,7 @@ class Service9 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service9 {
-      return Companion.newInstance(s8 = <this>.#s8.invoke())
+      return MetroFactory/* companion */.newInstance(s8 = <this>.#s8.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -1887,39 +1887,39 @@ interface AppGraph {
     }
 
     private fun init() {
-      <this>.#service1Provider = Companion.provider<Provider<Service1>, Service1>(delegate = MetroFactory.create())
-      <this>.#service2Provider = Companion.provider<Provider<Service2>, Service2>(delegate = Companion.create(s1 = <this>.#service1Provider))
-      <this>.#service3Provider = Companion.provider<Provider<Service3>, Service3>(delegate = Companion.create(s2 = <this>.#service2Provider))
-      <this>.#service4Provider = Companion.provider<Provider<Service4>, Service4>(delegate = Companion.create(s3 = <this>.#service3Provider))
-      <this>.#service5Provider = Companion.provider<Provider<Service5>, Service5>(delegate = Companion.create(s4 = <this>.#service4Provider))
-      <this>.#service6Provider = Companion.provider<Provider<Service6>, Service6>(delegate = Companion.create(s5 = <this>.#service5Provider))
-      <this>.#service7Provider = Companion.provider<Provider<Service7>, Service7>(delegate = Companion.create(s6 = <this>.#service6Provider))
-      <this>.#service8Provider = Companion.provider<Provider<Service8>, Service8>(delegate = Companion.create(s7 = <this>.#service7Provider))
-      <this>.#service9Provider = Companion.provider<Provider<Service9>, Service9>(delegate = Companion.create(s8 = <this>.#service8Provider))
-      <this>.#service10Provider = Companion.provider<Provider<Service10>, Service10>(delegate = Companion.create(s9 = <this>.#service9Provider))
-      <this>.#service11Provider = Companion.provider<Provider<Service11>, Service11>(delegate = Companion.create(s10 = <this>.#service10Provider))
-      <this>.#service12Provider = Companion.provider<Provider<Service12>, Service12>(delegate = Companion.create(s11 = <this>.#service11Provider))
-      <this>.#service13Provider = Companion.provider<Provider<Service13>, Service13>(delegate = Companion.create(s12 = <this>.#service12Provider))
-      <this>.#service14Provider = Companion.provider<Provider<Service14>, Service14>(delegate = Companion.create(s13 = <this>.#service13Provider))
-      <this>.#service15Provider = Companion.provider<Provider<Service15>, Service15>(delegate = Companion.create(s14 = <this>.#service14Provider))
-      <this>.#service16Provider = Companion.provider<Provider<Service16>, Service16>(delegate = Companion.create(s15 = <this>.#service15Provider))
-      <this>.#service17Provider = Companion.provider<Provider<Service17>, Service17>(delegate = Companion.create(s16 = <this>.#service16Provider))
-      <this>.#service18Provider = Companion.provider<Provider<Service18>, Service18>(delegate = Companion.create(s17 = <this>.#service17Provider))
-      <this>.#service19Provider = Companion.provider<Provider<Service19>, Service19>(delegate = Companion.create(s18 = <this>.#service18Provider))
-      <this>.#service20Provider = Companion.provider<Provider<Service20>, Service20>(delegate = Companion.create(s19 = <this>.#service19Provider))
-      <this>.#service21Provider = Companion.provider<Provider<Service21>, Service21>(delegate = Companion.create(s20 = <this>.#service20Provider))
-      <this>.#service22Provider = Companion.provider<Provider<Service22>, Service22>(delegate = Companion.create(s21 = <this>.#service21Provider))
-      <this>.#service23Provider = Companion.provider<Provider<Service23>, Service23>(delegate = Companion.create(s22 = <this>.#service22Provider))
-      <this>.#service24Provider = Companion.provider<Provider<Service24>, Service24>(delegate = Companion.create(s23 = <this>.#service23Provider))
-      <this>.#service25Provider = Companion.provider<Provider<Service25>, Service25>(delegate = Companion.create(s24 = <this>.#service24Provider))
+      <this>.#service1Provider = DoubleCheck/* companion */.provider<Provider<Service1>, Service1>(delegate = Service1.MetroFactory.create())
+      <this>.#service2Provider = DoubleCheck/* companion */.provider<Provider<Service2>, Service2>(delegate = Service2.MetroFactory/* companion */.create(s1 = <this>.#service1Provider))
+      <this>.#service3Provider = DoubleCheck/* companion */.provider<Provider<Service3>, Service3>(delegate = Service3.MetroFactory/* companion */.create(s2 = <this>.#service2Provider))
+      <this>.#service4Provider = DoubleCheck/* companion */.provider<Provider<Service4>, Service4>(delegate = Service4.MetroFactory/* companion */.create(s3 = <this>.#service3Provider))
+      <this>.#service5Provider = DoubleCheck/* companion */.provider<Provider<Service5>, Service5>(delegate = Service5.MetroFactory/* companion */.create(s4 = <this>.#service4Provider))
+      <this>.#service6Provider = DoubleCheck/* companion */.provider<Provider<Service6>, Service6>(delegate = Service6.MetroFactory/* companion */.create(s5 = <this>.#service5Provider))
+      <this>.#service7Provider = DoubleCheck/* companion */.provider<Provider<Service7>, Service7>(delegate = Service7.MetroFactory/* companion */.create(s6 = <this>.#service6Provider))
+      <this>.#service8Provider = DoubleCheck/* companion */.provider<Provider<Service8>, Service8>(delegate = Service8.MetroFactory/* companion */.create(s7 = <this>.#service7Provider))
+      <this>.#service9Provider = DoubleCheck/* companion */.provider<Provider<Service9>, Service9>(delegate = Service9.MetroFactory/* companion */.create(s8 = <this>.#service8Provider))
+      <this>.#service10Provider = DoubleCheck/* companion */.provider<Provider<Service10>, Service10>(delegate = Service10.MetroFactory/* companion */.create(s9 = <this>.#service9Provider))
+      <this>.#service11Provider = DoubleCheck/* companion */.provider<Provider<Service11>, Service11>(delegate = Service11.MetroFactory/* companion */.create(s10 = <this>.#service10Provider))
+      <this>.#service12Provider = DoubleCheck/* companion */.provider<Provider<Service12>, Service12>(delegate = Service12.MetroFactory/* companion */.create(s11 = <this>.#service11Provider))
+      <this>.#service13Provider = DoubleCheck/* companion */.provider<Provider<Service13>, Service13>(delegate = Service13.MetroFactory/* companion */.create(s12 = <this>.#service12Provider))
+      <this>.#service14Provider = DoubleCheck/* companion */.provider<Provider<Service14>, Service14>(delegate = Service14.MetroFactory/* companion */.create(s13 = <this>.#service13Provider))
+      <this>.#service15Provider = DoubleCheck/* companion */.provider<Provider<Service15>, Service15>(delegate = Service15.MetroFactory/* companion */.create(s14 = <this>.#service14Provider))
+      <this>.#service16Provider = DoubleCheck/* companion */.provider<Provider<Service16>, Service16>(delegate = Service16.MetroFactory/* companion */.create(s15 = <this>.#service15Provider))
+      <this>.#service17Provider = DoubleCheck/* companion */.provider<Provider<Service17>, Service17>(delegate = Service17.MetroFactory/* companion */.create(s16 = <this>.#service16Provider))
+      <this>.#service18Provider = DoubleCheck/* companion */.provider<Provider<Service18>, Service18>(delegate = Service18.MetroFactory/* companion */.create(s17 = <this>.#service17Provider))
+      <this>.#service19Provider = DoubleCheck/* companion */.provider<Provider<Service19>, Service19>(delegate = Service19.MetroFactory/* companion */.create(s18 = <this>.#service18Provider))
+      <this>.#service20Provider = DoubleCheck/* companion */.provider<Provider<Service20>, Service20>(delegate = Service20.MetroFactory/* companion */.create(s19 = <this>.#service19Provider))
+      <this>.#service21Provider = DoubleCheck/* companion */.provider<Provider<Service21>, Service21>(delegate = Service21.MetroFactory/* companion */.create(s20 = <this>.#service20Provider))
+      <this>.#service22Provider = DoubleCheck/* companion */.provider<Provider<Service22>, Service22>(delegate = Service22.MetroFactory/* companion */.create(s21 = <this>.#service21Provider))
+      <this>.#service23Provider = DoubleCheck/* companion */.provider<Provider<Service23>, Service23>(delegate = Service23.MetroFactory/* companion */.create(s22 = <this>.#service22Provider))
+      <this>.#service24Provider = DoubleCheck/* companion */.provider<Provider<Service24>, Service24>(delegate = Service24.MetroFactory/* companion */.create(s23 = <this>.#service23Provider))
+      <this>.#service25Provider = DoubleCheck/* companion */.provider<Provider<Service25>, Service25>(delegate = Service25.MetroFactory/* companion */.create(s24 = <this>.#service24Provider))
     }
 
     private fun init2() {
-      <this>.#service26Provider = Companion.provider<Provider<Service26>, Service26>(delegate = Companion.create(s25 = <this>.#service25Provider))
-      <this>.#service27Provider = Companion.provider<Provider<Service27>, Service27>(delegate = Companion.create(s26 = <this>.#service26Provider))
-      <this>.#service28Provider = Companion.provider<Provider<Service28>, Service28>(delegate = Companion.create(s27 = <this>.#service27Provider))
-      <this>.#service29Provider = Companion.provider<Provider<Service29>, Service29>(delegate = Companion.create(s28 = <this>.#service28Provider))
-      <this>.#service30Provider = Companion.provider<Provider<Service30>, Service30>(delegate = Companion.create(s29 = <this>.#service29Provider))
+      <this>.#service26Provider = DoubleCheck/* companion */.provider<Provider<Service26>, Service26>(delegate = Service26.MetroFactory/* companion */.create(s25 = <this>.#service25Provider))
+      <this>.#service27Provider = DoubleCheck/* companion */.provider<Provider<Service27>, Service27>(delegate = Service27.MetroFactory/* companion */.create(s26 = <this>.#service26Provider))
+      <this>.#service28Provider = DoubleCheck/* companion */.provider<Provider<Service28>, Service28>(delegate = Service28.MetroFactory/* companion */.create(s27 = <this>.#service27Provider))
+      <this>.#service29Provider = DoubleCheck/* companion */.provider<Provider<Service29>, Service29>(delegate = Service29.MetroFactory/* companion */.create(s28 = <this>.#service28Provider))
+      <this>.#service30Provider = DoubleCheck/* companion */.provider<Provider<Service30>, Service30>(delegate = Service30.MetroFactory/* companion */.create(s29 = <this>.#service29Provider))
     }
 
     override val service30: Service30

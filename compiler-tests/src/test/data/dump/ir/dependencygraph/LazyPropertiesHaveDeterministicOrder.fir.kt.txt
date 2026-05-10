@@ -113,7 +113,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Double {
-      return Companion.bindDouble(instance = <this>.#instance, int = <this>.#int.invoke())
+      return BindDoubleMetroFactory/* companion */.bindDouble(instance = <this>.#instance, int = <this>.#int.invoke())
     }
 
     @IntoSet
@@ -161,7 +161,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Long {
-      return Companion.bindLong(instance = <this>.#instance, int = <this>.#int.invoke())
+      return BindLongMetroFactory/* companion */.bindLong(instance = <this>.#instance, int = <this>.#int.invoke())
     }
 
     @IntoSet
@@ -208,7 +208,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance)
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
     @HiddenFromObjC

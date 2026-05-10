@@ -85,7 +85,7 @@ abstract class ImplContributions {
 
       @HiddenFromObjC
       override operator fun invoke(): Bar {
-        return Companion.provideImplAsBar(instance = <this>.#instance.invoke())
+        return ProvideImplAsBarMetroFactory/* companion */.provideImplAsBar(instance = <this>.#instance.invoke())
       }
 
       @HiddenFromObjC
@@ -129,7 +129,7 @@ abstract class ImplContributions {
 
       @HiddenFromObjC
       override operator fun invoke(): Foo {
-        return Companion.provideImplAsFoo(instance = <this>.#instance.invoke())
+        return ProvideImplAsFooMetroFactory/* companion */.provideImplAsFoo(instance = <this>.#instance.invoke())
       }
 
       @HiddenFromObjC
@@ -176,7 +176,7 @@ abstract class ImplContributions {
 
       @HiddenFromObjC
       override operator fun invoke(): Any? {
-        return Companion.provideScopedInstanceImpl(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = Companion.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = Companion.create<Double>(provider = <this>.#providerOfLazyDouble))
+        return ProvideScopedInstanceImplMetroFactory/* companion */.provideScopedInstanceImpl(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = DoubleCheck/* companion */.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = ProviderOfLazy/* companion */.create<Double>(provider = <this>.#providerOfLazyDouble))
       }
 
       @SingleIn(scope = AppScope::class)
@@ -225,7 +225,7 @@ abstract class ImplContributions {
 package metro.hints
 
 @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-fun AppScope(contributed: ToAppScope) {
+fun AppScope(contributed: ImplContributions.ToAppScope) {
   return error(message = "Never called")
 }
 

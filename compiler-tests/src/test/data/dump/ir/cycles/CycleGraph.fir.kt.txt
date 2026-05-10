@@ -44,7 +44,7 @@ class A {
 
     @HiddenFromObjC
     override operator fun invoke(): A {
-      return Companion.newInstance(b = <this>.#b.invoke(), e = <this>.#e.invoke())
+      return MetroFactory/* companion */.newInstance(b = <this>.#b.invoke(), e = <this>.#e.invoke())
     }
 
     @HiddenFromObjC
@@ -103,7 +103,7 @@ class B {
 
     @HiddenFromObjC
     override operator fun invoke(): B {
-      return Companion.newInstance(c = <this>.#c.invoke())
+      return MetroFactory/* companion */.newInstance(c = <this>.#c.invoke())
     }
 
     @HiddenFromObjC
@@ -171,10 +171,10 @@ class C {
 
     @HiddenFromObjC
     override operator fun invoke(): C {
-      val tmp_0: C = Companion.newInstance(aProvider = <this>.#aProvider)
-      Companion.injectALazy(instance = tmp_0, aLazy = Companion.lazy<Provider<A>, A>(provider = <this>.#aProvider))
-      Companion.injectALazyProvider(instance = tmp_0, aLazyProvider = Companion.create<A>(provider = <this>.#aProvider))
-      return tmp_0
+      val tmp0: C = C.MetroFactory/* companion */.newInstance(aProvider = <this>.#aProvider)
+      MetroMembersInjector/* companion */.injectALazy(instance = tmp0, aLazy = DoubleCheck/* companion */.lazy<Provider<A>, A>(provider = <this>.#aProvider))
+      MetroMembersInjector/* companion */.injectALazyProvider(instance = tmp0, aLazyProvider = ProviderOfLazy/* companion */.create<A>(provider = <this>.#aProvider))
+      return tmp0
     }
 
     @HiddenFromObjC
@@ -223,8 +223,8 @@ class C {
     }
 
     override fun injectMembers(instance: C) {
-      Companion.injectALazy(instance = instance, aLazy = Companion.lazy<Provider<A>, A>(provider = <this>.#aLazy))
-      Companion.injectALazyProvider(instance = instance, aLazyProvider = Companion.create<A>(provider = <this>.#aLazyProvider))
+      MetroMembersInjector/* companion */.injectALazy(instance = instance, aLazy = DoubleCheck/* companion */.lazy<Provider<A>, A>(provider = <this>.#aLazy))
+      MetroMembersInjector/* companion */.injectALazyProvider(instance = instance, aLazyProvider = ProviderOfLazy/* companion */.create<A>(provider = <this>.#aLazyProvider))
     }
 
   }
@@ -278,7 +278,7 @@ class D {
 
     @HiddenFromObjC
     override operator fun invoke(): D {
-      return Companion.newInstance(b = <this>.#b.invoke())
+      return MetroFactory/* companion */.newInstance(b = <this>.#b.invoke())
     }
 
     @HiddenFromObjC
@@ -337,7 +337,7 @@ class E {
 
     @HiddenFromObjC
     override operator fun invoke(): E {
-      return Companion.newInstance(d = <this>.#d.invoke())
+      return MetroFactory/* companion */.newInstance(d = <this>.#d.invoke())
     }
 
     @HiddenFromObjC
@@ -357,7 +357,7 @@ class E {
 
 @GraphExtension
 interface ChildCycleGraph {
-  @Factory
+  @GraphExtension.Factory
   fun interface Factory {
     abstract fun create(): ChildCycleGraph
 
@@ -383,10 +383,10 @@ interface CycleGraph {
       field = DelegateFactory<C>()
 
     private val bProvider: Provider<B>
-      field = Companion.create(c = <this>.#cProvider)
+      field = B.MetroFactory/* companion */.create(c = <this>.#cProvider)
 
     private val aProvider: Provider<A>
-      field = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
+      field = A.MetroFactory/* companion */.create(b = <this>.#bProvider, e = E.MetroFactory/* companion */.create(d = D.MetroFactory/* companion */.create(b = <this>.#bProvider)))
 
     private val provideObjectWithCycleProvider: Provider<Any>
       field = DelegateFactory<Any>()
@@ -400,15 +400,15 @@ interface CycleGraph {
         field = DelegateFactory<C>()
 
       private val bProvider: Provider<B>
-        field = Companion.create(c = <this>.#cProvider)
+        field = B.MetroFactory/* companion */.create(c = <this>.#cProvider)
 
       private val aProvider: Provider<A>
-        field = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
+        field = A.MetroFactory/* companion */.create(b = <this>.#bProvider, e = E.MetroFactory/* companion */.create(d = D.MetroFactory/* companion */.create(b = <this>.#bProvider)))
 
       private val provideObjectWithCycleProvider: Provider<Any>
         field = DelegateFactory<Any>()
 
-      private class FactoryImpl : Factory {
+      private class FactoryImpl : ChildCycleGraph.Factory {
         private /* final field */ val CycleGraphImpl: Impl = CycleGraphImpl
         constructor(CycleGraphImpl: Impl) /* primary */ {
           super/*Any*/()
@@ -426,8 +426,8 @@ interface CycleGraph {
         super/*Any*/()
         /* <init>() */
 
-        Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider))
-        Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#cycleGraphImpl, obj = <this>.#provideObjectWithCycleProvider))
+        DelegateFactory/* companion */.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = C.MetroFactory/* companion */.create(aProvider = <this>.#aProvider))
+        DelegateFactory/* companion */.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = ProvideObjectWithCycleMetroFactory/* companion */.create(instance = <this>.#cycleGraphImpl, obj = <this>.#provideObjectWithCycleProvider))
       }
 
       override val a: A
@@ -446,8 +446,8 @@ interface CycleGraph {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider))
-      Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
+      DelegateFactory/* companion */.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = C.MetroFactory/* companion */.create(aProvider = <this>.#aProvider))
+      DelegateFactory/* companion */.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = ProvideObjectWithCycleMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
     }
 
     override fun a(): A {
@@ -458,8 +458,8 @@ interface CycleGraph {
       return <this>.#cProvider.invoke()
     }
 
-    override fun childCycleGraph(): Factory {
-      return FactoryImpl(CycleGraphImpl = <this>.#thisGraphInstance)
+    override fun childCycleGraph(): ChildCycleGraph.Factory {
+      return CycleGraph.Impl.ChildCycleGraphImpl.FactoryImpl(CycleGraphImpl = <this>.#thisGraphInstance)
     }
 
     override val objWithCycle: Any
@@ -522,7 +522,7 @@ interface CycleGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Any {
-      return Companion.provideObjectWithCycle(instance = <this>.#instance, obj = <this>.#obj)
+      return ProvideObjectWithCycleMetroFactory/* companion */.provideObjectWithCycle(instance = <this>.#instance, obj = <this>.#obj)
     }
 
     @HiddenFromObjC
@@ -536,7 +536,7 @@ interface CycleGraph {
 
   abstract fun c(): C
 
-  abstract fun childCycleGraph(): Factory
+  abstract fun childCycleGraph(): ChildCycleGraph.Factory
 
   @Provides
   private final fun provideObjectWithCycle(obj: Function0<Any>): Any {

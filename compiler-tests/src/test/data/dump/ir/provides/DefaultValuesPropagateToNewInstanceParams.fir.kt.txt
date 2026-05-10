@@ -39,7 +39,7 @@ interface IntProvider {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideInt(instance = <this>.#instance, stringValue = <this>.#stringValue.invoke())
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance, stringValue = <this>.#stringValue.invoke())
     }
 
     @HiddenFromObjC
@@ -52,16 +52,16 @@ interface IntProvider {
   @Provides
   fun provideInt(stringValue: String? = null): Int {
     return { // BLOCK
-      val tmp_0: Int? = { // BLOCK
-        val tmp_1: String? = stringValue
+      val tmp1_elvis_lhs: Int? = { // BLOCK
+        val tmp0_safe_receiver: String? = stringValue
         when {
-          EQEQ(arg0 = tmp_1, arg1 = null) -> null
-          else -> toInt(/* <this> = tmp_1 /*as String */ */)
+          EQEQ(arg0 = tmp0_safe_receiver, arg1 = null) -> null
+          else -> toInt(/* <this> = tmp0_safe_receiver /*as String */ */)
         }
       }
       when {
-        EQEQ(arg0 = tmp_0, arg1 = null) -> 0
-        else -> tmp_0
+        EQEQ(arg0 = tmp1_elvis_lhs, arg1 = null) -> 0
+        else -> tmp1_elvis_lhs
       }
     }
   }

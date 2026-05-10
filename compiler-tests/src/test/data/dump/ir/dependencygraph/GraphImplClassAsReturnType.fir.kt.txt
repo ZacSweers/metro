@@ -1,7 +1,7 @@
 // FILE: GraphImplClassAsReturnType.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : MetroContributionToAppScope {
+interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
@@ -53,7 +53,7 @@ interface AppGraph : MetroContributionToAppScope {
 
 @GraphExtension(scope = String::class)
 interface ChildGraph {
-  @Factory
+  @GraphExtension.Factory
   @ContributesTo(scope = AppScope::class)
   fun interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -70,7 +70,7 @@ interface ChildGraph {
 // FILE: childGraphFactoryAppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Factory) {
+fun AppScope(contributed: ChildGraph.Factory) {
   return error(message = "Never called")
 }
 

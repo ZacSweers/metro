@@ -137,7 +137,7 @@ class Service3 {
 
     @HiddenFromObjC
     override operator fun invoke(): Service3 {
-      return Companion.newInstance(s1 = <this>.#s1.invoke(), s2 = <this>.#s2.invoke())
+      return MetroFactory/* companion */.newInstance(s1 = <this>.#s1.invoke(), s2 = <this>.#s2.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -172,8 +172,8 @@ interface TestGraph {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#service1Provider = Companion.provider<Provider<Service1>, Service1>(delegate = MetroFactory.create())
-        <this>.#service2Provider = Companion.provider<Provider<Service2>, Service2>(delegate = MetroFactory.create())
+        <this>.#service1Provider = DoubleCheck/* companion */.provider<Provider<Service1>, Service1>(delegate = Service1.MetroFactory.create())
+        <this>.#service2Provider = DoubleCheck/* companion */.provider<Provider<Service2>, Service2>(delegate = Service2.MetroFactory.create())
       }
 
     }
@@ -186,7 +186,7 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#service3Provider = Companion.provider<Provider<Service3>, Service3>(delegate = Companion.create(s1 = <this>.#graph.#shard1.#service1Provider, s2 = <this>.#graph.#shard1.#service2Provider))
+        <this>.#service3Provider = DoubleCheck/* companion */.provider<Provider<Service3>, Service3>(delegate = Service3.MetroFactory/* companion */.create(s1 = <this>.#graph.#shard1.#service1Provider, s2 = <this>.#graph.#shard1.#service2Provider))
       }
 
     }

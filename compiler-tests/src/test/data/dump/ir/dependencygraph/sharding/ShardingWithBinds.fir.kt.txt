@@ -88,7 +88,7 @@ class Service {
 
     @HiddenFromObjC
     override operator fun invoke(): Service {
-      return Companion.newInstance(repo = <this>.#repo.invoke())
+      return MetroFactory/* companion */.newInstance(repo = <this>.#repo.invoke())
     }
 
     @SingleIn(scope = AppScope::class)
@@ -150,7 +150,7 @@ interface TestGraph {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#repositoryImplProvider = Companion.provider<Provider<RepositoryImpl>, RepositoryImpl>(delegate = MetroFactory.create())
+        <this>.#repositoryImplProvider = DoubleCheck/* companion */.provider<Provider<RepositoryImpl>, RepositoryImpl>(delegate = RepositoryImpl.MetroFactory.create())
       }
 
     }
@@ -163,7 +163,7 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#serviceProvider = Companion.provider<Provider<Service>, Service>(delegate = Companion.create(repo = <this>.#graph.#shard1.#repositoryImplProvider))
+        <this>.#serviceProvider = DoubleCheck/* companion */.provider<Provider<Service>, Service>(delegate = Service.MetroFactory/* companion */.create(repo = <this>.#graph.#shard1.#repositoryImplProvider))
       }
 
     }

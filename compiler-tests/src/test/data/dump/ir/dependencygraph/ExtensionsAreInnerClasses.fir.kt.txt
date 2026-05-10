@@ -1,5 +1,5 @@
 @DependencyGraph
-interface AppGraph : Factory {
+interface AppGraph : LoggedInGraph.Factory {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
@@ -15,7 +15,7 @@ interface AppGraph : Factory {
         field = id
 
       private val idInstanceProvider: Provider<String>
-        field = Companion.invoke<String>(value = <this>.#idInstance)
+        field = InstanceFactory/* companion */.invoke<String>(value = <this>.#idInstance)
 
       constructor(appGraphImpl: Impl, @Provides id: String) /* primary */ {
         super/*Any*/()
@@ -99,7 +99,7 @@ interface AppGraph : Factory {
 
     @HiddenFromObjC
     override operator fun invoke(): Int {
-      return Companion.provideCount(instance = <this>.#instance)
+      return ProvideCountMetroFactory/* companion */.provideCount(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
@@ -118,7 +118,7 @@ interface AppGraph : Factory {
 
 @GraphExtension
 interface LoggedInGraph {
-  @Factory
+  @GraphExtension.Factory
   interface Factory {
     abstract fun createLoggedInGraph(@Provides id: String): LoggedInGraph
 

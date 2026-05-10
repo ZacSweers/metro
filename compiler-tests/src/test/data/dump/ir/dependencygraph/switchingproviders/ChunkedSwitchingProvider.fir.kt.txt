@@ -256,10 +256,10 @@ interface AppGraph {
 
       override fun invoke(): T {
         return { // BLOCK
-          val tmp_0: Int = <this>.#id
+          val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp_0, arg1 = 4) -> ClassA() /*as T */
-            EQEQ(arg0 = tmp_0, arg1 = 3) -> ClassB() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 4) -> ClassA() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 3) -> ClassB() /*as T */
             else -> <this>.invoke3()
           }
         }
@@ -267,20 +267,20 @@ interface AppGraph {
 
       private fun invoke2(): T {
         return { // BLOCK
-          val tmp_1: Int = <this>.#id
+          val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp_1, arg1 = 0) -> ClassE() /*as T */
-            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp_1)
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> ClassE() /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
       }
 
       private fun invoke3(): T {
         return { // BLOCK
-          val tmp_2: Int = <this>.#id
+          val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp_2, arg1 = 2) -> ClassC() /*as T */
-            EQEQ(arg0 = tmp_2, arg1 = 1) -> ClassD() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> ClassC() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> ClassD() /*as T */
             else -> <this>.invoke2()
           }
         }
@@ -298,17 +298,17 @@ interface AppGraph {
     }
 
     private fun init() {
-      <this>.#classAProvider = Companion.provider<Provider<ClassA>, ClassA>(delegate = SwitchingProvider<ClassA>(graph = <this>, id = 4))
-      <this>.#classBProvider = Companion.provider<Provider<ClassB>, ClassB>(delegate = SwitchingProvider<ClassB>(graph = <this>, id = 3))
+      <this>.#classAProvider = DoubleCheck/* companion */.provider<Provider<ClassA>, ClassA>(delegate = SwitchingProvider<ClassA>(graph = <this>, id = 4))
+      <this>.#classBProvider = DoubleCheck/* companion */.provider<Provider<ClassB>, ClassB>(delegate = SwitchingProvider<ClassB>(graph = <this>, id = 3))
     }
 
     private fun init2() {
-      <this>.#classCProvider = Companion.provider<Provider<ClassC>, ClassC>(delegate = SwitchingProvider<ClassC>(graph = <this>, id = 2))
-      <this>.#classDProvider = Companion.provider<Provider<ClassD>, ClassD>(delegate = SwitchingProvider<ClassD>(graph = <this>, id = 1))
+      <this>.#classCProvider = DoubleCheck/* companion */.provider<Provider<ClassC>, ClassC>(delegate = SwitchingProvider<ClassC>(graph = <this>, id = 2))
+      <this>.#classDProvider = DoubleCheck/* companion */.provider<Provider<ClassD>, ClassD>(delegate = SwitchingProvider<ClassD>(graph = <this>, id = 1))
     }
 
     private fun init3() {
-      <this>.#classEProvider = Companion.provider<Provider<ClassE>, ClassE>(delegate = SwitchingProvider<ClassE>(graph = <this>, id = 0))
+      <this>.#classEProvider = DoubleCheck/* companion */.provider<Provider<ClassE>, ClassE>(delegate = SwitchingProvider<ClassE>(graph = <this>, id = 0))
     }
 
     override val a: ClassA

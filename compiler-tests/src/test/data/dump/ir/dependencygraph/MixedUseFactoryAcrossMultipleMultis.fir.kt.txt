@@ -35,7 +35,7 @@ class ClientDevice {
 
     @HiddenFromObjC
     override operator fun invoke(): ClientDevice {
-      return Companion.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
+      return MetroFactory/* companion */.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
     }
 
     @HiddenFromObjC
@@ -135,7 +135,7 @@ class CommonAppHeadersInterceptor {
 
     @HiddenFromObjC
     override operator fun invoke(): CommonAppHeadersInterceptor {
-      return Companion.newInstance(additionalHeaders = <this>.#additionalHeaders.invoke(), lazyDelegate = Companion.lazy<Provider<CommonAppHeadersInterceptor>, CommonAppHeadersInterceptor>(provider = <this>.#lazyDelegate))
+      return MetroFactory/* companion */.newInstance(additionalHeaders = <this>.#additionalHeaders.invoke(), lazyDelegate = DoubleCheck/* companion */.lazy<Provider<CommonAppHeadersInterceptor>, CommonAppHeadersInterceptor>(provider = <this>.#lazyDelegate))
     }
 
     @HiddenFromObjC
@@ -198,7 +198,7 @@ class InternalHeader {
 
     @HiddenFromObjC
     override operator fun invoke(): InternalHeader {
-      return Companion.newInstance(key = <this>.#key.invoke())
+      return MetroFactory/* companion */.newInstance(key = <this>.#key.invoke())
     }
 
     @HiddenFromObjC
@@ -253,7 +253,7 @@ class UserAgent {
 
     @HiddenFromObjC
     override operator fun invoke(): UserAgent {
-      return Companion.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
+      return MetroFactory/* companion */.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
     }
 
     @HiddenFromObjC
@@ -324,7 +324,7 @@ interface AppGraph {
       field = <this>
 
     private val internalHeaderProvider: Provider<InternalHeader>
-      field = Companion.create(key = Companion.create(instance = <this>.#thisGraphInstance))
+      field = InternalHeader.MetroFactory/* companion */.create(key = ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
 
     private val commonAppHeadersInterceptorProvider: Provider<CommonAppHeadersInterceptor>
       field = DelegateFactory<CommonAppHeadersInterceptor>()
@@ -333,7 +333,7 @@ interface AppGraph {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<CommonAppHeadersInterceptor>(delegateFactory = <this>.#commonAppHeadersInterceptorProvider, delegate = Companion.create(additionalHeaders = <this>.<get-setOfPair_String__String_Provider2>(), lazyDelegate = <this>.#commonAppHeadersInterceptorProvider))
+      DelegateFactory/* companion */.setDelegate<CommonAppHeadersInterceptor>(delegateFactory = <this>.#commonAppHeadersInterceptorProvider, delegate = CommonAppHeadersInterceptor.MetroFactory/* companion */.create(additionalHeaders = <this>.<get-setOfPair_String__String_Provider2>(), lazyDelegate = <this>.#commonAppHeadersInterceptorProvider))
     }
 
     override val interceptor: CommonAppHeadersInterceptor
@@ -350,19 +350,19 @@ interface AppGraph {
     private val setOfPair_String__String_Provider: Provider<Set<Pair<String, String>>>
       private get(): Provider<Set<Pair<String, String>>> {
         return { // BLOCK
-          val tmp_0: Builder<Pair<String, String>> = Companion.builder<Pair<String, String>>(individualProviderSize = 1, collectionProviderSize = 1)
-          tmp_0.addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, header = <this>.#internalHeaderProvider))
-          tmp_0.addCollectionProvider(collectionProvider = Companion.create(instance = <this>.#thisGraphInstance))
-          tmp_0.build()
+          val tmp0_builder: SetFactory.Builder<Pair<String, String>> = SetFactory/* companion */.builder<Pair<String, String>>(individualProviderSize = 1, collectionProviderSize = 1)
+          tmp0_builder.addProvider(individualProvider = ProvideInternalHeaderMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, header = <this>.#internalHeaderProvider))
+          tmp0_builder.addCollectionProvider(collectionProvider = ProvideOtherHeadersMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
+          tmp0_builder.build()
         }
       }
 
     private val setOfPair_String__String_Provider2: Provider<Set<Pair<String, String>>>
       private get(): Provider<Set<Pair<String, String>>> {
         return { // BLOCK
-          val tmp_1: Builder<Pair<String, String>> = Companion.builder<Pair<String, String>>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp_1.addCollectionProvider(collectionProvider = Companion.create(instance = <this>.#thisGraphInstance, otherHeaders = <this>.<get-setOfPair_String__String_Provider>()))
-          tmp_1.build()
+          val tmp0_builder: SetFactory.Builder<Pair<String, String>> = SetFactory/* companion */.builder<Pair<String, String>>(individualProviderSize = 0, collectionProviderSize = 1)
+          tmp0_builder.addCollectionProvider(collectionProvider = ProvideHeadersMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, otherHeaders = <this>.<get-setOfPair_String__String_Provider>()))
+          tmp0_builder.build()
         }
       }
 
@@ -421,7 +421,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Set<Pair<String, String>> {
-      return Companion.provideHeaders(instance = <this>.#instance, otherHeaders = <this>.#otherHeaders.invoke())
+      return ProvideHeadersMetroFactory/* companion */.provideHeaders(instance = <this>.#instance, otherHeaders = <this>.#otherHeaders.invoke())
     }
 
     @ElementsIntoSet
@@ -469,7 +469,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Pair<String, String> {
-      return Companion.provideInternalHeader(instance = <this>.#instance, header = <this>.#header.invoke())
+      return ProvideInternalHeaderMetroFactory/* companion */.provideInternalHeader(instance = <this>.#instance, header = <this>.#header.invoke())
     }
 
     @IntoSet
@@ -517,7 +517,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Set<Pair<String, String>> {
-      return Companion.provideOtherHeaders(instance = <this>.#instance)
+      return ProvideOtherHeadersMetroFactory/* companion */.provideOtherHeaders(instance = <this>.#instance)
     }
 
     @ElementsIntoSet
@@ -565,7 +565,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): String {
-      return Companion.provideString(instance = <this>.#instance)
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
     @HiddenFromObjC
