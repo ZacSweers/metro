@@ -7,7 +7,6 @@ import dev.zacsweers.metro.compiler.ir.betterDumpKotlinLike
 import org.jetbrains.kotlin.ir.util.FakeOverridesStrategy
 import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.test.backend.handlers.AbstractIrHandler
-import org.jetbrains.kotlin.test.backend.handlers.IrTextDumpHandler.Companion.computeDumpExtension
 import org.jetbrains.kotlin.test.backend.handlers.IrTextDumpHandler.Companion.groupWithTestFiles
 import org.jetbrains.kotlin.test.backend.handlers.assertFileDoesntExist
 import org.jetbrains.kotlin.test.backend.ir.IrBackendInput
@@ -73,8 +72,7 @@ class MetroIrPrettyKotlinDumpHandler(
 
   override fun processAfterAllModules(someAssertionWasFailed: Boolean) {
     val moduleStructure = testServices.moduleStructure
-    val extension = computeDumpExtension(testServices, DUMP_EXTENSION)
-    val expectedFile = moduleStructure.originalTestDataFiles.first().withExtension(extension)
+    val expectedFile = moduleStructure.originalTestDataFiles.first().withExtension(DUMP_EXTENSION)
 
     if (dumper.isEmpty()) {
       assertions.assertFileDoesntExist(expectedFile, MetroDirectives.METRO_DUMP_KT_IR)
