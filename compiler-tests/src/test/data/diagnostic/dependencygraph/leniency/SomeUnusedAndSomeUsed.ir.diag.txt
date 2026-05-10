@@ -1,4 +1,4 @@
-/SomeUnusedAndSomeUsed.kt:(224,227): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+/SomeUnusedAndSomeUsed.kt:10:14: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
 
     kotlin.Int is injected at
         [AppGraph] AppGraph.unusedBinding: kotlin.Int

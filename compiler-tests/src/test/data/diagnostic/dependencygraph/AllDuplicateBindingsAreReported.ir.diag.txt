@@ -1,4 +1,4 @@
-/AllDuplicateBindingsAreReported.kt:(121,129): error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
+/AllDuplicateBindingsAreReported.kt:6:11: error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
 
   AllDuplicateBindingsAreReported.kt:10:13
     @Provides fun provideString1(): kotlin.String

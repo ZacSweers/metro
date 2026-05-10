@@ -1,4 +1,4 @@
-/IncompatibleMapValueType.kt:(232,262): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Map<kotlin.String, kotlin.String>
+/IncompatibleMapValueType.kt:11:28: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Map<kotlin.String, kotlin.String>
 
     kotlin.collections.Map<kotlin.String, kotlin.String> is injected at
         [FooComponent] FooComponent.provideFoo(…, bar)

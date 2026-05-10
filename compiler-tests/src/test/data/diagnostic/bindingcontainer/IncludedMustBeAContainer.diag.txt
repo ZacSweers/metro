@@ -1,3 +1,3 @@
-/IncludedMustBeAContainer.kt:(150,169): error: Included classes must be binding containers but 'SomeBindings' is not.
+/IncludedMustBeAContainer.kt:8:31: error: Included classes must be binding containers but 'SomeBindings' is not.
 
-/IncludedMustBeAContainer.kt:(240,259): error: Included classes must be binding containers but 'SomeBindings' is not.
+/IncludedMustBeAContainer.kt:11:39: error: Included classes must be binding containers but 'SomeBindings' is not.

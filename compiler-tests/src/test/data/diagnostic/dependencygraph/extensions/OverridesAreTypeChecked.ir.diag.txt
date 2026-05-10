@@ -1,4 +1,4 @@
-/OverridesAreTypeChecked.kt:(739,747): error: [Metro/IncompatibleReturnTypes] 2 incompatible return type clashes found:
+/OverridesAreTypeChecked.kt:38:11: error: [Metro/IncompatibleReturnTypes] 2 incompatible return type clashes found:
 
 Incompatible return types: 'kotlin.Int' vs 'kotlin.String'
 

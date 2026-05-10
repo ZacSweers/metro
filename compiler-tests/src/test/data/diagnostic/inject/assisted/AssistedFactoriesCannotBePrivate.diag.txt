@@ -1,1 +1,1 @@
-/AssistedFactoriesCannotBePrivate.kt:(150,157): error: @AssistedFactory declarations must be public or internal.
+/AssistedFactoriesCannotBePrivate.kt:8:3: error: @AssistedFactory declarations must be public or internal.

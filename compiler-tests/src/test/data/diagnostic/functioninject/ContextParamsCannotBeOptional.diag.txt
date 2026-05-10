@@ -1,1 +1,1 @@
-/ContextParamsCannotBeOptional.kt:(166,172): error: Context parameters cannot be annotated @OptionalBinding.
+/ContextParamsCannotBeOptional.kt:7:26: error: Context parameters cannot be annotated @OptionalBinding.

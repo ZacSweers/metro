@@ -1,4 +1,4 @@
-/ExampleGraph.kt:(125,137): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @javax.inject.Named("qualified") Dependency
+/ExampleGraph.kt:31:11: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @javax.inject.Named("qualified") Dependency
 
     @javax.inject.Named("qualified") Dependency is injected at
         [ExampleGraph] ExampleClass.qualified

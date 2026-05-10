@@ -1,4 +1,4 @@
-/MixedCycleParams.kt:(501,511): error: [Metro/DependencyCycle] Found a dependency cycle while processing 'CycleGraph'.
+/MixedCycleParams.kt:25:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing 'CycleGraph'.
 Cycle:
     B --> A ~~> FakeA --> B
 

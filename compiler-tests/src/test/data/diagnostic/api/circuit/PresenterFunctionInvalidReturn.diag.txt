@@ -1,1 +1,1 @@
-/PresenterFunctionInvalidReturn.kt:(408,421): error: @CircuitInject @Composable presenter functions must return a CircuitUiState subtype.
+/PresenterFunctionInvalidReturn.kt:14:5: error: @CircuitInject @Composable presenter functions must return a CircuitUiState subtype.

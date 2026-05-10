@@ -1,4 +1,4 @@
-/MissingMemberInjectionShouldFailBinding1.kt:(697,721): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Implementation
+/MissingMemberInjectionShouldFailBinding1.kt:31:26: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Implementation
 
     Implementation is injected at
         [TestGraph.Impl.SubscopeGraphImpl] SubscopeGraph.bindImplementation(…, instance)

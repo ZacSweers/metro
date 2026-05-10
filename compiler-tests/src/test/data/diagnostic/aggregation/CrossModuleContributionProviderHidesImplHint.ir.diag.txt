@@ -1,4 +1,4 @@
-/module_main_CrossModuleContributionProviderHidesImplHint.kt:(114,122): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: ChangelogRepositoryImpl
+/module_main_CrossModuleContributionProviderHidesImplHint.kt:23:45: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: ChangelogRepositoryImpl
 
     ChangelogRepositoryImpl is injected at
         [AppGraph] StubChangelogRepository(…, realImpl)

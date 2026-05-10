@@ -1,4 +1,4 @@
-/module_main_DisabledResultsInMissingBindingMultiModule.kt:(92,100): error: 2 errors:
+/module_main_DisabledResultsInMissingBindingMultiModule.kt:19:11: error: 2 errors:
 
 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Long?
 

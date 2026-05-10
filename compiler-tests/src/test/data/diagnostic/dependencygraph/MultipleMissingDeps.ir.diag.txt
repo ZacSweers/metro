@@ -1,4 +1,4 @@
-/MultipleMissingDeps.kt:(241,251): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Foo1
+/MultipleMissingDeps.kt:13:3: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Foo1
 
     Foo1 is injected at
         [AppGraph] InjectedThing(…, foo1)
@@ -6,7 +6,7 @@
         [AppGraph] AppGraph.injectedThing
 
 
-/MultipleMissingDeps.kt:(255,265): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Foo2
+/MultipleMissingDeps.kt:14:3: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Foo2
 
     Foo2 is injected at
         [AppGraph] InjectedThing(…, foo2)
@@ -14,9 +14,10 @@
         [AppGraph] AppGraph.injectedThing
 
 
-/MultipleMissingDeps.kt:(269,279): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Foo3
+/MultipleMissingDeps.kt:15:3: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Foo3
 
     Foo3 is injected at
         [AppGraph] InjectedThing(…, foo3)
     InjectedThing is requested at
         [AppGraph] AppGraph.injectedThing
+
