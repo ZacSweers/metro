@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778358864214,
+  "lastUpdate": 1778446986275,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -14168,6 +14168,62 @@ window.BENCHMARK_DATA = {
             "value": 30290.724,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.91%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "76f0b8d9~1",
+          "message": "[before] Fork `dumpKotlinLike()` to improve readability (#1",
+          "timestamp": "2026-05-10T20:23:33+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/76f0b8d94a22c73ffa8f8f1e7dcf0d4a1bd447d4"
+        },
+        "date": 1778446986275,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 29882.526,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "76f0b8d94a22c73ffa8f8f1e7dcf0d4a1bd447d4",
+          "message": "[after] Fork `dumpKotlinLike()` to improve readability (#1",
+          "timestamp": "2026-05-10T20:23:33+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/76f0b8d94a22c73ffa8f8f1e7dcf0d4a1bd447d4"
+        },
+        "date": 1778446986276,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31123.226000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +4.15%"
           }
         ]
       }
