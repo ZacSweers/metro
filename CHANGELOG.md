@@ -43,6 +43,7 @@ Changelog
 
 - Metro now uses... Metro! The Metro compiler now uses proper DI internally, bootstrapping itself. This isn't really anything library consumers have to think about, I just think it's neat.
 - Metro now runs IC integration tests on all major platforms it targets.
+- Test Kotlin 2.4.20 dev builds.
 
 ### Contributors
 
