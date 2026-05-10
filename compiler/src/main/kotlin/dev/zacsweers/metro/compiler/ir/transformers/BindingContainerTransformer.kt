@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
@@ -13,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrCallableMetadata
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
@@ -42,6 +47,7 @@ import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.metroMetadata
+import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -123,8 +129,14 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-internal class BindingContainerTransformer(context: IrMetroContext, traceScope: TraceScope) :
-  IrMetroContext by context, TraceScope by traceScope, Lockable by Lockable() {
+@Inject
+@SingleIn(IrScope::class)
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
+internal class BindingContainerTransformer(
+  context: IrMetroContext,
+  private val bindsMirrorClassTransformer: BindsMirrorClassTransformer,
+  traceScope: TraceScope,
+) : IrMetroContext by context, TraceScope by traceScope, Lockable by Lockable() {
 
   // Thread-safe for concurrent access during parallel graph validation.
   private val references = ConcurrentHashMap<CallableId, CallableReference>()
@@ -137,8 +149,6 @@ internal class BindingContainerTransformer(context: IrMetroContext, traceScope: 
    * Thread-safe for concurrent access during parallel graph validation.
    */
   private val cache = ConcurrentHashMap<FqName, Optional<BindingContainer>>()
-
-  private val bindsMirrorClassTransformer = BindsMirrorClassTransformer(context)
 
   fun findContainer(
     declaration: IrClass,
@@ -1008,13 +1018,22 @@ internal class BindingContainerTransformer(context: IrMetroContext, traceScope: 
         mirrorFunction = mirrorFunction,
       )
 
+    // referenceClass bypasses the visibility filter that originClassOrNull() inherits, so
+    // we can resolve internal origin classes from other modules for diagnostic locations.
+    val originClass =
+      container
+        .annotationsIn(metroSymbols.classIds.originAnnotations)
+        .firstOrNull()
+        ?.originOrNull()
+        ?.let { pluginContext.referenceClass(it)?.owner }
+
     return ProviderFactory(
       contextKey = IrContextualTypeKey.from(mirrorFunction),
       clazz = stub,
       mirrorFunction = mirrorFunction,
       sourceAnnotations = sourceAnnotations,
       callableMetadata = callableMetadata,
-      realDeclaration = providesFunction,
+      realDeclaration = originClass ?: providesFunction,
     )
   }
 

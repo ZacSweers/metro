@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONFLICTING_PROVIDES_SC
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_LAZY_CLASS_KEY_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_MODULE_SUBCOMPONENTS_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEFAULT_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
@@ -199,6 +200,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val MEMBERS_INJECT_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
   val DAGGER_REUSABLE_ERROR by error0<KtElement>(NAME_IDENTIFIER)
   val DAGGER_LAZY_CLASS_KEY_ERROR by error0<KtElement>(NAME_IDENTIFIER)
+  val DAGGER_MODULE_SUBCOMPONENTS_WARNING by warning0<KtElement>(NAME_IDENTIFIER)
   val FUNCTION_INJECT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val FUNCTION_INJECT_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
   val BINDING_CONTAINER_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -378,6 +380,10 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(
           DAGGER_LAZY_CLASS_KEY_ERROR,
           "Dagger's `@LazyClassKey` is not supported in Metro. Use `@ClassKey` instead.",
+        )
+        put(
+          DAGGER_MODULE_SUBCOMPONENTS_WARNING,
+          "Dagger's `Module.subcomponents` is ignored by Metro in interop. Expose an accessor for the subcomponent (or its `@Subcomponent.Factory`) on the parent graph, or contribute its factory via `@ContributesTo(<parent scope>::class)`.",
         )
 
         // IR diagnostics

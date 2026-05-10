@@ -104,6 +104,24 @@ raw_compilation_java {
 }
 
 # ====================================
+# TRACE SCENARIO
+# ====================================
+# Used by trace_compile.sh: a fresh rerun of :app:component:compileKotlin
+# with Metro's perfetto tracing enabled. Each iteration writes its own
+# .perfetto-trace under app/component/build/metro/trace/main/ (Metro
+# accumulates rather than wiping). trace_compile.sh matches them to CSV
+# rows by mtime and picks the iteration closest to the measured-mean.
+
+trace_compile {
+    title = "Trace Compilation"
+    warm-ups = 2
+    iterations = 5
+
+    tasks = [":app:component:compileKotlin", "--rerun"]
+    gradle-args = ["-Pmetro.traceDestination=metro/trace"]
+}
+
+# ====================================
 # CLEAN BUILD SCENARIOS
 # ====================================
 

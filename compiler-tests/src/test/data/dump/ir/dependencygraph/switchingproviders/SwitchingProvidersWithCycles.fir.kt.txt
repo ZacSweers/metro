@@ -27,11 +27,14 @@ interface AppGraph {
       }
 
       override fun invoke(): T {
-        return when {
-          EQEQ(arg0 = <this>.#id, arg1 = 3) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
-          EQEQ(arg0 = <this>.#id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString(int = <this>.#graph.#provideIntProvider.invoke(), long = Companion.lazy<Lazy<Long>, Long>(provider = Companion.lazy<Provider<Long>, Long>(provider = <this>.#graph.#provideLongProvider))) /*as T */
-          EQEQ(arg0 = <this>.#id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideLong(string = <this>.#graph.#provideStringProvider.invoke()) /*as T */
-          else -> throw error(message = "Unexpected SwitchingProvider id: " + <this>.#id)
+        return { // BLOCK
+          val tmp_0: Int = <this>.#id
+          when {
+            EQEQ(arg0 = tmp_0, arg1 = 3) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
+            EQEQ(arg0 = tmp_0, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString(int = <this>.#graph.#provideIntProvider.invoke(), long = Companion.lazy<Lazy<Long>, Long>(provider = Companion.lazy<Provider<Long>, Long>(provider = <this>.#graph.#provideLongProvider))) /*as T */
+            EQEQ(arg0 = tmp_0, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideLong(string = <this>.#graph.#provideStringProvider.invoke()) /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp_0)
+          }
         }
       }
 

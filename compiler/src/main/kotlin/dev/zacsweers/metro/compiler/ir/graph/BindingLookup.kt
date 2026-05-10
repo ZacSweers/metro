@@ -213,6 +213,7 @@ internal class BindingLookup(
     multibindingsCache.clear()
     multibindingsByBindingId.clear()
     multibindsDeclarations.clear()
+    materializedMultibindsDeclarationsSize = 0
     optionalBindingDeclarations.clear()
     optionalBindingsCache.clear()
     locallyDeclaredKeys.clear()
@@ -392,11 +393,23 @@ internal class BindingLookup(
    *
    * @Multibinds declarations.
    */
+  // Number of [multibindsDeclarations] entries that have already been materialized into
+  // [multibindingsCache] by [getAvailableMultibindings]. When new declarations are registered the
+  // size grows past this, so the next call re-iterates only what's needed.
+  private var materializedMultibindsDeclarationsSize = 0
+
   context(context: IrMetroContext)
   fun getAvailableMultibindings(): Map<IrTypeKey, IrBinding.Multibinding> {
-    // Ensure all @Multibinds declarations have their multibindings created
-    for (key in multibindsDeclarations.keys) {
-      @Suppress("RETURN_VALUE_NOT_USED") getOrCreateMultibindingIfNeeded(key)
+    // Ensure all @Multibinds declarations have their multibindings created. Skip the iteration
+    // entirely once we've already processed every declaration — this is called per missing-binding
+    // hint during error reporting where the inner cache lookups would otherwise be the dominant
+    // cost.
+    val declarations = multibindsDeclarations
+    if (materializedMultibindsDeclarationsSize != declarations.size) {
+      for (key in declarations.keys) {
+        @Suppress("RETURN_VALUE_NOT_USED") getOrCreateMultibindingIfNeeded(key)
+      }
+      materializedMultibindsDeclarationsSize = declarations.size
     }
     return multibindingsCache
   }
@@ -919,6 +932,7 @@ internal class BindingLookupCache {
   private val constructorInjectedBindings =
     ConcurrentHashMap<IrClass, IrBinding.ConstructorInjected>()
   private val assistedFactoryBindings = ConcurrentHashMap<IrClass, IrBinding.AssistedFactory>()
+  private val rawInheritedGraphData = ConcurrentHashMap<IrClass, Any>()
 
   /** Returns a cached binding or computes and caches it. If [irClass] is null, just computes. */
   fun getOrPutConstructorInjected(
@@ -935,4 +949,13 @@ internal class BindingLookupCache {
   ): IrBinding.AssistedFactory =
     if (irClass != null) assistedFactoryBindings.computeIfAbsent(irClass) { compute() }
     else compute()
+
+  /**
+   * Cached unfiltered parent-aggregated graph data for child graphs sharing a parent. The opaque
+   * `Any` value is materialised by [BindingGraphGenerator] to avoid leaking that internal type.
+   */
+  fun <T : Any> getOrPutRawInheritedGraphData(parentSourceGraph: IrClass, compute: () -> T): T {
+    @Suppress("UNCHECKED_CAST")
+    return rawInheritedGraphData.computeIfAbsent(parentSourceGraph) { compute() } as T
+  }
 }

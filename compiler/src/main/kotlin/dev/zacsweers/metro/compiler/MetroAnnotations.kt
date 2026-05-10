@@ -6,9 +6,11 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations.Kind
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
+import dev.zacsweers.metro.compiler.fir.MetroFirAttributes
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isResolved
+import dev.zacsweers.metro.compiler.fir.metroAnnotationsCache
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -21,9 +23,13 @@ import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.EnumSet
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
+import org.jetbrains.kotlin.fir.declarations.isBodyResolve
+import org.jetbrains.kotlin.fir.declarations.resolvePhase
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
@@ -406,7 +412,7 @@ private fun IrAnnotationContainer.metroAnnotations(
     exitProcessing()
   }
 
-  val annotations =
+  val initialAnnotations =
     MetroAnnotations(
       isDependencyGraph = isDependencyGraph,
       isDependencyGraphFactory = isDependencyGraphFactory,
@@ -434,76 +440,63 @@ private fun IrAnnotationContainer.metroAnnotations(
 
   val thisContainer = this
 
-  return sequence {
-      yield(annotations)
+  var annotations = initialAnnotations
+  fun mergeIn(other: MetroAnnotations<IrAnnotation>) {
+    annotations = annotations.mergeWith(other)
+  }
 
-      // You can fit so many annotations in properties
-      when (thisContainer) {
-        is IrProperty -> {
-          // Retrieve annotations from this property's various accessors
-          getter?.let { getter ->
-            if (getter != callingContainer) {
-              yield(getter.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
-            }
-          }
-          setter?.let { setter ->
-            if (setter != callingContainer) {
-              yield(setter.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
-            }
-          }
-          backingField?.let { field ->
-            if (field != callingContainer) {
-              yield(field.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
-            }
-          }
+  when (thisContainer) {
+    is IrProperty -> {
+      getter?.let { getter ->
+        if (getter != callingContainer) {
+          mergeIn(getter.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
         }
-
-        is IrSimpleFunction -> {
-          correspondingPropertySymbol?.owner?.let { property ->
-            if (property != callingContainer) {
-              val propertyAnnotations =
-                property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
-              yield(propertyAnnotations)
-            }
-          }
+      }
+      setter?.let { setter ->
+        if (setter != callingContainer) {
+          mergeIn(setter.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
         }
-
-        is IrField -> {
-          correspondingPropertySymbol?.owner?.let { property ->
-            if (property != callingContainer) {
-              val propertyAnnotations =
-                property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
-              yield(propertyAnnotations)
-            }
-          }
-        }
-
-        is IrConstructor -> {
-          // Read from the class too
-          parentAsClass.let { parentClass ->
-            if (parentClass != callingContainer) {
-              val classAnnotations =
-                parentClass.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
-              yield(classAnnotations)
-            }
-          }
-        }
-
-        is IrClass -> {
-          // Read from the inject constructor too
-          val constructor =
-            findInjectableConstructor(onlyUsePrimaryConstructor = false, ids.injectAnnotations)
-          if (constructor != null) {
-            if (constructor != callingContainer) {
-              val constructorAnnotations =
-                constructor.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
-              yield(constructorAnnotations)
-            }
-          }
+      }
+      backingField?.let { field ->
+        if (field != callingContainer) {
+          mergeIn(field.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
         }
       }
     }
-    .reduce(MetroAnnotations<IrAnnotation>::mergeWith)
+
+    is IrSimpleFunction -> {
+      correspondingPropertySymbol?.owner?.let { property ->
+        if (property != callingContainer) {
+          mergeIn(property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
+        }
+      }
+    }
+
+    is IrField -> {
+      correspondingPropertySymbol?.owner?.let { property ->
+        if (property != callingContainer) {
+          mergeIn(property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
+        }
+      }
+    }
+
+    is IrConstructor -> {
+      val parentClass = parentAsClass
+      if (parentClass != callingContainer) {
+        mergeIn(parentClass.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
+      }
+    }
+
+    is IrClass -> {
+      val constructor =
+        findInjectableConstructor(onlyUsePrimaryConstructor = false, ids.injectAnnotations)
+      if (constructor != null && constructor != callingContainer) {
+        mergeIn(constructor.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
+      }
+    }
+  }
+
+  return annotations
 }
 
 internal fun FirBasedSymbol<*>.metroAnnotations(
@@ -518,6 +511,32 @@ internal fun FirBasedSymbol<*>.metroAnnotations(
   kinds: Set<Kind> = MetroAnnotations.ALL_KINDS,
 ): MetroAnnotations<MetroFirAnnotation> {
   return metroAnnotations(session, null, kinds)
+}
+
+/**
+ * Checker-context overload of [metroAnnotations] that caches the full-kinds resolution on the
+ * declaration via [MetroFirAttributes.MetroAnnotationsCache]. Distinct from the non-contextual
+ * overload by dropping the [FirSession] parameter (it's pulled from [CheckerContext.session]), so
+ * checker call sites that write `symbol.metroAnnotations()` resolve here automatically while
+ * non-checker callers passing `session` continue to hit the uncached overload.
+ */
+@OptIn(SymbolInternals::class)
+context(checkerContext: CheckerContext)
+internal fun FirBasedSymbol<*>.metroAnnotations(
+  kinds: Set<Kind> = MetroAnnotations.ALL_KINDS
+): MetroAnnotations<MetroFirAnnotation> {
+  val session = checkerContext.session
+  // Only cache the full-kinds resolution; partial-kind requests bypass the cache because the
+  // returned MetroAnnotations only populates fields for the requested kinds.
+  if (!fir.resolvePhase.isBodyResolve || kinds != MetroAnnotations.ALL_KINDS) {
+    return metroAnnotations(session, null, kinds)
+  }
+  fir.metroAnnotationsCache?.let {
+    return it
+  }
+  val computed = metroAnnotations(session, null, kinds)
+  fir.metroAnnotationsCache = computed
+  return computed
 }
 
 private fun FirBasedSymbol<*>.metroAnnotations(

@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -34,6 +35,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.toClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.name.ClassId
 
@@ -42,12 +44,22 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
-    context(context.session.compatContext) { checkImpl(declaration) }
+    declaration.source ?: return
+    val session = context.session
+    if (
+      declaration
+        .annotationsIn(session, session.classIds.graphFactoryLikeAnnotations)
+        .singleOrNull() == null
+    ) {
+      return
+    }
+    session.trace(name = { "DependencyGraphCreatorChecker(${declaration.classId})" }) {
+      context(session.compatContext) { checkImpl(declaration) }
+    }
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
   private fun checkImpl(declaration: FirClass) {
-    declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
 

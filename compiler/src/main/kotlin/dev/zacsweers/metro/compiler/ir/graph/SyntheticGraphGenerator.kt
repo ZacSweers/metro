@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.additionalScopes
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
+import dev.zacsweers.metro.compiler.ir.chunkSupertypesIfNeeded
 import dev.zacsweers.metro.compiler.ir.copyToIrVararg
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.excludedClasses
@@ -248,7 +249,7 @@ internal class SyntheticGraphGenerator(
 
       // Add only non-binding-container contributions as supertypes
       if (contributions != null) {
-        superTypes += contributions.supertypes
+        superTypes += chunkSupertypesIfNeeded(contributions.supertypes, this)
         contributions.supertypes.forEach { contribution ->
           contribution.rawTypeOrNull()?.let {
             trackClassLookup(parentGraph ?: originDeclaration, it)

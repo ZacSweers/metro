@@ -34,6 +34,8 @@ import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.TraceCategories
+import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.TreeMap
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
@@ -97,87 +99,100 @@ internal class ContributedInterfaceSupertypeGenerator(
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
     session.firCachesFactory.createCache { scopeClassId, typeResolver ->
-      // In a KMP compilation we want to capture _all_ sessions' symbols. For example, if we are
-      // generating supertypes for a graph in jvmMain, we want to capture contributions declared in
-      // commonMain.
-      val allSessions =
-        sequenceOf(session).plus(session.moduleData.allDependsOnDependencies.map { it.session })
+      session.trace(
+        name = { "In-compilation contributions for $scopeClassId" },
+        category = TraceCategories.FIR_SUPERTYPE,
+      ) {
+        // In a KMP compilation we want to capture _all_ sessions' symbols. For example, if we are
+        // generating supertypes for a graph in jvmMain, we want to capture contributions declared
+        // in commonMain.
+        val allSessions =
+          sequenceOf(session).plus(session.moduleData.allDependsOnDependencies.map { it.session })
 
-      // Predicates can't see the generated `MetroContribution` classes, but we can access them
-      // by first querying the top level @ContributeX-annotated source symbols and then checking
-      // their declaration scopes
-      val contributingClasses =
-        allSessions
-          .flatMap {
-            it.predicateBasedProvider.getSymbolsByPredicate(
-              session.predicates.contributesAnnotationPredicate
-            )
-          }
-          .filterIsInstance<FirRegularClassSymbol>()
-          .filterNot { it.visibility == Visibilities.Private }
-          .toList()
+        // Predicates can't see the generated `MetroContribution` classes, but we can access them
+        // by first querying the top level @ContributeX-annotated source symbols and then checking
+        // their declaration scopes
+        val contributingClasses =
+          allSessions
+            .flatMap {
+              it.predicateBasedProvider.getSymbolsByPredicate(
+                session.predicates.contributesAnnotationPredicate
+              )
+            }
+            .filterIsInstance<FirRegularClassSymbol>()
+            .filterNot { it.visibility == Visibilities.Private }
+            .toList()
 
-      getScopedContributions(contributingClasses, scopeClassId, typeResolver)
+        getScopedContributions(contributingClasses, scopeClassId, typeResolver)
+      }
     }
 
   private val generatedScopesToContributions:
     FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
     session.firCachesFactory.createCache { scopeClassId, typeResolver ->
-      val scopeHintFqName = Symbols.FqNames.scopeHint(scopeClassId)
-      val functionsInPackage =
-        session.symbolProvider.getTopLevelFunctionSymbols(
-          scopeHintFqName.parent(),
-          scopeHintFqName.shortName(),
-        )
-
-      val filteredFunctions = functionsInPackage.filter {
-        when (it.visibility) {
-          Visibilities.Internal -> {
-            it.moduleData == session.moduleData ||
-              @OptIn(SymbolInternals::class)
-              session.moduleVisibilityChecker?.isInFriendModule(it.fir) == true
-          }
-          else -> true
-        }
-      }
-
-      val contributingClasses = filteredFunctions.mapNotNull { contribution ->
-        // This is the single value param
-        contribution.valueParameterSymbols.single().resolvedReturnType.toRegularClassSymbol(session)
-      }
-
-      session.metroFirBuiltIns.writeDiagnostic(
-        "discovered-hints-fir",
-        { "${scopeClassId.safePathString}.txt" },
+      session.trace(
+        name = { "Classpath contributions for $scopeClassId" },
+        category = TraceCategories.FIR_SUPERTYPE,
       ) {
-        val allFunctions =
-          functionsInPackage
-            .map { @OptIn(SymbolInternals::class) it.fir.render() }
-            .sorted()
-            .joinToString("\n")
+        val scopeHintFqName = Symbols.FqNames.scopeHint(scopeClassId)
+        val functionsInPackage =
+          session.symbolProvider.getTopLevelFunctionSymbols(
+            scopeHintFqName.parent(),
+            scopeHintFqName.shortName(),
+          )
 
-        val filtered =
-          filteredFunctions
-            .map { @OptIn(SymbolInternals::class) it.fir.render() }
-            .sorted()
-            .joinToString("\n")
-
-        val contributedIds =
-          contributingClasses.map { it.classId.safePathString }.sorted().joinToString("\n")
-
-        buildString {
-          appendLine("== All functions")
-          appendLine(allFunctions)
-          appendLine()
-          appendLine("== Filtered functions")
-          appendLine(filtered)
-          appendLine()
-          appendLine("== Contributing classes")
-          appendLine(contributedIds)
+        val filteredFunctions = functionsInPackage.filter {
+          when (it.visibility) {
+            Visibilities.Internal -> {
+              it.moduleData == session.moduleData ||
+                @OptIn(SymbolInternals::class)
+                session.moduleVisibilityChecker?.isInFriendModule(it.fir) == true
+            }
+            else -> true
+          }
         }
-      }
 
-      getScopedContributions(contributingClasses, scopeClassId, typeResolver)
+        val contributingClasses = filteredFunctions.mapNotNull { contribution ->
+          // This is the single value param
+          contribution.valueParameterSymbols
+            .single()
+            .resolvedReturnType
+            .toRegularClassSymbol(session)
+        }
+
+        session.metroFirBuiltIns.writeDiagnostic(
+          "discovered-hints-fir",
+          { "${scopeClassId.safePathString}.txt" },
+        ) {
+          val allFunctions =
+            functionsInPackage
+              .map { @OptIn(SymbolInternals::class) it.fir.render() }
+              .sorted()
+              .joinToString("\n")
+
+          val filtered =
+            filteredFunctions
+              .map { @OptIn(SymbolInternals::class) it.fir.render() }
+              .sorted()
+              .joinToString("\n")
+
+          val contributedIds =
+            contributingClasses.map { it.classId.safePathString }.sorted().joinToString("\n")
+
+          buildString {
+            appendLine("== All functions")
+            appendLine(allFunctions)
+            appendLine()
+            appendLine("== Filtered functions")
+            appendLine(filtered)
+            appendLine()
+            appendLine("== Contributing classes")
+            appendLine(contributedIds)
+          }
+        }
+
+        getScopedContributions(contributingClasses, scopeClassId, typeResolver)
+      }
     }
 
   /**
@@ -237,6 +252,11 @@ internal class ContributedInterfaceSupertypeGenerator(
     // visible to the predicate-based provider.
     val graphAnnotation = declaration.graphAnnotation() ?: return false
 
+    // @MergeContributionsInIr opts the graph out of FIR-side merging entirely.
+    if (declaration.isAnnotatedWithAny(session, setOf(Symbols.ClassIds.mergeContributionsInIr))) {
+      return false
+    }
+
     // Can't check the scope class ID here but we'll check in computeAdditionalSupertypes
     return graphAnnotation.scopeArgument(session) != null
   }
@@ -250,6 +270,7 @@ internal class ContributedInterfaceSupertypeGenerator(
         qualifiersPredicate,
         bindingContainerPredicate,
         originPredicate,
+        mergeContributionsInIrPredicate,
       )
     }
     // Register predicates from external contribution extensions
@@ -265,6 +286,9 @@ internal class ContributedInterfaceSupertypeGenerator(
   ): List<ConeKotlinType> {
     // For generated @DependencyGraph classes (from external FIR extensions), FIR calls this
     // method instead of computeAdditionalSupertypes. Delegate to the shared implementation.
+    if (klass.isAnnotatedWithAny(session, setOf(Symbols.ClassIds.mergeContributionsInIr))) {
+      return emptyList()
+    }
     return computeContributionSupertypes(
       classLikeDeclaration = klass,
       typeResolver = typeResolver,
@@ -308,12 +332,12 @@ internal class ContributedInterfaceSupertypeGenerator(
       )
     }
 
+    // Cache lambdas trace themselves on miss; cache hits don't open spans.
     val contributionMappingsByClassId =
       mutableMapOf<ClassId, Boolean>().apply {
         for (scopeClassId in scopes) {
           val classPathContributions =
             generatedScopesToContributions.getValue(scopeClassId, typeResolver)
-
           val inCompilationContributions =
             inCompilationScopesToContributions.getValue(scopeClassId, typeResolver)
           for ((classId, isBindingContainer) in
@@ -382,73 +406,84 @@ internal class ContributedInterfaceSupertypeGenerator(
     // TODO make this lazily computed?
     val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
 
-    // Check regular contributions (classes with nested `MetroContribution`)
-    for ((parentClassId, _) in contributions) {
-      val parentSymbol = parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
-      if (parentSymbol != null) {
-        val localTypeResolver = typeResolverFactory.create(parentSymbol) ?: continue
+    session.trace({ "Build origin map" }, category = TraceCategories.FIR_SUPERTYPE) {
+      // Check regular contributions (classes with nested `MetroContribution`)
+      for ((parentClassId, _) in contributions) {
+        val parentSymbol = parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+        if (parentSymbol != null) {
+          val localTypeResolver = typeResolverFactory.create(parentSymbol) ?: continue
 
-        parentSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
-          originToContributions.getAndAdd(originClassId, parentClassId)
-        }
-      }
-    }
-
-    // Also check binding containers (e.g., @ContributesTo classes)
-    for ((containerClassId, isBindingContainer) in contributionMappingsByClassId) {
-      if (isBindingContainer) {
-        val containerSymbol =
-          containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
-        if (containerSymbol != null) {
-          val localTypeResolver = typeResolverFactory.create(containerSymbol) ?: continue
-
-          containerSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
-            originToContributions.getAndAdd(originClassId, containerClassId)
+          parentSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
+            originToContributions.getAndAdd(originClassId, parentClassId)
           }
         }
       }
-    }
 
-    // Add external contributions' origins to the mapping
-    // External contributions provide their origin directly in the Contribution data class
-    for (externalContribution in externalContributions) {
-      // The origin maps to itself for external contributions (they are self-referential)
-      originToContributions
-        .getOrPut(externalContribution.originClassId) { mutableSetOf() }
-        .add(externalContribution.originClassId)
+      // Also check binding containers (e.g., @ContributesTo classes)
+      for ((containerClassId, isBindingContainer) in contributionMappingsByClassId) {
+        if (isBindingContainer) {
+          val containerSymbol =
+            containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+          if (containerSymbol != null) {
+            val localTypeResolver = typeResolverFactory.create(containerSymbol) ?: continue
+
+            containerSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
+              originToContributions.getAndAdd(originClassId, containerClassId)
+            }
+          }
+        }
+      }
+
+      // Add external contributions' origins to the mapping
+      // External contributions provide their origin directly in the Contribution data class
+      for (externalContribution in externalContributions) {
+        // The origin maps to itself for external contributions (they are self-referential)
+        originToContributions
+          .getOrPut(externalContribution.originClassId) { mutableSetOf() }
+          .add(externalContribution.originClassId)
+      }
     }
 
     val unmatchedExclusions = mutableSetOf<ClassId>()
 
-    for (excludedClassId in excluded) {
-      removeContribution(excludedClassId, unmatchedExclusions)
+    if (excluded.isNotEmpty()) {
+      session.trace({ "Process exclusions" }, category = TraceCategories.FIR_SUPERTYPE) {
+        for (excludedClassId in excluded) {
+          removeContribution(excludedClassId, unmatchedExclusions)
 
-      // If the target is a binding container, remove it from our mappings
-      contributionMappingsByClassId[excludedClassId]
-        ?.takeIf { it }
-        ?.let { contributionMappingsByClassId.remove(excludedClassId) }
+          // If the target is a binding container, remove it from our mappings
+          contributionMappingsByClassId[excludedClassId]
+            ?.takeIf { it }
+            ?.let { contributionMappingsByClassId.remove(excludedClassId) }
 
-      // Remove contributions that have @Origin annotation pointing to the excluded class
-      originToContributions[excludedClassId]?.forEach { contributionId ->
-        removeContribution(contributionId, unmatchedExclusions)
-      }
+          // Remove contributions that have @Origin annotation pointing to the excluded class
+          originToContributions[excludedClassId]?.forEach { contributionId ->
+            removeContribution(contributionId, unmatchedExclusions)
+          }
 
-      // If the target is `@GraphExtension`, also implicitly exclude its nested factory if available
-      // TODO this is finicky and the target class's annotations aren't resolved.
-      //  Ideally we also && targetClass.isAnnotatedWithAny(session,
-      //  session.classIds.graphExtensionAnnotations)
-      val targetClass = excludedClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
-      if (targetClass != null) {
-        for (nestedClassName in
-          targetClass.declaredMemberScope(session, null).getClassifierNames()) {
-          val nestedClassId = excludedClassId.createNestedClassId(nestedClassName)
-          if (nestedClassId in contributions) {
-            nestedClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()?.let {
-              if (
-                it.isAnnotatedWithAny(session, session.classIds.graphExtensionFactoryAnnotations)
-              ) {
-                // Exclude its factory class too
-                removeContribution(nestedClassId, unmatchedExclusions)
+          // If the target is `@GraphExtension`, also implicitly exclude its nested factory if
+          // available
+          // TODO this is finicky and the target class's annotations aren't resolved.
+          //  Ideally we also && targetClass.isAnnotatedWithAny(session,
+          //  session.classIds.graphExtensionAnnotations)
+          val targetClass =
+            excludedClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+          if (targetClass != null) {
+            for (nestedClassName in
+              targetClass.declaredMemberScope(session, null).getClassifierNames()) {
+              val nestedClassId = excludedClassId.createNestedClassId(nestedClassName)
+              if (nestedClassId in contributions) {
+                nestedClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()?.let {
+                  if (
+                    it.isAnnotatedWithAny(
+                      session,
+                      session.classIds.graphExtensionFactoryAnnotations,
+                    )
+                  ) {
+                    // Exclude its factory class too
+                    removeContribution(nestedClassId, unmatchedExclusions)
+                  }
+                }
               }
             }
           }
@@ -468,66 +503,70 @@ internal class ContributedInterfaceSupertypeGenerator(
     // Process replacements from native contributions
     val unmatchedReplacements = mutableSetOf<ClassId>()
 
-    contributionClassLikes
-      .mapNotNull {
-        val symbol = it.toClassSymbol(session)
-        // TODO remove expectAs in 2.3.20
-        if (contributionMappingsByClassId[it.expectAs<ConeKotlinType>().classId] == true) {
-          // It's a binding container, use as-is
-          symbol
-        } else {
-          // It's a contribution, get its original parent
-          symbol?.getContainingClassSymbol()
+    session.trace({ "Process replacements" }, category = TraceCategories.FIR_SUPERTYPE) {
+      contributionClassLikes
+        .mapNotNull {
+          val symbol = it.toClassSymbol(session)
+          // TODO remove expectAs in 2.3.20
+          if (contributionMappingsByClassId[it.expectAs<ConeKotlinType>().classId] == true) {
+            // It's a binding container, use as-is
+            symbol
+          } else {
+            // It's a contribution, get its original parent
+            symbol?.getContainingClassSymbol()
+          }
         }
-      }
-      .plus(
-        // When generateContributionProviders is enabled, binding contributions are represented by
-        // provider-holder binding containers that only carry @Origin. Scan the origin class too so
-        // its original @ContributesBinding(replaces = ...) annotations still participate in FIR
-        // merging, matching the IR fallback logic.
-        contributionMappingsByClassId.toList().mapNotNull { (containerClassId, isBindingContainer)
-          ->
-          if (!isBindingContainer) return@mapNotNull null
+        .plus(
+          // When generateContributionProviders is enabled, binding contributions are represented
+          // by provider-holder binding containers that only carry @Origin. Scan the origin class
+          // too so its original @ContributesBinding(replaces = ...) annotations still participate
+          // in FIR merging, matching the IR fallback logic.
+          contributionMappingsByClassId.toList().mapNotNull { (containerClassId, isBindingContainer)
+            ->
+            if (!isBindingContainer) return@mapNotNull null
 
-          val containerSymbol =
-            containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
-              ?: return@mapNotNull null
+            val containerSymbol =
+              containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+                ?: return@mapNotNull null
+            val localTypeResolver =
+              typeResolverFactory.create(containerSymbol) ?: return@mapNotNull null
+            val originClassId =
+              containerSymbol.originClassId(session, localTypeResolver) ?: return@mapNotNull null
+            val originClass =
+              originClassId.toSymbol(session)?.expectAsOrNull<FirClassSymbol<*>>()
+                ?: return@mapNotNull null
+            originClass
+          }
+        )
+        .flatMap { contributingType ->
           val localTypeResolver =
-            typeResolverFactory.create(containerSymbol) ?: return@mapNotNull null
-          val originClassId =
-            containerSymbol.originClassId(session, localTypeResolver) ?: return@mapNotNull null
-          val originClass =
-            originClassId.toSymbol(session)?.expectAsOrNull<FirClassSymbol<*>>()
-              ?: return@mapNotNull null
-          originClass
-        }
-      )
-      .flatMap { contributingType ->
-        val localTypeResolver =
-          typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
+            typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
 
-        contributingType
-          .annotationsIn(session, session.classIds.allContributesAnnotationsWithContainers)
-          .filter { it.scopeArgument(session)?.resolveClassId(localTypeResolver) in scopes }
-          .flatMap { annotation -> annotation.resolvedReplacedClassIds(session, localTypeResolver) }
-      }
-      .distinct()
-      .forEach { replacedClassId ->
+          contributingType
+            .annotationsIn(session, session.classIds.allContributesAnnotationsWithContainers)
+            .filter { it.scopeArgument(session)?.resolveClassId(localTypeResolver) in scopes }
+            .flatMap { annotation ->
+              annotation.resolvedReplacedClassIds(session, localTypeResolver)
+            }
+        }
+        .distinct()
+        .forEach { replacedClassId ->
+          removeContribution(replacedClassId, unmatchedReplacements)
+
+          // Remove contributions that have @Origin annotation pointing to the replaced class
+          originToContributions[replacedClassId]?.forEach { contributionId ->
+            removeContribution(contributionId, unmatchedReplacements)
+          }
+        }
+
+      // Process replacements from external contributions
+      for ((replacedClassId, _) in externalReplacements) {
         removeContribution(replacedClassId, unmatchedReplacements)
 
         // Remove contributions that have @Origin annotation pointing to the replaced class
         originToContributions[replacedClassId]?.forEach { contributionId ->
           removeContribution(contributionId, unmatchedReplacements)
         }
-      }
-
-    // Process replacements from external contributions
-    for ((replacedClassId, _) in externalReplacements) {
-      removeContribution(replacedClassId, unmatchedReplacements)
-
-      // Remove contributions that have @Origin annotation pointing to the replaced class
-      originToContributions[replacedClassId]?.forEach { contributionId ->
-        removeContribution(contributionId, unmatchedReplacements)
       }
     }
 
@@ -541,20 +580,22 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
     if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
-      val unmatchedRankReplacements = mutableSetOf<ClassId>()
-      val pendingRankReplacements =
-        processRankBasedReplacements(scopes, contributions, typeResolver)
+      session.trace({ "Process rank replacements" }, category = TraceCategories.FIR_SUPERTYPE) {
+        val unmatchedRankReplacements = mutableSetOf<ClassId>()
+        val pendingRankReplacements =
+          processRankBasedReplacements(scopes, contributions, typeResolver)
 
-      pendingRankReplacements.distinct().forEach { replacedClassId ->
-        removeContribution(replacedClassId, unmatchedRankReplacements)
-      }
+        pendingRankReplacements.distinct().forEach { replacedClassId ->
+          removeContribution(replacedClassId, unmatchedRankReplacements)
+        }
 
-      if (unmatchedRankReplacements.isNotEmpty()) {
-        session.metroFirBuiltIns.writeDiagnostic(
-          "merging-unmatched-rank-replacements-fir",
-          { "${classLikeDeclaration.classId.safePathString}.txt" },
-        ) {
-          unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
+        if (unmatchedRankReplacements.isNotEmpty()) {
+          session.metroFirBuiltIns.writeDiagnostic(
+            "merging-unmatched-rank-replacements-fir",
+            { "${classLikeDeclaration.classId.safePathString}.txt" },
+          ) {
+            unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
+          }
         }
       }
     }
@@ -576,58 +617,60 @@ internal class ContributedInterfaceSupertypeGenerator(
         .map { it.supertype }
         .toSet()
 
-    return contributions
-      .flatMap { (parentClassId, metroContribution) ->
-        // External contributions pass through directly
-        if (metroContribution in externalSupertypes) {
-          return@flatMap listOf(metroContribution)
-        }
-        // Filter out binding containers and self-references — they participate in replacements
-        // but not in supertypes
-        if (
-          metroContribution.classId?.parentClassId?.parentClassId == declarationClassId ||
-            contributionMappingsByClassId[metroContribution.classId] == true
-        ) {
-          return@flatMap emptyList()
-        }
-
-        // For @ContributesTo interfaces, also emit the parent contributing interface directly
-        // alongside the generated MetroContributionTo<Scope> intermediate. Kotlin/Native's
-        // Objective-C framework exporter hides the @Deprecated(HIDDEN) intermediates and does
-        // not transitively hoist their non-hidden supertypes into the child class's
-        // superprotocol list, so the parent has to be a direct supertype to appear in
-        // Swift/ObjC framework headers. Graph extension factories are excluded — they're
-        // contributed via @ContributesTo but aren't meant to be inherited by the graph.
-        // https://github.com/ZacSweers/metro/issues/2185
-        val parentSymbol =
-          parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
-            ?: return@flatMap listOf(metroContribution)
-
-        val contributesToThisScope =
-          parentSymbol.annotationsIn(session, session.classIds.contributesToAnnotations).any {
-            it.resolvedScopeClassId(session, typeResolver) in scopes
+    return session.trace({ "Build supertypes" }, category = TraceCategories.FIR_SUPERTYPE) {
+      contributions
+        .flatMap { (parentClassId, metroContribution) ->
+          // External contributions pass through directly
+          if (metroContribution in externalSupertypes) {
+            return@flatMap listOf(metroContribution)
           }
-        if (!contributesToThisScope) return@flatMap listOf(metroContribution)
+          // Filter out binding containers and self-references — they participate in replacements
+          // but not in supertypes
+          if (
+            metroContribution.classId?.parentClassId?.parentClassId == declarationClassId ||
+              contributionMappingsByClassId[metroContribution.classId] == true
+          ) {
+            return@flatMap emptyList()
+          }
 
-        val promoteParent =
-          parentSymbol.classKind.isInterface &&
-            parentClassId !in existingSupertypeClassIds &&
-            !parentSymbol.isAnnotatedWithAny(
-              session,
-              session.classIds.graphExtensionFactoryAnnotations,
-            ) &&
-            (declarationVisibility == null ||
-              !parentSymbol.exposesNarrowerVisibilityThan(declarationVisibility))
+          // For @ContributesTo interfaces, also emit the parent contributing interface directly
+          // alongside the generated MetroContributionTo<Scope> intermediate. Kotlin/Native's
+          // Objective-C framework exporter hides the @Deprecated(HIDDEN) intermediates and does
+          // not transitively hoist their non-hidden supertypes into the child class's
+          // superprotocol list, so the parent has to be a direct supertype to appear in
+          // Swift/ObjC framework headers. Graph extension factories are excluded — they're
+          // contributed via @ContributesTo but aren't meant to be inherited by the graph.
+          // https://github.com/ZacSweers/metro/issues/2185
+          val parentSymbol =
+            parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+              ?: return@flatMap listOf(metroContribution)
 
-        if (promoteParent) {
-          listOf(metroContribution, parentClassId.constructClassLikeType(emptyArray()))
-        } else {
-          listOf(metroContribution)
+          val contributesToThisScope =
+            parentSymbol.annotationsIn(session, session.classIds.contributesToAnnotations).any {
+              it.resolvedScopeClassId(session, typeResolver) in scopes
+            }
+          if (!contributesToThisScope) return@flatMap listOf(metroContribution)
+
+          val promoteParent =
+            parentSymbol.classKind.isInterface &&
+              parentClassId !in existingSupertypeClassIds &&
+              !parentSymbol.isAnnotatedWithAny(
+                session,
+                session.classIds.graphExtensionFactoryAnnotations,
+              ) &&
+              (declarationVisibility == null ||
+                !parentSymbol.exposesNarrowerVisibilityThan(declarationVisibility))
+
+          if (promoteParent) {
+            listOf(metroContribution, parentClassId.constructClassLikeType(emptyArray()))
+          } else {
+            listOf(metroContribution)
+          }
         }
-      }
-      // Deduplicate by classId. The same contribution type can appear under different keys when
-      // discovered via both hint-based and external extension paths.
-      .distinctBy { it.classId }
+        // Deduplicate by classId. The same contribution type can appear under different keys
+        // when discovered via both hint-based and external extension paths.
+        .distinctBy { it.classId }
+    }
   }
 
   /**

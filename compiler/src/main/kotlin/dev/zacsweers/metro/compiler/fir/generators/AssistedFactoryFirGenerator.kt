@@ -122,7 +122,12 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
         functionBuilder = this,
         sourceParameters = assistedParams,
         copyParameterDefaults = true,
-      )
+      ) { original ->
+        // Force a resolved type ref. The source constructor's value parameters can still be at
+        // ANNOTATION_ARGUMENTS under LL FIR, so copying their returnTypeRef directly would leave a
+        // FirUserTypeRef on the generated parameter and crash later argument resolution.
+        this.returnTypeRef = original.symbol.resolvedReturnTypeRef
+      }
     }
   }
 

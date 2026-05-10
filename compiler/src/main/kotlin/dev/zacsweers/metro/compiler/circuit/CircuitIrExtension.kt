@@ -36,7 +36,6 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
-import org.jetbrains.kotlin.ir.builders.irImplicitCast
 import org.jetbrains.kotlin.ir.builders.irIs
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irReturn
@@ -66,6 +65,7 @@ import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.implicitCastIfNeededTo
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
@@ -251,13 +251,8 @@ private class CircuitIrTransformer(
           findMatchingCircuitParam(ctorParam, createParamsByName, factoryType)
         if (matchingCreateParam != null) {
           // Circuit-provided: pass from create() param, casting if needed
-          val value = irGet(matchingCreateParam)
           arguments[ctorParam.indexInParameters] =
-            if (matchingCreateParam.type == ctorParam.type) {
-              value
-            } else {
-              irImplicitCast(value, ctorParam.type)
-            }
+            irGet(matchingCreateParam).implicitCastIfNeededTo(ctorParam.type)
         } else {
           // Injectable: read from factory field and invoke Provider
           val field = fieldsByName[ctorParam.name] ?: continue
@@ -362,7 +357,11 @@ private class CircuitIrTransformer(
       for (param in createFunction.regularParameters) {
         val matchingParam = function.regularParameters.find { it.name == param.name }
         if (matchingParam != null) {
-          arguments[param.indexInParameters] = irGet(matchingParam)
+          // Wasm requires precise reference types; cast when the outer create() supplies a wider
+          // type (e.g. Screen) than the assisted factory expects (e.g. CounterScreen).
+          // https://github.com/ZacSweers/metro/issues/2227
+          arguments[param.indexInParameters] =
+            irGet(matchingParam).implicitCastIfNeededTo(param.type)
         }
       }
     }
@@ -557,7 +556,11 @@ private class CircuitIrTransformer(
                 irCall(originalFunctionSymbol).apply {
                   var argIndex = 0
                   for (param in originalFunction.regularParameters) {
-                    arguments[argIndex++] = allParams[param.name]?.let { irGet(it) }
+                    // Wasm requires precise reference types; cast when the captured value
+                    // (e.g. Screen) is wider than the original function param
+                    // (e.g. CounterScreen). https://github.com/ZacSweers/metro/issues/2227
+                    arguments[argIndex++] =
+                      allParams[param.name]?.let { irGet(it).implicitCastIfNeededTo(param.type) }
                   }
                 }
               if (returnType == pluginContext.irBuiltIns.unitType) {

@@ -27,11 +27,7 @@ private constructor(
   val classId by memoize { type.rawTypeOrNull()?.classId }
 
   private val cachedRender by memoize { render(short = false, includeQualifier = true) }
-  private val cachedHashCode by memoize {
-    var result = type.hashCode()
-    result = 31 * result + (qualifier?.hashCode() ?: 0)
-    result
-  }
+  private val cachedHashCode: Int = (type.hashCode() * 31) + (qualifier?.hashCode() ?: 0)
 
   val hasTypeArgs: Boolean
     get() = type is IrSimpleType && type.arguments.isNotEmpty()
@@ -101,7 +97,6 @@ private constructor(
     return cachedRender.compareTo(other.cachedRender)
   }
 
-  // Optimized equals: Fast-fail with hashCode, authoritative check with cachedRender
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -111,8 +106,9 @@ private constructor(
     // Fast fail: If hash codes differ, they are definitely not equal
     if (cachedHashCode != other.cachedHashCode) return false
 
-    // Slow(er) authoritative check
-    return cachedRender == other.cachedRender
+    // Structural compare. Both `IrType` and `IrAnnotation` provide structural equals/hashCode, so
+    // this avoids materializing/comparing the diagnostic render string on every map operation.
+    return type == other.type && qualifier == other.qualifier
   }
 
   // Optimized hashCode that uses a cached hashCode

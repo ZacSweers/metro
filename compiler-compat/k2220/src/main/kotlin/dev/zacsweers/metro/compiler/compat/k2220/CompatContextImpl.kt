@@ -63,8 +63,11 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
+import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
@@ -190,6 +193,11 @@ public class CompatContextImpl : CompatContext {
     return addFakeOverridesNative(typeSystem)
   }
 
+  override fun IrClass.rebuildFakeOverridesCompat(typeSystem: IrTypeSystemContext) {
+    IrFakeOverrideBuilder(typeSystem, MetroFakeOverrideBuilderStrategy, emptyList())
+      .buildFakeOverridesForClass(this, oldSignatures = false)
+  }
+
   override fun Scope.createTemporaryVariableDeclarationCompat(
     irType: IrType,
     nameHint: String?,
@@ -298,4 +306,12 @@ public class CompatContextImpl : CompatContext {
 
     override fun create(): CompatContext = CompatContextImpl()
   }
+}
+
+private object MetroFakeOverrideBuilderStrategy :
+  FakeOverrideBuilderStrategy.BindToPrivateSymbols(friendModules = emptyMap()) {
+  override fun postProcessGeneratedFakeOverride(
+    fakeOverride: IrOverridableDeclaration<*>,
+    clazz: IrClass,
+  ) {}
 }

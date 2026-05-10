@@ -221,12 +221,43 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.toInt() },
     )
   ),
+  MERGED_SUPERTYPE_CHUNK_SIZE(
+    RawMetroOption(
+      name = "merged-supertype-chunk-size",
+      defaultValue = 0,
+      valueDescription = "<count>",
+      description =
+        "Maximum number of contribution supertypes per chunk when merging contributions in IR." +
+          " When set, the IR contribution merger groups merged supertypes into synthetic intermediate" +
+          " interfaces of at most this size, which is useful for graphs whose merged supertype list" +
+          " exceeds the JVM's 65k class signature byte limit. Default 0 disables chunking. Values < 2" +
+          " are treated as disabled.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.toInt() },
+    )
+  ),
   ENABLE_SWITCHING_PROVIDERS(
     RawMetroOption.boolean(
       name = "enable-switching-providers",
       defaultValue = false,
       valueDescription = "<true | false>",
       description = "Enable SwitchingProviders for deferred class loading.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  USE_SECONDARY_TOPO_SORT(
+    RawMetroOption.boolean(
+      name = "use-secondary-topo-sort",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "When true (default), the binding graph runs a secondary Kahn topological sort over " +
+          "the component DAG produced by Tarjan's SCC pass, with PriorityQueue tie-breaking " +
+          "by component id. When false, Tarjan's reverse-topological output is used directly " +
+          "(componentDag is empty in the result). Both produce valid orders but with different " +
+          "tie-breaking, so flipping this re-orders observable codegen output.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -882,6 +913,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  BINDING_CONTRIBUTIONS_AS_CONTAINERS(
+    RawMetroOption.boolean(
+      name = "binding-contributions-as-containers",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "When enabled, pure binding contributions (@ContributesBinding/@ContributesIntoSet/@ContributesIntoMap without @ContributesTo) are routed as a @BindingContainer instead of being merged into graphs as supertypes. Disable to restore the supertype-merge behavior.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -917,8 +959,12 @@ public data class MetroOptions(
   public val enableGraphSharding: Boolean =
     MetroOption.ENABLE_GRAPH_SHARDING.raw.defaultValue.expectAs(),
   public val keysPerGraphShard: Int = MetroOption.KEYS_PER_GRAPH_SHARD.raw.defaultValue.expectAs(),
+  public val mergedSupertypeChunkSize: Int =
+    MetroOption.MERGED_SUPERTYPE_CHUNK_SIZE.raw.defaultValue.expectAs(),
   public val enableSwitchingProviders: Boolean =
     MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
+  public val useSecondaryTopoSort: Boolean =
+    MetroOption.USE_SECONDARY_TOPO_SORT.raw.defaultValue.expectAs(),
   public val publicScopedProviderSeverity: DiagnosticSeverity =
     MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -1051,6 +1097,8 @@ public data class MetroOptions(
   public val richDiagnostics: Boolean = MetroOption.RICH_DIAGNOSTICS.raw.defaultValue.expectAs(),
   public val generateStaticAnnotations: Boolean =
     MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
+  public val bindingContributionsAsContainers: Boolean =
+    MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1069,14 +1117,11 @@ public data class MetroOptions(
   public val traceEnabled: Boolean
     get() = rawTraceDestination != null
 
-  @OptIn(ExperimentalPathApi::class)
   public val traceDir: Lazy<Path?> = lazy {
-    rawTraceDestination?.apply {
-      if (exists()) {
-        deleteRecursively()
-      }
-      createDirectories()
-    }
+    // Don't wipe the directory: when a Gradle daemon reruns compilation
+    // (e.g. gradle-profiler iterations), wiping each time loses every
+    // prior trace. Filenames are timestamped, so accumulation is safe.
+    rawTraceDestination?.apply { createDirectories() }
   }
 
   public fun toBuilder(): Builder = Builder(this)
@@ -1094,7 +1139,9 @@ public data class MetroOptions(
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
-    public var enableFastInit: Boolean = base.enableSwitchingProviders
+    public var mergedSupertypeChunkSize: Int = base.mergedSupertypeChunkSize
+    public var enableSwitchingProviders: Boolean = base.enableSwitchingProviders
+    public var useSecondaryTopoSort: Boolean = base.useSecondaryTopoSort
     public var publicScopedProviderSeverity: DiagnosticSeverity = base.publicScopedProviderSeverity
     public var nonPublicContributionSeverity: DiagnosticSeverity =
       base.nonPublicContributionSeverity
@@ -1173,6 +1220,7 @@ public data class MetroOptions(
     public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
     public var richDiagnostics: Boolean = base.richDiagnostics
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
+    public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1304,7 +1352,9 @@ public data class MetroOptions(
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
-        enableSwitchingProviders = enableFastInit,
+        mergedSupertypeChunkSize = mergedSupertypeChunkSize,
+        enableSwitchingProviders = enableSwitchingProviders,
+        useSecondaryTopoSort = useSecondaryTopoSort,
         publicScopedProviderSeverity = publicScopedProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
@@ -1363,6 +1413,7 @@ public data class MetroOptions(
         enableCircuitCodegen = enableCircuitCodegen,
         richDiagnostics = richDiagnostics,
         generateStaticAnnotations = generateStaticAnnotations,
+        bindingContributionsAsContainers = bindingContributionsAsContainers,
       )
     }
 
@@ -1525,7 +1576,11 @@ public data class MetroOptions(
 
           KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = configuration.getAsInt(entry)
 
-          ENABLE_SWITCHING_PROVIDERS -> enableFastInit = configuration.getAsBoolean(entry)
+          MERGED_SUPERTYPE_CHUNK_SIZE -> mergedSupertypeChunkSize = configuration.getAsInt(entry)
+
+          ENABLE_SWITCHING_PROVIDERS -> enableSwitchingProviders = configuration.getAsBoolean(entry)
+
+          USE_SECONDARY_TOPO_SORT -> useSecondaryTopoSort = configuration.getAsBoolean(entry)
 
           PUBLIC_SCOPED_PROVIDER_SEVERITY ->
             publicScopedProviderSeverity =
@@ -1676,6 +1731,8 @@ public data class MetroOptions(
           RICH_DIAGNOSTICS -> richDiagnostics = configuration.getAsBoolean(entry)
           GENERATE_STATIC_ANNOTATIONS ->
             generateStaticAnnotations = configuration.getAsBoolean(entry)
+          BINDING_CONTRIBUTIONS_AS_CONTAINERS ->
+            bindingContributionsAsContainers = configuration.getAsBoolean(entry)
         }
       }
     }

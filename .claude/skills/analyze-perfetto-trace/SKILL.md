@@ -12,15 +12,19 @@ description: Query and analyze Metro's perfetto compiler traces to find real hot
 
 ## Where metro writes traces
 
-Metro writes a perfetto trace per compilation into each module's build dir:
+Metro writes perfetto traces into the configured `traceDestination` directory. As of the FIR + IR tracing rework, **one compilation produces multiple files** — one per FIR session and one per IR module fragment — all sharing a common id prefix:
 
 ```
-<module>/build/metro/trace/<variant>/perfetto-<timestamp>.perfetto-trace
+<traceDestination>/<id>-<phase>-<moduleName>.perfetto-trace
 ```
 
-e.g. `app-scaffold/build/metro/trace/debug/perfetto-2026-04-24-01-31-36-0.perfetto-trace`.
+- `<id>` is a `yyMMdd-HHmmss` timestamp generated once per compilation. Every file from the same compilation invocation shares it, so you can group them by prefix.
+- `<phase>` is `fir` or `ir`.
+- `<moduleName>` is the FIR session name (`commonMain`, `jvmMain`, etc.) or the IR `IrModuleFragment.name` (often `main`). Filesystem-unsafe characters in module names are replaced with `_`.
 
-If there are multiple, they're one per compilation invocation — pick the most recent unless the user points at a specific file.
+Examples: `260505-133503-fir-commonMain.perfetto-trace`, `260505-133503-ir-main.perfetto-trace`.
+
+When asked "look at the trace", first decide which phase the user is asking about. FIR-side time (checkers, generators, supertype computation) lives in the `fir-*` files; IR-side time (graph processing, transformers) lives in the `ir-*` files. They are **separate timelines** — not a unified trace — so you cannot directly compare durations across files. If multiple older invocations exist in the directory, pick the freshest `<id>` group unless the user points at a specific file.
 
 ## Producing a fresh trace from a local Metro change
 
@@ -44,6 +48,18 @@ scripts/trace-project.sh [--open-in-browser] <project-dir> <gradle-task> [versio
 ```
 
 Use this when the user asks for a "fresh trace" / "re-profile" / has just made a Metro change they want profiled against a real-world project.
+
+## Producing a fresh trace from the in-repo benchmark project
+
+For raw-perf iteration on a large generated project (no external repo needed), use `benchmark/trace_compile.sh`. It runs gradle-profiler against a fresh `:app:component:compileKotlin --rerun` of the benchmark project, with Metro's perfetto tracing enabled, and picks the iteration whose duration is closest to the measured-mean — so a single representative trace lands in `tmp/traces/` (and `tmp/traces/LATEST` is updated).
+
+```
+benchmark/trace_compile.sh                  # run + pick + copy
+benchmark/trace_compile.sh --open-in-browser  # also open in ui.perfetto.dev
+TRACE=$(cat tmp/traces/LATEST)              # chain into analysis
+```
+
+Prereqs: the benchmark project must be generated for metro mode (`cd benchmark && kotlin generate-projects.main.kts --mode metro`). gradle-profiler is auto-installed on first run. Use this for "raw compile perf on a 500-module project" iteration loops where you don't need a real-world app like CatchUp.
 
 ## Tooling
 

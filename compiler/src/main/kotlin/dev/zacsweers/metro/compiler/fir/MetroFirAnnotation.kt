@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.appendIterableWith
-import dev.zacsweers.metro.compiler.md5base64
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
@@ -30,8 +29,6 @@ internal class MetroFirAnnotation(
   private val cachedToString by memoize { buildString { renderAsAnnotation(fir, simple = false) } }
 
   fun simpleString() = buildString { renderAsAnnotation(fir, simple = true) }
-
-  fun hashString(): String = md5base64(listOf(cachedToString))
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

@@ -450,7 +450,14 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
             functionBuilder = this,
             sourceParameters = constructorParams,
             copyParameterDefaults = true,
-          )
+          ) { original ->
+            // Force a resolved type ref. The source constructor's value parameters can still be at
+            // ANNOTATION_ARGUMENTS under LL FIR, so copying their returnTypeRef directly would
+            // leave a FirUserTypeRef on the generated parameter and crash later argument
+            // resolution. Use the symbol's resolvedReturnTypeRef to preserve the declared type
+            // (including Provider/Lazy wrappers) — typeKey.type strips those.
+            this.returnTypeRef = original.symbol.resolvedReturnTypeRef
+          }
         }
       }
 
@@ -896,6 +903,9 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
 
     if (!name.identifier.startsWith(Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX)) return null
     val contributions = findContributions(owner) ?: return null
+    val generateAsContainer =
+      session.metroFirBuiltIns.options.bindingContributionsAsContainers &&
+        contributions.none { it is Contribution.ContributesTo }
     return createNestedClass(
         owner,
         name = name,
@@ -912,20 +922,27 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       }
       .apply {
         markAsDeprecatedHidden(session)
-        val metroContributionAnnotation =
-          buildMetroContributionAnnotation().apply {
-            replaceArgumentMapping(
-              buildAnnotationArgumentMapping {
-                val originalScopeArg =
-                  contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)
-                    ?: reportCompilerBug(
-                      "Could not find a contribution scope for ${owner.classId}.$name"
-                    )
-                this.mapping[Symbols.Names.scope] = originalScopeArg
+        val newAnnotations = buildList {
+          add(
+            buildMetroContributionAnnotation().apply {
+              contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)?.let {
+                originalScopeArg ->
+                replaceArgumentMapping(
+                  buildAnnotationArgumentMapping { mapping[Symbols.Names.scope] = originalScopeArg }
+                )
               }
-            )
+            }
+          )
+          // Newer binding contributions are routed as @BindingContainer instead of being merged
+          // into the graph as a supertype, so that graphs don't accumulate one supertype per
+          // contributing class.
+          if (generateAsContainer) {
+            add(buildBindingContainerAnnotation())
+            add(buildOriginAnnotation(owner.classId))
+            add(buildComptimeOnlyAnnotation())
           }
-        replaceAnnotations(annotations + listOf(metroContributionAnnotation))
+        }
+        replaceAnnotations(annotations + newAnnotations)
       }
       .symbol
   }
@@ -978,9 +995,16 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
   }
 
   private fun buildBindingContainerAnnotation(): FirAnnotation {
-    val classId = ClassId(Symbols.FqNames.metroRuntimePackage, Name.identifier("BindingContainer"))
+    val classId = ClassId(Symbols.FqNames.metroRuntimePackage, "BindingContainer".asName())
     return buildSimpleAnnotation {
       session.symbolProvider.getClassLikeSymbolByClassId(classId) as FirRegularClassSymbol
+    }
+  }
+
+  private fun buildComptimeOnlyAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation {
+      session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.ComptimeOnly)
+        as FirRegularClassSymbol
     }
   }
 

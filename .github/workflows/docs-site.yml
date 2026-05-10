@@ -63,9 +63,6 @@ jobs:
       - name: Copy documentation files
         run: ./scripts/copy_docs_files.sh
 
-      - name: Validate documentation file mappings
-        run: ./scripts/copy_docs_files_mapping_validator.sh
-
       - name: Extract Metro version from gradle.properties
         id: version
         run: |
@@ -180,9 +177,6 @@ jobs:
 
       - name: Copy documentation files
         run: ./scripts/copy_docs_files.sh
-
-      - name: Validate documentation file mappings
-        run: ./scripts/copy_docs_files_mapping_validator.sh
 
       - name: Build docs (dry run with Zensical)
         run: |

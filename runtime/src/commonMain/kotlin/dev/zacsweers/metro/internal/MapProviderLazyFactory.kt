@@ -67,5 +67,22 @@ private constructor(map: Map<K, Provider<V>>) : AbstractMapFactory<K, V, Provide
       @Suppress("UNCHECKED_CAST")
       return EMPTY as Provider<Map<K, Provider<Lazy<V>>>>
     }
+
+    /**
+     * Returns a [Factory] for a single-entry `Map<K, Provider<Lazy<V>>>`. Skips the [Builder]
+     * allocation for the size-1 case.
+     */
+    public fun <K : Any, V : Any> singleton(
+      key: K,
+      provider: Provider<V>,
+    ): Factory<Map<K, Provider<Lazy<V>>>> = SingletonMapProviderLazyFactory(key, provider)
   }
+}
+
+private class SingletonMapProviderLazyFactory<K : Any, V : Any>(
+  private val key: K,
+  private val provider: Provider<V>,
+) : Factory<Map<K, Provider<Lazy<V>>>> {
+  override fun invoke(): Map<K, Provider<Lazy<V>>> =
+    SingletonMap(key, ProviderOfLazy.create(provider))
 }

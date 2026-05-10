@@ -39,6 +39,9 @@ class Impl : Base<Impl>, Other {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
+  @BindingContainer
+  @Origin(value = Impl::class)
+  @ComptimeOnly
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @ComptimeOnly

@@ -4,6 +4,9 @@ package dev.zacsweers.metro.compiler.ir
 
 import androidx.collection.MutableScatterMap
 import androidx.collection.MutableScatterSet
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
@@ -31,6 +34,9 @@ import org.jetbrains.kotlin.name.ClassId
 
 private typealias Scope = ClassId
 
+@Inject
+@SingleIn(IrScope::class)
+@ContributesBinding(IrScope::class)
 internal class IrContributionData(private val metroContext: IrMetroContext) :
   Lockable by Lockable() {
 
@@ -207,36 +213,36 @@ internal class IrContributionData(private val metroContext: IrMetroContext) :
     bindingContainersOnly: Boolean,
   ): Set<IrType> =
     trace("Get scoped contributions for $scope") {
-      contributingClasses
-        .let { contributions ->
-          if (bindingContainersOnly) {
-            contributions.filter { irClass -> with(metroContext) { irClass.isBindingContainer() } }
-          } else {
-            contributions.filterNot { irClass ->
-              with(metroContext) { irClass.isBindingContainer() }
-            }
-          }
-        }
-        .flatMapToSet { irClass ->
-          with(metroContext) {
-            if (irClass.isBindingContainer()) {
+      contributingClasses.flatMapToSet { irClass ->
+        with(metroContext) {
+          if (irClass.isBindingContainer()) {
+            // Top-level @BindingContainer class
+            if (bindingContainersOnly) {
               setOf(irClass.defaultType)
             } else {
-              irClass.nestedClasses.mapNotNullToSet { nestedClass ->
-                val metroContribution =
-                  nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
-                    ?: return@mapNotNullToSet null
-                val contributionScope =
-                  metroContribution.scopeOrNull()
-                    ?: reportCompilerBug("No scope found for @MetroContribution annotation")
-                if (contributionScope == scope) {
-                  nestedClass.defaultType
-                } else {
-                  null
-                }
+              emptySet()
+            }
+          } else {
+            // Walk nested @MetroContribution classes; route by their own @BindingContainer
+            // annotation so pure-binding contributions land in the binding-container bucket
+            // instead of being merged in as graph supertypes.
+            irClass.nestedClasses.mapNotNullToSet { nestedClass ->
+              val metroContribution =
+                nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
+                  ?: return@mapNotNullToSet null
+              val contributionScope =
+                metroContribution.scopeOrNull()
+                  ?: reportCompilerBug("No scope found for @MetroContribution annotation")
+              if (contributionScope != scope) return@mapNotNullToSet null
+              val isNestedContainer = nestedClass.isBindingContainer()
+              if (bindingContainersOnly == isNestedContainer) {
+                nestedClass.defaultType
+              } else {
+                null
               }
             }
           }
         }
+      }
     }
 }

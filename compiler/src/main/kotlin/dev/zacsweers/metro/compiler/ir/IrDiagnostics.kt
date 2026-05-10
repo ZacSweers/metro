@@ -79,13 +79,19 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
 ) {
   // If the declaration has no source (e.g. a generated contribution provider or other
   // generated declaration carrying @Origin/MetroOriginData), redirect to the origin class
-  // so the diagnostic points at user-authored code.
+  // so the diagnostic points at user-authored code. Only take the redirect when the origin
+  // itself has source — otherwise we'd lose the original declaration's metadata (e.g. the
+  // BindsMirror function path and "contributes X to scope" hint) without gaining a usable
+  // file:line, which is worse for transitive-dep diagnostics.
   var effectiveDeclaration = irDeclaration
   if (
     irDeclaration != null &&
       (irDeclaration.fileOrNull == null || irDeclaration.sourceElement() == null)
   ) {
-    irDeclaration.findOriginClass()?.let { effectiveDeclaration = it }
+    irDeclaration
+      .findOriginClass()
+      ?.takeIf { it.fileOrNull != null && it.sourceElement() != null }
+      ?.let { effectiveDeclaration = it }
   }
 
   val sourceElement = effectiveDeclaration?.sourceElement()

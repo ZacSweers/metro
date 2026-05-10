@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryImpl
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
@@ -41,6 +44,9 @@ internal interface MetroDeclarations {
   fun findAssistedFactoryImpl(declaration: IrClass): AssistedFactoryImpl
 }
 
+@Inject
+@ContributesBinding(IrScope::class)
+@SingleIn(IrScope::class)
 internal class DefaultMetroDeclarations(
   private val bindingContainerTransformer: BindingContainerTransformer,
   private val injectedClassTransformer: InjectedClassTransformer,

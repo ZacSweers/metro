@@ -11,6 +11,7 @@ import com.autonomousapps.kit.gradle.Dependency
 import com.autonomousapps.kit.gradle.Dependency.Companion.implementation
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.GradlePlugins
+import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.buildAndAssertThat
 import dev.zacsweers.metro.gradle.classLoader
@@ -23,8 +24,17 @@ import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assume.assumeTrue
 import org.junit.Ignore
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 
-class ICTests : BaseIncrementalCompilationTest() {
+@RunWith(Parameterized::class)
+class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
+
+  companion object {
+    @JvmStatic
+    @Parameterized.Parameters(name = "{0}")
+    fun targets(): List<KmpTarget> = KmpTarget.entries
+  }
 
   /**
    * This test covers an issue where incremental compilation fails to detect when an `@Includes`
@@ -90,7 +100,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Modify the FeatureScreen class to comment out the dependency property
     project.modify(
@@ -118,7 +128,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        FeatureScreen.kt:8:18 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
+        FeatureScreen.kt:7:18 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
 
             test.Dependency is injected at
                 [test.FeatureGraph] test.FeatureScreen.dependency
@@ -167,7 +177,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
       fixture.serviceProvider,
@@ -234,7 +244,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
       fixture.appGraph,
@@ -298,7 +308,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
       fixture.stringProvider,
@@ -417,7 +427,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     libProject.modify(project.rootDir, fixture.dependencyProvider, "")
 
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Restore dependencyProvider to break the build - both graphs should detect this change
     // This is the key assertion: even though the second graph's lookup hits the internal cache
@@ -468,7 +478,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
       fixture.stringProvider,
@@ -531,7 +541,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
       fixture.contributedInterfaces,
@@ -548,13 +558,15 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Verify that the new contribution is included in the interfaces
-    val classLoader = project.classLoader()
-    val exampleGraph = classLoader.loadClass("test.ExampleGraph")
-    assertThat(exampleGraph.interfaces.map { it.name })
-      .contains("test.NewContribution\$MetroContributionToUnit")
+    ifJvmTarget {
+      val classLoader = project.classLoader()
+      val exampleGraph = classLoader.loadClass("test.ExampleGraph")
+      assertThat(exampleGraph.interfaces.map { it.name })
+        .contains("test.NewContribution\$MetroContributionToUnit")
+    }
   }
 
   @Test
@@ -593,13 +605,15 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Verify that the new contribution is included in the interfaces
-    with(project.classLoader()) {
-      val exampleGraph = loadClass("test.ExampleGraph")
-      assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.Impl2\$MetroContributionToUnit")
+    ifJvmTarget {
+      with(project.classLoader()) {
+        val exampleGraph = loadClass("test.ExampleGraph")
+        assertThat(exampleGraph.interfaces.map { it.name })
+          .contains("test.Impl2\$MetroContributionToUnit")
+      }
     }
 
     project.modify(
@@ -613,13 +627,15 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Verify that the removed contribution is removed from supertypes
-    val classLoader = project.classLoader()
-    val exampleGraph = classLoader.loadClass("test.ExampleGraph")
-    assertThat(exampleGraph.interfaces.map { it.name })
-      .doesNotContain("test.Impl2\$MetroContributionToUnit")
+    ifJvmTarget {
+      val classLoader = project.classLoader()
+      val exampleGraph = classLoader.loadClass("test.ExampleGraph")
+      assertThat(exampleGraph.interfaces.map { it.name })
+        .doesNotContain("test.Impl2\$MetroContributionToUnit")
+    }
   }
 
   @Test
@@ -709,7 +725,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-        e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.SomeRepository
+        e: ExampleGraph.kt:6:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.SomeRepository
 
             test.SomeRepository is requested at
                 [test.ExampleGraph.Impl.LoggedInGraphImpl] test.SomeRepositoryProvider.MetroContributionToLoggedInScope.someRepository
@@ -772,24 +788,27 @@ class ICTests : BaseIncrementalCompilationTest() {
       val urls =
         project.subprojects.mapNotNull { subproject ->
           val projectPath = subproject.name.removePrefix(":").replace(":", "/")
-          val classesDir = project.rootDir.resolve("$projectPath/build/classes/kotlin/main")
+          val classesDir = project.rootDir.resolve("$projectPath/build/classes/kotlin/jvm/main")
           if (classesDir.exists()) classesDir.toURI().toURL() else null
         }
       return URLClassLoader(urls.toTypedArray(), this::class.java.classLoader)
     }
 
-    val firstBuildResult = project.compileKotlin(":app:compileKotlin")
-    assertThat(firstBuildResult.task(":app:compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    val firstBuildResult = project.compileKotlin(compileTaskFor("app"))
+    assertThat(firstBuildResult.task(compileTaskFor("app"))?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     libProject.modify(project.rootDir, fixture.dummy, fixture.dummyWithContributionSource)
 
-    val secondBuildResult = project.compileKotlin(":app:compileKotlin")
-    assertThat(secondBuildResult.task(":app:compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    val secondBuildResult = project.compileKotlin(compileTaskFor("app"))
+    assertThat(secondBuildResult.task(compileTaskFor("app"))?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
 
-    val secondClassLoader = appClassLoader()
-    val secondAppGraph = secondClassLoader.loadClass("test.AppGraph")
-    assertThat(secondAppGraph.interfaces.map { it.name })
-      .doesNotContain("test.DummyBindings\$MetroContributionToAppScope")
+    ifJvmTarget {
+      val secondClassLoader = appClassLoader()
+      val secondAppGraph = secondClassLoader.loadClass("test.AppGraph")
+      assertThat(secondAppGraph.interfaces.map { it.name })
+        .doesNotContain("test.DummyBindings\$MetroContributionToAppScope")
+    }
   }
 
   @Test
@@ -824,12 +843,14 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    with(project.classLoader()) {
-      val exampleGraph = loadClass("test.ExampleGraph")
-      assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.ContributedInterface2\$MetroContributionToUnit")
+    ifJvmTarget {
+      with(project.classLoader()) {
+        val exampleGraph = loadClass("test.ExampleGraph")
+        assertThat(exampleGraph.interfaces.map { it.name })
+          .contains("test.ContributedInterface2\$MetroContributionToUnit")
+      }
     }
 
     project.modify(
@@ -842,13 +863,15 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that ContributedInterface2 was removed as a supertype
-    val classLoader = project.classLoader()
-    val exampleGraph = classLoader.loadClass("test.ExampleGraph")
-    assertThat(exampleGraph.interfaces.map { it.name })
-      .doesNotContain("test.ContributedInterface2\$MetroContributionToUnit")
+    ifJvmTarget {
+      val classLoader = project.classLoader()
+      val exampleGraph = classLoader.loadClass("test.ExampleGraph")
+      assertThat(exampleGraph.interfaces.map { it.name })
+        .doesNotContain("test.ContributedInterface2\$MetroContributionToUnit")
+    }
   }
 
   @Test
@@ -886,10 +909,9 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    assertThat(project.invokeMain<Int>()).isEqualTo(1)
-
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(1) }
     project.modify(
       fixture.exampleGraph,
       """
@@ -906,11 +928,10 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is scoped now and never increments
-    assertThat(project.invokeMain<Int>()).isEqualTo(0)
-
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(0) }
     project.modify(
       fixture.exampleGraph,
       """
@@ -927,10 +948,10 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val thirdBuildResult = project.compileKotlin()
-    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is unscoped again and increments
-    assertThat(project.invokeMain<Int>()).isEqualTo(1)
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(1) }
   }
 
   @Test
@@ -980,10 +1001,9 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    assertThat(project.invokeMain<Int>()).isEqualTo(0)
-
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(0) }
     project.modify(
       fixture.exampleClass,
       """
@@ -998,11 +1018,10 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is scoped now and never increments
-    assertThat(project.invokeMain<Int>()).isEqualTo(1)
-
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(1) }
     project.modify(
       fixture.exampleClass,
       """
@@ -1016,10 +1035,10 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val thirdBuildResult = project.compileKotlin()
-    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is unscoped again and increments
-    assertThat(project.invokeMain<Int>()).isEqualTo(0)
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(0) }
   }
 
   @Test
@@ -1094,7 +1113,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-        e: LoggedInScope.kt:9:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+        e: LoggedInScope.kt:8:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
             test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
             test.ExampleClass is requested at
                 [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
@@ -1117,12 +1136,14 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val scopedDep = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
-      assertThat(scopedDep).isNotNull()
+    ifJvmTarget {
+      with(project.classLoader()) {
+        val mainClass = loadClass("test.MainKt")
+        val scopedDep = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
+        assertThat(scopedDep).isNotNull()
+      }
     }
 
     // TODO We need to add or remove an annotation at this point to trigger the graph regen,
@@ -1138,7 +1159,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val thirdBuildResult = project.compileKotlin()
-    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
       fixture.exampleClass,
@@ -1200,7 +1221,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
       fixture.contributedClass,
@@ -1218,7 +1239,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     // Verify that the build failed with the expected error message
     assertThat(secondBuildResult.output)
       .contains(
-        "ContributedInterface.kt:9:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterfaceImpl' is internal but graph declaration 'test.ExampleGraph' is public."
+        "ContributedInterface.kt:8:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterfaceImpl' is internal but graph declaration 'test.ExampleGraph' is public."
       )
   }
 
@@ -1268,11 +1289,13 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     fun buildAndAssertOutput() {
       val buildResult = project.compileKotlin()
-      assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+      assertThat(buildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-      val mainClass = project.classLoader().loadClass("test.MainKt")
-      val string = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(string).isEqualTo("Hello, world!")
+      ifJvmTarget {
+        val mainClass = project.classLoader().loadClass("test.MainKt")
+        val string = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
+        assertThat(string).isEqualTo("Hello, world!")
+      }
     }
 
     buildAndAssertOutput()
@@ -1377,7 +1400,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-        e: LoggedInScope.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+        e: LoggedInScope.kt:9:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
             test.Foo is requested at
                 [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.childDependenc
@@ -1397,12 +1420,14 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val scopedDep = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
-      assertThat(scopedDep).isNotNull()
+    ifJvmTarget {
+      with(project.classLoader()) {
+        val mainClass = loadClass("test.MainKt")
+        val scopedDep = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
+        assertThat(scopedDep).isNotNull()
+      }
     }
 
     // Change back to the original state -- should fail again for a missing binding
@@ -1418,7 +1443,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     val thirdBuildResult = project.compileKotlinAndFail()
     assertThat(thirdBuildResult.output.cleanOutputLine())
-      // Omit 'e: ExampleGraph.kt:7:11 ' prefix until 2.3.0+ as we report a more accurate location
+      // Omit 'e: ExampleGraph.kt:6:11 ' prefix until 2.3.0+ as we report a more accurate location
       // there
       .contains(
         """
@@ -1497,11 +1522,13 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     fun buildAndAssertOutput() {
       val buildResult = project.compileKotlin()
-      assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+      assertThat(buildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-      val mainClass = project.classLoader().loadClass("test.MainKt")
-      val graph = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
-      assertThat(graph).isNotNull()
+      ifJvmTarget {
+        val mainClass = project.classLoader().loadClass("test.MainKt")
+        val graph = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
+        assertThat(graph).isNotNull()
+      }
     }
 
     buildAndAssertOutput()
@@ -1592,11 +1619,13 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     fun buildAndAssertOutput() {
       val buildResult = project.compileKotlin()
-      assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+      assertThat(buildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-      val mainClass = project.classLoader().loadClass("test.MainKt")
-      val graph = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
-      assertThat(graph).isNotNull()
+      ifJvmTarget {
+        val mainClass = project.classLoader().loadClass("test.MainKt")
+        val graph = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
+        assertThat(graph).isNotNull()
+      }
     }
 
     buildAndAssertOutput()
@@ -1621,6 +1650,9 @@ class ICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun multiModuleNonAbiChangeDoesNotTriggerRootRecompilation() {
+    // Metro's downstream-skip-on-non-ABI-change IC story is JVM-specific today; non-JVM targets
+    // currently recompile downstream. Run only on JVM until that's covered separately.
+    assumeTrue(target == KmpTarget.JVM)
     val fixture =
       object : MetroProject() {
         override fun buildGradleProject() = multiModuleProject {
@@ -1682,9 +1714,9 @@ class ICTests : BaseIncrementalCompilationTest() {
     val libProject = project.subprojects.first { it.name == "lib" }
 
     // First build
-    buildAndAssertThat(project.rootDir, ":compileKotlin") {
-      task(":compileKotlin").succeeded()
-      task(":lib:compileKotlin").succeeded()
+    buildAndAssertThat(project.rootDir, compileTaskFor()) {
+      task(compileTaskFor()).succeeded()
+      task(compileTaskFor("lib")).succeeded()
     }
 
     // Make a private change in the lib module in the same file still triggers IC because IC is
@@ -1707,11 +1739,11 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    buildAndAssertThat(project.rootDir, ":compileKotlin") {
+    buildAndAssertThat(project.rootDir, compileTaskFor()) {
       // Lib module should be recompiled due to the change
-      task(":lib:compileKotlin").succeeded()
+      task(compileTaskFor("lib")).succeeded()
       // Root module isn't UP-TO-DATE because IC operates on the file
-      task(":compileKotlin").succeeded()
+      task(compileTaskFor()).succeeded()
     }
 
     // Make a non-ABI change to a function body.
@@ -1733,11 +1765,11 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    buildAndAssertThat(project.rootDir, ":compileKotlin") {
+    buildAndAssertThat(project.rootDir, compileTaskFor()) {
       // Lib module should be recompiled due to the change
-      task(":lib:compileKotlin").succeeded()
+      task(compileTaskFor("lib")).succeeded()
       // Root module isn't UP-TO-DATE because IC operates on the file
-      task(":compileKotlin").upToDate()
+      task(compileTaskFor()).upToDate()
     }
 
     // Modify an unrelated file in the lib module, should not trigger IC
@@ -1753,17 +1785,19 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    buildAndAssertThat(project.rootDir, ":compileKotlin") {
+    buildAndAssertThat(project.rootDir, compileTaskFor()) {
       // Lib module should be recompiled due to the change
-      task(":lib:compileKotlin").succeeded()
+      task(compileTaskFor("lib")).succeeded()
       // Root module should be UP-TO-DATE since the changed file is not part of the dependency graph
-      task(":compileKotlin").upToDate()
+      task(compileTaskFor()).upToDate()
     }
 
     // Verify the application still works correctly
-    val classLoader = project.classLoader()
-    val appGraphClass = classLoader.loadClass("test.AppGraph")
-    assertThat(appGraphClass).isNotNull()
+    ifJvmTarget {
+      val classLoader = project.classLoader()
+      val appGraphClass = classLoader.loadClass("test.AppGraph")
+      assertThat(appGraphClass).isNotNull()
+    }
   }
 
   @Test
@@ -1848,11 +1882,13 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     fun buildAndAssertOutput() {
       val buildResult = project.compileKotlin()
-      assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+      assertThat(buildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-      val mainClass = project.classLoader().loadClass("test.MainKt")
-      val string = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(string).isEqualTo("fake")
+      ifJvmTarget {
+        val mainClass = project.classLoader().loadClass("test.MainKt")
+        val string = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
+        assertThat(string).isEqualTo("fake")
+      }
     }
 
     buildAndAssertOutput()
@@ -1928,7 +1964,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Modify the FeatureGraph class to contribute the factory directly but leave ParentBindings
     libProject.modify(
@@ -2015,7 +2051,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Modify the FeatureGraph class to contribute the factory directly but leave ParentBindings
     project.modify(
@@ -2051,7 +2087,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Second build is still marked as success so we have to check the output
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
   @Test
@@ -2151,9 +2187,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Feature")
-
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Feature") }
     // Modify the MyActivityInjector to contribute itself to the AppScope
     libProject.modify(
       project.rootDir,
@@ -2169,12 +2204,17 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Second build is still marked as success so we have to check the output
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("App")
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("App") }
   }
 
   @Test
   fun multiplatformAndroidPluginWithReportsEnabledShouldNotFailWithFileExistsException() {
+    // AGP-KMP regression test; the fixture overrides buildGradleProject() with a custom
+    // jvm()+android() KMP setup, so it doesn't share the parameter matrix with the rest of the
+    // suite. Run it once (under JVM) instead of repeating the same Android assemble for every
+    // parameter.
+    assumeTrue(target == KmpTarget.JVM)
     val fixture =
       object : MetroProject(reportsEnabled = true) {
         override fun sources() =
@@ -2185,7 +2225,6 @@ class ICTests : BaseIncrementalCompilationTest() {
               """
                 .trimIndent(),
               packageName = "com.example.test",
-              sourceSet = "commonMain",
             )
           )
 
@@ -2308,9 +2347,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed and member injection should work
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Demo")
-
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Demo") }
     // Modify AnotherInjectedClass (unrelated to DemoClass member injection)
     project.modify(
       fixture.anotherInjectedClass,
@@ -2327,10 +2365,10 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed and member injection should still work
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // This is the key assertion - member injection should still work after IC
-    assertThat(project.invokeMain<String>()).isEqualTo("Demo")
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Demo") }
   }
 
   /**
@@ -2375,7 +2413,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
       fixture.unrelated,
@@ -2388,7 +2426,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
   /**
@@ -2446,9 +2484,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed and run correctly
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world")
-
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hello, world") }
     // Add a new non-assisted parameter (count: Int) to the assisted class
     project.modify(
       fixture.assistedClass,
@@ -2472,8 +2509,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed and the factory should pick up the new parameter
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world42")
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hello, world42") }
   }
 
   @Test
@@ -2532,9 +2569,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed and run correctly
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world")
-
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hello, world") }
     // Add a new non-assisted parameter (count: Int) to the assisted class
     project.modify(
       fixture.assistedClass,
@@ -2553,8 +2589,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed and the factory should pick up the new parameter
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world42")
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hello, world42") }
   }
 
   @Test
@@ -2614,9 +2650,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed and run correctly
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world")
-
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hello, world") }
     // Add a new non-assisted parameter (count: Int) to the assisted class in the lib module
     libProject.modify(
       project.rootDir,
@@ -2641,8 +2676,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed and the factory should pick up the new parameter
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world42")
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hello, world42") }
   }
 
   @Test
@@ -2712,9 +2747,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed and run correctly
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world")
-
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hello, world") }
     // Add a new non-assisted parameter (count: Int) to the assisted class in the lib module
     libProject.modify(
       project.rootDir,
@@ -2734,8 +2768,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Second build should succeed and the factory should pick up the new parameter
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world42")
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hello, world42") }
   }
 
   /**
@@ -2850,9 +2884,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed: 1 factory contributed into the set
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<Int>()).isEqualTo(1)
-
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(1) }
     // Remove the non-assisted parameter (count: Int) from AssistedClass in lib.
     // This changes AssistedClass.MetroFactory.Companion.create() from a 2-Provider overload
     // to a 1-Provider overload. Kotlin IC does recompile root (via the api dep chain), but
@@ -2879,8 +2912,8 @@ class ICTests : BaseIncrementalCompilationTest() {
     // Second build compiles successfully but Metro uses stale metadata for AssistedClass and
     // generates the wrong create() arity. invokeMain throws NoSuchMethodError until the fix.
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<Int>()).isEqualTo(1)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(1) }
   }
 
   /**
@@ -2959,9 +2992,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build (clean) should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Hello, world")
-
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hello, world") }
     // Modify only the graph file — the @AssistedInject class file is not dirty.
     // Under IC, the auto-generated Factory is loaded from cache.
     project.modify(
@@ -2980,8 +3012,8 @@ class ICTests : BaseIncrementalCompilationTest() {
     // Second build (incremental) should succeed — the IC-cached Factory must still
     // have its abstract create() function visible to the IR phase.
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.invokeMain<String>()).isEqualTo("Hi, world")
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hi, world") }
   }
 
   /**
@@ -3027,7 +3059,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change @DefaultBinding<Base> to @DefaultBinding<Other> — now the implicit binding type
     // is Other, but the graph still requests Base, which should cause a missing binding error
@@ -3089,7 +3121,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed — @DefaultBinding resolves the ambiguity
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove @DefaultBinding — now multiple supertypes with no default, should fail
     project.modify(
@@ -3145,7 +3177,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed — explicit binding resolves the ambiguity
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Add @DefaultBinding to Base and remove explicit binding from Impl — should still succeed
     project.modify(
@@ -3167,7 +3199,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     val secondBuildResult = project.compileKotlin()
-    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
   /**
@@ -3219,7 +3251,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should succeed — @DefaultBinding<Factory<*>> binds as Factory<*>
     val firstBuildResult = project.compileKotlin()
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change @DefaultBinding<Factory<*>> to @DefaultBinding<Factory<String>> —
     // graph requests Factory<*> but the binding now produces Factory<String>, which should fail

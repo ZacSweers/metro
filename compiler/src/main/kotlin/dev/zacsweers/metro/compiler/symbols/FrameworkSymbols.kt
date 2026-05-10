@@ -25,30 +25,36 @@ internal interface FrameworkSymbols {
   val providerOfLazyCreate: IrSimpleFunctionSymbol
   val setFactoryBuilder: IrClassSymbol
   val setFactoryBuilderFunction: IrSimpleFunctionSymbol
+  val setFactoryEmptyFunction: IrSimpleFunctionSymbol?
+  val setFactorySingletonFunction: IrSimpleFunctionSymbol?
   val setFactoryBuilderAddProviderFunction: IrSimpleFunctionSymbol
   val setFactoryBuilderAddCollectionProviderFunction: IrSimpleFunctionSymbol
   val setFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
   val mapFactoryBuilder: IrClassSymbol
   val mapFactoryBuilderFunction: IrSimpleFunctionSymbol
   val mapFactoryEmptyFunction: IrSimpleFunctionSymbol
+  val mapFactorySingletonFunction: IrSimpleFunctionSymbol?
   val mapFactoryBuilderPutFunction: IrSimpleFunctionSymbol
   val mapFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
   val mapProviderFactoryBuilder: IrClassSymbol
   val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol
   val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol?
+  val mapProviderFactorySingletonFunction: IrSimpleFunctionSymbol?
   val mapProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol
   val mapProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
   val mapLazyFactoryBuilder: IrClassSymbol
   val mapLazyFactoryBuilderFunction: IrSimpleFunctionSymbol
   val mapLazyFactoryEmptyFunction: IrSimpleFunctionSymbol?
+  val mapLazyFactorySingletonFunction: IrSimpleFunctionSymbol?
   val mapLazyFactoryBuilderPutFunction: IrSimpleFunctionSymbol
   val mapLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
   val mapProviderLazyFactoryBuilder: IrClassSymbol
   val mapProviderLazyFactoryBuilderFunction: IrSimpleFunctionSymbol
   val mapProviderLazyFactoryEmptyFunction: IrSimpleFunctionSymbol?
+  val mapProviderLazyFactorySingletonFunction: IrSimpleFunctionSymbol?
   val mapProviderLazyFactoryBuilderPutFunction: IrSimpleFunctionSymbol
   val mapProviderLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapProviderLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
@@ -195,6 +201,14 @@ internal class MetroFrameworkSymbols(
     setFactoryCompanionObject.requireSimpleFunction("builder")
   }
 
+  override val setFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    setFactoryCompanionObject.requireSimpleFunction("empty")
+  }
+
+  override val setFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
+    setFactoryCompanionObject.requireSimpleFunction("singleton")
+  }
+
   override val mapFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(metroRuntimeInternal.packageFqName, "MapFactory".asName())
@@ -211,6 +225,10 @@ internal class MetroFrameworkSymbols(
 
   override val mapFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
     mapFactoryCompanionObject.requireSimpleFunction("empty")
+  }
+
+  override val mapFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
+    mapFactoryCompanionObject.requireSimpleFunction("singleton")
   }
 
   override val mapProviderFactory: IrClassSymbol by lazy {
@@ -231,6 +249,10 @@ internal class MetroFrameworkSymbols(
     mapProviderFactoryCompanionObject.requireSimpleFunction("empty")
   }
 
+  override val mapProviderFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderFactoryCompanionObject.requireSimpleFunction("singleton")
+  }
+
   override val mapLazyFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(metroRuntimeInternal.packageFqName, "MapLazyFactory".asName())
@@ -247,6 +269,10 @@ internal class MetroFrameworkSymbols(
 
   override val mapLazyFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
     mapLazyFactoryCompanionObject.requireSimpleFunction("empty")
+  }
+
+  override val mapLazyFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
+    mapLazyFactoryCompanionObject.requireSimpleFunction("singleton")
   }
 
   override val mapProviderLazyFactory: IrClassSymbol by lazy {
@@ -266,6 +292,46 @@ internal class MetroFrameworkSymbols(
   override val mapProviderLazyFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderLazyFactoryCompanionObject.requireSimpleFunction("empty")
   }
+
+  override val mapProviderLazyFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderLazyFactoryCompanionObject.requireSimpleFunction("singleton")
+  }
+
+  // MapFunctionFactory is JS-only — see runtime/src/jsMain/.../MapFunctionFactory.kt.
+  // Only access these symbols from code paths gated on `platform.isJs()`.
+  val mapFunctionFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntimeInternal.packageFqName, "MapFunctionFactory".asName())
+    )!!
+  }
+
+  private val mapFunctionFactoryCompanionObject: IrClassSymbol by lazy {
+    mapFunctionFactory.owner.companionObject()!!.symbol
+  }
+
+  val mapFunctionFactoryBuilder: IrClassSymbol by lazy {
+    mapFunctionFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
+
+  val mapFunctionFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapFunctionFactoryCompanionObject.requireSimpleFunction("builder")
+  }
+
+  val mapFunctionFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapFunctionFactoryCompanionObject.requireSimpleFunction("empty")
+  }
+
+  val mapFunctionFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
+    mapFunctionFactoryCompanionObject.requireSimpleFunction("singleton")
+  }
+
+  val mapFunctionFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
+    mapFunctionFactoryBuilder.requireSimpleFunction("put")
+  }
+
+  val mapFunctionFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+    mapFunctionFactoryBuilder.requireSimpleFunction("build")
+  }
 }
 
 internal class JavaxSymbols(
@@ -274,7 +340,7 @@ internal class JavaxSymbols(
   delegate: FrameworkSymbols,
 ) : FrameworkSymbols by delegate {
   private val javaxInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.javax")
+    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.javax")
   }
 
   val javaxProvider: IrClassSymbol by lazy {
@@ -318,7 +384,7 @@ internal class JakartaSymbols(
   delegate: FrameworkSymbols,
 ) : FrameworkSymbols by delegate {
   private val jakartaInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.jakarta")
+    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.jakarta")
   }
 
   val jakartaProvider: IrClassSymbol by lazy {
@@ -362,11 +428,13 @@ internal class GuiceSymbols(
   metroFrameworkSymbols: MetroFrameworkSymbols,
 ) : FrameworkSymbols by metroFrameworkSymbols {
   private val guiceInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.guice")
+    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice")
   }
 
   private val guiceInteropRuntimeInternal: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.guice.internal")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice.internal"
+    )
   }
 
   val guiceDoubleCheckCompanionObject: IrClassSymbol by lazy {
@@ -456,11 +524,13 @@ internal class DaggerSymbols(
   }
 
   private val daggerInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.dagger")
+    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger")
   }
 
   private val daggerInteropRuntimeInternal: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dev.zacsweers.metro.interop.dagger.internal")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger.internal"
+    )
   }
 
   override val canonicalProviderType: IrClassSymbol by lazy {
@@ -519,6 +589,13 @@ internal class DaggerSymbols(
     }
   }
 
+  override val setFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    setFactory.requireSimpleFunction("empty")
+  }
+
+  // Dagger's SetFactory has no singleton() — fall back to the builder path
+  override val setFactorySingletonFunction: IrSimpleFunctionSymbol? = null
+
   override val mapFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(daggerRuntimeInternal.packageFqName, "MapFactory".asName())
@@ -537,6 +614,8 @@ internal class DaggerSymbols(
     mapFactory.requireSimpleFunction("empty")
   }
 
+  override val mapFactorySingletonFunction: IrSimpleFunctionSymbol? = null
+
   override val mapProviderFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(daggerRuntimeInternal.packageFqName, "MapProviderFactory".asName())
@@ -552,6 +631,8 @@ internal class DaggerSymbols(
 
   override val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol? = null
 
+  override val mapProviderFactorySingletonFunction: IrSimpleFunctionSymbol? = null
+
   override val mapLazyFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(daggerRuntimeInternal.packageFqName, "MapLazyFactory".asName())
@@ -566,6 +647,8 @@ internal class DaggerSymbols(
     mapLazyFactory.requireSimpleFunction("empty")
   }
 
+  override val mapLazyFactorySingletonFunction: IrSimpleFunctionSymbol? = null
+
   override val mapProviderLazyFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(daggerRuntimeInternal.packageFqName, "MapProviderLazyFactory".asName())
@@ -579,6 +662,8 @@ internal class DaggerSymbols(
   override val mapProviderLazyFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderLazyFactory.requireSimpleFunction("empty")
   }
+
+  override val mapProviderLazyFactorySingletonFunction: IrSimpleFunctionSymbol? = null
 
   val daggerLazy: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassIds.DAGGER_LAZY_CLASS_ID)!!

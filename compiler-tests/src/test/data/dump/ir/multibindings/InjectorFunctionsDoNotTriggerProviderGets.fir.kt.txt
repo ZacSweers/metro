@@ -174,11 +174,7 @@ interface TestGraph2 : Bindings {
 
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
       private get(): Provider<Map<Int, Function0<String>>> {
-        return { // BLOCK
-          val tmp_0: Builder<Int, String> = Companion.builder<Int, String>(size = 1)
-          tmp_0.put(key = 1, providerOfValue = Companion.create(instance = <this>.#thisGraphInstance))
-          tmp_0.build()
-        }
+        return Companion.singleton<Int, String>(key = 1, provider = Companion.create(instance = <this>.#thisGraphInstance))
       }
 
     override val strings: Function0<Map<Int, Function0<String>>>
@@ -283,11 +279,7 @@ interface TestGraph4 : Bindings {
 
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
       private get(): Provider<Map<Int, Function0<String>>> {
-        return { // BLOCK
-          val tmp_1: Builder<Int, String> = Companion.builder<Int, String>(size = 1)
-          tmp_1.put(key = 1, providerOfValue = Companion.create(instance = <this>.#thisGraphInstance))
-          tmp_1.build()
-        }
+        return Companion.singleton<Int, String>(key = 1, provider = Companion.create(instance = <this>.#thisGraphInstance))
       }
 
     override val strings: Function0<Map<Int, Function0<String>>>
