@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778446986158,
+  "lastUpdate": 1778519705361,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -14224,6 +14224,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22946813915094477,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -1.31%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mark Vadeika",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Mark Vadeika",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "80a42c1f~1",
+          "message": "[before] Fix member injection `Invalid type arg` error when",
+          "timestamp": "2026-05-11T12:33:31-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/80a42c1f3aaa9b1bb2324bf47ac2d3c09bf6e802"
+        },
+        "date": 1778519705361,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22467282814854794,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mark Vadeika",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Mark Vadeika",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "80a42c1f3aaa9b1bb2324bf47ac2d3c09bf6e802",
+          "message": "[after] Fix member injection `Invalid type arg` error when",
+          "timestamp": "2026-05-11T12:33:31-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/80a42c1f3aaa9b1bb2324bf47ac2d3c09bf6e802"
+        },
+        "date": 1778519705362,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23717241053627297,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +5.56%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

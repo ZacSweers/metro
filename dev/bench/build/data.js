@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778446986275,
+  "lastUpdate": 1778519705663,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -14224,6 +14224,62 @@ window.BENCHMARK_DATA = {
             "value": 31123.226000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +4.15%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mark Vadeika",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Mark Vadeika",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "80a42c1f~1",
+          "message": "[before] Fix member injection `Invalid type arg` error when",
+          "timestamp": "2026-05-11T12:33:31-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/80a42c1f3aaa9b1bb2324bf47ac2d3c09bf6e802"
+        },
+        "date": 1778519705663,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 28908.591999999997,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mark Vadeika",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Mark Vadeika",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "80a42c1f3aaa9b1bb2324bf47ac2d3c09bf6e802",
+          "message": "[after] Fix member injection `Invalid type arg` error when",
+          "timestamp": "2026-05-11T12:33:31-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/80a42c1f3aaa9b1bb2324bf47ac2d3c09bf6e802"
+        },
+        "date": 1778519705664,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 30411.773999999998,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +5.20%"
           }
         ]
       }
