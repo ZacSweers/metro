@@ -119,14 +119,19 @@ if (testKotlinVersion >= kotlin23) {
 dependencies {
   // 2.3.0 changed the test gen APIs around into different packages
   "generator220CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.2.20")
+  "generator220CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.2.20")
   "generator230CompileOnly"(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
   )
+  "generator230CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:$compilerTestFrameworkVersion")
   "generator2320CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20")
+  "generator2320CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.3.20")
+  // Pinned to Beta2 (not Beta1) because Beta2 dropped `diagnosticsByFilePath` for
+  // `diagnosticsByFile` -- the same late-on-the-2.4.0-branch rename 2.3.21 did.
   "generator240CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta1"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta2"
   )
-  "generator240CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.4.0-Beta1")
+  "generator240CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.4.0-Beta2")
   // 2.4.20-dev-835 renamed `commonConfigurationForJvmTest` to `setupJvmPipelineSteps`.
   "generator2420CompileOnly"(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.20-dev-835"

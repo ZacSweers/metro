@@ -6,7 +6,6 @@ import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.test.FirParser
 import org.jetbrains.kotlin.test.backend.BlackBoxCodegenSuppressor.SuppressionChecker
 import org.jetbrains.kotlin.test.backend.handlers.NoFirCompilationErrorsHandler
-import org.jetbrains.kotlin.test.backend.handlers.NoIrCompilationErrorsHandler
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.builders.configureFirHandlersStep
 import org.jetbrains.kotlin.test.builders.configureIrHandlersStep
@@ -21,7 +20,6 @@ import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.LANGUAGE
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.LATEST_PHASE_IN_PIPELINE
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.RUN_PIPELINE_TILL
 import org.jetbrains.kotlin.test.directives.configureFirParser
-import org.jetbrains.kotlin.test.frontend.fir.TagsGeneratorChecker
 import org.jetbrains.kotlin.test.frontend.fir.handlers.FirCfgConsistencyHandler
 import org.jetbrains.kotlin.test.frontend.fir.handlers.FirCfgDumpHandler
 import org.jetbrains.kotlin.test.frontend.fir.handlers.FirDumpHandler
@@ -35,7 +33,6 @@ import org.jetbrains.kotlin.test.runners.AbstractPhasedJvmDiagnosticLightTreeTes
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.PhasedPipelineChecker
 import org.jetbrains.kotlin.test.services.TestPhase
-import org.jetbrains.kotlin.utils.bind
 
 open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
@@ -99,11 +96,12 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
           ::FirResolvedTypesVerifier,
           ::FirScopeDumpHandler,
         )
-        useHandlers(::NoFirCompilationErrorsHandler, ::TagsGeneratorChecker)
+        useHandlers(::NoFirCompilationErrorsHandler)
+        tagsGeneratorCheckerHandler?.let { useHandlers(it) }
       }
 
       configureIrHandlersStep {
-        useHandlers(::MetroIrDiagnosticsHandler, ::NoIrCompilationErrorsHandler)
+        useHandlers(::MetroIrDiagnosticsHandler, noIrCompilationErrorsHandlerCtor)
       }
 
       configureJvmArtifactsHandlersStep {
@@ -111,8 +109,17 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
       }
 
       useMetaInfoProcessors(::PsiLightTreeMetaInfoProcessor)
-      useAfterAnalysisCheckers(::PhasedPipelineChecker, ::NonSourceErrorMessagesHandler)
+      val tagsAfter = tagsGeneratorCheckerAfterAnalysis
+      if (tagsAfter != null) {
+        useAfterAnalysisCheckers(
+          ::PhasedPipelineChecker,
+          ::NonSourceErrorMessagesHandler,
+          tagsAfter,
+        )
+      } else {
+        useAfterAnalysisCheckers(::PhasedPipelineChecker, ::NonSourceErrorMessagesHandler)
+      }
       enableMetaInfoHandler()
-      useAdditionalService<SuppressionChecker>(::SuppressionChecker.bind(null, null))
+      useAdditionalService<SuppressionChecker>(suppressionCheckerCtor)
     }
 }

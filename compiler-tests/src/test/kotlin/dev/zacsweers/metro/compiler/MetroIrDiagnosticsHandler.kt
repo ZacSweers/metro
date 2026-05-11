@@ -9,7 +9,6 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithSource
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.test.backend.handlers.AbstractIrHandler
 import org.jetbrains.kotlin.test.backend.handlers.assertFileDoesntExist
-import org.jetbrains.kotlin.test.backend.handlers.findByPath
 import org.jetbrains.kotlin.test.backend.ir.IrBackendInput
 import org.jetbrains.kotlin.test.backend.ir.IrDiagnosticsHandler
 import org.jetbrains.kotlin.test.directives.DiagnosticsDirectives
@@ -22,7 +21,6 @@ import org.jetbrains.kotlin.test.services.assertions
 import org.jetbrains.kotlin.test.services.moduleStructure
 import org.jetbrains.kotlin.test.services.sourceFileProvider
 import org.jetbrains.kotlin.test.utils.MultiModuleInfoDumper
-import org.jetbrains.kotlin.util.capitalizeDecapitalize.toLowerCaseAsciiOnly
 
 /**
  * Drop-in replacement for [IrDiagnosticsHandler] that asserts the full-text IR diagnostics dump
@@ -45,13 +43,9 @@ class MetroIrDiagnosticsHandler(testServices: TestServices) : AbstractIrHandler(
     delegate.processModule(module, info)
     if (DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT !in module.directives) return
 
-    val diagnosticsByFile = info.diagnosticReporter.diagnosticsByFile
     for (currentModule in testServices.moduleStructure.modules) {
       for (file in currentModule.files) {
-        val diagnostics =
-          file.findByPath(testServices) { path ->
-            diagnosticsByFile.entries.firstOrNull { it.key?.path == path }?.value
-          } ?: continue
+        val diagnostics = irDiagnosticsForFileCompat(info, file, testServices) ?: continue
         val rendered = renderDiagnosticsAsLineColumn(diagnostics, file) ?: continue
         dumper.builderForModule(module).appendLine(rendered)
       }
@@ -100,7 +94,7 @@ class MetroIrDiagnosticsHandler(testServices: TestServices) : AbstractIrHandler(
                 is KtDiagnosticWithSource -> it.textRanges
                 is KtDiagnosticWithoutSource -> listOf(it.firstRange)
               },
-            severity = it.severity.toCompilerMessageSeverity().toString().toLowerCaseAsciiOnly(),
+            severity = severityToStringCompat(it.severity),
             message = it.renderMessage(),
           )
         }
