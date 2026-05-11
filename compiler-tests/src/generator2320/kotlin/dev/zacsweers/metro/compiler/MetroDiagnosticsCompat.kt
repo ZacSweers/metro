@@ -25,12 +25,43 @@ fun mainFirFilesCompat(info: FirOutputArtifact): Map<TestFile, FirFile> =
 fun severityToStringCompat(severity: Severity): String =
   severity.toCompilerMessageSeverity().toString().toLowerCaseAsciiOnly()
 
+// 2.3.21 dropped `diagnosticsByFilePath` for `diagnosticsByFile`. compileOnly is pinned to 2.3.20
+// -- to also handle 2.3.21+ at runtime, resolve the getter reflectively rather than calling either
+// property statically.
+private val diagnosticsByFileGetter: java.lang.reflect.Method? =
+  org.jetbrains.kotlin.diagnostics.impl.BaseDiagnosticsCollector::class.java.methods.firstOrNull {
+    it.name == "getDiagnosticsByFile"
+  }
+
+private val diagnosticsByFilePathGetter: java.lang.reflect.Method? =
+  org.jetbrains.kotlin.diagnostics.impl.BaseDiagnosticsCollector::class.java.methods.firstOrNull {
+    it.name == "getDiagnosticsByFilePath"
+  }
+
 fun irDiagnosticsForFileCompat(
   info: IrBackendInput,
   file: TestFile,
   testServices: TestServices,
 ): List<KtDiagnostic>? {
-  val byPath = info.diagnosticReporter.diagnosticsByFilePath
+  val reporter = info.diagnosticReporter
+  diagnosticsByFileGetter?.let { getter ->
+    @Suppress("UNCHECKED_CAST")
+    val byFile = getter.invoke(reporter) as Map<Any?, List<KtDiagnostic>>
+    return file.findByPath(testServices) { path ->
+      byFile.entries
+        .firstOrNull { entry ->
+          entry.key?.javaClass?.getMethod("getPath")?.invoke(entry.key) == path
+        }
+        ?.value
+    }
+  }
+  val getter =
+    diagnosticsByFilePathGetter
+      ?: error(
+        "Neither diagnosticsByFile nor diagnosticsByFilePath found on BaseDiagnosticsCollector"
+      )
+  @Suppress("UNCHECKED_CAST")
+  val byPath = getter.invoke(reporter) as Map<String?, List<KtDiagnostic>>
   return file.findByPath(testServices) { byPath[it] }
 }
 
