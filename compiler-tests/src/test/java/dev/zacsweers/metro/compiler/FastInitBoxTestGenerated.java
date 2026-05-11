@@ -777,6 +777,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ReceiverQualifiersAreHandled.kt")
+    public void testReceiverQualifiersAreHandled() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ReceiverQualifiersAreHandled.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleContainersWithHintsWork.kt")
     public void testSimpleContainersWithHintsWork() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/SimpleContainersWithHintsWork.kt");
