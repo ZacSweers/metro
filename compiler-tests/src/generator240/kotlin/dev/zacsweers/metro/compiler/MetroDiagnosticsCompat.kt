@@ -26,17 +26,43 @@ fun severityToStringCompat(severity: Severity): String =
   severity.toCompilerMessageSeverity().toString().toLowerCaseAsciiOnly()
 
 // 2.4.0-Beta2 dropped `diagnosticsByFilePath` for `diagnosticsByFile` (the same late-on-the-2.4.0
-// branch rename 2.3.21 did). 2.4.0-Beta1 isn't supported by this generator's runtime; bump the
-// test compiler version if you need it.
+// branch rename 2.3.21 did). compileOnly is pinned to Beta2 -- to also handle Beta1 at runtime,
+// resolve the getter reflectively rather than calling either property statically.
+private val diagnosticsByFileGetter: java.lang.reflect.Method? =
+  org.jetbrains.kotlin.diagnostics.impl.BaseDiagnosticsCollector::class.java.methods.firstOrNull {
+    it.name == "getDiagnosticsByFile"
+  }
+
+private val diagnosticsByFilePathGetter: java.lang.reflect.Method? =
+  org.jetbrains.kotlin.diagnostics.impl.BaseDiagnosticsCollector::class.java.methods.firstOrNull {
+    it.name == "getDiagnosticsByFilePath"
+  }
+
 fun irDiagnosticsForFileCompat(
   info: IrBackendInput,
   file: TestFile,
   testServices: TestServices,
 ): List<KtDiagnostic>? {
-  val byFile = info.diagnosticReporter.diagnosticsByFile
-  return file.findByPath(testServices) { path ->
-    byFile.entries.firstOrNull { it.key?.path == path }?.value
+  val reporter = info.diagnosticReporter
+  diagnosticsByFileGetter?.let { getter ->
+    @Suppress("UNCHECKED_CAST")
+    val byFile = getter.invoke(reporter) as Map<Any?, List<KtDiagnostic>>
+    return file.findByPath(testServices) { path ->
+      byFile.entries
+        .firstOrNull { entry ->
+          entry.key?.javaClass?.getMethod("getPath")?.invoke(entry.key) == path
+        }
+        ?.value
+    }
   }
+  val getter =
+    diagnosticsByFilePathGetter
+      ?: error(
+        "Neither diagnosticsByFile nor diagnosticsByFilePath found on BaseDiagnosticsCollector"
+      )
+  @Suppress("UNCHECKED_CAST")
+  val byPath = getter.invoke(reporter) as Map<String?, List<KtDiagnostic>>
+  return file.findByPath(testServices) { byPath[it] }
 }
 
 val noIrCompilationErrorsHandlerCtor: Constructor<AnalysisHandler<IrBackendInput>> =
