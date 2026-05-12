@@ -16,13 +16,15 @@
 package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
+import kotlin.js.JsStatic
+import kotlin.jvm.JvmStatic
 
-/** A DelegateFactory that is used to stitch Provider/Lazy indirection based dependency cycles. */
+/** A DelegateFactory that is used to stitch Provider/Lazy indirection-based dependency cycles. */
 public class DelegateFactory<T : Any> : Factory<T> {
   private var delegate: Provider<T>? = null
 
   override fun invoke(): T {
-    return checkNotNull(delegate)()
+    return checkNotNull(delegate) { "Backing delegate was never set!" }()
   }
 
   /**
@@ -31,7 +33,7 @@ public class DelegateFactory<T : Any> : Factory<T> {
    * @throws NullPointerException if the delegate has not been set
    */
   public fun getDelegate(): Provider<T> {
-    return checkNotNull(delegate)
+    return checkNotNull(delegate) { "Backing delegate was never set!" }
   }
 
   public companion object {
@@ -41,16 +43,21 @@ public class DelegateFactory<T : Any> : Factory<T> {
      * [delegateFactory] must be an instance of [DelegateFactory], otherwise this method will throw
      * a [ClassCastException].
      */
+    @JvmStatic
+    @JsStatic
     public fun <T : Any> setDelegate(delegateFactory: Provider<T>, delegate: Provider<T>) {
       val asDelegateFactory = delegateFactory as DelegateFactory<T>
       setDelegateInternal(asDelegateFactory, delegate)
     }
 
+    @JvmStatic
     private fun <T : Any> setDelegateInternal(
       delegateFactory: DelegateFactory<T>,
       delegate: Provider<T>,
     ) {
-      check(delegateFactory.delegate == null)
+      check(delegateFactory.delegate == null) {
+        "Backing delegate already set: ${delegateFactory.delegate}"
+      }
       delegateFactory.delegate = delegate
     }
   }

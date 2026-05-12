@@ -15,6 +15,10 @@
  */
 package dev.zacsweers.metro.internal
 
+import kotlin.js.JsStatic
+import kotlin.jvm.JvmInline
+import kotlin.jvm.JvmStatic
+
 /**
  * A [Factory] implementation that returns a single instance for all invocations of [invoke].
  *
@@ -23,7 +27,8 @@ package dev.zacsweers.metro.internal
  * unnecessary. However, using this with [DoubleCheck.provider] is valid and may be desired for
  * testing or contractual guarantees.
  */
-public class InstanceFactory<T> private constructor(override val value: T) : Factory<T>, Lazy<T> {
+@JvmInline
+public value class InstanceFactory<T> private constructor(override val value: T) : Factory<T>, Lazy<T> {
 
   override fun isInitialized(): Boolean = true
 
@@ -31,22 +36,11 @@ public class InstanceFactory<T> private constructor(override val value: T) : Fac
 
   override fun toString(): String = value.toString()
 
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (other == null || this::class != other::class) return false
-
-    other as InstanceFactory<*>
-
-    return value == other.value
-  }
-
-  override fun hashCode(): Int {
-    return value?.hashCode() ?: 0
-  }
-
   public companion object {
     private val EMPTY = InstanceFactory<Any?>(null)
 
+    @JvmStatic
+    @JsStatic
     public operator fun <T> invoke(value: T): InstanceFactory<T> {
       return if (value == null) {
         @Suppress("UNCHECKED_CAST")

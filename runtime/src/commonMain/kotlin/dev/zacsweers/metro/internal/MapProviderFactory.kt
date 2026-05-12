@@ -16,6 +16,8 @@
 package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
+import kotlin.js.JsStatic
+import kotlin.jvm.JvmStatic
 
 /**
  * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K,
@@ -54,11 +56,15 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
 
   public companion object {
     /** Returns a new [Builder] */
+    @JvmStatic
+    @JsStatic
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
       return Builder(size)
     }
 
     /** Returns an empty map. */
+    @JvmStatic
+    @JsStatic
     @Suppress("UNCHECKED_CAST")
     public fun <K : Any, V : Any> empty(): Provider<Map<K, Provider<V>>> =
       EMPTY as Provider<Map<K, Provider<V>>>
@@ -68,6 +74,8 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
      * as-is, matching the existing builder-based contract. Skips the [Builder] allocation for the
      * size-1 case.
      */
+    @JvmStatic
+    @JsStatic
     public fun <K : Any, V : Any> singleton(
       key: K,
       provider: Provider<V>,

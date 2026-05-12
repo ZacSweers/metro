@@ -16,6 +16,8 @@
 package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
+import kotlin.js.JsStatic
+import kotlin.jvm.JvmStatic
 
 /**
  * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K, V>`
@@ -56,11 +58,15 @@ public class MapFactory<K : Any, V> private constructor(map: Map<K, Provider<V>>
 
   public companion object {
     /** Returns a new [Builder] */
+    @JvmStatic
+    @JsStatic
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
       return Builder(size)
     }
 
     /** Returns a provider of an empty map. */
+    @JvmStatic
+    @JsStatic
     public fun <K, V> empty(): Provider<Map<K, V>> {
       @Suppress("UNCHECKED_CAST") // safe contravariant cast
       return EMPTY as Provider<Map<K, V>>
@@ -70,6 +76,8 @@ public class MapFactory<K : Any, V> private constructor(map: Map<K, Provider<V>>
      * Returns a [Factory] for a single-entry `Map<K, V>` whose value is sourced from [provider].
      * Skips the [Builder] allocation for the size-1 case.
      */
+    @JvmStatic
+    @JsStatic
     public fun <K : Any, V : Any> singleton(key: K, provider: Provider<V>): Factory<Map<K, V>> =
       SingletonMapFactory(key, provider)
   }
