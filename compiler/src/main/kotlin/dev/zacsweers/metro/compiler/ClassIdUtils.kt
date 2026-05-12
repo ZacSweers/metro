@@ -11,6 +11,10 @@ private const val MAX_FILE_NAME_LENGTH =
     .minus(14) // ".kapt_metadata" is the longest extension
     .minus(8) // "Provider" is the longest suffix that Dagger might add
 
+// Soft cap for [safeNestedSimpleName]: 255 minus headroom for `$FactoryImpl`, a chained
+// `$Impl_xxxxx`, `.class`, and a small buffer.
+internal const val NESTED_CLASS_BINARY_NAME_LIMIT = 220
+
 /**
  * Joins the simple names of a class with the given [separator] and [suffix].
  *
@@ -133,6 +137,27 @@ public fun ClassId.truncate(separator: String = "_", innerClassLength: Int = 0):
 
 public fun ClassId.generatedClass(suffix: String): ClassId {
   return joinSimpleNames(separator = "_", suffix = suffix)
+}
+
+/**
+ * Returns [candidate] unchanged if a class with that simple name nested inside this [ClassId] would
+ * still produce a class file basename within the filesystem per-segment limit. Otherwise returns a
+ * short, stable fallback `Impl_${hashSource.hashSuffix}`.
+ *
+ * The basename of a nested class's `.class` file joins all relative class name segments with `$`,
+ * so chained nested generation (e.g. deep `@GraphExtension` impls and their factory impls) can
+ * exceed the 255-byte per-segment limit on most filesystems. The fallback name is deterministic
+ * across compilations via [hashSource]. See https://github.com/ZacSweers/metro/issues/2268.
+ */
+internal fun ClassId.safeNestedSimpleName(candidate: String, hashSource: Any): String {
+  // `.`-separated and `$`-separated names have the same length.
+  val parentBinaryLength = relativeClassName.asString().length
+  val projected = parentBinaryLength + 1 + candidate.length
+  return if (projected <= NESTED_CLASS_BINARY_NAME_LIMIT) {
+    candidate
+  } else {
+    "Impl_${hashSource.hashSuffix}"
+  }
 }
 
 public fun Collection<ClassId>.asFqNames(): Collection<FqName> = map { it.asSingleFqName() }

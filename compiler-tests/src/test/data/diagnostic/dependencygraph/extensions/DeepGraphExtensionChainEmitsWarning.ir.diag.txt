@@ -1,0 +1,1 @@
+/DeepGraphExtensionChainEmitsWarning.kt:10:11: warning: Graph extension chain is 11 levels deep at 'Lvl10GraphExtension'. Generated nested class file names grow with chain depth and can exceed the per-segment file name limit (255 bytes) on most filesystems. Metro substitutes a shortened hash-based name at this depth, but consider flattening the hierarchy.

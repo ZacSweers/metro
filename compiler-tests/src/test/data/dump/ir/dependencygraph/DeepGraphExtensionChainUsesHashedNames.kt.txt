@@ -1,0 +1,114 @@
+@GraphExtension
+interface Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
+  abstract val next: Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing
+    abstract get
+
+}
+
+@GraphExtension
+interface Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
+  abstract val next: Lvl3ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing
+    abstract get
+
+}
+
+@GraphExtension
+interface Lvl3ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
+}
+
+@DependencyGraph
+interface RootGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : RootGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    @DependencyGraph
+    private class Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl : Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
+      private val rootGraphImpl: Impl
+        field = rootGraphImpl
+
+      private val thisGraphInstance: Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl
+        field = <this>
+
+      @DependencyGraph
+      private class Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl : Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
+        private val lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl: Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl
+          field = lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl
+
+        private val thisGraphInstance: Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl
+          field = <this>
+
+        @DependencyGraph
+        private class Impl_o77fd : Lvl3ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
+          private val lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl: Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl
+            field = lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl
+
+          constructor(lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl: Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl) /* primary */ {
+            super/*Any*/()
+            /* <init>() */
+
+          }
+
+        }
+
+        constructor(lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl: Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override val next: Lvl3ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing
+          override get(): Lvl3ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
+            return Impl_o77fd(lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl = <this>)
+          }
+
+      }
+
+      constructor(rootGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val next: Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing
+        override get(): Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
+          return Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl(lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl = <this>)
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val lvl1: Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing
+      override get(): Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
+        return Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl(rootGraphImpl = <this>)
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): RootGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val lvl1: Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing
+    abstract get
+
+}

@@ -38,6 +38,7 @@ import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toIrVararg
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
+import dev.zacsweers.metro.compiler.safeNestedSimpleName
 import dev.zacsweers.metro.compiler.suffixIfNot
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -109,10 +110,13 @@ internal class SyntheticGraphGenerator(
     val hasParentGraph = parentGraph != null
 
     // Create the factory implementation class
+    val factoryCandidate = "${factoryInterface.name}Impl"
+    val factoryName =
+      graphImpl.classIdOrFail.safeNestedSimpleName(factoryCandidate, factoryInterface.classIdOrFail)
     val factoryImpl =
       metroContext.irFactory
         .buildClass {
-          name = "${factoryInterface.name}Impl".asName()
+          name = factoryName.asName()
           kind = ClassKind.CLASS
           visibility = DescriptorVisibilities.PRIVATE
           origin = Origins.Default

@@ -159,6 +159,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("DeepGraphExtensionChainUsesHashedNames.kt")
+    public void testDeepGraphExtensionChainUsesHashedNames() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/DeepGraphExtensionChainUsesHashedNames.kt");
+    }
+
+    @Test
     @TestMetadata("EmptyMapMultibindingsUseEmptyMap.kt")
     public void testEmptyMapMultibindingsUseEmptyMap() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/EmptyMapMultibindingsUseEmptyMap.kt");

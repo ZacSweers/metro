@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.ir.IrDependencyGraph
 import java.util.Locale
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract

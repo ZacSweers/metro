@@ -554,6 +554,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("DeepGraphExtensionChainEmitsWarning.kt")
+      public void testDeepGraphExtensionChainEmitsWarning() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/DeepGraphExtensionChainEmitsWarning.kt");
+      }
+
+      @Test
       @TestMetadata("ExtensionAccessorsCannotHaveParameters.kt")
       public void testExtensionAccessorsCannotHaveParameters() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/ExtensionAccessorsCannotHaveParameters.kt");
