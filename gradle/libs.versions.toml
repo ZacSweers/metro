@@ -199,7 +199,7 @@ r8 = "com.android.tools:r8:9.1.31"
 
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
-slf4jNop = "org.slf4j:slf4j-nop:2.0.17"
+slf4jNop = "org.slf4j:slf4j-nop:2.0.18"
 
 junit = { module = "junit:junit", version = "4.13.2" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
