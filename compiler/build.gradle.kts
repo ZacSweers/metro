@@ -1,6 +1,7 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import dev.zacsweers.metro.gradle.RequiresIdeSupport
 
 // Bootstrap: add the Metro compiler plugin JAR to the buildscript classpath from Maven Central.
 // Buildscript resolution is NOT subject to project-level composite build dependency substitution,
@@ -28,7 +29,7 @@ plugins {
 }
 
 metro {
-  generateAssistedFactories.set(true)
+  @OptIn(RequiresIdeSupport::class) generateAssistedFactories.set(true)
   // We embed and shade the runtime in the compiler's shadow JAR
   automaticallyAddRuntimeDependencies.set(false)
 }
