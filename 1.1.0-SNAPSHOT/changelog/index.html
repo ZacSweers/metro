@@ -6365,6 +6365,7 @@
 <li><strong>[IR/tracing]</strong> Add a lot more tracing spans for more granular tracing.</li>
 <li><strong>[IR/tracing]</strong> Don&rsquo;t delete previous traces on new compilations. Now traces are just added to the designated directory each compilation when enabled.</li>
 <li><strong>[IR/runtime]</strong> For multibound maps/sets with exactly one element, Metro now generates optimized IR that uses optimized <code>SingletonSet</code>/<code>SingletonMap</code> implementations at runtime and skips the unnecessary throwaway builder allocation. Note that, when using interop, the generated code for Dagger&rsquo;s internal set/map factories still generates the necessary builder intermediary.</li>
+<li><strong>[runtime/internal]</strong> Some runtime internal APIs now use <code>@JvmStatic</code>/<code>@JsStatic</code> or value classes where possible. Should be no difference to consumers.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
