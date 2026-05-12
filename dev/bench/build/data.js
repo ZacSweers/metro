@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778622116122,
+  "lastUpdate": 1778624683729,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -14336,6 +14336,62 @@ window.BENCHMARK_DATA = {
             "value": 29161.164,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.07%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "289cf2ef~1",
+          "message": "[before] Shorten long graph extension class names (#2276)",
+          "timestamp": "2026-05-12T21:41:48+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/289cf2efb9c25cdfa2c1df128191daef5a0a1987"
+        },
+        "date": 1778624683729,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 32506.82,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "289cf2efb9c25cdfa2c1df128191daef5a0a1987",
+          "message": "[after] Shorten long graph extension class names (#2276)",
+          "timestamp": "2026-05-12T21:41:48+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/289cf2efb9c25cdfa2c1df128191daef5a0a1987"
+        },
+        "date": 1778624683730,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 32856.232,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.07%"
           }
         ]
       }

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778622115913,
+  "lastUpdate": 1778624682373,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -14336,6 +14336,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2418267575902414,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +1.38%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "289cf2ef~1",
+          "message": "[before] Shorten long graph extension class names (#2276)",
+          "timestamp": "2026-05-12T21:41:48+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/289cf2efb9c25cdfa2c1df128191daef5a0a1987"
+        },
+        "date": 1778624682373,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22997846630834878,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "289cf2efb9c25cdfa2c1df128191daef5a0a1987",
+          "message": "[after] Shorten long graph extension class names (#2276)",
+          "timestamp": "2026-05-12T21:41:48+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/289cf2efb9c25cdfa2c1df128191daef5a0a1987"
+        },
+        "date": 1778624682374,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23223753298154767,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.98%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
