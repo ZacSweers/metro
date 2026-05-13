@@ -1,0 +1,7 @@
+/ContributesAnnotationsNotAllowedOnAssistedInjectClasses.kt:8:1: error: `@ContributesBinding` is not applicable to `@AssistedInject`-annotated classes. Remove `@AssistedInject` or apply the contribution elsewhere.
+
+/ContributesAnnotationsNotAllowedOnAssistedInjectClasses.kt:19:1: error: `@ContributesIntoSet` is not applicable to `@AssistedInject`-annotated classes. Remove `@AssistedInject` or apply the contribution elsewhere.
+
+/ContributesAnnotationsNotAllowedOnAssistedInjectClasses.kt:30:1: error: `@ContributesIntoMap` is not applicable to `@AssistedInject`-annotated classes. Remove `@AssistedInject` or apply the contribution elsewhere.
+
+/ContributesAnnotationsNotAllowedOnAssistedInjectClasses.kt:42:1: error: `@ContributesBinding` is not applicable to `@AssistedInject`-annotated classes. Remove `@AssistedInject` or apply the contribution elsewhere.

@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.diagnosticString
+import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
@@ -286,6 +287,18 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         annotation.source,
         MetroDiagnostics.AGGREGATION_ERROR,
         "`@$kind` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure ${declaration.symbol.classId.asSingleFqName()} is injectable or a bindable object.",
+      )
+      return false
+    }
+
+    if (
+      !isAssistedFactory &&
+        declaration.symbol.findAssistedInjectConstructors(session, checkClass = true).isNotEmpty()
+    ) {
+      reporter.reportOn(
+        annotation.source,
+        MetroDiagnostics.AGGREGATION_ERROR,
+        "`@$kind` is not applicable to `@AssistedInject`-annotated classes. Remove `@AssistedInject` or apply the contribution elsewhere.",
       )
       return false
     }

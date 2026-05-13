@@ -7,6 +7,7 @@ Changelog
 ### New
 
 - **[FIR]** Add a diagnostic warning that `@Module.subcomponents` is ignored by Metro (when Dagger interop is enabled).
+- **[FIR]** Add a diagnostic error for annotating `@AssistedInject` types with `@Contributes*` annotations, as they are not compatible.
 
 ### Enhancements
 
