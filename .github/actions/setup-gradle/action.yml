@@ -44,13 +44,26 @@ runs:
         path: ~/.gradle/wrapper/dists
         key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
 
-    - name: Cache konan
+    # Split the konan cache so the Kotlin-version-independent toolchain bits don't get duplicated
+    # across every per-version cache entry. ~/.konan/dependencies/ holds LLVM, sysroots, and the
+    # cross-compilation toolchains — large (~hundreds of MB) and identical across Kotlin versions —
+    # so it's cached separately with a single shared key per OS. The version-specific bits
+    # (compiled klibs, prebuilt distributions) get the per-Kotlin-version prefix.
+    - name: Cache konan toolchain (shared)
+      if: inputs.konan == 'true'
+      uses: actions/cache@v5
+      with:
+        path: ~/.konan/dependencies
+        key: ${{ runner.os }}-konan-deps-${{ hashFiles('**/*.gradle*') }}
+        restore-keys: |
+          ${{ runner.os }}-konan-deps-
+
+    - name: Cache konan klibs (per Kotlin version)
       if: inputs.konan == 'true'
       uses: actions/cache@v5
       with:
         path: |
           ~/.konan/cache
-          ~/.konan/dependencies
           ~/.konan/kotlin-native-macos*
           ~/.konan/kotlin-native-mingw*
           ~/.konan/kotlin-native-windows*
@@ -59,6 +72,6 @@ runs:
           ~/.konan/kotlin-native-prebuilt-mingw*
           ~/.konan/kotlin-native-prebuilt-windows*
           ~/.konan/kotlin-native-prebuilt-linux*
-        key: ${{ runner.os }}-${{ inputs.konan-cache-prefix && format('{0}-', inputs.konan-cache-prefix) || '' }}konan-${{ hashFiles('**/*.gradle*') }}
+        key: ${{ runner.os }}-${{ inputs.konan-cache-prefix && format('{0}-', inputs.konan-cache-prefix) || '' }}konan-klibs-${{ hashFiles('**/*.gradle*') }}
         restore-keys: |
-          ${{ runner.os }}-${{ inputs.konan-cache-prefix && format('{0}-', inputs.konan-cache-prefix) || '' }}konan-
+          ${{ runner.os }}-${{ inputs.konan-cache-prefix && format('{0}-', inputs.konan-cache-prefix) || '' }}konan-klibs-
