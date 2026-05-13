@@ -198,6 +198,26 @@ case "$1" in
        ;;
 
    "regen")
+       version=""
+
+       while [[ $# -gt 1 ]]; do
+           case "$2" in
+               --version)
+                   version="$3"
+                   shift 2
+                   ;;
+               *)
+                   echo "Unknown regen argument: $2"
+                   exit 1
+                   ;;
+           esac
+       done
+
+       version_flag=""
+       if [[ -n "$version" ]]; then
+           version_flag="-Pmetro.testCompilerVersion=$version"
+       fi
+
        echo "Applying formatting and API gen..."
        # Annoyingly, the apiDump and package lock tasks have caching issues
        # https://youtrack.jetbrains.com/issue/KT-69684
@@ -208,10 +228,10 @@ case "$1" in
        kempt format --all
 
        # apiDump only exists in root project
-       ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet
+       ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet "$version_flag"
 
        # Yarn locks only in root and samples
-       run_gradle_all "kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet" "samples"
+       run_gradle_all "kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag" "samples"
        ;;
 
    "gen-compat")
@@ -277,6 +297,9 @@ case "$1" in
        echo "test options:"
        echo "  --all                Test against all available compiler versions"
        echo "  --version <version>  Test against specific compiler version"
+       echo ""
+       echo "regen options:"
+       echo "  --version <version>  Regenerate against a specific compiler version"
        echo ""
        echo "trace options:"
        echo "  <project-dir> <gradle-task> [version]  Publish metro locally, pin it in"
