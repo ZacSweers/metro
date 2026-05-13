@@ -81,7 +81,7 @@ jobs:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           konan: true
-          konan-cache-prefix: ${{ matrix.kotlin-compiler }}
+          kotlin-compiler-version: ${{ matrix.kotlin-compiler }}
 
       - name: Check root project
         run: |
@@ -138,10 +138,10 @@ jobs:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           konan: true
-          # Without per-target prefixing, the 3 matrix targets would all share `Linux-konan-<hash>`
-          # and contend on save. Only `linuxX64` actually populates konan/, but keeping the prefix
-          # for all 3 keeps cache hits target-specific and avoids the ReserveCacheError noise.
-          konan-cache-prefix: ${{ matrix.target }}
+          # All 3 matrix targets here run against the default Kotlin version (from libs.versions.toml)
+          # so they share the same `<os>-konan-klibs-default` cache key. Only the linuxX64 target
+          # actually populates `~/.konan/kotlin-native-prebuilt-linux-*/`; the js and wasmJs entries
+          # don't touch ~/.konan/ but cleanly read whatever the linuxX64 entry saved.
 
       - name: ':gradle-plugin:functionalTest'
         if: github.ref == 'refs/heads/main'
