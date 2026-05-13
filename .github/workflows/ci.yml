@@ -64,7 +64,9 @@ jobs:
     name: "core artifacts / ${{ matrix.kotlin-compiler }}"
     runs-on: ubuntu-latest
     needs: generate-matrix
-    timeout-minutes: 60
+    # TEMP: dropped from 60 to 30 while debugging the Beta2 hang — failing fast is
+    # cheaper than waiting out the original cap.
+    timeout-minutes: 30
     strategy:
       # TEMP: restricted to 2.4.0-Beta2 only while debugging the Beta2/RC hang.
       # Restore to `${{ fromJson(needs.generate-matrix.outputs.matrix) }}` when fixed.
@@ -86,70 +88,95 @@ jobs:
           konan: true
           konan-cache-prefix: ${{ matrix.kotlin-compiler }}
 
-      - name: Check root project
+      - name: Start watchdog
+        # Heartbeat every 60s. Gradle only emits lifecycle output on task completion — when a task
+        # hangs we get silence in the main stream. The watchdog logs interleave so we can pinpoint
+        # when the daemon went idle and which JVMs/subprocesses were alive at that moment.
+        # Lightweight snapshots also tee to _diagnostics/heartbeat.log so we have an on-disk record
+        # if the runner's stdout pipe wedges (as observed on previous Beta2 hangs); heavyweight
+        # snapshots (jstack + full process tree) go to _diagnostics/ for artifact upload.
         run: |
-          # Watchdog: heartbeat every 60s. Gradle only emits lifecycle output on task completion —
-          # when a task hangs we get silence in the main stream. The watchdog logs interleave so we
-          # can pinpoint when the daemon went idle and which JVMs/subprocesses were alive at that
-          # moment. Lightweight snapshots (jps/top/df) go to stdout; heavyweight ones (jstack and
-          # the full process tree) go to _diagnostics/ for artifact upload.
           mkdir -p _diagnostics
-          (
+          nohup bash -c '
             tick=0
             while true; do
               ts=$(date -u +%H:%M:%S)
               tick=$((tick + 1))
-              echo "[watchdog $ts] === tick $tick ==="
-              echo "[watchdog $ts] uptime + load:"
-              uptime 2>&1 | sed 's/^/[watchdog]   /' || true
-              echo "[watchdog $ts] mem:"
-              free -h 2>&1 | sed 's/^/[watchdog]   /' || true
-              echo "[watchdog $ts] disk:"
-              df -h / 2>&1 | sed 's/^/[watchdog]   /' || true
-              echo "[watchdog $ts] jps:"
-              jps -lvm 2>&1 | sed 's/^/[watchdog]   /' || true
-              echo "[watchdog $ts] top (cpu hogs):"
-              top -bn1 -w512 2>/dev/null | head -25 | sed 's/^/[watchdog]   /' || true
-              # Heavy snapshots → files. jstack every running JVM, plus a process tree to surface
-              # node/yarn/konan subprocesses that don't show up in jps.
+              {
+                echo "[watchdog $ts] === tick $tick ==="
+                echo "[watchdog $ts] uptime:"
+                uptime 2>&1 | sed "s/^/[watchdog]   /" || true
+                echo "[watchdog $ts] mem:"
+                free -h 2>&1 | sed "s/^/[watchdog]   /" || true
+                echo "[watchdog $ts] disk:"
+                df -h / 2>&1 | sed "s/^/[watchdog]   /" || true
+                echo "[watchdog $ts] jps:"
+                jps -lvm 2>&1 | sed "s/^/[watchdog]   /" || true
+                echo "[watchdog $ts] top:"
+                top -bn1 -w512 2>/dev/null | head -25 | sed "s/^/[watchdog]   /" || true
+              } | tee -a _diagnostics/heartbeat.log
+              # Heavy snapshots → files. jstack every running JVM + ps tree so node/yarn/konan
+              # subprocesses (which jps misses) are captured.
               for pid in $(jps -q 2>/dev/null); do
                 jstack -l "$pid" > "_diagnostics/jstack-$pid-$ts.txt" 2>/dev/null || true
               done
               ps auxf > "_diagnostics/ps-$ts.txt" 2>/dev/null || true
               sleep 60
             done
-          ) &
-          WATCHDOG_PID=$!
-          trap 'kill "$WATCHDOG_PID" 2>/dev/null || true' EXIT
+          ' >> _diagnostics/watchdog.out 2>&1 &
+          echo "WATCHDOG_PID=$!" >> "$GITHUB_ENV"
 
+      - name: Regenerate package locks
+        run: |
           # Each matrix Kotlin version may resolve a different NPM dep set, so refresh the
-          # kotlin-js-store lockfiles before `check` validates them — but only when the matrix
-          # version differs from the default in libs.versions.toml (the committed lockfiles
-          # already match the default).
+          # kotlin-js-store lockfiles before any task in `check` validates them. Skipped when the
+          # matrix version matches the default (the committed lockfiles already match).
           default_kotlin=$(sed -nE 's/^kotlin = "([^"]+)".*/\1/p' gradle/libs.versions.toml)
-          echo "::group::Regenerate package locks"
           if [ "${{ matrix.kotlin-compiler }}" != "$default_kotlin" ]; then
             echo "Regenerating package locks for ${{ matrix.kotlin-compiler }} (default: $default_kotlin)..."
             ./metrow regen --locks-only --version '${{ matrix.kotlin-compiler }}'
           else
             echo "Matrix version matches default ($default_kotlin); skipping regen."
           fi
-          echo "::endgroup::"
-          # Regenerate tests per-run on CI to support exclusions, which are unfortunately code-gen level right now
-          echo "::group::Generate tests"
-          ./gradlew :compiler-tests:generateTests --console=plain '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-          echo "::endgroup::"
-          echo "::group::Run checks"
-          # --info: emit task-start lines + test/Kotlin compile progress, not just task-complete
-          # --warning-mode all: surface deprecations that may correlate with hangs
-          # --profile: write build/reports/profile/*.html (captured by upload-reports on failure)
-          # metro.ciVerbose: enables testLogging events on every Test task (build-logic/metro.base)
-          # metro.debugCompilerTests: enables stdout + heap-dump-on-OOM in compiler-tests
-          ./gradlew check --continue --console=plain --info --warning-mode all --profile '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true -Pmetro.debugCompilerTests=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-          echo "::endgroup::"
-          # TODO disabled for now because GHA is running smaller machines now it seems
-          # echo "Running large tests..."
-          # ./gradlew :compiler-tests:test --quiet '-Pmetro.enableLargeTests' '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Generate tests
+        # Regenerate tests per-run on CI to support exclusions, which are unfortunately code-gen
+        # level right now.
+        run: ./gradlew :compiler-tests:generateTests --console=plain '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      # Test tasks are split into individual steps to bisect the Beta2 hang. --max-workers=1 keeps
+      # the visible task order linear so the last "> Task :foo" line before silence unambiguously
+      # identifies the offender. --warning-mode all + metro.ciVerbose (testLogging events) +
+      # metro.debugCompilerTests (heap dumps to tmp/) keep useful signal without --info's volume.
+      # Each step has its own short timeout-minutes so a single hang doesn't burn the whole budget.
+      - name: ':compiler:test'
+        timeout-minutes: 10
+        run: ./gradlew :compiler:test --console=plain --max-workers=1 --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: ':compiler-tests:test'
+        timeout-minutes: 15
+        run: ./gradlew :compiler-tests:test --console=plain --max-workers=1 --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true -Pmetro.debugCompilerTests=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: ':gradle-plugin:test'
+        timeout-minutes: 10
+        run: ./gradlew :gradle-plugin:test --console=plain --max-workers=1 --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: ':gradle-plugin:functionalTest'
+        timeout-minutes: 20
+        run: ./gradlew :gradle-plugin:functionalTest --console=plain --max-workers=1 --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: ':runtime:allTests'
+        # Multiplatform runtime tests — forks Node.js (JS/wasmJs/wasmWasi) and Konan (native).
+        # Strong hang candidate alongside functionalTest because of those subprocess spawns.
+        timeout-minutes: 15
+        run: ./gradlew :runtime:allTests --console=plain --max-workers=1 --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Stop watchdog
+        if: always()
+        run: |
+          if [ -n "${WATCHDOG_PID:-}" ]; then
+            kill "$WATCHDOG_PID" 2>/dev/null || true
+          fi
 
       - name: (Fail-only) Upload reports
         if: failure() || cancelled()
