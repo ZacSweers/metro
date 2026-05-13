@@ -10,12 +10,9 @@ on:
   # Always run on PRs
   pull_request:
 
-# TEMP: concurrency group removed while debugging the Beta2 hang. The wedged-runner
-# pattern blocks `cancel-in-progress` from actually killing the prior job, which then
-# blocks the new run from starting. Restore the block below when debug is done.
-# concurrency:
-#   group: 'ci-${{ github.event.merge_group.head_ref || github.head_ref }}-${{ github.workflow }}'
-#   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+concurrency:
+  group: 'ci-${{ github.event.merge_group.head_ref || github.head_ref }}-${{ github.workflow }}'
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   format:
@@ -67,14 +64,9 @@ jobs:
     name: "core artifacts / ${{ matrix.kotlin-compiler }}"
     runs-on: ubuntu-latest
     needs: generate-matrix
-    # TEMP: dropped from 60 to 30 while debugging the Beta2 hang — failing fast is
-    # cheaper than waiting out the original cap.
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
-      # TEMP: restricted to 2.4.0-Beta2 only while debugging the Beta2/RC hang.
-      # Restore to `${{ fromJson(needs.generate-matrix.outputs.matrix) }}` when fixed.
-      matrix:
-        kotlin-compiler: ["2.4.0-Beta2"]
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
       fail-fast: false
     permissions:
       checks: write
@@ -91,91 +83,23 @@ jobs:
           konan: true
           konan-cache-prefix: ${{ matrix.kotlin-compiler }}
 
-      - name: Start watchdog
-        # Heartbeat every 60s. Gradle only emits lifecycle output on task completion — when a task
-        # hangs we get silence in the main stream. The watchdog logs interleave so we can pinpoint
-        # when the daemon went idle and which JVMs/subprocesses were alive at that moment.
-        # Lightweight snapshots also tee to _diagnostics/heartbeat.log so we have an on-disk record
-        # if the runner's stdout pipe wedges (as observed on previous Beta2 hangs); heavyweight
-        # snapshots (jstack + full process tree) go to _diagnostics/ for artifact upload.
+      - name: Check root project
         run: |
-          mkdir -p _diagnostics
-          nohup bash -c '
-            tick=0
-            while true; do
-              ts=$(date -u +%H:%M:%S)
-              tick=$((tick + 1))
-              {
-                echo "[watchdog $ts] === tick $tick ==="
-                echo "[watchdog $ts] uptime:"
-                uptime 2>&1 | sed "s/^/[watchdog]   /" || true
-                echo "[watchdog $ts] mem:"
-                free -h 2>&1 | sed "s/^/[watchdog]   /" || true
-                echo "[watchdog $ts] disk:"
-                df -h / 2>&1 | sed "s/^/[watchdog]   /" || true
-                echo "[watchdog $ts] jps:"
-                jps -lvm 2>&1 | sed "s/^/[watchdog]   /" || true
-                echo "[watchdog $ts] top:"
-                top -bn1 -w512 2>/dev/null | head -25 | sed "s/^/[watchdog]   /" || true
-              } | tee -a _diagnostics/heartbeat.log
-              # Heavy snapshots → files. jstack every running JVM + ps tree so node/yarn/konan
-              # subprocesses (which jps misses) are captured.
-              for pid in $(jps -q 2>/dev/null); do
-                jstack -l "$pid" > "_diagnostics/jstack-$pid-$ts.txt" 2>/dev/null || true
-              done
-              ps auxf > "_diagnostics/ps-$ts.txt" 2>/dev/null || true
-              sleep 60
-            done
-          ' >> _diagnostics/watchdog.out 2>&1 &
-          echo "WATCHDOG_PID=$!" >> "$GITHUB_ENV"
-
-      - name: Regenerate package locks
-        run: |
-          # Each matrix Kotlin version may resolve a different NPM dep set, so refresh the
-          # kotlin-js-store lockfiles before any task in `check` validates them. Skipped when the
-          # matrix version matches the default (the committed lockfiles already match).
-          default_kotlin=$(sed -nE 's/^kotlin = "([^"]+)".*/\1/p' gradle/libs.versions.toml)
-          if [ "${{ matrix.kotlin-compiler }}" != "$default_kotlin" ]; then
-            echo "Regenerating package locks for ${{ matrix.kotlin-compiler }} (default: $default_kotlin)..."
-            ./metrow regen --locks-only --version '${{ matrix.kotlin-compiler }}'
-          else
-            echo "Matrix version matches default ($default_kotlin); skipping regen."
-          fi
-
-      - name: ':gradle-plugin:functionalTest'
-        timeout-minutes: 20
-        run: ./gradlew :gradle-plugin:functionalTest --console=plain --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      - name: Generate tests
-        # Regenerate tests per-run on CI to support exclusions, which are unfortunately code-gen
-        # level right now.
-        run: ./gradlew :compiler-tests:generateTests --console=plain '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      # functionalTest is the only step that's been slow/wedge-prone on Beta2, so it stays in its
-      # own step (keeps its dedicated timeout + lets us see its duration distinctly). Everything
-      # else is back to a single `check`-style invocation, running in parallel. Verbose test
-      # logging is kept ONLY on functionalTest where we still need bisection signal.
-      - name: 'Non-functional tests'
-        timeout-minutes: 20
-        run: ./gradlew :compiler:test :compiler-tests:test :gradle-plugin:test :runtime:allTests --continue --console=plain --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      - name: Stop watchdog
-        if: always()
-        run: |
-          if [ -n "${WATCHDOG_PID:-}" ]; then
-            kill "$WATCHDOG_PID" 2>/dev/null || true
-          fi
+          # Regenerate tests per-run on CI to support exclusions, which are unfortunately code-gen level right now
+          echo "Generating tests..."
+          ./gradlew :compiler-tests:generateTests --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          echo "Running checks..."
+          # metro.functionalTestKmpTarget=jvm scopes IC test parameterization to JVM only here. The
+          # kmp-functional job (main only) fans the remaining targets out into parallel runners.
+          ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.functionalTestKmpTarget=jvm ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
-        if: failure() || cancelled()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: reports-core-${{ matrix.kotlin-compiler }}
           path: |
             **/build/reports/**
-            **/build/test-results/**
-            tmp/**
-            _diagnostics/**
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v6
@@ -183,6 +107,56 @@ jobs:
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - core / ${{ matrix.kotlin-compiler }}'
+
+  # Main-only: run each non-JVM target of :gradle-plugin:functionalTest in its own runner so
+  # the slow IC test classes (BindingContainerICTests, ICTests, GenerateContributionProvidersICTests)
+  # parallelize across targets instead of serializing inside one job. PR/branch runs stay JVM-only
+  # via the `core` job above.
+  kmp-functional:
+    name: ${{ format('kmp functional / {0}{1}', matrix.target, github.ref != 'refs/heads/main' && ' (skipped)' || '') }}
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [js, wasmJs, linuxX64]
+
+    steps:
+      - name: Skip on PRs
+        if: github.ref != 'refs/heads/main'
+        run: echo "Skipping kmp functional tests on PRs to reduce CI time"
+
+      - name: Checkout
+        if: github.ref == 'refs/heads/main'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Setup Gradle
+        if: github.ref == 'refs/heads/main'
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          konan: true
+
+      - name: ':gradle-plugin:functionalTest'
+        if: github.ref == 'refs/heads/main'
+        run: ./gradlew :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=${{ matrix.target }}
+
+      - name: (Fail-only) Upload reports
+        if: failure() && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-kmp-functional-${{ matrix.target }}
+          path: |
+            **/build/reports/**
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v6
+        if: failure() && github.ref == 'refs/heads/main'
+        with:
+          report_paths: '**/build/test-results/**/TEST-*.xml'
+          check_name: 'Test Report - kmp functional / ${{ matrix.target }}'
 
   samples:
     name: samples
@@ -254,7 +228,9 @@ jobs:
 
       - name: Check runtime and IC tests
         if: github.ref == 'refs/heads/main'
-        run: ./gradlew :runtime:allTests :gradle-plugin:functionalTest --continue --quiet
+        # `all` exercises every KmpTarget entry on this OS — host native is OS-specific (macosArm64,
+        # mingwX64, etc.), so each runner covers a different native target naturally.
+        run: ./gradlew :runtime:allTests :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=all
 
       - name: Check samples
         if: github.ref == 'refs/heads/main'
@@ -311,6 +287,7 @@ jobs:
     needs:
       - format
       - core
+      - kmp-functional
       - benchmarks
       - samples
     steps:

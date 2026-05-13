@@ -27,7 +27,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
   companion object {
     @JvmStatic
     @Parameterized.Parameters(name = "{0}")
-    fun targets(): List<KmpTarget> = KmpTarget.entries
+    fun targets(): List<KmpTarget> = KmpTarget.selectedTargets()
   }
 
   @Before
