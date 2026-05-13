@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.abstractFunctions
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.kClassReference
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -97,12 +98,10 @@ private class CircuitIrTransformer(
   }
 
   /** Cached invoke() symbol for metro's Provider type. */
-  private val providerInvokeFunction: IrSimpleFunction by lazy {
-    pluginContext
-      .referenceClass(Symbols.ClassIds.metroProvider)!!
-      .functions
-      .first { it.owner.name.asString() == "invoke" }
-      .owner
+  private val providerInvokeFunction: IrSimpleFunctionSymbol by lazy {
+    pluginContext.referenceClass(Symbols.ClassIds.metroProvider)!!.functions.first {
+      it.owner.name.asString() == "invoke"
+    }
   }
 
   override fun visitClass(declaration: IrClass): IrStatement {
@@ -267,7 +266,13 @@ private class CircuitIrTransformer(
             if (isAlreadyWrapped) {
               fieldGet
             } else {
-              irCall(providerInvokeFunction).apply { dispatchReceiver = fieldGet }
+              // Wasm requires the call's IR type match the substituted Provider<T>.invoke()
+              // return type. https://github.com/ZacSweers/metro/issues/2227
+              irInvoke(
+                dispatchReceiver = fieldGet,
+                callee = providerInvokeFunction,
+                typeHint = ctorParam.type,
+              )
             }
         }
       }
@@ -440,8 +445,14 @@ private class CircuitIrTransformer(
             // Pass through as-is (the field type already matches the param type)
             irTemporary(fieldGet, nameHint = param.name.asString())
           } else {
-            // Provider<T> field — extract via .invoke() once
-            val invokedValue = irCall(providerInvokeFunction).apply { dispatchReceiver = fieldGet }
+            // Provider<T> field, extract via .invoke() once. Wasm requires the call's IR type
+            // match the substituted return type. https://github.com/ZacSweers/metro/issues/2227
+            val invokedValue =
+              irInvoke(
+                dispatchReceiver = fieldGet,
+                callee = providerInvokeFunction,
+                typeHint = paramType,
+              )
             irTemporary(invokedValue, nameHint = param.name.asString())
           }
         resolvedLocals[param.name] = localVar

@@ -556,6 +556,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("CircuitFactoryInvocationWithInjection.kt")
+      public void testCircuitFactoryInvocationWithInjection() {
+        runTest("compiler-tests/src/test/data/box/api/circuit/CircuitFactoryInvocationWithInjection.kt");
+      }
+
+      @Test
       @TestMetadata("CircuitFactoryInvocationWithSubtypeScreen.kt")
       public void testCircuitFactoryInvocationWithSubtypeScreen() {
         runTest("compiler-tests/src/test/data/box/api/circuit/CircuitFactoryInvocationWithSubtypeScreen.kt");
