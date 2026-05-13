@@ -86,9 +86,16 @@ jobs:
       - name: Check root project
         run: |
           # Each matrix Kotlin version may resolve a different NPM dep set, so refresh the
-          # kotlin-js-store lockfiles (and api dumps) before `check` validates them.
-          echo "Regenerating lockfiles/api dumps..."
-          ./metrow regen --version '${{ matrix.kotlin-compiler }}'
+          # kotlin-js-store lockfiles before `check` validates them — but only when the matrix
+          # version differs from the default in libs.versions.toml (the committed lockfiles
+          # already match the default).
+          default_kotlin=$(sed -nE 's/^kotlin = "([^"]+)".*/\1/p' gradle/libs.versions.toml)
+          if [ "${{ matrix.kotlin-compiler }}" != "$default_kotlin" ]; then
+            echo "Regenerating package locks for ${{ matrix.kotlin-compiler }} (default: $default_kotlin)..."
+            ./metrow regen --locks-only --version '${{ matrix.kotlin-compiler }}'
+          else
+            echo "Matrix version matches default ($default_kotlin); skipping regen."
+          fi
           # Regenerate tests per-run on CI to support exclusions, which are unfortunately code-gen level right now
           echo "Generating tests..."
           ./gradlew :compiler-tests:generateTests --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
