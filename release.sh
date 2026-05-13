@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 
-set -exo pipefail
+# Only enable verbose tracing for actual releases
+SET_FLAGS="-exo pipefail"
+for arg in "$@"; do
+    if [[ "$arg" == "--help" || "$arg" == "-h" || "$arg" == "--dry-run" ]]; then
+        SET_FLAGS="-eo pipefail"
+        break
+    fi
+done
+# shellcheck disable=SC2086
+set $SET_FLAGS
 
 # Gets a property out of a .properties file
 # usage: getProperty $key $filename
@@ -82,11 +91,55 @@ update_libs_versions_metro() {
     fi
 }
 
-# default to patch if no second argument is given
-version_type=${1:---patch}
-LATEST_VERSION=$(get_latest_version CHANGELOG.md)
-NEW_VERSION=$(increment_version "$LATEST_VERSION" "$version_type")
+# Parse flags
+DRY_RUN=false
+args=()
+for arg in "$@"; do
+    case "$arg" in
+        --help|-h)
+            echo "Usage: $0 [--dry-run] [version | --major | --minor | --patch]"
+            echo ""
+            echo "  version    Explicit version to release (e.g., 1.2.3)"
+            echo "  --major    Bump the major version"
+            echo "  --minor    Bump the minor version"
+            echo "  --patch    Bump the patch version (default)"
+            echo "  --dry-run  Print what would be done without making changes"
+            echo "  --help     Show this help message"
+            exit 0
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            ;;
+        *)
+            args+=("$arg")
+            ;;
+    esac
+done
+
+# Supports explicit version (e.g., 1.2.3) or increment type (--patch, --minor, --major)
+version_arg=${args[0]:---patch}
+if [[ "$version_arg" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+    NEW_VERSION="$version_arg"
+else
+    LATEST_VERSION=$(get_latest_version CHANGELOG.md)
+    NEW_VERSION=$(increment_version "$LATEST_VERSION" "$version_arg")
+fi
 NEXT_SNAPSHOT_VERSION="$(increment_version "$NEW_VERSION" --minor)-SNAPSHOT"
+
+if $DRY_RUN; then
+    echo "Dry run — would perform the following steps:"
+    echo "  1. Update gradle.properties, quickstart.md, libs.versions.toml to $NEW_VERSION"
+    echo "  2. Run ./metrow regen"
+    echo "  3. Run ./scripts/update-compatibility-docs.sh"
+    echo "  4. Commit: 'Prepare for release $NEW_VERSION.'"
+    echo "  5. Tag: $NEW_VERSION"
+    echo "  6. Run ./metrow publish"
+    echo "  7. Update gradle.properties to $NEXT_SNAPSHOT_VERSION"
+    echo "  8. Run ./metrow regen"
+    echo "  9. Commit: 'Prepare next development version.'"
+    echo "  10. Push commits and tags"
+    exit 0
+fi
 
 echo "Publishing $NEW_VERSION"
 

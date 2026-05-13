@@ -1,4 +1,4 @@
-// Test for Map<K, Provider<Lazy<V>>> multibindings
+// Test for Map<K, () -> Lazy<V>> multibindings
 @DependencyGraph
 interface ExampleGraph {
   @Provides @IntoMap @IntKey(0) fun provideInt0(): Int = 0
@@ -7,29 +7,29 @@ interface ExampleGraph {
 
   @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
 
-  // Map with Provider<Lazy> values
-  val providerLazyInts: Map<Int, Provider<Lazy<Int>>>
+  // Map with () -> Lazy values
+  val providerLazyInts: Map<Int, () -> Lazy<Int>>
 
-  // Provider wrapping map with Provider<Lazy> values
-  val providerOfProviderLazyInts: Provider<Map<Int, Provider<Lazy<Int>>>>
+  // Provider wrapping map with () -> Lazy values
+  val providerOfProviderLazyInts: () -> Map<Int, () -> Lazy<Int>>
 
   // Class that injects the provider lazy map
   val consumer: ProviderLazyMapConsumer
 }
 
-@Inject class ProviderLazyMapConsumer(val providerLazyMap: Map<Int, Provider<Lazy<Int>>>)
+@Inject class ProviderLazyMapConsumer(val providerLazyMap: Map<Int, () -> Lazy<Int>>)
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
 
-  // Test Map<Int, Provider<Lazy<Int>>>
+  // Test Map<Int, () -> Lazy<Int>>
   val providerLazyInts = graph.providerLazyInts
   assertEquals(
     mapOf(0 to 0, 1 to 1, 2 to 2),
     providerLazyInts.mapValues { (_, provider) -> provider().value },
   )
 
-  // Test Provider<Map<Int, Provider<Lazy<Int>>>>
+  // Test () -> Map<Int, () -> Lazy<Int>>
   val providerOfProviderLazyInts = graph.providerOfProviderLazyInts
   assertEquals(
     mapOf(0 to 0, 1 to 1, 2 to 2),

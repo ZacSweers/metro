@@ -27,6 +27,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphFactoryCompanionGetter)
   val MetroContributionClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroContributionClassDeclaration)
+  val ContributionProviderHolderDeclaration: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.ContributionProviderHolderDeclaration)
   val MetroContributionCallableDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroContributionCallableDeclaration)
   val InjectConstructorFactoryClassDeclaration: IrDeclarationOrigin =
@@ -53,6 +55,10 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.DynamicContainerParam)
   val ParentGraphParam: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ParentGraphParam)
+  val GeneratedAssistedFactoryCreateFunction: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedAssistedFactoryCreateFunction)
+  val ContributionSupertypeChunk: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.ContributionSupertypeChunk)
 
   object FirstParty {
     // in 2.3.20, Kotlin changed the types of origins like IrDeclarationOrigin.DEFINED to
@@ -71,6 +77,7 @@ internal object Origins {
     val IR_TEMPORARY_VARIABLE: IrDeclarationOrigin by getConstant("IR_TEMPORARY_VARIABLE")
     val IR_EXTERNAL_JAVA_DECLARATION_STUB: IrDeclarationOrigin by
       getConstant("IR_EXTERNAL_JAVA_DECLARATION_STUB")
+    val DEFAULT_PROPERTY_ACCESSOR: IrDeclarationOrigin by getConstant("DEFAULT_PROPERTY_ACCESSOR")
   }
 }
 

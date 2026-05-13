@@ -7,37 +7,48 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getValue
+import dev.zacsweers.metro.compiler.graph.BindingGraphDiagnosticKind
+import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
+import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
+import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.locationOrNull
+import dev.zacsweers.metro.compiler.ir.originContextOrNull
+import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.render
+import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireMapKeyType
 import dev.zacsweers.metro.compiler.ir.requireMapValueType
 import dev.zacsweers.metro.compiler.ir.requireSetElementType
+import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.safePathString
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -46,6 +57,7 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isAny
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
@@ -60,6 +72,23 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.name.ClassId
+
+private const val MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT = 3
+
+private fun BindingGraphDiagnosticKind.toDiagnosticFactory(): KtDiagnosticFactory1<String> =
+  when (this) {
+    BindingGraphDiagnosticKind.MISSING_BINDING -> MetroDiagnostics.MISSING_BINDING
+    BindingGraphDiagnosticKind.DUPLICATE_BINDING -> MetroDiagnostics.DUPLICATE_BINDING
+    BindingGraphDiagnosticKind.DEPENDENCY_CYCLE -> MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
+    BindingGraphDiagnosticKind.GENERIC -> MetroDiagnostics.METRO_ERROR
+  }
+
+internal data class ChildGraphScopeInfo(
+  val reachableKeys: Set<IrTypeKey>,
+  val scopeNames: Set<ClassId>,
+)
 
 internal class IrBindingGraph(
   metroContext: IrMetroContext,
@@ -68,8 +97,73 @@ internal class IrBindingGraph(
   // TODO improve this cleanup
   bindingLookup: BindingLookup,
   private val contributionData: IrContributionData,
-) : IrMetroContext by metroContext {
+  private val boundTypeResolver: IrBoundTypeResolver,
+) : IrMetroContext by metroContext, ErrorReporter<IrBindingStack> {
   private var hasErrors = false
+
+  private data class PendingError(
+    val factory: KtDiagnosticFactory1<String>,
+    val declaration: IrDeclaration,
+    val message: String,
+  )
+
+  private val pendingErrors = mutableListOf<PendingError>()
+
+  private fun collectError(
+    message: String,
+    declaration: IrDeclaration,
+    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  ) {
+    hasErrors = true
+    pendingErrors += PendingError(factory, declaration, message)
+  }
+
+  override fun report(kind: BindingGraphDiagnosticKind, message: String, stack: IrBindingStack) {
+    val factory = kind.toDiagnosticFactory()
+    val element =
+      stack.lastEntryOrGraph?.originalDeclarationIfOverride()
+        ?: node.reportableSourceGraphDeclaration
+    onError(message, element, factory)
+  }
+
+  override fun reportFatal(
+    kind: BindingGraphDiagnosticKind,
+    message: String,
+    stack: IrBindingStack,
+  ): Nothing {
+    report(kind, message, stack)
+    flush()
+    exitProcessing()
+  }
+
+  /**
+   * Flushes collected errors, grouping by (factory, declaration) to batch multiple messages
+   * targeting the same diagnostic slot into a single report. This avoids kotlinc's diagnostic
+   * deduplication which drops subsequent reports with the same factory on the same source element.
+   */
+  override fun flush() {
+    pendingErrors
+      .groupBy { it.factory to it.declaration }
+      .forEach { (key, errors) ->
+        val (factory, declaration) = key
+        // Stable sort so output is deterministic across kotlin versions
+        val sorted = errors.sortedBy { it.message }
+        val combinedMessage =
+          if (sorted.size == 1) {
+            sorted[0].message
+          } else {
+            buildString {
+              appendLine("${sorted.size} errors:")
+              for (error in sorted) {
+                appendLine()
+                appendLine(error.message)
+              }
+            }
+          }
+        metroContext.reportCompat(declaration, factory, combinedMessage)
+      }
+    pendingErrors.clear()
+  }
 
   private var _bindingLookup: BindingLookup? = bindingLookup
     set(value) {
@@ -98,11 +192,8 @@ internal class IrBindingGraph(
           reportDuplicateBindings(key, bindings, stack)
         }
       },
-      onError = ::onError,
-      onHardError = { message, stack ->
-        onError(message, stack)
-        exitProcessing()
-      },
+      errorReporter = this,
+      messageRenderer = messageRenderer,
       missingBindingHints = { key ->
         MissingBindingHints(
           missingBindingHints(key),
@@ -226,10 +317,17 @@ internal class IrBindingGraph(
     }
   }
 
-  data class GraphError(val declaration: IrDeclaration?, val message: String)
+  data class GraphError(
+    val declaration: IrDeclaration?,
+    val message: String,
+    val factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  )
 
   context(traceScope: TraceScope)
-  fun seal(onError: (List<GraphError>) -> Unit): BindingGraphResult {
+  fun seal(
+    childGraphScopes: List<ChildGraphScopeInfo> = emptyList(),
+    onError: (List<GraphError>) -> Unit,
+  ): BindingGraphResult {
     val topologyResult =
       trace("seal graph") {
         val roots = buildMap {
@@ -241,9 +339,11 @@ internal class IrBindingGraph(
           roots = roots,
           keep = extraKeeps,
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
+          useSecondaryTopoSort = metroContext.options.useSecondaryTopoSort,
           onPopulated = {
             writeDiagnostic(
-              "keys-populated-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt"
+              "keys-populated",
+              "${node.metroGraphOrFail.classIdOrFail.safePathString}.txt",
             ) {
               val keys = mutableListOf<IrTypeKey>()
               realGraph.bindings.forEachKey(keys::add)
@@ -252,7 +352,8 @@ internal class IrBindingGraph(
           },
           onSortedCycle = { elementsInCycle ->
             writeDiagnostic(
-              "cycle-${node.metroGraphOrFail.classIdOrFail.safePathString}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
+              "cycle",
+              "${node.metroGraphOrFail.classIdOrFail.safePathString}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt",
             ) {
               elementsInCycle.plus(elementsInCycle[0]).joinToString("\n")
             }
@@ -266,26 +367,19 @@ internal class IrBindingGraph(
     val reachableKeys = topologyResult.reachableKeys
 
     if (hasErrors) {
+      // Flush any collected errors before returning
+      flush()
       // Clear out the binding lookup now that we're done
       _bindingLookup = null
       return BindingGraphResult.ERROR
     }
 
-    writeDiagnostic("keys-validated-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
+    writeDiagnostic("keys-validated", "${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
       sortedKeys.joinToString(separator = "\n")
     }
 
-    writeDiagnostic("keys-deferred-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
+    writeDiagnostic("keys-deferred", "${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
       deferredTypes.joinToString(separator = "\n")
-    }
-
-    // Only report unused keys that were explicitly declared in this graph
-    val declaredKeys = bindingLookup.getDeclaredKeys()
-    val unused = declaredKeys - reachableKeys
-    if (unused.isNotEmpty()) {
-      writeDiagnostic("keys-unused-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
-        unused.sorted().joinToString(separator = "\n")
-      }
     }
 
     trace("check empty multibindings") { checkEmptyMultibindings(onError) }
@@ -293,6 +387,113 @@ internal class IrBindingGraph(
       check(!realGraph.bindings.any { _, v -> v is IrBinding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
       }
+    }
+
+    // Only report unused keys that were explicitly declared in this graph
+    // Only relevant if shrinkUnusedBindings is enabled
+    val unusedKeys: Map<IrTypeKey, IrBinding.BoundInstance?>
+    if (options.shrinkUnusedBindings) {
+      val declaredKeys = bindingLookup.getDeclaredKeys()
+      val unused = declaredKeys - reachableKeys
+      if (unused.isNotEmpty()) {
+        val unusedMultibindingElements = unused.filterToSet {
+          it.multibindingBindingElementId != null
+        }
+        if (unusedMultibindingElements.isNotEmpty()) {
+          val allMultibindings by memoize {
+            buildList {
+                realGraph.bindings.forEachValue { b -> if (b is IrBinding.Multibinding) add(b) }
+                addAll(bindingLookup.getAvailableMultibindings().values)
+              }
+              .distinctBy { it.typeKey }
+          }
+          val suspiciousMessages = mutableListOf<String>()
+          for ((key, binding) in bindingLookup.getAvailableMultibindings()) {
+            if (binding.declaration != null) continue // Skip explicitly declared
+            val unusedSources = binding.sourceBindings.intersect(unusedMultibindingElements)
+            if (unusedSources.isEmpty()) continue
+
+            // Report the first few bindings
+            val message = buildString {
+              appendLine(
+                "[Metro/SuspiciousUnusedMultibinding] Synthetic multibinding " +
+                  "${key.renderForDiagnostic(short = false)} is unused but has " +
+                  "${binding.sourceBindings.size} source binding(s). " +
+                  "Did you possibly bind them to the wrong type or contribute them to the wrong scope?"
+              )
+              appendLine()
+              val examples = mutableListOf<Pair<String, String?>>()
+              for (source in unusedSources) {
+                val binding = bindingLookup[source] ?: continue
+                val location = binding.renderLocationDiagnostic()
+                val locString = "  ${location.location}"
+                val desc = location.description?.prependIndent("    ")
+                examples += locString to desc
+              }
+              // Stable sort
+              for ((locString, desc) in
+                examples
+                  .sortedBy { it.first }
+                  .take(MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT)) {
+                appendLine(locString)
+                desc?.let(::appendLine)
+              }
+              if (unusedSources.size > MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT) {
+                appendLine(
+                  "  ...and ${unusedSources.size - MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT} more"
+                )
+              }
+
+              appendSimilarMultibindingHints(binding, allMultibindings)
+
+              // Check if this multibinding type is used in any child graph extension
+              val childScopesUsingThis =
+                childGraphScopes.filter { key in it.reachableKeys }.flatMapToSet { it.scopeNames }
+
+              if (childScopesUsingThis.isNotEmpty()) {
+                appendLine()
+                appendLine("(Hint)")
+                appendLine(
+                  "${key.renderForDiagnostic(short = true)} _is_ used in the following child graph scope(s):"
+                )
+                for (scope in childScopesUsingThis) {
+                  appendLine("  - ${scope.asFqNameString()}")
+                }
+                appendLine(
+                  "These bindings may need to be contributed to one of those scopes instead."
+                )
+              }
+            }
+
+            suspiciousMessages += message
+          }
+          if (suspiciousMessages.isNotEmpty()) {
+            val combinedMessage = suspiciousMessages.joinToString(separator = "\n\n")
+            reportCompat(
+              node.sourceGraph,
+              MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING,
+              combinedMessage,
+            )
+          }
+        }
+        writeDiagnostic(
+          "keys-unused",
+          "${node.metroGraphOrFail.classIdOrFail.safePathString}.txt",
+        ) {
+          unused.sorted().joinToString(separator = "\n")
+        }
+      }
+
+      unusedKeys = unused.associateWith { key ->
+        val binding = bindingLookup[key]
+        if (binding is IrBinding.BoundInstance && binding.isGraphInput) {
+          binding
+        } else {
+          null
+        }
+      }
+    } else {
+      unusedKeys = emptyMap()
     }
 
     val shardGroups =
@@ -306,15 +507,8 @@ internal class IrBindingGraph(
         }
       }
 
-    val unusedKeys: Map<IrTypeKey, IrBinding.BoundInstance?> =
-      unused.associateWith { key ->
-        val binding = bindingLookup[key]
-        if (binding is IrBinding.BoundInstance && binding.isGraphInput) {
-          binding
-        } else {
-          null
-        }
-      }
+    // Flush any remaining collected errors
+    flush()
 
     // Clear out the binding lookup now that we're done
     _bindingLookup = null
@@ -325,7 +519,7 @@ internal class IrBindingGraph(
       reachableKeys = reachableKeys,
       shardGroups = shardGroups,
       unusedKeys = unusedKeys,
-      hasErrors = false,
+      hasErrors = hasErrors,
     )
   }
 
@@ -362,16 +556,17 @@ internal class IrBindingGraph(
             "If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`."
           )
 
-          val similarBindings = findSimilarMultibindings(multibinding, allMultibindings).toList()
-          if (similarBindings.isNotEmpty()) {
-            appendLine()
-            appendLine("Similar multibindings:")
-            val reported = mutableSetOf<IrTypeKey>()
-            for (key in similarBindings) {
-              if (key in reported) continue
-              appendLine("- ${key.render(short = true)}")
-              reported += key
+          appendSimilarMultibindingHints(multibinding, allMultibindings)
+
+          val elementType =
+            if (multibinding.isMap) {
+              multibinding.typeKey.requireMapValueType()
+            } else {
+              multibinding.typeKey.requireSetElementType()
             }
+          functionProviderMigrationHint(elementType)?.let {
+            appendLine()
+            appendLine(it)
           }
         }
         val declarationToReport =
@@ -383,7 +578,7 @@ internal class IrBindingGraph(
           } else {
             multibinding.declaration
           }
-        errors += GraphError(declarationToReport, message)
+        errors += GraphError(declarationToReport, message, MetroDiagnostics.EMPTY_MULTIBINDING)
       }
     }
     if (errors.isNotEmpty()) {
@@ -444,6 +639,56 @@ internal class IrBindingGraph(
     }
   }
 
+  private fun Appendable.appendSimilarMultibindingHints(
+    multibinding: IrBinding.Multibinding,
+    allMultibindings: List<IrBinding.Multibinding>,
+  ) {
+    val similarBindings = findSimilarMultibindings(multibinding, allMultibindings).toList()
+    if (similarBindings.isNotEmpty()) {
+      appendLine()
+      appendLine("Similar multibindings:")
+      val reported = mutableSetOf<IrTypeKey>()
+      for (key in similarBindings) {
+        if (key in reported) continue
+        appendLine("- ${key.renderForDiagnostic(short = true)}")
+        reported += key
+      }
+    }
+  }
+
+  // When function-provider mode is enabled, `() -> T` is treated as a provider wrapper for
+  // `T` rather than a bindable value type. An empty multibinding or a missing binding for a
+  // `Function0<T>` key often means either (a) contributors weren't migrated from
+  // `Provider<T>`, or (b) the author intended the function itself to be the bound value —
+  // which is no longer supported at the top level under this mode. Returns null when the
+  // mode is off or the type isn't a zero-arg function.
+  private fun functionProviderMigrationHint(type: IrType): String? {
+    if (!metroContext.options.enableFunctionProviders) return null
+    if (type.rawTypeOrNull()?.classId != Symbols.ClassIds.function0) return null
+    val targetType = type.requireSimpleType().arguments[0].typeOrFail.render(short = true)
+    return "`() -> $targetType` is treated as a provider for `$targetType` when `enableFunctionProviders` is enabled " +
+      "(desugared: `Provider<$targetType>`). As a result, Metro treats them as an intrinsic and unwraps them when " +
+      "resolving bindings. If the binding itself was meant to be the literal `() -> $targetType` function type, you " +
+      "need to migrate it to a named type. For example: " +
+      "`fun interface SomeType : () -> $targetType`".trimIndent()
+  }
+
+  // For missing-binding diagnostics, [key] is the unwrapped inner type (e.g. `T` for a
+  // `() -> T` request under function-provider mode). Scan the graph's root contextual keys
+  // to recover whether any entry point was originally a `() -> T` wrapper, and if so emit
+  // the migration hint using the wrapper's raw type so `$targetType` renders correctly.
+  private fun functionProviderMigrationHintForMissing(key: IrTypeKey): String? {
+    if (!metroContext.options.enableFunctionProviders) return null
+    val function0RawType =
+      sequenceOf(accessors, injectors, extraKeeps)
+        .flatMap { it.keys.asSequence() }
+        .firstOrNull { ctx ->
+          ctx.typeKey == key && ctx.rawType?.rawTypeOrNull()?.classId == Symbols.ClassIds.function0
+        }
+        ?.rawType ?: return null
+    return functionProviderMigrationHint(function0RawType)
+  }
+
   private fun missingBindingHints(key: IrTypeKey): List<String> {
     return buildList {
       if (key.type.hasErrorTypes()) {
@@ -451,6 +696,43 @@ internal class IrBindingGraph(
           "Binding '${key.render(short = false, includeQualifier = true)}' is an error type and appears to be missing from the compile classpath."
         )
         return@buildList
+      }
+
+      functionProviderMigrationHintForMissing(key)?.let(::add)
+
+      if (key in bindingLookup.getParentGraphPrivateKeys()) {
+        add(
+          "A binding for '${key.renderForDiagnostic(short = true)}' exists in a parent graph but is marked " +
+            "@GraphPrivate and cannot be accessed from this graph."
+        )
+      }
+
+      bindingLookup.skippedDirectMapRequests[key]?.let { requestedContextKey ->
+        bindingLookup.getAvailableBindings()[key]?.let { directBinding ->
+          // Use rawType to render with Provider/Lazy wrapping preserved, since
+          // IrContextualTypeKey.render() delegates to WrappedType.Map.render() which
+          // renders the canonical map type without value wrapping.
+          // Short render here since we already have the full render mentioned earlier in the trace
+          val requestedType =
+            requestedContextKey.rawType?.render(short = true)
+              ?: requestedContextKey.render(short = true, includeQualifier = false)
+          add(
+            buildString {
+              appendLine(
+                "A directly-provided '${key.render(short = true, includeQualifier = false)}' binding exists, but direct Map bindings cannot satisfy '$requestedType' requests."
+              )
+              appendLine()
+              val locationDiagnostic =
+                directBinding.renderLocationDiagnostic(underlineTypeKey = true)
+              appendLine("    ${locationDiagnostic.location}")
+              locationDiagnostic.description?.let { appendLine(it.prependIndent("        ")) }
+              appendLine()
+              append(
+                "Provider/Lazy-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map **multibinding** created with `@IntoMap` or `@Multibinds`."
+              )
+            }
+          )
+        }
       }
     }
   }
@@ -586,9 +868,9 @@ internal class IrBindingGraph(
             val bindsKey =
               contribution
                 .annotationsIn(metroContext.metroSymbols.classIds.allContributesAnnotations)
-                .any {
-                  val boundType = it.bindingTypeOrNull().first?.rawTypeOrNull()?.classId
-                  boundType == null || boundType == klass.classId
+                .any { annotation ->
+                  val result = boundTypeResolver.resolveBoundType(contribution, annotation)
+                  result == null || result.typeKey.type.rawTypeOrNull()?.classId == klass.classId
                 }
             implementsKey && bindsKey
           }
@@ -656,26 +938,42 @@ internal class IrBindingGraph(
     }
   }
 
-  private fun onError(message: String, stack: IrBindingStack) {
-    val declaration =
+  private fun onError(
+    message: String,
+    stack: IrBindingStack,
+    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  ) {
+    val element =
       stack.lastEntryOrGraph?.originalDeclarationIfOverride()
         ?: node.reportableSourceGraphDeclaration
-    onError(message, declaration)
+    onError(message, element, factory)
   }
 
-  private fun onError(message: String, declaration: IrDeclaration) {
-    hasErrors = true
-    metroContext.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
+  private fun onError(
+    message: String,
+    declaration: IrDeclaration,
+    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  ) {
+    collectError(message, declaration, factory)
   }
 
-  private fun onError(message: String, element: IrElement) {
+  private fun onError(
+    message: String,
+    element: IrElement,
+    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  ) {
     hasErrors = true
     if (element is IrDeclaration) {
-      onError(message, element)
+      collectError(message, element, factory)
     } else {
-      metroContext.diagnosticReporter
-        .at(element, node.metroGraphOrFail.file)
-        .report(MetroDiagnostics.METRO_ERROR, message)
+      with(metroContext) {
+        metroContext.diagnosticReporter.reportAt(
+          element,
+          node.metroGraphOrFail.file,
+          factory,
+          message,
+        )
+      }
     }
   }
 
@@ -758,7 +1056,7 @@ internal class IrBindingGraph(
         }
       }
     }
-    metroContext.reportCompat(declarationToReport, MetroDiagnostics.METRO_ERROR, message)
+    onError(message, declarationToReport, MetroDiagnostics.INCOMPATIBLE_SCOPE)
   }
 
   private fun buildStackToRoot(
@@ -799,7 +1097,7 @@ internal class IrBindingGraph(
       val message = buildString {
         appendLine(
           """
-            [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding '${binding.typeKey.render(short = false)}'.
+            [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding '${binding.typeKey.renderForDiagnostic(short = false)}'.
             The following bindings contribute the same map key '${mapKey.render(short = false)}':
           """
             .trimIndent()
@@ -817,7 +1115,7 @@ internal class IrBindingGraph(
         appendLine()
         appendBindingStack(stack)
       }
-      onError(message, stack)
+      onError(message, stack, MetroDiagnostics.DUPLICATE_MAP_KEY)
     }
   }
 
@@ -863,7 +1161,7 @@ internal class IrBindingGraph(
           )
         }
       }
-      onError(message, declaration ?: node.sourceGraph)
+      onError(message, declaration ?: node.sourceGraph, MetroDiagnostics.INVALID_ASSISTED_BINDING)
     }
 
     reverseAdjacency[binding.typeKey]?.let { dependents ->
@@ -955,20 +1253,20 @@ internal class IrBindingGraph(
   }
 
   private fun Appendable.appendBinding(binding: IrBinding, short: Boolean, isNested: Boolean) {
-    appendLine("Type: ${binding.typeKey.render(short)}")
+    appendLine("Type: ${binding.typeKey.renderForDiagnostic(short)}")
     appendLine("├─ Binding: ${binding::class.simpleName}")
     appendLine("├─ Contextual Type: ${binding.contextualTypeKey.render(short)}")
 
     binding.scope?.let { scope -> appendLine("├─ Scope: $scope") }
 
     if (binding is IrBinding.Alias) {
-      appendLine("├─ Aliased type: ${binding.aliasedType.render(short)}")
+      appendLine("├─ Aliased type: ${binding.aliasedType.renderForDiagnostic(short)}")
     }
 
     if (binding.parameters.allParameters.isNotEmpty()) {
       appendLine("├─ Dependencies:")
       binding.parameters.allParameters.forEach { param ->
-        appendLine("│  ├─ ${param.typeKey.render(short)}")
+        appendLine("│  ├─ ${param.typeKey.renderForDiagnostic(short)}")
         appendLine("│  │  └─ Parameter: ${param.name} (${param.contextualTypeKey.render(short)})")
       }
     }
@@ -996,20 +1294,44 @@ internal class IrBindingGraph(
   ) {
     fun render(short: Boolean): String {
       return buildString {
-        append(typeKey.render(short = short))
+        append(typeKey.renderForDiagnostic(short = short))
         append(" (")
         append(description)
         append(")")
         binding?.let {
           append(". Type: ")
-          append(binding.javaClass.simpleName)
+          append(binding.diagnosticTypeName)
           append('.')
-          binding.reportableDeclaration?.locationOrNull()?.render(short)?.let {
+          if (binding is IrBinding.Provided) {
+            binding.isFromGeneratedContributionImpl()?.let { origin ->
+              append(
+                " This is a generated contribution provider for ${origin.asFqNameString()}. If that class is the " +
+                  "binding you're looking for, annotate the contributing class with `@ExposeImplBinding` to expose" +
+                  " its impl type to the graph."
+              )
+            }
+          }
+          binding.reportableDeclaration?.renderSourceLocation(short = short)?.let {
             append(" Source: ")
             append(it)
           }
         }
       }
     }
+  }
+}
+
+private fun IrBinding.Provided.isFromGeneratedContributionImpl(): ClassId? {
+  // The contribution provider generator stamps the nested contribution interface's `@Origin`
+  // with `context = "contribution_provider"`. Detecting via the annotation context (rather
+  // than an IR `origin` marker) means this also works for precompiled library sources.
+  val nestedContribClass = providerFactory.function.parentClassOrNull ?: return null
+  val originAnno = nestedContribClass.getAnnotation(Symbols.ClassIds.metroOrigin.asSingleFqName())
+  val originContext = originAnno?.originContextOrNull()
+  val isContribProvider = originContext == Symbols.StringNames.CONTRIBUTION_PROVIDER_ORIGIN_CONTEXT
+  return if (isContribProvider) {
+    originAnno.originOrNull()
+  } else {
+    null
   }
 }

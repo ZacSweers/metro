@@ -2,30 +2,29 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import androidx.tracing.TraceDriver
-import androidx.tracing.wire.TraceDriver
-import androidx.tracing.wire.TraceSink
+import androidx.tracing.AbstractTraceDriver
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.LOG_PREFIX
+import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
+import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import dev.zacsweers.metro.compiler.ir.cache.IrCachesFactory
 import dev.zacsweers.metro.compiler.ir.cache.IrThreadUnsafeCachesFactory
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.io.File
 import java.nio.file.Path
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.io.path.appendText
-import kotlin.io.path.createDirectories
-import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
-import okio.blackholeSink
-import okio.buffer
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -36,8 +35,6 @@ import org.jetbrains.kotlin.incremental.components.ScopeKind
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
-import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 
 internal interface IrMetroContext : IrPluginContext, CompatContext {
@@ -46,6 +43,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     get() = this
 
   val pluginContext: IrPluginContext
+  val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat
   val metroSymbols: Symbols
   val options: MetroOptions
   val debug: Boolean
@@ -54,11 +52,13 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   val lookupTracker: LookupTracker?
   val expectActualTracker: ExpectActualTracker
 
+  val messageRenderer: MessageRenderer
+
   val irTypeSystemContext: IrTypeSystemContext
 
   val reportsDir: Path?
 
-  val traceDriver: TraceDriver
+  val traceDriver: AbstractTraceDriver
 
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
@@ -83,6 +83,19 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     @Suppress("DEPRECATION")
     messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
     logFile?.appendText("$message\n")
+  }
+
+  /**
+   * Deferred-evaluation log. The message is only built when [logFile] is set. Prefer this over
+   * [log] for hot paths (e.g. per-class transformer work) where building the message is non-trivial
+   * (FQ-name traversals, `buildString`, etc.).
+   */
+  fun log(message: () -> String) {
+    val file = logFile ?: return
+    val rendered = message()
+    @Suppress("DEPRECATION")
+    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $rendered")
+    file.appendText("$rendered\n")
   }
 
   fun logVerbose(message: String) {
@@ -118,7 +131,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   fun IrElement.dumpToMetroLog(name: String) {
     loggerFor(MetroLogger.Type.GeneratedFactories).log {
-      val irSrc = dumpKotlinLike()
+      val irSrc = betterDumpKotlinLike()
       buildString {
         append("IR source dump for ")
         appendLine(name)
@@ -126,161 +139,106 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
       }
     }
   }
+}
 
-  companion object {
-    operator fun invoke(
-      pluginContext: IrPluginContext,
-      messageCollector: MessageCollector,
-      compatContext: CompatContext,
-      symbols: Symbols,
-      options: MetroOptions,
-      lookupTracker: LookupTracker?,
-      expectActualTracker: ExpectActualTracker,
-    ): IrMetroContext {
-      return SimpleIrMetroContext(
-        compatContext,
-        pluginContext,
-        messageCollector,
-        symbols,
-        options,
-        lookupTracker,
-        expectActualTracker,
-      )
+@Inject
+@SingleIn(IrScope::class)
+@ContributesBinding(IrScope::class, binding = binding<IrMetroContext>())
+internal class IrMetroContextImpl(
+  compatContext: CompatContext,
+  override val pluginContext: IrPluginContext,
+  @Suppress("DEPRECATION")
+  @Deprecated(
+    "Consider using diagnosticReporter instead. See https://youtrack.jetbrains.com/issue/KT-78277 for more details"
+  )
+  override val messageCollector: MessageCollector,
+  symbols: Symbols,
+  override val options: MetroOptions,
+  rawLookupTracker: LookupTracker?,
+  rawExpectActualTracker: ExpectActualTracker,
+  override val traceDriver: AbstractTraceDriver,
+  override val messageRenderer: MessageRenderer,
+  override val irTypeSystemContext: IrTypeSystemContext,
+  override val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat,
+  @ReportFile("log.txt") logFile: Lazy<Path?>,
+  @ReportFile("lookups.csv") lookupFile: Lazy<Path?>,
+  @ReportFile("expectActualReports.csv") expectActualFile: Lazy<Path?>,
+) : IrMetroContext, IrPluginContext by pluginContext, CompatContext by compatContext {
+  override val metroSymbols: Symbols = symbols
+
+  override val logFile: Path? by logFile
+  override val lookupFile: Path? by lookupFile
+  override val expectActualFile: Path? by expectActualFile
+
+  private var reportedErrors = 0
+
+  override fun onErrorReported() {
+    reportedErrors++
+    if (reportedErrors >= options.maxIrErrorsCount) {
+      // Exit processing as we've reached the max
+      exitProcessing()
     }
+  }
 
-    private class SimpleIrMetroContext(
-      compatContext: CompatContext,
-      override val pluginContext: IrPluginContext,
-      @Suppress("DEPRECATION")
-      @Deprecated(
-        "Consider using diagnosticReporter instead. See https://youtrack.jetbrains.com/issue/KT-78277 for more details"
-      )
-      override val messageCollector: MessageCollector,
-      override val metroSymbols: Symbols,
-      override val options: MetroOptions,
-      lookupTracker: LookupTracker?,
-      expectActualTracker: ExpectActualTracker,
-    ) : IrMetroContext, IrPluginContext by pluginContext, CompatContext by compatContext {
-      private var reportedErrors = 0
+  override val lookupTracker: LookupTracker? = rawLookupTracker?.let {
+    if (options.reportsEnabled) RecordingLookupTracker(this, it) else it
+  }
 
-      override fun onErrorReported() {
-        reportedErrors++
-        if (reportedErrors >= options.maxIrErrorsCount) {
-          // Exit processing as we've reached the max
-          exitProcessing()
-        }
-      }
+  override val expectActualTracker: ExpectActualTracker =
+    if (options.reportsEnabled) RecordingExpectActualTracker(this, rawExpectActualTracker)
+    else rawExpectActualTracker
 
-      override val lookupTracker: LookupTracker? =
-        lookupTracker?.let {
-          if (options.reportsEnabled) {
-            RecordingLookupTracker(this, lookupTracker)
-          } else {
-            lookupTracker
-          }
-        }
+  override val reportsDir: Path?
+    get() = options.reportsDir.value
 
-      override val expectActualTracker: ExpectActualTracker =
-        if (options.reportsEnabled) {
-          RecordingExpectActualTracker(this, expectActualTracker)
-        } else {
-          expectActualTracker
-        }
+  private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
 
-      override val irTypeSystemContext: IrTypeSystemContext =
-        IrTypeSystemContextImpl(pluginContext.irBuiltIns)
-
-      private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
-
-      override val reportsDir: Path?
-        get() = options.reportsDir.value
-
-      override val logFile: Path? by lazy {
-        reportsDir?.let {
-          it.resolve("log.txt").apply {
-            deleteIfExists()
-            createFile()
-          }
-        }
-      }
-
-      override val traceDriver: TraceDriver by lazy {
-        val tracePath = options.traceDir.value
-        val sink =
-          if (tracePath == null) {
-            TraceSink(sequenceId = 1, blackholeSink().buffer(), EmptyCoroutineContext)
-          } else {
-            tracePath.deleteIfExists()
-            tracePath.createDirectories()
-            TraceSink(sequenceId = 1, directory = tracePath.toFile())
-          }
-        TraceDriver(sink = sink, isEnabled = tracePath != null)
-      }
-
-      override val lookupFile: Path? by lazy {
-        reportsDir?.let {
-          it.resolve("lookups.csv").apply {
-            deleteIfExists()
-            createFile()
-            appendText("file,position,scopeFqName,scopeKind,name")
-          }
-        }
-      }
-
-      override val expectActualFile: Path? by lazy {
-        reportsDir?.let {
-          it.resolve("expectActualReports.csv").apply {
-            deleteIfExists()
-            createFile()
-            appendText("expected,actual")
-          }
-        }
-      }
-
-      override fun loggerFor(type: MetroLogger.Type): MetroLogger {
-        return loggerCache.getOrPut(type) {
-          if (type in options.enabledLoggers) {
-            MetroLogger(type, System.out::println)
-          } else {
-            MetroLogger.NONE
-          }
-        }
-      }
-
-      private val genericCaches: HashMap<Any, IrCache<*, *, *>> = HashMap()
-
-      override fun <K : Any, V : Any, C> getOrCreateIrCache(
-        key: Any,
-        createCache: (IrCachesFactory) -> IrCache<K, V, C>,
-      ): IrCache<K, V, C> {
-        @Suppress("UNCHECKED_CAST")
-        return genericCaches.getOrPut(key) { createCache(IrThreadUnsafeCachesFactory) }
-          as IrCache<K, V, C>
+  override fun loggerFor(type: MetroLogger.Type): MetroLogger {
+    return loggerCache.getOrPut(type) {
+      if (type in options.enabledLoggers) {
+        MetroLogger(type, System.out::println)
+      } else {
+        MetroLogger.NONE
       }
     }
   }
+
+  private val genericCaches: HashMap<Any, IrCache<*, *, *>> = HashMap()
+
+  override fun <K : Any, V : Any, C> getOrCreateIrCache(
+    key: Any,
+    createCache: (IrCachesFactory) -> IrCache<K, V, C>,
+  ): IrCache<K, V, C> {
+    @Suppress("UNCHECKED_CAST")
+    return genericCaches.getOrPut(key) { createCache(IrThreadUnsafeCachesFactory) }
+      as IrCache<K, V, C>
+  }
 }
 
+/** Builds a diagnostic message string using the [MessageRenderer.MessageBuilder] DSL. */
+internal inline fun IrMetroContext.renderDiagnostic(
+  body: MessageRenderer.MessageBuilder.() -> Unit
+): String = messageRenderer.buildMessage(body)
+
+/** See the other [writeDiagnostic] */
 context(context: IrMetroContext)
-internal fun writeDiagnostic(fileName: String, text: () -> String) {
-  writeDiagnostic({ fileName }, text)
+internal fun writeDiagnostic(diagnosticKey: String, fileName: String, text: () -> String) {
+  writeDiagnostic(diagnosticKey, { fileName }, text)
 }
 
+/**
+ * @param diagnosticKey A string identifier for the category of diagnostic being generated. This
+ *   will be treated as a prefix path segment. E.g. a key of "keys-populated" will result in
+ *   <reports-folder>/keys-populated/<fileName>
+ */
 context(context: IrMetroContext)
-internal fun writeDiagnostic(fileName: () -> String, text: () -> String) {
+internal fun writeDiagnostic(diagnosticKey: String, fileName: () -> String, text: () -> String) {
   context.reportsDir
-    ?.resolve(fileName())
+    ?.resolve(createDiagnosticReportPath(diagnosticKey, fileName()))
     ?.apply {
       // Ensure that the path leading up to the file has been created
       createParentDirectories()
       deleteIfExists()
     }
     ?.writeText(text())
-}
-
-context(context: IrMetroContext)
-internal inline fun traceWithScope(category: String, body: TraceScope.() -> Unit) {
-  val driver = context.traceDriver
-  check(category.isNotBlank()) { "Category must not be blank" }
-  TraceScope(driver.tracer, category).body()
 }

@@ -1,0 +1,1 @@
+/CannotHaveReifiedTypeArgs.kt:5:12: error: Injected functions cannot have reified generics.

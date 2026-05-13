@@ -1,0 +1,17 @@
+/Provides_ReturnTypeCannotBeIntrinsic.kt:17:36: error: `@Provides` declarations may not return intrinsic types, but `provideProvider` returns `Provider<String>`. Remove the wrapper and let Metro provide the underlying type directly.
+
+/Provides_ReturnTypeCannotBeIntrinsic.kt:20:41: error: `@Provides` declarations may not return intrinsic types, but `provideJavaxProvider` returns `Provider<String>`. Remove the wrapper and let Metro provide the underlying type directly.
+
+/Provides_ReturnTypeCannotBeIntrinsic.kt:23:43: error: `@Provides` declarations may not return intrinsic types, but `provideJakartaProvider` returns `Provider<String>`. Remove the wrapper and let Metro provide the underlying type directly.
+
+/Provides_ReturnTypeCannotBeIntrinsic.kt:26:32: error: `@Provides` declarations may not return intrinsic types, but `provideLazy` returns `Lazy<String>`. Remove the wrapper and let Metro provide the underlying type directly.
+
+/Provides_ReturnTypeCannotBeIntrinsic.kt:29:36: error: `@Provides` declarations may not return intrinsic types, but `provideNullable` returns `Provider<String>?`. Remove the wrapper and let Metro provide the underlying type directly.
+
+/Provides_ReturnTypeCannotBeIntrinsic.kt:32:35: error: `@Provides` declarations may not return intrinsic types, but `provideAliased` returns `Provider<String>`. Remove the wrapper and let Metro provide the underlying type directly.
+
+/Provides_ReturnTypeCannotBeIntrinsic.kt:35:36: error: `@Provides` declarations may not return intrinsic types, but `provideFunction` returns `() -> String`. Remove the wrapper and let Metro provide the underlying type directly. Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function types are treated as provider types by Metro and cannot be unique bindings on the graph.
+
+/Provides_ReturnTypeCannotBeIntrinsic.kt:44:36: error: `@Provides` declarations may not return intrinsic types, but `provideString` returns `Provider<String>`. Remove the wrapper and let Metro provide the underlying type directly.
+
+/Provides_ReturnTypeCannotBeIntrinsic.kt:51:43: error: `@Provides` declarations may not return intrinsic types, but `provideString` returns `Provider<String>`. Remove the wrapper and let Metro provide the underlying type directly.

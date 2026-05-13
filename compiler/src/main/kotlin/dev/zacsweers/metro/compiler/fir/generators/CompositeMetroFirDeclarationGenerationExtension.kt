@@ -3,12 +3,15 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.fir.isExtensionGenerated
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
@@ -85,12 +88,20 @@ internal class CompositeMetroFirDeclarationGenerationExtension(
     return result
   }
 
+  @OptIn(SymbolInternals::class)
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun generateTopLevelClassLikeDeclaration(classId: ClassId): FirClassLikeSymbol<*>? {
     val owners = topLevelClassOwners[TopLevelClassKey(classId)] ?: return null
     for (extension in owners) {
-      extension.generateTopLevelClassLikeDeclaration(classId)?.let {
-        return it
+      val isExternal = extension in externalExtensions
+      extension.generateTopLevelClassLikeDeclaration(classId)?.let { symbol ->
+        if (isExternal) {
+          // Tag extension-generated top-level classes so Metro knows not to generate
+          // contribution providers for them (FIR can't generate top-level classes from
+          // other generated top-level classes).
+          (symbol.fir as? FirClass)?.isExtensionGenerated = true
+        }
+        return symbol
       }
     }
     return null
@@ -126,6 +137,7 @@ internal class CompositeMetroFirDeclarationGenerationExtension(
     return result
   }
 
+  @OptIn(SymbolInternals::class)
   override fun generateNestedClassLikeDeclaration(
     owner: FirClassSymbol<*>,
     name: Name,
@@ -133,8 +145,15 @@ internal class CompositeMetroFirDeclarationGenerationExtension(
   ): FirClassLikeSymbol<*>? {
     val owners = nestedClassOwners[NestedClassKey(owner.classId, name)] ?: return null
     for (extension in owners) {
-      extension.generateNestedClassLikeDeclaration(owner, name, context)?.let {
-        return it
+      val isExternal = extension in externalExtensions
+      extension.generateNestedClassLikeDeclaration(owner, name, context)?.let { symbol ->
+        if (isExternal) {
+          // Tag extension-generated nested classes so Metro knows not to use the
+          // contribution provider path for them (predicates can't see FIR-generated classes,
+          // so contribution provider holders would never be created).
+          (symbol.fir as? FirClass)?.isExtensionGenerated = true
+        }
+        return symbol
       }
     }
     return null

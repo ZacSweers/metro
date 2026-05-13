@@ -3,12 +3,12 @@
 class Example<T>(@Assisted val inputT: T, val graphT: T) {
   @AssistedFactory
   fun interface Factory<T> {
-    fun create(input: T): Example<T>
+    fun create(inputT: T): Example<T>
   }
 
   @AssistedFactory
   fun interface Factory2 {
-    fun create(input: Int): Example<Int>
+    fun create(inputT: Int): Example<Int>
   }
 }
 
@@ -16,12 +16,12 @@ class Example<T>(@Assisted val inputT: T, val graphT: T) {
 class ExampleWithDifferent<T, R>(@Assisted val inputT: T, val graphT: R) {
   @AssistedFactory
   fun interface Factory<T, R> {
-    fun create(input: T): ExampleWithDifferent<T, R>
+    fun create(inputT: T): ExampleWithDifferent<T, R>
   }
 
   @AssistedFactory
   fun interface Factory2<T> {
-    fun create(input: Int): ExampleWithDifferent<Int, T>
+    fun create(inputT: Int): ExampleWithDifferent<Int, T>
   }
 }
 

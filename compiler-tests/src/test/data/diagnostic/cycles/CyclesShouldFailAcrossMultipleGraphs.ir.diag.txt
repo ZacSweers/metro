@@ -1,0 +1,13 @@
+/CyclesShouldFailAcrossMultipleGraphs.kt:7:11: error: Graph dependency cycle detected!
+    test.StringGraph is injected at
+        [test.CharSequenceGraph] test.StringGraph.Factory.create()
+    test.CharSequenceGraph is injected at
+        [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
+
+
+/CyclesShouldFailAcrossMultipleGraphs.kt:21:11: error: Graph dependency cycle detected!
+    test.CharSequenceGraph is injected at
+        [test.StringGraph] test.CharSequenceGraph.Factory.create()
+    test.StringGraph is injected at
+        [test.StringGraph] test.StringGraph.Factory.create()
+

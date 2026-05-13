@@ -4,7 +4,8 @@ package test
 
 import dev.zacsweers.metro.*
 
-// METRO_DIAGNOSTIC: ASSISTED_INJECTION_ERROR,ERROR,AssistedWithMismatchedParams factory is missing 'name' parameter
+// METRO_DIAGNOSTIC: ASSISTED_INJECTION_ERROR,ERROR,AssistedWithMismatchedParams factory is missing
+// 'name' parameter
 @AssistedInject
 class AssistedWithMismatchedParams(@Assisted val id: Int, @Assisted val name: String) {
   @AssistedFactory
@@ -13,7 +14,8 @@ class AssistedWithMismatchedParams(@Assisted val id: Int, @Assisted val name: St
   }
 }
 
-// METRO_DIAGNOSTIC: SUGGEST_CLASS_INJECTION,WARNING,SuggestClassInject has @Inject on constructor should be on class
+// METRO_DIAGNOSTIC: SUGGEST_CLASS_INJECTION,WARNING,SuggestClassInject has @Inject on constructor
+// should be on class
 class SuggestClassInject @Inject constructor(val dep: String)
 
 // METRO_INLAY: AssistedFactory
@@ -32,6 +34,36 @@ fun useGeneratedFactory(factory: AssistedWithGeneratedFactory.Factory) {
 
 fun useGeneratedApp(app: MyApp) {
   app(value = "app")
+}
+
+// Enum-based qualifier should not collapse parameters with different enum args
+@Qualifier annotation class By(val key: ByKey)
+
+enum class ByKey {
+  One,
+  Two,
+}
+
+@Inject class Holder(@By(ByKey.One) private val one: Int, @By(ByKey.Two) private val two: Int)
+
+@DependencyGraph(AppScope::class)
+interface EnumQualifierGraph {
+  val holder: Holder
+
+  @Provides @By(ByKey.One) fun provideOne(): Int = 1
+
+  @Provides @By(ByKey.Two) fun provideTwo(): Int = 2
+}
+
+// Contribution provider: exercises getTopLevelClassIds() during IDE indexing
+interface Greeter {
+  fun greet(): String
+}
+
+@ContributesBinding(AppScope::class)
+@Inject
+class GreeterImpl : Greeter {
+  override fun greet(): String = "hello"
 }
 
 // Viewing generated supertypes

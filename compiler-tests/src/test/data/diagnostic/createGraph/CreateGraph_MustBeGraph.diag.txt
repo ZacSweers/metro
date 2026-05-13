@@ -1,0 +1,3 @@
+/CreateGraph_MustBeGraph.kt:7:30: error: `createGraph` type argument 'SomeType' must be annotated with a `@DependencyGraph` annotation.
+
+/CreateGraph_MustBeGraph.kt:8:29: error: `createGraph` type argument 'SomeType' must be annotated with a `@DependencyGraph` annotation.

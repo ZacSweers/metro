@@ -6,25 +6,37 @@ Starting with Metro `0.6.9`, Metro tries to support forward compatibility on a b
 
 Pre-release versions are normally only tested during their development cycle. After their stable release, Metro should continue to work with them but they will no longer be tested against. Their last tested release is indicated by putting the version in brackets like `[0.9.1]`.
 
-| Kotlin version  | Metro versions (inclusive) | Notes                                |
-|-----------------|----------------------------|--------------------------------------|
-| 2.3.20-Beta2    | 0.10.0 -                   |                                      |
-| 2.3.20-Beta1    | 0.10.0 -                   |                                      |
-| 2.3.20-dev-7791 | 0.10.0 - [0.10.2]          |                                      |
-| 2.3.20-dev-5437 | 0.9.1 -                    |                                      |
-| 2.3.10-RC       | 0.9.1 -                    |                                      |
-| 2.3.0           | 0.9.1 -                    | [1]                                  |
-| 2.3.0-RC3       | 0.6.9, 0.6.11 - [0.9.2]    |                                      |
-| 2.3.0-RC2       | 0.6.9, 0.6.11 - [0.9.2]    |                                      |
-| 2.3.0-RC        | 0.6.9, 0.6.11 - [0.9.2]    | Reporting doesn't work until `0.7.3` |
-| 2.3.0-Beta2     | 0.6.9, 0.6.11 - [0.9.2]    | Reporting doesn't work until `0.7.3` |
-| 2.3.0-Beta1     | 0.6.9, 0.6.11 - [0.9.2]    |                                      |
-| 2.2.21          | 0.6.6 -                    |                                      |
-| 2.2.20          | 0.6.6 -                    |                                      |
-| 2.2.10          | 0.4.0 - 0.6.5              |                                      |
-| 2.2.0           | 0.4.0 - 0.6.5              |                                      |
-| 2.1.21          | 0.3.1 - 0.3.8              |                                      |
-| 2.1.20          | 0.1.2 - 0.3.0              |                                      |
+| Kotlin version  | Metro versions (inclusive) | Notes                                                 |
+|-----------------|----------------------------|-------------------------------------------------------|
+| 2.4.20-dev-835  | 1.0.1 -                    |                                                       |
+| 2.4.0-Beta2     | 1.0.0-RC3 -                |                                                       |
+| 2.4.0-Beta1     | 0.13.0 -                   |                                                       |
+| 2.4.0-dev-2124  | 0.12.0 -                   |                                                       |
+| 2.4.0-dev-539   | 0.10.3 - [0.11.3]          |                                                       |
+| 2.3.21          | 0.10.0 -                   | Top-level declaration gen in JS only works in 0.12.1+ |
+| 2.3.21-RC2      | 0.10.0 - [1.0.0]           | Top-level declaration gen in JS only works in 0.12.1+ |
+| 2.3.21-RC       | 0.10.0 - [1.0.0]           | Top-level declaration gen in JS only works in 0.12.1+ |
+| 2.3.20          | 0.10.0 -                   |                                                       |
+| 2.3.20-RC3      | 0.10.0 - [0.11.3]          |                                                       |
+| 2.3.20-RC2      | 0.10.0 - [0.11.3]          |                                                       |
+| 2.3.20-RC       | 0.10.0 - [0.11.3]          |                                                       |
+| 2.3.20-Beta2    | 0.10.0 - [0.11.3]          |                                                       |
+| 2.3.20-Beta1    | 0.10.0 - [0.11.3]          |                                                       |
+| 2.3.20-dev-7791 | 0.10.0 - [0.10.2]          |                                                       |
+| 2.3.20-dev-5437 | 0.9.1 - [0.10.3]           |                                                       |
+| 2.3.10-RC       | 0.9.1 - [0.10.3]           |                                                       |
+| 2.3.0           | 0.9.1 -                    | [1]                                                   |
+| 2.3.0-RC3       | 0.6.9, 0.6.11 - [0.9.2]    |                                                       |
+| 2.3.0-RC2       | 0.6.9, 0.6.11 - [0.9.2]    |                                                       |
+| 2.3.0-RC        | 0.6.9, 0.6.11 - [0.9.2]    | Reporting doesn't work until `0.7.3`                  |
+| 2.3.0-Beta2     | 0.6.9, 0.6.11 - [0.9.2]    | Reporting doesn't work until `0.7.3`                  |
+| 2.3.0-Beta1     | 0.6.9, 0.6.11 - [0.9.2]    |                                                       |
+| 2.2.21          | 0.6.6 -                    |                                                       |
+| 2.2.20          | 0.6.6 -                    |                                                       |
+| 2.2.10          | 0.4.0 - 0.6.5              |                                                       |
+| 2.2.0           | 0.4.0 - 0.6.5              |                                                       |
+| 2.1.21          | 0.3.1 - 0.3.8              |                                                       |
+| 2.1.20          | 0.1.2 - 0.3.0              |                                                       |
 
 [1]: Metro versions 0.6.9–0.9.0 had a [version comparison bug](https://github.com/ZacSweers/metro/issues/1544) that caused them to incorrectly select a compat module for Kotlin 2.2.20 when running on the Kotlin 2.3.0 final release. This was fixed in 0.9.1.
 
@@ -54,15 +66,18 @@ IDEs have their own compatibility story with Kotlin versions. The Kotlin IDE plu
 
 The following Kotlin versions are tested via CI:
 
-| Kotlin Version  |
-|-----------------|
-| 2.3.20-dev-5706 |
-| 2.3.20-Beta2    |
-| 2.3.20-Beta1    |
-| 2.3.10          |
-| 2.3.0           |
-| 2.2.21          |
-| 2.2.20          |
+| Kotlin Version |
+|----------------|
+| 2.4.0-dev-2124 |
+| 2.4.0-Beta2    |
+| 2.4.0-Beta1    |
+| 2.3.21-RC2     |
+| 2.3.21-RC      |
+| 2.3.20         |
+| 2.3.10         |
+| 2.3.0          |
+| 2.2.21         |
+| 2.2.20         |
 
 !!! note
     Versions without dedicated compiler-compat modules will use the nearest available implementation _below_ that version. See [`compiler-compat/version-aliases.txt`](https://github.com/ZacSweers/metro/blob/main/compiler-compat/version-aliases.txt) for the full list.
@@ -73,9 +88,13 @@ The following Kotlin versions are tested via CI:
 
 The following IDE versions are tested via IDE integration tests:
 
-| IntelliJ IDEA | Android Studio            |
-|---------------|---------------------------|
-| 2025.3.2      | 2025.3.1.6 (Panda 1 RC 1) |
+| IntelliJ IDEA | Android Studio                |
+|---------------|-------------------------------|
+| 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1)  |
+| 2026.1.1      | 2025.3.2.6 (Panda 2)          |
+|               | 2025.3.3.6 (Panda 3)          |
+|               | 2025.3.4.6 (Panda 4)          |
+|               | 2026.1.1.2 (Quail 1 Canary 2) |
 
 ## Runtime Compatibility
 

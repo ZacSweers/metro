@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.OptionalBindingBehavior
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
@@ -18,6 +19,7 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.setDeclarationsParent
@@ -37,13 +39,13 @@ internal fun copyParameterDefaultValues(
   sourceMetroParameters: Parameters,
   sourceParameters: List<IrValueParameter>,
   targetParameters: List<IrValueParameter>,
-  targetGraphParameter: IrValueParameter?,
+  containerParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
   isTopLevelFunction: Boolean = false,
 ) {
   if (sourceParameters.isEmpty()) return
   check(sourceParameters.size == targetParameters.size) {
-    "Source parameters (${sourceParameters.size}) and target parameters (${targetParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}"
+    "Source parameters (${sourceParameters.size}) and target parameters (${targetParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}\nSource: ${sourceParameters.map { "${it.name}: ${it.type}" }}\nTarget: ${targetParameters.map { "${it.name}: ${it.type}" }}"
   }
 
   /**
@@ -66,7 +68,7 @@ internal fun copyParameterDefaultValues(
       override fun visitGetValue(expression: IrGetValue, data: RemappingData): IrExpression {
         // Check if the expression is the instance receiver
         if (expression.symbol == providerFunction?.dispatchReceiverParameter?.symbol) {
-          return IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, targetGraphParameter!!.symbol)
+          return IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, containerParameter!!.symbol)
         }
         val index = sourceParameters.indexOfFirst { it.symbol == expression.symbol }
         if (index != -1) {
@@ -111,27 +113,44 @@ internal fun copyParameterDefaultValues(
     val targetParameter = targetParameters[index]
     val remappingData = RemappingData(parameter.parent, targetParameter.parent)
     if (wrapInProvider) {
+      // When the source parameter is itself a Function0 treated as a provider intrinsic
+      // (enableFunctionProviders), the default expression is already a () -> T lambda and
+      // can be passed directly to provider(fn: () -> T): Provider<T>. Otherwise, we wrap
+      // the default expression in a lambda so `provider { <expr> }` produces Provider<T>.
+      val isFunctionProvider =
+        context.options.enableFunctionProviders &&
+          parameter.type.rawTypeOrNull()?.classId == Symbols.ClassIds.function0
+      val valueType =
+        if (isFunctionProvider) {
+          parameter.type.requireSimpleType(parameter).arguments[0].typeOrFail
+        } else {
+          parameter.type
+        }
       val provider =
         IrCallImpl.fromSymbolOwner(
             SYNTHETIC_OFFSET,
             SYNTHETIC_OFFSET,
-            parameter.type.wrapInProvider(context.metroSymbols.metroProvider),
+            valueType.wrapInProvider(context.metroSymbols.metroProvider),
             context.metroSymbols.metroProviderFunction,
           )
           .apply {
-            typeArguments[0] = parameter.type
+            typeArguments[0] = valueType
+            val remappedDefault =
+              defaultValue.expression
+                .deepCopyWithSymbols(initialParent = parameter.parent)
+                .transform(transformer, remappingData)
             arguments[0] =
-              irLambda(
-                parent = targetParameter.parent,
-                valueParameters = emptyList(),
-                returnType = parameter.type,
-                receiverParameter = null,
-              ) {
-                +irReturn(
-                  defaultValue.expression
-                    .deepCopyWithSymbols(initialParent = parameter.parent)
-                    .transform(transformer, remappingData)
-                )
+              if (isFunctionProvider) {
+                remappedDefault
+              } else {
+                irLambda(
+                  parent = targetParameter.parent,
+                  valueParameters = emptyList(),
+                  returnType = valueType,
+                  receiverParameter = null,
+                ) {
+                  +irReturn(remappedDefault)
+                }
               }
           }
       targetParameter.defaultValue =

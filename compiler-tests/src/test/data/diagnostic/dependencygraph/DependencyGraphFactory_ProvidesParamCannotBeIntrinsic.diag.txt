@@ -1,0 +1,7 @@
+/DependencyGraphFactory_ProvidesParamCannotBeIntrinsic.kt:20:25: error: `@Provides` graph factory parameters may not be intrinsic types, but `string` is `Provider<Double>`. Remove the wrapper and let Metro handle the underlying type directly.
+
+/DependencyGraphFactory_ProvidesParamCannotBeIntrinsic.kt:21:29: error: `@Provides` graph factory parameters may not be intrinsic types, but `lazyTarget` is `Lazy<Int>`. Remove the wrapper and let Metro handle the underlying type directly.
+
+/DependencyGraphFactory_ProvidesParamCannotBeIntrinsic.kt:22:26: error: `@Provides` graph factory parameters may not be intrinsic types, but `factory` is `() -> String`. Remove the wrapper and let Metro handle the underlying type directly. Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function literal types are treated as provider types by Metro and cannot be unique bindings on the graph.
+
+/DependencyGraphFactory_ProvidesParamCannotBeIntrinsic.kt:23:51: error: `@BindsInstance` graph factory parameters may not be intrinsic types, but `bindsInstanceFactory` is `() -> Long`. Remove the wrapper and let Metro handle the underlying type directly. Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function literal types are treated as provider types by Metro and cannot be unique bindings on the graph.

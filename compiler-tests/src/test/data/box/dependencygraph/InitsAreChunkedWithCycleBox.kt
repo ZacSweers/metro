@@ -1,6 +1,6 @@
 // Sample dependency graph demonstrating 30 scoped provider functions in a cycle
 // https://github.com/ZacSweers/metro/issues/645
-@SingleIn(AppScope::class) @Inject class Service1(val s30: Provider<Service30>)
+@SingleIn(AppScope::class) @Inject class Service1(val s30: () -> Service30)
 
 @SingleIn(AppScope::class) @Inject class Service2(val s1: Service1)
 

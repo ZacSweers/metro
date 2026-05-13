@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
+import dev.zacsweers.metro.compiler.fir.isIde
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
@@ -40,9 +41,10 @@ internal object InteropAnnotationChecker : FirAnnotationChecker(MppCheckerKind.C
 
     val session = context.session
     val builtIns = session.metroFirBuiltIns
-    val severity = builtIns.options.interopAnnotationsNamedArgSeverity
+    val severity = builtIns.options.interopAnnotationsNamedArgSeverity.resolve(session.isIde())
     if (severity == MetroOptions.DiagnosticSeverity.NONE) {
-      // Should never happen as we never exec this checker if the severity is NONE
+      // Never report when resolved severity is NONE. The annotation checker can still be installed
+      // for IDE-only severities in CLI, in which case we short-circuit here.
       return
     }
 
@@ -82,7 +84,7 @@ internal object InteropAnnotationChecker : FirAnnotationChecker(MppCheckerKind.C
           when (severity) {
             ERROR -> INTEROP_ANNOTATION_ARGS_ERROR
             WARN -> INTEROP_ANNOTATION_ARGS_WARNING
-            NONE -> return
+            else -> return
           }
         reporter.reportOn(
           arg.source ?: source,

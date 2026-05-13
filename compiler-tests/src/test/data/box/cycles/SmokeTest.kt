@@ -8,7 +8,7 @@ interface SmokeTestGraph {
   }
 
   @Inject
-  class Foo(val barProvider: Provider<Bar>)
+  class Foo(val barProvider: () -> Bar)
 
   @Inject
   class Bar(val foo: Foo, val message: String)

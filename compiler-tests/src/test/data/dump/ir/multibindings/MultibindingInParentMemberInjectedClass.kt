@@ -49,15 +49,15 @@ class BFragment : Fragment() {
 
 @Inject
 class ViewModelFactory constructor(
-  private val viewModels: Map<KClass<*>, Provider<ViewModel>>,
+  private val viewModels: Map<KClass<*>, () -> ViewModel>,
 )
 
 @Inject
 @ContributesIntoMap(AppScope::class)
-@ClassKey(AViewModel::class)
+@ClassKey
 class AViewModel : ViewModel()
 
 @Inject
 @ContributesIntoMap(AppScope::class)
-@ClassKey(BViewModel::class)
+@ClassKey
 class BViewModel : ViewModel()

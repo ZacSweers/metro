@@ -1,0 +1,15 @@
+/IllegalTypes.kt:4:1: error: Annotation classes cannot be annotated with @BindingContainer.
+
+/IllegalTypes.kt:7:1: error: Enum classes cannot be annotated with @BindingContainer.
+
+/IllegalTypes.kt:13:3: error: Companion objects cannot be annotated with @BindingContainer.
+
+/IllegalTypes.kt:17:1: error: Sealed classes cannot be annotated with @BindingContainer.
+
+/IllegalTypes.kt:20:1: error: Sealed classes cannot be annotated with @BindingContainer.
+
+/IllegalTypes.kt:24:3: error: Inner classes cannot be annotated with @BindingContainer.
+
+/IllegalTypes.kt:29:5: error: Anonymous objects cannot be annotated with @BindingContainer.
+
+/IllegalTypes.kt:34:5: error: Local classes cannot be annotated with @BindingContainer.

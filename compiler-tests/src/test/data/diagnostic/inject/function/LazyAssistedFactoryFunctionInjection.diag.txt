@@ -1,0 +1,1 @@
+/LazyAssistedFactoryFunctionInjection.kt:18:12: error: Metro does not support injecting Lazy<MyAssistedFactory> because MyAssistedFactory is an @AssistedFactory-annotated type.

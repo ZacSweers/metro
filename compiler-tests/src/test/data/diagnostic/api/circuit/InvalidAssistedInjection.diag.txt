@@ -1,0 +1,1 @@
+/InvalidAssistedInjection.kt:19:7: error: @CircuitInject with @AssistedInject must be placed on the nested @AssistedFactory interface, not the class itself.

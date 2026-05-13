@@ -3,7 +3,7 @@
 // OPTIONAL_DEPENDENCY_BEHAVIOR: REQUIRE_OPTIONAL_BINDING
 
 @Inject
-class Example(<!METRO_ERROR!>val value: String? = null<!>)
+class Example(<!MISSING_BINDING!>val value: String? = null<!>)
 
 @DependencyGraph
 interface AppGraph {
@@ -11,5 +11,5 @@ interface AppGraph {
   val int: Int
 
   @Provides
-  fun provideInt(<!METRO_ERROR!>long: Long? = null<!>): Int = long?.toInt() ?: 3
+  fun provideInt(<!MISSING_BINDING!>long: Long? = null<!>): Int = long?.toInt() ?: 3
 }

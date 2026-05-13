@@ -53,15 +53,31 @@ internal sealed class GraphNode {
   abstract val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>
   abstract val parentGraph: GraphNode?
   abstract val typeKey: IrTypeKey
+  abstract val graphPrivateKeys: Set<IrTypeKey>
 
-  val publicAccessors: Set<IrTypeKey> by memoize { accessors.mapToSet { it.contextKey.typeKey } }
+  /**
+   * Non-private `@Binds` result type keys whose source is `@GraphPrivate`. These are "published" to
+   * child graphs as parent-resolved dependencies, since the child can't inherit and re-resolve the
+   * `@Binds` (the private original binding wouldn't be available).
+   */
+  abstract val publishedBindsKeys: Set<IrTypeKey>
 
-  val contextKey: IrContextualTypeKey by memoize { IrContextualTypeKey(typeKey) }
-
-  // For quick lookups
-  val supertypeClassIds: Set<ClassId> by memoize {
-    supertypes.mapNotNullToSet { it.classOrNull?.owner?.classId }
+  /**
+   * Set of all type keys directly provided by this node's own declarations (not inherited). Used to
+   * determine whether an inherited binding should be skipped because the child already has its own
+   * binding for the same key. Includes keys from `@Provides` (provider factories) and `@Binds`
+   * (binds callables).
+   */
+  open val directlyProvidedKeys: Set<IrTypeKey> by memoize {
+    buildSet {
+      addAll(providerFactories.keys)
+      addAll(bindsCallables.keys)
+    }
   }
+
+  abstract val publicAccessors: Set<IrTypeKey>
+  abstract val contextKey: IrContextualTypeKey
+  abstract val supertypeClassIds: Set<ClassId>
 
   val metroGraph: IrClass? by memoize { sourceGraph.metroGraphOrNull }
 
@@ -142,7 +158,15 @@ internal sealed class GraphNode {
     override val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
     override val parentGraph: GraphNode?,
     override val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
-  ) : GraphNode()
+    override val graphPrivateKeys: Set<IrTypeKey> = emptySet(),
+    override val publishedBindsKeys: Set<IrTypeKey> = emptySet(),
+  ) : GraphNode() {
+    override val publicAccessors: Set<IrTypeKey> = accessors.mapToSet { it.contextKey.typeKey }
+    override val contextKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
+    override val supertypeClassIds: Set<ClassId> = supertypes.mapNotNullToSet {
+      it.classOrNull?.owner?.classId
+    }
+  }
 
   /** A graph node for a graph being compiled in the current compilation unit. */
   data class Local(
@@ -176,9 +200,29 @@ internal sealed class GraphNode {
     val originalCreator: Creator.Factory? = null,
     override val parentGraph: GraphNode?,
     override val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
+    override val graphPrivateKeys: Set<IrTypeKey> = emptySet(),
+    override val publishedBindsKeys: Set<IrTypeKey> = emptySet(),
     var proto: DependencyGraphProto? = null,
   ) : GraphNode() {
     val hasExtensions = graphExtensions.isNotEmpty()
+
+    override val publicAccessors: Set<IrTypeKey> = accessors.mapToSet { it.contextKey.typeKey }
+    override val contextKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
+    override val supertypeClassIds: Set<ClassId> = supertypes.mapNotNullToSet {
+      it.classOrNull?.owner?.classId
+    }
+
+    override val directlyProvidedKeys: Set<IrTypeKey> by memoize {
+      buildSet {
+        addAll(providerFactories.keys)
+        addAll(bindsCallables.keys)
+        creator?.parameters?.regularParameters?.forEach { param ->
+          if (param.isBindsInstance) {
+            add(param.typeKey)
+          }
+        }
+      }
+    }
   }
 
   sealed class Creator {

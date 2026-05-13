@@ -6,7 +6,9 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -33,11 +35,24 @@ internal object MergedContributionChecker : FirClassChecker(MppCheckerKind.Commo
     declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
+    // Bail before opening a trace span when there's nothing to check.
+    val dependencyGraphAnno =
+      declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull() ?: return
+    if (dependencyGraphAnno.allScopeClassIds(session).isEmpty()) return
+    session.trace(name = { "MergedContributionChecker(${declaration.classId})" }) {
+      checkImpl(declaration)
+    }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkImpl(declaration: FirClass) {
+    val session = context.session
+    val classIds = session.classIds
 
     val dependencyGraphAnno =
       declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull() ?: return
 
-    if (dependencyGraphAnno.allScopeClassIds().isEmpty()) {
+    if (dependencyGraphAnno.allScopeClassIds(session).isEmpty()) {
       return
     }
 
@@ -73,7 +88,7 @@ internal object MergedContributionChecker : FirClassChecker(MppCheckerKind.Commo
           reporter.reportOn(
             supertype.source,
             MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-            "${dependencyGraphAnno.toAnnotationClassIdSafe(session)?.shortClassName?.asString()} declarations may not extend declarations with narrower visibility. Contributed supertype '${contributedType.classId.asFqNameString()}' is$supertypeVis $effectiveSuperVis but graph declaration '${declaration.classId.asFqNameString()}' is$declarationVis ${effectiveVisibility}.",
+            "${dependencyGraphAnno.toAnnotationClassIdSafe(session)?.shortClassName?.asString()} declarations may not extend declarations with narrower visibility. Contributed supertype '${contributedType.classId.diagnosticString}' is$supertypeVis $effectiveSuperVis but graph declaration '${declaration.classId.diagnosticString}' is$declarationVis ${effectiveVisibility}.",
           )
         }
       }

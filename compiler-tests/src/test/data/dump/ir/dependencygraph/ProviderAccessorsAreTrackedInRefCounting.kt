@@ -2,8 +2,8 @@
 interface AppGraph {
   @Provides fun provideInt(): Int = 3
 
-  val int1: Provider<Int>
-  val int2: Provider<Int>
+  val int1: () -> Int
+  val int2: () -> Int
 
   @Provides fun provideLong(): Long = 3L
 

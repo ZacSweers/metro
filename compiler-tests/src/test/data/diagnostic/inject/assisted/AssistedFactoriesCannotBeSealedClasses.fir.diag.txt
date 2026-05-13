@@ -1,1 +1,0 @@
-/AssistedFactoriesCannotBeSealedClasses.kt:(163,170): error: @AssistedFactory declarations should be non-sealed abstract classes or interfaces.

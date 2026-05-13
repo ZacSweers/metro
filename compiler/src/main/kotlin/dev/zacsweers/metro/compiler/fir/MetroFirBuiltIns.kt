@@ -5,14 +5,18 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.TraceContext
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.nio.file.Path
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
+import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
@@ -24,7 +28,31 @@ internal class MetroFirBuiltIns(
   val predicates: ExtensionPredicates,
   val options: MetroOptions,
   val compatContext: CompatContext,
+  private val traceContext: TraceContext,
 ) : FirExtensionSessionComponent(session) {
+
+  private val firDriver by memoize {
+    if (!session.isCli()) null else traceContext.newFirDriverOrNull(rawModuleName)
+  }
+
+  private val rawModuleName: String
+    get() = session.moduleData.name.asString()
+
+  private val traceCategory: String by memoize {
+    val name = rawModuleName.removePrefix("<").removeSuffix(">").ifBlank { "fir" }
+    "fir-$name"
+  }
+
+  /**
+   * Trace scope for this session, or null when tracing is disabled (IDE session or no
+   * `traceDestination`). Each FIR session gets its own trace file; the driver is closed by the IR
+   * pipeline calling [TraceContext.close] at the start of its run.
+   */
+  val traceScope: TraceScope?
+    get() {
+      val driver = firDriver ?: return null
+      return TraceScope(driver.tracer, traceCategory)
+    }
 
   val errorFunctionSymbol by memoize {
     session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, Symbols.Names.error).first {
@@ -97,6 +125,21 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
+  val hiddenFromObjCClassSymbol by memoize {
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.HiddenFromObjC)
+      as FirRegularClassSymbol?
+  }
+
+  val jvmStaticClassSymbol by memoize {
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.JvmStatic)
+      as FirRegularClassSymbol?
+  }
+
+  val jsStaticClassSymbol by memoize {
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.JsStatic)
+      as FirRegularClassSymbol?
+  }
+
   val stableClassSymbol by memoize {
     session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.Stable)
       as FirRegularClassSymbol
@@ -162,15 +205,29 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
-  internal inline fun writeDiagnostic(fileName: () -> String, text: () -> String) {
+  /**
+   * @param diagnosticKey A string identifier for the category of diagnostic being generated. This
+   *   will be treated as a prefix path segment. E.g. a key of "keys-populated" will result in
+   *   <reports-folder>/keys-populated/<fileName>
+   */
+  internal inline fun writeDiagnostic(
+    diagnosticKey: String,
+    fileName: () -> String,
+    text: () -> String,
+  ) {
     if (session.isCli() && options.reportsEnabled) {
-      options.reportsDir.value?.let { writeDiagnostic(it, fileName(), text()) }
+      options.reportsDir.value?.let { writeDiagnostic(it, diagnosticKey, fileName(), text()) }
     }
   }
 
-  private fun writeDiagnostic(reportsDir: Path, fileName: String, text: String) {
+  private fun writeDiagnostic(
+    reportsDir: Path,
+    diagnosticKey: String,
+    fileName: String,
+    text: String,
+  ) {
     reportsDir
-      .resolve(fileName)
+      .resolve(createDiagnosticReportPath(diagnosticKey, fileName))
       .apply {
         // Ensure that the path leading up to the file has been created
         createParentDirectories()
@@ -180,10 +237,21 @@ internal class MetroFirBuiltIns(
   }
 
   companion object {
-    fun getFactory(classIds: ClassIds, options: MetroOptions, compatContext: CompatContext) =
-      Factory { session ->
-        MetroFirBuiltIns(session, classIds, ExtensionPredicates(classIds), options, compatContext)
-      }
+    fun getFactory(
+      classIds: ClassIds,
+      options: MetroOptions,
+      compatContext: CompatContext,
+      traceContext: TraceContext,
+    ) = Factory { session ->
+      MetroFirBuiltIns(
+        session,
+        classIds,
+        ExtensionPredicates(classIds),
+        options,
+        compatContext,
+        traceContext,
+      )
+    }
   }
 }
 

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
@@ -11,6 +10,8 @@ import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.tracing.trace
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -18,6 +19,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.name.SpecialNames
 
 /**
  * Checker for injected functions.
@@ -33,19 +35,30 @@ internal object FunctionInjectionChecker : FirCallableDeclarationChecker(MppChec
     if (declaration !is FirFunction) return
     val session = context.session
     if (!with(session.compatContext) { declaration.isNamedFunction() }) return
-
     val source = declaration.source ?: return
+    session.trace(name = { "FunctionInjectionChecker(${declaration.symbol.callableId})" }) {
+      checkImpl(declaration, source)
+    }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkImpl(declaration: FirFunction, source: KtSourceElement) {
+    val session = context.session
     val classIds = session.classIds
 
     if (declaration.dispatchReceiverType != null) return // Instance function, setter injection
     if (!declaration.isAnnotatedWithAny(session, classIds.injectAnnotations)) return
 
     if (declaration.typeParameters.isNotEmpty()) {
-      reporter.reportOn(
-        source,
-        FUNCTION_INJECT_TYPE_PARAMETERS_ERROR,
-        "Injected functions cannot be generic.",
-      )
+      for (tp in declaration.typeParameters) {
+        if (tp.symbol.isReified) {
+          reporter.reportOn(
+            source,
+            FUNCTION_INJECT_TYPE_PARAMETERS_ERROR,
+            "Injected functions cannot have reified generics.",
+          )
+        }
+      }
     }
 
     declaration.symbol.receiverParameterSymbol?.let { param ->
@@ -64,9 +77,20 @@ internal object FunctionInjectionChecker : FirCallableDeclarationChecker(MppChec
           "Context parameters cannot be annotated @OptionalBinding.",
         )
       }
+
+      if (
+        contextParam.name == SpecialNames.UNDERSCORE_FOR_UNUSED_VAR &&
+          contextParam.isAnnotatedWithAny(session, classIds.assistedAnnotations)
+      ) {
+        reporter.reportOn(
+          contextParam.source ?: source,
+          FUNCTION_INJECT_ERROR,
+          "`_` is not allowed for `@Assisted` parameters because assisted factories require matching parameter names.",
+        )
+      }
     }
 
-    val scope = declaration.symbol.metroAnnotations(session).scope
+    val scope = declaration.symbol.metroAnnotations().scope
 
     if (scope != null) {
       reporter.reportOn(
@@ -77,21 +101,15 @@ internal object FunctionInjectionChecker : FirCallableDeclarationChecker(MppChec
     }
 
     for (param in declaration.valueParameters) {
-      val annotations =
-        param.symbol.metroAnnotations(
-          session,
-          MetroAnnotations.Kind.OptionalBinding,
-          MetroAnnotations.Kind.Assisted,
-          MetroAnnotations.Kind.Qualifier,
-        )
+      val annotations = param.symbol.metroAnnotations()
       if (annotations.isAssisted) continue
       validateInjectionSiteType(
-        session,
-        param.returnTypeRef,
-        annotations.qualifier,
-        param.source ?: source,
-        annotations.isOptionalBinding,
-        param.symbol.hasDefaultValue,
+        session = session,
+        typeRef = param.returnTypeRef,
+        qualifier = annotations.qualifier,
+        source = param.source ?: source,
+        isAccessor = annotations.isOptionalBinding,
+        hasDefault = param.symbol.hasDefaultValue,
       )
     }
   }

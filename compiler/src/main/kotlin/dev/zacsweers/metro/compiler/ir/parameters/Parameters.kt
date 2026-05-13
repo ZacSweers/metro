@@ -142,11 +142,11 @@ internal class Parameters(
         append("fun ")
       }
       dispatchReceiverParameter?.let {
-        append(it.typeKey.render(short = true, includeQualifier = false))
+        append(it.typeKey.renderForDiagnostic(short = true, includeQualifier = false))
         append('.')
       }
       extensionReceiverParameter?.let {
-        append(it.typeKey.render(short = true, includeQualifier = false))
+        append(it.typeKey.renderForDiagnostic(short = true, includeQualifier = false))
         append('.')
       }
       val name: Name? =
@@ -168,7 +168,7 @@ internal class Parameters(
         if (!it.returnType.isUnit()) {
           append(": ")
           val typeKey = IrTypeKey(it.returnType)
-          append(typeKey.render(short = true, includeQualifier = false))
+          append(typeKey.renderForDiagnostic(short = true, includeQualifier = false))
         }
       }
     }

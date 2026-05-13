@@ -232,7 +232,7 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-        @Inject
+        @AssistedInject
         class ExampleClass<T> {
           @AssistedFactory
           interface Factory {

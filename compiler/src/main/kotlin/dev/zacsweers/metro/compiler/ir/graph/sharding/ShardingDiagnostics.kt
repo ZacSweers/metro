@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph.sharding
 import androidx.collection.MutableObjectIntMap
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -62,7 +63,7 @@ internal object ShardingDiagnostics {
     // Track outgoing cross-shard edges per shard to identify hotspots
     val crossShardEdgeCounts = IntArray(shards.size)
     for (shard in shards) {
-      for (binding in shard.bindings) {
+      for (binding in shard.bindings.filterOutAssistedInjectConstructors()) {
         val deps = bindingGraph.requireBinding(binding.typeKey).dependencies
         for (dep in deps) {
           val depShard = bindingToShard.getOrDefault(dep.typeKey, -1)
@@ -105,7 +106,7 @@ internal object ShardingDiagnostics {
     var crossShardDepCount = 0
     var reportedCount = 0
     for (shard in shards) {
-      for (binding in shard.bindings) {
+      for (binding in shard.bindings.filterOutAssistedInjectConstructors()) {
         val deps = bindingGraph.requireBinding(binding.typeKey).dependencies
         deps.forEach { dep ->
           val depShard = bindingToShard.getOrDefault(dep.typeKey, -1)
@@ -129,5 +130,13 @@ internal object ShardingDiagnostics {
     }
     appendLine()
     appendLine("Total cross-shard dependencies: $crossShardDepCount")
+  }
+
+  // We track @AssistedInject constructors from @AssistedFactory targets, but they are not
+  // actually on the graph
+  private fun List<ShardBinding>.filterOutAssistedInjectConstructors(): List<ShardBinding> {
+    return filter { binding ->
+      (binding.binding as? IrBinding.ConstructorInjected)?.isAssisted != true
+    }
   }
 }

@@ -9,37 +9,38 @@ import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.SimpleDirectivesContainer
 
 object MetroDirectives : SimpleDirectivesContainer() {
-  val ENABLE_IF_PROPERTY_SET by
-    stringDirective("Ignores this test unless a given property is set to true")
+  val METRO_IGNORE by directive("Ignores this test unless a given property is set to true")
   val DISABLE_METRO by directive("Disables metro entirely on this module compilation if present.")
   val COMPILER_VERSION by stringDirective("Target kotlin compiler version, if any")
+  val MIN_COMPILER_VERSION by stringDirective("Minimum kotlin compiler version (inclusive), if any")
+  val MAX_COMPILER_VERSION by stringDirective("Maximum kotlin compiler version (inclusive), if any")
   // TODO eventually support multiple outputs
   val CUSTOM_TEST_DATA_PER_COMPILER_VERSION by
     directive("Generate custom test data files per compiler version")
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
-  val TRANSFORM_PROVIDERS_TO_PRIVATE by
-    valueDirective("Controls automatic transformation of providers to be private.") {
-      it.toBoolean()
-    }
   val GENERATE_CONTRIBUTION_HINTS by
     valueDirective("Enable/disable generation of contribution hint generation.") { it.toBoolean() }
   val GENERATE_CONTRIBUTION_HINTS_IN_FIR by
     directive("Enable/disable generation of contribution hint generation in FIR.")
-  val PUBLIC_PROVIDER_SEVERITY by
+  val PUBLIC_SCOPED_PROVIDER_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
-      "Control diagnostic severity reporting of public providers."
+      "Control diagnostic severity reporting of public scoped providers."
     )
   val SHRINK_UNUSED_BINDINGS by
     valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
-  val CHUNK_FIELD_INITS by
-    valueDirective("Enable/disable chunking of field initializers.") { it.toBoolean() }
   val STATEMENTS_PER_INIT_FUN by
     valueDirective("Maximum statements per init function when chunking is enabled.") { it.toInt() }
   val ENABLE_GRAPH_SHARDING by
     valueDirective("Enable/disable graph sharding of binding graphs.") { it.toBoolean() }
   val KEYS_PER_GRAPH_SHARD by
     valueDirective("Maximum number of binding keys per graph shard when sharding is enabled.") {
+      it.toInt()
+    }
+  val MERGED_SUPERTYPE_CHUNK_SIZE by
+    valueDirective(
+      "Maximum number of contribution supertypes per chunk when merging contributions in IR. 0 disables chunking."
+    ) {
       it.toInt()
     }
   val ENABLE_SWITCHING_PROVIDERS by
@@ -78,6 +79,20 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive(
       "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations."
     )
+  val PARALLEL_THREADS by
+    valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
+  val DESUGARED_PROVIDER_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of uses of the desugared `Provider<T>` form. Prefer the function syntax form `() -> T` instead."
+    )
+  val ENABLE_KCLASS_TO_CLASS_INTEROP by
+    directive("Enable KClass/Class interop for multibinding map keys.")
+  val GENERATE_CONTRIBUTION_PROVIDERS by
+    valueDirective(
+      "Generate top-level contribution provider classes with @Provides functions instead of nested @Binds interfaces."
+    ) {
+      it.toBoolean()
+    }
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
@@ -130,9 +145,21 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val CHECK_REPORTS by
     stringDirective(
       "Specifies report file names to verify against expected files. Can be specified multiple times. " +
-        "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir-test.AppGraph'. " +
-        "Expected files should be named '<testFile>.<reportName>.txt'."
+        "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir/test/AppGraph'. " +
+        "Expected files should be named '<testFile>/<diagnosticKey>/<path>/<reportName>.txt'."
     )
+  val TRACE_DESTINATION by
+    stringDirective(
+      "Relative path to a directory to dump Metro trace files. Example: 'metro/traces'."
+    )
+  val CHECK_TRACES by
+    directive(
+      "Verifies that Metro trace files were generated and follow the expected naming pattern. " +
+        "Verification runs inside MetroReportsChecker."
+    )
+  val ENABLE_CIRCUIT by directive("Enables Circuit code gen.")
+  val METRO_DUMP_KT_IR by
+    directive("Like DUMP_KT_IR but uses betterDumpKotlinLike() for nested class name rendering.")
 
   fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
     return WITH_DAGGER in directives ||

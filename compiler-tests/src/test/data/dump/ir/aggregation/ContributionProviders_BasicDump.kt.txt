@@ -1,0 +1,124 @@
+// FILE: ContributionProviders_BasicDump.kt
+
+@ContributesBinding(scope = AppScope::class)
+@Inject
+internal class Impl : Base {
+  val string: String
+    field = string
+    get
+
+  val longProvider: Function0<Long>
+    field = longProvider
+    get
+
+  val longFun: Function0<Long>
+    field = longFun
+    get
+
+  val lazyBool: Lazy<Boolean>
+    field = lazyBool
+    get
+
+  val providerOfLazyDouble: Function0<Lazy<Double>>
+    field = providerOfLazyDouble
+    get
+
+  constructor(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+interface Base {
+}
+
+// FILE: ImplContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class ImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = Impl::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    class ProvideImplAsBaseMetroFactory : Factory<Base> {
+      private /* final field */ val string: Provider<String> = string
+      private /* final field */ val longProvider: Provider<Long> = longProvider
+      private /* final field */ val lazyBool: Provider<Boolean> = lazyBool
+      private /* final field */ val providerOfLazyDouble: Provider<Double> = providerOfLazyDouble
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Base> {
+          return ProvideImplAsBaseMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun provideImplAsBase(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
+          return ToAppScope.provideImplAsBase(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
+        }
+
+      }
+
+      @HiddenFromObjC
+      private constructor(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Base {
+        return ProvideImplAsBaseMetroFactory/* companion */.provideImplAsBase(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = DoubleCheck/* companion */.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = ProviderOfLazy/* companion */.create<Double>(provider = <this>.#providerOfLazyDouble))
+      }
+
+      @HiddenFromObjC
+      fun mirrorFunction(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    fun provideImplAsBase(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
+      return Impl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: implContributionsToAppScopeAppScope.kt
+package metro.hints
+
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+fun AppScope(contributed: ImplContributions.ToAppScope) {
+  return error(message = "Never called")
+}
+

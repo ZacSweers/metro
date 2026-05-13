@@ -1,0 +1,5 @@
+/module_main_MissingBindingHintsShouldReportInternalOnlyIfInternal.kt:18:7: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Base
+
+    Base is requested at
+        [AppGraph] AppGraph.base
+

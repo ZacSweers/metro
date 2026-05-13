@@ -194,7 +194,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
         source(
           """
           @Inject
-          fun App(int: Provider<Int>): Int {
+          fun App(int: () -> Int): Int {
             return int()
           }
 

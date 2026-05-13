@@ -1,0 +1,88 @@
+# kempt configuration: https://github.com/ZacSweers/kempt
+# Run `kempt --help` to see all options.
+
+[ktfmt]
+version = "0.62"
+
+[gjf]
+version = "1.35.0"
+
+[license-header]
+file = "config/license-header.txt"
+
+[ktfmt.license-header]
+excludes = "config/license-header-excludes-kt.txt"
+
+[gjf.license-header]
+excludes = "config/license-header-excludes-java.txt"
+
+[paths]
+# Universal exclusions, applied before any tool's filter. Includes the
+# Dagger-derived files and generated Java sources that should be left alone
+# by every step (whitespace, ktfmt, gjf, license-header).
+#
+# Glob lists are polymorphic: they accept either an inline array (below)
+# or a path to a text file. Metro's per-language exclude lists could
+# alternatively be referenced via two separate file pointers, but we keep
+# them inline here so the universal list reads in one place.
+exclude = [
+  "**/build/**",
+  "**/target/**",
+  "**/src/test/data/**",
+  "**/src/*/test/data/**",
+  # Java-side: generated test classes and the upstream-vendored math util.
+  "**/*Generated.java",
+  "**/BetweennessCentrality.java",
+  # Kotlin-side: vendored Dagger files that should track upstream verbatim.
+  "**/AbstractMapFactory.kt",
+  "**/Assisted.kt",
+  "**/AssistedFactory.kt",
+  "**/BaseDoubleCheck.kt",
+  "**/ClassKey.kt",
+  "**/DelegateFactory.kt",
+  "**/DoubleCheck.kt",
+  "**/DoubleCheckCycleTest.kt",
+  "**/DoubleCheckTest.kt",
+  "**/ElementsIntoSet.kt",
+  "**/InstanceFactory.kt",
+  "**/InstanceFactoryTest.kt",
+  "**/IntKey.kt",
+  "**/IntoMap.kt",
+  "**/IntoSet.kt",
+  "**/KotlinToolingVersion.kt",
+  "**/Lock.kt",
+  "**/LongKey.kt",
+  "**/MapFactory.kt",
+  "**/MapKey.kt",
+  "**/MapLazyFactory.kt",
+  "**/MapProviderFactory.kt",
+  "**/MapProviderFactoryTest.kt",
+  "**/MapProviderLazyFactory.kt",
+  "**/MembersInjector.kt",
+  "**/MemoizedSequence.kt",
+  "**/Multibinds.kt",
+  "**/NameAllocator.kt",
+  "**/NameAllocatorTest.kt",
+  "**/ProviderOfLazy.kt",
+  "**/SetFactory.kt",
+  "**/SetFactoryTest.kt",
+  "**/StringKey.kt",
+  "**/collectionUtil.kt",
+  "**/ir/cache/*.kt",
+]
+
+[ktfmt.paths]
+# Match what scripts/format.sh did: only files under src/ plus top-level
+# .gradle.kts / .main.kts.
+include = [
+  "**/src/**/*.kt",
+  "**/src/**/*.kts",
+  "**/*.gradle.kts",
+  "**/*.main.kts",
+]
+
+[gjf.paths]
+include = ["**/src/**/*.java"]
+
+[hook]
+mode = "format"

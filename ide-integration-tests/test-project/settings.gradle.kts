@@ -14,9 +14,7 @@ pluginManagement {
     maven("https://redirector.kotlinlang.org/maven/bootstrap")
     maven("https://redirector.kotlinlang.org/maven/dev/")
   }
-  plugins {
-    id("dev.zacsweers.metro") version metroVersion
-  }
+  plugins { id("dev.zacsweers.metro") version metroVersion }
 }
 
 dependencyResolutionManagement {

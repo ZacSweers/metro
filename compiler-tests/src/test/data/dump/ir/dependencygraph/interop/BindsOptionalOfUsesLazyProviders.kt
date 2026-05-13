@@ -14,10 +14,10 @@ interface Bindings {
 interface AppGraph {
   // Two accessors
   val string: Optional<String>
-  val stringProvider: Provider<Optional<String>>
+  val stringProvider: () -> Optional<String>
 
   // Single accessor, inline lambda wrapper
-  val intProvider: Provider<Optional<Int>>
+  val intProvider: () -> Optional<Int>
 
   @Provides @SingleIn(AppScope::class) fun provideString(): String = "Hello"
   @Provides fun provideInt(): Int = 3

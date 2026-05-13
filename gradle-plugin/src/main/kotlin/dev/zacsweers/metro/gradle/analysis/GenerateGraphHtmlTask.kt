@@ -1703,8 +1703,9 @@ ${packages.mapIndexed { i, pkg ->
     }
 
     // Build map from (consumerKey, targetType) -> syntheticKey for default value edge routing
-    val defaultValueNodeMap =
-      defaultValueNodes.associate { (it.consumerKey to it.targetType) to it.syntheticKey }
+    val defaultValueNodeMap = defaultValueNodes.associate {
+      (it.consumerKey to it.targetType) to it.syntheticKey
+    }
 
     // Build set of scoped binding keys for inherited scope detection
     val scopedKeys = metadata.bindings.filter { it.isScoped }.map { it.key }.toSet()

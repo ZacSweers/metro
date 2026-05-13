@@ -1,0 +1,3 @@
+/ProvidesMustHaveABody_AbstractClass.kt:5:26: error: `@Provides` declarations must have bodies.
+
+/ProvidesMustHaveABody_AbstractClass.kt:6:26: error: `@Provides` declarations must have bodies.

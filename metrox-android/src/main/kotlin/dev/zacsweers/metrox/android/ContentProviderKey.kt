@@ -9,6 +9,6 @@ import kotlin.reflect.KClass
 /**
  * A [MapKey] annotation for binding [ContentProviders][ContentProvider] into a multibinding map.
  */
-@MapKey
+@MapKey(implicitClassKey = true)
 @Target(AnnotationTarget.CLASS)
-public annotation class ContentProviderKey(val value: KClass<out ContentProvider>)
+public annotation class ContentProviderKey(val value: KClass<out ContentProvider> = Nothing::class)

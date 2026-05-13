@@ -16,7 +16,7 @@ import dev.zacsweers.metrox.android.ActivityKey
 import dev.zacsweers.metrox.viewmodel.MetroViewModelFactory
 
 @ContributesIntoMap(AppScope::class, binding<Activity>())
-@ActivityKey(MainActivity::class)
+@ActivityKey
 @Inject
 class MainActivity(private val metroVmf: MetroViewModelFactory) : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {

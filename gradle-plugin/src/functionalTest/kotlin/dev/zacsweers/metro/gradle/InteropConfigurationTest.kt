@@ -11,7 +11,7 @@ class InteropConfigurationTest {
   @Test
   fun `includeDagger adds interop-dagger to classpath`() {
     val fixture =
-      object : MetroProject() {
+      object : MetroProject(multiplatform = false) {
         override fun sources() =
           listOf(
             source(

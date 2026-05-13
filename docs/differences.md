@@ -8,6 +8,7 @@
     * There is no Producers support.
     * There is no Hilt support, though some features are similar in the same way that Anvil’s features are similar.
     * There is no `@Reusable`.
+    * There is no `@LazyClassKey`.
     * There is no `@BindsOptionalOf`. Instead, Metro supports default [optional bindings](bindings.md#optional-bindings).
         * Metro does support [interop](interop.md) with Dagger's `@BindsOptionalOf` annotation.
     * Metro can inject private properties, functions, and constructors.
@@ -19,6 +20,7 @@
     * Metro graph classes may not directly extend other graph classes. You should use [graph extensions](dependency-graphs.md#graph-extensions) instead in Metro.
       * Dagger technically allows this, but only accessors and injectors cross these boundaries.
     * Metro prohibits scopes on `@Binds` declarations. Either use `@Provides` or move the scope to the source class type.
+    * Metro does not require generic BindingContainers (i.e. Dagger Modules) to be abstract.
 
 === "Kotlin-Inject"
 

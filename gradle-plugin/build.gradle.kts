@@ -19,10 +19,20 @@ plugins {
 }
 
 metroProject {
+  jvmTarget.set(libs.versions.compilerJvmTarget)
   // Lower version for Gradle compat
-  progressiveMode.set(false)
-  @Suppress("DEPRECATION") languageVersion.set(KotlinVersion.KOTLIN_2_0)
-  @Suppress("DEPRECATION") apiVersion.set(KotlinVersion.KOTLIN_2_0)
+  // https://docs.gradle.org/current/userguide/compatibility.html#kotlin
+  languageVersion.set(KotlinVersion.KOTLIN_2_2)
+  apiVersion.set(KotlinVersion.KOTLIN_2_2)
+}
+
+// Gradle continues to have the most obvious APIs
+listOf("runtimeElements", "apiElements").forEach { configurationName ->
+  configurations.named(configurationName).configure {
+    attributes {
+      attribute(GradlePluginApiVersion.GRADLE_PLUGIN_API_VERSION_ATTRIBUTE, objects.named("8.8"))
+    }
+  }
 }
 
 tasks.withType<ValidatePlugins>().configureEach { enableStricterValidation = true }
@@ -132,6 +142,7 @@ dependencies {
   functionalTestImplementation(libs.kotlin.test)
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)
+  // TODO really only here for extensions tests
   functionalTestRuntimeOnly(project(":compiler"))
   functionalTestRuntimeOnly(project(":runtime"))
   functionalTestRuntimeOnly(project(":interop-dagger"))

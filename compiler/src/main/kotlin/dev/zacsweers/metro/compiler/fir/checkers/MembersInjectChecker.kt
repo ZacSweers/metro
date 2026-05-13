@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.hasMetroDefault
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
@@ -13,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isClass
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -23,6 +25,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.fromPrimaryConstructor
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isFinal
@@ -34,20 +37,25 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.isMarkedNullable
 import org.jetbrains.kotlin.fir.types.isUnit
 
-// TODO
-//  suggest private?
 internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
     declaration.source ?: return
     val session = context.session
-
-    // TODO put all these into a set to check?
+    // Cheap relevance gates before opening a trace span.
     if (declaration.symbol.isDependencyGraph(session)) return
     if (declaration.symbol.isGraphFactory(session)) return
     if (declaration.symbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations))
       return
+    session.trace(name = { "MembersInjectChecker(${declaration.classId})" }) {
+      checkImpl(declaration)
+    }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkImpl(declaration: FirClass) {
+    val session = context.session
 
     val isConstructorInjected by memoize {
       declaration.symbol.findInjectLikeConstructors(session, checkClass = true).firstOrNull() !=
@@ -60,7 +68,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     for (callable in declaration.symbol.directCallableSymbols()) {
       if (callable is FirConstructorSymbol || callable is FirEnumEntrySymbol) continue
-      val annotations = callable.metroAnnotations(session)
+      val annotations = callable.metroAnnotations()
       if (!annotations.isInject) continue
 
       if (!isInClass) {
@@ -130,6 +138,16 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             MetroDiagnostics.MEMBERS_INJECT_TYPE_PARAMETERS_ERROR,
             "Injected member functions cannot have type parameters.",
           )
+        }
+
+        for (param in callable.valueParameterSymbols) {
+          if (param.hasMetroDefault(session)) {
+            reporter.reportOn(
+              param.defaultValueSource ?: param.source,
+              MetroDiagnostics.MEMBERS_INJECT_ERROR,
+              "Function member injection cannot have default values.",
+            )
+          }
         }
       }
     }

@@ -34,7 +34,7 @@ interface ParentComponent {
   val childFactory: ChildComponent.Factory
 }
 
-// Child component with NESTED Dagger modules
+// Child component with nested Dagger modules
 @MergeSubcomponent(ChildScope::class)
 interface ChildComponent {
 
@@ -42,7 +42,6 @@ interface ChildComponent {
 
   val grandchildFactory: GrandchildComponent.Factory
 
-  @GraphExtension.Factory
   @MergeSubcomponent.Factory
   @ContributesTo(AppScope::class)
   interface Factory {

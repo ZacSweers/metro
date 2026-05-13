@@ -5,5 +5,5 @@ interface AppGraph {
 
   val scalarString: String
   val scalarString2: String
-  val providerString: Provider<String>
+  val providerString: () -> String
 }

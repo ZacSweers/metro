@@ -15,5 +15,5 @@ object TestBindings {
 }
 
 fun example() {
-  <!METRO_ERROR!>createDynamicGraph<AppGraph>(TestBindings)<!>
+  <!DUPLICATE_BINDING!>createDynamicGraph<AppGraph>(TestBindings)<!>
 }

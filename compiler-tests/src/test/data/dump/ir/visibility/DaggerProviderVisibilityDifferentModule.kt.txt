@@ -1,0 +1,114 @@
+// MODULE: lib
+// FILE: InternalModule.kt
+package test
+
+@Module
+class InternalModule {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 362, endOffset = 407, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: InternalModule = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: InternalModule): Factory<Int> {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideInt(instance: InternalModule): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: InternalModule) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  internal fun provideInt(): Int {
+    return 42
+  }
+
+}
+
+// MODULE: main
+// FILE: ExampleGraph.kt
+package test
+
+@DependencyGraph(bindingContainers = [InternalModule::class])
+interface ExampleGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : ExampleGraph {
+    private val internalModuleInstance: InternalModule
+      field = InternalModule()
+
+    private val internalModuleInstanceProvider: Provider<InternalModule>
+      field = InstanceFactory/* companion */.invoke<InternalModule>(value = <this>.#internalModuleInstance)
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return InternalModule.ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#internalModuleInstance)
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): ExampleGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val int: Int
+    abstract get
+
+}
+

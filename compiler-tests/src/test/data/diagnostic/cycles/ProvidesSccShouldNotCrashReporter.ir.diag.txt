@@ -1,0 +1,13 @@
+/ProvidesSccShouldNotCrashReporter.kt:12:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
+Cycle:
+    B --> A --> B
+
+Trace:
+    B is injected at
+        [AppGraph] AppGraph.provideA(…, b)
+    A is injected at
+        [AppGraph] AppGraph.provideB(…, a)
+    B is injected at
+        [AppGraph] AppGraph.provideA(…, b)
+    ...
+

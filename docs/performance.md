@@ -101,6 +101,11 @@ On Android, the differences become more pronounced. Metro and Dagger perform sim
 
 Below are some results from real-world projects, shared with the developers' permission.
 
+!!! note "Square"
+    Square wrote a blog post about their migration to Metro: [Metro Migration at Square Android](https://engineering.block.xyz/blog/metro-migration-at-square-android)
+
+    > How Square Android migrated its monorepo from Dagger 2 and Anvil to Metro over nine months and saved thousands of hours of build time.
+
 !!! note "Cash App"
     Cash App wrote a blog post about their migration to Metro: [Cash App Moves to Metro](https://code.cash.app/cash-android-moves-to-metro)
 
@@ -147,6 +152,37 @@ Below are some results from real-world projects, shared with the developers' per
 
     > We already had incremental compilation in the single-digit seconds range, but I’m still blown away by how much faster it is now that the entire codebase is fully on Metro. 🤯
 
+!!! note "Vinted"
+    Vinted adopted metro and reaped significant build time and developer experience improvements: [From Dagger to Metro](https://vinted.engineering/2026/02/12/from-dagger-to-metro/)
+
+    > Metro consolidated all the best practices from other popular frameworks, while leaving out the not-so-best practices on the side, allowed us to enable K2 and immediately experience significant build time improvements, while also unlocking incremental compilation, which means that the builds will be getting even faster
+
+## Scaling to Very Large Graphs
+
+For graphs aggregating thousands of contributions, two opt-in knobs help work around JVM and Kotlin metadata size limits. Both are power-user features and unnecessary for typical graphs.
+
+### `@MergeContributionsInIr`
+
+Annotating a graph with `@MergeContributionsInIr` opts it out of FIR-side contribution-supertype merging. Contributions are still merged into the graph during IR, so runtime behavior is unchanged. The trade-off is that contributions become invisible in the graph's Kotlin metadata:
+
+- Code consuming the graph as an `@Includes` dependency will not see contributed members.
+- IDE support will not surface contributed members on the graph type.
+- Kotlin/Native ObjC framework export will not include contributed interfaces in the graph's supertype list.
+
+This annotation is `@DelicateMetroApi` and requires explicit opt-in. You should only use this if you have a very specific reason to.
+
+### `merged-supertype-chunk-size`
+
+The `merged-supertype-chunk-size` Metro compiler option groups merged contribution supertypes into synthetic intermediate interfaces of at most N contributions each. This is useful for graphs whose merged supertype list would otherwise exceed the JVM's 65535-byte class signature limit, which the JVM emits whenever at least one supertype is generic.
+
+```kotlin
+metro {
+  compilerOptions.put("merged-supertype-chunk-size", "200")
+}
+```
+
+Default `0` disables chunking. Each chunk holds up to N contributions plus their promoted parent interfaces, so the chunk count tracks the contribution count rather than the raw supertype count. Most useful paired with `@MergeContributionsInIr` for the largest graphs.
+
 ## Tracing
 
 If you want to investigate the performance of Metro's compiler pipeline, you can enable tracing in the Gradle DSL.
@@ -157,9 +193,11 @@ metro {
 }
 ```
 
-This will output a Perfetto trace file after the compilation that you can then load into https://ui.perfetto.dev.
+This will output one or more Perfetto trace files after the compilation that you can then load into https://ui.perfetto.dev.
 
-Note that these traces probably do require a bit of familiarity with the Metro compiler internals and only trace the IR transformation layer.
+Filenames follow the pattern `<id>-<phase>-<moduleName>.perfetto-trace`, where `<id>` is a `yyMMdd-HHmmss` timestamp shared across every file produced by the same compilation, `<phase>` is `fir` or `ir`, and `<moduleName>` identifies the FIR session or IR module fragment. KMP source-set hierarchies and multi-fragment IR each produce their own files. Load whichever file corresponds to the phase you want to inspect.
+
+Note that these traces probably do require a bit of familiarity with the Metro compiler internals.
 
 !!! warning
 

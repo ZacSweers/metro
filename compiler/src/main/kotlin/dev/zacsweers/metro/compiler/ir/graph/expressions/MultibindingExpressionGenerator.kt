@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.irTemporaryVariable
+import dev.zacsweers.metro.compiler.ir.isImplicitClassKeySentinel
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -25,6 +26,8 @@ import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.FrameworkSymbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -34,6 +37,8 @@ import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
@@ -41,7 +46,9 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
+import org.jetbrains.kotlin.platform.isJs
 
 internal class MultibindingExpressionGenerator(
   private val parentGenerator: BindingExpressionGenerator<IrBinding>
@@ -251,12 +258,55 @@ internal class MultibindingExpressionGenerator(
     val expression =
       if (!unwrapValue) {
         mapKey
+      } else if (isImplicitClassKeySentinel(mapKey)) {
+        // Implicit class key - generate a class reference for the binding's class
+        val implicitClassType = resolveImplicitClassKeyType(binding)
+        createKClassReference(implicitClassType)
       } else {
         // We can just copy the expression!
         mapKey.arguments[0]!!.deepCopyWithSymbols()
       }
 
     return expression
+  }
+
+  /**
+   * Resolves the implicit class type for a binding with an implicit class key. For injected class
+   * bindings, this is the class itself. For provided/binds bindings, this is the input parameter
+   * type (which should already be populated during contribution code gen for contributions).
+   */
+  private fun resolveImplicitClassKeyType(binding: IrBinding): IrType {
+    return when (binding) {
+      is IrBinding.ConstructorInjected -> binding.type.defaultType
+      is IrBinding.ObjectClass -> binding.type.defaultType
+      is IrBinding.Alias -> binding.aliasedType.type.rawType().defaultType
+      is IrBinding.Provided -> {
+        // For @Binds, the implicit type is the single value parameter type
+        val function = binding.providerFactory.function
+        val paramType =
+          function.extensionReceiverParameterCompat?.type
+            ?: function.regularParameters.firstOrNull()?.type
+        paramType?.rawType()?.defaultType
+          ?: reportCompilerBug(
+            "Cannot resolve implicit class key type for Provided binding $binding"
+          )
+      }
+      else ->
+        reportCompilerBug(
+          "Implicit class keys are only supported on class, binds, or provided bindings, not ${binding::class}"
+        )
+    }
+  }
+
+  private fun createKClassReference(type: IrType): IrExpression {
+    val kClassType = irBuiltIns.kClassClass.typeWith(type)
+    return IrClassReferenceImpl(
+      startOffset = UNDEFINED_OFFSET,
+      endOffset = UNDEFINED_OFFSET,
+      type = kClassType,
+      symbol = type.classOrFail,
+      classType = type,
+    )
   }
 
   context(scope: IrBuilderWithScope)
@@ -373,6 +423,50 @@ internal class MultibindingExpressionGenerator(
       val resultType =
         irBuiltIns.setClass.typeWith(elementType).wrapInProvider(metroSymbols.metroProvider)
 
+      // Empty set provider: emit `SetFactory.empty()` (singleton) instead of allocating a builder
+      // and an empty result Set.
+      if (individualProviders.isEmpty() && collectionProviders.isEmpty()) {
+        valueProviderSymbols.setFactoryEmptyFunction?.let { emptyFn ->
+          return@with irInvoke(
+            callee = emptyFn,
+            typeHint = emptyFn.owner.returnType.rawType().typeWith(elementType),
+            typeArgs = listOf(elementType),
+          )
+        }
+      }
+
+      // Single individual provider: emit `SetFactory.singleton(p)` to skip the Builder allocation.
+      // Falls back to the builder path when the framework runtime doesn't expose a singleton
+      // helper (e.g., Dagger interop).
+      if (
+        individualProviders.size == 1 &&
+          collectionProviders.isEmpty() &&
+          valueProviderSymbols.setFactorySingletonFunction != null
+      ) {
+        val singletonFunction = valueProviderSymbols.setFactorySingletonFunction!!
+        val provider = individualProviders.single()
+        val providerArg =
+          parentGenerator.generateBindingCode(
+            provider,
+            provider.contextualTypeKey.wrapInProvider(providerClass),
+            accessType = AccessType.PROVIDER,
+            fieldInitKey = fieldInitKey,
+          )
+        val invoked =
+          irInvoke(
+            callee = singletonFunction,
+            typeHint = singletonFunction.owner.returnType.rawType().typeWith(elementType),
+            typeArgs = listOf(elementType),
+            args = listOf(providerArg),
+          )
+        return@with with(metroSymbols.providerTypeConverter) {
+          invoked.convertTo(
+            IrContextualTypeKey(IrTypeKey(irBuiltIns.setClass.typeWith(elementType)))
+              .wrapInProvider()
+          )
+        }
+      }
+
       return irBlock(resultType = resultType) {
         // val builder = SetFactory.<String>builder(1, 1)
         val builder =
@@ -480,6 +574,17 @@ internal class MultibindingExpressionGenerator(
         valueWrappedType is WrappedType.Provider &&
           (valueWrappedType as WrappedType.Provider<*>).innerType is WrappedType.Lazy
 
+      // On Kotlin/JS, `Provider` does not extend `() -> T`.
+      // For `Map<K, () -> V>` consumed via PROVIDER access we'd otherwise build a
+      // `MapProviderFactory` whose `invoke()` returns `Map<K, Provider<V>>` — values that aren't
+      // callable as JS functions. Route those cases through `MapFunctionFactory` instead, which
+      // stores `() -> V` lambdas directly and is JS-only by definition.
+      val useMapFunctionFactory =
+        platform.isJs() &&
+          valueIsWrappedInProvider &&
+          !valueIsProviderLazy &&
+          (valueWrappedType as WrappedType.Provider<*>).providerType == Symbols.ClassIds.function0
+
       // Used to unpack the right provider type
       val originalValueType = valueWrappedType.toIrType()
       val originalValueContextKey =
@@ -577,6 +682,7 @@ internal class MultibindingExpressionGenerator(
           valueIsWrappedInProvider,
           valueIsWrappedInLazy,
           valueIsProviderLazy,
+          useMapFunctionFactory,
           valueProviderSymbols,
           accessType,
         )
@@ -624,9 +730,50 @@ internal class MultibindingExpressionGenerator(
           // - Map<K, Provider<V>> -> MapProviderFactory
           // - Map<K, Lazy<V>> -> MapLazyFactory
           // - Map<K, Provider<Lazy<V>>> -> MapProviderLazyFactory
+          // - Map<K, () -> V> on JS -> MapFunctionFactory (see useMapFunctionFactory)
+          val metroFrameworkSymbols = metroSymbols.metroFrameworkSymbols
+          val singletonFunction =
+            when {
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactorySingletonFunction
+              useMapFunctionFactory -> metroFrameworkSymbols.mapFunctionFactorySingletonFunction
+              valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactorySingletonFunction
+              valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactorySingletonFunction
+              else -> valueProviderSymbols.mapFactorySingletonFunction
+            }
+
+          // Single entry: emit `XxxFactory.singleton(key, provider)` to skip the Builder
+          // allocation. Falls back to the builder path when the framework runtime doesn't expose
+          // a singleton helper (e.g., Dagger interop)
+          if (sourceBindings.size == 1 && singletonFunction != null) {
+            val sourceBinding = sourceBindings.single()
+            val providerType = singletonFunction.owner.nonDispatchParameters[1].type.rawType()
+            val singletonInvoke =
+              irInvoke(
+                callee = singletonFunction,
+                typeHint =
+                  singletonFunction.owner.returnType.rawType().typeWith(keyType, valueType),
+                typeArgs = listOf(keyType, valueType),
+                args =
+                  listOf(
+                    generateMapKeyLiteral(sourceBinding),
+                    generateMultibindingArgument(
+                      sourceBinding,
+                      canonicalValueContextKey
+                        .wrapInProvider(providerType)
+                        .withIrTypeKey(sourceBinding.typeKey),
+                      fieldInitKey,
+                      accessType = AccessType.PROVIDER,
+                    ),
+                  ),
+              )
+            return with(metroSymbols.providerTypeConverter) {
+              singletonInvoke.convertTo(contextualTypeKey)
+            }
+          }
           val builderFunction =
             when {
               valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderFunction
+              useMapFunctionFactory -> metroFrameworkSymbols.mapFunctionFactoryBuilderFunction
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilderFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderFunction
               else -> valueProviderSymbols.mapFactoryBuilderFunction
@@ -634,6 +781,7 @@ internal class MultibindingExpressionGenerator(
           val builderType =
             when {
               valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilder
+              useMapFunctionFactory -> metroFrameworkSymbols.mapFunctionFactoryBuilder
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilder
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilder
               else -> valueProviderSymbols.mapFactoryBuilder
@@ -642,6 +790,7 @@ internal class MultibindingExpressionGenerator(
           val putFunction =
             when {
               valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderPutFunction
+              useMapFunctionFactory -> metroFrameworkSymbols.mapFunctionFactoryBuilderPutFunction
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilderPutFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderPutFunction
               else -> valueProviderSymbols.mapFactoryBuilderPutFunction
@@ -661,6 +810,7 @@ internal class MultibindingExpressionGenerator(
           val buildFunction =
             when {
               valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderBuildFunction
+              useMapFunctionFactory -> metroFrameworkSymbols.mapFunctionFactoryBuilderBuildFunction
               valueIsWrappedInProvider ->
                 valueProviderSymbols.mapProviderFactoryBuilderBuildFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderBuildFunction
@@ -750,6 +900,7 @@ internal class MultibindingExpressionGenerator(
     valueIsWrappedInProvider: Boolean,
     valueIsWrappedInLazy: Boolean,
     valueIsProviderLazy: Boolean,
+    useMapFunctionFactory: Boolean,
     valueFrameworkSymbols: FrameworkSymbols,
     accessType: AccessType,
   ): IrExpression =
@@ -766,40 +917,50 @@ internal class MultibindingExpressionGenerator(
         )
       }
 
+      val metroFrameworkSymbols = metroSymbols.metroFrameworkSymbols
+
       // Select the appropriate factory functions based on value type wrapping:
       // - Map<K, Provider<Lazy<V>>> -> MapProviderLazyFactory
-      // - Map<K, Provider<V>> -> MapProviderFactory
-      // - Map<K, Lazy<V>> -> MapLazyFactory
-      // - Map<K, V> -> MapFactory
-      val (emptyFunction, builderFunction, buildFunction) =
+      // - Map<K, () -> V> on JS    -> MapFunctionFactory (see useMapFunctionFactory)
+      // - Map<K, Provider<V>>      -> MapProviderFactory
+      // - Map<K, Lazy<V>>          -> MapLazyFactory
+      // - Map<K, V>                -> MapFactory
+      val factory =
         when {
           valueIsProviderLazy ->
-            Triple(
-              valueFrameworkSymbols.mapProviderLazyFactoryEmptyFunction,
-              valueFrameworkSymbols.mapProviderLazyFactoryBuilderFunction,
-              valueFrameworkSymbols.mapProviderLazyFactoryBuilderBuildFunction,
+            EmptyMapFactorySymbols(
+              empty = valueFrameworkSymbols.mapProviderLazyFactoryEmptyFunction,
+              builder = valueFrameworkSymbols.mapProviderLazyFactoryBuilderFunction,
+              build = valueFrameworkSymbols.mapProviderLazyFactoryBuilderBuildFunction,
+            )
+          useMapFunctionFactory ->
+            EmptyMapFactorySymbols(
+              empty = metroFrameworkSymbols.mapFunctionFactoryEmptyFunction,
+              builder = metroFrameworkSymbols.mapFunctionFactoryBuilderFunction,
+              build = metroFrameworkSymbols.mapFunctionFactoryBuilderBuildFunction,
             )
           valueIsWrappedInProvider ->
-            Triple(
-              valueFrameworkSymbols.mapProviderFactoryEmptyFunction,
-              valueFrameworkSymbols.mapProviderFactoryBuilderFunction,
-              valueFrameworkSymbols.mapProviderFactoryBuilderBuildFunction,
+            EmptyMapFactorySymbols(
+              empty = valueFrameworkSymbols.mapProviderFactoryEmptyFunction,
+              builder = valueFrameworkSymbols.mapProviderFactoryBuilderFunction,
+              build = valueFrameworkSymbols.mapProviderFactoryBuilderBuildFunction,
             )
           valueIsWrappedInLazy ->
-            Triple(
-              valueFrameworkSymbols.mapLazyFactoryEmptyFunction,
-              valueFrameworkSymbols.mapLazyFactoryBuilderFunction,
-              valueFrameworkSymbols.mapLazyFactoryBuilderBuildFunction,
+            EmptyMapFactorySymbols(
+              empty = valueFrameworkSymbols.mapLazyFactoryEmptyFunction,
+              builder = valueFrameworkSymbols.mapLazyFactoryBuilderFunction,
+              build = valueFrameworkSymbols.mapLazyFactoryBuilderBuildFunction,
             )
           else ->
-            Triple(
-              valueFrameworkSymbols.mapFactoryEmptyFunction,
-              valueFrameworkSymbols.mapFactoryBuilderFunction,
-              valueFrameworkSymbols.mapFactoryBuilderBuildFunction,
+            EmptyMapFactorySymbols(
+              empty = valueFrameworkSymbols.mapFactoryEmptyFunction,
+              builder = valueFrameworkSymbols.mapFactoryBuilderFunction,
+              build = valueFrameworkSymbols.mapFactoryBuilderBuildFunction,
             )
         }
 
       // Use empty() if available, otherwise fall back to builder(0).build()
+      val emptyFunction = factory.empty
       if (emptyFunction != null) {
         irInvoke(
           callee = emptyFunction,
@@ -808,11 +969,11 @@ internal class MultibindingExpressionGenerator(
         )
       } else {
         irInvoke(
-          callee = buildFunction,
-          typeHint = buildFunction.owner.returnType.rawType().typeWith(kvArgs),
+          callee = factory.build,
+          typeHint = factory.build.owner.returnType.rawType().typeWith(kvArgs),
           dispatchReceiver =
             irInvoke(
-              callee = builderFunction,
+              callee = factory.builder,
               typeHint = mapProviderType,
               typeArgs = kvArgs,
               args = listOf(irInt(0)),
@@ -846,4 +1007,15 @@ internal class MultibindingExpressionGenerator(
           )
         }
     }
+
+  /**
+   * Function symbols needed to materialize an empty `Map*Factory`. [empty] is null when the
+   * underlying framework runtime doesn't expose an `empty()` helper (e.g., Dagger interop) — in
+   * that case we fall back to `builder(0).build()`.
+   */
+  private data class EmptyMapFactorySymbols(
+    val empty: IrSimpleFunctionSymbol?,
+    val builder: IrSimpleFunctionSymbol,
+    val build: IrSimpleFunctionSymbol,
+  )
 }

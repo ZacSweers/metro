@@ -46,9 +46,8 @@ class MixedTest {
   @Inject
   constructor(val message: String, @Named("qualified") val qualifiedMessage: String)
 
-  class AssistedClass
   @AssistedInject
-  constructor(@Assisted val assisted: String, val message: String) {
+  class AssistedClass(@Assisted val assisted: String, val message: String) {
     @AssistedFactory
     interface Factory {
       fun create(assisted: String): AssistedClass

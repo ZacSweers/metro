@@ -1,0 +1,3 @@
+/ProvidesMustHaveExplicitReturnTypes.kt:14:7: error: Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.
+
+/ProvidesMustHaveExplicitReturnTypes.kt:18:9: error: Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.

@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
@@ -23,9 +24,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.memoize
@@ -60,9 +58,7 @@ private constructor(
   override val thisReceiver: IrValueParameter,
   private val bindingPropertyContext: BindingPropertyContext,
   override val bindingGraph: IrBindingGraph,
-  private val bindingContainerTransformer: BindingContainerTransformer,
-  private val membersInjectorTransformer: MembersInjectorTransformer,
-  private val assistedFactoryTransformer: AssistedFactoryTransformer,
+  private val metroDeclarations: MetroDeclarations,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   /**
    * For extension graphs, maps ancestor graph type key -> list of properties to chain through. Used
@@ -79,9 +75,7 @@ private constructor(
     private val node: GraphNode.Local,
     private val bindingPropertyContext: BindingPropertyContext,
     private val bindingGraph: IrBindingGraph,
-    private val bindingContainerTransformer: BindingContainerTransformer,
-    private val membersInjectorTransformer: MembersInjectorTransformer,
-    private val assistedFactoryTransformer: AssistedFactoryTransformer,
+    private val metroDeclarations: MetroDeclarations,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
     /**
      * For extension graphs, maps ancestor graph type key -> list of properties to chain through.
@@ -99,9 +93,7 @@ private constructor(
         thisReceiver = thisReceiver,
         bindingPropertyContext = bindingPropertyContext,
         bindingGraph = bindingGraph,
-        bindingContainerTransformer = bindingContainerTransformer,
-        membersInjectorTransformer = membersInjectorTransformer,
-        assistedFactoryTransformer = assistedFactoryTransformer,
+        metroDeclarations = metroDeclarations,
         graphExtensionGenerator = graphExtensionGenerator,
         traceScope = traceScope,
         ancestorGraphProperties = ancestorGraphProperties,
@@ -274,7 +266,7 @@ private constructor(
 
         is Provided -> {
           val providerFactory =
-            bindingContainerTransformer.getOrLookupProviderFactory(binding)
+            metroDeclarations.lookupProviderFactory(binding)
               ?: reportCompilerBug(
                 "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
               )
@@ -289,7 +281,12 @@ private constructor(
 
           if (canBypassFactory) {
             val providerFunction = providerFactory.function
-            val targetParams = providerFactory.parameters
+
+            // Use binding.parameters instead of providerFactory.parameters because the binding
+            // may have type-substituted parameters (e.g., for generic binding containers included
+            // with concrete type args), while the providerFactory from the transformer cache
+            // still has unsubstituted type parameters.
+            val targetParams = binding.parameters
 
             // If we need a dispatch receiver but couldn't get one, fall back to factory
             if (providerFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
@@ -338,18 +335,32 @@ private constructor(
 
         is AssistedFactory -> {
           // Example9_Factory_Impl.create(example9Provider);
-          val factoryImpl = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
+          val factoryImpl = metroDeclarations.findAssistedFactoryImpl(binding.type)
 
           // The target binding is stored directly on the Assisted binding (not in the graph)
           val targetBinding = binding.targetBinding
 
-          // Assisted-inject factories don't implement Provider
+          // Assisted-inject factories don't implement Provider.
+          // The target binding is not an independent graph binding — it's an implementation
+          // detail of the factory. In shard contexts, all properties are FIELD-backed and
+          // eagerly initialized, but the shared target property is always appended at the
+          // end of the init order. Accessing it from a factory's field init would hit an
+          // uninitialized property (same-shard) or require cross-shard graph access (which
+          // creates circular shard init dependencies). Generate inline in shard contexts.
+          // In non-shard contexts, factory properties are getter-backed (lazily evaluated),
+          // so the shared target property is safely initialized by access time.
+          val effectiveFieldInitKey =
+            if (shardContext != null) {
+              targetBinding.typeKey
+            } else {
+              fieldInitKey
+            }
           val delegateFactory =
             generateBindingCode(
               targetBinding,
               contextualTypeKey = targetBinding.contextualTypeKey,
               accessType = AccessType.INSTANCE,
-              fieldInitKey = fieldInitKey,
+              fieldInitKey = effectiveFieldInitKey,
             )
 
           val factoryProvider = with(factoryImpl) { invokeCreate(delegateFactory) }
@@ -381,7 +392,7 @@ private constructor(
                 clazz.superClass?.takeIf { it.hasAnnotation(Symbols.ClassIds.HasMemberInjections) }
               }
               .firstNotNullOfOrNull { clazz ->
-                membersInjectorTransformer.getOrGenerateInjector(clazz)?.injectorClass
+                metroDeclarations.findInjector(clazz)?.injectorClass
               }
 
           if (injectorClass == null) {
@@ -430,15 +441,30 @@ private constructor(
               // to build the full property access chain through ancestors
               val localProperty = bindingPropertyContext.get(parentContextKey)
               if (localProperty != null) {
-                irGetProperty(irGet(thisReceiver), localProperty.property)
+                generatePropertyAccess(
+                  localProperty.property,
+                  localProperty.shardProperty,
+                  localProperty.shardIndex,
+                )
               } else {
                 // Use resolveToken to build the property access chain through ancestors
                 val propertyAccess = resolveToken(binding.token)
                 propertyAccess.accessProperty(irGet(thisReceiver))
               }
             } else {
-              // Self-binding - graph provides itself
-              irGet(thisReceiver)
+              // Check if the property is in the local context (e.g., @Includes graph input
+              // parameters that are stored as fields)
+              val localProperty = bindingPropertyContext.get(binding.contextualTypeKey)
+              if (localProperty != null) {
+                generatePropertyAccess(
+                  localProperty.property,
+                  localProperty.shardProperty,
+                  localProperty.shardIndex,
+                )
+              } else {
+                // Self-binding - graph provides itself
+                irGet(thisReceiver)
+              }
             }
           when (accessType) {
             INSTANCE -> instanceExpr
@@ -536,17 +562,24 @@ private constructor(
                   AccessType.PROVIDER
                 }
             } else if (binding.getter != null) {
-              val graphInstanceProperty =
-                bindingPropertyContext.get(IrContextualTypeKey(ownerKey))?.property
+              val graphInstanceBindingProperty =
+                bindingPropertyContext.get(IrContextualTypeKey(ownerKey))
                   ?: reportCompilerBug(
                     "No matching included type instance found for type $ownerKey while processing ${node.typeKey}"
                   )
 
               val getterContextKey = IrContextualTypeKey.from(binding.getter)
 
+              val graphInstanceAccess =
+                generatePropertyAccess(
+                  graphInstanceBindingProperty.property,
+                  graphInstanceBindingProperty.shardProperty,
+                  graphInstanceBindingProperty.shardIndex,
+                )
+
               val invokeGetter =
                 irInvoke(
-                  dispatchReceiver = irGetProperty(irGet(thisReceiver), graphInstanceProperty),
+                  dispatchReceiver = graphInstanceAccess,
                   callee = binding.getter.symbol,
                   typeHint = binding.typeKey.type,
                 )
@@ -676,8 +709,15 @@ private constructor(
             val (property, storedKey, shardProperty, shardIndex) = bindingProperty
             // Only return early if we got an actual instance property, not a provider fallback
             if (!storedKey.isWrappedInProvider) {
-              return@mapIndexed generatePropertyAccess(property, shardProperty, shardIndex)
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              val instanceExpression =
+                generatePropertyAccess(property, shardProperty, shardIndex)
+                  .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              return@mapIndexed typeAsProviderArgument(
+                param.contextualTypeKey,
+                instanceExpression,
+                isAssisted = param.isAssisted,
+                isGraphInstance = param.isGraphInstance,
+              )
             }
           }
         }

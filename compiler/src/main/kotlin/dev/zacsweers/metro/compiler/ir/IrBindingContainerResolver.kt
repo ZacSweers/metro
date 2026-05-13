@@ -2,14 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.name.ClassId
 
+@Inject
+@SingleIn(IrScope::class)
 internal class IrBindingContainerResolver(private val transformer: BindingContainerTransformer) :
   IrMetroContext by transformer {
 
@@ -17,8 +22,10 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
    * Cache for transitive closure of all included binding containers. Maps [ClassId] ->
    * [Set<BindingContainer>][BindingContainer] where the values represent all transitively included
    * binding containers starting from the given [ClassId].
+   *
+   * Thread-safe for concurrent access during parallel graph validation.
    */
-  private val transitiveBindingContainerCache = mutableMapOf<ClassId, Set<BindingContainer>>()
+  private val transitiveBindingContainerCache = ConcurrentHashMap<ClassId, Set<BindingContainer>>()
 
   /**
    * Resolves all binding containers transitively starting from the given roots. This method handles
@@ -84,7 +91,7 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
       val container = transformer.findContainer(irClass)
       if (container == null) {
         val empty = emptySet<BindingContainer>()
-        transitiveBindingContainerCache[classId] = empty
+        transitiveBindingContainerCache.putIfAbsent(classId, empty)
         return empty
       }
 
@@ -99,7 +106,7 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
       }
 
       // 5. Store in Global Cache
-      transitiveBindingContainerCache[classId] = closure
+      transitiveBindingContainerCache.putIfAbsent(classId, closure)
       return closure
     } finally {
       // Backtrack

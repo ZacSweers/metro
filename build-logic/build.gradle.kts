@@ -14,7 +14,7 @@ dependencies {
     libs.plugins.mavenPublish.get().run { "$pluginId:$pluginId.gradle.plugin:$version" }
   )
   implementation(libs.plugins.dokka.get().run { "$pluginId:$pluginId.gradle.plugin:$version" })
-  implementation(libs.plugins.spotless.get().run { "$pluginId:$pluginId.gradle.plugin:$version" })
   // Force the latest R8 to match what we use the minified JMH tests
   implementation(libs.r8)
+  implementation(libs.foundry.betterProps)
 }

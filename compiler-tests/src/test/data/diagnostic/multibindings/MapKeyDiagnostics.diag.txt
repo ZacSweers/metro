@@ -1,0 +1,23 @@
+/MapKeyDiagnostics.kt:5:43: error: Map key annotations cannot have type parameters.
+
+/MapKeyDiagnostics.kt:7:26: error: Map key annotations must have a primary constructor with at least one parameter.
+
+/MapKeyDiagnostics.kt:10:30: error: Map key annotations must have a primary constructor with at least one parameter.
+
+/MapKeyDiagnostics.kt:13:40: error: Map key annotations with unwrapValue set to true (the default) can only have a single constructor parameter.
+
+/MapKeyDiagnostics.kt:16:37: error: Map key annotations with unwrapValue set to true (the default) cannot have an array parameter.
+
+/MapKeyDiagnostics.kt:29:40: error: Map key annotations with implicitClassKey must have exactly one parameter but found 2.
+
+/MapKeyDiagnostics.kt:29:40: error: Map key annotations with unwrapValue set to true (the default) can only have a single constructor parameter.
+
+/MapKeyDiagnostics.kt:33:47: error: Map key annotations with implicitClassKey must have a single KClass parameter but found kotlin.String.
+
+/MapKeyDiagnostics.kt:33:56: error: Map key annotations with implicitClassKey must have a default value of `Nothing::class` but found null::class.
+
+/MapKeyDiagnostics.kt:37:40: error: Map key annotations with implicitClassKey must have a default value of `Nothing::class` but found no default value.
+
+/MapKeyDiagnostics.kt:41:62: error: Map key annotations with implicitClassKey must have a default value of `Nothing::class` but found kotlin.String::class.
+
+/MapKeyDiagnostics.kt:49:1: error: Map key annotations must support at least FUNCTION targets.

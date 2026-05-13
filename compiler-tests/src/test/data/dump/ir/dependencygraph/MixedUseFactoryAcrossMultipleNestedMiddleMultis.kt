@@ -1,7 +1,7 @@
 @DependencyGraph
 interface AppGraph {
 
-  // Provider<Set<...>
+  // () -> Set<...>
   //   .. depends on ElementsIntoSet
   //   .. depends on another ElementsIntoSet
   //   .. depends on thing
@@ -30,5 +30,6 @@ interface AppGraph {
   val finalThing: FinalThing
 }
 
+// Annoying duplication of params to make this happy across different kotlin dump versions
 @Inject
-class FinalThing(@Named("final") val ints: Provider<Set<Int>>)
+class FinalThing(@param:Named("final") @field:Named("final") @property:Named("final") val ints: () -> Set<Int>)

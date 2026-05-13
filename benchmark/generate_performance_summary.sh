@@ -93,18 +93,21 @@ collect_performance_data() {
     local dagger_ksp_csv="$results_dir/dagger_ksp_${timestamp}/dagger_ksp_${test_type}/benchmark.csv"
     local dagger_kapt_csv="$results_dir/dagger_kapt_${timestamp}/dagger_kapt_${test_type}/benchmark.csv"
     local kotlin_inject_csv="$results_dir/kotlin_inject_anvil_${timestamp}/kotlin_inject_anvil_${test_type}/benchmark.csv"
+    local koin_csv="$results_dir/koin_${timestamp}/koin_${test_type}/benchmark.csv"
 
     # Calculate medians for build time
     local metro_median=""
     local dagger_ksp_median=""
     local dagger_kapt_median=""
     local kotlin_inject_median=""
+    local koin_median=""
 
     # Calculate medians for GC time
     local metro_gc=""
     local dagger_ksp_gc=""
     local dagger_kapt_gc=""
     local kotlin_inject_gc=""
+    local koin_gc=""
 
     if [ -f "$metro_csv" ]; then
         metro_median=$(calculate_median "$metro_csv")
@@ -126,17 +129,24 @@ collect_performance_data() {
         kotlin_inject_gc=$(calculate_gc_median "$kotlin_inject_csv")
     fi
 
+    if [ -f "$koin_csv" ]; then
+        koin_median=$(calculate_median "$koin_csv")
+        koin_gc=$(calculate_gc_median "$koin_csv")
+    fi
+
     # Convert to seconds
     local metro_seconds=""
     local dagger_ksp_seconds=""
     local dagger_kapt_seconds=""
     local kotlin_inject_seconds=""
+    local koin_seconds=""
 
     # Convert GC to seconds
     local metro_gc_seconds=""
     local dagger_ksp_gc_seconds=""
     local dagger_kapt_gc_seconds=""
     local kotlin_inject_gc_seconds=""
+    local koin_gc_seconds=""
 
     if [ -n "$metro_median" ] && [ "$metro_median" != "0" ]; then
         metro_seconds=$(ms_to_seconds "$metro_median")
@@ -166,10 +176,18 @@ collect_performance_data() {
         kotlin_inject_gc_seconds=$(ms_to_seconds "$kotlin_inject_gc")
     fi
 
+    if [ -n "$koin_median" ] && [ "$koin_median" != "0" ]; then
+        koin_seconds=$(ms_to_seconds "$koin_median")
+    fi
+    if [ -n "$koin_gc" ] && [ "$koin_gc" != "0" ]; then
+        koin_gc_seconds=$(ms_to_seconds "$koin_gc")
+    fi
+
     # Calculate percentage increases relative to Metro
     local dagger_ksp_pct=""
     local dagger_kapt_pct=""
     local kotlin_inject_pct=""
+    local koin_pct=""
 
     if [ -n "$metro_median" ] && [ "$metro_median" != "0" ]; then
         if [ -n "$dagger_ksp_median" ] && [ "$dagger_ksp_median" != "0" ]; then
@@ -183,10 +201,14 @@ collect_performance_data() {
         if [ -n "$kotlin_inject_median" ] && [ "$kotlin_inject_median" != "0" ]; then
             kotlin_inject_pct=$(calculate_percentage "$metro_median" "$kotlin_inject_median")
         fi
+
+        if [ -n "$koin_median" ] && [ "$koin_median" != "0" ]; then
+            koin_pct=$(calculate_percentage "$metro_median" "$koin_median")
+        fi
     fi
 
-    # Return the data in a structured format (now includes GC times)
-    echo "${metro_seconds}|${metro_gc_seconds}|${dagger_ksp_seconds}|${dagger_ksp_gc_seconds}|${dagger_ksp_pct}|${dagger_kapt_seconds}|${dagger_kapt_gc_seconds}|${dagger_kapt_pct}|${kotlin_inject_seconds}|${kotlin_inject_gc_seconds}|${kotlin_inject_pct}"
+    # Return the data in a structured format (now includes GC times and Koin columns)
+    echo "${metro_seconds}|${metro_gc_seconds}|${dagger_ksp_seconds}|${dagger_ksp_gc_seconds}|${dagger_ksp_pct}|${dagger_kapt_seconds}|${dagger_kapt_gc_seconds}|${dagger_kapt_pct}|${kotlin_inject_seconds}|${kotlin_inject_gc_seconds}|${kotlin_inject_pct}|${koin_seconds}|${koin_gc_seconds}|${koin_pct}"
 }
 
 # Function to format a table cell with percentage and optional GC time
@@ -242,48 +264,48 @@ generate_performance_table() {
     local plain_abi_data=$(collect_performance_data "plain_abi_change" "$timestamp" "$results_dir")
     local plain_non_abi_data=$(collect_performance_data "plain_non_abi_change" "$timestamp" "$results_dir")
     
-    # Parse the data (format: metro|metro_gc|dagger_ksp|dagger_ksp_gc|dagger_ksp_pct|dagger_kapt|dagger_kapt_gc|dagger_kapt_pct|kotlin_inject|kotlin_inject_gc|kotlin_inject_pct)
-    IFS='|' read -r abi_metro abi_metro_gc abi_dagger_ksp abi_dagger_ksp_gc abi_dagger_ksp_pct abi_dagger_kapt abi_dagger_kapt_gc abi_dagger_kapt_pct abi_kotlin_inject abi_kotlin_inject_gc abi_kotlin_inject_pct <<< "$abi_data"
-    IFS='|' read -r non_abi_metro non_abi_metro_gc non_abi_dagger_ksp non_abi_dagger_ksp_gc non_abi_dagger_ksp_pct non_abi_dagger_kapt non_abi_dagger_kapt_gc non_abi_dagger_kapt_pct non_abi_kotlin_inject non_abi_kotlin_inject_gc non_abi_kotlin_inject_pct <<< "$non_abi_data"
-    IFS='|' read -r raw_metro raw_metro_gc raw_dagger_ksp raw_dagger_ksp_gc raw_dagger_ksp_pct raw_dagger_kapt raw_dagger_kapt_gc raw_dagger_kapt_pct raw_kotlin_inject raw_kotlin_inject_gc raw_kotlin_inject_pct <<< "$raw_data"
-    IFS='|' read -r plain_abi_metro plain_abi_metro_gc plain_abi_dagger_ksp plain_abi_dagger_ksp_gc plain_abi_dagger_ksp_pct plain_abi_dagger_kapt plain_abi_dagger_kapt_gc plain_abi_dagger_kapt_pct plain_abi_kotlin_inject plain_abi_kotlin_inject_gc plain_abi_kotlin_inject_pct <<< "$plain_abi_data"
-    IFS='|' read -r plain_non_abi_metro plain_non_abi_metro_gc plain_non_abi_dagger_ksp plain_non_abi_dagger_ksp_gc plain_non_abi_dagger_ksp_pct plain_non_abi_dagger_kapt plain_non_abi_dagger_kapt_gc plain_non_abi_dagger_kapt_pct plain_non_abi_kotlin_inject plain_non_abi_kotlin_inject_gc plain_non_abi_kotlin_inject_pct <<< "$plain_non_abi_data"
+    # Parse the data (format: metro|metro_gc|dagger_ksp|dagger_ksp_gc|dagger_ksp_pct|dagger_kapt|dagger_kapt_gc|dagger_kapt_pct|kotlin_inject|kotlin_inject_gc|kotlin_inject_pct|koin|koin_gc|koin_pct)
+    IFS='|' read -r abi_metro abi_metro_gc abi_dagger_ksp abi_dagger_ksp_gc abi_dagger_ksp_pct abi_dagger_kapt abi_dagger_kapt_gc abi_dagger_kapt_pct abi_kotlin_inject abi_kotlin_inject_gc abi_kotlin_inject_pct abi_koin abi_koin_gc abi_koin_pct <<< "$abi_data"
+    IFS='|' read -r non_abi_metro non_abi_metro_gc non_abi_dagger_ksp non_abi_dagger_ksp_gc non_abi_dagger_ksp_pct non_abi_dagger_kapt non_abi_dagger_kapt_gc non_abi_dagger_kapt_pct non_abi_kotlin_inject non_abi_kotlin_inject_gc non_abi_kotlin_inject_pct non_abi_koin non_abi_koin_gc non_abi_koin_pct <<< "$non_abi_data"
+    IFS='|' read -r raw_metro raw_metro_gc raw_dagger_ksp raw_dagger_ksp_gc raw_dagger_ksp_pct raw_dagger_kapt raw_dagger_kapt_gc raw_dagger_kapt_pct raw_kotlin_inject raw_kotlin_inject_gc raw_kotlin_inject_pct raw_koin raw_koin_gc raw_koin_pct <<< "$raw_data"
+    IFS='|' read -r plain_abi_metro plain_abi_metro_gc plain_abi_dagger_ksp plain_abi_dagger_ksp_gc plain_abi_dagger_ksp_pct plain_abi_dagger_kapt plain_abi_dagger_kapt_gc plain_abi_dagger_kapt_pct plain_abi_kotlin_inject plain_abi_kotlin_inject_gc plain_abi_kotlin_inject_pct plain_abi_koin plain_abi_koin_gc plain_abi_koin_pct <<< "$plain_abi_data"
+    IFS='|' read -r plain_non_abi_metro plain_non_abi_metro_gc plain_non_abi_dagger_ksp plain_non_abi_dagger_ksp_gc plain_non_abi_dagger_ksp_pct plain_non_abi_dagger_kapt plain_non_abi_dagger_kapt_gc plain_non_abi_dagger_kapt_pct plain_non_abi_kotlin_inject plain_non_abi_kotlin_inject_gc plain_non_abi_kotlin_inject_pct plain_non_abi_koin plain_non_abi_koin_gc plain_non_abi_koin_pct <<< "$plain_non_abi_data"
 
     # Generate the table in docs format
     echo ""
     echo "_(Median times in seconds, GC time in parentheses)_"
     echo ""
-    echo "|                          | Metro | Dagger (KSP) | Dagger (KAPT) | Kotlin-Inject |"
-    echo "|--------------------------|-------|--------------|---------------|---------------|"
+    echo "|                          | Metro | Dagger (KSP) | Dagger (KAPT) | Kotlin-Inject | Koin |"
+    echo "|--------------------------|-------|--------------|---------------|---------------|------|"
 
     # ABI row
     echo -n "| **ABI**                  | "
     echo -n "$(format_metro_cell "$abi_metro" "$abi_metro_gc")"
-    echo -n "  | $(format_cell "$abi_dagger_ksp" "$abi_dagger_ksp_gc" "$abi_dagger_ksp_pct") | $(format_cell "$abi_dagger_kapt" "$abi_dagger_kapt_gc" "$abi_dagger_kapt_pct") | $(format_cell "$abi_kotlin_inject" "$abi_kotlin_inject_gc" "$abi_kotlin_inject_pct") |"
+    echo -n "  | $(format_cell "$abi_dagger_ksp" "$abi_dagger_ksp_gc" "$abi_dagger_ksp_pct") | $(format_cell "$abi_dagger_kapt" "$abi_dagger_kapt_gc" "$abi_dagger_kapt_pct") | $(format_cell "$abi_kotlin_inject" "$abi_kotlin_inject_gc" "$abi_kotlin_inject_pct") | $(format_cell "$abi_koin" "$abi_koin_gc" "$abi_koin_pct") |"
     echo ""
 
     # Non-ABI row
     echo -n "| **Non-ABI**              | "
     echo -n "$(format_metro_cell "$non_abi_metro" "$non_abi_metro_gc")"
-    echo -n "  | $(format_cell "$non_abi_dagger_ksp" "$non_abi_dagger_ksp_gc" "$non_abi_dagger_ksp_pct") | $(format_cell "$non_abi_dagger_kapt" "$non_abi_dagger_kapt_gc" "$non_abi_dagger_kapt_pct") | $(format_cell "$non_abi_kotlin_inject" "$non_abi_kotlin_inject_gc" "$non_abi_kotlin_inject_pct") |"
+    echo -n "  | $(format_cell "$non_abi_dagger_ksp" "$non_abi_dagger_ksp_gc" "$non_abi_dagger_ksp_pct") | $(format_cell "$non_abi_dagger_kapt" "$non_abi_dagger_kapt_gc" "$non_abi_dagger_kapt_pct") | $(format_cell "$non_abi_kotlin_inject" "$non_abi_kotlin_inject_gc" "$non_abi_kotlin_inject_pct") | $(format_cell "$non_abi_koin" "$non_abi_koin_gc" "$non_abi_koin_pct") |"
     echo ""
 
     # Plain Kotlin ABI row
     echo -n "| **Plain Kotlin ABI**     | "
     echo -n "$(format_metro_cell "$plain_abi_metro" "$plain_abi_metro_gc")"
-    echo -n "  | $(format_cell "$plain_abi_dagger_ksp" "$plain_abi_dagger_ksp_gc" "$plain_abi_dagger_ksp_pct") | $(format_cell "$plain_abi_dagger_kapt" "$plain_abi_dagger_kapt_gc" "$plain_abi_dagger_kapt_pct") | $(format_cell "$plain_abi_kotlin_inject" "$plain_abi_kotlin_inject_gc" "$plain_abi_kotlin_inject_pct") |"
+    echo -n "  | $(format_cell "$plain_abi_dagger_ksp" "$plain_abi_dagger_ksp_gc" "$plain_abi_dagger_ksp_pct") | $(format_cell "$plain_abi_dagger_kapt" "$plain_abi_dagger_kapt_gc" "$plain_abi_dagger_kapt_pct") | $(format_cell "$plain_abi_kotlin_inject" "$plain_abi_kotlin_inject_gc" "$plain_abi_kotlin_inject_pct") | $(format_cell "$plain_abi_koin" "$plain_abi_koin_gc" "$plain_abi_koin_pct") |"
     echo ""
 
     # Plain Kotlin Non-ABI row
     echo -n "| **Plain Kotlin Non-ABI** | "
     echo -n "$(format_metro_cell "$plain_non_abi_metro" "$plain_non_abi_metro_gc")"
-    echo -n "  | $(format_cell "$plain_non_abi_dagger_ksp" "$plain_non_abi_dagger_ksp_gc" "$plain_non_abi_dagger_ksp_pct") | $(format_cell "$plain_non_abi_dagger_kapt" "$plain_non_abi_dagger_kapt_gc" "$plain_non_abi_dagger_kapt_pct") | $(format_cell "$plain_non_abi_kotlin_inject" "$plain_non_abi_kotlin_inject_gc" "$plain_non_abi_kotlin_inject_pct") |"
+    echo -n "  | $(format_cell "$plain_non_abi_dagger_ksp" "$plain_non_abi_dagger_ksp_gc" "$plain_non_abi_dagger_ksp_pct") | $(format_cell "$plain_non_abi_dagger_kapt" "$plain_non_abi_dagger_kapt_gc" "$plain_non_abi_dagger_kapt_pct") | $(format_cell "$plain_non_abi_kotlin_inject" "$plain_non_abi_kotlin_inject_gc" "$plain_non_abi_kotlin_inject_pct") | $(format_cell "$plain_non_abi_koin" "$plain_non_abi_koin_gc" "$plain_non_abi_koin_pct") |"
     echo ""
 
     # Graph processing row
     echo -n "| **Graph processing**     | "
     echo -n "$(format_metro_cell "$raw_metro" "$raw_metro_gc")"
-    echo -n " | $(format_cell "$raw_dagger_ksp" "$raw_dagger_ksp_gc" "$raw_dagger_ksp_pct") | $(format_cell "$raw_dagger_kapt" "$raw_dagger_kapt_gc" "$raw_dagger_kapt_pct") | $(format_cell "$raw_kotlin_inject" "$raw_kotlin_inject_gc" "$raw_kotlin_inject_pct") |"
+    echo -n " | $(format_cell "$raw_dagger_ksp" "$raw_dagger_ksp_gc" "$raw_dagger_ksp_pct") | $(format_cell "$raw_dagger_kapt" "$raw_dagger_kapt_gc" "$raw_dagger_kapt_pct") | $(format_cell "$raw_kotlin_inject" "$raw_kotlin_inject_gc" "$raw_kotlin_inject_pct") | $(format_cell "$raw_koin" "$raw_koin_gc" "$raw_koin_pct") |"
     echo ""
     echo ""
 }

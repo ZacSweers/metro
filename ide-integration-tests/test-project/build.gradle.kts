@@ -12,4 +12,5 @@ kotlin { jvmToolchain(21) }
 metro {
   generateAssistedFactories.set(true)
   enableTopLevelFunctionInjection.set(true)
+  generateContributionProviders.set(true)
 }

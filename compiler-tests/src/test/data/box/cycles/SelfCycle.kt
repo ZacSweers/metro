@@ -1,6 +1,6 @@
 @Suppress("MEMBERS_INJECT_WARNING")
 @Inject
-class S(val sProvider: Provider<S>) {
+class S(val sProvider: () -> S) {
   @Inject lateinit var sLazy: Lazy<S>
 }
 

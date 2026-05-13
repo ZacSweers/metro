@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.addThrowsAnnotation
+import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
@@ -19,6 +21,10 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
  * both scoped @Inject classes and classes with contributing annotations. See [HintGenerator] for
  * more details about hint specifics.
  */
+// NOTE this doesn't have logic for generating hints for top-level providers since this IR impl will
+// go away
+@Inject
+@SingleIn(IrScope::class)
 internal class ContributionHintIrTransformer(
   context: IrMetroContext,
   private val hintGenerator: HintGenerator,
@@ -28,10 +34,7 @@ internal class ContributionHintIrTransformer(
   // Implements the FIR-generated declarations with empty bodies
   fun visitFunction(declaration: IrSimpleFunction) {
     if (declaration.origin == Origins.ContributionHint) {
-      declaration.apply {
-        body = stubExpressionBody()
-        addThrowsAnnotation(addToMetadata = true)
-      }
+      declaration.apply { body = stubExpressionBody() }
     }
   }
 

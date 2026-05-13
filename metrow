@@ -91,7 +91,7 @@ case "$1" in
            fi
 
            echo "Publishing version $version locally..."
-           ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" --rerun-tasks
+           ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" -PRELEASE_SIGNING_ENABLED=false --rerun-tasks
        else
            echo "Publishing version $version..."
            ./gradlew publish -x dokkaGeneratePublicationHtml
@@ -194,25 +194,55 @@ case "$1" in
        ;;
 
    "format")
-       echo "Applying formatting..."
-       run_gradle_all "spotlessApply --no-configuration-cache --quiet"
+       kempt format --all
        ;;
 
    "regen")
-       echo "Applying formatting and API gen..."
+       version=""
+       locks_only=false
+
+       while [[ $# -gt 1 ]]; do
+           case "$2" in
+               --version)
+                   version="$3"
+                   shift 2
+                   ;;
+               --locks-only)
+                   locks_only=true
+                   shift
+                   ;;
+               *)
+                   echo "Unknown regen argument: $2"
+                   exit 1
+                   ;;
+           esac
+       done
+
+       version_flag=""
+       if [[ -n "$version" ]]; then
+           version_flag="-Pmetro.testCompilerVersion=$version"
+       fi
+
        # Annoyingly, the apiDump and package lock tasks have caching issues
        # https://youtrack.jetbrains.com/issue/KT-69684
-       find . -type d -name "api" -exec find {} -name "*.api" -delete \;
        rm -rf kotlin-js-store samples/kotlin-js-store
 
-       run_gradle_all "clean --quiet"
-       run_gradle_all "spotlessApply --no-configuration-cache --quiet"
+       if [[ "$locks_only" = false ]]; then
+           echo "Applying formatting and API gen..."
+           find . -type d -name "api" -exec find {} -name "*.api" -delete \;
 
-       # apiDump only exists in root project
-       ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet
+           run_gradle_all "clean --quiet"
+           kempt format --all
+
+           # apiDump only exists in root project
+           # shellcheck disable=SC2086  # Word splitting is intentional so empty version_flag drops out
+           ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
+       else
+           echo "Regenerating package locks only..."
+       fi
 
        # Yarn locks only in root and samples
-       run_gradle_all "kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet" "samples"
+       run_gradle_all "kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag" "samples"
        ;;
 
    "gen-compat")
@@ -223,8 +253,49 @@ case "$1" in
        ./compiler-compat/generate-compat-module.sh "$2"
        ;;
 
+   "trace")
+       # Delegate to the script so the logic lives in one place.
+       # Script takes: <project-dir> <gradle-task> [version]
+       if [[ $# -lt 3 ]]; then
+           echo "Usage: metrow trace <project-dir> <gradle-task> [version]"
+           echo ""
+           echo "Examples:"
+           echo "  metrow trace ~/dev/android/personal/CatchUp :app-scaffold:compileDebugKotlin"
+           echo "  metrow trace ~/dev/MyApp :app:compileKotlinJvm 1.0.0-LOCAL500"
+           exit 1
+       fi
+       shift
+       exec ./scripts/trace-project.sh "$@"
+       ;;
+
+   "update-gradle")
+       if [[ $# -lt 2 ]]; then
+           echo "Usage: metrow update-gradle <gradle-version>"
+           exit 1
+       fi
+       gradle_version="$2"
+       echo "Updating Gradle wrappers to version $gradle_version..."
+
+       # Update root wrapper first
+       echo "=== Updating . ==="
+       ./gradlew wrapper --gradle-version="$gradle_version"
+       # Run twice
+       ./gradlew wrapper --gradle-version="$gradle_version"
+
+       # Copy updated wrapper files to all other wrapper locations
+       while IFS= read -r wrapper; do
+           dir="$(dirname "$wrapper")"
+           if [[ "$dir" == "." ]]; then
+               continue
+           fi
+           echo "=== Updating $dir ==="
+           cp gradlew gradlew.bat "$dir/"
+           cp gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties "$dir/gradle/wrapper/"
+       done < <(find . -name gradlew -not -path './.gradle/*' | sort)
+       ;;
+
    *)
-       echo "Usage: metrow (publish|check|test|clean|format|regen|gen-compat)"
+       echo "Usage: metrow (publish|check|test|clean|format|regen|gen-compat|trace|update-gradle)"
        echo ""
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
@@ -237,6 +308,19 @@ case "$1" in
        echo "test options:"
        echo "  --all                Test against all available compiler versions"
        echo "  --version <version>  Test against specific compiler version"
+       echo ""
+       echo "regen options:"
+       echo "  --version <version>  Regenerate against a specific compiler version"
+       echo "  --locks-only         Only regenerate package locks (skip format/apiDump/clean)"
+       echo ""
+       echo "trace options:"
+       echo "  <project-dir> <gradle-task> [version]  Publish metro locally, pin it in"
+       echo "                                         the target project, force-rerun the"
+       echo "                                         compile, and copy the produced"
+       echo "                                         perfetto trace into .claude/traces/."
+       echo ""
+       echo "update-gradle options:"
+       echo "  <gradle-version>     Gradle version to update all wrappers to"
        exit 1
        ;;
 esac

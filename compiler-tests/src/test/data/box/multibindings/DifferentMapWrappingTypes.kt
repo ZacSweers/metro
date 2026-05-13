@@ -1,6 +1,6 @@
 // TODO
 //  providing a Map<String, Int> should not make it
-//  possible to get a Map<String, Provider<Int>> later
+//  possible to get a Map<String, () -> Int> later
 @DependencyGraph
 interface ExampleGraph {
   @Provides @IntoMap @StringKey("a") fun provideEntryA(): Int = 1
@@ -11,15 +11,15 @@ interface ExampleGraph {
 
   // Inject it with different formats
   val directMap: Map<String, Int>
-  val providerValueMap: Map<String, Provider<Int>>
+  val providerValueMap: Map<String, () -> Int>
   val lazyValueMap: Map<String, Lazy<Int>>
-  val providerOfLazyValueMap: Map<String, Provider<Lazy<Int>>>
-  val providerMap: Provider<Map<String, Int>>
-  val providerOfProviderValueMap: Provider<Map<String, Provider<Int>>>
-  val providerOfLazyValueMapOuter: Provider<Map<String, Lazy<Int>>>
-  val providerOfProviderOfLazyValueMap: Provider<Map<String, Provider<Lazy<Int>>>>
-  val lazyOfProviderValueMap: Lazy<Map<String, Provider<Int>>>
-  val providerOfLazyOfProviderValueMap: Provider<Lazy<Map<String, Provider<Int>>>>
+  val providerOfLazyValueMap: Map<String, () -> Lazy<Int>>
+  val providerMap: () -> Map<String, Int>
+  val providerOfProviderValueMap: () -> Map<String, () -> Int>
+  val providerOfLazyValueMapOuter: () -> Map<String, Lazy<Int>>
+  val providerOfProviderOfLazyValueMap: () -> Map<String, () -> Lazy<Int>>
+  val lazyOfProviderValueMap: Lazy<Map<String, () -> Int>>
+  val providerOfLazyOfProviderValueMap: () -> Lazy<Map<String, () -> Int>>
 
   // Class that injects the map with yet another format
   val exampleClass: ExampleClass
@@ -27,11 +27,11 @@ interface ExampleGraph {
   val exampleClassProviderLazy: ExampleClassProviderLazy
 }
 
-@Inject class ExampleClass(val map: Map<String, Provider<Int>>)
+@Inject class ExampleClass(val map: Map<String, () -> Int>)
 
 @Inject class ExampleClassLazy(val map: Map<String, Lazy<Int>>)
 
-@Inject class ExampleClassProviderLazy(val map: Map<String, Provider<Lazy<Int>>>)
+@Inject class ExampleClassProviderLazy(val map: Map<String, () -> Lazy<Int>>)
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()

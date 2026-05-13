@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation
-import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.GrandParentGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.ParentGraph
@@ -167,7 +166,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             @SingleIn(Unit::class)
             @GraphExtension
             interface ChildGraph {
-              val int: Provider<Int>
+              val int: () -> Int
 
               @GraphExtension.Factory
               fun interface Factory {
@@ -179,8 +178,8 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
-      assertThat(childGraph.callProperty<Provider<Int>>("int"))
-        .isSameInstanceAs(childGraph.callProperty<Provider<Int>>("int"))
+      assertThat(childGraph.callProperty<() -> Int>("int"))
+        .isSameInstanceAs(childGraph.callProperty<() -> Int>("int"))
     }
   }
 

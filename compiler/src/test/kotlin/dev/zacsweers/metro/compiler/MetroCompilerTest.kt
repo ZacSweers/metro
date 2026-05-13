@@ -101,8 +101,6 @@ abstract class MetroCompilerTest {
                 )
               GENERATE_ASSISTED_FACTORIES ->
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
-              GENERATE_THROWS_ANNOTATIONS ->
-                processor.option(entry.raw.cliOption, generateThrowsAnnotations)
               ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
                 processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
               GENERATE_CONTRIBUTION_HINTS ->
@@ -112,15 +110,14 @@ abstract class MetroCompilerTest {
                   entry.raw.cliOption,
                   this@toPluginOptions.generateContributionHintsInFir,
                 )
-              TRANSFORM_PROVIDERS_TO_PRIVATE ->
-                processor.option(entry.raw.cliOption, transformProvidersToPrivate)
               SHRINK_UNUSED_BINDINGS -> processor.option(entry.raw.cliOption, shrinkUnusedBindings)
-              CHUNK_FIELD_INITS -> processor.option(entry.raw.cliOption, chunkFieldInits)
               STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
               ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)
               KEYS_PER_GRAPH_SHARD -> processor.option(entry.raw.cliOption, keysPerGraphShard)
-              PUBLIC_PROVIDER_SEVERITY ->
-                processor.option(entry.raw.cliOption, publicProviderSeverity)
+              MERGED_SUPERTYPE_CHUNK_SIZE ->
+                processor.option(entry.raw.cliOption, mergedSupertypeChunkSize)
+              PUBLIC_SCOPED_PROVIDER_SEVERITY ->
+                processor.option(entry.raw.cliOption, publicScopedProviderSeverity)
               NON_PUBLIC_CONTRIBUTION_SEVERITY ->
                 processor.option(entry.raw.cliOption, nonPublicContributionSeverity)
               WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
@@ -130,7 +127,9 @@ abstract class MetroCompilerTest {
               UNUSED_GRAPH_INPUTS_SEVERITY ->
                 processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
               ENABLE_SWITCHING_PROVIDERS ->
-                processor.option(entry.raw.cliOption, enableSwitchingProviders)
+                processor.option(entry.raw.cliOption, this@toPluginOptions.enableSwitchingProviders)
+              USE_SECONDARY_TOPO_SORT ->
+                processor.option(entry.raw.cliOption, this@toPluginOptions.useSecondaryTopoSort)
               LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
@@ -334,6 +333,45 @@ abstract class MetroCompilerTest {
                   this@toPluginOptions.compilerVersionAliases
                     .map { (k, v) -> "$k=$v" }
                     .joinToString(":"),
+                )
+              }
+              PARALLEL_THREADS -> {
+                processor.option(entry.raw.cliOption, this@toPluginOptions.parallelThreads)
+              }
+              ENABLE_FUNCTION_PROVIDERS -> {
+                processor.option(entry.raw.cliOption, enableFunctionProviders)
+              }
+              DESUGARED_PROVIDER_SEVERITY -> {
+                processor.option(entry.raw.cliOption, desugaredProviderSeverity)
+              }
+              ENABLE_KCLASS_TO_CLASS_INTEROP -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.enableKClassToClassInterop,
+                )
+              }
+              GENERATE_CONTRIBUTION_PROVIDERS -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.generateContributionProviders,
+                )
+              }
+              ENABLE_CIRCUIT_CODEGEN -> {
+                processor.option(entry.raw.cliOption, enableCircuitCodegen)
+              }
+              RICH_DIAGNOSTICS -> {
+                processor.option(entry.raw.cliOption, richDiagnostics)
+              }
+              GENERATE_STATIC_ANNOTATIONS -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.generateStaticAnnotations,
+                )
+              }
+              BINDING_CONTRIBUTIONS_AS_CONTAINERS -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.bindingContributionsAsContainers,
                 )
               }
             }

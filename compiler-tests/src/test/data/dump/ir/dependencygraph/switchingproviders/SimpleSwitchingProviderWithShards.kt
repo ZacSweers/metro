@@ -7,8 +7,8 @@ interface AppGraph {
   val string: String
   val scopedClass: ScopedClass
 
-  val int1: Provider<Int>
-  val int2: Provider<Int>
+  val int1: () -> Int
+  val int2: () -> Int
 
   @SingleIn(AppScope::class)
   @Provides

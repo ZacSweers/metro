@@ -15,7 +15,7 @@ class ExampleClass(
 }
 
 interface BaseFactory<B, T> {
-  fun create(b: B): T
+  fun create(count: B): T
 }
 
 @AssistedFactory

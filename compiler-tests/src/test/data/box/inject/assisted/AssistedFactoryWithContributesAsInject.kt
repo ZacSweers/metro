@@ -1,5 +1,5 @@
 // CONTRIBUTES_AS_INJECT
-@DependencyGraph(AppGraph::class)
+@DependencyGraph(AppScope::class)
 interface AppGraph {
   val factory: Foo.Factory
 }
@@ -16,7 +16,7 @@ interface Foo {
 class FooImpl(
   @Assisted override val text: String,
 ) : Foo {
-  @ContributesBinding(AppGraph::class)
+  @ContributesBinding(AppScope::class)
   @AssistedFactory
   interface Factory : Foo.Factory {
     override fun create(text: String): FooImpl

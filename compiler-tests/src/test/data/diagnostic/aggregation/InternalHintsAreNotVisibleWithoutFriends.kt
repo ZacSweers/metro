@@ -13,5 +13,5 @@ internal class Impl : ContributedInterface
 // MODULE: main(lib)
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val <!METRO_ERROR!>contributed<!>: ContributedInterface
+  val <!MISSING_BINDING!>contributed<!>: ContributedInterface
 }

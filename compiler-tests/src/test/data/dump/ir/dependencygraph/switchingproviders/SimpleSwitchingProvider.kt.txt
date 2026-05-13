@@ -1,0 +1,250 @@
+@Inject
+@SingleIn(scope = AppScope::class)
+class ScopedClass {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<ScopedClass> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): Factory<ScopedClass> {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): ScopedClass {
+      return ScopedClass()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ScopedClass {
+      return MetroFactory.newInstance()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
+    fun mirrorFunction(): ScopedClass {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private val scopedClassProvider: Provider<ScopedClass>
+      field = DoubleCheck/* companion */.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 2))
+
+    private val provideReusedIntProvider: Provider<Int>
+      field = SwitchingProvider<Int>(graph = <this>, id = 1)
+
+    private val provideStringProvider: Provider<String>
+      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
+
+    private class SwitchingProvider<T : Any?> : Provider<T> {
+      private val graph: Impl
+
+      private val id: Int
+
+      constructor(graph: Impl, id: Int) /* primary */ {
+        super/*Any*/()
+        <this>.#graph = graph
+        <this>.#id = id
+      }
+
+      override fun invoke(): T {
+        return { // BLOCK
+          val tmp0_id: Int = <this>.#id
+          when {
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> ScopedClass() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideReusedInt() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
+          }
+        }
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int1: Function0<Int>
+      override get(): Function0<Int> {
+        return <this>.#provideReusedIntProvider
+      }
+
+    override val int2: Function0<Int>
+      override get(): Function0<Int> {
+        return <this>.#provideReusedIntProvider
+      }
+
+    override val scopedClass: ScopedClass
+      override get(): ScopedClass {
+        return <this>.#scopedClassProvider.invoke()
+      }
+
+    override val string: String
+      override get(): String {
+        return <this>.#provideStringProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideReusedInt", propertyName = "", startOffset = 303, endOffset = 346, newInstanceName = "provideReusedInt")
+  class ProvideReusedIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideReusedIntMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideReusedInt(instance: AppGraph): Int {
+        return instance.provideReusedInt()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideReusedIntMetroFactory/* companion */.provideReusedInt(instance = <this>.#instance)
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 221, endOffset = 299, newInstanceName = "provideString")
+  class ProvideStringMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): Factory<String> {
+        return ProvideStringMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideString(instance: AppGraph): String {
+        return instance.provideString()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  fun provideReusedInt(): Int {
+    return 3
+  }
+
+  @SingleIn(scope = AppScope::class)
+  @Provides
+  fun provideString(): String {
+    return "Hello"
+  }
+
+  abstract val int1: Function0<Int>
+    abstract get
+
+  abstract val int2: Function0<Int>
+    abstract get
+
+  abstract val scopedClass: ScopedClass
+    abstract get
+
+  abstract val string: String
+    abstract get
+
+}
+

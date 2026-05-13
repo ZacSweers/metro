@@ -4,23 +4,31 @@ import com.vanniktech.maven.publish.DeploymentValidation
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.gradle.kotlin.dsl.withType
 import org.jetbrains.dokka.gradle.DokkaExtension
 import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
-import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
+import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
 val jdkVersion = catalog.findVersion("jdk").get().requiredVersion
 val jvmTargetVersion = catalog.findVersion("jvmTarget").get().requiredVersion
+val compilerJvmTargetVersion = catalog.findVersion("compilerJvmTarget").get().requiredVersion
 
 val metroExtension =
   project.extensions.create<MetroProjectExtension>("metroProject").apply {
-    jvmTarget.convention(jvmTargetVersion)
+    jvmTarget.convention(
+      if (isCompilerProject) {
+        compilerJvmTargetVersion
+      } else {
+        jvmTargetVersion
+      }
+    )
   }
 
 // Java configuration
@@ -33,26 +41,25 @@ pluginManager.withPlugin("java") {
   }
 }
 
-// Suppress native access warnings in forked JVMs (Java 22+)
+// Suppress native access warnings and ReservedStackAccess warnings in forked JVMs
 tasks.withType<Test>().configureEach {
-  jvmArgs("--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow")
+  jvmArgs(
+    "--enable-native-access=ALL-UNNAMED",
+    "--sun-misc-unsafe-memory-access=allow",
+    "-XX:StackReservedPages=0",
+  )
 }
 
 tasks.withType<JavaExec>().configureEach {
-  jvmArgs("--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow")
+  jvmArgs(
+    "--enable-native-access=ALL-UNNAMED",
+    "--sun-misc-unsafe-memory-access=allow",
+    "-XX:StackReservedPages=0",
+  )
 }
 
 // Kotlin configuration
 plugins.withType<KotlinBasePlugin> {
-  // Skip explicitApi for samples and benchmark projects
-  val useExplicitApi =
-    "sample" !in project.path &&
-      rootProject.name != "metro-samples" &&
-      rootProject.name != "metro-benchmark"
-  if (useExplicitApi) {
-    configure<KotlinProjectExtension> { explicitApi() }
-  }
-
   tasks.withType<KotlinCompilationTask<*>>().configureEach {
     compilerOptions {
       progressiveMode.convention(metroExtension.progressiveMode)
@@ -62,7 +69,35 @@ plugins.withType<KotlinBasePlugin> {
         jvmTarget.convention(metroExtension.jvmTarget.map(JvmTarget::fromTarget))
         jvmDefault.convention(JvmDefaultMode.NO_COMPATIBILITY)
         freeCompilerArgs.addAll("-Xassertions=jvm", "-Xannotation-default-target=param-property")
+        if (isCompilerProject) {
+          freeCompilerArgs.addAll(
+            "-Xcontext-parameters",
+            "-Xreturn-value-checker=full",
+            "-Xcontext-sensitive-resolution",
+            "-Xwhen-expressions=indy",
+            //  "-Xallow-contracts-on-more-functions",
+            //  "-Xallow-condition-implies-returns-contracts",
+            //  "-Xallow-holdsin-contract",
+            // TODO Kotlin 2.3.0
+            //  "-Xexplicit-backing-fields",
+          )
+          optIn.addAll(
+            "kotlin.contracts.ExperimentalContracts",
+            "kotlin.contracts.ExperimentalExtendedContracts",
+            "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
+            "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
+          )
+        }
       }
+    }
+  }
+}
+
+pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
+  // Suppress "WASI is an experimental feature" Node.js warnings
+  tasks.withType<KotlinJsTest>().configureEach {
+    if (name.contains("wasmWasi", ignoreCase = true)) {
+      nodeJsArgs += "--no-warnings"
     }
   }
 }
@@ -82,7 +117,7 @@ pluginManager.withPlugin("metro.publish") {
 
   if (isNotCompiler) {
     val metroRuntimeLanguageVersion =
-      catalog.findVersion("metro-runtime-languageVersion").get().requiredVersion
+      catalog.findVersion("kotlinPublished").get().requiredVersion.take(3) // Take 2.2 out of 2.2.20
     val runtimeKotlinVersion = KotlinVersion.fromVersion(metroRuntimeLanguageVersion)
     metroExtension.languageVersion.convention(runtimeKotlinVersion)
     metroExtension.apiVersion.convention(runtimeKotlinVersion)
@@ -121,14 +156,14 @@ pluginManager.withPlugin("org.jetbrains.dokka") {
       documentedVisibilities.add(VisibilityModifier.Public)
       reportUndocumented.convention(true)
       perPackageOption {
-        matchingRegex.convention(".*\\.internal.*")
-        suppress.convention(true)
+        matchingRegex.set(".*\\.internal.*")
+        suppress.set(true)
       }
       sourceLink {
         localDirectory.convention(layout.projectDirectory.dir("src"))
         val relPath = rootProject.projectDir.toPath().relativize(projectDir.toPath())
         remoteUrl(
-          providers.gradleProperty("POM_SCM_URL").map { scmUrl -> "$scmUrl/tree/main/$relPath/src" }
+          providers.gradleProperty("POM_SCM_URL").map { scmUrl -> "$scmUrl/tree/main/$relPath" }
         )
         remoteLineSuffix.convention("#L")
       }

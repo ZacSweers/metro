@@ -73,9 +73,10 @@ class RenderingTest : MetroCompilerTest() {
         metroOptions.copy(
           rawReportsDestination = reportsDir,
           enableFullBindingGraphValidation = true,
+          enableFunctionProviders = false, // We want to cover all of them
         ),
     ) {
-      val keysFile = reportsDir.resolve("keys-populated-test_ExampleGraph_Impl.txt").readText()
+      val keysFile = reportsDir.resolve("keys-populated/test/ExampleGraph/Impl.txt").readText()
       assertThat(keysFile)
         .isEqualTo(
           """

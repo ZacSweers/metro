@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.findInjectConstructor
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.validateBindingSource
@@ -15,25 +15,45 @@ import dev.zacsweers.metro.compiler.fir.validateInjectedClass
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.tracing.trace
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 
 internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common) {
 
+  fun isConstructorInjected(declaration: FirClass, session: FirSession): Boolean {
+    val classIds = session.classIds
+    // Cheap relevance gate: class-level inject-like annotation or any inject-annotated ctor.
+    return declaration.isAnnotatedWithAny(session, classIds.injectLikeAnnotations) ||
+      declaration.constructors(session).any {
+        it.isAnnotatedWithAny(session, classIds.allInjectAnnotations)
+      }
+  }
+
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
-    context(context.session.compatContext) { checkImpl(declaration) }
+    val source = declaration.source ?: return
+    val session = context.session
+    if (!isConstructorInjected(declaration, session)) {
+      return
+    }
+    session.trace(name = { "InjectConstructorChecker(${declaration.classId})" }) {
+      context(session.compatContext) { checkImpl(declaration, source) }
+    }
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
-  private fun checkImpl(declaration: FirClass) {
-    val source = declaration.source ?: return
+  private fun checkImpl(declaration: FirClass, source: KtSourceElement) {
     val session = context.session
     val classIds = session.classIds
 
@@ -50,6 +70,28 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
       ) {
         return
       }
+
+    if (injectedConstructor == null && classInjectLikeAnnotations.isNotEmpty()) {
+      // We have a class inject annotation but not a secondary
+      var hasSecondary = false
+      var hasPrimary = false
+      for (ctor in declaration.constructors(session)) {
+        if (ctor.isPrimary) {
+          hasPrimary = true
+          break // Nothing else to do
+        } else {
+          hasSecondary = true
+        }
+      }
+      if (!hasPrimary && hasSecondary) {
+        reporter.reportOn(
+          source,
+          MetroDiagnostics.AMBIGUOUS_INJECT_CONSTRUCTOR,
+          "Class '${declaration.classId.diagnosticString}' is annotated with an @Inject-like annotation but does not have a primary constructor. It does have one or more secondary instructions. Did you mean to annotate one of them with @Inject instead?",
+        )
+        return
+      }
+    }
 
     val isInjected = classInjectLikeAnnotations.isNotEmpty() || injectedConstructor != null
     if (!isInjected) return
@@ -87,13 +129,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
       injectedConstructor?.constructor ?: declaration.primaryConstructorIfAny(session) ?: return
 
     for (parameter in constructorToValidate.valueParameterSymbols) {
-      val annotations =
-        parameter.metroAnnotations(
-          session,
-          MetroAnnotations.Kind.OptionalBinding,
-          MetroAnnotations.Kind.Assisted,
-          MetroAnnotations.Kind.Qualifier,
-        )
+      val annotations = parameter.metroAnnotations()
       if (annotations.isAssisted) continue
       validateInjectionSiteType(
         session,

@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # Sponsoring
 
 If Metro has improved your developer experience or saved your team's build times, I’d appreciate the support!

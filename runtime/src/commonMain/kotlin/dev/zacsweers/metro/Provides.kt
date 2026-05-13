@@ -97,7 +97,7 @@ package dev.zacsweers.metro
  *
  * ```
  * metro {
- *   publicProviderSeverity.set(NONE|WARN|ERROR)
+ *   publicScopedProviderSeverity.set(NONE|WARN|ERROR)
  * }
  * ```
  *

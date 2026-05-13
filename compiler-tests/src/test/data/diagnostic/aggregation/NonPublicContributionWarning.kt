@@ -9,7 +9,7 @@ interface SomeInterface
 <!NON_PUBLIC_CONTRIBUTION_WARNING!>internal<!> class InternalContribution : SomeInterface
 
 @ContributesTo(AppScope::class)
-<!NON_PUBLIC_CONTRIBUTION_WARNING!>private<!> interface PrivateContribution : SomeInterface
+<!PRIVATE_CONTRIBUTION_ERROR!>private<!> interface PrivateContribution : SomeInterface
 
 internal object InternalObject {
   @Inject

@@ -1,0 +1,15 @@
+/MixedCycleParams.kt:25:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing 'CycleGraph'.
+Cycle:
+    B --> A ~~> FakeA --> B
+
+Trace:
+    B is injected at
+        [CycleGraph] FakeA(…, b)
+    A is injected at
+        [CycleGraph] B(…, a)
+    FakeA is injected at
+        [CycleGraph] FakeA.MetroContributionToUnit.bindsAsA(…, instance)
+    B is injected at
+        [CycleGraph] FakeA(…, b)
+    ...
+

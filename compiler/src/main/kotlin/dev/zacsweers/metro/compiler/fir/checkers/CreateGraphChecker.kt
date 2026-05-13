@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ER
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isLocalClassOrAnonymousObject
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -66,7 +67,7 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
         reporter.reportOn(
           typeArg.source ?: source,
           CREATE_GRAPH_ERROR,
-          "`${targetFunction.name}` type argument '${rawType.classId.asFqNameString()}' must be annotated with a `@DependencyGraph` annotation.",
+          "`${targetFunction.name}` type argument '${rawType.classId.diagnosticString}' must be annotated with a `@DependencyGraph` annotation.",
         )
       }
 
@@ -82,7 +83,7 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
         reporter.reportOn(
           typeArg.source ?: source,
           CREATE_GRAPH_ERROR,
-          "`${targetFunction.name}` type argument '${rawType.classId.asFqNameString()}' has a factory at '${creator.classId.asFqNameString()}'. Use `createGraphFactory` with that type instead.",
+          "`${targetFunction.name}` type argument '${rawType.classId.diagnosticString}' has a factory at '${creator.classId.diagnosticString}'. Use `createGraphFactory` with that type instead.",
         )
       }
     } else {
@@ -96,7 +97,7 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
         reporter.reportOn(
           typeArg.source ?: source,
           CREATE_GRAPH_ERROR,
-          "`${targetFunction.name}` type argument '${rawType.classId.asFqNameString()}' must be annotated with a `@DependencyGraph.Factory` annotation.",
+          "`${targetFunction.name}` type argument '${rawType.classId.diagnosticString}' must be annotated with a `@DependencyGraph.Factory` annotation.",
         )
       }
     }
@@ -184,7 +185,7 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
             reporter.reportOn(
               it.source,
               CREATE_DYNAMIC_GRAPH_ERROR,
-              "`${targetFunction.name}` cannot have multiple arguments of the same (raw) type. '${classId.asFqNameString()}' is passed multiple times.",
+              "`${targetFunction.name}` cannot have multiple arguments of the same (raw) type. '${classId.diagnosticString}' is passed multiple times.",
             )
           }
         }

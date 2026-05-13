@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
-import dev.zacsweers.metro.compiler.BitField
+import dev.zacsweers.metro.compiler.BitFieldBuilder
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
@@ -29,13 +30,14 @@ import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.excludedClasses
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
+import dev.zacsweers.metro.compiler.ir.isCompilerIntrinsicOrAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
-import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
@@ -49,14 +51,15 @@ import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.renderDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
+import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -65,6 +68,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.EnumSet
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -75,6 +79,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -91,6 +96,7 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.getValueArgument
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -103,13 +109,14 @@ import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class GraphNodes(
   metroContext: IrMetroContext,
-  private val bindingContainerTransformer: BindingContainerTransformer,
+  private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
   private val contributionMerger: IrContributionMerger,
 ) : IrMetroContext by metroContext {
 
-  // Keyed by the source declaration
-  private val graphNodesByClass = mutableMapOf<ClassId, GraphNode>()
+  // Keyed by the source declaration. Thread-safe for concurrent access during parallel graph
+  // validation.
+  private val graphNodesByClass = ConcurrentHashMap<ClassId, GraphNode>()
 
   operator fun get(classId: ClassId) = graphNodesByClass[classId]
 
@@ -144,16 +151,22 @@ internal class GraphNodes(
 
     val node =
       trace("Build GraphNode") {
-        Builder(
-            this,
-            this@GraphNodes,
-            bindingContainerResolver,
-            graphDeclaration,
-            bindingStack,
-            metroGraph,
-            dependencyGraphAnno,
-          )
-          .build(diagnosticTag)
+        // Split Builder construction from .build() — the constructor does non-trivial work
+        // (materialises `supertypes = allSupertypesSequence(...).toList()` and other props),
+        // so tracing it separately keeps that cost visible.
+        val builder =
+          trace("Construct GraphNodes.Builder") {
+            Builder(
+              this,
+              this@GraphNodes,
+              bindingContainerResolver,
+              graphDeclaration,
+              bindingStack,
+              metroGraph,
+              dependencyGraphAnno,
+            )
+          }
+        builder.build(diagnosticTag)
       }
 
     // Only cache regular @DependencyGraph-annotated nodes. Extensions/dynamic graphs are
@@ -163,7 +176,7 @@ internal class GraphNodes(
         (dependencyGraphAnno?.annotationClass?.classId in
           metroContext.metroSymbols.classIds.dependencyGraphAnnotations)
     if (isRegularDependencyGraph) {
-      graphNodesByClass[graphClassId] = node
+      graphNodesByClass.putIfAbsent(graphClassId, node)
     }
 
     return node
@@ -179,8 +192,7 @@ internal class GraphNodes(
     cachedDependencyGraphAnno: IrConstructorCall? = null,
   ) : IrMetroContext by nodeCache, TraceScope by traceScope {
     private val metroGraph = metroGraph ?: graphDeclaration.metroGraphOrNull
-    private val bindingContainerTransformer: BindingContainerTransformer =
-      nodeCache.bindingContainerTransformer
+    private val metroDeclarations: MetroDeclarations = nodeCache.metroDeclarations
     private val accessors = mutableListOf<GraphAccessor>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsCallables = mutableMapOf<IrTypeKey, MutableList<BindsCallable>>()
@@ -201,6 +213,7 @@ internal class GraphNodes(
     private val annotationDeclaredBindingContainers = mutableMapOf<IrTypeKey, IrElement>()
     private val dynamicBindingContainers = mutableSetOf<IrClass>()
     private val dynamicTypeKeys = mutableMapOf<IrTypeKey, MutableSet<IrBindingContainerCallable>>()
+    private val graphPrivateKeys = mutableSetOf<IrTypeKey>()
 
     private val dependencyGraphAnno =
       cachedDependencyGraphAnno
@@ -251,7 +264,7 @@ internal class GraphNodes(
     }
 
     private fun buildCreator(diagnosticTag: String): GraphNode.Creator? {
-      var bindingContainerFields = BitField()
+      val bindingContainerFields = BitFieldBuilder()
       fun populateBindingContainerFields(parameters: Parameters) {
         for ((i, parameter) in parameters.regularParameters.withIndex()) {
           if (parameter.isIncludes) {
@@ -261,7 +274,7 @@ internal class GraphNodes(
 
             // Check if the parameter is a binding container
             if (parameterClass.isBindingContainer()) {
-              bindingContainerFields = bindingContainerFields.withSet(i)
+              bindingContainerFields.set(i)
             }
           }
         }
@@ -276,7 +289,7 @@ internal class GraphNodes(
             graphDeclaration,
             graphDeclaration.primaryConstructor!!,
             ctorParams,
-            bindingContainerFields,
+            bindingContainerFields.build(),
           )
         } else {
           // TODO since we already check this in FIR can we leave a more specific breadcrumb
@@ -290,7 +303,12 @@ internal class GraphNodes(
               val createFunction = factory.singleAbstractFunction()
               val parameters = createFunction.parameters()
               populateBindingContainerFields(parameters)
-              GraphNode.Creator.Factory(factory, createFunction, parameters, bindingContainerFields)
+              GraphNode.Creator.Factory(
+                factory,
+                createFunction,
+                parameters,
+                bindingContainerFields.build(),
+              )
             }
         }
 
@@ -303,7 +321,18 @@ internal class GraphNodes(
             continue
           }
 
-          if (parameter.isBindsInstance) continue
+          if (parameter.isBindsInstance) {
+            // Record if it's @GraphPrivate
+            val irParam = parameter.ir
+            if (irParam is IrValueParameter) {
+              val isGraphPrivate =
+                irParam.hasAnnotation(metroSymbols.classIds.graphPrivateAnnotation)
+              if (isGraphPrivate) {
+                graphPrivateKeys += parameter.typeKey
+              }
+            }
+            continue
+          }
 
           // It's an `@Includes` parameter
           val klass = parameter.typeKey.type.rawType()
@@ -323,8 +352,26 @@ internal class GraphNodes(
           if (isContainer) {
             // Include the container itself and all its transitively included containers
             val allContainers = bindingContainerResolver.resolve(sourceGraph)
-            bindingContainers += allContainers
-            resolvedBindingContainers += allContainers
+
+            // If the parameter type is a generic binding container with concrete type arguments,
+            // substitute type parameters in the container's provider factories and binds callables.
+            val substitutedContainers =
+              if (klass.typeParameters.isNotEmpty()) {
+                val remapper = klass.deepRemapperFor(parameter.typeKey.type)
+                allContainers.map { container ->
+                  if (container.ir == klass) {
+                    container.withTypeSubstitution(remapper)
+                  } else {
+                    container
+                  }
+                }
+              } else {
+                allContainers
+              }
+
+            bindingContainers += substitutedContainers
+            resolvedBindingContainers += substitutedContainers
+
             // Track which transitively included containers be managed
             for (container in allContainers) {
               if (container.ir == klass) {
@@ -373,10 +420,12 @@ internal class GraphNodes(
     ) {
       if (bindingStack.entryFor(graphTypeKey) != null) {
         // TODO dagger doesn't appear to error for this case to model off of
-        val message = buildString {
+        val message = renderDiagnostic {
           if (bindingStack.entries.size == 1) {
             // If there's just one entry, specify that it's a self-referencing cycle for clarity
-            appendLine("Graph dependency cycle detected! The below graph depends on itself.")
+            appendLine(
+              "Graph dependency cycle detected! The below graph ${bold("depends on itself")}."
+            )
           } else {
             appendLine("Graph dependency cycle detected!")
           }
@@ -392,6 +441,18 @@ internal class GraphNodes(
         exitProcessing()
       }
     }
+
+    private data class QualifierMismatchEntry(
+      val type: String,
+      val declarationFqName: String,
+      /** The qualifier on the final/overriding declaration (may be absent). */
+      val actualQualifier: String,
+      val overriddenSymbolFqName: String,
+      /** The qualifier on the overridden declaration. */
+      val expectedQualifier: String,
+    )
+
+    private val qualifierMismatches = mutableListOf<QualifierMismatchEntry>()
 
     private fun reportQualifierMismatch(
       declaration: IrOverridableDeclaration<*>,
@@ -414,21 +475,49 @@ internal class GraphNodes(
             overriddenDeclaration.propertyIfAccessor.expectAs<IrDeclarationWithName>()
           is IrProperty -> overriddenDeclaration as IrDeclarationWithName
         }
+
+      qualifierMismatches +=
+        QualifierMismatchEntry(
+          type = type,
+          declarationFqName = "${declaration.fqNameWhenAvailable}",
+          actualQualifier = expectedQualifier?.let { "'$it'" } ?: "absent",
+          overriddenSymbolFqName = "${declWithName.fqNameWhenAvailable}",
+          expectedQualifier = overriddenQualifier?.let { "'$it'" } ?: "none",
+        )
+      hasErrors = true
+    }
+
+    private fun flushQualifierMismatchErrors() {
+      if (qualifierMismatches.isEmpty()) return
       val message =
-        "[Metro/QualifierOverrideMismatch] Overridden $type '${declaration.fqNameWhenAvailable}' must have the same qualifier annotations as the overridden $type. However, the final $type qualifier is '${expectedQualifier}' but overridden symbol ${declWithName.fqNameWhenAvailable} has '${overriddenQualifier}'.'"
-
-      val errorDecl =
-        when (declaration) {
-          is IrSimpleFunction -> declaration.propertyIfAccessor
-          is IrProperty -> declaration
+        if (qualifierMismatches.size == 1) {
+          val e = qualifierMismatches[0]
+          renderDiagnostic {
+            append(
+              "[Metro/QualifierOverrideMismatch] Overridden ${e.type} '${bold(e.declarationFqName)}' must have the same qualifier annotations as the overridden ${e.type}. However, the final ${e.type} qualifier is ${red(e.actualQualifier)} but overridden symbol ${e.overriddenSymbolFqName} has ${green(e.expectedQualifier)}."
+            )
+          }
+        } else {
+          renderDiagnostic {
+            appendLine(
+              "[Metro/QualifierOverrideMismatch] Overridden declarations must have matching qualifier annotations:"
+            )
+            for (e in qualifierMismatches) {
+              appendLine()
+              appendLine("  ${e.type} '${bold(e.declarationFqName)}'")
+              appendLine(
+                "    expected: ${green(e.expectedQualifier)} (from ${e.overriddenSymbolFqName})"
+              )
+              appendLine("    actual:   ${red(e.actualQualifier)}")
+            }
+          }
         }
-
       reportCompat(
-        sequenceOf(errorDecl, graphDeclaration.sourceGraphIfMetroGraph),
-        MetroDiagnostics.METRO_ERROR,
+        sequenceOf(graphDeclaration.sourceGraphIfMetroGraph),
+        MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH,
         message,
       )
-      hasErrors = true
+      qualifierMismatches.clear()
     }
 
     context(traceScope: TraceScope)
@@ -439,23 +528,68 @@ internal class GraphNodes(
 
       val nonNullMetroGraph = metroGraph ?: graphDeclaration.metroGraphOrFail
 
-      val declaredScopes = computeDeclaredScopes()
+      val declaredScopes = trace("Compute declared scopes") { computeDeclaredScopes() }
       scopes += declaredScopes
       val graphExtensionSupertypes = mutableSetOf<ClassId>()
 
       trace("Collect supertypes") {
-        supertypes.forEachIndexed { i, type ->
-          val clazz = type.classOrFail.owner
+        trace("Walk supertype annotations") {
+          val graphExtensionFactoryClassIds = metroSymbols.classIds.graphExtensionFactoryAnnotations
+          val scopeAnnotationClassIds = metroSymbols.scopeAnnotations
+          // Cache meta-annotation checks per annotation class. The same annotation classes (e.g.
+          // @Singleton, user scope annotations) tend to appear across many supertypes; without
+          // this cache we'd re-walk each annotation class's own annotations to decide if it's a
+          // scope marker on every supertype.
+          val scopeMarkerCache = HashMap<IrClass, Boolean>()
 
-          // Index 0 is this class, which we've already computed above
-          if (i != 0) {
-            scopes += clazz.scopeAnnotations()
-            if (clazz.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)) {
+          supertypes.forEachIndexed { i, type ->
+            // Index 0 is this class, which we've already computed above
+            if (i == 0) return@forEachIndexed
+            val clazz = type.classOrFail.owner
+
+            // Platform supertypes (kotlin.*, java.*, android.*, etc.) can't carry Metro scope
+            // annotations or `@GraphExtension.Factory` markers — skip them before walking their
+            // annotation list.
+            if (clazz.classId?.isPlatformType() == true) return@forEachIndexed
+
+            // Single pass over the class's annotations: collect scope annotations AND detect
+            // @GraphExtension.Factory marker annotations in one walk (was previously two walks —
+            // scopeAnnotations() + isAnnotatedWithAny()).
+            var isExtensionFactory = false
+            for (anno in clazz.annotations) {
+              val annoClass = anno.type.classOrNull?.owner ?: continue
+              if (!isExtensionFactory) {
+                val annoClassId = annoClass.classId
+                if (annoClassId != null && annoClassId in graphExtensionFactoryClassIds) {
+                  isExtensionFactory = true
+                }
+              }
+              val isScopeMarker =
+                scopeMarkerCache.getOrPut(annoClass) {
+                  annoClass.isAnnotatedWithAny(scopeAnnotationClassIds)
+                }
+              if (isScopeMarker) {
+                scopes += IrAnnotation(anno)
+              }
+            }
+            if (isExtensionFactory) {
               graphExtensionSupertypes += clazz.classIdOrFail
             }
           }
+        }
 
-          bindingContainerTransformer.findContainer(clazz)?.let(bindingContainers::add)
+        // The findBindingContainer lookup can be expensive on first-touch (parses the class's
+        // declarations). Tracing it separately — and per-supertype — makes the outliers visible.
+        trace("Find supertype binding containers") {
+          for (type in supertypes) {
+            val clazz = type.classOrFail.owner
+            // Platform types can never be binding containers; skip to avoid the per-call trace
+            // span overhead and the first-touch cost inside findBindingContainer.
+            if (clazz.classId?.isPlatformType() == true) continue
+            trace("findBindingContainer ${clazz.name}") {
+              metroDeclarations.findBindingContainer(clazz)?.let(bindingContainers::add)
+            }
+          }
         }
       }
 
@@ -467,7 +601,7 @@ internal class GraphNodes(
         // metadata anyway
         graphDeclaration.annotations += inheritedScopes
       } else {
-        pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+        metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
           graphDeclaration,
           inheritedScopes,
         )
@@ -479,7 +613,11 @@ internal class GraphNodes(
           if (declaration !is IrOverridableDeclaration<*>) continue
           if (!declaration.isFakeOverride) continue
           if (
-            declaration is IrFunction && declaration.isInheritedFromAny(pluginContext.irBuiltIns)
+            declaration is IrFunction &&
+              declaration.isCompilerIntrinsicOrAny(
+                pluginContext.irBuiltIns,
+                nonNullMetroGraph.isData,
+              )
           ) {
             continue
           }
@@ -556,7 +694,9 @@ internal class GraphNodes(
                       if (isInjectorCandidate) {
                         overridden.owner.regularParameters[0].qualifierAnnotation()
                       } else {
-                        overridden.owner.metroAnnotations(metroSymbols.classIds).qualifier
+                        // Direct qualifier lookup — equivalent to reading .qualifier off a full
+                        // classification but skips categorizing every other annotation kind.
+                        overridden.owner.qualifierAnnotation()
                       }
 
                     if (overriddenQualifier != null) {
@@ -565,8 +705,9 @@ internal class GraphNodes(
                           // For injectors, get the qualifier from the first parameter
                           declaration.regularParameters[0].qualifierAnnotation()
                         } else {
-                          // For accessors, get it from the function's annotations
-                          metroAnnotationsOf(declaration).qualifier
+                          // We already classified `declaration` at the top of the loop; reuse it
+                          // instead of re-running the full classifier here.
+                          annotations.qualifier
                         }
 
                       if (overriddenQualifier != expectedQualifier) {
@@ -893,12 +1034,12 @@ internal class GraphNodes(
                     val createFunction = factory.singleAbstractFunction()
                     val parameters = createFunction.parameters()
                     // Compute binding container fields similar to buildCreator
-                    var bindingContainerFields = BitField()
+                    val bindingContainerFields = BitFieldBuilder()
                     for ((i, parameter) in parameters.regularParameters.withIndex()) {
                       if (parameter.isIncludes) {
                         val parameterClass = parameter.typeKey.type.classOrNull?.owner ?: continue
                         if (parameterClass.isBindingContainer()) {
-                          bindingContainerFields = bindingContainerFields.withSet(i)
+                          bindingContainerFields.set(i)
                         }
                       }
                     }
@@ -906,7 +1047,7 @@ internal class GraphNodes(
                         factory,
                         createFunction,
                         parameters,
-                        bindingContainerFields,
+                        bindingContainerFields.build(),
                       )
                       .also { factory.cachedFactoryCreator = it }
                   }
@@ -936,9 +1077,16 @@ internal class GraphNodes(
 
         // Propagate dynamic type keys from parent graph to this graph extension
         // This ensures dynamic bindings from createDynamicGraph are available to child extensions
+        // Only propagate entries with actual callables (non-empty sets), not container type markers
+        // (empty sets). Container type keys are added as markers at construction time but shouldn't
+        // be propagated to child extensions, as doing so would cause the child to skip the parent
+        // context binding for the container type (needed as a dispatch receiver for class-based
+        // binding containers).
         if (node is GraphNode.Local) {
           for ((key, callables) in node.dynamicTypeKeys) {
-            dynamicTypeKeys.getOrInit(key).addAll(callables)
+            if (callables.isNotEmpty()) {
+              dynamicTypeKeys.getOrInit(key).addAll(callables)
+            }
           }
         }
       }
@@ -963,7 +1111,10 @@ internal class GraphNodes(
           }
         }
 
-      val resolvedContainers = bindingContainerResolver.resolve(directDeclaredContainers)
+      val resolvedContainers =
+        trace("Resolve direct containers") {
+          bindingContainerResolver.resolve(directDeclaredContainers)
+        }
       bindingContainers += resolvedContainers
       resolvedBindingContainers += resolvedContainers
       resolvedContainers.forEach { container ->
@@ -978,35 +1129,38 @@ internal class GraphNodes(
       // from scopes using IrContributionMerger to handle merging. This can't be done in FIR
       // since we can't modify the annotation there
       if (!graphDeclaration.origin.isSyntheticGeneratedGraph && aggregationScopes.isNotEmpty()) {
-        val excludes =
-          dependencyGraphAnno?.excludedClasses().orEmpty().mapNotNullToSet {
-            it.classType.rawTypeOrNull()?.classId
-          }
+        trace("Merge scope contributions") {
+          val excludes =
+            dependencyGraphAnno?.excludedClasses().orEmpty().mapNotNullToSet {
+              it.classType.rawTypeOrNull()?.classId
+            }
 
-        // TODO it kinda sucks that we compute this in both FIR and IR? Maybe we can do this in FIR
-        //  and generate a hint/holder annotation on the graph impl
-        nodeCache.contributionMerger
-          .computeContributions(
-            primaryScope = aggregationScopes.first(),
-            allScopes = aggregationScopes,
-            excluded = excludes,
-            callingDeclaration = graphDeclaration,
-          )
-          ?.bindingContainers
-          ?.values
-          ?.let { containers ->
-            // Add binding containers from merged contributions (already filtered)
-            bindingContainers +=
-              containers
-                .mapNotNull { bindingContainerTransformer.findContainer(it) }
-                .onEach { container ->
-                  linkDeclarationsInCompilation(graphDeclaration, container.ir)
-                  // Annotation-included containers may need to be managed directly
-                  if (container.canBeManaged) {
-                    managedBindingContainers += container.ir
+          // TODO it kinda sucks that we compute this in both FIR and IR? Maybe we can do this in
+          // FIR
+          //  and generate a hint/holder annotation on the graph impl
+          nodeCache.contributionMerger
+            .computeContributions(
+              primaryScope = aggregationScopes.first(),
+              allScopes = aggregationScopes,
+              excluded = excludes,
+              callingDeclaration = graphDeclaration,
+            )
+            ?.bindingContainers
+            ?.values
+            ?.let { containers ->
+              // Add binding containers from merged contributions (already filtered)
+              bindingContainers +=
+                containers
+                  .mapNotNull { metroDeclarations.findBindingContainer(it) }
+                  .onEach { container ->
+                    linkDeclarationsInCompilation(graphDeclaration, container.ir)
+                    // Annotation-included containers may need to be managed directly
+                    if (container.canBeManaged) {
+                      managedBindingContainers += container.ir
+                    }
                   }
-                }
-          }
+            }
+        }
       } else {
         // For generated graphs (extensions/dynamic), just resolve transitive containers
         // (no replacement filtering needed since already processed by IrContributionMerger when
@@ -1014,15 +1168,22 @@ internal class GraphNodes(
       }
 
       // Resolve transitive binding containers
-      val unresolvedRoots =
-        bindingContainers.mapNotNullToSet { if (it in resolvedBindingContainers) null else it.ir }
-      val newlyResolved = bindingContainerResolver.resolve(unresolvedRoots)
-      val allMergedContainers = resolvedBindingContainers + newlyResolved
+      val allMergedContainers =
+        trace("Resolve transitive containers") {
+          val unresolvedRoots = bindingContainers.mapNotNullToSet {
+            if (it in resolvedBindingContainers) null else it.ir
+          }
+          val newlyResolved = bindingContainerResolver.resolve(unresolvedRoots)
+          resolvedBindingContainers + newlyResolved
+        }
 
       trace("Process transitive containers") {
         for (container in allMergedContainers) {
           val isDynamicContainer = container.ir in dynamicBindingContainers
           for ((_, factory) in container.providerFactories) {
+            if (factory.annotations.isGraphPrivate) {
+              graphPrivateKeys += factory.typeKey
+            }
             val typeKey = factory.typeKey
             // Dynamic containers should override non-dynamic ones with the same typeKey
             val existingIsDynamic = typeKey in dynamicTypeKeys
@@ -1043,6 +1204,9 @@ internal class GraphNodes(
 
           container.bindsMirror?.let { bindsMirror ->
             for (callable in bindsMirror.bindsCallables) {
+              if (callable.callableMetadata.annotations.isGraphPrivate) {
+                graphPrivateKeys += callable.typeKey
+              }
               val typeKey = callable.typeKey
               // Dynamic containers should override non-dynamic ones with the same typeKey
               val existingIsDynamic = typeKey in dynamicTypeKeys
@@ -1061,12 +1225,18 @@ internal class GraphNodes(
               }
             }
             for (callable in bindsMirror.multibindsCallables) {
+              if (callable.callableMetadata.annotations.isGraphPrivate) {
+                graphPrivateKeys += callable.typeKey
+              }
               multibindsCallables += callable
               if (isDynamicContainer) {
                 dynamicTypeKeys.getAndAdd(callable.typeKey, callable)
               }
             }
             for (callable in bindsMirror.optionalKeys) {
+              if (callable.callableMetadata.annotations.isGraphPrivate) {
+                graphPrivateKeys += callable.typeKey
+              }
               optionalKeys.getAndAdd(callable.typeKey, callable)
               if (isDynamicContainer) {
                 dynamicTypeKeys.getAndAdd(callable.typeKey, callable)
@@ -1079,69 +1249,81 @@ internal class GraphNodes(
         }
       }
 
-      writeDiagnostic("bindingContainers-${diagnosticTag}.txt") {
-        allMergedContainers.joinToString("\n") { it.ir.classId.toString() }
-      }
+      return trace("Finalize GraphNode") {
+        writeDiagnostic("bindingContainers", "${diagnosticTag}.txt") {
+          allMergedContainers.joinToString("\n") { it.ir.classId.toString() }
+        }
 
-      val graphNode =
-        GraphNode.Local(
-          sourceGraph = graphDeclaration,
-          supertypes = supertypes.toList(),
-          includedGraphNodes = includedGraphNodes,
-          graphExtensions = graphExtensions,
-          scopes = scopes,
-          aggregationScopes = aggregationScopes,
-          bindsCallables = bindsCallables,
-          bindsFunctions = bindsFunctions.map { it.first },
-          multibindsCallables = multibindsCallables,
-          optionalKeys = optionalKeys,
-          providerFactories = providerFactories,
-          accessors = accessors,
-          injectors = injectors,
-          creator = creator,
-          originalCreator = originalCreator,
-          parentGraph = parentGraph,
-          bindingContainers = managedBindingContainers,
-          annotationDeclaredBindingContainers = annotationDeclaredBindingContainers,
-          dynamicTypeKeys = dynamicTypeKeys,
-          typeKey = graphTypeKey,
-        )
+        val graphNode =
+          GraphNode.Local(
+            sourceGraph = graphDeclaration,
+            supertypes = supertypes.toList(),
+            includedGraphNodes = includedGraphNodes,
+            graphExtensions = graphExtensions,
+            scopes = scopes,
+            aggregationScopes = aggregationScopes,
+            bindsCallables = bindsCallables,
+            bindsFunctions = bindsFunctions.map { it.first },
+            multibindsCallables = multibindsCallables,
+            optionalKeys = optionalKeys,
+            providerFactories = providerFactories,
+            accessors = accessors,
+            injectors = injectors,
+            creator = creator,
+            originalCreator = originalCreator,
+            parentGraph = parentGraph,
+            bindingContainers = managedBindingContainers,
+            annotationDeclaredBindingContainers = annotationDeclaredBindingContainers,
+            dynamicTypeKeys = dynamicTypeKeys,
+            typeKey = graphTypeKey,
+            graphPrivateKeys = graphPrivateKeys,
+            publishedBindsKeys =
+              trace("Compute published binds keys") {
+                computePublishedBindsKeys(graphPrivateKeys, bindsCallables)
+              },
+          )
 
-      // Check after creating a node for access to recursive allDependencies
-      val overlapErrors = mutableSetOf<String>()
-      for (depNode in graphNode.allParentGraphs.values) {
-        // If any intersect, report an error to onError with the intersecting types (including
-        // which parent it is coming from)
-        val overlaps = scopes.intersect(depNode.scopes)
-        if (overlaps.isNotEmpty()) {
-          for (overlap in overlaps) {
-            overlapErrors +=
-              "- ${overlap.render(short = false)} (from ancestor '${depNode.sourceGraph.kotlinFqName}')"
+        // Check after creating a node for access to recursive allDependencies
+        trace("Check scope overlap with parents") {
+          val overlapErrors = mutableSetOf<String>()
+          for (depNode in graphNode.allParentGraphs.values) {
+            // If any intersect, report an error to onError with the intersecting types (including
+            // which parent it is coming from)
+            val overlaps = scopes.intersect(depNode.scopes)
+            if (overlaps.isNotEmpty()) {
+              for (overlap in overlaps) {
+                overlapErrors +=
+                  "- ${overlap.render(short = false)} (from ancestor '${depNode.sourceGraph.kotlinFqName}')"
+              }
+            }
+          }
+          if (overlapErrors.isNotEmpty()) {
+            metroContext.reportCompat(
+              graphDeclaration,
+              MetroDiagnostics.METRO_ERROR,
+              buildString {
+                appendLine(
+                  "Graph extension '${graphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':"
+                )
+                for (overlap in overlapErrors) {
+                  appendLine(overlap)
+                }
+              },
+            )
+            exitProcessing()
           }
         }
-      }
-      if (overlapErrors.isNotEmpty()) {
-        metroContext.reportCompat(
-          graphDeclaration,
-          MetroDiagnostics.METRO_ERROR,
-          buildString {
-            appendLine(
-              "Graph extension '${graphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':"
-            )
-            for (overlap in overlapErrors) {
-              appendLine(overlap)
-            }
-          },
-        )
-        exitProcessing()
-      }
 
-      // Exit after collecting all errors
-      if (hasErrors) {
-        exitProcessing()
-      }
+        // Flush any batched qualifier mismatch errors
+        flushQualifierMismatchErrors()
 
-      return graphNode
+        // Exit after collecting all errors
+        if (hasErrors) {
+          exitProcessing()
+        }
+
+        graphNode
+      }
     }
 
     private fun buildExternalGraphOrBindingContainer(): GraphNode {
@@ -1195,7 +1377,7 @@ internal class GraphNodes(
           val declaration = type.classOrNull?.owner ?: continue
           // Skip the metrograph, it won't have custom nested factories
           if (declaration == metroGraph) continue
-          bindingContainerTransformer.findContainer(declaration)?.let { bindingContainer ->
+          metroDeclarations.findBindingContainer(declaration)?.let { bindingContainer ->
             for ((_, factory) in bindingContainer.providerFactories) {
               providerFactories.getAndAdd(factory.typeKey, factory)
             }
@@ -1212,9 +1394,31 @@ internal class GraphNodes(
           }
         }
       } else {
-        bindingContainerTransformer.factoryClassesFor(metroGraph ?: graphDeclaration).forEach {
+        metroDeclarations.providerFactoriesFor(metroGraph ?: graphDeclaration).forEach {
           (typeKey, factory) ->
           providerFactories.getAndAdd(typeKey, factory)
+        }
+      }
+
+      // Collect graph-private keys from provider factories and binds callables
+      val externalGraphPrivateKeys = mutableSetOf<IrTypeKey>()
+      for ((_, factories) in providerFactories) {
+        for (factory in factories) {
+          if (factory.annotations.isGraphPrivate) {
+            externalGraphPrivateKeys += factory.typeKey
+          }
+        }
+      }
+      for ((_, callables) in bindsCallables) {
+        for (callable in callables) {
+          if (callable.callableMetadata.annotations.isGraphPrivate) {
+            externalGraphPrivateKeys += callable.typeKey
+          }
+        }
+      }
+      for (callable in multibindsCallables) {
+        if (callable.callableMetadata.annotations.isGraphPrivate) {
+          externalGraphPrivateKeys += callable.typeKey
         }
       }
 
@@ -1231,9 +1435,33 @@ internal class GraphNodes(
           multibindsCallables = multibindsCallables,
           optionalKeys = optionalKeys,
           parentGraph = parentGraph,
+          graphPrivateKeys = externalGraphPrivateKeys,
+          publishedBindsKeys = computePublishedBindsKeys(externalGraphPrivateKeys, bindsCallables),
         )
 
       return dependentNode
+    }
+  }
+}
+
+/**
+ * Computes published binds keys: non-private `@Binds` whose source is `@GraphPrivate`. These are
+ * exposed to child graphs as parent-resolved dependencies, since the child can't inherit and
+ * re-resolve the `@Binds` (the private original binding wouldn't be available).
+ */
+private fun computePublishedBindsKeys(
+  graphPrivateKeys: Set<IrTypeKey>,
+  bindsCallables: Map<IrTypeKey, List<BindsCallable>>,
+): Set<IrTypeKey> {
+  if (graphPrivateKeys.isEmpty()) return emptySet()
+  return buildSet {
+    for ((_, callables) in bindsCallables) {
+      val callable = callables.firstOrNull() ?: continue
+      if (
+        !callable.callableMetadata.annotations.isGraphPrivate && callable.source in graphPrivateKeys
+      ) {
+        add(callable.typeKey)
+      }
     }
   }
 }

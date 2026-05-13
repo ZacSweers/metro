@@ -1,0 +1,1 @@
+/PrivateProviderOption_Error.kt:7:44: error: Scoped @Provides declarations should be private.

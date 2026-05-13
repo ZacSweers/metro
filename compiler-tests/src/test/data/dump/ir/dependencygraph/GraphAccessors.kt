@@ -1,7 +1,7 @@
 // Golden image test to ensure we don't generate unnecessary wrapping providers over accessors
 interface Accessors {
   val string: String
-  val intProvider: Provider<Int>
+  val intProvider: () -> Int
 }
 
 @DependencyGraph

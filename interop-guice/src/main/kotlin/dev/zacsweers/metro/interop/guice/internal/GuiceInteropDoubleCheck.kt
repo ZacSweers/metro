@@ -13,6 +13,10 @@ public class GuiceInteropDoubleCheck<T : Any>(provider: MetroProvider<T>) :
 
   override fun get(): T = invoke()
 
+  override fun toString(): String {
+    return super.toString() + " (Guice interop)"
+  }
+
   public companion object {
     public fun <P : GuiceProvider<T>, T : Any> guiceProvider(delegate: P): GuiceProvider<T> {
       if (delegate is GuiceInteropDoubleCheck<*>) {

@@ -3,17 +3,7 @@
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.buildConfig)
-}
-
-kotlin {
-  compilerOptions {
-    freeCompilerArgs.addAll("-Xcontext-parameters", "-Xreturn-value-checker=full")
-
-    optIn.addAll(
-      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
-      "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-    )
-  }
+  id("metro.publish")
 }
 
 buildConfig {

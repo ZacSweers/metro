@@ -12,7 +12,7 @@ import dev.zacsweers.metrox.viewmodel.ViewModelKey
 
 /** A trivial Counter ViewModel. */
 @ContributesIntoMap(AppScope::class)
-@ViewModelKey(CounterViewModel::class)
+@ViewModelKey
 @Inject
 class CounterViewModel : ViewModel() {
   private val _count = MutableLiveData(0)

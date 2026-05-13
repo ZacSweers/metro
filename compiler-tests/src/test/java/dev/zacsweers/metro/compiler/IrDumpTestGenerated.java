@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
 import org.jetbrains.kotlin.test.util.KtTestUtil;
-import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,7 +18,7 @@ import java.util.regex.Pattern;
 public class IrDumpTestGenerated extends AbstractIrDumpTest {
   @Test
   public void testAllFilesPresentInIr() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir"), Pattern.compile("^(.+)\\.kt$"), null, true);
   }
 
   @Test
@@ -52,7 +51,25 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Aggregation {
     @Test
     public void testAllFilesPresentInAggregation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("ChunkMergedSupertypes.kt")
+    public void testChunkMergedSupertypes() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ChunkMergedSupertypes.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionProviders_BasicDump.kt")
+    public void testContributionProviders_BasicDump() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributionProviders_BasicDump.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionProviders_ScopedMultipleBindings.kt")
+    public void testContributionProviders_ScopedMultipleBindings() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributionProviders_ScopedMultipleBindings.kt");
     }
 
     @Test
@@ -68,6 +85,24 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("DefaultBindingMirror.kt")
+    public void testDefaultBindingMirror() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/DefaultBindingMirror.kt");
+    }
+
+    @Test
+    @TestMetadata("ImplicitClassKeyPopulatedOnCopy.kt")
+    public void testImplicitClassKeyPopulatedOnCopy() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ImplicitClassKeyPopulatedOnCopy.kt");
+    }
+
+    @Test
+    @TestMetadata("MergeContributionsInIrOptIn.kt")
+    public void testMergeContributionsInIrOptIn() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/MergeContributionsInIrOptIn.kt");
+    }
+
+    @Test
     @TestMetadata("MultipleContributionsOnlyProduceOneHintFile.kt")
     public void testMultipleContributionsOnlyProduceOneHintFile() {
       runTest("compiler-tests/src/test/data/dump/ir/aggregation/MultipleContributionsOnlyProduceOneHintFile.kt");
@@ -80,7 +115,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Cycles {
     @Test
     public void testAllFilesPresentInCycles() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/cycles"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/cycles"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -114,13 +149,19 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Dependencygraph {
     @Test
     public void testAllFilesPresentInDependencygraph() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
     @TestMetadata("CreatorParamsDoNotGetChunked.kt")
     public void testCreatorParamsDoNotGetChunked() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/CreatorParamsDoNotGetChunked.kt");
+    }
+
+    @Test
+    @TestMetadata("DeepGraphExtensionChainUsesHashedNames.kt")
+    public void testDeepGraphExtensionChainUsesHashedNames() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/DeepGraphExtensionChainUsesHashedNames.kt");
     }
 
     @Test
@@ -196,6 +237,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("NestedClassNamesInDump.kt")
+    public void testNestedClassNamesInDump() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/NestedClassNamesInDump.kt");
+    }
+
+    @Test
     @TestMetadata("OptionalBindingsHaveValidFieldNames.kt")
     public void testOptionalBindingsHaveValidFieldNames() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/OptionalBindingsHaveValidFieldNames.kt");
@@ -243,7 +290,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public class Dynamic {
       @Test
       public void testAllFilesPresentInDynamic() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -259,7 +306,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public class Interop {
       @Test
       public void testAllFilesPresentInInterop() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/interop"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -275,7 +322,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public class Sharding {
       @Test
       public void testAllFilesPresentInSharding() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -357,7 +404,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public class Switchingproviders {
       @Test
       public void testAllFilesPresentInSwitchingproviders() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -410,7 +457,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Injectconstructor {
     @Test
     public void testAllFilesPresentInInjectconstructor() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/injectconstructor"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/injectconstructor"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -432,7 +479,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Multibindings {
     @Test
     public void testAllFilesPresentInMultibindings() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -488,6 +535,36 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public void testMultibindingSourcesGetRefcountedViaFactoryPath() {
       runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingSourcesGetRefcountedViaFactoryPath.kt");
     }
+
+    @Test
+    @TestMetadata("SingletonMapFactory.kt")
+    public void testSingletonMapFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonMapLazyFactory.kt")
+    public void testSingletonMapLazyFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapLazyFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonMapProviderFactory.kt")
+    public void testSingletonMapProviderFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapProviderFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonMapProviderLazyFactory.kt")
+    public void testSingletonMapProviderLazyFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonMapProviderLazyFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SingletonSetFactory.kt")
+    public void testSingletonSetFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/SingletonSetFactory.kt");
+    }
   }
 
   @Nested
@@ -496,7 +573,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Provides {
     @Test
     public void testAllFilesPresentInProvides() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/provides"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/provides"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -518,7 +595,7 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   public class Visibility {
     @Test
     public void testAllFilesPresentInVisibility() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/visibility"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/visibility"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test

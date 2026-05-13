@@ -5,7 +5,6 @@ package dev.zacsweers.metrox.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
-import dev.zacsweers.metro.Provider
 import kotlin.reflect.KClass
 
 /**
@@ -26,9 +25,9 @@ import kotlin.reflect.KClass
  * @ContributesBinding(AppScope::class)
  * @SingleIn(AppScope::class)
  * class MyViewModelFactory(
- *   override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>>,
- *   override val assistedFactoryProviders: Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>>,
- *   override val manualAssistedFactoryProviders: Map<KClass<out ManualViewModelAssistedFactory>, Provider<ManualViewModelAssistedFactory>>,
+ *   override val viewModelProviders: Map<KClass<out ViewModel>, () -> ViewModel>,
+ *   override val assistedFactoryProviders: Map<KClass<out ViewModel>, () -> ViewModelAssistedFactory>,
+ *   override val manualAssistedFactoryProviders: Map<KClass<out ManualViewModelAssistedFactory>, () -> ManualViewModelAssistedFactory>,
  * ): MetroViewModelFactory()
  *
  * // Compose installation
@@ -55,24 +54,23 @@ import kotlin.reflect.KClass
  * ```
  *
  * The class manages two maps:
- * - [viewModelProviders]: A map of [KClass] to [Provider] of ViewModels, used to instantiate
- *   standard constructor-injected ViewModels.
- * - [assistedFactoryProviders]: A map of KClass to a Provider of [ViewModelAssistedFactory]
- *   instances, used to create ViewModels that require assisted creation with [CreationExtras]. This
- *   map is always tried first.
+ * - [viewModelProviders]: A map of [KClass] to a provider function of ViewModels, used to
+ *   instantiate standard constructor-injected ViewModels.
+ * - [assistedFactoryProviders]: A map of KClass to a provider function of
+ *   [ViewModelAssistedFactory] instances, used to create ViewModels that require assisted creation
+ *   with [CreationExtras]. This map is always tried first.
  *
  * The keys for both maps are the target ViewModel class.
  *
  * If neither map contains the requested ViewModel class, an `IllegalArgumentException` is thrown.
  */
 public abstract class MetroViewModelFactory : ViewModelProvider.Factory {
-  protected open val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>> =
-    emptyMap()
+  protected open val viewModelProviders: Map<KClass<out ViewModel>, () -> ViewModel> = emptyMap()
   protected open val assistedFactoryProviders:
-    Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>> =
+    Map<KClass<out ViewModel>, () -> ViewModelAssistedFactory> =
     emptyMap()
   protected open val manualAssistedFactoryProviders:
-    Map<KClass<out ManualViewModelAssistedFactory>, Provider<ManualViewModelAssistedFactory>> =
+    Map<KClass<out ManualViewModelAssistedFactory>, () -> ManualViewModelAssistedFactory> =
     emptyMap()
 
   @Suppress("UNCHECKED_CAST")
@@ -90,10 +88,10 @@ public abstract class MetroViewModelFactory : ViewModelProvider.Factory {
 
   public fun <FactoryType : ManualViewModelAssistedFactory> createManuallyAssistedFactory(
     factoryClass: KClass<FactoryType>
-  ): Provider<FactoryType> {
+  ): () -> FactoryType {
     manualAssistedFactoryProviders[factoryClass]?.let { provider ->
       @Suppress("UNCHECKED_CAST")
-      return provider as Provider<FactoryType>
+      return provider as () -> FactoryType
     }
     error("No manual viewModel provider found for $factoryClass")
   }

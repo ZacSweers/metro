@@ -14,6 +14,7 @@ local.properties
 
 # Python stuff
 **/__pycache__
+.venv
 
 # Generated file from IDE integration testing
 **/gradle-daemon-jvm.properties

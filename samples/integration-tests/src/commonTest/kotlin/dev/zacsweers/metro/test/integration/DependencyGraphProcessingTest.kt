@@ -18,7 +18,6 @@ import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.MapKey
 import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.Named
-import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.StringKey
@@ -87,9 +86,9 @@ class DependencyGraphProcessingTest {
     @Inject
     class Counter(
       val scalar: Int,
-      val providedValue: Provider<Int>,
+      val providedValue: () -> Int,
       val lazyValue: Lazy<Int>,
-      val providedLazies: Provider<Lazy<Int>>,
+      val providedLazies: () -> Lazy<Int>,
     )
   }
 
@@ -130,9 +129,9 @@ class DependencyGraphProcessingTest {
     var counter = 0
 
     abstract val scalar: Int
-    abstract val providedValue: Provider<Int>
+    abstract val providedValue: () -> Int
     abstract val lazyValue: Lazy<Int>
-    abstract val providedLazies: Provider<Lazy<Int>>
+    abstract val providedLazies: () -> Lazy<Int>
 
     @Provides private fun provideInt(): Int = counter++
   }
@@ -406,28 +405,6 @@ class DependencyGraphProcessingTest {
       @AssistedFactory
       fun interface Factory2 {
         fun create(intValue: Int): ExampleClass
-      }
-    }
-  }
-
-  @Test
-  fun `assisted injection with custom assisted keys`() {
-    val graph = createGraph<AssistedInjectGraphWithCustomAssistedKeys>()
-    val factory = graph.factory
-    val exampleClass = factory.create(2, 1)
-    assertEquals(1, exampleClass.intValue1)
-    assertEquals(2, exampleClass.intValue2)
-  }
-
-  @DependencyGraph
-  interface AssistedInjectGraphWithCustomAssistedKeys {
-    val factory: ExampleClass.Factory
-
-    @AssistedInject
-    class ExampleClass(@Assisted("1") val intValue1: Int, @Assisted("2") val intValue2: Int) {
-      @AssistedFactory
-      fun interface Factory {
-        fun create(@Assisted("2") intValue2: Int, @Assisted("1") intValue1: Int): ExampleClass
       }
     }
   }
@@ -746,7 +723,7 @@ class DependencyGraphProcessingTest {
     assertEquals(mapOf(Seasoning.SPICY to 1, Seasoning.REGULAR to 2), graph.seasoningAmounts)
     assertEquals(mapOf(1 to 1, 2 to 2), graph.ints)
     assertEquals(mapOf("1" to 1, "2" to 2), graph.strings)
-    // TODO WASM annotation classes don't implement equals correctly
+    // TODO Wasm annotation classes don't implement equals correctly
     if (!isWasm()) {
       assertEquals(
         mapOf(
@@ -1024,6 +1001,7 @@ class DependencyGraphProcessingTest {
   }
 
   @Singleton
+  @Suppress("Metro/SuspiciousUnusedMultibinding") // Irrelevant to this test
   @DependencyGraph(AppScope::class)
   abstract class GraphWithMultipleScopes {
     private var intCounter = 0
@@ -1188,10 +1166,7 @@ class DependencyGraphProcessingTest {
 
   @Inject
   @Singleton
-  class Cache(
-    val fileSystem: FileSystem,
-    @Named("cache-dir-name") val cacheDirName: Provider<String>,
-  ) {
+  class Cache(val fileSystem: FileSystem, @Named("cache-dir-name") val cacheDirName: () -> String) {
     val cacheDir = cacheDirName().toPath()
   }
 

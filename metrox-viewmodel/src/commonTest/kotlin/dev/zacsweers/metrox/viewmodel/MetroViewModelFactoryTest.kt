@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
-import dev.zacsweers.metro.Provider
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -40,8 +39,8 @@ class MetroViewModelFactoryTest {
     val testViewModel = TestViewModel()
     val factory =
       object : MetroViewModelFactory() {
-        override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>> =
-          mapOf(TestViewModel::class to Provider { testViewModel })
+        override val viewModelProviders: Map<KClass<out ViewModel>, () -> ViewModel> =
+          mapOf(TestViewModel::class to { testViewModel })
       }
 
     val result = factory.create(TestViewModel::class, CreationExtras.Empty)
@@ -55,12 +54,12 @@ class MetroViewModelFactoryTest {
     val assistedFactory = TestViewModelAssistedFactory("assisted")
     val factory =
       object : MetroViewModelFactory() {
-        override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>> =
-          mapOf(AssistedTestViewModel::class to Provider { testViewModel })
+        override val viewModelProviders: Map<KClass<out ViewModel>, () -> ViewModel> =
+          mapOf(AssistedTestViewModel::class to { testViewModel })
 
         override val assistedFactoryProviders:
-          Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>> =
-          mapOf(AssistedTestViewModel::class to Provider { assistedFactory })
+          Map<KClass<out ViewModel>, () -> ViewModelAssistedFactory> =
+          mapOf(AssistedTestViewModel::class to { assistedFactory })
       }
 
     val result = factory.create(AssistedTestViewModel::class, CreationExtras.Empty)
@@ -83,11 +82,8 @@ class MetroViewModelFactoryTest {
     val factory =
       object : MetroViewModelFactory() {
         override val manualAssistedFactoryProviders:
-          Map<
-            KClass<out ManualViewModelAssistedFactory>,
-            Provider<ManualViewModelAssistedFactory>,
-          > =
-          mapOf(TestManualFactory::class to Provider { manualFactory })
+          Map<KClass<out ManualViewModelAssistedFactory>, () -> ManualViewModelAssistedFactory> =
+          mapOf(TestManualFactory::class to { manualFactory })
       }
 
     val provider = factory.createManuallyAssistedFactory(TestManualFactory::class)
@@ -110,10 +106,10 @@ class MetroViewModelFactoryTest {
     var invocationCount = 0
     val factory =
       object : MetroViewModelFactory() {
-        override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>> =
+        override val viewModelProviders: Map<KClass<out ViewModel>, () -> ViewModel> =
           mapOf(
             TestViewModel::class to
-              Provider {
+              {
                 invocationCount++
                 TestViewModel()
               }
@@ -142,8 +138,8 @@ class MetroViewModelFactoryTest {
     val factory =
       object : MetroViewModelFactory() {
         override val assistedFactoryProviders:
-          Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>> =
-          mapOf(AssistedTestViewModel::class to Provider { assistedFactory })
+          Map<KClass<out ViewModel>, () -> ViewModelAssistedFactory> =
+          mapOf(AssistedTestViewModel::class to { assistedFactory })
       }
 
     val extras = MutableCreationExtras().apply { set(testKey, "from-extras") }
@@ -157,8 +153,8 @@ class MetroViewModelFactoryTest {
   fun `factory works with ViewModelProvider`() {
     val factory =
       object : MetroViewModelFactory() {
-        override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>> =
-          mapOf(TestViewModel::class to Provider { TestViewModel() })
+        override val viewModelProviders: Map<KClass<out ViewModel>, () -> ViewModel> =
+          mapOf(TestViewModel::class to { TestViewModel() })
       }
 
     val viewModelStore = ViewModelStore()
@@ -178,10 +174,8 @@ class MetroViewModelFactoryTest {
     val factory =
       object : MetroViewModelFactory() {
         override val assistedFactoryProviders:
-          Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>> =
-          mapOf(
-            AssistedTestViewModel::class to Provider { TestViewModelAssistedFactory("assisted") }
-          )
+          Map<KClass<out ViewModel>, () -> ViewModelAssistedFactory> =
+          mapOf(AssistedTestViewModel::class to { TestViewModelAssistedFactory("assisted") })
       }
 
     val viewModelStore = ViewModelStore()

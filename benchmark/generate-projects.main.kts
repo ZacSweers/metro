@@ -19,7 +19,11 @@ class GenerateProjectsCommand : CliktCommand() {
   }
 
   private val buildMode by
-    option("--mode", "-m", help = "Build mode: metro, dagger, or kotlin_inject_anvil")
+    option(
+        "--mode",
+        "-m",
+        help = "Build mode: metro, dagger, kotlin_inject_anvil, koin, vanilla, or metro_noop",
+      )
       .enum<BuildMode>(ignoreCase = true)
       .default(BuildMode.METRO)
 
@@ -41,20 +45,19 @@ class GenerateProjectsCommand : CliktCommand() {
   private val providerMultibindings by
     option(
         "--provider-multibindings",
-        help = "Wrap multibinding accessors in Provider (e.g., Provider<Set<E>> instead of Set<E>)",
+        help =
+          "Wrap multibinding accessors in a provider form (e.g., a provider of `Set<E>` instead of `Set<E>`). " +
+            "Metro mode generates the preferred function-syntax form `() -> Set<E>`. Dagger mode uses the " +
+            "classic `Provider<Set<E>>` form. Useful for benchmarking `SetFactory`/`MapFactory` behavior.",
       )
       .flag(default = false)
 
-  private val transformProvidersToPrivate by
-    option(
-        "--transform-providers-to-private",
-        help =
-          "Transform @Provides functions to private (Metro mode only). Disabled by default for better R8 optimization.",
-      )
-      .flag("--no-transform-providers-to-private", default = false)
-
   private val enableReports by
     option("--enable-reports", help = "Enable Metro graph reports for debugging (Metro mode only).")
+      .flag(default = false)
+
+  private val enableTracing by
+    option("--enable-tracing", help = "Enable Metro compiler tracing (Metro mode only).")
       .flag(default = false)
 
   private val enableGraphShardingFlag by
@@ -78,9 +81,24 @@ class GenerateProjectsCommand : CliktCommand() {
       )
       .flag(default = false)
 
+  private val parallelThreads by
+    option(
+        "--parallel-threads",
+        help =
+          "Number of threads for parallel graph validation (Metro mode only). 0 (default) disables parallelism.",
+      )
+      .int()
+      .default(0)
+
+  private val l2ChildrenPerL1: Int
+    get() = ((totalModules - 500).coerceAtLeast(0) / 300).coerceAtMost(5)
+
+  private val l3ChildrenPerL2: Int
+    get() = ((totalModules - 1000).coerceAtLeast(0) / 333).coerceAtMost(3)
+
   override fun run() {
-    if (multiplatform && buildMode != BuildMode.METRO) {
-      echo("Error: --multiplatform flag is only supported with Metro mode", err = true)
+    if (multiplatform && buildMode != BuildMode.METRO && buildMode != BuildMode.KOIN) {
+      echo("Error: --multiplatform flag is only supported with Metro or Koin mode", err = true)
       return
     }
 
@@ -304,12 +322,20 @@ class GenerateProjectsCommand : CliktCommand() {
       }
     }
     if (providerMultibindings) {
-      println("Provider multibindings: enabled (using Provider<Set<E>> instead of Set<E>)")
+      val form =
+        when (buildMode) {
+          BuildMode.METRO -> "() -> Set<E>"
+          else -> "Provider<Set<E>>"
+        }
+      println("Provider multibindings: enabled (using $form instead of Set<E>)")
     }
     if (buildMode == BuildMode.METRO) {
       echo("Graph sharding: ${if (enableSharding) "enabled" else "disabled"}")
       if (enableSwitchingProviders) {
         echo("Switching providers: enabled (deferred class loading)")
+      }
+      if (parallelThreads > 0) {
+        echo("Parallel threads: $parallelThreads")
       }
     }
 
@@ -329,7 +355,18 @@ class GenerateProjectsCommand : CliktCommand() {
 
     echo("Total contributions: ${allModules.sumOf { it.contributionsCount }}")
 
-    echo("Subcomponents: ${allModules.count { it.hasSubcomponent }}")
+    val l1Count = allModules.count { it.hasSubcomponent }
+    val totalSubcomponents = l1Count * (1 + l2ChildrenPerL1 * (1 + l3ChildrenPerL2))
+    echo("Graph extensions: $l1Count L1")
+    if (l2ChildrenPerL1 > 0) {
+      echo("  - L2 children per L1: $l2ChildrenPerL1 (${l1Count * l2ChildrenPerL1} total)")
+    }
+    if (l3ChildrenPerL2 > 0) {
+      echo(
+        "  - L3 children per L2: $l3ChildrenPerL2 (${l1Count * l2ChildrenPerL1 * l3ChildrenPerL2} total)"
+      )
+    }
+    echo("  - Total: $totalSubcomponents")
   }
 
   enum class BuildMode {
@@ -340,6 +377,23 @@ class GenerateProjectsCommand : CliktCommand() {
     VANILLA,
     DAGGER,
     KOTLIN_INJECT_ANVIL,
+    /**
+     * Koin with koin-annotations + K2 compiler plugin.
+     *
+     * Koin is a runtime service-locator; the compiler plugin performs some reachability/validation
+     * checks but the runtime graph is still a KClass-keyed map walked at `get()`/`getAll()` time.
+     * Functional-equivalence caveats vs Metro/Dagger/kotlin-inject:
+     * - No multibindings. `Set<Plugin>`/`Set<Initializer>` are synthesized via
+     *   [org.koin.core.Koin.getAll] and wrapped with `.toSet()` at the accessor boundary.
+     * - No cross-Gradle-module aggregation. We rely on `@ComponentScan` at a common root package so
+     *   the annotations-driven plugin walks the dependency tree.
+     * - Subcomponents are not nested containers in Koin. They are emulated with flat scopes
+     *   (`@Scope`/`@Scoped` + `KoinScopeComponent`) which is cheaper at runtime; this is a real
+     *   property of Koin, not a measurement artifact.
+     * - Accessor interfaces are not emitted: Koin's `@Singleton` classes are registered but lazy;
+     *   nothing forces realization beyond the multibinding `getAll` calls.
+     */
+    KOIN,
   }
 
   enum class ProcessorMode {
@@ -368,6 +422,14 @@ class GenerateProjectsCommand : CliktCommand() {
     APP("app"),
   }
 
+  data class SubcomponentLevel(
+    val name: String,
+    val scopeName: String,
+    val parentScopeRef: String,
+    val serviceCount: Int,
+    val parentServiceNames: List<String>,
+  )
+
   fun String.toCamelCase(): String {
     return split("-", "_").joinToString("") { word ->
       word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
@@ -382,9 +444,9 @@ class GenerateProjectsCommand : CliktCommand() {
     val buildFile = File(moduleDir, "build.gradle.kts")
     buildFile.writeText(generateBuildScript(module, processor))
 
-    // Generate source code
     val srcPath =
-      if (multiplatform && buildMode == BuildMode.METRO) "src/commonMain/kotlin"
+      if (multiplatform && (buildMode == BuildMode.METRO || buildMode == BuildMode.KOIN))
+        "src/commonMain/kotlin"
       else "src/main/kotlin"
     val srcDir =
       File(
@@ -402,7 +464,9 @@ class GenerateProjectsCommand : CliktCommand() {
       module.dependencies.joinToString("\n") { dep -> "    implementation(project(\":$dep\"))" }
     val jvmDependencies =
       module.dependencies.joinToString("\n") { dep -> "  implementation(project(\":$dep\"))" }
-
+    // Koin multiplatform uses an 8-space indent for commonMain { dependencies { ... } } nesting.
+    val koinCommonDependencies =
+      module.dependencies.joinToString("\n") { dep -> "        implementation(project(\":$dep\"))" }
     return when (buildMode) {
       BuildMode.METRO -> {
         if (multiplatform) {
@@ -503,6 +567,63 @@ $dependencies
 """
           .trimIndent()
 
+      BuildMode.KOIN ->
+        if (multiplatform) {
+          val koinCommon =
+            module.dependencies.joinToString("\n") { dep ->
+              "        implementation(project(\":$dep\"))"
+            }
+          """
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
+plugins {
+  alias(libs.plugins.kotlin.multiplatform)
+  alias(libs.plugins.koin.compiler)
+}
+
+val enableLinux = findProperty("benchmark.native.linux")?.toString()?.toBoolean() ?: false
+val enableWindows = findProperty("benchmark.native.windows")?.toString()?.toBoolean() ?: false
+
+kotlin {
+  jvm()
+  js(IR) { nodejs() }
+  @OptIn(ExperimentalWasmDsl::class)
+  wasmJs { nodejs() }
+  macosArm64()
+  macosX64()
+  if (enableLinux) linuxX64()
+  if (enableWindows) mingwX64()
+
+  sourceSets {
+    commonMain {
+      dependencies {
+        implementation(libs.koin.core)
+        implementation(libs.koin.annotations)
+        implementation(project(":core:foundation"))
+$koinCommon
+      }
+    }
+  }
+}
+"""
+            .trimIndent()
+        } else {
+          """
+plugins {
+  alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.koin.compiler)
+}
+
+dependencies {
+  implementation(libs.koin.core)
+  implementation(libs.koin.annotations)
+  implementation(project(":core:foundation"))
+$jvmDependencies
+}
+"""
+            .trimIndent()
+        }
+
       BuildMode.DAGGER ->
         when (processor) {
           ProcessorMode.KSP ->
@@ -590,6 +711,14 @@ kapt {
       "dev.zacsweers.metro.benchmark.${module.layer.path}.${module.name.replace("-", "")}"
     val className = module.name.toCamelCase()
 
+    // Koin has a structurally different annotation model (no @ContributesBinding, no scope param),
+    // so we emit a dedicated source form rather than parameterizing the main path. Must bail here
+    // (before `contributions` is materialized) since generateContribution dispatchees call `error`
+    // for KOIN.
+    if (buildMode == BuildMode.KOIN) {
+      return generateKoinSourceCode(module, packageName, className)
+    }
+
     val contributions =
       (1..module.contributionsCount).joinToString("\n\n") { i ->
         generateContribution(module, i, buildMode)
@@ -647,6 +776,7 @@ $dependencyImports
           """
 import software.amazon.lastmile.kotlin.inject.anvil.ContributesBinding
 import software.amazon.lastmile.kotlin.inject.anvil.ContributesSubcomponent
+import software.amazon.lastmile.kotlin.inject.anvil.ContributesTo
 import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
 import software.amazon.lastmile.kotlin.inject.anvil.AppScope
 import me.tatarka.inject.annotations.Inject
@@ -667,6 +797,8 @@ import javax.inject.Singleton
 $dependencyImports
 """
             .trimIndent()
+
+        BuildMode.KOIN -> error("KOIN path handled above by generateKoinSourceCode")
       }
 
     val scopeAnnotation =
@@ -676,6 +808,7 @@ $dependencyImports
         BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.DAGGER -> "@Singleton"
+        BuildMode.KOIN -> error("KOIN path handled above by generateKoinSourceCode")
       }
 
     val scopeParam =
@@ -685,6 +818,7 @@ $dependencyImports
         BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
+        BuildMode.KOIN -> error("KOIN path handled above by generateKoinSourceCode")
       }
 
     // For METRO_NOOP and VANILLA, generate plain Kotlin without annotations
@@ -726,24 +860,7 @@ class ${className}InitializerImpl$i : ${className}Initializer$i {
       // Generate subcomponent equivalent for vanilla/metro-noop (plain classes)
       val subcomponentCode =
         if (module.hasSubcomponent) {
-          """
-// Subcomponent-equivalent local services (no DI)
-${(1..3).joinToString("\n\n") { i ->
-          """interface ${className}LocalService$i
-
-class ${className}LocalServiceImpl$i : ${className}LocalService$i"""
-        }}
-
-// Subcomponent-equivalent interface (no DI)
-interface ${className}Subcomponent {
-${(1..3).joinToString("\n") { i -> "  fun get${className}LocalService$i(): ${className}LocalService$i" }}
-
-  interface Factory {
-    fun create${className}Subcomponent(): ${className}Subcomponent
-  }
-}
-
-object ${className}Scope"""
+          generateVanillaSubcomponentHierarchy(className)
         } else ""
 
       return """
@@ -822,7 +939,8 @@ $subcomponent
   }
 
   fun generateBindingContribution(className: String, index: Int, buildMode: BuildMode): String {
-    // METRO_NOOP and VANILLA don't generate DI contributions - handled in generateSourceCode
+    // METRO_NOOP/VANILLA don't generate DI contributions; KOIN is handled in
+    // generateKoinSourceCode.
     val scopeAnnotation =
       when (buildMode) {
         BuildMode.METRO -> "@SingleIn(AppScope::class)"
@@ -830,6 +948,7 @@ $subcomponent
         BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.DAGGER -> "@Singleton"
+        BuildMode.KOIN -> error("KOIN uses generateKoinSourceCode, not this path")
       }
 
     val scopeParam =
@@ -839,6 +958,7 @@ $subcomponent
         BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
+        BuildMode.KOIN -> error("KOIN uses generateKoinSourceCode, not this path")
       }
 
     val injectOnClass = buildMode != BuildMode.DAGGER
@@ -857,7 +977,7 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}ServiceImpl$index${if
     index: Int,
     buildMode: BuildMode,
   ): String {
-    // METRO_NOOP and VANILLA don't generate multibindings - handled in generateSourceCode
+    // METRO_NOOP/VANILLA don't generate multibindings; KOIN is handled in generateKoinSourceCode.
     val scopeParam =
       when (buildMode) {
         BuildMode.METRO -> "AppScope::class"
@@ -865,6 +985,7 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}ServiceImpl$index${if
         BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
+        BuildMode.KOIN -> error("KOIN uses generateKoinSourceCode, not this path")
       }
 
     val multibindingAnnotation =
@@ -894,7 +1015,8 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}PluginImpl$index${if 
     index: Int,
     buildMode: BuildMode,
   ): String {
-    // METRO_NOOP and VANILLA don't generate set multibindings - handled in generateSourceCode
+    // METRO_NOOP/VANILLA don't generate set multibindings; KOIN is handled in
+    // generateKoinSourceCode.
     val scopeParam =
       when (buildMode) {
         BuildMode.METRO -> "AppScope::class"
@@ -902,6 +1024,7 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}PluginImpl$index${if 
         BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
+        BuildMode.KOIN -> error("KOIN uses generateKoinSourceCode, not this path")
       }
 
     val multibindingAnnotation =
@@ -938,133 +1061,412 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}InitializerImpl$index
     val availableDependencies =
       module.dependencies
         .mapNotNull { dep ->
-          // Extract module name from dependency path like ":features:auth-feature-11" ->
-          // "AuthFeature11Api"
           val moduleName = dep.split(":").lastOrNull()?.toCamelCase()
           if (moduleName != null) "${moduleName}Api" else null
         }
-        .take(2) // Limit to 2 to avoid too many dependencies
+        .take(2)
 
-    val parentAccessors = availableDependencies.joinToString("\n") { "  fun get$it(): $it" }
-
-    // Generate some subcomponent-scoped bindings
-    val subcomponentAccessors =
-      (1..3).joinToString("\n") {
-        "  fun get${className}LocalService$it(): ${className}LocalService$it"
+    val topLevelParentScopeRef =
+      when (buildMode) {
+        BuildMode.METRO -> "AppScope::class"
+        BuildMode.DAGGER -> "Unit::class"
+        BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
+        else -> ""
       }
+
+    // Build hierarchy of subcomponent levels
+    val levels = mutableListOf<SubcomponentLevel>()
+
+    // L1
+    levels.add(
+      SubcomponentLevel(
+        name = className,
+        scopeName = "${className}Scope",
+        parentScopeRef = topLevelParentScopeRef,
+        serviceCount = 3,
+        parentServiceNames = availableDependencies,
+      )
+    )
+
+    // L2
+    if (l2ChildrenPerL1 > 0) {
+      val l1Services = (1..3).map { "${className}LocalService$it" }
+      for (i in 1..l2ChildrenPerL1) {
+        val l2Name = "${className}Child$i"
+        levels.add(
+          SubcomponentLevel(
+            name = l2Name,
+            scopeName = "${l2Name}Scope",
+            parentScopeRef = "${className}Scope::class",
+            serviceCount = 2,
+            parentServiceNames = l1Services.take(2),
+          )
+        )
+
+        // L3
+        if (l3ChildrenPerL2 > 0) {
+          val l2Services = (1..2).map { "${l2Name}LocalService$it" }
+          for (j in 1..l3ChildrenPerL2) {
+            val l3Name = "${l2Name}Sub$j"
+            levels.add(
+              SubcomponentLevel(
+                name = l3Name,
+                scopeName = "${l3Name}Scope",
+                parentScopeRef = "${l2Name}Scope::class",
+                serviceCount = 1,
+                parentServiceNames = l2Services.take(1),
+              )
+            )
+          }
+        }
+      }
+    }
+
+    return levels.joinToString("\n\n") { level ->
+      generateSubcomponentLevel(level, availableDependencies, buildMode)
+    }
+  }
+
+  fun generateSubcomponentLevel(
+    level: SubcomponentLevel,
+    topLevelParentDeps: List<String>,
+    buildMode: BuildMode,
+  ): String {
+    val (name, scopeName, parentScopeRef, serviceCount, parentServiceNames) = level
+
+    val injectOnClass = buildMode != BuildMode.DAGGER
+
+    val scopeOnClass =
+      when (buildMode) {
+        BuildMode.METRO -> "@SingleIn($scopeName::class)"
+        BuildMode.DAGGER -> "@$scopeName"
+        BuildMode.KOTLIN_INJECT_ANVIL -> "@$scopeName"
+        else -> ""
+      }
+
+    // Generate services with parent dependencies injected
+    val services =
+      (1..serviceCount).joinToString("\n\n") { i ->
+        val dependencyParams =
+          if (parentServiceNames.isNotEmpty()) {
+            parentServiceNames.joinToString(",\n  ") { "private val $it: $it" }
+          } else ""
+
+        """interface ${name}LocalService$i
+
+$scopeOnClass
+@ContributesBinding($scopeName::class)
+${if (injectOnClass) "@Inject\n" else ""}class ${name}LocalServiceImpl$i${if (!injectOnClass) " @Inject constructor" else ""}(${if (dependencyParams.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${name}LocalService$i"""
+      }
+
+    // Accessors for this level's services
+    val accessors =
+      (1..serviceCount).joinToString("\n") { i ->
+        "  fun get${name}LocalService$i(): ${name}LocalService$i"
+      }
+
+    // Only show parent scope accessors for L1 (where parents are *Api types from other modules)
+    val isTopLevel = parentServiceNames.any { it.endsWith("Api") }
+    val parentAccessorsSection =
+      if (isTopLevel && topLevelParentDeps.isNotEmpty()) {
+        val parentAccessors = topLevelParentDeps.joinToString("\n") { "  fun get$it(): $it" }
+        "  // Access parent scope bindings\n$parentAccessors\n\n  // Access subcomponent scope bindings\n"
+      } else ""
 
     return when (buildMode) {
       BuildMode.METRO ->
         """
-// Subcomponent-scoped services that depend on parent scope
-${(1..3).joinToString("\n") { i ->
-          val dependencyParams = if (availableDependencies.isNotEmpty()) {
-            availableDependencies.joinToString(",\n  ") { "private val $it: $it" }
-          } else {
-            "// No parent dependencies available"
-          }
+// $name subcomponent-scoped services
+$services
 
-          """interface ${className}LocalService$i
+@SingleIn($scopeName::class)
+@GraphExtension($scopeName::class)
+interface ${name}Subcomponent {
+$parentAccessorsSection$accessors
 
-@SingleIn(${className}Scope::class)
-@ContributesBinding(${className}Scope::class)
-@Inject
-class ${className}LocalServiceImpl$i(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
-        }}
-
-@SingleIn(${className}Scope::class)
-@GraphExtension(${className}Scope::class)
-interface ${className}Subcomponent {
-  ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
-$subcomponentAccessors
-
-  @ContributesTo(AppScope::class)
+  @ContributesTo($parentScopeRef)
   @GraphExtension.Factory
   interface Factory {
-    fun create${className}Subcomponent(): ${className}Subcomponent
+    fun create${name}Subcomponent(): ${name}Subcomponent
   }
 }
 
-object ${className}Scope
+object $scopeName
 """
+          .trimIndent()
 
       BuildMode.KOTLIN_INJECT_ANVIL ->
         """
-// Subcomponent-scoped services that depend on parent scope
-${(1..3).joinToString("\n") { i ->
-          val dependencyParams = if (availableDependencies.isNotEmpty()) {
-            availableDependencies.joinToString(",\n  ") { "private val $it: $it" }
-          } else {
-            "// No parent dependencies available"
-          }
+// $name subcomponent-scoped services
+$services
 
-          """interface ${className}LocalService$i
-
-@${className}Scope
-@ContributesBinding(${className}Scope::class)
-@Inject
-class ${className}LocalServiceImpl$i(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
-        }}
-
-@${className}Scope
+@$scopeName
 @ContributesSubcomponent(
-  scope = ${className}Scope::class
+  scope = $scopeName::class
 )
-interface ${className}Subcomponent {
-  ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
-$subcomponentAccessors
+interface ${name}Subcomponent {
+$parentAccessorsSection$accessors
 
-  @ContributesSubcomponent.Factory(AppScope::class)
+  @ContributesSubcomponent.Factory($parentScopeRef)
   interface Factory {
-    fun create${className}Subcomponent(): ${className}Subcomponent
+    fun create${name}Subcomponent(): ${name}Subcomponent
   }
 }
 
 @Scope
 @Retention(AnnotationRetention.RUNTIME)
-annotation class ${className}Scope
+annotation class $scopeName
 """
+          .trimIndent()
 
       BuildMode.DAGGER ->
         """
-// Subcomponent-scoped services that depend on parent scope
-${(1..3).joinToString("\n") { i ->
-          val dependencyParams = if (availableDependencies.isNotEmpty()) {
-            availableDependencies.joinToString(",\n  ") { "private val $it: $it" }
-          } else {
-            "// No parent dependencies available"
-          }
+// $name subcomponent-scoped services
+$services
 
-          """interface ${className}LocalService$i
-
-@${className}Scope
-@ContributesBinding(${className}Scope::class)
-class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
-        }}
-
-@${className}Scope
+@$scopeName
 @ContributesSubcomponent(
-  scope = ${className}Scope::class,
-  parentScope = Unit::class
+  scope = $scopeName::class,
+  parentScope = $parentScopeRef
 )
-interface ${className}Subcomponent {
-  ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
-$subcomponentAccessors
+interface ${name}Subcomponent {
+$parentAccessorsSection$accessors
 
-  @ContributesTo(Unit::class)
+  @ContributesTo($parentScopeRef)
   interface Factory {
-    fun create${className}Subcomponent(): ${className}Subcomponent
+    fun create${name}Subcomponent(): ${name}Subcomponent
   }
 }
 
 @Scope
 @Retention(AnnotationRetention.RUNTIME)
-annotation class ${className}Scope
+annotation class $scopeName
 """
+          .trimIndent()
 
-      BuildMode.METRO_NOOP,
-      BuildMode.VANILLA -> error("Should have returned early for $buildMode")
-    }.trimIndent()
+      else -> error("Unsupported build mode for subcomponents: $buildMode")
+    }
+  }
+
+  fun generateVanillaSubcomponentHierarchy(className: String): String {
+    val parts = mutableListOf<String>()
+
+    // L1
+    parts.add(generateVanillaSingleLevel(className, 3))
+
+    // L2
+    for (i in 1..l2ChildrenPerL1) {
+      val l2Name = "${className}Child$i"
+      parts.add(generateVanillaSingleLevel(l2Name, 2))
+
+      // L3
+      for (j in 1..l3ChildrenPerL2) {
+        val l3Name = "${l2Name}Sub$j"
+        parts.add(generateVanillaSingleLevel(l3Name, 1))
+      }
+    }
+
+    return parts.joinToString("\n\n")
+  }
+
+  fun generateVanillaSingleLevel(name: String, serviceCount: Int): String {
+    val services =
+      (1..serviceCount).joinToString("\n\n") { i ->
+        """interface ${name}LocalService$i
+
+class ${name}LocalServiceImpl$i : ${name}LocalService$i"""
+      }
+
+    val accessors =
+      (1..serviceCount).joinToString("\n") { i ->
+        "  fun get${name}LocalService$i(): ${name}LocalService$i"
+      }
+
+    return """// $name subcomponent-equivalent (no DI)
+$services
+
+interface ${name}Subcomponent {
+$accessors
+
+  interface Factory {
+    fun create${name}Subcomponent(): ${name}Subcomponent
+  }
+}
+
+object ${name}Scope"""
+  }
+
+  fun generateKoinSourceCode(module: ModuleSpec, packageName: String, className: String): String {
+    // Koin path: each contribution becomes an @Singleton (or @Factory) annotated class.
+    // - Simple binding: @Singleton(binds = [ServiceN::class])
+    // - Plugin multibinding: @Singleton(binds = [Plugin::class])
+    //   (consumer uses koin.getAll<Plugin>().toSet())
+    // - Initializer multibinding: @Singleton(binds = [Initializer::class])
+    //
+    // Each Gradle module also emits a `@Module @ComponentScan("<its-own-pkg>")` class so the
+    // Koin compiler plugin generates a module lambda per Gradle module. Without this split, a
+    // single root `@ComponentScan("dev.zacsweers.metro.benchmark")` causes the plugin to emit
+    // one giant lambda that overflows the JVM 64KB method size limit at ~100 modules.
+    //
+    // Subcomponents are emitted in Phase B as flat @Scope/@Scoped classes.
+    val contributions =
+      (1..module.contributionsCount)
+        .map { i ->
+          val moduleRandom = Random(module.name.hashCode() + i)
+          when (moduleRandom.nextInt(3)) {
+            0 ->
+              """interface ${className}Service$i
+
+@Singleton(binds = [${className}Service$i::class])
+class ${className}ServiceImpl$i : ${className}Service$i"""
+            1 ->
+              """interface ${className}Plugin$i : Plugin {
+  override fun execute(): String
+}
+
+@Singleton(binds = [Plugin::class])
+class ${className}PluginImpl$i : ${className}Plugin$i {
+  override fun execute() = "${className.lowercase()}-plugin-$i"
+}"""
+            else ->
+              """interface ${className}Initializer$i : Initializer {
+  override fun initialize()
+}
+
+@Singleton(binds = [Initializer::class])
+class ${className}InitializerImpl$i : ${className}Initializer$i {
+  override fun initialize() = println("Initializing ${className.lowercase()} $i")
+}"""
+          }
+        }
+        .joinToString("\n\n")
+
+    val subcomponent =
+      if (module.hasSubcomponent) {
+        generateKoinSubcomponent(module, className)
+      } else ""
+
+    val subcomponentImports =
+      if (module.hasSubcomponent) {
+        """
+import org.koin.core.Koin
+import org.koin.core.annotation.Scope
+import org.koin.core.annotation.Scoped
+import org.koin.core.component.KoinScopeComponent
+import org.koin.core.component.inject"""
+      } else ""
+
+    return """
+package $packageName
+
+import org.koin.core.annotation.ComponentScan
+import org.koin.core.annotation.Module
+import org.koin.core.annotation.Singleton$subcomponentImports
+import dev.zacsweers.metro.benchmark.core.foundation.Plugin
+import dev.zacsweers.metro.benchmark.core.foundation.Initializer
+
+/**
+ * Per-Gradle-module Koin module. `@ComponentScan` narrows to this package so the Koin compiler
+ * plugin generates a small per-module registration lambda. The app's `@KoinApplication` class
+ * enumerates all of these in its `modules = [...]` list.
+ */
+@Module
+@ComponentScan("$packageName")
+class ${className}KoinModule
+
+// Main module interface
+interface ${className}Api
+
+// Implementation
+@Singleton(binds = [${className}Api::class])
+class ${className}Impl : ${className}Api
+
+$contributions
+$subcomponent
+"""
+      .trimIndent()
+  }
+
+  /**
+   * Fully-qualified class reference for a generated module's KoinModule. Used by the app
+   * component's `@KoinApplication(modules = [...])` list.
+   */
+  fun koinModuleClassFqn(module: ModuleSpec): String {
+    val pkg = "dev.zacsweers.metro.benchmark.${module.layer.path}.${module.name.replace("-", "")}"
+    val cn = module.name.toCamelCase()
+    return "$pkg.${cn}KoinModule"
+  }
+
+  /**
+   * Koin has no nested subcomponents. Emulates the Metro/Dagger/kotlin-inject L1/L2/L3 hierarchy
+   * with **flat Koin scopes** (not nested containers). Each level gets:
+   * - a scope marker `class <Level>Scope`
+   * - per-service `@Scope(<Marker>::class) @Scoped(binds = [<Iface>::class])` impl classes
+   * - a `class <Level>Subcomponent(koin: Koin) : KoinScopeComponent` wrapper that exposes the
+   *   scoped services via `by scope.inject()` — mirrors the Subcomponent/Factory interface pairs
+   *   that Metro/Dagger/kotlin-inject emit.
+   *
+   * Like the other frameworks' subcomponents, these wrappers aren't instantiated from
+   * `createAndInitialize()` — they exist for compile-time stress. The KoinScopeComponent structure
+   * is modelled on the KotlinConf app's migration pattern (`class YearScope(...) :
+   * KoinScopeComponent { override val scope = ...; val storage by scope.inject() }`).
+   *
+   * This is a real property of Koin (scopes are flat under the root, not nested containers), not a
+   * benchmark fudge; the README calls this out.
+   */
+  fun generateKoinSubcomponent(module: ModuleSpec, className: String): String {
+    data class Level(val name: String, val serviceCount: Int)
+    val levels = mutableListOf<Level>()
+    levels += Level(className, 3) // L1
+
+    if (l2ChildrenPerL1 > 0) {
+      for (i in 1..l2ChildrenPerL1) {
+        val l2Name = "${className}Child$i"
+        levels += Level(l2Name, 2)
+        if (l3ChildrenPerL2 > 0) {
+          for (j in 1..l3ChildrenPerL2) {
+            levels += Level("${l2Name}Sub$j", 1)
+          }
+        }
+      }
+    }
+
+    return levels.joinToString("\n\n") { (levelName, serviceCount) ->
+      val scopeMarker = "${levelName}Scope"
+      val services =
+        (1..serviceCount).joinToString("\n\n") { i ->
+          """interface ${levelName}LocalService$i
+
+@Scope($scopeMarker::class)
+@Scoped(binds = [${levelName}LocalService$i::class])
+class ${levelName}LocalServiceImpl$i : ${levelName}LocalService$i"""
+        }
+      val scopeProperties =
+        (1..serviceCount).joinToString("\n  ") { i ->
+          "val localService$i: ${levelName}LocalService$i by scope.inject()"
+        }
+      """
+// $levelName flat Koin scope (Koin has no nested subcomponents — flat scopes only).
+// The KoinScopeComponent wrapper mirrors the subcomponent+Factory pair the other frameworks
+// emit; it is not instantiated from createAndInitialize() (parity with Metro/Dagger).
+class $scopeMarker
+
+$services
+
+class ${levelName}Subcomponent(private val parentKoin: Koin, scopeId: String) :
+  KoinScopeComponent {
+  override fun getKoin(): Koin = parentKoin
+  override val scope: org.koin.core.scope.Scope =
+    parentKoin.getOrCreateScope(
+      scopeId,
+      org.koin.core.qualifier.TypeQualifier($scopeMarker::class),
+    )
+  $scopeProperties
+  fun close() = scope.close()
+}
+"""
+        .trimIndent()
+    }
   }
 
   fun generateFoundationModule(multiplatform: Boolean) {
@@ -1161,17 +1563,21 @@ class PlainDataProcessor {
   fun metroDsl(): String {
     val options =
       mutableListOf<String>().apply {
-        if (!transformProvidersToPrivate) add("  transformProvidersToPrivate.set(false)")
         if (enableSharding) add("  enableGraphSharding.set(true)")
         if (enableSwitchingProviders) add("  enableSwitchingProviders.set(true)")
+        if (parallelThreads > 0) add("  parallelThreads.set($parallelThreads)")
         if (enableReports)
           add("  reportsDestination.set(layout.buildDirectory.dir(\"metro-reports\"))")
+        if (enableTracing) add("  traceDestination.set(layout.buildDirectory.dir(\"metro-trace\"))")
       }
     return if (options.isEmpty()) {
       ""
     } else {
       options.add(0, "metro {")
-      options.add(0, "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class)")
+      options.add(
+        0,
+        "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class, dev.zacsweers.metro.gradle.DangerousMetroGradleApi::class)",
+      )
       options.add("}")
       options.joinToString("\n")
     }
@@ -1327,6 +1733,77 @@ application {
 }
 """
 
+        BuildMode.KOIN ->
+          if (multiplatform) {
+            """
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
+plugins {
+  alias(libs.plugins.kotlin.multiplatform)
+  alias(libs.plugins.koin.compiler)
+}
+
+val enableMacos = providers.gradleProperty("benchmark.native.macos").orNull.toBoolean()
+val enableLinux = providers.gradleProperty("benchmark.native.linux").orNull.toBoolean()
+val enableWindows = providers.gradleProperty("benchmark.native.windows").orNull.toBoolean()
+
+kotlin {
+  jvm()
+  js(IR) {
+    nodejs()
+    binaries.executable()
+  }
+  @OptIn(ExperimentalWasmDsl::class)
+  wasmJs {
+    nodejs()
+    binaries.executable()
+  }
+  if (enableMacos) {
+    macosArm64 { binaries.executable() }
+    macosX64 { binaries.executable() }
+  } else if (enableLinux) {
+    linuxX64 { binaries.executable() }
+  } else if (enableWindows) {
+    mingwX64 { binaries.executable() }
+  }
+
+  sourceSets {
+    commonMain {
+      dependencies {
+        implementation(libs.koin.core)
+        implementation(libs.koin.annotations)
+        implementation(project(":core:foundation"))
+
+        // Depend on all generated modules to aggregate everything
+$moduleDepsCommon
+      }
+    }
+  }
+}
+"""
+          } else {
+            """
+plugins {
+  alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.koin.compiler)
+  application
+}
+
+dependencies {
+  implementation(libs.koin.core)
+  implementation(libs.koin.annotations)
+  implementation(project(":core:foundation"))
+
+  // Depend on all generated modules to aggregate everything
+${allModules.joinToString("\n") { "  implementation(project(\":${it.layer.path}:${it.name}\"))" }}
+}
+
+application {
+  mainClass = "dev.zacsweers.metro.benchmark.app.component.AppComponentKt"
+}
+"""
+          }
+
         BuildMode.DAGGER ->
           when (processor) {
             ProcessorMode.KSP ->
@@ -1400,41 +1877,51 @@ application {
     buildFile.writeText(buildScript.trimIndent())
 
     val srcPath =
-      if (multiplatform && buildMode == BuildMode.METRO) "src/commonMain/kotlin"
+      if (multiplatform && (buildMode == BuildMode.METRO || buildMode == BuildMode.KOIN))
+        "src/commonMain/kotlin"
       else "src/main/kotlin"
     val srcDir = File(appDir, "$srcPath/dev/zacsweers/metro/benchmark/app/component")
     srcDir.mkdirs()
 
     val sourceFile = File(srcDir, "AppComponent.kt")
 
-    // Provider import for modes that support it (Metro uses its own Provider, Dagger uses
-    // javax.inject.Provider)
+    // Metro uses the function-syntax provider form `() -> T` (no import needed). Dagger/NOOP use
+    // `javax.inject.Provider`.
     val providerImport =
       when {
         !providerMultibindings -> ""
-        buildMode == BuildMode.METRO -> "import dev.zacsweers.metro.Provider"
+        buildMode == BuildMode.METRO -> ""
         buildMode == BuildMode.DAGGER -> "import javax.inject.Provider"
         else -> "import javax.inject.Provider" // NOOP uses javax style for consistency
       }
 
     // Multibinding types based on providerMultibindings flag
-    val pluginsType = if (providerMultibindings) "Provider<Set<Plugin>>" else "Set<Plugin>"
+    val pluginsType =
+      when {
+        !providerMultibindings -> "Set<Plugin>"
+        buildMode == BuildMode.METRO -> "() -> Set<Plugin>"
+        else -> "Provider<Set<Plugin>>"
+      }
     val initializersType =
-      if (providerMultibindings) "Provider<Set<Initializer>>" else "Set<Initializer>"
+      when {
+        !providerMultibindings -> "Set<Initializer>"
+        buildMode == BuildMode.METRO -> "() -> Set<Initializer>"
+        else -> "Provider<Set<Initializer>>"
+      }
 
-    // Access pattern for multibindings - Metro uses invoke(), Dagger uses .get()
+    // Access pattern for multibindings - Metro uses operator invoke, Dagger uses .get()
     val pluginsAccess =
       when {
         !providerMultibindings -> "graph.getAllPlugins()"
         buildMode == BuildMode.METRO ->
-          "graph.getAllPlugins()()" // Metro Provider uses operator invoke
+          "graph.getAllPlugins()()" // function invocation on () -> Set<Plugin>
         else -> "graph.getAllPlugins().get()" // Dagger/javax Provider uses .get()
       }
     val initializersAccess =
       when {
         !providerMultibindings -> "graph.getAllInitializers()"
         buildMode == BuildMode.METRO ->
-          "graph.getAllInitializers()()" // Metro Provider uses operator invoke
+          "graph.getAllInitializers()()" // function invocation on () -> Set<Initializer>
         else -> "graph.getAllInitializers().get()" // Dagger/javax Provider uses .get()
       }
 
@@ -1595,6 +2082,114 @@ fun main() {
   println("  - Total contributions: $${allModules.sumOf { it.contributionsCount }}")
 }
 """
+
+        BuildMode.KOIN -> {
+          // Koin has no multibindings; synthesize Set<T> via koin.getAll<T>().toSet().
+          //
+          // We use the typed `koinApplication<AppKoinApp> { }` (not `startKoin<AppKoinApp>`) so
+          // each benchmark iteration builds a fresh, detached KoinApplication with no global
+          // state — important for JMH where the method is called repeatedly.
+          //
+          // The Koin compiler plugin (io.insert-koin.compiler.plugin) generates the typed
+          // `koinApplication<T>` extension for any `@KoinApplication`-annotated class, wiring
+          // in modules enumerated in `@KoinApplication(modules = [...])`. We cannot use a single
+          // root `@ComponentScan` on AppKoinApp because Koin's plugin emits all registrations
+          // into one lambda and the JVM 64KB method limit overflows at ~100 modules; instead,
+          // each generated Gradle module has its own `@Module @ComponentScan(<its-pkg>)` class
+          // and we list them all here.
+          //
+          // Phase C note: Koin + Kotlin Multiplatform is not supported here (Koin compiler
+          // plugin 1.0.0-RC2 conflicts with KMP over LifecycleBasePlugin registration).
+          val koinModuleImports =
+            allModules.joinToString("\n") { "import ${koinModuleClassFqn(it)}" }
+          val koinModuleClassLiterals =
+            allModules.joinToString(",\n    ") { "${it.name.toCamelCase()}KoinModule::class" }
+          val koinMainFunction =
+            if (multiplatform) {
+              $$"""
+fun main() {
+  val component = createAndInitialize()
+  val plugins = component.getAllPlugins()
+  val initializers = component.getAllInitializers()
+
+  println("Koin benchmark graph successfully created!")
+  println("  - Plugins: ${plugins.size}")
+  println("  - Initializers: ${initializers.size}")
+  println("  - Total modules: $${allModules.size}")
+  println("  - Total contributions: $${allModules.sumOf { it.contributionsCount }}")
+}
+"""
+            } else {
+              $$"""
+fun main() {
+  val component = createAndInitialize()
+  val fields = component.javaClass.declaredFields.size
+  val methods = component.javaClass.declaredMethods.size
+  val plugins = component.getAllPlugins()
+  val initializers = component.getAllInitializers()
+
+  println("Koin benchmark graph successfully created!")
+  println("  - Fields: $fields")
+  println("  - Methods: $methods")
+  println("  - Plugins: ${plugins.size}")
+  println("  - Initializers: ${initializers.size}")
+  println("  - Total modules: $${allModules.size}")
+  println("  - Total contributions: $${allModules.sumOf { it.contributionsCount }}")
+}
+"""
+            }
+          $$"""
+package dev.zacsweers.metro.benchmark.app.component
+
+import dev.zacsweers.metro.benchmark.core.foundation.Initializer
+import dev.zacsweers.metro.benchmark.core.foundation.Plugin
+import org.koin.core.Koin
+import org.koin.core.annotation.KoinApplication
+import org.koin.plugin.module.dsl.koinApplication
+$$koinModuleImports
+
+/**
+ * Root Koin application. `@KoinApplication(modules = [...])` enumerates every per-Gradle-module
+ * `*KoinModule` class; each of those has a narrow `@ComponentScan` so the compiler plugin
+ * generates one small registration lambda per module. This avoids the 64KB JVM method-size
+ * overflow that a single root `@ComponentScan` would cause at benchmark scale.
+ *
+ * We make no claims about what compile-time validation the Koin plugin performs — the benchmark
+ * measures runtime cost and build-time cost as observed, not correctness guarantees.
+ */
+@KoinApplication(
+  modules = [
+    $$koinModuleClassLiterals,
+  ],
+)
+class AppKoinApp
+
+/**
+ * Facade that exposes multibindings in the same shape as the other frameworks' AppComponent.
+ * Koin has no native multibindings, so `Set<Plugin>` / `Set<Initializer>` are synthesized via
+ * [Koin.getAll] + `.toSet()`. This wrapping adds a small allocation; it is inherent to the
+ * functional-equivalence mapping, not a benchmark artifact.
+ */
+class AppComponent(val koin: Koin) {
+  fun getAllPlugins(): Set<Plugin> = koin.getAll<Plugin>().toSet()
+  fun getAllInitializers(): Set<Initializer> = koin.getAll<Initializer>().toSet()
+}
+
+/**
+ * Creates and fully initializes the dependency graph.
+ * Primary entry point for benchmarking graph creation and initialization.
+ */
+fun createAndInitialize(): AppComponent {
+  val app = koinApplication<AppKoinApp> { }
+  val component = AppComponent(app.koin)
+  // Force realization of multibinding contributors (parity with the other modes).
+  component.getAllPlugins()
+  component.getAllInitializers()
+  return component
+}
+$$koinMainFunction
+"""
+        }
 
         BuildMode.DAGGER -> {
           // Dagger uses component variable name instead of graph

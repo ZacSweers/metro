@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
@@ -16,6 +17,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
 import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
+import org.jetbrains.kotlin.ir.types.mergeNullability
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
@@ -90,7 +92,27 @@ private class DeepTypeSubstitutor(private val substitutionMap: Map<IrTypeParamet
         is IrSimpleType -> {
           val classifier = type.classifier
           if (classifier is IrTypeParameterSymbol) {
-            substitutionMap[classifier]?.let { remapType(it) } ?: type
+            substitutionMap[classifier]?.let { substituted ->
+              // Guard against identity mappings (T -> T) to prevent infinite recursion.
+              // This can happen for dynamic containers where the generated parameter type
+              // still has unresolved type parameters.
+              val remapped =
+                if (substituted is IrSimpleType && substituted.classifier == classifier) {
+                  type
+                } else {
+                  remapType(substituted)
+                }
+              // Preserve nullability
+              when {
+                // Java type args always come with @FlexibleNullability, which we choose to
+                // interpret as strictly not null
+                remapped is IrSimpleType && !type.isWithFlexibleNullability() -> {
+                  remapped.mergeNullability(type)
+                }
+
+                else -> remapped
+              }
+            } ?: type
           } else {
             val newArgs =
               type.arguments.map { arg ->
@@ -245,7 +267,10 @@ internal fun IrType.hasErrorTypes(): Boolean {
 
     // recurse
     if (current is IrSimpleType) {
-      for (arg in current.arguments) {
+      // Defensive copy: IrSimpleType.arguments can be an ArrayList that is mutated
+      // by compactIfPossible() (via trimToSize()) when another thread creates a derived
+      // type through toBuilder().buildSimpleType()
+      for (arg in current.arguments.toList()) {
         if (arg is IrTypeProjection) {
           stack.add(arg.type)
         }

@@ -1,0 +1,5 @@
+/PresenterClassInvalidParams.kt:21:3: error: @CircuitInject Presenter classes cannot have a CircuitUiState parameter. State parameters are only for UI.
+
+/PresenterClassInvalidParams.kt:22:3: error: @CircuitInject Presenter classes cannot have a Modifier parameter. Modifier is only for UI.
+
+/PresenterClassInvalidParams.kt:23:3: error: @CircuitInject classes cannot have a CircuitContext parameter. CircuitContext is only available at the factory level.

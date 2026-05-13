@@ -1,0 +1,3 @@
+/OptionalBindingParamWarningIfDefault.kt:7:38: warning: @OptionalBinding is redundant in this project as the presence of a default value is sufficient.
+
+/OptionalBindingParamWarningIfDefault.kt:12:36: warning: @OptionalBinding is redundant in this project as the presence of a default value is sufficient.

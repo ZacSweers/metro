@@ -18,7 +18,7 @@ Compilation-only regression test for https://github.com/ZacSweers/metro/pull/462
 */
 
 interface BaseFactory<B, T> {
-  fun create(b: B): T
+  fun create(binding: B): T
 }
 
 @DependencyGraph(AppScope::class) interface AppGraph

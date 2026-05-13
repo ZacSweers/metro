@@ -1,0 +1,375 @@
+// FILE: MultibindingsHaveConsistentOrderAcrossContributedGraph.kt
+
+@Inject
+class TaskImpl1 : Task {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<TaskImpl1> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): Factory<TaskImpl1> {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): TaskImpl1 {
+      return TaskImpl1()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): TaskImpl1 {
+      return MetroFactory.newInstance()
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(): TaskImpl1 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class TaskImpl2 : Task {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<TaskImpl2> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): Factory<TaskImpl2> {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): TaskImpl2 {
+      return TaskImpl2()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): TaskImpl2 {
+      return MetroFactory.newInstance()
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(): TaskImpl2 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class TaskImpl3 : Task {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class TaskImpl4 : Task {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 313, endOffset = 337)
+    abstract fun TaskImpl1.bind_intoset(): Task
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 270, endOffset = 294)
+    abstract fun TaskImpl2.bind_intoset(): Task
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : ExampleGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    @DependencyGraph(scope = Unit::class)
+    private class LoggedInGraphImpl : LoggedInGraph {
+      private val exampleGraphImpl: Impl
+        field = exampleGraphImpl
+
+      constructor(exampleGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      private val setOfTask: Set<Task>
+        private get(): Set<Task> {
+          return { // BLOCK
+            buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
+              $receiver.add(element = <this>.#exampleGraphImpl.provide4())
+              $receiver.add(element = <this>.#exampleGraphImpl.provide3())
+              $receiver.add(element = TaskImpl1())
+              $receiver.add(element = TaskImpl2())
+            }
+)
+          }
+        }
+
+      override val tasksFromParent: Set<Task>
+        override get(): Set<Task> {
+          return <this>.<get-setOfTask>()
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun createLoggedInGraph(): LoggedInGraph {
+      return LoggedInGraphImpl(exampleGraphImpl = <this>)
+    }
+
+    private val setOfTask: Set<Task>
+      private get(): Set<Task> {
+        return { // BLOCK
+          buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
+            $receiver.add(element = <this>.#thisGraphInstance.provide4())
+            $receiver.add(element = <this>.#thisGraphInstance.provide3())
+            $receiver.add(element = TaskImpl1())
+            $receiver.add(element = TaskImpl2())
+          }
+)
+        }
+      }
+
+    override val tasks: Set<Task>
+      override get(): Set<Task> {
+        return <this>.<get-setOfTask>()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): ExampleGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provide3", propertyName = "", startOffset = 396, endOffset = 449, newInstanceName = "provide3")
+  class Provide3MetroFactory : Factory<Task> {
+    private /* final field */ val instance: ExampleGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: ExampleGraph): Factory<Task> {
+        return Provide3MetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provide3(instance: ExampleGraph): Task {
+        return instance.provide3()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: ExampleGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Task {
+      return Provide3MetroFactory/* companion */.provide3(instance = <this>.#instance)
+    }
+
+    @IntoSet
+    @HiddenFromObjC
+    fun mirrorFunction(): Task {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provide4", propertyName = "", startOffset = 340, endOffset = 393, newInstanceName = "provide4")
+  class Provide4MetroFactory : Factory<Task> {
+    private /* final field */ val instance: ExampleGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: ExampleGraph): Factory<Task> {
+        return Provide4MetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provide4(instance: ExampleGraph): Task {
+        return instance.provide4()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: ExampleGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Task {
+      return Provide4MetroFactory/* companion */.provide4(instance = <this>.#instance)
+    }
+
+    @IntoSet
+    @HiddenFromObjC
+    fun mirrorFunction(): Task {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @IntoSet
+  @Provides
+  fun provide3(): Task {
+    return TaskImpl3()
+  }
+
+  @IntoSet
+  @Provides
+  fun provide4(): Task {
+    return TaskImpl4()
+  }
+
+  @IntoSet
+  @Binds
+  abstract val TaskImpl2.bind: Task
+    @ComptimeOnly
+    abstract get
+
+  @IntoSet
+  @Binds
+  abstract val TaskImpl1.bind: Task
+    @ComptimeOnly
+    abstract get
+
+  abstract val tasks: Set<Task>
+    abstract get
+
+}
+
+@GraphExtension(scope = Unit::class)
+interface LoggedInGraph {
+  @GraphExtension.Factory
+  @ContributesTo(scope = AppScope::class)
+  interface Factory1 {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroContribution(scope = AppScope::class)
+    interface MetroContributionToAppScope : Factory1 {
+    }
+
+    abstract fun createLoggedInGraph(): LoggedInGraph
+
+  }
+
+  abstract val tasksFromParent: Set<Task>
+    abstract get
+
+}
+
+interface Task {
+}
+
+object AppScope {
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: loggedInGraphFactory1AppScope.kt
+package metro.hints
+
+fun AppScope(contributed: LoggedInGraph.Factory1) {
+  return error(message = "Never called")
+}
+

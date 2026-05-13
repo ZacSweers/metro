@@ -21,16 +21,13 @@ private constructor(
   override val qualifier: IrAnnotation?,
   // TODO these extra properties are awkward. Should we make this a sealed class?
   val multibindingKeyData: MultibindingKeyData? = null,
+  val originalType: IrType,
 ) : BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
   val classId by memoize { type.rawTypeOrNull()?.classId }
 
   private val cachedRender by memoize { render(short = false, includeQualifier = true) }
-  private val cachedHashCode by memoize {
-    var result = type.hashCode()
-    result = 31 * result + (qualifier?.hashCode() ?: 0)
-    result
-  }
+  private val cachedHashCode: Int = (type.hashCode() * 31) + (qualifier?.hashCode() ?: 0)
 
   val hasTypeArgs: Boolean
     get() = type is IrSimpleType && type.arguments.isNotEmpty()
@@ -60,17 +57,31 @@ private constructor(
   }
 
   override fun copy(type: IrType, qualifier: IrAnnotation?): IrTypeKey =
-    IrTypeKey(type, qualifier, multibindingKeyData)
+    copy(type, qualifier, multibindingKeyData, originalType)
 
   fun copy(
     type: IrType = this.type,
     qualifier: IrAnnotation? = this.qualifier,
     multibindingKeyData: MultibindingKeyData? = this.multibindingKeyData,
-  ): IrTypeKey = IrTypeKey(type, qualifier, multibindingKeyData)
+    originalType: IrType = this.originalType,
+  ): IrTypeKey = IrTypeKey(type, qualifier, multibindingKeyData, originalType)
 
-  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
+  override fun render(short: Boolean, includeQualifier: Boolean): String =
+    renderForDiagnostic(short, includeQualifier, false)
+
+  fun renderForDiagnostic(
+    short: Boolean,
+    includeQualifier: Boolean = true,
+    useOriginalQualifier: Boolean = includeQualifier,
+  ): String = buildString {
     if (includeQualifier) {
-      qualifier?.let {
+      var qualifierToRender = qualifier
+      if (useOriginalQualifier) {
+        // When rendering qualifiers, render the original qualifier rather than the synthetic
+        // MultibindingElement qualifier if one is present
+        multibindingKeyData?.multibindingTypeKey?.let { qualifierToRender = it.qualifier }
+      }
+      qualifierToRender?.let {
         append(it.render(short))
         append(" ")
       }
@@ -86,7 +97,6 @@ private constructor(
     return cachedRender.compareTo(other.cachedRender)
   }
 
-  // Optimized equals: Fast-fail with hashCode, authoritative check with cachedRender
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -96,8 +106,9 @@ private constructor(
     // Fast fail: If hash codes differ, they are definitely not equal
     if (cachedHashCode != other.cachedHashCode) return false
 
-    // Slow(er) authoritative check
-    return cachedRender == other.cachedRender
+    // Structural compare. Both `IrType` and `IrAnnotation` provide structural equals/hashCode, so
+    // this avoids materializing/comparing the diagnostic render string on every map operation.
+    return type == other.type && qualifier == other.qualifier
   }
 
   // Optimized hashCode that uses a cached hashCode
@@ -131,6 +142,7 @@ private constructor(
         type.canonicalize(patchMutableCollections = false, context = null),
         qualifier,
         multibindingKeyData,
+        type,
       )
     }
   }

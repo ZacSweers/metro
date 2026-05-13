@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 @Inject
-@ViewModelKey(HomeViewModel::class)
+@ViewModelKey
 @ContributesIntoMap(AppScope::class)
 class HomeViewModel : ViewModel() {
   private val _count = MutableStateFlow(0)

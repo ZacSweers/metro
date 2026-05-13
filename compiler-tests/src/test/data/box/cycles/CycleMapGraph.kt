@@ -1,13 +1,13 @@
 /*
- S ← Provider<S>, Lazy<S>
+ S ← () -> S, Lazy<S>
  */
 
 @Inject class X(val y: Y)
 
 @Inject
 class Y(
-  val mapOfProvidersOfX: Map<String, Provider<X>>,
-  val mapOfProvidersOfY: Map<String, Provider<Y>>,
+  val mapOfProvidersOfX: Map<String, () -> X>,
+  val mapOfProvidersOfY: Map<String, () -> Y>,
 )
 
 @DependencyGraph

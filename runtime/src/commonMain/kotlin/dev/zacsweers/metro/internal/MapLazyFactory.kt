@@ -16,6 +16,8 @@
 package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
+import kotlin.js.JsStatic
+import kotlin.jvm.JvmStatic
 
 /**
  * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K,
@@ -56,15 +58,38 @@ public class MapLazyFactory<K : Any, V : Any> private constructor(map: Map<K, Pr
     private val EMPTY: Provider<Map<Any, Any>> = InstanceFactory(mutableMapOf())
 
     /** Returns a new [Builder] */
+    @JvmStatic
+    @JsStatic
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
       return Builder(size)
     }
 
     /** Returns a provider of an empty map. */
     // safe contravariant cast
+    @JvmStatic
+    @JsStatic
     public fun <K, V> empty(): Provider<Map<K, Lazy<V>>> {
       @Suppress("UNCHECKED_CAST")
       return EMPTY as Provider<Map<K, Lazy<V>>>
     }
+
+    /**
+     * Returns a [Factory] for a single-entry `Map<K, Lazy<V>>`. Each [invoke] wraps [provider] in a
+     * fresh [DoubleCheck]-backed [Lazy] just like the builder path. Skips the [Builder] allocation.
+     */
+    @JvmStatic
+    @JsStatic
+    public fun <K : Any, V : Any> singleton(
+      key: K,
+      provider: Provider<V>,
+    ): Factory<Map<K, Lazy<V>>> = SingletonMapLazyFactory(key, provider)
   }
+}
+
+private class SingletonMapLazyFactory<K : Any, V : Any>(
+  private val key: K,
+  private val provider: Provider<V>,
+) : Factory<Map<K, Lazy<V>>> {
+  override fun invoke(): Map<K, Lazy<V>> =
+    SingletonMap(key, DoubleCheck.lazy<Provider<V>, V>(provider))
 }

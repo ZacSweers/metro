@@ -1,0 +1,135 @@
+// FILE: NestedClassNamesInDump.kt
+
+@DependencyGraph(scope = AppScope::class)
+interface ExampleGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : ExampleGraph {
+    private val provideStringProvider: Provider<String>
+      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = ExampleGraph.Bindings.Companion.ProvideStringMetroFactory.create())
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val charSequence: CharSequence
+      override get(): CharSequence {
+        return <this>.#provideStringProvider.invoke()
+      }
+
+    override val string: String
+      override get(): String {
+        return <this>.#provideStringProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): ExampleGraph {
+      return Impl()
+    }
+
+  }
+
+  @ContributesTo(scope = AppScope::class)
+  @BindingContainer
+  interface Bindings {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
+    abstract class BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @Binds
+      @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 231, endOffset = 260)
+      abstract fun String.bind(): CharSequence
+
+    }
+
+    companion object Companion {
+      @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+      @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 291, endOffset = 377, newInstanceName = "provideString")
+      object ProvideStringMetroFactory : Factory<String> {
+        private constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun create(): Factory<String> {
+          return ProvideStringMetroFactory
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun provideString(): String {
+          return Bindings/* companion */.provideString()
+        }
+
+        @HiddenFromObjC
+        override operator fun invoke(): String {
+          return ProvideStringMetroFactory.provideString()
+        }
+
+        @SingleIn(scope = AppScope::class)
+        @HiddenFromObjC
+        fun mirrorFunction(): String {
+          return error(message = "Never called")
+        }
+
+      }
+
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @SingleIn(scope = AppScope::class)
+      @Provides
+      fun provideString(): String {
+        return "Hello"
+      }
+
+    }
+
+    @Binds
+    abstract val String.bind: CharSequence
+      @ComptimeOnly
+      abstract get
+
+  }
+
+  abstract val charSequence: CharSequence
+    abstract get
+
+  abstract val string: String
+    abstract get
+
+}
+
+// FILE: exampleGraphBindingsAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: ExampleGraph.Bindings) {
+  return error(message = "Never called")
+}
+

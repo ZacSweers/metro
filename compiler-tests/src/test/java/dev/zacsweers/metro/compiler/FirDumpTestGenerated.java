@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
 import org.jetbrains.kotlin.test.util.KtTestUtil;
-import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,13 +18,25 @@ import java.util.regex.Pattern;
 public class FirDumpTestGenerated extends AbstractFirDumpTest {
   @Test
   public void testAllFilesPresentInFir() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir"), Pattern.compile("^(.+)\\.kt$"), null, true);
   }
 
   @Test
-  @TestMetadata("InjectCtorAlwaysUsedEvenIfClassAnnotated.kt")
-  public void testInjectCtorAlwaysUsedEvenIfClassAnnotated() {
-    runTest("compiler-tests/src/test/data/dump/fir/InjectCtorAlwaysUsedEvenIfClassAnnotated.kt");
+  @TestMetadata("contributionProvidersShouldNotGenerateForContributesTo.kt")
+  public void testContributionProvidersShouldNotGenerateForContributesTo() {
+    runTest("compiler-tests/src/test/data/dump/fir/contributionProvidersShouldNotGenerateForContributesTo.kt");
+  }
+
+  @Test
+  @TestMetadata("InjectCtorAlwaysUsedEvenIfClassAnnotated_k23x.kt")
+  public void testInjectCtorAlwaysUsedEvenIfClassAnnotated_k23x() {
+    runTest("compiler-tests/src/test/data/dump/fir/InjectCtorAlwaysUsedEvenIfClassAnnotated_k23x.kt");
+  }
+
+  @Test
+  @TestMetadata("InjectCtorAlwaysUsedEvenIfClassAnnotated_k24x.kt")
+  public void testInjectCtorAlwaysUsedEvenIfClassAnnotated_k24x() {
+    runTest("compiler-tests/src/test/data/dump/fir/InjectCtorAlwaysUsedEvenIfClassAnnotated_k24x.kt");
   }
 
   @Test
@@ -34,31 +45,61 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     runTest("compiler-tests/src/test/data/dump/fir/scratch.kt");
   }
 
+  @Test
+  @TestMetadata("TopLevelComposableHiddenFromObjC_k22x.kt")
+  public void testTopLevelComposableHiddenFromObjC_k22x() {
+    runTest("compiler-tests/src/test/data/dump/fir/TopLevelComposableHiddenFromObjC_k22x.kt");
+  }
+
+  @Test
+  @TestMetadata("TopLevelComposableHiddenFromObjC_k23x.kt")
+  public void testTopLevelComposableHiddenFromObjC_k23x() {
+    runTest("compiler-tests/src/test/data/dump/fir/TopLevelComposableHiddenFromObjC_k23x.kt");
+  }
+
   @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/fir/aggregation")
   @TestDataPath("$PROJECT_ROOT")
   public class Aggregation {
     @Test
     public void testAllFilesPresentInAggregation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
-    @TestMetadata("ContributingGraphExtensions.kt")
-    public void testContributingGraphExtensions() {
-      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingGraphExtensions.kt");
+    @TestMetadata("ContributingGraphExtensions_k23x.kt")
+    public void testContributingGraphExtensions_k23x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingGraphExtensions_k23x.kt");
     }
 
     @Test
-    @TestMetadata("ContributingTypes.kt")
-    public void testContributingTypes() {
-      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypes.kt");
+    @TestMetadata("ContributingGraphExtensions_k24x.kt")
+    public void testContributingGraphExtensions_k24x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingGraphExtensions_k24x.kt");
     }
 
     @Test
-    @TestMetadata("ContributingTypesDependency.kt")
-    public void testContributingTypesDependency() {
-      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypesDependency.kt");
+    @TestMetadata("ContributingTypesDependency_k23x.kt")
+    public void testContributingTypesDependency_k23x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypesDependency_k23x.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributingTypesDependency_k24x.kt")
+    public void testContributingTypesDependency_k24x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypesDependency_k24x.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributingTypes_k23x.kt")
+    public void testContributingTypes_k23x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypes_k23x.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributingTypes_k24x.kt")
+    public void testContributingTypes_k24x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypes_k24x.kt");
     }
 
     @Test
@@ -71,22 +112,6 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     @TestMetadata("FirHintGenerationWorks_k23x.kt")
     public void testFirHintGenerationWorks_k23x() {
       runTest("compiler-tests/src/test/data/dump/fir/aggregation/FirHintGenerationWorks_k23x.kt");
-    }
-  }
-
-  @Nested
-  @TestMetadata("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation")
-  @TestDataPath("$PROJECT_ROOT")
-  public class Private_provides_status_transformation {
-    @Test
-    public void testAllFilesPresentInPrivate_provides_status_transformation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
-    }
-
-    @Test
-    @TestMetadata("ProvidersAreMadePrivate.kt")
-    public void testProvidersAreMadePrivate() {
-      runTest("compiler-tests/src/test/data/dump/fir/private-provides-status-transformation/ProvidersAreMadePrivate.kt");
     }
   }
 }

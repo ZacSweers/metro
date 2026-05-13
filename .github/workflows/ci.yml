@@ -15,15 +15,47 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  format:
+    name: format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          lfs: true
+
+      - name: Configure JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
+      - name: Cache kempt formatter binaries
+        uses: actions/cache@v5
+        with:
+          path: ~/.kempt/cache
+          key: kempt-${{ hashFiles('.kempt.toml') }}
+
+      - name: Install kempt
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://github.com/ZacSweers/kempt/releases/latest/download/kempt-fmt-installer.sh | sh
+
+      - name: Pre-warm kempt cache
+        run: kempt update
+
+      - name: Check formatting
+        run: kempt check
+
   generate-matrix:
     name: "⊹ generate compiler matrix ⊹"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      
+
       - name: Generate matrix
         id: generate
         run: ./scripts/generate-ci-matrix.sh
@@ -53,17 +85,29 @@ jobs:
 
       - name: Check root project
         run: |
+          # Each matrix Kotlin version may resolve a different NPM dep set, so refresh the
+          # kotlin-js-store lockfiles before `check` validates them — but only when the matrix
+          # version differs from the default in libs.versions.toml (the committed lockfiles
+          # already match the default).
+          default_kotlin=$(sed -nE 's/^kotlin = "([^"]+)".*/\1/p' gradle/libs.versions.toml)
+          if [ "${{ matrix.kotlin-compiler }}" != "$default_kotlin" ]; then
+            echo "Regenerating package locks for ${{ matrix.kotlin-compiler }} (default: $default_kotlin)..."
+            ./metrow regen --locks-only --version '${{ matrix.kotlin-compiler }}'
+          else
+            echo "Matrix version matches default ($default_kotlin); skipping regen."
+          fi
           # Regenerate tests per-run on CI to support exclusions, which are unfortunately code-gen level right now
           echo "Generating tests..."
           ./gradlew :compiler-tests:generateTests --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
           echo "Running checks..."
           ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-          echo "Running sharding tests..."
-          ./gradlew :compiler-tests:test --tests '*Sharding.testLargeGraphStressTest' --quiet '-Pmetro.enableShardTest' '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          # TODO disabled for now because GHA is running smaller machines now it seems
+          # echo "Running large tests..."
+          # ./gradlew :compiler-tests:test --quiet '-Pmetro.enableLargeTests' '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: reports-core-${{ matrix.kotlin-compiler }}
           path: |
@@ -101,7 +145,7 @@ jobs:
 
       - name: (Fail-only) Upload reports
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: reports-samples
           path: |
@@ -154,7 +198,7 @@ jobs:
 
       - name: (Fail-only) Upload reports
         if: failure() && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: reports-multiplatform-${{ matrix.os }}
           path: |
@@ -190,7 +234,7 @@ jobs:
 
       - name: (Fail-only) Upload reports
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: reports-benchmarks
           path: |
@@ -199,8 +243,9 @@ jobs:
   # https://jakewharton.com/fan-in-to-a-single-required-github-action/
   final-status:
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     needs:
+      - format
       - core
       - benchmarks
       - samples

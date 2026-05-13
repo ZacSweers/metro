@@ -5,6 +5,8 @@ package dev.zacsweers.metro.compiler.fir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.WrappedType.Canonical
+import dev.zacsweers.metro.compiler.graph.WrappedType.Provider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
@@ -116,6 +118,15 @@ internal class FirContextualTypeKey(
       type: ConeKotlinType = callable.resolvedTypeSafe(session),
       wrapInProvider: Boolean = false,
       stripLazyIfWrappedInProvider: Boolean = false,
+      /**
+       * Optional source for qualifier resolution, e.g. a property symbol for setter-based
+       * injection.
+       */
+      qualifierSource: FirCallableSymbol<*>? = null,
+      /**
+       * Explicit override for hasDefault, used when the callable itself doesn't carry this info.
+       */
+      hasDefault: Boolean? = null,
     ): FirContextualTypeKey {
       return type
         .letIf(wrapInProvider) {
@@ -130,8 +141,17 @@ internal class FirContextualTypeKey(
         .asFirContextualTypeKey(
           session = session,
           qualifierAnnotation =
-            callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
-          hasDefault = callable is FirValueParameterSymbol && callable.hasMetroDefault(session),
+            (qualifierSource ?: callable).findAnnotation(
+              session,
+              FirBasedSymbol<*>::qualifierAnnotation,
+            ),
+          hasDefault =
+            hasDefault
+              ?: when (callable) {
+                is FirValueParameterSymbol -> callable.hasMetroDefault(session)
+                is FirFieldSymbol -> callable.hasMetroDefault(session)
+                else -> false
+              },
         )
     }
   }

@@ -1,0 +1,538 @@
+@Inject
+class BarA {
+  val foo: Function0<Foo>
+    field = foo
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<BarA> {
+    private /* final field */ val foo: Provider<Foo> = foo
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(foo: Provider<Foo>): Factory<BarA> {
+        return MetroFactory(foo = foo)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(foo: Function0<Foo>): BarA {
+        return BarA(foo = foo)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(foo: Provider<Foo>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): BarA {
+      return MetroFactory/* companion */.newInstance(foo = <this>.#foo)
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(foo: Function0<Foo>): BarA {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(foo: Function0<Foo>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class BarB {
+  val foo: Function0<Foo>
+    field = foo
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<BarB> {
+    private /* final field */ val foo: Provider<Foo> = foo
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(foo: Provider<Foo>): Factory<BarB> {
+        return MetroFactory(foo = foo)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(foo: Function0<Foo>): BarB {
+        return BarB(foo = foo)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(foo: Provider<Foo>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): BarB {
+      return MetroFactory/* companion */.newInstance(foo = <this>.#foo)
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(foo: Function0<Foo>): BarB {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(foo: Function0<Foo>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+@ContributesBinding(scope = AppScope::class)
+class BazImpl : BazMiddle {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<BazImpl> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): Factory<BazImpl> {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): BazImpl {
+      return BazImpl()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): BazImpl {
+      return MetroFactory.newInstance()
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(): BazImpl {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @BindingContainer
+  @Origin(value = BazImpl::class)
+  @ComptimeOnly
+  interface MetroContributionToAppScope {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
+    abstract class BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @Binds
+      @CallableMetadata(callableName = "bindsAsBazMiddle", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindsAsBazMiddle(instance: BazImpl): BazMiddle
+
+    }
+
+    @Binds
+    @ComptimeOnly
+    abstract fun bindsAsBazMiddle(instance: BazImpl): BazMiddle {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+@ContributesBinding(scope = AppScope::class)
+class FooImpl : Foo {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<FooImpl> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): Factory<FooImpl> {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): FooImpl {
+      return FooImpl()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): FooImpl {
+      return MetroFactory.newInstance()
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(): FooImpl {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @BindingContainer
+  @Origin(value = FooImpl::class)
+  @ComptimeOnly
+  interface MetroContributionToAppScope {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
+    abstract class BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @Binds
+      @CallableMetadata(callableName = "bindsAsFoo", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindsAsFoo(instance: FooImpl): Foo
+
+    }
+
+    @Binds
+    @ComptimeOnly
+    abstract fun bindsAsFoo(instance: FooImpl): Foo {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+@SingleIn(scope = AppScope::class)
+class Main {
+  val barA: Function0<BarA>
+    field = barA
+    get
+
+  val barB: Function0<BarB>
+    field = barB
+    get
+
+  val quxA: Function0<QuxA>
+    field = quxA
+    get
+
+  val quxB: Function0<QuxB>
+    field = quxB
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Main> {
+    private /* final field */ val barA: Provider<BarA> = barA
+    private /* final field */ val barB: Provider<BarB> = barB
+    private /* final field */ val quxA: Provider<QuxA> = quxA
+    private /* final field */ val quxB: Provider<QuxB> = quxB
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Factory<Main> {
+        return MetroFactory(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(barA: Function0<BarA>, barB: Function0<BarB>, quxA: Function0<QuxA>, quxB: Function0<QuxB>): Main {
+        return Main(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Main {
+      return MetroFactory/* companion */.newInstance(barA = <this>.#barA, barB = <this>.#barB, quxA = <this>.#quxA, quxB = <this>.#quxB)
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @HiddenFromObjC
+    fun mirrorFunction(barA: Function0<BarA>, barB: Function0<BarB>, quxA: Function0<QuxA>, quxB: Function0<QuxB>): Main {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(barA: Function0<BarA>, barB: Function0<BarB>, quxA: Function0<QuxA>, quxB: Function0<QuxB>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class QuxA {
+  val baz: Function0<Baz>
+    field = baz
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<QuxA> {
+    private /* final field */ val baz: Provider<Baz> = baz
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(baz: Provider<Baz>): Factory<QuxA> {
+        return MetroFactory(baz = baz)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(baz: Function0<Baz>): QuxA {
+        return QuxA(baz = baz)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(baz: Provider<Baz>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): QuxA {
+      return MetroFactory/* companion */.newInstance(baz = <this>.#baz)
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(baz: Function0<Baz>): QuxA {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(baz: Function0<Baz>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class QuxB {
+  val baz: Function0<Baz>
+    field = baz
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<QuxB> {
+    private /* final field */ val baz: Provider<Baz> = baz
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(baz: Provider<Baz>): Factory<QuxB> {
+        return MetroFactory(baz = baz)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(baz: Function0<Baz>): QuxB {
+        return QuxB(baz = baz)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(baz: Provider<Baz>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): QuxB {
+      return MetroFactory/* companion */.newInstance(baz = <this>.#baz)
+    }
+
+    @HiddenFromObjC
+    fun mirrorFunction(baz: Function0<Baz>): QuxB {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(baz: Function0<Baz>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph : BazImpl.MetroContributionToAppScope, FooImpl.MetroContributionToAppScope {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @CallableMetadata(callableName = "bindBaz", propertyName = "", startOffset = 784, endOffset = 817)
+    abstract fun bindBaz(impl: BazMiddle): Baz
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val fooImplProvider: Provider<FooImpl>
+      field = FooImpl.MetroFactory.create()
+
+    private val bazImplProvider: Provider<BazImpl>
+      field = BazImpl.MetroFactory.create()
+
+    private val mainProvider: Provider<Main>
+      field = DoubleCheck/* companion */.provider<Provider<Main>, Main>(delegate = Main.MetroFactory/* companion */.create(barA = BarA.MetroFactory/* companion */.create(foo = <this>.#fooImplProvider), barB = BarB.MetroFactory/* companion */.create(foo = <this>.#fooImplProvider), quxA = QuxA.MetroFactory/* companion */.create(baz = <this>.#bazImplProvider), quxB = QuxB.MetroFactory/* companion */.create(baz = <this>.#bazImplProvider)))
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val main: Main
+      override get(): Main {
+        return <this>.#mainProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Binds
+  @ComptimeOnly
+  abstract fun bindBaz(impl: BazMiddle): Baz {
+    return error(message = "Never called")
+  }
+
+  abstract val main: Main
+    abstract get
+
+}
+
+interface Baz {
+}
+
+interface BazMiddle : Baz {
+}
+
+interface Foo {
+}
+

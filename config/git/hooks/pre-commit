@@ -1,0 +1,42 @@
+#!/bin/bash
+
+######## FORMAT HOOK START ########
+
+if [[ "$METRO_COMMIT_HOOK_OPT_OUT" == "true" ]]; then
+    echo 'Warning: Skipping pre-commit hook because METRO_COMMIT_HOOK_OPT_OUT is true'
+    exit
+fi
+
+# Opt-out for cases where --no-verify isn't available
+# Usage: `git -c hooks.pre-commit.enabled=false commit`
+enabled="$(git config --bool hooks.pre-commit.enabled)"
+
+if [[ "$enabled" == "false" ]]; then
+    echo 'Warning: Skipping pre-commit hook...'
+    exit
+fi
+
+# Don't run formatting hooks during rebase
+# shellcheck disable=2010
+ls "$(git rev-parse --git-dir)" | grep -q rebase
+if [[ $? == 0 ]]; then
+    exit
+fi
+
+# Don't run formatting hooks during merge commits
+git rev-parse -q --verify MERGE_HEAD
+if [[ $? == 0 ]]; then
+    exit
+fi
+
+# Delegate to kempt: it runs ktfmt + gjf + license headers + whitespace on
+# the staged set, refuses to run on partial-stage files, and re-stages the
+# results. See https://github.com/ZacSweers/kempt.
+if ! command -v kempt &> /dev/null; then
+    echo 'Warning: kempt not found on PATH. Install with `brew install ZacSweers/tap/kempt-fmt` or `cargo install kempt-fmt`. Skipping pre-commit format.'
+    exit
+fi
+
+exec kempt hook
+
+######## FORMAT HOOK END ########

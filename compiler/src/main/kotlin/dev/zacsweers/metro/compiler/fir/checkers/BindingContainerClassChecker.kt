@@ -4,18 +4,24 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_MODULE_SUBCOMPONENTS_WARNING
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.resolvedBindingContainersClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedIncludesClassIds
+import dev.zacsweers.metro.compiler.fir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateVisibility
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.tracing.trace
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -32,6 +38,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
@@ -52,12 +59,28 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
-    context(context.session.compatContext) { checkImpl(declaration) }
+    val source = declaration.source ?: return
+    val session = context.session
+    val classIds = session.classIds
+    // Skip classes that aren't relevant — must have either a @BindingContainer-like or a
+    // @DependencyGraph-like annotation for any of this checker's logic to apply. Single-pass
+    // walk over the class's annotations checking both sets at once.
+    var isRelevant = false
+    for (anno in declaration.annotations) {
+      val cid = anno.toAnnotationClassIdSafe(session) ?: continue
+      if (cid in classIds.bindingContainerAnnotations || cid in classIds.graphLikeAnnotations) {
+        isRelevant = true
+        break
+      }
+    }
+    if (!isRelevant) return
+    session.trace(name = { "BindingContainerClassChecker(${declaration.classId})" }) {
+      context(session.compatContext) { checkImpl(declaration, source) }
+    }
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
-  private fun checkImpl(declaration: FirClass) {
-    val source = declaration.source ?: return
+  private fun checkImpl(declaration: FirClass, source: KtSourceElement) {
     val session = context.session
     val classIds = session.classIds
 
@@ -100,6 +123,20 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
         report("Local classes")
         return
       }
+
+      if (
+        session.metroFirBuiltIns.options.enableDaggerRuntimeInterop &&
+          bindingContainerAnno.toAnnotationClassIdSafe(session) ==
+            DaggerSymbols.ClassIds.DAGGER_MODULE
+      ) {
+        val subcomponentsArg = bindingContainerAnno.subcomponentsArgument(session)
+        if (subcomponentsArg != null && subcomponentsArg.argumentList.arguments.isNotEmpty()) {
+          reporter.reportOn(
+            subcomponentsArg.source ?: bindingContainerAnno.source ?: source,
+            DAGGER_MODULE_SUBCOMPONENTS_WARNING,
+          )
+        }
+      }
     }
 
     // Cannot be annotated with both bindingContainer and a graphlike
@@ -130,16 +167,17 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
           reporter.reportOn(
             source,
             BINDING_CONTAINER_ERROR,
-            "Binding containers cannot extend other binding containers, use `includes` instead. Container '${declaration.classId.asFqNameString()}' extends '${supertypeClass.classId.asFqNameString()}'.",
+            "Binding containers cannot extend other binding containers, use `includes` instead. Container '${declaration.classId.diagnosticString}' extends '${supertypeClass.classId.diagnosticString}'.",
           )
         }
       }
     }
 
     val includesToCheck =
-      bindingContainerAnno?.resolvedIncludesClassIds()
+      bindingContainerAnno?.resolvedIncludesClassIds(session)
         ?: graphLikeAnno?.resolvedBindingContainersClassIds(
-          includeModulesArg = session.metroFirBuiltIns.options.enableDaggerRuntimeInterop
+          session,
+          includeModulesArg = session.metroFirBuiltIns.options.enableDaggerRuntimeInterop,
         )
         ?: emptyList()
     val seen = mutableMapOf<ClassId, FirGetClassCall>()
@@ -236,7 +274,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
             )
           } else {
             noArgConstructor.validateVisibility(
-              "Contributed binding container ${declaration.classId.asFqNameString()}'s no-arg constructor"
+              "Contributed binding container ${declaration.classId.diagnosticString}'s no-arg constructor"
             ) {
               return
             }

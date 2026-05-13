@@ -1,0 +1,7 @@
+/MemberInjectedShowsInjectFunctionInTrace.kt:9:16: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Dependency
+
+    Dependency is injected at
+        [FeatureGraph] FeatureScreen.dependency
+    FeatureScreen is injected at
+        [FeatureGraph] FeatureGraph.inject()
+

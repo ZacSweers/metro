@@ -10,7 +10,6 @@ import com.tschuchort.compiletesting.DiagnosticMessage
 import com.tschuchort.compiletesting.DiagnosticSeverity
 import com.tschuchort.compiletesting.JvmCompilationResult
 import dev.zacsweers.metro.MembersInjector
-import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.internal.Factory
@@ -163,9 +162,9 @@ fun Class<Factory<*>>.invokeCreateAsFactory(vararg args: Any): Factory<*> {
 }
 
 // Cannot confine to Class<Factory<*>> because this is also used for assisted factories
-fun <T> Class<*>.invokeCreateAsProvider(vararg args: Any): Provider<T> {
+fun <T> Class<*>.invokeCreateAsProvider(vararg args: Any): () -> T {
   @Suppress("UNCHECKED_CAST")
-  return invokeCreate(*args) as Provider<T>
+  return invokeCreate(*args) as () -> T
 }
 
 val Class<*>.companionObjectClass: Class<*>
@@ -232,9 +231,7 @@ fun Class<*>.staticMethods(
     )
   }
 
-  companionObjectClassOrNull?.let {
-    yieldAll(it.staticMethods(companionObjectInstanceFieldOrNull!!))
-  }
+  // No more companion object methods as we generated JvmStatic and should be using those everywhere
 }
 
 // Cannot confine to Class<Factory<*>> because this is also used for assisted factories
@@ -243,7 +240,18 @@ fun Class<*>.invokeCreate(vararg args: Any): Any {
 
   return when (createFunctions.size) {
     0 -> error("No create functions found in $this")
-    1 -> createFunctions.single()(*args)
+    1 -> {
+      val function = createFunctions.single()
+      check(function.method.parameterCount == args.size) {
+        """
+          Mismatched number of parameters
+          Found: ${function.method.parameters.joinToString(", ") { it.name + it.parameterizedType }}
+          Expected: ${args.joinToString(", ") { it.javaClass.toString() }}
+        """
+          .trimIndent()
+      }
+      function(*args)
+    }
     else -> {
       error("Multiple create functions found in $this:\n${createFunctions.joinToString("\n")}")
     }
@@ -542,7 +550,8 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
 
 private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
 
-fun String.cleanOutputLine(): String = FILE_PATH_REGEX.replace(trimEnd(), "")
+fun String.cleanOutputLine(): String =
+  MessageRenderer.stripAnsi(FILE_PATH_REGEX.replace(trimEnd(), ""))
 
 inline fun <reified T : Throwable> assertThrows(block: () -> Unit): ThrowableSubject {
   val throwable = assertFailsWith(T::class, block)

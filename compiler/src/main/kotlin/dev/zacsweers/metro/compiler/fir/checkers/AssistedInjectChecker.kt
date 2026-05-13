@@ -17,6 +17,8 @@ import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.mapToSetWithDupes
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -26,12 +28,13 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
-import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
-import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
@@ -42,27 +45,41 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
-    context(context.session.compatContext) { checkImpl(declaration) }
+    val source = declaration.source ?: return
+    val session = context.session
+    // Relevance: @AssistedFactory class, OR a class with class-level @AssistedInject (sugars to
+    // primary-ctor injection), OR a class with any @AssistedInject ctor. Note we do NOT gate on
+    // `isConstructorInjected` — that helper only covers @Inject/@Contributes*, not
+    // @AssistedFactory.
+    val classAnnotations = declaration.symbol.metroAnnotations()
+    if (
+      !classAnnotations.isAssistedFactory &&
+        !classAnnotations.isAssistedInject &&
+        declaration.constructors(session).none { it.metroAnnotations().isAssistedInject }
+    ) {
+      return
+    }
+    session.trace(name = { "AssistedInjectChecker(${declaration.classId})" }) {
+      context(session.compatContext) { checkImpl(declaration, source) }
+    }
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
-  private fun checkImpl(declaration: FirClass) {
-    val source = declaration.source ?: return
+  private fun checkImpl(declaration: FirClass, source: KtSourceElement) {
     val session = context.session
     val classIds = session.classIds
 
     // Check if this is an assisted factory
-    val isAssistedFactory =
-      declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
+    val isAssistedFactory = declaration.symbol.metroAnnotations().isAssistedFactory
 
     if (isAssistedFactory) {
       checkAssistedFactory(declaration, source, session, classIds)
       return
     }
 
-    val isAssistedInject =
-      declaration.symbol.findAssistedInjectConstructors(session, checkClass = true).isNotEmpty()
-    if (isAssistedInject) {
+    val assistedInjectConstructors =
+      declaration.symbol.findAssistedInjectConstructors(session, checkClass = true)
+    if (assistedInjectConstructors.isNotEmpty()) {
       val qualifier = declaration.symbol.qualifierAnnotation(session)
       if (qualifier != null) {
         reporter.reportOn(
@@ -104,7 +121,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         ASSISTED_INJECTION_ERROR,
         "`@AssistedFactory` functions cannot have type parameters.",
       )
-      return
     }
 
     // Ensure target type has an assisted inject constructor
@@ -168,7 +184,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         ASSISTED_INJECTION_ERROR,
         "Assisted factory parameters must be unique. Found duplicates: ${dupeFactoryKeys.joinToString(", ")}",
       )
-      return
     }
 
     val constructorSubstitutor = substitutorByMap(targetSubstitutionMap, session)
@@ -183,7 +198,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         ASSISTED_INJECTION_ERROR,
         "Assisted constructor parameters must be unique. Found duplicates: $dupeConstructorKeys",
       )
-      return
     }
 
     // for (parameters in listOf(factoryKeys, constructorKeys)) {
@@ -200,7 +214,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         ASSISTED_INJECTION_ERROR,
         buildString {
           appendLine(
-            "Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:"
+            "Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:"
           )
           if (missingFromFactory.isNotEmpty()) {
             append("  Missing from factory: ")
@@ -212,22 +226,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
           }
         },
       )
-      return
-    }
-  }
-
-  private fun findAssistedFactories(
-    declaration: FirClass,
-    session: FirSession,
-    classIds: ClassIds,
-  ): List<FirClassSymbol<*>> = buildList {
-    declaration.processAllDeclarations(session) { declaration ->
-      if (
-        declaration is FirClassSymbol<*> &&
-          declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
-      ) {
-        add(declaration)
-      }
     }
   }
 
@@ -252,14 +250,31 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         session: FirSession,
         typeKey: FirTypeKey,
       ): FirAssistedParameterKey {
-        return FirAssistedParameterKey(
-          typeKey,
+        val paramName = name.asString()
+        val classIds = session.classIds
+
+        val assistedAnnotation =
           resolvedCompilerAnnotationsWithClassIds
-            .annotationsIn(session, session.classIds.assistedAnnotations)
+            .annotationsIn(session, classIds.assistedAnnotations)
             .singleOrNull()
-            ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
-            .orEmpty(),
-        )
+
+        // Custom/interop annotations (e.g. Dagger's @Assisted) always use param names.
+        // For Metro's native @Assisted or no annotation (factory method params), the flag controls
+        // whether param names are used as identifiers.
+        val isNativeMetroAssisted =
+          assistedAnnotation != null &&
+            assistedAnnotation.toAnnotationClassIdSafe(session) == classIds.metroAssisted
+
+        val explicitIdentifier =
+          if (isNativeMetroAssisted) {
+            paramName
+          } else {
+            assistedAnnotation
+              ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
+              ?.takeUnless { it.isBlank() } ?: paramName
+          }
+
+        return FirAssistedParameterKey(typeKey, explicitIdentifier)
       }
     }
   }

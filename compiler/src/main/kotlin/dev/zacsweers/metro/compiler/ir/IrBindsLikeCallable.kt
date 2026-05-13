@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
@@ -46,6 +47,7 @@ internal class BindsCallable(
    * @return A pair of (declaration, isContributed) or null if the function is null. If
    *   isContributed is true, the declaration is the source class that contributed this binding.
    */
+  // TODO also report target scopes?
   fun resolveSourceDeclaration(): Pair<IrDeclarationWithName, Boolean> {
     val ir = function
     val resolvedIr = ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir
@@ -61,19 +63,38 @@ internal class BindsCallable(
     }
   }
 
+  fun remapTypes(remapper: TypeRemapper): BindsCallable {
+    return BindsCallable(
+      callableMetadata = callableMetadata,
+      source = source.remapTypes(remapper),
+      typeKey = typeKey.remapTypes(remapper),
+      rawTarget = rawTarget.remapTypes(remapper),
+    )
+  }
+
   /** Renders a [LocationDiagnostic] for this callable. */
-  fun renderLocationDiagnostic(short: Boolean, parameters: Parameters): LocationDiagnostic {
+  fun renderLocationDiagnostic(
+    short: Boolean,
+    shortLocation: Boolean,
+    parameters: Parameters,
+  ): LocationDiagnostic {
     val (sourceDeclaration, isContributed) = resolveSourceDeclaration()
 
     val location =
-      sourceDeclaration.locationOrNull()?.render(short)
+      sourceDeclaration.renderSourceLocation(short = shortLocation)
         ?: "<unknown location, likely a separate compilation>"
 
     val description = buildString {
       if (isContributed) {
         append((sourceDeclaration as IrDeclarationParent).kotlinFqName)
         append(" contributes a binding of ")
-        appendLineWithUnderlinedContent(typeKey.render(short = short, includeQualifier = true))
+        appendLineWithUnderlinedContent(
+          typeKey.renderForDiagnostic(
+            short = short,
+            includeQualifier = true,
+            useOriginalQualifier = true,
+          )
+        )
       } else {
         renderForDiagnostic(
           declaration = function,
@@ -94,13 +115,27 @@ internal class BindsCallable(
 internal class MultibindsCallable(
   override val callableMetadata: IrCallableMetadata,
   override val typeKey: IrTypeKey,
-) : BindsLikeCallable
+) : BindsLikeCallable {
+  fun remapTypes(remapper: TypeRemapper): MultibindsCallable {
+    return MultibindsCallable(
+      callableMetadata = callableMetadata,
+      typeKey = typeKey.remapTypes(remapper),
+    )
+  }
+}
 
 @Poko
 internal class BindsOptionalOfCallable(
   override val callableMetadata: IrCallableMetadata,
   override val typeKey: IrTypeKey,
-) : BindsLikeCallable
+) : BindsLikeCallable {
+  fun remapTypes(remapper: TypeRemapper): BindsOptionalOfCallable {
+    return BindsOptionalOfCallable(
+      callableMetadata = callableMetadata,
+      typeKey = typeKey.remapTypes(remapper),
+    )
+  }
+}
 
 context(context: IrMetroContext)
 internal fun MetroSimpleFunction.toBindsCallable(isInterop: Boolean): BindsCallable {

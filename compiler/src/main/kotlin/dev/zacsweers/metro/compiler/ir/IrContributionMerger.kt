@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import androidx.collection.MutableScatterMap
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
 import dev.zacsweers.metro.compiler.fir.replacesArgument
@@ -13,31 +15,46 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.SortedMap
 import java.util.SortedSet
+import java.util.concurrent.ConcurrentHashMap
+import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.ClassId
 
+@Inject
+@SingleIn(IrScope::class)
 internal class IrContributionMerger(
   metroContext: IrMetroContext,
   private val contributionData: IrContributionData,
+  boundTypeResolver: IrBoundTypeResolver,
 ) : IrMetroContext by metroContext {
 
-  // Cache for scope-based contributions (before exclusions/replacements)
-  private val scopeContributionsCache = MutableScatterMap<Set<ClassId>, ScopedContributions>(256)
+  // Cache for scope-based contributions (before exclusions/replacements).
+  // Thread-safe for concurrent access during parallel graph validation.
+  private val scopeContributionsCache = ConcurrentHashMap<Set<ClassId>, ScopedContributions>()
 
-  // Cache for fully processed contributions (after exclusions/replacements)
-  private val mergedContributionsCache =
-    MutableScatterMap<ContributionsCacheKey, IrContributions>(256)
+  // Cache for fully processed contributions (after exclusions/replacements).
+  // Thread-safe for concurrent access during parallel graph validation.
+  private val mergedContributionsCache = ConcurrentHashMap<ContributionsCacheKey, IrContributions>()
 
-  // Cache for parent exclusions by starting class - avoids recomputing hierarchy walks
-  private val parentExcludedCache = MutableScatterMap<ClassId, Set<ClassId>>()
+  // Cache for parent exclusions by starting class - avoids recomputing hierarchy walks.
+  // Thread-safe for concurrent access during parallel graph validation.
+  private val parentExcludedCache = ConcurrentHashMap<ClassId, Set<ClassId>>()
+
+  private val rankedBindingProcessing = IrRankedBindingProcessing(boundTypeResolver)
 
   private data class ScopedContributions(
     val allContributions: Map<ClassId, List<IrType>>,
@@ -186,7 +203,14 @@ internal class IrContributionMerger(
               // Get the actual contribution class (nested `MetroContribution`)
               val contributionClass = contributions.firstOrNull()?.rawTypeOrNull()
               if (contributionClass != null) {
-                contributionClass.originClassId()?.let { originClassId ->
+                // @Origin is usually present on the contribution container (the parent class).
+                // MetroContribution nested classes generated from those containers don't always
+                // carry that annotation, so fall back to the parent to preserve replacement
+                // behavior in IR-only graph-extension merging.
+                val originClassId =
+                  contributionClass.originClassId()
+                    ?: contributionClass.parentAsClass.originClassId()
+                originClassId?.let {
                   originToContributions.getAndAdd(originClassId, contributionClassId)
                 }
               }
@@ -238,9 +262,10 @@ internal class IrContributionMerger(
           }
 
           if (unmatchedExclusions.isNotEmpty()) {
-            writeDiagnostic({
-              "merging-unmatched-exclusions-ir-${primaryScope.safePathString}.txt"
-            }) {
+            writeDiagnostic(
+              "merging-unmatched-exclusions-ir",
+              { "${primaryScope.safePathString}.txt" },
+            ) {
               unmatchedExclusions.map { it.safePathString }.sorted().joinToString("\n")
             }
           }
@@ -257,6 +282,14 @@ internal class IrContributionMerger(
         }
         // Binding containers (only remaining ones after exclusions)
         yieldAll(mutableContributedBindingContainers.values)
+
+        // For binding containers with @Origin (contribution providers), also scan the
+        // origin class for @ContributesBinding(replaces=...) annotations
+        for (container in mutableContributedBindingContainers.values) {
+          val originClassId = container.originClassId() ?: continue
+          val originClass = pluginContext.referenceClass(originClassId)?.owner ?: continue
+          yield(originClass)
+        }
       }
 
       trace("Process replacements") {
@@ -269,9 +302,9 @@ internal class IrContributionMerger(
                   .flatMap { annotation -> annotation.replacedClasses() }
                   .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
               },
-              firBody = { _, annotations ->
+              firBody = { session, annotations ->
                 annotations
-                  .flatMap { it.replacesArgument()?.argumentList?.arguments.orEmpty() }
+                  .flatMap { it.replacesArgument(session)?.argumentList?.arguments.orEmpty() }
                   .mapNotNull {
                     it.expectAsOrNull<FirGetClassCall>()?.coneTypeIfResolved()?.classId
                   }
@@ -304,9 +337,10 @@ internal class IrContributionMerger(
           }
 
           if (unmatchedReplacements.isNotEmpty()) {
-            writeDiagnostic({
-              "merging-unmatched-replacements-ir-${primaryScope.safePathString}.txt"
-            }) {
+            writeDiagnostic(
+              "merging-unmatched-replacements-ir",
+              { "${primaryScope.safePathString}.txt" },
+            ) {
               unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
             }
           }
@@ -317,17 +351,37 @@ internal class IrContributionMerger(
       if (options.enableDaggerAnvilInterop) {
         trace("Process ranked replacements") {
           val unmatchedRankReplacements = mutableSetOf<ClassId>()
-          val rankReplacements = processRankBasedReplacements(allScopes, mutableAllContributions)
+          val rankReplacements =
+            rankedBindingProcessing.processRankBasedReplacements(
+              allScopes,
+              mutableAllContributions,
+              mutableContributedBindingContainers,
+            )
+
           for (replacedClassId in rankReplacements) {
-            if (mutableAllContributions.remove(replacedClassId) == null) {
+            val removedContribution = mutableAllContributions.remove(replacedClassId)
+            val removedContainer = mutableContributedBindingContainers.remove(replacedClassId)
+
+            // Also remove contributions that have @Origin pointing to the replaced class
+            originToContributions[replacedClassId]?.forEach { contributionId ->
+              mutableAllContributions.remove(contributionId)
+              mutableContributedBindingContainers.remove(contributionId)
+            }
+
+            val wasNotMatched =
+              removedContribution == null &&
+                removedContainer == null &&
+                originToContributions[replacedClassId] == null
+            if (wasNotMatched) {
               unmatchedRankReplacements += replacedClassId
             }
           }
 
           if (unmatchedRankReplacements.isNotEmpty()) {
-            writeDiagnostic({
-              "merging-unmatched-rank-replacements-ir-${primaryScope.safePathString}.txt"
-            }) {
+            writeDiagnostic(
+              "merging-unmatched-rank-replacements-ir",
+              { "${primaryScope.safePathString}.txt" },
+            ) {
               unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
             }
           }
@@ -348,17 +402,6 @@ internal class IrContributionMerger(
       mergedContributionsCache[cacheKey] = result
       return@trace result
     }
-
-  /**
-   * This provides `ContributesBinding.rank` interop for users migrating from Dagger-Anvil to make
-   * the migration to Metro more feasible.
-   *
-   * @return The bindings which have been outranked and should not be included in the merged graph.
-   */
-  private fun processRankBasedReplacements(
-    allScopes: Set<ClassId>,
-    contributions: Map<ClassId, List<IrType>>,
-  ): Set<ClassId> = IrRankedBindingProcessing.processRankBasedReplacements(allScopes, contributions)
 }
 
 internal data class IrContributions(
@@ -368,3 +411,70 @@ internal data class IrContributions(
   // Deterministic sort
   val bindingContainers: SortedMap<ClassId, IrClass>,
 )
+
+/**
+ * For each `MetroContribution` marker in [contributions], returns its parent contributing interface
+ * if that parent is not already a direct supertype of [ownerGraph]. Each marker in
+ * [IrContributions.supertypes] is already a `@MetroContribution(scope = X)` for an X in
+ * `allScopes`, so the parent is unconditionally a legitimate contribution.
+ */
+internal fun computePromotedParents(
+  contributions: IrContributions,
+  ownerGraph: IrClass,
+): Map<IrType, IrType> {
+  val existing = ownerGraph.superTypes.mapNotNullTo(mutableSetOf()) { it.rawTypeOrNull()?.classId }
+  return buildMap {
+    for (marker in contributions.supertypes) {
+      val parentClass = marker.rawType().parentAsClass
+      val parentClassId = parentClass.classId ?: continue
+      if (!existing.add(parentClassId)) continue
+      put(marker, parentClass.symbol.defaultType)
+    }
+  }
+}
+
+/**
+ * Groups [markers] into synthetic chunk interfaces nested under [ownerGraph]. Each chunk holds at
+ * most `merged-supertype-chunk-size` markers, so the chunk count tracks the contribution count
+ * rather than the raw supertype count. When [promotedParents] supplies a parent for a marker, the
+ * parent goes into the same chunk as its marker.
+ *
+ * When the option is below 2 or the input fits in a single chunk, the input is returned flat
+ * (markers and any promoted parents inline) without producing chunk classes.
+ *
+ * Chunks carry [Origins.ContributionSupertypeChunk] so downstream supertype walkers (notably
+ * binding-alias creation) can identify and skip them.
+ */
+context(traceScope: TraceScope)
+internal fun IrMetroContext.chunkSupertypesIfNeeded(
+  markers: SortedSet<IrType>,
+  ownerGraph: IrClass,
+  promotedParents: Map<IrType, IrType> = emptyMap(),
+): Collection<IrType> {
+  val chunkSize = options.mergedSupertypeChunkSize
+  if (chunkSize < 2 || markers.size <= chunkSize) {
+    return markers.flatMap { listOfNotNull(it, promotedParents[it]) }
+  }
+  return trace("Chunk merged supertypes") {
+    markers.chunked(chunkSize).mapIndexed { index, chunk ->
+      val chunkClass =
+        irFactory
+          .buildClass {
+            name = "ContributionChunk_$index".asName()
+            kind = ClassKind.INTERFACE
+            modality = Modality.ABSTRACT
+            // Match the owner graph impl so the chunks aren't more or less visible than the
+            // class that references them.
+            visibility = ownerGraph.visibility
+            origin = Origins.ContributionSupertypeChunk
+          }
+          .apply {
+            createThisReceiverParameter()
+            superTypes = chunk.flatMap { marker -> listOfNotNull(marker, promotedParents[marker]) }
+            ownerGraph.addChild(this)
+            addFakeOverrides(irTypeSystemContext)
+          }
+      chunkClass.symbol.defaultType
+    }
+  }
+}

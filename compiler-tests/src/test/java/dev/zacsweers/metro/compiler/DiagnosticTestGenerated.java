@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
 import org.jetbrains.kotlin.test.util.KtTestUtil;
-import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,7 +18,7 @@ import java.util.regex.Pattern;
 public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   @Test
   public void testAllFilesPresentInDiagnostic() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic"), Pattern.compile("^(.+)\\.kt$"), null, true);
   }
 
   @Nested
@@ -28,13 +27,61 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   public class Aggregation {
     @Test
     public void testAllFilesPresentInAggregation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("ContributedInterfaceCanShareFunctionNamesWithGraphExtension.kt")
+    public void testContributedInterfaceCanShareFunctionNamesWithGraphExtension() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributedInterfaceCanShareFunctionNamesWithGraphExtension.kt");
     }
 
     @Test
     @TestMetadata("ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt")
     public void testContributesToOnlyPermittedOnInterfacesOrBindingContainers() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionProviderMissingBindingShowsOrigin.kt")
+    public void testContributionProviderMissingBindingShowsOrigin() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributionProviderMissingBindingShowsOrigin.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionProviderMissingBindingShowsOriginInternal.kt")
+    public void testContributionProviderMissingBindingShowsOriginInternal() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributionProviderMissingBindingShowsOriginInternal.kt");
+    }
+
+    @Test
+    @TestMetadata("CrossModuleContributionProviderHidesImplHint.kt")
+    public void testCrossModuleContributionProviderHidesImplHint() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/CrossModuleContributionProviderHidesImplHint.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBinding_Ambiguous.kt")
+    public void testDefaultBinding_Ambiguous() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_Ambiguous.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBinding_InvalidTypeArg.kt")
+    public void testDefaultBinding_InvalidTypeArg() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_InvalidTypeArg.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultBinding_MustBeSubclassable.kt")
+    public void testDefaultBinding_MustBeSubclassable() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/DefaultBinding_MustBeSubclassable.kt");
+    }
+
+    @Test
+    @TestMetadata("ExposeImplBindingWithoutContributionProviders.kt")
+    public void testExposeImplBindingWithoutContributionProviders() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ExposeImplBindingWithoutContributionProviders.kt");
     }
 
     @Test
@@ -50,6 +97,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingBindingInContributionProviderRedirectsToOrigin.kt")
+    public void testMissingBindingInContributionProviderRedirectsToOrigin() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/MissingBindingInContributionProviderRedirectsToOrigin.kt");
+    }
+
+    @Test
     @TestMetadata("NonPublicContributionError.kt")
     public void testNonPublicContributionError() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/NonPublicContributionError.kt");
@@ -62,9 +115,119 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("PrivateContributionError.kt")
+    public void testPrivateContributionError() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/PrivateContributionError.kt");
+    }
+
+    @Test
     @TestMetadata("SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt")
     public void testSimilarBindingsNotReportedWhenMissingBindingTypeIsAny() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspiciousScopeWarnings.kt")
+    public void testSuspiciousScopeWarnings() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/SuspiciousScopeWarnings.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/api")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Api {
+    @Test
+    public void testAllFilesPresentInApi() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/api"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/api/circuit")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Circuit {
+      @Test
+      public void testAllFilesPresentInCircuit() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/api/circuit"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("DuplicateCircuitInjects.kt")
+      public void testDuplicateCircuitInjects() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/DuplicateCircuitInjects.kt");
+      }
+
+      @Test
+      @TestMetadata("InvalidAssistedInjection.kt")
+      public void testInvalidAssistedInjection() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/InvalidAssistedInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("InvalidAssistedInjectionMissingFactory.kt")
+      public void testInvalidAssistedInjectionMissingFactory() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/InvalidAssistedInjectionMissingFactory.kt");
+      }
+
+      @Test
+      @TestMetadata("InvalidSupertypes.kt")
+      public void testInvalidSupertypes() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/InvalidSupertypes.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassInvalidParams.kt")
+      public void testPresenterClassInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterClassInvalidParams.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassMissingInject.kt")
+      public void testPresenterClassMissingInject() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterClassMissingInject.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionImplicitReturnType.kt")
+      public void testPresenterFunctionImplicitReturnType() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionImplicitReturnType.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionInvalidParams.kt")
+      public void testPresenterFunctionInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionInvalidParams.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionInvalidReturn.kt")
+      public void testPresenterFunctionInvalidReturn() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionInvalidReturn.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionMissingReturn.kt")
+      public void testPresenterFunctionMissingReturn() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/PresenterFunctionMissingReturn.kt");
+      }
+
+      @Test
+      @TestMetadata("UiClassInvalidParams.kt")
+      public void testUiClassInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/UiClassInvalidParams.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionInvalidParams.kt")
+      public void testUiFunctionInvalidParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/UiFunctionInvalidParams.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionMissingModifier.kt")
+      public void testUiFunctionMissingModifier() {
+        runTest("compiler-tests/src/test/data/diagnostic/api/circuit/UiFunctionMissingModifier.kt");
+      }
     }
   }
 
@@ -80,7 +243,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
 
     @Test
     public void testAllFilesPresentInBindingcontainer() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/bindingcontainer"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/bindingcontainer"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -150,7 +313,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   public class CreateGraph {
     @Test
     public void testAllFilesPresentInCreateGraph() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/createGraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/createGraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -190,7 +353,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   public class Cycles {
     @Test
     public void testAllFilesPresentInCycles() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/cycles"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/cycles"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -218,7 +381,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
 
     @Test
     public void testAllFilesPresentInDependencygraph() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -258,6 +421,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DependencyGraphFactory_ProvidesParamCannotBeIntrinsic.kt")
+    public void testDependencyGraphFactory_ProvidesParamCannotBeIntrinsic() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/DependencyGraphFactory_ProvidesParamCannotBeIntrinsic.kt");
+    }
+
+    @Test
     @TestMetadata("DoNotSuggestSimilarBindingSubtypesForAny.kt")
     public void testDoNotSuggestSimilarBindingSubtypesForAny() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/DoNotSuggestSimilarBindingSubtypesForAny.kt");
@@ -267,6 +436,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("DoNotSuggestSimilarBindingsForMultibindingElements.kt")
     public void testDoNotSuggestSimilarBindingsForMultibindingElements() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/DoNotSuggestSimilarBindingsForMultibindingElements.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphPrivateAccessorIsAnError.kt")
+    public void testGraphPrivateAccessorIsAnError() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphPrivateAccessorIsAnError.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphPrivateDependencyGraphFactoryParam.kt")
+    public void testGraphPrivateDependencyGraphFactoryParam() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphPrivateDependencyGraphFactoryParam.kt");
     }
 
     @Test
@@ -335,7 +516,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public class Dynamic {
       @Test
       public void testAllFilesPresentInDynamic() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -362,8 +543,20 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestDataPath("$PROJECT_ROOT")
     public class Extensions {
       @Test
+      @TestMetadata("AdhocGraphExtensionFactoriesAreNotSupported.kt")
+      public void testAdhocGraphExtensionFactoriesAreNotSupported() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/AdhocGraphExtensionFactoriesAreNotSupported.kt");
+      }
+
+      @Test
       public void testAllFilesPresentInExtensions() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("DeepGraphExtensionChainEmitsWarning.kt")
+      public void testDeepGraphExtensionChainEmitsWarning() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/DeepGraphExtensionChainEmitsWarning.kt");
       }
 
       @Test
@@ -379,6 +572,30 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("GraphExtensionFactory_ProvidesParamCannotBeIntrinsic.kt")
+      public void testGraphExtensionFactory_ProvidesParamCannotBeIntrinsic() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/GraphExtensionFactory_ProvidesParamCannotBeIntrinsic.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateBindingNotVisibleToChild.kt")
+      public void testGraphPrivateBindingNotVisibleToChild() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/GraphPrivateBindingNotVisibleToChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateGraphExtensionFactoryParam.kt")
+      public void testGraphPrivateGraphExtensionFactoryParam() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/GraphPrivateGraphExtensionFactoryParam.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateSourceNotLeakedViaBindsAlias.kt")
+      public void testGraphPrivateSourceNotLeakedViaBindsAlias() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/GraphPrivateSourceNotLeakedViaBindsAlias.kt");
+      }
+
+      @Test
       @TestMetadata("OverridesAreTypeChecked.kt")
       public void testOverridesAreTypeChecked() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/OverridesAreTypeChecked.kt");
@@ -391,7 +608,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public class Leniency {
       @Test
       public void testAllFilesPresentInLeniency() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -407,7 +624,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public class Optional {
       @Test
       public void testAllFilesPresentInOptional() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/optional"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/optional"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -477,7 +694,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public class Sharding {
       @Test
       public void testAllFilesPresentInSharding() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -494,7 +711,13 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   public class Functioninject {
     @Test
     public void testAllFilesPresentInFunctioninject() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/functioninject"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/functioninject"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("AssistedUnderscoreContextParamRequiresIdentifier.kt")
+    public void testAssistedUnderscoreContextParamRequiresIdentifier() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/AssistedUnderscoreContextParamRequiresIdentifier.kt");
     }
 
     @Test
@@ -510,9 +733,9 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("CannotHaveTypeArgs.kt")
-    public void testCannotHaveTypeArgs() {
-      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveTypeArgs.kt");
+    @TestMetadata("CannotHaveReifiedTypeArgs.kt")
+    public void testCannotHaveReifiedTypeArgs() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveReifiedTypeArgs.kt");
     }
 
     @Test
@@ -528,7 +751,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   public class Graph {
     @Test
     public void testAllFilesPresentInGraph() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/graph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/graph"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -544,7 +767,13 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   public class Inject {
     @Test
     public void testAllFilesPresentInInject() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("AmbiguousPrimaryConstructor.kt")
+    public void testAmbiguousPrimaryConstructor() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/AmbiguousPrimaryConstructor.kt");
     }
 
     @Test
@@ -560,9 +789,27 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DesugaredProviderWarning.kt")
+    public void testDesugaredProviderWarning() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/DesugaredProviderWarning.kt");
+    }
+
+    @Test
     @TestMetadata("InjectingAPlainObjectIsSus.kt")
     public void testInjectingAPlainObjectIsSus() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingAPlainObjectIsSus.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectingContributesClassWithoutExposeImplBinding.kt")
+    public void testInjectingContributesClassWithoutExposeImplBinding() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingContributesClassWithoutExposeImplBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectingContributesClassWithoutExposeImplBindingQualified.kt")
+    public void testInjectingContributesClassWithoutExposeImplBindingQualified() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingContributesClassWithoutExposeImplBindingQualified.kt");
     }
 
     @Test
@@ -583,7 +830,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public class Assisted {
       @Test
       public void testAllFilesPresentInAssisted() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -671,6 +918,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("ContributesAnnotationsNotAllowedOnAssistedInjectClasses.kt")
+      public void testContributesAnnotationsNotAllowedOnAssistedInjectClasses() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/ContributesAnnotationsNotAllowedOnAssistedInjectClasses.kt");
+      }
+
+      @Test
       @TestMetadata("InjectingAssistedInjectClassesIsAnError.kt")
       public void testInjectingAssistedInjectClassesIsAnError() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/InjectingAssistedInjectClassesIsAnError.kt");
@@ -689,7 +942,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public class Function {
       @Test
       public void testAllFilesPresentInFunction() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/function"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/function"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -705,7 +958,13 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public class Member {
       @Test
       public void testAllFilesPresentInMember() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("FunctionMemberInjectionCannotHaveDefaultValues.kt")
+      public void testFunctionMemberInjectionCannotHaveDefaultValues() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/FunctionMemberInjectionCannotHaveDefaultValues.kt");
       }
 
       @Test
@@ -770,7 +1029,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   public class Interop {
     @Test
     public void testAllFilesPresentInInterop() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/interop"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Nested
@@ -779,13 +1038,19 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public class Dagger {
       @Test
       public void testAllFilesPresentInDagger() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/interop/dagger"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/interop/dagger"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
       @TestMetadata("BindsOptionalOfDiagnostics.kt")
       public void testBindsOptionalOfDiagnostics() {
         runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/BindsOptionalOfDiagnostics.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerModuleSubcomponentsIsIgnored.kt")
+      public void testDaggerModuleSubcomponentsIsIgnored() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/DaggerModuleSubcomponentsIsIgnored.kt");
       }
 
       @Test
@@ -826,13 +1091,19 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   public class Multibindings {
     @Test
     public void testAllFilesPresentInMultibindings() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
     @TestMetadata("BindingCallableMultibindingDiagnostics.kt")
     public void testBindingCallableMultibindingDiagnostics() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/BindingCallableMultibindingDiagnostics.kt");
+    }
+
+    @Test
+    @TestMetadata("DaggerLazyClassKeyIsUnsupported.kt")
+    public void testDaggerLazyClassKeyIsUnsupported() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/DaggerLazyClassKeyIsUnsupported.kt");
     }
 
     @Test
@@ -848,9 +1119,51 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("EmptyMultibindingFunctionType.kt")
+    public void testEmptyMultibindingFunctionType() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/EmptyMultibindingFunctionType.kt");
+    }
+
+    @Test
+    @TestMetadata("ImplicitClassKeyDiagnostics.kt")
+    public void testImplicitClassKeyDiagnostics() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/ImplicitClassKeyDiagnostics.kt");
+    }
+
+    @Test
+    @TestMetadata("IncompatibleMapValueType.kt")
+    public void testIncompatibleMapValueType() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/IncompatibleMapValueType.kt");
+    }
+
+    @Test
     @TestMetadata("MapKeyDiagnostics.kt")
     public void testMapKeyDiagnostics() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/MapKeyDiagnostics.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingFunctionType.kt")
+    public void testMissingBindingFunctionType() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/MissingBindingFunctionType.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspiciousUnusedMultibinding.kt")
+    public void testSuspiciousUnusedMultibinding() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/SuspiciousUnusedMultibinding.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspiciousUnusedMultibindingInChildScope.kt")
+    public void testSuspiciousUnusedMultibindingInChildScope() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/SuspiciousUnusedMultibindingInChildScope.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspiciousUnusedMultibindingSet.kt")
+    public void testSuspiciousUnusedMultibindingSet() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/SuspiciousUnusedMultibindingSet.kt");
     }
   }
 
@@ -860,7 +1173,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   public class Provides {
     @Test
     public void testAllFilesPresentInProvides() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/provides"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/provides"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -888,18 +1201,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("BindsWithBodiesShouldBePrivate_InAbstractClass.kt")
-    public void testBindsWithBodiesShouldBePrivate_InAbstractClass() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/BindsWithBodiesShouldBePrivate_InAbstractClass.kt");
-    }
-
-    @Test
-    @TestMetadata("BindsWithBodiesShouldBePrivate_InInterface.kt")
-    public void testBindsWithBodiesShouldBePrivate_InInterface() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/BindsWithBodiesShouldBePrivate_InInterface.kt");
-    }
-
-    @Test
     @TestMetadata("Binds_Interface_OkCase.kt")
     public void testBinds_Interface_OkCase() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/Binds_Interface_OkCase.kt");
@@ -918,15 +1219,15 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("Binds_interface_ShouldNotHaveBodies.kt")
-    public void testBinds_interface_ShouldNotHaveBodies() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/Binds_interface_ShouldNotHaveBodies.kt");
-    }
-
-    @Test
     @TestMetadata("DaggerReusable_IsUnsupported.kt")
     public void testDaggerReusable_IsUnsupported() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/DaggerReusable_IsUnsupported.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphPrivateOnNonProvideIsAnError.kt")
+    public void testGraphPrivateOnNonProvideIsAnError() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/GraphPrivateOnNonProvideIsAnError.kt");
     }
 
     @Test
@@ -939,6 +1240,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("PrivateProviderOption_Error.kt")
     public void testPrivateProviderOption_Error() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/PrivateProviderOption_Error.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateProviderOption_IdeWarn.kt")
+    public void testPrivateProviderOption_IdeWarn() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/PrivateProviderOption_IdeWarn.kt");
     }
 
     @Test
@@ -1050,9 +1357,27 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("Provides_ElementsIntoSet_AllowsIntrinsicElementType.kt")
+    public void testProvides_ElementsIntoSet_AllowsIntrinsicElementType() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_ElementsIntoSet_AllowsIntrinsicElementType.kt");
+    }
+
+    @Test
     @TestMetadata("Provides_Interface_MayNotHaveTypeParameters.kt")
     public void testProvides_Interface_MayNotHaveTypeParameters() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_Interface_MayNotHaveTypeParameters.kt");
+    }
+
+    @Test
+    @TestMetadata("Provides_ReturnTypeCannotBeIntrinsic.kt")
+    public void testProvides_ReturnTypeCannotBeIntrinsic() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_ReturnTypeCannotBeIntrinsic.kt");
+    }
+
+    @Test
+    @TestMetadata("Provides_ReturnTypeCannotBeIntrinsic_DaggerInterop.kt")
+    public void testProvides_ReturnTypeCannotBeIntrinsic_DaggerInterop() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_ReturnTypeCannotBeIntrinsic_DaggerInterop.kt");
     }
   }
 }

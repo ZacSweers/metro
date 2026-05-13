@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.KtSourceElementOffsetStrategy
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fakeElement as fakeElementNative
@@ -51,10 +52,14 @@ import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
+import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
+import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
@@ -184,6 +189,16 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   override fun IrClass.addFakeOverrides(typeSystem: IrTypeSystemContext): Unit =
     addFakeOverridesNative(typeSystem)
 
+  override fun IrClass.rebuildFakeOverridesCompat(typeSystem: IrTypeSystemContext) {
+    IrFakeOverrideBuilder(typeSystem, MetroFakeOverrideBuilderStrategy, emptyList())
+      .buildFakeOverridesForClass(this, oldSignatures = false)
+  }
+
+  override fun defaultKotlinLikeDumpOptions(): KotlinLikeDumpOptions = KotlinLikeDumpOptions()
+
+  override fun printVariableInitializersCompat(options: KotlinLikeDumpOptions): Boolean =
+    options.printVariableInitializers
+
   override fun Scope.createTemporaryVariableDeclarationCompat(
     irType: IrType,
     nameHint: String?,
@@ -261,4 +276,17 @@ public class CompatContextImpl : CompatContext by DelegateType() {
 
     override fun create(): CompatContext = CompatContextImpl()
   }
+}
+
+private object MetroFakeOverrideBuilderStrategy :
+  FakeOverrideBuilderStrategy.BindToPrivateSymbols() {
+  override fun postProcessGeneratedFakeOverride(
+    fakeOverride: IrOverridableDeclaration<*>,
+    clazz: IrClass,
+  ) {}
+
+  override fun shouldSeeInternals(
+    thisModule: ModuleDescriptor,
+    memberModule: ModuleDescriptor,
+  ): Boolean = thisModule.shouldSeeInternalsOf(memberModule)
 }

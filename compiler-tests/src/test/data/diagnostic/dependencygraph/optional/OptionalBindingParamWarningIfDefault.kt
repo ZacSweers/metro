@@ -6,5 +6,6 @@ interface AppGraph {
   fun provideString(@OptionalBinding <!OPTIONAL_BINDING_WARNING!>value<!>: Int = 3): String = value.toString()
 }
 
+@Suppress("ANNOTATION_WILL_BE_APPLIED_ALSO_TO_PROPERTY_OR_FIELD")
 @Inject
-class Example(<!ANNOTATION_WILL_BE_APPLIED_ALSO_TO_PROPERTY_OR_FIELD!>@OptionalBinding<!> val <!OPTIONAL_BINDING_WARNING!>value<!>: Int = 3)
+class Example(@OptionalBinding val <!OPTIONAL_BINDING_WARNING!>value<!>: Int = 3)

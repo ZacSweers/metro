@@ -1,6 +1,6 @@
 interface Foo
 
-@Inject class Bar(val fooProvider: Provider<Foo>) : Foo
+@Inject class Bar(val fooProvider: () -> Foo) : Foo
 
 /**
  * A component with a cycle in which a `@Binds` binding depends on the binding that has to be

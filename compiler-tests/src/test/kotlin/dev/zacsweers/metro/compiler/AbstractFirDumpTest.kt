@@ -17,6 +17,7 @@ open class AbstractFirDumpTest : AbstractDiagnosticTest() {
         RUN_PIPELINE_TILL.with(TestPhase.FRONTEND)
         +FIR_DUMP
         +DISABLE_GENERATED_FIR_TAGS
+        commonMetroTestDirectives()
       }
 
       useMetaTestConfigurators(::MetroTestConfigurator)

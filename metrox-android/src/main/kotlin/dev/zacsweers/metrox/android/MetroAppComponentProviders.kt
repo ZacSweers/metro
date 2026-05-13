@@ -7,7 +7,6 @@ import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.ContentProvider
 import dev.zacsweers.metro.Multibinds
-import dev.zacsweers.metro.Provider
 import kotlin.reflect.KClass
 
 /**
@@ -24,26 +23,26 @@ public interface MetroAppComponentProviders {
    * [MetroAppComponentFactory].
    */
   @Multibinds(allowEmpty = true)
-  public val activityProviders: Map<KClass<out Activity>, Provider<Activity>>
+  public val activityProviders: Map<KClass<out Activity>, () -> Activity>
 
   /**
    * A multibinding map of [ContentProvider] classes to their providers accessible for
    * [MetroAppComponentFactory].
    */
   @Multibinds(allowEmpty = true)
-  public val providerProviders: Map<KClass<out ContentProvider>, Provider<ContentProvider>>
+  public val providerProviders: Map<KClass<out ContentProvider>, () -> ContentProvider>
 
   /**
    * A multibinding map of [BroadcastReceiver] classes to their providers accessible for
    * [MetroAppComponentFactory].
    */
   @Multibinds(allowEmpty = true)
-  public val receiverProviders: Map<KClass<out BroadcastReceiver>, Provider<BroadcastReceiver>>
+  public val receiverProviders: Map<KClass<out BroadcastReceiver>, () -> BroadcastReceiver>
 
   /**
    * A multibinding map of [Service] classes to their providers accessible for
    * [MetroAppComponentFactory].
    */
   @Multibinds(allowEmpty = true)
-  public val serviceProviders: Map<KClass<out Service>, Provider<Service>>
+  public val serviceProviders: Map<KClass<out Service>, () -> Service>
 }

@@ -9,22 +9,22 @@ class ScopedService(val value: String)
 // Constructor-injected classes that create a cycle
 @Inject
 @SingleIn(AppScope::class)
-class CycleA(val b: Provider<CycleB>)
+class CycleA(val b: () -> CycleB)
 
 @Inject
 @SingleIn(AppScope::class)
-class CycleB(val a: Provider<CycleA>)
+class CycleB(val a: () -> CycleA)
 
 // Constructor-injected class that depends on multibindings
 @Inject
 @SingleIn(AppScope::class)
 class Consumer(
-  val cycleA: Provider<CycleA>,
-  val cycleB: Provider<CycleB>,
-  val scopedService: Provider<ScopedService>,
-  val set: Provider<Set<String>>,
-  val map: Provider<Map<String, Int>>,
-  val providerMap: Provider<Map<Int, Provider<String>>>,
+  val cycleA: () -> CycleA,
+  val cycleB: () -> CycleB,
+  val scopedService: () -> ScopedService,
+  val set: () -> Set<String>,
+  val map: () -> Map<String, Int>,
+  val providerMap: () -> Map<Int, () -> String>,
 )
 
 @DependencyGraph(AppScope::class)
@@ -37,7 +37,7 @@ interface NoEagerInitGraph {
   val scopedService: ScopedService
   val set: Set<String>
   val map: Map<String, Int>
-  val providerMap: Map<Int, Provider<String>>
+  val providerMap: Map<Int, () -> String>
 
   @Provides
   fun provideString(): String {

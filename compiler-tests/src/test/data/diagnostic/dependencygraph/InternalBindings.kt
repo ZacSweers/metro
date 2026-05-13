@@ -28,6 +28,6 @@ interface LoggedInGraph {
 
 // MODULE: main(graphs, feature, feature-impl, scopes)
 @DependencyGraph(AppScope::class)
-interface <!METRO_ERROR!>AppGraph<!> {
+interface <!MISSING_BINDING!>AppGraph<!> {
   val loggedInGraphFactory: LoggedInGraph.Factory
 }

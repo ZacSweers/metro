@@ -1,6 +1,21 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import dev.zacsweers.metro.gradle.RequiresIdeSupport
+
+// Bootstrap: add the Metro compiler plugin JAR to the buildscript classpath from Maven Central.
+// Buildscript resolution is NOT subject to project-level composite build dependency substitution,
+// which avoids the circular task dependency (compileKotlin → shadowJar → compileKotlin) that
+// occurs when Gradle substitutes dev.zacsweers.metro:compiler with project(:compiler).
+buildscript {
+  repositories { mavenCentral() }
+  val bootstrapVersion =
+    extra.properties["METRO_BOOTSTRAP_VERSION"]?.toString()
+      ?: error("METRO_BOOTSTRAP_VERSION not set in gradle.properties")
+  dependencies {
+    classpath("dev.zacsweers.metro:compiler:$bootstrapVersion") { isTransitive = false }
+  }
+}
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -9,33 +24,29 @@ plugins {
   alias(libs.plugins.wire)
   alias(libs.plugins.shadow) apply false
   id("metro.publish")
+  // apply false to put metro on the classpath. Conditionally applied below.
+  alias(libs.plugins.metro)
 }
 
-kotlin {
-  compilerOptions {
-    // TODO next minor release
-    //  jvmTarget.set(JvmTarget.JVM_21)
-    freeCompilerArgs.addAll(
-      "-Xcontext-parameters",
-      "-Xreturn-value-checker=full",
-      "-Xcontext-sensitive-resolution",
-      "-Xdata-flow-based-exhaustiveness",
-      //  "-Xallow-contracts-on-more-functions",
-      //  "-Xallow-condition-implies-returns-contracts",
-      //  "-Xallow-holdsin-contract",
-      // TODO next minor release
-      //  "-Xwhen-expressions=indy",
-      // TODO Kotlin 2.3.0
-      //  "-Xexplicit-backing-fields",
-    )
-    optIn.addAll(
-      "kotlin.contracts.ExperimentalContracts",
-      "kotlin.contracts.ExperimentalExtendedContracts",
-      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
-      "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-    )
-  }
+metro {
+  @OptIn(RequiresIdeSupport::class) generateAssistedFactories.set(true)
+  // We embed and shade the runtime in the compiler's shadow JAR
+  automaticallyAddRuntimeDependencies.set(false)
 }
+
+// Extract the bootstrap compiler JAR from the buildscript classpath
+val bootstrapVersion = extra.properties["METRO_BOOTSTRAP_VERSION"]?.toString()!!
+val bootstrapJar =
+  buildscript.configurations.getByName("classpath").files.single {
+    it.name == "compiler-$bootstrapVersion.jar"
+  }
+
+configurations
+  .matching { it.name.startsWith("kotlinCompilerPluginClasspath") }
+  .configureEach {
+    exclude(group = "dev.zacsweers.metro", module = "compiler")
+    dependencies.add(project.dependencies.create(files(bootstrapJar)))
+  }
 
 buildConfig {
   generateAtSync = true
@@ -65,6 +76,7 @@ buildConfig {
 tasks.test {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
+  systemProperty("metro.richDiagnostics", "false")
 }
 
 wire { kotlin { javaInterop = false } }
@@ -114,6 +126,10 @@ val shadowJar =
       "dev.zacsweers.metro.compiler.shaded.com.jakewharton.crossword",
     )
     relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
+    // Relocate the metro runtime while excluding the compiler's own package
+    relocate("dev.zacsweers.metro", "dev.zacsweers.metro.compiler.shaded.metro") {
+      exclude("dev.zacsweers.metro.compiler.**")
+    }
   }
 
 /**
@@ -146,6 +162,7 @@ dependencies {
   compileOnly(libs.poko.annotations)
   compileOnly(libs.androidx.collection)
 
+  add(embedded.name, project(":runtime"))
   add(embedded.name, libs.androidx.collection)
   add(embedded.name, libs.androidx.tracing.wire)
   add(embedded.name, libs.picnic)
@@ -153,14 +170,13 @@ dependencies {
   add(embedded.name, libs.kotlinx.serialization.json)
   add(embedded.name, project(":compiler-compat"))
   rootProject.isolated.projectDirectory.dir("compiler-compat").asFile.listFiles()!!.forEach {
-    if (it.isDirectory && it.name.startsWith("k")) {
+    if (it.isDirectory && it.name.startsWith("k") && File(it, "version.txt").exists()) {
       add(embedded.name, project(":compiler-compat:${it.name}"))
     }
   }
 
   testCompileOnly(libs.poko.annotations)
 
-  testImplementation(project(":runtime"))
   testImplementation(project(":interop-dagger"))
   testImplementation(libs.kotlin.reflect)
   testImplementation(libs.kotlin.stdlib)
@@ -169,8 +185,13 @@ dependencies {
   testRuntimeOnly("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
   // Cover for https://github.com/tschuchortdev/kotlin-compile-testing/issues/274
   testImplementation(libs.kotlin.aptEmbeddable)
-  testImplementation(libs.kct)
-  testImplementation(libs.kct.ksp)
+  if (testCompilerVersion.startsWith("2.4")) {
+    testImplementation("dev.zacsweers.kctfork:core:0.13.0-alpha01")
+    testImplementation("dev.zacsweers.kctfork:ksp:0.13.0-alpha01")
+  } else {
+    testImplementation(libs.kct)
+    testImplementation(libs.kct.ksp)
+  }
   testImplementation(libs.okio)
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)

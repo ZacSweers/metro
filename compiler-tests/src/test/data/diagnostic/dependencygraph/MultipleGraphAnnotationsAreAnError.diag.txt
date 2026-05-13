@@ -1,0 +1,15 @@
+/MultipleGraphAnnotationsAreAnError.kt:13:1: error: Only one @DependencyGraph-like annotation is allowed per class but found 4. Remove all but one of these annotations.
+
+/MultipleGraphAnnotationsAreAnError.kt:14:1: error: Only one @DependencyGraph-like annotation is allowed per class but found 4. Remove all but one of these annotations.
+
+/MultipleGraphAnnotationsAreAnError.kt:15:1: error: Only one @DependencyGraph-like annotation is allowed per class but found 4. Remove all but one of these annotations.
+
+/MultipleGraphAnnotationsAreAnError.kt:16:1: error: Only one @DependencyGraph-like annotation is allowed per class but found 4. Remove all but one of these annotations.
+
+/MultipleGraphAnnotationsAreAnError.kt:21:1: error: Only one @DependencyGraph-like annotation is allowed per class but found 4. Remove all but one of these annotations.
+
+/MultipleGraphAnnotationsAreAnError.kt:22:1: error: Only one @DependencyGraph-like annotation is allowed per class but found 4. Remove all but one of these annotations.
+
+/MultipleGraphAnnotationsAreAnError.kt:23:1: error: Only one @DependencyGraph-like annotation is allowed per class but found 4. Remove all but one of these annotations.
+
+/MultipleGraphAnnotationsAreAnError.kt:24:1: error: Only one @DependencyGraph-like annotation is allowed per class but found 4. Remove all but one of these annotations.

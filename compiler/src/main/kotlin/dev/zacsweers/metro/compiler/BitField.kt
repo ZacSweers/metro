@@ -109,5 +109,36 @@ internal value class BitField private constructor(private val words: IntArray) {
 
     fun fromIntList(ints: List<Int>): BitField =
       if (ints.isEmpty()) BitField() else BitField(ints.toIntArray())
+
+    internal fun fromPackedWords(words: IntArray): BitField =
+      if (words.isEmpty()) BitField() else BitField(words)
+  }
+}
+
+/**
+ * Mutable builder for assembling a [BitField] without allocating a fresh `IntArray` per bit set.
+ * Replaces the `var bf = BitField(); bf = bf.withSet(i)` pattern.
+ */
+internal class BitFieldBuilder {
+  private var words: IntArray = IntArray(1)
+  private var size: Int = 0
+
+  fun set(index: Int): BitFieldBuilder = apply {
+    require(index >= 0) { "index must be >= 0" }
+    val wordIndex = index / 32
+    val bitIndex = index % 32
+    if (wordIndex >= words.size) {
+      var newCap = words.size
+      while (newCap <= wordIndex) newCap *= 2
+      words = words.copyOf(newCap)
+    }
+    words[wordIndex] = words[wordIndex] or (1 shl bitIndex)
+    if (wordIndex >= size) size = wordIndex + 1
+  }
+
+  fun build(): BitField {
+    if (size == 0) return BitField()
+    val packed = if (size == words.size) words.copyOf() else words.copyOfRange(0, size)
+    return BitField.fromPackedWords(packed)
   }
 }

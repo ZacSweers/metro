@@ -34,12 +34,15 @@ When `reportsDestination` is configured, Metro will report any unmatched exclusi
 
 Reports are written to files like:
 
-- `merging-unmatched-exclusions-fir-<graph>.txt`
-- `merging-unmatched-replacements-fir-<graph>.txt`
-- `merging-unmatched-rank-replacements-fir-<graph>.txt`
-- `merging-unmatched-exclusions-ir-<scope>.txt`
-- `merging-unmatched-replacements-ir-<scope>.txt`
-- `merging-unmatched-rank-replacements-ir-<scope>.txt`
+- `merging-unmatched-exclusions-fir/<graph>.txt`
+- `merging-unmatched-replacements-fir/<graph>.txt`
+- `merging-unmatched-rank-replacements-fir/<graph>.txt`
+- `merging-unmatched-exclusions-ir/<scope>.txt`
+- `merging-unmatched-replacements-ir/<scope>.txt`
+- `merging-unmatched-rank-replacements-ir/<scope>.txt`
+
+`<graph>` and `<scope>` here may be a path like `<graph1>/<graph2>/<graph3>.txt` when graph
+extensions or embedded classes are used.
 
 ## Graph Analysis & Visualization
 
@@ -52,4 +55,8 @@ Metro provides Gradle tasks for generating interactive HTML visualizations of yo
 
 ## Decompiled Bytecode
 
-Compiled java class files of Metro-generated types are fairly friendly to the IntelliJ "decompile to Java" action. Simply open the class file in the IDE (usually seen as a Kotlin bytecode class) then run the "decompile to Java" action. For JVM projects they are under `build/classes`. For Android projects, it's `build/tmp/kotlin-classes`.
+Compiled java class files of Metro-generated types are fairly friendly to the IntelliJ "decompile to Java" action. Simply open the class file in the IDE (usually seen as a Kotlin bytecode class) then run the "decompile to Java" action.
+
+For JVM projects they are under `build/classes`.
+
+For Android projects, it's `build/intermediates/built_in_kotlinc` or `build/tmp/kotlin-classes` (legacy, pre AGP 9).

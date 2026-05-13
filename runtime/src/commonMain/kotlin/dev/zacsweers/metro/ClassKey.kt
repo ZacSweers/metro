@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("RUNTIME_ANNOTATION_NOT_SUPPORTED") // Only read at compile-time
-
 package dev.zacsweers.metro
 
 import kotlin.reflect.KClass
@@ -24,6 +22,8 @@ import kotlin.reflect.KClass
  *
  * If your map's keys can be constrained, consider using a custom annotation instead, with a member
  * whose type is `KClass<out Something>`.
+ *
+ * This map key supports [MapKey.implicitClassKey].
  */
 @MustBeDocumented
 @Target(
@@ -35,5 +35,5 @@ import kotlin.reflect.KClass
   AnnotationTarget.TYPE,
 )
 @Retention(AnnotationRetention.RUNTIME)
-@MapKey
-public annotation class ClassKey(val value: KClass<*>)
+@MapKey(implicitClassKey = true)
+public annotation class ClassKey(val value: KClass<*> = Nothing::class)

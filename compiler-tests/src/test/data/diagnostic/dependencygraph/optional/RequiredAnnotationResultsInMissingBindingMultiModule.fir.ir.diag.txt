@@ -1,6 +1,0 @@
-/module_main_RequiredAnnotationResultsInMissingBindingMultiModule.kt:(92,100): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String?
-
-    kotlin.String? is injected at
-        [AppGraph] Example(…, value)
-    Example is requested at
-        [AppGraph] AppGraph.example

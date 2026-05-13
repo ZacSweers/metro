@@ -7,8 +7,6 @@ on:
     paths-ignore:
       - '**/*.md'
   pull_request:
-    paths:
-      - 'ide-integration-tests/**'
   workflow_dispatch:
     inputs:
       ide:
@@ -23,7 +21,7 @@ concurrency:
 jobs:
   generate-matrix:
     name: Generate IDE matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       ide-matrix: ${{ steps.matrix.outputs.ide-matrix }}
     steps:
@@ -64,7 +62,7 @@ jobs:
         run: ./gradlew :installForFunctionalTest --quiet
 
       - name: Upload Metro artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: metro-repo
           path: build/functionalTestRepo
@@ -84,11 +82,23 @@ jobs:
       METRO_PREBUILT: true
 
     steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          # Keep the Android SDK for AS matrix entries — AS's Gradle processor blocks on SdkSync if missing
+          android: ${{ !startsWith(matrix.ide, 'AS:') }}
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Download Metro artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: metro-repo
           path: build/functionalTestRepo
@@ -99,8 +109,8 @@ jobs:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Install aria2
-        run: sudo apt-get install -y aria2
+      - name: Install aria2 and xvfb
+        run: sudo apt-get install -y aria2 xvfb
 
       - name: Filter IDE version for this matrix entry
         run: |
@@ -109,6 +119,11 @@ jobs:
         env:
           IDE: ${{ matrix.ide }}
 
+      - name: Write local.properties for Android Studio
+        if: startsWith(matrix.ide, 'AS:')
+        run: echo "sdk.dir=$ANDROID_HOME" > ide-integration-tests/test-project/local.properties
+
+      # We don't cache IDE downloads with a separate cache step because they download in a few seconds
       - name: Download IDE
         run: ide-integration-tests/download-ides.sh
 
@@ -118,7 +133,7 @@ jobs:
 
       - name: Upload logs
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ide-logs-${{ env.IDE_SLUG }}
           path: |
@@ -128,7 +143,7 @@ jobs:
 
   ide-integration:
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     needs:
       - ide-tests
     steps:

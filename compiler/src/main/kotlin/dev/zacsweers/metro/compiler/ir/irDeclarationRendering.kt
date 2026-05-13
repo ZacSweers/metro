@@ -3,8 +3,10 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -14,12 +16,13 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
-import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isPropertyField
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -56,10 +59,20 @@ internal fun IrDeclaration.humanReadableDiagnosticMetadata(): DiagnosticMetadata
 
   // Add more metadata to the error if it's generated metro code
   parentClassOrNull?.let { parentClass ->
+    val parent = parentClass.parent
+
+    if (parent !is IrClass) {
+      metadata +=
+        "Parent declaration of '${parent.kotlinFqName}' is not readable. " +
+          "This may be a sign that it is used but not in the compile classpath." +
+          "\n\nKotlin-like dump:\n${dumpKotlinLike()}"
+      return@let
+    }
+
     if (hasAnnotation(Symbols.ClassIds.CallableMetadata)) {
       // It's a Binds callable. ParentClass is a BindsMirror
       // Get the original binding container, which may be a generated metro contribution
-      val originalContainer = parentClass.parentAsClass
+      val originalContainer = parent
       if (originalContainer.hasAnnotation(Symbols.ClassIds.metroContribution)) {
         // If it's a `@MetroContribution`, get the original contributing class
         val origin = originalContainer.parentAsClass
@@ -72,12 +85,12 @@ internal fun IrDeclaration.humanReadableDiagnosticMetadata(): DiagnosticMetadata
       }
     } else if (parentClass.hasAnnotation(Symbols.ClassIds.metroContribution)) {
       // If this is just a generic contribution (i.e. `@ContributesTo`)
-      val origin = parentClass.parentAsClass
+      val origin = parent
       metadata +=
         "This is Metro-generated code that contributes '${origin.kotlinFqName}' (where the problem is) to ${parentClass.getAnnotation(Symbols.ClassIds.metroContribution.asSingleFqName())!!.scopeOrNull()!!.shortClassName}."
     } else if (parentClass.hasAnnotation(Symbols.ClassIds.CallableMetadata)) {
       // It's a provider factory. ParentClass is a provider mirror
-      addCallableMetadata(parentClass, parentClass.parentAsClass)
+      addCallableMetadata(parentClass, parent)
     }
   }
 
@@ -192,7 +205,13 @@ private fun StringBuilder.renderForDiagnosticImpl(
 
     if (parameters.contextParameters.isNotEmpty()) {
       parameters.contextParameters.joinTo(this, ", ", prefix = "context(", postfix = ")\n") {
-        it.name.asString() + ": " + it.typeKey.render(short = short)
+        it.name.asString() +
+          ": " +
+          it.typeKey.renderForDiagnostic(
+            short = short,
+            includeQualifier = true,
+            useOriginalQualifier = true,
+          )
       }
     }
   }
@@ -217,7 +236,13 @@ private fun StringBuilder.renderForDiagnosticImpl(
       append(qualifier.render(short = short, "receiver"))
       append(' ')
     }
-    append(it.typeKey.render(short = short))
+    append(
+      it.typeKey.renderForDiagnostic(
+        short = short,
+        includeQualifier = true,
+        useOriginalQualifier = true,
+      )
+    )
     if (format.isCall) {
       // Put the receiver in parens for context
       append(')')
@@ -240,7 +265,13 @@ private fun StringBuilder.renderForDiagnosticImpl(
     }
   if (paramsToDisplay.isNotEmpty()) {
     paramsToDisplay.joinTo(this, ", ", prefix = "(", postfix = ")\n") {
-      it.name.asString() + ": " + it.typeKey.render(short = short, includeQualifier = true)
+      it.name.asString() +
+        ": " +
+        it.typeKey.renderForDiagnostic(
+          short = short,
+          includeQualifier = true,
+          useOriginalQualifier = true,
+        )
     }
   } else if (!isProperty) {
     append("()")
@@ -248,13 +279,72 @@ private fun StringBuilder.renderForDiagnosticImpl(
 
   if (typeKey != null && !(declaration is IrFunction && type.isUnit())) {
     append(": ")
-    val returnTypeString = typeKey.render(short = short, includeQualifier = false)
+    val returnTypeString =
+      typeKey.renderForDiagnostic(
+        short = short,
+        includeQualifier = false,
+        useOriginalQualifier = true,
+      )
     if (underlineTypeKey) {
       appendLineWithUnderlinedContent(returnTypeString)
     } else {
       append(returnTypeString)
     }
   }
+}
+
+/**
+ * Renders an [IrOverridableDeclaration] (function or property) for diagnostics. This is a
+ * convenience overload that works directly with IR declarations without requiring binding-level
+ * types like [IrTypeKey] or [Parameters], rendering the return type from the IR type directly.
+ */
+internal fun StringBuilder.renderForDiagnostic(
+  declaration: IrOverridableDeclaration<*>,
+  short: Boolean = false,
+  annotations: MetroAnnotations<IrAnnotation>? = null,
+) {
+  val function =
+    when (declaration) {
+      is IrSimpleFunction -> declaration
+      is IrProperty -> declaration.getter ?: return
+    }
+  val isProperty = declaration is IrProperty || function.correspondingPropertySymbol != null
+  // Render annotations, val/fun keyword, and name using existing infra
+  renderForDiagnosticImpl(
+    declaration = function,
+    short = short,
+    annotations = annotations,
+    isProperty = isProperty,
+  )
+  // Render return type from IR type since we don't have an IrTypeKey
+  val returnType = function.returnType
+  if (!returnType.isUnit()) {
+    append(": ")
+    append(returnType.render(short = short))
+  }
+}
+
+/**
+ * Creates a [LocationDiagnostic] for an [IrOverridableDeclaration]. Uses [renderSourceLocation] for
+ * the location (respecting [MetroOptions.SystemProperties.SHORTEN_LOCATIONS]) and
+ * [renderForDiagnostic] for the description.
+ */
+internal fun IrOverridableDeclaration<*>.renderLocationDiagnostic(
+  shortLocation: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+  annotations: MetroAnnotations<IrAnnotation>? = null,
+  short: Boolean = false,
+): LocationDiagnostic {
+  val location =
+    (this as IrDeclaration).renderSourceLocation(short = shortLocation)
+      ?: parentAsClass.kotlinFqName.asString()
+  val description = buildString {
+    renderForDiagnostic(
+      declaration = this@renderLocationDiagnostic,
+      short = short,
+      annotations = annotations,
+    )
+  }
+  return LocationDiagnostic(location, description)
 }
 
 private fun StringBuilder.renderAnnotations(

@@ -1,0 +1,3 @@
+/ProvidesWithExtensionsAndNonThisReturningBodiesShouldError.kt:5:24: error: `@Provides` properties may not be extension properties. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.
+
+/ProvidesWithExtensionsAndNonThisReturningBodiesShouldError.kt:6:21: error: `@Provides` functions may not be extension functions. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.

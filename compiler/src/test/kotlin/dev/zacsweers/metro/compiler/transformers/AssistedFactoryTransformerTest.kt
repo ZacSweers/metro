@@ -130,8 +130,8 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-          Missing from factory: kotlin.Int
+        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
+          Missing from factory: kotlin.Int (count)
         """
           .trimIndent()
       )
@@ -159,8 +159,8 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-          Missing from factory: kotlin.String
+        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
+          Missing from factory: kotlin.String (message)
         """
           .trimIndent()
       )
@@ -187,9 +187,9 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-          Missing from factory: kotlin.String
-          Missing from constructor: kotlin.Int
+        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
+          Missing from factory: kotlin.String (count)
+          Missing from constructor: kotlin.Int (count)
         """
           .trimIndent()
       )
@@ -201,12 +201,13 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
+        @Suppress("DEPRECATION")
         class ExampleClass @AssistedInject constructor(
-          @Assisted("count") val count: String,
+          @Assisted val count: String,
         ) {
           @AssistedFactory
           interface Factory {
-            fun create(@Assisted("notcount") count: Int): ExampleClass
+            fun create(@Assisted notcount: Int): ExampleClass
           }
         }
         """
@@ -216,7 +217,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+        e: ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
           Missing from factory: kotlin.String (count)
           Missing from constructor: kotlin.Int (notcount)
         """
@@ -230,12 +231,13 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
+        @Suppress("DEPRECATION")
         class ExampleClass @AssistedInject constructor(
-          @Assisted("count") val count: String,
+          @Assisted val count: String,
         ) {
           @AssistedFactory
           interface Factory {
-            fun create(@Assisted("count") count: Int): ExampleClass
+            fun create(@Assisted count: Int): ExampleClass
           }
         }
         """
@@ -245,7 +247,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+        e: ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
           Missing from factory: kotlin.String (count)
           Missing from constructor: kotlin.Int (count)
         """
@@ -286,7 +288,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:25:34 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+        e: ExampleClass.kt:25:34 'test.ExampleClass' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
 
         (Hint)
         It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
@@ -328,7 +330,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:22:47 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+        e: ExampleClass.kt:22:47 'test.ExampleClass' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
 
         (Hint)
         It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
@@ -410,7 +412,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:19:21 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+        e: ExampleClass.kt:19:21 'test.ExampleClass' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
 
         (Hint)
         It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
@@ -451,7 +453,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:21:21 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+        e: ExampleClass.kt:21:21 'test.ExampleClass' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
 
         (Hint)
         It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
