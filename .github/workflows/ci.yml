@@ -90,17 +90,21 @@ jobs:
           # version differs from the default in libs.versions.toml (the committed lockfiles
           # already match the default).
           default_kotlin=$(sed -nE 's/^kotlin = "([^"]+)".*/\1/p' gradle/libs.versions.toml)
+          echo "::group::Regenerate package locks"
           if [ "${{ matrix.kotlin-compiler }}" != "$default_kotlin" ]; then
             echo "Regenerating package locks for ${{ matrix.kotlin-compiler }} (default: $default_kotlin)..."
             ./metrow regen --locks-only --version '${{ matrix.kotlin-compiler }}'
           else
             echo "Matrix version matches default ($default_kotlin); skipping regen."
           fi
+          echo "::endgroup::"
           # Regenerate tests per-run on CI to support exclusions, which are unfortunately code-gen level right now
-          echo "Generating tests..."
-          ./gradlew :compiler-tests:generateTests --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-          echo "Running checks..."
-          ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          echo "::group::Generate tests"
+          ./gradlew :compiler-tests:generateTests --console=plain '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          echo "::endgroup::"
+          echo "::group::Run checks"
+          ./gradlew check --continue --console=plain '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          echo "::endgroup::"
           # TODO disabled for now because GHA is running smaller machines now it seems
           # echo "Running large tests..."
           # ./gradlew :compiler-tests:test --quiet '-Pmetro.enableLargeTests' '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
