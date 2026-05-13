@@ -25,7 +25,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
   companion object {
     @JvmStatic
     @Parameterized.Parameters(name = "{0}")
-    fun targets(): List<KmpTarget> = KmpTarget.entries
+    fun targets(): List<KmpTarget> = KmpTarget.selectedTargets()
   }
 
   @Test

@@ -235,6 +235,7 @@ case "$1" in
            kempt format --all
 
            # apiDump only exists in root project
+           echo "Running apiDump..."
            # shellcheck disable=SC2086  # Word splitting is intentional so empty version_flag drops out
            ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
        else
@@ -242,7 +243,12 @@ case "$1" in
        fi
 
        # Yarn locks only in root and samples
-       run_gradle_all "kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag" "samples"
+       echo "Upgrading root package locks..."
+       # shellcheck disable=SC2086
+       ./gradlew kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
+       echo "Upgrading samples package locks..."
+       # shellcheck disable=SC2086
+       ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
        ;;
 
    "gen-compat")
