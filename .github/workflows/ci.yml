@@ -142,37 +142,22 @@ jobs:
             echo "Matrix version matches default ($default_kotlin); skipping regen."
           fi
 
+      - name: ':gradle-plugin:functionalTest'
+        timeout-minutes: 20
+        run: ./gradlew :gradle-plugin:functionalTest --console=plain --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
       - name: Generate tests
         # Regenerate tests per-run on CI to support exclusions, which are unfortunately code-gen
         # level right now.
         run: ./gradlew :compiler-tests:generateTests --console=plain '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
-      # Test tasks are split into individual steps to bisect the Beta2 hang. --max-workers=1 keeps
-      # the visible task order linear so the last "> Task :foo" line before silence unambiguously
-      # identifies the offender. --warning-mode all + metro.ciVerbose (testLogging events) +
-      # metro.debugCompilerTests (heap dumps to tmp/) keep useful signal without --info's volume.
-      # Each step has its own short timeout-minutes so a single hang doesn't burn the whole budget.
-      - name: ':compiler:test'
-        timeout-minutes: 10
-        run: ./gradlew :compiler:test --console=plain --max-workers=1 --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      - name: ':compiler-tests:test'
-        timeout-minutes: 15
-        run: ./gradlew :compiler-tests:test --console=plain --max-workers=1 --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true -Pmetro.debugCompilerTests=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      - name: ':gradle-plugin:test'
-        timeout-minutes: 10
-        run: ./gradlew :gradle-plugin:test --console=plain --max-workers=1 --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      - name: ':gradle-plugin:functionalTest'
+      # functionalTest is the only step that's been slow/wedge-prone on Beta2, so it stays in its
+      # own step (keeps its dedicated timeout + lets us see its duration distinctly). Everything
+      # else is back to a single `check`-style invocation, running in parallel. Verbose test
+      # logging is kept ONLY on functionalTest where we still need bisection signal.
+      - name: 'Non-functional tests'
         timeout-minutes: 20
-        run: ./gradlew :gradle-plugin:functionalTest --console=plain --max-workers=1 --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      - name: ':runtime:allTests'
-        # Multiplatform runtime tests — forks Node.js (JS/wasmJs/wasmWasi) and Konan (native).
-        # Strong hang candidate alongside functionalTest because of those subprocess spawns.
-        timeout-minutes: 15
-        run: ./gradlew :runtime:allTests --console=plain --max-workers=1 --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+        run: ./gradlew :compiler:test :compiler-tests:test :gradle-plugin:test :runtime:allTests --continue --console=plain --warning-mode all '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Stop watchdog
         if: always()
