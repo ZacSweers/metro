@@ -91,7 +91,7 @@ androidx-core = "androidx.core:core-ktx:1.18.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
-androidx-material3 = "com.google.android.material:material:1.13.0"
+androidx-material3 = "com.google.android.material:material:1.14.0"
 androidx-viewmodelKtx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle" }
 androidx-work = "androidx.work:work-runtime:2.11.2"
 androidx-test = "androidx.test:core-ktx:1.7.0"
