@@ -334,7 +334,6 @@ abstract class MetroProject(
         // Daemon JVM tuning: bigger heap up front avoids slow ramp-up across the per-test
         // compile/IC cycles, MaxMetaspaceSize caps growth in tests that exercise many classloaders.
         "org.gradle.jvmargs=-Xmx4g -Xms1g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError -XX:MaxMetaspaceSize=1024m",
-        "org.gradle.daemon=true",
         "org.gradle.parallel=true",
         // Local build cache pays off for IC tests that perform multiple builds against the same
         // generated project — Konan distribution commonizers and metadata transforms get reused.
