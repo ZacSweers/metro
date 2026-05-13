@@ -85,6 +85,8 @@ abstract class MetroProject(
     newGradleProjectBuilder(DslKind.KOTLIN)
       .withRootProject {
         sources = this@MetroProject.sources()
+        gradleProperties =
+          gradleProperties.plus(listOf("kotlin.native.enableKlibsCrossCompilation=true"))
         withBuildScript { applyMetroDefault() }
         withMetroSettings()
       }
