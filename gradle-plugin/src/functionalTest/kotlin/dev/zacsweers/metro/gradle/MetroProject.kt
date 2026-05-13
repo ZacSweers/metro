@@ -335,9 +335,7 @@ abstract class MetroProject(
         // compile/IC cycles, MaxMetaspaceSize caps growth in tests that exercise many classloaders.
         "org.gradle.jvmargs=-Xmx4g -Xms1g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError -XX:MaxMetaspaceSize=1024m",
         "org.gradle.parallel=true",
-        // Local build cache pays off for IC tests that perform multiple builds against the same
-        // generated project — Konan distribution commonizers and metadata transforms get reused.
-        "org.gradle.caching=true",
+        "systemProp.org.gradle.configuration-cache.read-only=true",
         // Allow producing klibs for non-host Kotlin/Native targets without that host present.
         "kotlin.native.enableKlibsCrossCompilation=true",
         // Silently skip targets the host can't compile rather than failing the build. Scoped to
