@@ -13,8 +13,8 @@ enum class KmpTarget(val gradleTargetName: String) {
 
   /**
    * Kotlin/Native host target. Resolves to `linuxX64` on Ubuntu CI, `macosArm64`/`macosX64` on
-   * macOS, etc. — chosen because the host target is the only one Kotlin/Native can compile without
-   * pulling a cross-compilation toolchain, which keeps the test matrix fast and portable.
+   * macOS, etc. — the host target is the only one Kotlin/Native can compile without pulling a
+   * cross-compilation toolchain, which keeps the test matrix fast and portable.
    */
   NATIVE_HOST(detectHostNativeTarget());
 
