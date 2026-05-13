@@ -27,3 +27,14 @@ if (project.path != ":compiler") {
 tasks
   .named { it.startsWith("publish") && it.contains("PublicationTo") }
   .configureEach { mustRunAfter(tasks.matching { it.name.startsWith("sign") }) }
+
+// The `maven` and `testKitSupportForJava` publications share coordinates, so Gradle generates a
+// task for each (publication × repository) pair. Only the matched pairs should run; the crossed
+// pairs would overwrite each other in the target repo.
+val crossPublishTasks =
+  setOf(
+    "publishMavenPublicationToFunctionalTestRepository",
+    "publishTestKitSupportForJavaPublicationToMavenCentralRepository",
+  )
+
+tasks.matching { it.name in crossPublishTasks }.configureEach { enabled = false }
