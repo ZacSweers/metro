@@ -199,12 +199,17 @@ case "$1" in
 
    "regen")
        version=""
+       locks_only=false
 
        while [[ $# -gt 1 ]]; do
            case "$2" in
                --version)
                    version="$3"
                    shift 2
+                   ;;
+               --locks-only)
+                   locks_only=true
+                   shift
                    ;;
                *)
                    echo "Unknown regen argument: $2"
@@ -218,18 +223,23 @@ case "$1" in
            version_flag="-Pmetro.testCompilerVersion=$version"
        fi
 
-       echo "Applying formatting and API gen..."
        # Annoyingly, the apiDump and package lock tasks have caching issues
        # https://youtrack.jetbrains.com/issue/KT-69684
-       find . -type d -name "api" -exec find {} -name "*.api" -delete \;
        rm -rf kotlin-js-store samples/kotlin-js-store
 
-       run_gradle_all "clean --quiet"
-       kempt format --all
+       if [[ "$locks_only" = false ]]; then
+           echo "Applying formatting and API gen..."
+           find . -type d -name "api" -exec find {} -name "*.api" -delete \;
 
-       # apiDump only exists in root project
-       # shellcheck disable=SC2086  # Word splitting is intentional so empty version_flag drops out
-       ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
+           run_gradle_all "clean --quiet"
+           kempt format --all
+
+           # apiDump only exists in root project
+           # shellcheck disable=SC2086  # Word splitting is intentional so empty version_flag drops out
+           ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
+       else
+           echo "Regenerating package locks only..."
+       fi
 
        # Yarn locks only in root and samples
        run_gradle_all "kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag" "samples"
@@ -301,6 +311,7 @@ case "$1" in
        echo ""
        echo "regen options:"
        echo "  --version <version>  Regenerate against a specific compiler version"
+       echo "  --locks-only         Only regenerate package locks (skip format/apiDump/clean)"
        echo ""
        echo "trace options:"
        echo "  <project-dir> <gradle-task> [version]  Publish metro locally, pin it in"
