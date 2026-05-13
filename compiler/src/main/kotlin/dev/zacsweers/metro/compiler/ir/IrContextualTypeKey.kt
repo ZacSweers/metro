@@ -76,12 +76,12 @@ internal class IrContextualTypeKey(
       is Canonical -> wt.type
       is Provider -> {
         val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
-        innerType.wrapInProvider(context.finderForBuiltins().findClass(wt.providerType)!!)
+        innerType.wrapInProvider(context.referenceClass(wt.providerType)!!)
       }
 
       is WrappedType.Lazy -> {
         val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
-        innerType.wrapInProvider(context.finderForBuiltins().findClass(wt.lazyType)!!)
+        innerType.wrapInProvider(context.referenceClass(wt.lazyType)!!)
       }
 
       is WrappedType.Map -> {
@@ -396,13 +396,13 @@ internal fun WrappedType<IrType>.toIrType(): IrType {
     is Canonical -> type
     is Provider -> {
       val innerIrType = innerType.toIrType()
-      val providerType = context.finderForBuiltins().findClass(providerType)!!
+      val providerType = context.referenceClass(providerType)!!
       providerType.typeWith(innerIrType)
     }
 
     is WrappedType.Lazy -> {
       val innerIrType = innerType.toIrType()
-      val lazyType = context.finderForBuiltins().findClass(lazyType)!!
+      val lazyType = context.referenceClass(lazyType)!!
       lazyType.typeWith(innerIrType)
     }
 

@@ -112,74 +112,66 @@ internal sealed interface CircuitSymbols {
   class Ir(private val pluginContext: IrPluginContext) : CircuitSymbols {
 
     val screen: IrClassSymbol by lazy {
-      pluginContext.finderForBuiltins().findClass(CircuitClassIds.Screen)
+      pluginContext.referenceClass(CircuitClassIds.Screen)
         ?: error("Could not find ${CircuitClassIds.Screen}")
     }
 
     val navigator: IrClassSymbol by lazy {
-      pluginContext.finderForBuiltins().findClass(CircuitClassIds.Navigator)
+      pluginContext.referenceClass(CircuitClassIds.Navigator)
         ?: error("Could not find ${CircuitClassIds.Navigator}")
     }
 
     val circuitContext: IrClassSymbol by lazy {
-      pluginContext.finderForBuiltins().findClass(CircuitClassIds.CircuitContext)
+      pluginContext.referenceClass(CircuitClassIds.CircuitContext)
         ?: error("Could not find ${CircuitClassIds.CircuitContext}")
     }
 
     val circuitUiState: IrClassSymbol by lazy {
-      pluginContext.finderForBuiltins().findClass(CircuitClassIds.CircuitUiState)
+      pluginContext.referenceClass(CircuitClassIds.CircuitUiState)
         ?: error("Could not find ${CircuitClassIds.CircuitUiState}")
     }
 
     val ui: IrClassSymbol by lazy {
-      pluginContext.finderForBuiltins().findClass(CircuitClassIds.Ui)
+      pluginContext.referenceClass(CircuitClassIds.Ui)
         ?: error("Could not find ${CircuitClassIds.Ui}")
     }
 
     val uiFactory: IrClassSymbol by lazy {
-      pluginContext.finderForBuiltins().findClass(CircuitClassIds.UiFactory)
+      pluginContext.referenceClass(CircuitClassIds.UiFactory)
         ?: error("Could not find ${CircuitClassIds.UiFactory}")
     }
 
     val presenter: IrClassSymbol by lazy {
-      pluginContext.finderForBuiltins().findClass(CircuitClassIds.Presenter)
+      pluginContext.referenceClass(CircuitClassIds.Presenter)
         ?: error("Could not find ${CircuitClassIds.Presenter}")
     }
 
     val presenterFactory: IrClassSymbol by lazy {
-      pluginContext.finderForBuiltins().findClass(CircuitClassIds.PresenterFactory)
+      pluginContext.referenceClass(CircuitClassIds.PresenterFactory)
         ?: error("Could not find ${CircuitClassIds.PresenterFactory}")
     }
 
     val modifier: IrClassSymbol by lazy {
-      pluginContext.finderForBuiltins().findClass(CircuitClassIds.Modifier)
+      pluginContext.referenceClass(CircuitClassIds.Modifier)
         ?: error("Could not find ${CircuitClassIds.Modifier}")
     }
 
     val composableAnnotationCtor: IrConstructorSymbol by lazy {
-      pluginContext
-        .finderForBuiltins()
-        .findClass(Symbols.ClassIds.Composable)!!
-        .constructors
-        .first()
+      pluginContext.referenceClass(Symbols.ClassIds.Composable)!!.constructors.first()
     }
 
     val presenterOfFun: IrSimpleFunctionSymbol by lazy {
-      pluginContext.finderForBuiltins().findFunctions(CircuitCallableIds.presenterOf).singleOrNull()
+      pluginContext.referenceFunctions(CircuitCallableIds.presenterOf).singleOrNull()
         ?: error("Could not find ${CircuitCallableIds.presenterOf}")
     }
 
     val uiFun: IrSimpleFunctionSymbol by lazy {
-      pluginContext.finderForBuiltins().findFunctions(CircuitCallableIds.ui).singleOrNull()
+      pluginContext.referenceFunctions(CircuitCallableIds.ui).singleOrNull()
         ?: error("Could not find ${CircuitCallableIds.ui}")
     }
 
     val originAnnotationCtor: IrConstructorSymbol by lazy {
-      pluginContext
-        .finderForBuiltins()
-        .findClass(Symbols.ClassIds.metroOrigin)!!
-        .constructors
-        .first()
+      pluginContext.referenceClass(Symbols.ClassIds.metroOrigin)!!.constructors.first()
     }
   }
 }

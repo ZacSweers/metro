@@ -49,7 +49,7 @@ internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundT
     val containerOrigins =
       bindingContainers.values.mapNotNull { container ->
         val originClassId = container.originClassId() ?: return@mapNotNull null
-        context.referenceClassFrom(originClassId, container)?.owner
+        context.referenceClass(originClassId)?.owner
       }
 
     val irContributions = (contributionParents + containerOrigins).distinctBy { it.classIdOrFail }

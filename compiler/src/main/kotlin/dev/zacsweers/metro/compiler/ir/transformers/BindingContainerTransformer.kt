@@ -54,7 +54,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
-import dev.zacsweers.metro.compiler.ir.referenceClassFrom
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -845,9 +844,8 @@ internal class BindingContainerTransformer(
                 // Try both with and without the declaration's `@JvmName` (if present). Dagger
                 // doesn't seem to read this in KSP but would implicitly in KAPT
                 val factoryClass =
-                  finderForBuiltins().findClass(daggerFactoryClassIdOf(decl, useJvmName = false))
-                    ?: finderForBuiltins()
-                      .findClass(daggerFactoryClassIdOf(decl, useJvmName = true))
+                  referenceClass(daggerFactoryClassIdOf(decl, useJvmName = false))
+                    ?: referenceClass(daggerFactoryClassIdOf(decl, useJvmName = true))
 
                 if (factoryClass == null) {
                   reportCompat(
@@ -942,7 +940,7 @@ internal class BindingContainerTransformer(
               providerFactory.callableId to providerFactory
             } else {
               trace("External factory ${classId.shortClassName}") {
-                val factoryClass = pluginContext.finderForBuiltins().findClass(classId)!!.owner
+                val factoryClass = pluginContext.referenceClass(classId)!!.owner
                 val providerFactory = externalProviderFactoryFor(factoryClass)
                 providerFactory.callableId to providerFactory
               }
@@ -1027,7 +1025,7 @@ internal class BindingContainerTransformer(
         .annotationsIn(metroSymbols.classIds.originAnnotations)
         .firstOrNull()
         ?.originOrNull()
-        ?.let { pluginContext.referenceClassFrom(it, container)?.owner }
+        ?.let { pluginContext.referenceClass(it)?.owner }
 
     return ProviderFactory(
       contextKey = IrContextualTypeKey.from(mirrorFunction),

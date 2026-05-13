@@ -38,7 +38,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
-import dev.zacsweers.metro.compiler.ir.referenceClassFrom
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
@@ -1537,8 +1536,7 @@ internal class IrGraphGenerator(
             val wrappedType =
               typeKey.copy(typeKey.type.requireSimpleType(targetParam).arguments[0].typeOrFail)
 
-            val targetClass =
-              pluginContext.referenceClassFrom(binding.targetClassId, graphClass)!!.owner
+            val targetClass = pluginContext.referenceClass(binding.targetClassId)!!.owner
 
             // Create a single deep remapper from the target class - this handles the entire
             // type hierarchy correctly (e.g., ExampleClass<Int> -> Parent<Int, String> ->

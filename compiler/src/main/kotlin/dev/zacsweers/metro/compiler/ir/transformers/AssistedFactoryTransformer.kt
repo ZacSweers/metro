@@ -31,7 +31,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawType
-import dev.zacsweers.metro.compiler.ir.referenceClassFrom
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.remapTypes
 import dev.zacsweers.metro.compiler.ir.reportCompat
@@ -144,8 +143,7 @@ internal class AssistedFactoryTransformer(
         // Fall back to Dagger (if enabled) and Metro impl not found
         // Don't gate on Java source because Anvil may have generated this in Kotlin too
         val daggerImplClassId = classId.generatedClass("_Impl")
-        val daggerImplClass =
-          pluginContext.referenceClassFrom(daggerImplClassId, declaration)?.owner
+        val daggerImplClass = pluginContext.referenceClass(daggerImplClassId)?.owner
         if (daggerImplClass != null) {
           val daggerImpl = AssistedFactoryImpl.Dagger(daggerImplClass)
           implsCache[classId] = daggerImpl
@@ -197,8 +195,7 @@ internal class AssistedFactoryTransformer(
           .apply {
             val factoryClassId =
               targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)
-            val factoryParamType =
-              pluginContext.referenceClassFrom(factoryClassId, declaration)!!.defaultType
+            val factoryParamType = pluginContext.referenceClass(factoryClassId)!!.defaultType
             addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
             body = generateDefaultConstructorBody()
           }
@@ -301,8 +298,7 @@ internal class AssistedFactoryTransformer(
 
           val factoryClassId =
             targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)
-          val factoryParamType =
-            pluginContext.referenceClassFrom(factoryClassId, this)!!.defaultType
+          val factoryParamType = pluginContext.referenceClass(factoryClassId)!!.defaultType
           addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
 
           addStaticAnnotations(this)

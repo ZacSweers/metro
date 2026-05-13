@@ -101,8 +101,7 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
 
       for (includedClassId in container.includes) {
         // Resolve ClassId to IrClass
-        val includedClass =
-          pluginContext.referenceClassFrom(includedClassId, irClass)?.owner ?: continue
+        val includedClass = pluginContext.referenceClass(includedClassId)?.owner ?: continue
         closure.addAll(getOrComputeClosure(includedClass, path))
       }
 

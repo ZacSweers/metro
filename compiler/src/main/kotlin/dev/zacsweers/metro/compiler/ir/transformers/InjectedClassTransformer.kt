@@ -39,7 +39,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
-import dev.zacsweers.metro.compiler.ir.referenceFunctionsFrom
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -203,8 +202,7 @@ internal class InjectedClassTransformer(
               ?: return null
           // Look up where dagger would generate one
           val daggerFactoryClassId = injectedClassId.generatedClass("_Factory")
-          val daggerFactoryClass =
-            pluginContext.finderForBuiltins().findClass(daggerFactoryClassId)?.owner
+          val daggerFactoryClass = pluginContext.referenceClass(daggerFactoryClassId)?.owner
           if (daggerFactoryClass != null) {
             val wrapper =
               ClassFactory.DaggerFactory(
@@ -537,7 +535,7 @@ internal class InjectedClassTransformer(
       val callableName = injectedFunctionClass.getAnnotationStringValue()!!.asName()
       val callableId = CallableId(declaration.packageFqName!!, callableName)
       var targetCallable =
-        pluginContext.referenceFunctionsFrom(callableId, declaration).single {
+        pluginContext.referenceFunctions(callableId).single {
           it.owner.isAnnotatedWithAny(metroSymbols.classIds.injectAnnotations)
         }
 

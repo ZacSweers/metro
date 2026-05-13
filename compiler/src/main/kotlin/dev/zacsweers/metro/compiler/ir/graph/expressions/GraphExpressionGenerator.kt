@@ -22,7 +22,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
-import dev.zacsweers.metro.compiler.ir.referenceClassFrom
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
@@ -382,8 +381,7 @@ private constructor(
         }
 
         is MembersInjected -> {
-          val injectedClass =
-            referenceClassFrom(binding.targetClassId, node.metroGraphOrFail)!!.owner
+          val injectedClass = referenceClass(binding.targetClassId)!!.owner
           val injectedType = injectedClass.defaultType
 
           // When looking for an injector, try the current class.
