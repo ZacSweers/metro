@@ -33,3 +33,6 @@ temp-clone/
 /benchmark/
 .cache/
 tmp/
+
+# Claude Code local state
+.claude/scheduled_tasks.lock
