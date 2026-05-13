@@ -52,6 +52,7 @@ Changelog
 - Test Kotlin 2.4.20 dev builds.
 - Test Android Studio Panda 4 Patch 1 (`2025.3.4.7`).
 - Test Android Studio Quail 1 Canary 4 (`2026.1.1.4`).
+- Update shaded Wire version to `6.3.0`.
 
 ### Contributors
 
