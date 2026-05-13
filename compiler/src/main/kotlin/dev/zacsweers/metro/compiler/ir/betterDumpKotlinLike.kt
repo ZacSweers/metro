@@ -168,16 +168,16 @@ import org.jetbrains.kotlin.utils.Printer
  */
 context(compat: CompatContext)
 public fun IrElement.betterDumpKotlinLike(
-  options: KotlinLikeDumpOptions = compat.defaultKotlinLikeDumpOptions(),
+  options: KotlinLikeDumpOptions = KotlinLikeDumpOptions(),
   classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String =
     ::nestedClassNameRenderer,
 ): String {
   val sb = StringBuilder()
   BetterKotlinLikeDumper(
-      Printer(sb, 1, "  "),
-      options,
-      compat.printVariableInitializersCompat(options),
-      classNameTransformer,
+      p = Printer(sb, 1, "  "),
+      options = options,
+      printVariableInitializers = options.printVariableInitializers,
+      classNameTransformer = classNameTransformer,
     )
     .printElement(this)
   return sb.toString()

@@ -14,17 +14,13 @@ import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
-import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
-import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
-import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
@@ -41,30 +37,19 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
-import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.ir.IrDiagnosticReporter
-import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBuilder
-import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
-import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
-import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
-import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.util.PrivateForInline
@@ -211,37 +196,6 @@ public interface CompatContext {
   }
 
   /**
-   * Returns the ClassLikeDeclaration where the Fir object has been defined or null if no proper
-   * declaration has been found. The containing symbol is resolved using the declaration-site
-   * session. For example:
-   * ```kotlin
-   * expect class MyClass {
-   *     fun test() // (1)
-   * }
-   *
-   * actual class MyClass {
-   *     actual fun test() {} // (2)
-   * }
-   * ```
-   *
-   * Calling [getContainingClassSymbol] for the symbol of `(1)` will return `expect class MyClass`,
-   * but calling it for `(2)` will give `actual class MyClass`.
-   */
-  @CompatApi(since = "2.3.0", reason = CompatApi.Reason.DELETED)
-  public fun FirBasedSymbol<*>.getContainingClassSymbol(): FirClassLikeSymbol<*>?
-
-  /**
-   * Returns the containing class or file if the callable is top-level. The containing symbol is
-   * resolved using the declaration-site session.
-   */
-  @CompatApi(since = "2.3.0", reason = CompatApi.Reason.DELETED)
-  public fun FirCallableSymbol<*>.getContainingSymbol(session: FirSession): FirBasedSymbol<*>?
-
-  /** The containing symbol is resolved using the declaration-site session. */
-  @CompatApi(since = "2.3.0", reason = CompatApi.Reason.DELETED)
-  public fun FirDeclaration.getContainingClassSymbol(): FirClassLikeSymbol<*>?
-
-  /**
    * Creates a top-level function with [callableId] and specified [returnType].
    *
    * Type and value parameters can be configured with [config] builder.
@@ -333,88 +287,6 @@ public interface CompatContext {
     startOffset: Int = -1,
     endOffset: Int = -1,
   ): KtSourceElement
-
-  @CompatApi(
-    since = "2.3.0",
-    reason = CompatApi.Reason.ABI_CHANGE,
-    message = "changed hasMustUseReturnValue to returnValueStatus",
-  )
-  public fun FirDeclarationStatus.copy(
-    visibility: Visibility? = this.visibility,
-    modality: Modality? = this.modality,
-    isExpect: Boolean = this.isExpect,
-    isActual: Boolean = this.isActual,
-    isOverride: Boolean = this.isOverride,
-    isOperator: Boolean = this.isOperator,
-    isInfix: Boolean = this.isInfix,
-    isInline: Boolean = this.isInline,
-    isValue: Boolean = this.isValue,
-    isTailRec: Boolean = this.isTailRec,
-    isExternal: Boolean = this.isExternal,
-    isConst: Boolean = this.isConst,
-    isLateInit: Boolean = this.isLateInit,
-    isInner: Boolean = this.isInner,
-    isCompanion: Boolean = this.isCompanion,
-    isData: Boolean = this.isData,
-    isSuspend: Boolean = this.isSuspend,
-    isStatic: Boolean = this.isStatic,
-    isFromSealedClass: Boolean = this.isFromSealedClass,
-    isFromEnumClass: Boolean = this.isFromEnumClass,
-    isFun: Boolean = this.isFun,
-    hasStableParameterNames: Boolean = this.hasStableParameterNames,
-  ): FirDeclarationStatus
-
-  // Parameters changed in Kotlin 2.3.0
-  @CompatApi(since = "2.3.0", reason = CompatApi.Reason.ABI_CHANGE)
-  public fun IrClass.addFakeOverrides(typeSystem: IrTypeSystemContext)
-
-  @CompatApi(
-    since = "2.3.0",
-    reason = CompatApi.Reason.ABI_CHANGE,
-    message =
-      "FakeOverrideBuilderStrategy.BindToPrivateSymbols dropped its friendModules ctor param and added an abstract shouldSeeInternals method in 2.3.0",
-  )
-  public fun IrClass.rebuildFakeOverridesCompat(typeSystem: IrTypeSystemContext)
-
-  /**
-   * Returns a default-constructed [KotlinLikeDumpOptions] for the active Kotlin version. The
-   * primary constructor of [KotlinLikeDumpOptions] gains/loses fields between Kotlin releases (e.g.
-   * `printVariableInitializers` was added after 2.2.20).
-   */
-  @CompatApi(
-    since = "2.3.0",
-    reason = CompatApi.Reason.ABI_CHANGE,
-    message =
-      "KotlinLikeDumpOptions gained the printVariableInitializers field after 2.2.20 (and may gain more)",
-  )
-  public fun defaultKotlinLikeDumpOptions(): KotlinLikeDumpOptions
-
-  /**
-   * Reads [KotlinLikeDumpOptions.printVariableInitializers] when the active Kotlin version exposes
-   * it, otherwise falls back to the legacy "always print" behavior. The getter only exists in
-   * Kotlin 2.3.0+, so cross-version field accesses on this property cause `NoSuchMethodError` at
-   * runtime against older runtimes.
-   */
-  @CompatApi(
-    since = "2.3.0",
-    reason = CompatApi.Reason.ABI_CHANGE,
-    message = "KotlinLikeDumpOptions.printVariableInitializers was added after 2.2.20",
-  )
-  public fun printVariableInitializersCompat(options: KotlinLikeDumpOptions): Boolean
-
-  @CompatApi(
-    since = "2.3.0",
-    reason = CompatApi.Reason.ABI_CHANGE,
-    message = "added inventUniqueName param",
-  )
-  public fun Scope.createTemporaryVariableDeclarationCompat(
-    irType: IrType,
-    nameHint: String? = null,
-    isMutable: Boolean = false,
-    origin: IrDeclarationOrigin = IrDeclarationOrigin.IR_TEMPORARY_VARIABLE,
-    startOffset: Int,
-    endOffset: Int,
-  ): IrVariable
 
   @CompatApi(
     since = "2.3.20",
@@ -525,43 +397,6 @@ public interface CompatContext {
   ) {
     throw NotImplementedError("reportCompat is not implemented on this version of the compiler")
   }
-
-  @CompatApi(
-    since = "2.2.20",
-    reason = CompatApi.Reason.ABI_CHANGE,
-    message = "Stable wrapper over IrDiagnosticReporter.at().report() chain",
-  )
-  public fun <A : Any> IrDiagnosticReporter.reportAt(
-    declaration: IrDeclaration,
-    factory: KtDiagnosticFactory1<A>,
-    a: A,
-  )
-
-  @CompatApi(
-    since = "2.2.20",
-    reason = CompatApi.Reason.ABI_CHANGE,
-    message = "Stable wrapper over IrDiagnosticReporter.at().report() chain",
-  )
-  public fun <A : Any> IrDiagnosticReporter.reportAt(
-    element: IrElement,
-    file: IrFile,
-    factory: KtDiagnosticFactory1<A>,
-    a: A,
-  )
-
-  @CompatApi(
-    since = "2.3.0",
-    reason = CompatApi.Reason.COMPAT,
-    message = "2.3 moved APIs around here",
-  )
-  public val FirClassLikeSymbol<*>.isLocalCompat: Boolean
-
-  @CompatApi(
-    since = "2.3.0",
-    reason = CompatApi.Reason.COMPAT,
-    message = "2.3 moved APIs around here",
-  )
-  public val FirClass.isLocalCompat: Boolean
 
   @CompatApi(
     since = "2.4.0",

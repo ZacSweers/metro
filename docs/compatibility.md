@@ -31,8 +31,8 @@ Pre-release versions are normally only tested during their development cycle. Af
 | 2.3.0-RC        | 0.6.9, 0.6.11 - [0.9.2]    | Reporting doesn't work until `0.7.3`                  |
 | 2.3.0-Beta2     | 0.6.9, 0.6.11 - [0.9.2]    | Reporting doesn't work until `0.7.3`                  |
 | 2.3.0-Beta1     | 0.6.9, 0.6.11 - [0.9.2]    |                                                       |
-| 2.2.21          | 0.6.6 -                    |                                                       |
-| 2.2.20          | 0.6.6 -                    |                                                       |
+| 2.2.21          | 0.6.6 - 1.1.0              |                                                       |
+| 2.2.20          | 0.6.6 - 1.1.0              |                                                       |
 | 2.2.10          | 0.4.0 - 0.6.5              |                                                       |
 | 2.2.0           | 0.4.0 - 0.6.5              |                                                       |
 | 2.1.21          | 0.3.1 - 0.3.8              |                                                       |

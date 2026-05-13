@@ -56,6 +56,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isFinal
 import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.declarations.utils.isLateInit
+import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.isOpen
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
@@ -94,6 +95,7 @@ import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
@@ -617,7 +619,7 @@ internal fun FirClass.validateInjectedClass(
   reporter: DiagnosticReporter,
   classInjectAnnotations: List<FirAnnotation>,
 ) {
-  if (with(compatContext) { isLocalCompat }) {
+  if (isLocal) {
     reporter.reportOn(source, MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
     return
   }
@@ -678,7 +680,7 @@ internal inline fun FirClass.validateApiDeclaration(
   checkConstructor: Boolean,
   onError: () -> Nothing,
 ) {
-  if (with(compatContext) { isLocalCompat }) {
+  if (isLocal) {
     reporter.reportOn(
       source,
       MetroDiagnostics.METRO_DECLARATION_ERROR,
@@ -1016,11 +1018,8 @@ internal fun FirCallableSymbol<*>.findAnnotation(
   return null
 }
 
-context(compatContext: CompatContext)
 internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> =
-  with(compatContext) {
-    getContainingClassSymbol() ?: reportCompilerBug("No containing class symbol found for $this")
-  }
+  getContainingClassSymbol() ?: reportCompilerBug("No containing class symbol found for $this")
 
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
@@ -1700,7 +1699,7 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
     "Platform type '${classId.diagnosticString(session)}' is not a binding container."
   } else if (this is FirAnonymousObjectSymbol) {
     "Anonymous objects cannot be binding containers."
-  } else if (with(compatContext) { isLocalCompat }) {
+  } else if (isLocal) {
     "Local class '${classId.shortClassName}' cannot be a binding container."
   } else if (isInner) {
     "Inner class '${classId.diagnosticString(session)}' cannot be a binding container."
