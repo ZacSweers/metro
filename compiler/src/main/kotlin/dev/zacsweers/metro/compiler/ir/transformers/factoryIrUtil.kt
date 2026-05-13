@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -63,6 +64,7 @@ import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
  * Implement a static `create()` function for a given [targetConstructor].
@@ -370,6 +372,12 @@ internal fun generateMetadataVisibleMirrorFunction(
         // The function's signature already matches the target function's signature, all we need
         // this for
         body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+
+        // On JVM, mark as @ComptimeOnly so R8 can strip the mirror function from runtime jars
+        if (context.pluginContext.platform.isJvm()) {
+          this.annotations +=
+            buildAnnotation(symbol, context.metroSymbols.comptimeOnlyAnnotationConstructor)
+        }
       }
   addHiddenFromObjCAnnotation(function)
   if (registerAsMetadataVisible) {

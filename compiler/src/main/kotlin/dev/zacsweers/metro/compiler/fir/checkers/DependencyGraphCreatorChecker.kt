@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.name.ClassId
 
@@ -131,8 +132,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           return
         }
         // Factory must be nested in that class
-        val containingClassId =
-          with(session.compatContext) { declaration.getContainingClassSymbol()?.classId }
+        val containingClassId = declaration.getContainingClassSymbol()?.classId
         if (it.classId != containingClassId) {
           reporter.reportOn(
             targetGraphAnnotation.source ?: declaration.source,

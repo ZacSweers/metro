@@ -96,6 +96,7 @@ interface AppGraph {
       return ProvideValueMetroFactory/* companion */.provideValue(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
@@ -107,7 +108,7 @@ interface AppGraph {
   @IntoMap
   @IntKey(value = 1)
   @ComptimeOnly
-  abstract fun Int.bindValue(): Int {
+  fun Int.bindValue(): Int {
     return error(message = "Never called")
   }
 

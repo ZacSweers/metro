@@ -65,6 +65,7 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom

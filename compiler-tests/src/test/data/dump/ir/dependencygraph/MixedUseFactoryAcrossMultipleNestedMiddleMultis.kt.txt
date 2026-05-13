@@ -43,6 +43,7 @@ class FinalThing {
       return MetroFactory/* companion */.newInstance(ints = <this>.#ints)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(@Named(name = "final") ints: Function0<Set<Int>>): FinalThing {
       return error(message = "Never called")
@@ -197,6 +198,7 @@ interface AppGraph {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
@@ -208,7 +210,7 @@ interface AppGraph {
   @ElementsIntoSet
   @Binds
   @ComptimeOnly
-  abstract fun bindFirstAsSecond(@Named(name = "first") second: Set<Int>): Set<Int> {
+  fun bindFirstAsSecond(@Named(name = "first") second: Set<Int>): Set<Int> {
     return error(message = "Never called")
   }
 
@@ -216,7 +218,7 @@ interface AppGraph {
   @Binds
   @IntoSet
   @ComptimeOnly
-  abstract fun bindIntAsFirstSet(int: Int): Int {
+  fun bindIntAsFirstSet(int: Int): Int {
     return error(message = "Never called")
   }
 
@@ -224,7 +226,7 @@ interface AppGraph {
   @ElementsIntoSet
   @Binds
   @ComptimeOnly
-  abstract fun bindSecondAsFinal(@Named(name = "second") second: Set<Int>): Set<Int> {
+  fun bindSecondAsFinal(@Named(name = "second") second: Set<Int>): Set<Int> {
     return error(message = "Never called")
   }
 

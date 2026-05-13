@@ -47,6 +47,7 @@ class FooImpl : Foo {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): FooImpl {
       return error(message = "Never called")
@@ -81,13 +82,13 @@ class FooImpl : Foo {
 
     @Binds
     @ComptimeOnly
-    abstract fun bindsAsFoo(instance: FooImpl): Foo {
+    fun bindsAsFoo(instance: FooImpl): Foo {
       return error(message = "Never called")
     }
 
     @Binds
     @ComptimeOnly
-    abstract fun bindsAsFoo2(instance: FooImpl): Foo {
+    fun bindsAsFoo2(instance: FooImpl): Foo {
       return error(message = "Never called")
     }
 

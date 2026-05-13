@@ -96,6 +96,7 @@ class AFragmentInjector : Injector {
       return MetroFactory/* companion */.newInstance(memberInjector = <this>.#memberInjector.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(memberInjector: MembersInjector<AFragment>): AFragmentInjector {
       return error(message = "Never called")
@@ -130,7 +131,7 @@ class AFragmentInjector : Injector {
     @Binds
     @ClassKey(value = AFragment::class)
     @ComptimeOnly
-    abstract fun bindIntoMapAsInjector3288387779(instance: AFragmentInjector): Injector {
+    fun bindIntoMapAsInjector3288387779(instance: AFragmentInjector): Injector {
       return error(message = "Never called")
     }
 
@@ -175,6 +176,7 @@ class AViewModel : ViewModel {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): AViewModel {
       return error(message = "Never called")
@@ -209,7 +211,7 @@ class AViewModel : ViewModel {
     @Binds
     @ClassKey(value = AViewModel::class)
     @ComptimeOnly
-    abstract fun bindIntoMapAsViewModel2182965618(instance: AViewModel): ViewModel {
+    fun bindIntoMapAsViewModel2182965618(instance: AViewModel): ViewModel {
       return error(message = "Never called")
     }
 
@@ -328,6 +330,7 @@ class BFragmentInjector : Injector {
       return MetroFactory/* companion */.newInstance(memberInjector = <this>.#memberInjector.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(memberInjector: MembersInjector<BFragment>): BFragmentInjector {
       return error(message = "Never called")
@@ -362,7 +365,7 @@ class BFragmentInjector : Injector {
     @Binds
     @ClassKey(value = BFragment::class)
     @ComptimeOnly
-    abstract fun bindIntoMapAsInjector3091874274(instance: BFragmentInjector): Injector {
+    fun bindIntoMapAsInjector3091874274(instance: BFragmentInjector): Injector {
       return error(message = "Never called")
     }
 
@@ -407,6 +410,7 @@ class BViewModel : ViewModel {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): BViewModel {
       return error(message = "Never called")
@@ -441,7 +445,7 @@ class BViewModel : ViewModel {
     @Binds
     @ClassKey(value = BViewModel::class)
     @ComptimeOnly
-    abstract fun bindIntoMapAsViewModel386014259(instance: BViewModel): ViewModel {
+    fun bindIntoMapAsViewModel386014259(instance: BViewModel): ViewModel {
       return error(message = "Never called")
     }
 
@@ -559,6 +563,7 @@ class FragmentInjector {
       return MetroFactory/* companion */.newInstance(injectors = <this>.#injectors.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(injectors: Map<KClass<*>, Injector>): FragmentInjector {
       return error(message = "Never called")
@@ -636,6 +641,7 @@ class ViewModelFactory {
       return MetroFactory/* companion */.newInstance(viewModels = <this>.#viewModels.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(viewModels: Map<KClass<*>, Function0<ViewModel>>): ViewModelFactory {
       return error(message = "Never called")

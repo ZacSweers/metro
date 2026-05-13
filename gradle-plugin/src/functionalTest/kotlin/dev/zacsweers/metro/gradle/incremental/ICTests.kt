@@ -33,7 +33,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
   companion object {
     @JvmStatic
     @Parameterized.Parameters(name = "{0}")
-    fun targets(): List<KmpTarget> = KmpTarget.entries
+    fun targets(): List<KmpTarget> = KmpTarget.selectedTargets()
   }
 
   /**

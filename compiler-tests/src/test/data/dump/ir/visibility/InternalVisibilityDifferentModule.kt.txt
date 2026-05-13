@@ -30,6 +30,7 @@ class InternalClass {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): InternalClass {
       return error(message = "Never called")
@@ -75,6 +76,7 @@ object IntProvider {
       return ProvideIntMetroFactory.provideInt()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")

@@ -64,6 +64,7 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.diagnosticTag
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.concurrent.ForkJoinPool
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -73,6 +74,8 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
+import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -176,7 +179,8 @@ internal class DependencyGraphTransformer(
     // Metro's downstream IR pipeline can discover the accessors and synthesize implementations,
     // without producing duplicates for members like equals that already had FIR2IR overrides bound
     // to a different supertype path.
-    metroGraph.rebuildFakeOverridesCompat(irTypeSystemContext)
+    IrFakeOverrideBuilder(irTypeSystemContext, MetroFakeOverrideBuilderStrategy, emptyList())
+      .buildFakeOverridesForClass(metroGraph, oldSignatures = false)
 
     contributions.supertypes.forEach { marker ->
       marker.rawTypeOrNull()?.let { trackClassLookup(graphDeclaration, it) }
@@ -870,4 +874,17 @@ internal class DependencyGraphTransformer(
 
     companionObject.dumpToMetroLog()
   }
+}
+
+private object MetroFakeOverrideBuilderStrategy :
+  FakeOverrideBuilderStrategy.BindToPrivateSymbols() {
+  override fun postProcessGeneratedFakeOverride(
+    fakeOverride: IrOverridableDeclaration<*>,
+    clazz: IrClass,
+  ) {}
+
+  override fun shouldSeeInternals(
+    thisModule: ModuleDescriptor,
+    memberModule: ModuleDescriptor,
+  ): Boolean = thisModule.shouldSeeInternalsOf(memberModule)
 }

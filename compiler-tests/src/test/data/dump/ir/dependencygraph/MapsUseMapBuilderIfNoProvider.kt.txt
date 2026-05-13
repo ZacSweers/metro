@@ -117,6 +117,7 @@ interface AppGraph {
 
     @IntoMap
     @IntKey(value = 3)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")

@@ -90,6 +90,7 @@ interface Bindings {
 
     @IntoMap
     @IntKey(value = 1)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")

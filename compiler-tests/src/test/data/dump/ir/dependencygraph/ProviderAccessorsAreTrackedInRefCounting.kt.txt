@@ -95,6 +95,7 @@ interface AppGraph {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
@@ -141,6 +142,7 @@ interface AppGraph {
       return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Long {
       return error(message = "Never called")

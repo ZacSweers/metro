@@ -29,6 +29,7 @@ class A {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): A {
       return error(message = "Never called")
@@ -90,6 +91,7 @@ class B {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(a: A): B {
       return error(message = "Never called")
@@ -151,6 +153,7 @@ class C {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(b: B): C {
       return error(message = "Never called")
@@ -212,6 +215,7 @@ class D {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(c: C): D {
       return error(message = "Never called")
@@ -273,6 +277,7 @@ class E {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(d: D): E {
       return error(message = "Never called")
@@ -334,6 +339,7 @@ class F {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(e: E): F {
       return error(message = "Never called")

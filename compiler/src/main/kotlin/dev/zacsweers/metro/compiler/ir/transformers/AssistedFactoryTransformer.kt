@@ -68,6 +68,7 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo

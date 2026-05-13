@@ -9,6 +9,7 @@ Pre-release versions are normally only tested during their development cycle. Af
 | Kotlin version  | Metro versions (inclusive) | Notes                                                 |
 |-----------------|----------------------------|-------------------------------------------------------|
 | 2.4.20-dev-835  | 1.0.1 -                    |                                                       |
+| 2.4.0-RC        | 1.0.0-RC3 -                |                                                       |
 | 2.4.0-Beta2     | 1.0.0-RC3 -                |                                                       |
 | 2.4.0-Beta1     | 0.13.0 -                   |                                                       |
 | 2.4.0-dev-2124  | 0.12.0 -                   |                                                       |
@@ -31,8 +32,8 @@ Pre-release versions are normally only tested during their development cycle. Af
 | 2.3.0-RC        | 0.6.9, 0.6.11 - [0.9.2]    | Reporting doesn't work until `0.7.3`                  |
 | 2.3.0-Beta2     | 0.6.9, 0.6.11 - [0.9.2]    | Reporting doesn't work until `0.7.3`                  |
 | 2.3.0-Beta1     | 0.6.9, 0.6.11 - [0.9.2]    |                                                       |
-| 2.2.21          | 0.6.6 -                    |                                                       |
-| 2.2.20          | 0.6.6 -                    |                                                       |
+| 2.2.21          | 0.6.6 - 1.1.0              |                                                       |
+| 2.2.20          | 0.6.6 - 1.1.0              |                                                       |
 | 2.2.10          | 0.4.0 - 0.6.5              |                                                       |
 | 2.2.0           | 0.4.0 - 0.6.5              |                                                       |
 | 2.1.21          | 0.3.1 - 0.3.8              |                                                       |
@@ -68,11 +69,12 @@ The following Kotlin versions are tested via CI:
 
 | Kotlin Version |
 |----------------|
+| 2.4.20-dev-835 |
 | 2.4.0-dev-2124 |
+| 2.4.0-RC       |
 | 2.4.0-Beta2    |
 | 2.4.0-Beta1    |
-| 2.3.21-RC2     |
-| 2.3.21-RC      |
+| 2.3.21         |
 | 2.3.20         |
 | 2.3.10         |
 | 2.3.0          |
@@ -93,8 +95,8 @@ The following IDE versions are tested via IDE integration tests:
 | 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1)  |
 | 2026.1.1      | 2025.3.2.6 (Panda 2)          |
 |               | 2025.3.3.6 (Panda 3)          |
-|               | 2025.3.4.6 (Panda 4)          |
-|               | 2026.1.1.2 (Quail 1 Canary 2) |
+|               | 2025.3.4.7 (Panda 4 Patch 1)  |
+|               | 2026.1.1.4 (Quail 1 Canary 4) |
 
 ## Runtime Compatibility
 

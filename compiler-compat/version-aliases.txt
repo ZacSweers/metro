@@ -7,8 +7,6 @@
 # Each line is a Kotlin version that has a corresponding k* module.
 # Blank lines and comments (starting with #) are ignored.
 
-2.2.20
-2.2.21
 2.3.0
 2.3.10
 2.3.20
@@ -16,4 +14,5 @@
 2.4.0-dev-2124
 2.4.0-Beta1
 2.4.0-Beta2
+2.4.0-RC
 2.4.20-dev-835

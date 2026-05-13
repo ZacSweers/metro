@@ -27,6 +27,7 @@ class NonReused {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): NonReused {
       return error(message = "Never called")
@@ -86,6 +87,7 @@ class Reused {
       return MetroFactory/* companion */.newInstance(nonReused = <this>.#nonReused.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(nonReused: NonReused): Reused {
       return error(message = "Never called")
@@ -198,6 +200,7 @@ interface AppGraph {
       return ProvideDoubleMetroFactory/* companion */.provideDouble(instance = <this>.#instance, long = <this>.#long.invoke(), long2 = <this>.#long.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(long: Long, long2: Long): Double {
       return error(message = "Never called")
@@ -244,6 +247,7 @@ interface AppGraph {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
@@ -291,6 +295,7 @@ interface AppGraph {
       return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance, int = <this>.#int.invoke(), int2 = <this>.#int.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(int: Int, int2: Int): Long {
       return error(message = "Never called")

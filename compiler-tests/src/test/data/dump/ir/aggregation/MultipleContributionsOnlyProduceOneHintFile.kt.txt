@@ -45,6 +45,7 @@ class Base1Impl : Base1, Base2, Base3 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Base1Impl {
       return error(message = "Never called")
@@ -86,20 +87,20 @@ class Base1Impl : Base1, Base2, Base3 {
     @IntoSet
     @Binds
     @ComptimeOnly
-    abstract fun bindIntoSetAsBase2(instance: Base1Impl): Base2 {
+    fun bindIntoSetAsBase2(instance: Base1Impl): Base2 {
       return error(message = "Never called")
     }
 
     @IntoSet
     @Binds
     @ComptimeOnly
-    abstract fun bindIntoSetAsBase3(instance: Base1Impl): Base3 {
+    fun bindIntoSetAsBase3(instance: Base1Impl): Base3 {
       return error(message = "Never called")
     }
 
     @Binds
     @ComptimeOnly
-    abstract fun bindsAsBase1(instance: Base1Impl): Base1 {
+    fun bindsAsBase1(instance: Base1Impl): Base1 {
       return error(message = "Never called")
     }
 

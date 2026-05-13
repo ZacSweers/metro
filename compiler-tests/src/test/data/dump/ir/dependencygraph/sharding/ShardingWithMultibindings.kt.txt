@@ -46,6 +46,7 @@ class Collector {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(services: Set<Any>): Collector {
       return error(message = "Never called")
@@ -92,6 +93,7 @@ class Service1 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Service1 {
       return error(message = "Never called")
@@ -138,6 +140,7 @@ class Service2 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Service2 {
       return error(message = "Never called")
@@ -286,6 +289,7 @@ object Module1 {
 
     @IntoSet
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s1: Service1): Any {
       return error(message = "Never called")
@@ -352,6 +356,7 @@ object Module2 {
 
     @IntoSet
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s2: Service2): Any {
       return error(message = "Never called")

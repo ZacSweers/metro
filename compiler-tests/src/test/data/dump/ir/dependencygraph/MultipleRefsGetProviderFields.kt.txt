@@ -31,6 +31,7 @@ class IntHolder {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): IntHolder {
       return error(message = "Never called")
@@ -128,6 +129,7 @@ interface AppGraph {
       return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance, holder = <this>.#holder.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(holder: IntHolder): Long {
       return error(message = "Never called")
@@ -175,6 +177,7 @@ interface AppGraph {
       return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance, holder = <this>.#holder.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(holder: IntHolder): String {
       return error(message = "Never called")

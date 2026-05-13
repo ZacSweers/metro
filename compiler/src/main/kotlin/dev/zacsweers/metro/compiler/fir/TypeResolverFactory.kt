@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.SupertypeSupplier
 import org.jetbrains.kotlin.fir.resolve.TypeResolutionConfiguration
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.resolve.typeResolver
 import org.jetbrains.kotlin.fir.scopes.createImportingScopes
@@ -72,7 +73,7 @@ public sealed interface MetroFirTypeResolver {
       }
 
       // if it's not top-level, create in the class instead
-      val enclosingClass = with(compatContext) { functionSymbol.getContainingClassSymbol() }
+      val enclosingClass = functionSymbol.getContainingClassSymbol()
       if (enclosingClass != null) return create(enclosingClass)
 
       // Look up through all firProviders as we may be a KMP compilation

@@ -11,5 +11,4 @@ dependencies {
   compileOnly(kotlinVersion.map { "org.jetbrains.kotlin:kotlin-compiler:$it" })
   compileOnly(libs.kotlin.stdlib)
   api(project(":compiler-compat"))
-  implementation(project(":compiler-compat:k2220"))
 }

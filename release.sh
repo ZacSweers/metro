@@ -61,10 +61,8 @@ update_gradle_properties() {
     local new_version=$1
 
     find . -type f -name 'gradle.properties' | while read -r file; do
-        if grep -q "VERSION_NAME=" "$file"; then
-            local prev_version
-            prev_version=$(getProperty 'VERSION_NAME' "${file}")
-            sed -i '' "s/${prev_version}/${new_version}/g" "${file}"
+        if grep -q "^VERSION_NAME=" "$file"; then
+            sed -i '' "s/^VERSION_NAME=.*/VERSION_NAME=${new_version}/" "${file}"
         fi
     done
 }
@@ -77,17 +75,6 @@ update_quickstart_version() {
         sed -i '' "s/id(\"dev.zacsweers.metro\") version \"[^\"]*\"/id(\"dev.zacsweers.metro\") version \"${new_version}\"/g" docs/quickstart.md
     else
         sed -i "s/id(\"dev.zacsweers.metro\") version \"[^\"]*\"/id(\"dev.zacsweers.metro\") version \"${new_version}\"/g" docs/quickstart.md
-    fi
-}
-
-# Updates the metro version in gradle/libs.versions.toml
-# usage: update_libs_versions_metro $new_version
-update_libs_versions_metro() {
-    local new_version=$1
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/^metro = \"[^\"]*\"/metro = \"${new_version}\"/" gradle/libs.versions.toml
-    else
-        sed -i "s/^metro = \"[^\"]*\"/metro = \"${new_version}\"/" gradle/libs.versions.toml
     fi
 }
 
@@ -128,7 +115,7 @@ NEXT_SNAPSHOT_VERSION="$(increment_version "$NEW_VERSION" --minor)-SNAPSHOT"
 
 if $DRY_RUN; then
     echo "Dry run — would perform the following steps:"
-    echo "  1. Update gradle.properties, quickstart.md, libs.versions.toml to $NEW_VERSION"
+    echo "  1. Update gradle.properties and quickstart.md to $NEW_VERSION"
     echo "  2. Run ./metrow regen"
     echo "  3. Run ./scripts/update-compatibility-docs.sh"
     echo "  4. Commit: 'Prepare for release $NEW_VERSION.'"
@@ -146,7 +133,6 @@ echo "Publishing $NEW_VERSION"
 # Prepare release
 update_gradle_properties "$NEW_VERSION"
 update_quickstart_version "$NEW_VERSION"
-update_libs_versions_metro "$NEW_VERSION"
 
 ./metrow regen
 

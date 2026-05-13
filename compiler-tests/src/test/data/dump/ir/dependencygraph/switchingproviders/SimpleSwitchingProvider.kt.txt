@@ -29,6 +29,7 @@ class ScopedClass {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): ScopedClass {
       return error(message = "Never called")
@@ -169,6 +170,7 @@ interface AppGraph {
       return ProvideReusedIntMetroFactory/* companion */.provideReusedInt(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
@@ -216,6 +218,7 @@ interface AppGraph {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")

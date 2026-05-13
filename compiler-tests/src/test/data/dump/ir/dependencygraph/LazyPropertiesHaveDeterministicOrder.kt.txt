@@ -117,6 +117,7 @@ interface AppGraph {
     }
 
     @IntoSet
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(int: Int): Double {
       return error(message = "Never called")
@@ -165,6 +166,7 @@ interface AppGraph {
     }
 
     @IntoSet
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(int: Int): Long {
       return error(message = "Never called")
@@ -211,6 +213,7 @@ interface AppGraph {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
@@ -227,7 +230,7 @@ interface AppGraph {
   @Binds
   @IntoSet
   @ComptimeOnly
-  abstract fun Int.bindInt(): Int {
+  fun Int.bindInt(): Int {
     return error(message = "Never called")
   }
 

@@ -28,6 +28,7 @@ class NotReused {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): NotReused {
       return error(message = "Never called")
@@ -73,6 +74,7 @@ class Reused {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Reused {
       return error(message = "Never called")
