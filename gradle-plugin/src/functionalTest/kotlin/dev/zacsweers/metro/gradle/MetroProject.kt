@@ -245,6 +245,7 @@ abstract class MetroProject(
       dependencyResolutionManagement =
         DependencyResolutionManagement(metroRepositories(Repository.DEFAULT))
     }
+    gradleProperties = gradleProperties.plus(METRO_TESTKIT_GRADLE_PROPERTIES)
   }
 
   private fun metroRepositories(defaults: List<Repository>): Repositories =
@@ -317,7 +318,29 @@ abstract class MetroProject(
     appendLine("  jvm()")
     appendLine("  js { nodejs() }")
     appendLine("  wasmJs { nodejs() }")
-    appendLine("  iosSimulatorArm64()")
+    appendLine("  ${KmpTarget.NATIVE_HOST.gradleTargetName}()")
     appendLine("}")
+  }
+
+  private companion object {
+    /**
+     * Extra gradle.properties entries layered onto every generated TestKit project via
+     * [RootProject.Builder.gradleProperties]. Order matters: these are appended after the
+     * testkit-support defaults so any duplicate key here wins (last-write-wins for `.properties`),
+     * which is how the bigger `org.gradle.jvmargs` override takes effect.
+     */
+    private val METRO_TESTKIT_GRADLE_PROPERTIES =
+      listOf(
+        // Daemon JVM tuning: bigger heap up front avoids slow ramp-up across the per-test
+        // compile/IC cycles, MaxMetaspaceSize caps growth in tests that exercise many classloaders.
+        "org.gradle.jvmargs=-Xmx4g -Xms1g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError -XX:MaxMetaspaceSize=1024m",
+        "org.gradle.parallel=true",
+        "systemProp.org.gradle.configuration-cache.read-only=true",
+        // Allow producing klibs for non-host Kotlin/Native targets without that host present.
+        "kotlin.native.enableKlibsCrossCompilation=true",
+        // Silently skip targets the host can't compile rather than failing the build. Scoped to
+        // generated TestKit fixtures only — the root project keeps strict target resolution.
+        "kotlin.native.ignoreDisabledTargets=true",
+      )
   }
 }
