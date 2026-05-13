@@ -468,20 +468,19 @@ internal fun IrBuilderWithScope.irTemporaryVariable(
   irType: IrType = value?.type!!, // either value or irType should be supplied at callsite
   isMutable: Boolean = false,
   origin: IrDeclarationOrigin = Origins.FirstParty.IR_TEMPORARY_VARIABLE,
-): IrVariable =
-  with(context) {
-    val temporary =
-      scope.createTemporaryVariableDeclarationCompat(
-        irType,
-        nameHint,
-        isMutable,
-        startOffset = startOffset,
-        endOffset = endOffset,
-        origin = origin,
-      )
-    value?.let { temporary.initializer = it }
-    return temporary
-  }
+): IrVariable {
+  val temporary =
+    scope.createTemporaryVariableDeclaration(
+      irType,
+      nameHint,
+      isMutable,
+      startOffset = startOffset,
+      endOffset = endOffset,
+      origin = origin,
+    )
+  value?.let { temporary.initializer = it }
+  return temporary
+}
 
 /**
  * Computes a hash key for this annotation instance composed of its underlying type and value

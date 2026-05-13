@@ -49,6 +49,7 @@ import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
 import org.jetbrains.kotlin.fir.dispatchReceiverClassTypeOrNull
 import org.jetbrains.kotlin.fir.expectActualMatchingContextFactory
 import org.jetbrains.kotlin.fir.resolve.firClassLike
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -187,8 +188,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           // Top-level @GraphExtension.Factory classes have no containing class. That's already
           // reported by DependencyGraphCreatorChecker; skip rather than crashing here.
           val graphExtensionClass =
-            with(session.compatContext) { graphExtensionFactoryClass.getContainingClassSymbol() }
-              ?: continue
+            graphExtensionFactoryClass.getContainingClassSymbol() ?: continue
           validateGraphExtension(
             session = session,
             classIds = classIds,

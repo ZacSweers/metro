@@ -119,7 +119,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       } else if (declaration is FirAnonymousObject) {
         report("Anonymous objects")
         return
-      } else if (with(compatContext) { declaration.isLocalCompat }) {
+      } else if (declaration.isLocal) {
         report("Local classes")
         return
       }

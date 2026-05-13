@@ -61,6 +61,7 @@ import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.propertyIfAccessor
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -113,9 +114,7 @@ internal object BindingContainerCallableChecker :
     val session = context.session
     val classIds = session.classIds
 
-    val containingClassSymbol by memoize {
-      with(session.compatContext) { declaration.getContainingClassSymbol() }
-    }
+    val containingClassSymbol by memoize { declaration.getContainingClassSymbol() }
     if (declaration is FirConstructor) {
       val isInBindingContainer = containingClassSymbol?.isBindingContainer(session) ?: false
       if (!isInBindingContainer) return

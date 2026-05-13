@@ -4,6 +4,21 @@ Changelog
 **Unreleased**
 --------------
 
+1.1.0
+-----
+
+_2026-05-13_
+
+This release is identical to [1.0.1](https://github.com/ZacSweers/metro/releases/tag/1.0.1) but removes support for Kotlin `2.2.20` and `2.2.21`.
+
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+1.0.1
+-----
+
+_2026-05-13_
+
 ### New
 
 - **[FIR]** Add a diagnostic warning that `@Module.subcomponents` is ignored by Metro (when Dagger interop is enabled).
