@@ -163,6 +163,10 @@ fun androidHomeOrNull(): File? {
   return if (androidHome?.exists() == true) androidHome else null
 }
 
+// Forwarded to KmpTarget.selectedTargets() to scope IC test parameterization. PR/branch CI leaves
+// this unset (JVM only); main runs use a per-target value or `all` to fan out across targets.
+val functionalTestKmpTarget = providers.gradleProperty("metro.functionalTestKmpTarget").orNull
+
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty(
@@ -172,6 +176,7 @@ tasks.withType<Test>().configureEach {
   systemProperty("dev.zacsweers.metro.gradle.test.kotlin-version", testCompilerVersion)
   systemProperty("metro.agpVersion", libs.versions.agp.get())
   systemProperty("metro.androidHome", androidHomeOrNull()?.absolutePath)
+  functionalTestKmpTarget?.let { systemProperty("metro.functionalTestKmpTarget", it) }
 }
 
 tasks
