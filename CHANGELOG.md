@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Changes
+
+- Update Compose Multiplatform (used by the metrox-viewmodel artifacts) to `1.11.0`.
+
 1.1.0
 -----
 
