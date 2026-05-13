@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778627930729,
+  "lastUpdate": 1778651983812,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -14448,6 +14448,62 @@ window.BENCHMARK_DATA = {
             "value": 33112.61,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +10.00%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "447c5dce~1",
+          "message": "[before] Use the substituted return type in Circuit factory",
+          "timestamp": "2026-05-13T05:16:16+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/447c5dce84e38df5eebd04118332e04747d05b40"
+        },
+        "date": 1778651983812,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31662.321999999996,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "447c5dce84e38df5eebd04118332e04747d05b40",
+          "message": "[after] Use the substituted return type in Circuit factory",
+          "timestamp": "2026-05-13T05:16:16+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/447c5dce84e38df5eebd04118332e04747d05b40"
+        },
+        "date": 1778651983813,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 33496.558000000005,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +5.79%"
           }
         ]
       }
