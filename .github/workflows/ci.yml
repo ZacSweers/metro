@@ -10,9 +10,12 @@ on:
   # Always run on PRs
   pull_request:
 
-concurrency:
-  group: 'ci-${{ github.event.merge_group.head_ref || github.head_ref }}-${{ github.workflow }}'
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+# TEMP: concurrency group removed while debugging the Beta2 hang. The wedged-runner
+# pattern blocks `cancel-in-progress` from actually killing the prior job, which then
+# blocks the new run from starting. Restore the block below when debug is done.
+# concurrency:
+#   group: 'ci-${{ github.event.merge_group.head_ref || github.head_ref }}-${{ github.workflow }}'
+#   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   format:
