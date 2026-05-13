@@ -24,4 +24,4 @@ AS:2025.3.2.6:android-studio-panda2 # Panda 2
 AS:2025.3.3.6:android-studio-panda3 # Panda 3
 AS:2025.3.4.7:android-studio-panda4-patch1 # Panda 4 Patch 1
 # AS Canary
-AS:2026.1.1.4:android-studio-quail1-canary2 # Quail 1 Canary 4
+AS:2026.1.1.4:android-studio-quail1-canary4 # Quail 1 Canary 4
