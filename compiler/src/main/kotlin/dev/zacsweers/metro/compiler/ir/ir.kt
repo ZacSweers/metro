@@ -117,6 +117,7 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrScriptSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.DescriptorlessExternalPackageFragmentSymbol
@@ -176,6 +177,7 @@ import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.library.KOTLIN_JS_STDLIB_NAME
 import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -2303,4 +2305,32 @@ internal fun IrDeclarationWithVisibility.effectiveVisibility(): DescriptorVisibi
       }
     }
     ?.visibility ?: visibility
+}
+
+internal fun IrPluginContext.referenceClassFrom(
+  classId: ClassId,
+  from: IrDeclaration,
+): IrClassSymbol? {
+  val file = from.fileOrNull
+  val finder =
+    if (file == null) {
+      finderForBuiltins()
+    } else {
+      finderForSource(file)
+    }
+  return finder.findClass(classId)
+}
+
+internal fun IrPluginContext.referenceFunctionsFrom(
+  callableId: CallableId,
+  from: IrDeclaration,
+): Collection<IrSimpleFunctionSymbol> {
+  val file = from.fileOrNull
+  val finder =
+    if (file == null) {
+      finderForBuiltins()
+    } else {
+      finderForSource(file)
+    }
+  return finder.findFunctions(callableId)
 }

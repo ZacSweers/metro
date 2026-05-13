@@ -269,7 +269,8 @@ internal class Symbols(
   /** Getter for the `kotlin.jvm.java` extension property on `KClass<T>` -> `Class<T>`. */
   val kClassJavaPropertyGetter: IrSimpleFunctionSymbol? by lazy {
     pluginContext
-      .referenceProperties(CallableId(FqName("kotlin.jvm"), "java".asName()))
+      .finderForBuiltins()
+      .findProperties(CallableId(FqName("kotlin.jvm"), "java".asName()))
       .firstOrNull()
       ?.owner
       ?.getter
@@ -277,13 +278,14 @@ internal class Symbols(
   }
 
   val mapEntryClassSymbol: IrClassSymbol by lazy {
-    pluginContext.referenceClass(StandardClassIds.MapEntry)!!
+    pluginContext.finderForBuiltins().findClass(StandardClassIds.MapEntry)!!
   }
 
   /** `kotlin.collections.mapKeys` extension function for Map. */
   val mapKeysFunction: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(CallableId(kotlinCollectionsPackageFqn, "mapKeys".asName()))
+      .finderForBuiltins()
+      .findFunctions(CallableId(kotlinCollectionsPackageFqn, "mapKeys".asName()))
       .first()
   }
 
@@ -291,7 +293,8 @@ internal class Symbols(
   val mapEntryKeyGetter: IrSimpleFunctionSymbol by lazy {
     val mapEntryClassId = StandardClassIds.Map.createNestedClassId("Entry".asName())
     pluginContext
-      .referenceProperties(CallableId(mapEntryClassId, "key".asName()))
+      .finderForBuiltins()
+      .findProperties(CallableId(mapEntryClassId, "key".asName()))
       .first()
       .owner
       .getter!!
@@ -383,48 +386,51 @@ internal class Symbols(
 
   val asContribution: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(CallableId(metroRuntime.packageFqName, Names.asContribution))
+      .finderForBuiltins()
+      .findFunctions(CallableId(metroRuntime.packageFqName, Names.asContribution))
       .single()
   }
 
   val metroCreateGraph: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraph".asName()))
+      .finderForBuiltins()
+      .findFunctions(CallableId(metroRuntime.packageFqName, "createGraph".asName()))
       .first()
   }
 
   val metroCreateGraphFactory: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraphFactory".asName()))
+      .finderForBuiltins()
+      .findFunctions(CallableId(metroRuntime.packageFqName, "createGraphFactory".asName()))
       .first()
   }
 
   val metroCreateDynamicGraph: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createDynamicGraph".asName()))
+      .finderForBuiltins()
+      .findFunctions(CallableId(metroRuntime.packageFqName, "createDynamicGraph".asName()))
       .first()
   }
 
   val metroCreateDynamicGraphFactory: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(
-        CallableId(metroRuntime.packageFqName, "createDynamicGraphFactory".asName())
-      )
+      .finderForBuiltins()
+      .findFunctions(CallableId(metroRuntime.packageFqName, "createDynamicGraphFactory".asName()))
       .first()
   }
 
   private val doubleCheck: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "DoubleCheck".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "DoubleCheck".asName()))!!
   }
   val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
   val doubleCheckProvider by lazy { doubleCheckCompanionObject.requireSimpleFunction("provider") }
 
   private val providerOfLazy: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName()))!!
   }
   val providerOfLazyCompanionObject by lazy { providerOfLazy.owner.companionObject()!!.symbol }
   val providerOfLazyCreate: IrFunctionSymbol by lazy {
@@ -432,7 +438,7 @@ internal class Symbols(
   }
 
   private val instanceFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.metroInstanceFactory)!!
+    pluginContext.finderForBuiltins().findClass(ClassIds.metroInstanceFactory)!!
   }
   val instanceFactoryCompanionObject by lazy { instanceFactory.owner.companionObject()!!.symbol }
   val instanceFactoryInvoke: IrFunctionSymbol by lazy {
@@ -440,49 +446,56 @@ internal class Symbols(
   }
 
   val multibindingElement: IrConstructorSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.MultibindingElement)!!.constructors.first()
+    pluginContext.finderForBuiltins().findClass(ClassIds.MultibindingElement)!!.constructors.first()
   }
 
   val metroDependencyGraphAnnotationConstructor: IrConstructorSymbol by lazy {
-    pluginContext.referenceClass(classIds.dependencyGraphAnnotation)!!.constructors.first()
+    pluginContext
+      .finderForBuiltins()
+      .findClass(classIds.dependencyGraphAnnotation)!!
+      .constructors
+      .first()
   }
 
   val callableMetadataAnnotationConstructor: IrConstructorSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.CallableMetadata)!!.constructors.first()
+    pluginContext.finderForBuiltins().findClass(ClassIds.CallableMetadata)!!.constructors.first()
   }
 
   val comptimeOnlyAnnotationConstructor: IrConstructorSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.ComptimeOnly)?.constructors?.first()!!
+    pluginContext.finderForBuiltins().findClass(ClassIds.ComptimeOnly)?.constructors?.first()!!
   }
 
   val hiddenFromObjCAnnotationConstructor: IrConstructorSymbol? by lazy {
-    pluginContext.referenceClass(ClassIds.HiddenFromObjC)?.constructors?.first()
+    pluginContext.finderForBuiltins().findClass(ClassIds.HiddenFromObjC)?.constructors?.first()
   }
 
   val jvmStaticAnnotationConstructor: IrConstructorSymbol? by lazy {
-    pluginContext.referenceClass(ClassIds.JvmStatic)?.constructors?.first()
+    pluginContext.finderForBuiltins().findClass(ClassIds.JvmStatic)?.constructors?.first()
   }
 
   val jsStaticAnnotationConstructor: IrConstructorSymbol? by lazy {
-    pluginContext.referenceClass(ClassIds.JsStatic)?.constructors?.first()
+    pluginContext.finderForBuiltins().findClass(ClassIds.JsStatic)?.constructors?.first()
   }
 
   val throwsAnnotationConstructor: IrConstructorSymbol? by lazy {
     // For some reason this isn't visible until 2.3.0?
-    pluginContext.referenceClass(ClassIds.Throws)?.constructors?.first()
+    pluginContext.finderForBuiltins().findClass(ClassIds.Throws)?.constructors?.first()
   }
 
   val illegalStateExceptionClassSymbol: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.IllegalStateException)!!
+    pluginContext.finderForBuiltins().findClass(ClassIds.IllegalStateException)!!
   }
 
   val metroProvider: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassId(metroRuntime.packageFqName, "Provider".asName()))!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntime.packageFqName, "Provider".asName()))!!
   }
 
   val metroProviderFunction: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(CallableId(metroRuntime.packageFqName, "provider".asName()))
+      .finderForBuiltins()
+      .findFunctions(CallableId(metroRuntime.packageFqName, "provider".asName()))
       .single()
   }
 
@@ -491,9 +504,9 @@ internal class Symbols(
   }
 
   private val metroDelegateFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "DelegateFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "DelegateFactory".asName()))!!
   }
 
   val metroDelegateFactoryConstructor: IrConstructorSymbol by lazy {
@@ -509,13 +522,15 @@ internal class Symbols(
   }
 
   val metroMembersInjector: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassId(metroRuntime.packageFqName, "MembersInjector".asName()))!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntime.packageFqName, "MembersInjector".asName()))!!
   }
 
   val metroMembersInjectors: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MembersInjectors".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "MembersInjectors".asName()))!!
   }
 
   val metroMembersInjectorsNoOp: IrSimpleFunctionSymbol by lazy {
@@ -523,19 +538,23 @@ internal class Symbols(
   }
 
   val metroFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassId(metroRuntimeInternal.packageFqName, "Factory".asName()))!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "Factory".asName()))!!
   }
 
   val metroSingleIn: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassId(metroRuntime.packageFqName, "SingleIn".asName()))!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntime.packageFqName, "SingleIn".asName()))!!
   }
 
   val metroSingleInConstructor: IrConstructorSymbol by lazy { metroSingleIn.constructors.first() }
 
   val graphFactoryInvokeFunctionMarkerClass: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntime.packageFqName, "GraphFactoryInvokeFunctionMarker".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntime.packageFqName, "GraphFactoryInvokeFunctionMarker".asName()))!!
   }
 
   val graphFactoryInvokeFunctionMarkerConstructor: IrConstructorSymbol by lazy {
@@ -543,36 +562,43 @@ internal class Symbols(
   }
 
   val stdlibLazy: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassId(stdlib.packageFqName, "Lazy".asName()))!!
+    pluginContext.finderForBuiltins().findClass(ClassId(stdlib.packageFqName, "Lazy".asName()))!!
   }
 
   val lazyGetValue: IrFunctionSymbol by lazy { stdlibLazy.getPropertyGetter("get")!! }
 
   val stdlibErrorFunction: IrFunctionSymbol by lazy {
-    pluginContext.referenceFunctions(CallableId(stdlib.packageFqName, "error".asName())).first()
+    pluginContext
+      .finderForBuiltins()
+      .findFunctions(CallableId(stdlib.packageFqName, "error".asName()))
+      .first()
   }
 
   val stdlibCheckNotNull: IrFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(CallableId(stdlib.packageFqName, "checkNotNull".asName()))
+      .finderForBuiltins()
+      .findFunctions(CallableId(stdlib.packageFqName, "checkNotNull".asName()))
       .single { it.owner.parameters.size == 2 }
   }
 
   val emptySet by lazy {
     pluginContext
-      .referenceFunctions(CallableId(stdlibCollections.packageFqName, "emptySet".asName()))
+      .finderForBuiltins()
+      .findFunctions(CallableId(stdlibCollections.packageFqName, "emptySet".asName()))
       .first()
   }
 
   val emptyMap by lazy {
     pluginContext
-      .referenceFunctions(CallableId(stdlibCollections.packageFqName, "emptyMap".asName()))
+      .finderForBuiltins()
+      .findFunctions(CallableId(stdlibCollections.packageFqName, "emptyMap".asName()))
       .first()
   }
 
   val setOfSingleton by lazy {
     pluginContext
-      .referenceFunctions(CallableId(stdlibCollections.packageFqName, "setOf".asName()))
+      .finderForBuiltins()
+      .findFunctions(CallableId(stdlibCollections.packageFqName, "setOf".asName()))
       .first {
         it.owner.hasShape(regularParameters = 1) && it.owner.parameters[0].varargElementType == null
       }
@@ -580,7 +606,8 @@ internal class Symbols(
 
   val buildSetWithCapacity by lazy {
     pluginContext
-      .referenceFunctions(CallableId(stdlibCollections.packageFqName, "buildSet".asName()))
+      .finderForBuiltins()
+      .findFunctions(CallableId(stdlibCollections.packageFqName, "buildSet".asName()))
       .first { it.owner.hasShape(regularParameters = 2) }
   }
 
@@ -620,7 +647,8 @@ internal class Symbols(
 
   val buildMapWithCapacity by lazy {
     pluginContext
-      .referenceFunctions(CallableId(stdlibCollections.packageFqName, "buildMap".asName()))
+      .finderForBuiltins()
+      .findFunctions(CallableId(stdlibCollections.packageFqName, "buildMap".asName()))
       .first { it.owner.hasShape(regularParameters = 2) }
   }
 
@@ -632,65 +660,74 @@ internal class Symbols(
 
   val intoMapConstructor by lazy {
     pluginContext
-      .referenceClass(ClassId(metroRuntime.packageFqName, StringNames.INTO_MAP.asName()))!!
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntime.packageFqName, StringNames.INTO_MAP.asName()))!!
       .constructors
       .single()
   }
 
   val intoSetConstructor by lazy {
     pluginContext
-      .referenceClass(ClassId(metroRuntime.packageFqName, StringNames.INTO_SET.asName()))!!
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntime.packageFqName, StringNames.INTO_SET.asName()))!!
       .constructors
       .single()
   }
 
   val elementsIntoSetConstructor by lazy {
     pluginContext
-      .referenceClass(ClassId(metroRuntime.packageFqName, StringNames.ELEMENTS_INTO_SET.asName()))!!
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntime.packageFqName, StringNames.ELEMENTS_INTO_SET.asName()))!!
       .constructors
       .single()
   }
 
   val bindsConstructor by lazy {
     pluginContext
-      .referenceClass(ClassId(metroRuntime.packageFqName, Names.Binds))!!
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntime.packageFqName, Names.Binds))!!
       .constructors
       .single()
   }
 
   val providesConstructor by lazy {
     pluginContext
-      .referenceClass(ClassId(metroRuntime.packageFqName, Names.Provides))!!
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntime.packageFqName, Names.Provides))!!
       .constructors
       .single()
   }
 
   val assistedConstructor by lazy {
     pluginContext
-      .referenceClass(ClassId(metroRuntime.packageFqName, StringNames.ASSISTED.asName()))!!
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntime.packageFqName, StringNames.ASSISTED.asName()))!!
       .constructors
       .single()
   }
 
   val bindsOptionalConstructor by lazy {
     pluginContext
-      .referenceClass(DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF)!!
+      .finderForBuiltins()
+      .findClass(DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF)!!
       .constructors
       .single()
   }
 
   val deprecatedAnnotationConstructor: IrConstructorSymbol by lazy {
-    pluginContext.referenceClass(StandardClassIds.Annotations.Deprecated)!!.constructors.first {
-      it.owner.isPrimary
-    }
+    pluginContext
+      .finderForBuiltins()
+      .findClass(StandardClassIds.Annotations.Deprecated)!!
+      .constructors
+      .first { it.owner.isPrimary }
   }
 
   val deprecated: IrClassSymbol by lazy {
-    pluginContext.referenceClass(StandardClassIds.Annotations.Deprecated)!!
+    pluginContext.finderForBuiltins().findClass(StandardClassIds.Annotations.Deprecated)!!
   }
 
   val deprecationLevel: IrClassSymbol by lazy {
-    pluginContext.referenceClass(StandardClassIds.DeprecationLevel)!!
+    pluginContext.finderForBuiltins().findClass(StandardClassIds.DeprecationLevel)!!
   }
 
   val hiddenDeprecationLevel by lazy {
@@ -700,7 +737,9 @@ internal class Symbols(
       .symbol
   }
 
-  val javaOptional: IrClassSymbol by lazy { pluginContext.referenceClass(ClassIds.JavaOptional)!! }
+  val javaOptional: IrClassSymbol by lazy {
+    pluginContext.finderForBuiltins().findClass(ClassIds.JavaOptional)!!
+  }
 
   val javaOptionalEmpty: IrFunctionSymbol by lazy { javaOptional.requireSimpleFunction("empty") }
 

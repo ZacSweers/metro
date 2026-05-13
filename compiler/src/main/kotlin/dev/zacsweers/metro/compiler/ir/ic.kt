@@ -60,7 +60,7 @@ internal fun linkDeclarationsInCompilation(callingFile: IrFile?, calleeDeclarati
     // Does it have an origin?
     val origin = calleeDeclaration.originClassId()
     if (origin != null) {
-      val originClass = context.referenceClass(origin)?.owner
+      val originClass = context.finderForSource(callingFile).findClass(origin)?.owner
       if (originClass != null) {
         linkDeclarationsInCompilation(callingFile = callingFile, calleeDeclaration = originClass)
       }

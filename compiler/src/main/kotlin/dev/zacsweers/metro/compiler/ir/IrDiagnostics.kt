@@ -166,7 +166,7 @@ private fun IrDeclaration.findOriginClass(): IrClass? {
   while (current != null) {
     val originClassId = current.originClassId() ?: current.metroOriginData?.originClassId
     if (originClassId != null) {
-      val origin = context.referenceClass(originClassId)?.owner
+      val origin = context.referenceClassFrom(originClassId, this@findOriginClass)?.owner
       if (origin != null && origin != current) return origin
     }
     current = current.parentClassOrNull

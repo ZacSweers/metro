@@ -12,6 +12,8 @@ import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.kClassReference
+import dev.zacsweers.metro.compiler.ir.referenceClassFrom
+import dev.zacsweers.metro.compiler.ir.referenceFunctionsFrom
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -99,7 +101,7 @@ private class CircuitIrTransformer(
 
   /** Cached invoke() symbol for metro's Provider type. */
   private val providerInvokeFunction: IrSimpleFunctionSymbol by lazy {
-    pluginContext.referenceClass(Symbols.ClassIds.metroProvider)!!.functions.first {
+    pluginContext.finderForBuiltins().findClass(Symbols.ClassIds.metroProvider)!!.functions.first {
       it.owner.name.asString() == "invoke"
     }
   }
@@ -111,7 +113,8 @@ private class CircuitIrTransformer(
     ) {
       // Find the target info from the factory class annotations
       val circuitTargetInfo = declaration.circuitFactoryTargetData!!
-      val screenClass = pluginContext.referenceClass(circuitTargetInfo.screenType)!!
+      val screenClass =
+        pluginContext.referenceClassFrom(circuitTargetInfo.screenType, declaration)!!
 
       // Add an @Origin annotation, because we can't add this in FIR safely due to phase issues
       circuitTargetInfo.originClassId?.let { originClassId ->
@@ -119,7 +122,8 @@ private class CircuitIrTransformer(
           declaration,
           context(pluginContext) {
             buildAnnotation(declaration.symbol, symbols.originAnnotationCtor) {
-              it.arguments[0] = kClassReference(pluginContext.referenceClass(originClassId)!!)
+              it.arguments[0] =
+                kClassReference(pluginContext.referenceClassFrom(originClassId, declaration)!!)
             }
           },
         )
@@ -234,7 +238,7 @@ private class CircuitIrTransformer(
     val targetClassId =
       circuitTargetInfo.originClassId ?: error("Class-based factory missing origin class ID")
     val targetClass =
-      pluginContext.referenceClass(targetClassId)
+      pluginContext.referenceClassFrom(targetClassId, factoryClass)
         ?: error("Could not find target class: $targetClassId")
     val constructor = targetClass.constructors.first()
     val ctorParams = constructor.owner.regularParameters
@@ -407,7 +411,8 @@ private class CircuitIrTransformer(
     // Look up the IR function by matching against the FIR symbol stored in the target.
     // We filter out `expect` declarations in FIR, so we should only see actual functions here.
     val originalFunctionSymbol =
-      pluginContext.referenceFunctions(firFunctionSymbol.callableId).first { irSymbol ->
+      pluginContext.referenceFunctionsFrom(firFunctionSymbol.callableId, createFunction).first {
+        irSymbol ->
         (irSymbol.owner.metadata as? FirMetadataSource.Function)?.fir?.symbol == firFunctionSymbol
       }
 

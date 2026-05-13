@@ -287,7 +287,8 @@ internal class IrContributionMerger(
         // origin class for @ContributesBinding(replaces=...) annotations
         for (container in mutableContributedBindingContainers.values) {
           val originClassId = container.originClassId() ?: continue
-          val originClass = pluginContext.referenceClass(originClassId)?.owner ?: continue
+          val originClass =
+            pluginContext.referenceClassFrom(originClassId, container)?.owner ?: continue
           yield(originClass)
         }
       }

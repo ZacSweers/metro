@@ -39,6 +39,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.referenceClassFrom
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -221,9 +222,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       if (lazyClassMetadata.value == null) {
         if (options.enableDaggerRuntimeInterop) {
           val daggerInjector =
-            pluginContext.referenceClass(
-              declaration.classIdOrFail.generatedClass("_MembersInjector")
-            )
+            pluginContext
+              .finderForBuiltins()
+              .findClass(declaration.classIdOrFail.generatedClass("_MembersInjector"))
           if (daggerInjector != null) {
             return computeMemberInjectClass(daggerInjector.owner, isDagger = true).also {
               generatedInjectors[injectedClassId] = Optional.of(it)
@@ -379,7 +380,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
             // This is what generates supertypes lazily as needed
             val functions =
-              requireInjector(pluginContext.referenceClass(classId)!!.owner).declaredInjectFunctions
+              requireInjector(pluginContext.referenceClassFrom(classId, declaration)!!.owner)
+                .declaredInjectFunctions
 
             putAll(functions)
           }
@@ -480,8 +482,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     nameAllocator: NameAllocator
   ): List<Parameters>? {
     val injectorClass =
-      pluginContext.referenceClass(classIdOrFail.generatedClass("_MembersInjector"))?.owner
-        ?: return null
+      pluginContext
+        .finderForBuiltins()
+        .findClass(classIdOrFail.generatedClass("_MembersInjector"))
+        ?.owner ?: return null
 
     // Compute source member parameters for qualifier lookup
     // For Dagger, only include properties with setter injection (narrower scope)

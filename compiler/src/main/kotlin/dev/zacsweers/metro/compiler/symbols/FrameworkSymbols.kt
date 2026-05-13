@@ -162,21 +162,21 @@ internal class MetroFrameworkSymbols(
 ) : BaseFrameworkSymbols() {
 
   override val canonicalProviderType: IrClassSymbol by lazy {
-    pluginContext.referenceClass(Symbols.ClassIds.metroProvider)!!
+    pluginContext.finderForBuiltins().findClass(Symbols.ClassIds.metroProvider)!!
   }
 
   override val doubleCheck by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "DoubleCheck".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "DoubleCheck".asName()))!!
   }
 
   override val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
 
   private val providerOfLazy: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName()))!!
   }
 
   private val providerOfLazyCompanionObject by lazy {
@@ -188,9 +188,9 @@ internal class MetroFrameworkSymbols(
   }
 
   override val setFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "SetFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "SetFactory".asName()))!!
   }
 
   val setFactoryCompanionObject: IrClassSymbol by lazy {
@@ -210,9 +210,9 @@ internal class MetroFrameworkSymbols(
   }
 
   override val mapFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "MapFactory".asName()))!!
   }
 
   private val mapFactoryCompanionObject: IrClassSymbol by lazy {
@@ -232,9 +232,9 @@ internal class MetroFrameworkSymbols(
   }
 
   override val mapProviderFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapProviderFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "MapProviderFactory".asName()))!!
   }
 
   private val mapProviderFactoryCompanionObject: IrClassSymbol by lazy {
@@ -254,9 +254,9 @@ internal class MetroFrameworkSymbols(
   }
 
   override val mapLazyFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapLazyFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "MapLazyFactory".asName()))!!
   }
 
   private val mapLazyFactoryCompanionObject: IrClassSymbol by lazy {
@@ -276,9 +276,9 @@ internal class MetroFrameworkSymbols(
   }
 
   override val mapProviderLazyFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapProviderLazyFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "MapProviderLazyFactory".asName()))!!
   }
 
   private val mapProviderLazyFactoryCompanionObject: IrClassSymbol by lazy {
@@ -300,9 +300,9 @@ internal class MetroFrameworkSymbols(
   // MapFunctionFactory is JS-only — see runtime/src/jsMain/.../MapFunctionFactory.kt.
   // Only access these symbols from code paths gated on `platform.isJs()`.
   val mapFunctionFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapFunctionFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(metroRuntimeInternal.packageFqName, "MapFunctionFactory".asName()))!!
   }
 
   private val mapFunctionFactoryCompanionObject: IrClassSymbol by lazy {
@@ -344,7 +344,7 @@ internal class JavaxSymbols(
   }
 
   val javaxProvider: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.JAVAX_PROVIDER_CLASS_ID)!!
+    pluginContext.finderForBuiltins().findClass(ClassIds.JAVAX_PROVIDER_CLASS_ID)!!
   }
 
   val primitives = setOf(ClassIds.JAVAX_PROVIDER_CLASS_ID)
@@ -353,7 +353,8 @@ internal class JavaxSymbols(
 
   val asJavaxProvider by lazy {
     pluginContext
-      .referenceFunctions(
+      .finderForBuiltins()
+      .findFunctions(
         CallableId(
           javaxInteropRuntime.packageFqName,
           Symbols.StringNames.AS_JAVAX_PROVIDER.asName(),
@@ -364,7 +365,8 @@ internal class JavaxSymbols(
 
   val asMetroProvider by lazy {
     pluginContext
-      .referenceFunctions(
+      .finderForBuiltins()
+      .findFunctions(
         CallableId(
           javaxInteropRuntime.packageFqName,
           Symbols.StringNames.AS_METRO_PROVIDER.asName(),
@@ -388,7 +390,7 @@ internal class JakartaSymbols(
   }
 
   val jakartaProvider: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.JAKARTA_PROVIDER_CLASS_ID)!!
+    pluginContext.finderForBuiltins().findClass(ClassIds.JAKARTA_PROVIDER_CLASS_ID)!!
   }
 
   val primitives = setOf(ClassIds.JAKARTA_PROVIDER_CLASS_ID)
@@ -397,7 +399,8 @@ internal class JakartaSymbols(
 
   val asJakartaProvider by lazy {
     pluginContext
-      .referenceFunctions(
+      .finderForBuiltins()
+      .findFunctions(
         CallableId(
           jakartaInteropRuntime.packageFqName,
           Symbols.StringNames.AS_JAKARTA_PROVIDER.asName(),
@@ -408,7 +411,8 @@ internal class JakartaSymbols(
 
   val asMetroProvider by lazy {
     pluginContext
-      .referenceFunctions(
+      .finderForBuiltins()
+      .findFunctions(
         CallableId(
           jakartaInteropRuntime.packageFqName,
           Symbols.StringNames.AS_METRO_PROVIDER.asName(),
@@ -439,7 +443,8 @@ internal class GuiceSymbols(
 
   val guiceDoubleCheckCompanionObject: IrClassSymbol by lazy {
     pluginContext
-      .referenceClass(
+      .finderForBuiltins()
+      .findClass(
         ClassId(guiceInteropRuntimeInternal.packageFqName, "GuiceInteropDoubleCheck".asName())
       )!!
       .owner
@@ -453,12 +458,13 @@ internal class GuiceSymbols(
   val primitives = providerPrimitives
 
   override val canonicalProviderType: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.provider)!!
+    pluginContext.finderForBuiltins().findClass(ClassIds.provider)!!
   }
 
   val asGuiceProvider by lazy {
     pluginContext
-      .referenceFunctions(
+      .finderForBuiltins()
+      .findFunctions(
         CallableId(
           guiceInteropRuntime.packageFqName,
           Symbols.StringNames.AS_GUICE_PROVIDER.asName(),
@@ -469,7 +475,8 @@ internal class GuiceSymbols(
 
   val asMetroProvider by lazy {
     pluginContext
-      .referenceFunctions(
+      .finderForBuiltins()
+      .findFunctions(
         CallableId(
           guiceInteropRuntime.packageFqName,
           Symbols.StringNames.AS_METRO_PROVIDER.asName(),
@@ -480,7 +487,8 @@ internal class GuiceSymbols(
 
   val asGuiceMembersInjector by lazy {
     pluginContext
-      .referenceFunctions(
+      .finderForBuiltins()
+      .findFunctions(
         CallableId(
           guiceInteropRuntime.packageFqName,
           Symbols.StringNames.AS_GUICE_MEMBERS_INJECTOR.asName(),
@@ -491,7 +499,8 @@ internal class GuiceSymbols(
 
   val asMetroMembersInjector by lazy {
     pluginContext
-      .referenceFunctions(
+      .finderForBuiltins()
+      .findFunctions(
         CallableId(
           guiceInteropRuntime.packageFqName,
           Symbols.StringNames.AS_METRO_MEMBERS_INJECTOR.asName(),
@@ -534,9 +543,9 @@ internal class DaggerSymbols(
   }
 
   override val canonicalProviderType: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(daggerRuntimeInternal.packageFqName, Symbols.Names.ProviderClass)
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(daggerRuntimeInternal.packageFqName, Symbols.Names.ProviderClass))!!
   }
 
   val providerPrimitives =
@@ -555,9 +564,11 @@ internal class DaggerSymbols(
   }
 
   override val doubleCheck by lazy {
-    pluginContext.referenceClass(
-      ClassId(daggerInteropRuntimeInternal.packageFqName, "DaggerInteropDoubleCheck".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(
+        ClassId(daggerInteropRuntimeInternal.packageFqName, "DaggerInteropDoubleCheck".asName())
+      )!!
   }
 
   override val doubleCheckLazy by lazy {
@@ -567,9 +578,9 @@ internal class DaggerSymbols(
   }
 
   private val providerOfLazy: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(daggerRuntimeInternal.packageFqName, "ProviderOfLazy".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(daggerRuntimeInternal.packageFqName, "ProviderOfLazy".asName()))!!
   }
 
   override val providerOfLazyCreate: IrSimpleFunctionSymbol by lazy {
@@ -577,9 +588,9 @@ internal class DaggerSymbols(
   }
 
   override val setFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(daggerRuntimeInternal.packageFqName, "SetFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(daggerRuntimeInternal.packageFqName, "SetFactory".asName()))!!
   }
 
   override val setFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
@@ -597,9 +608,9 @@ internal class DaggerSymbols(
   override val setFactorySingletonFunction: IrSimpleFunctionSymbol? = null
 
   override val mapFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(daggerRuntimeInternal.packageFqName, "MapFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(daggerRuntimeInternal.packageFqName, "MapFactory".asName()))!!
   }
 
   override val mapFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
@@ -617,9 +628,9 @@ internal class DaggerSymbols(
   override val mapFactorySingletonFunction: IrSimpleFunctionSymbol? = null
 
   override val mapProviderFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(daggerRuntimeInternal.packageFqName, "MapProviderFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(daggerRuntimeInternal.packageFqName, "MapProviderFactory".asName()))!!
   }
 
   override val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
@@ -634,9 +645,9 @@ internal class DaggerSymbols(
   override val mapProviderFactorySingletonFunction: IrSimpleFunctionSymbol? = null
 
   override val mapLazyFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(daggerRuntimeInternal.packageFqName, "MapLazyFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(daggerRuntimeInternal.packageFqName, "MapLazyFactory".asName()))!!
   }
 
   override val mapLazyFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
@@ -650,9 +661,9 @@ internal class DaggerSymbols(
   override val mapLazyFactorySingletonFunction: IrSimpleFunctionSymbol? = null
 
   override val mapProviderLazyFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(daggerRuntimeInternal.packageFqName, "MapProviderLazyFactory".asName())
-    )!!
+    pluginContext
+      .finderForBuiltins()
+      .findClass(ClassId(daggerRuntimeInternal.packageFqName, "MapProviderLazyFactory".asName()))!!
   }
 
   override val mapProviderLazyFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
@@ -666,12 +677,13 @@ internal class DaggerSymbols(
   override val mapProviderLazyFactorySingletonFunction: IrSimpleFunctionSymbol? = null
 
   val daggerLazy: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.DAGGER_LAZY_CLASS_ID)!!
+    pluginContext.finderForBuiltins().findClass(ClassIds.DAGGER_LAZY_CLASS_ID)!!
   }
 
   val asDaggerInternalProvider by lazy {
     pluginContext
-      .referenceFunctions(
+      .finderForBuiltins()
+      .findFunctions(
         CallableId(
           daggerInteropRuntimeInternal.packageFqName,
           Symbols.StringNames.AS_DAGGER_INTERNAL_PROVIDER.asName(),
@@ -682,7 +694,8 @@ internal class DaggerSymbols(
 
   val asDaggerMembersInjector by lazy {
     pluginContext
-      .referenceFunctions(
+      .finderForBuiltins()
+      .findFunctions(
         CallableId(
           daggerInteropRuntime.packageFqName,
           Symbols.StringNames.AS_DAGGER_MEMBERS_INJECTOR.asName(),
@@ -693,7 +706,8 @@ internal class DaggerSymbols(
 
   val asMetroMembersInjector by lazy {
     pluginContext
-      .referenceFunctions(
+      .finderForBuiltins()
+      .findFunctions(
         CallableId(
           daggerInteropRuntime.packageFqName,
           Symbols.StringNames.AS_METRO_MEMBERS_INJECTOR.asName(),

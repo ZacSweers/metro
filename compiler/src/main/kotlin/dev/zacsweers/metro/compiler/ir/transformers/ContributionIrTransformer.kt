@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.populateImplicitClassKey
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.referenceClassFrom
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireScope
@@ -218,7 +219,7 @@ internal class ContributionIrTransformer(
 
     // @Origin is on the nested contribution interface itself
     val originClassId = declaration.originClassId() ?: return
-    val originClass = context.referenceClass(originClassId)?.owner ?: return
+    val originClass = context.referenceClassFrom(originClassId, declaration)?.owner ?: return
 
     // Find the primary constructor of the origin class
     val injectConstructor by memoize {

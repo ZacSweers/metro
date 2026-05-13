@@ -120,7 +120,8 @@ internal class IrContributionData(private val metroContext: IrMetroContext) :
       }
     }
 
-    val functionsInPackage = metroContext.referenceFunctions(scopeHintFor(scope))
+    val functionsInPackage =
+      metroContext.referenceFunctionsFrom(scopeHintFor(scope), callingDeclaration)
 
     context(metroContext) {
       writeDiagnostic("discovered-hints-ir", "${scope.asFqNameString()}.txt") {
