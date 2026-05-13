@@ -6372,7 +6372,11 @@
 <li><strong>[IR]</strong> Fix <code>Map&lt;K, () -&gt; V&gt;</code> multibindings on Kotlin/JS. <code>Provider</code> does not extend <code>() -&gt; T</code> on JS, so when such a map was consumed via <code>Provider&lt;Map&lt;K, () -&gt; V&gt;&gt;</code> the values were Metro <code>Provider</code> instances and weren&rsquo;t callable as JS functions, surfacing at runtime as <code>TypeError: ... is not a function</code>. Metro now uses a JS-only runtime <code>MapFunctionFactory</code> for these cases that stores correct <code>() -&gt; V</code> lambdas.</li>
 <li><strong>[IR]</strong> Fix member injection <code>Invalid type arg</code> error when class has more generic type parameters than its parent.</li>
 <li><strong>[IR]</strong> Avoid generating nested <code>@GraphExtension</code> impl class file names that exceed the 255-byte per-segment filesystem limit. Deeply chained extensions now fall back to a stable hashed simple name once their projected basename would cross the threshold, and a warning is emitted at chain depths of 10+.</li>
-<li><strong>[IR/circuit]</strong> Insert implicit casts when a generated Circuit <code>Presenter.Factory</code>/<code>Ui.Factory</code> dispatches its <code>screen: Screen</code> parameter to an underlying assisted factory or <code>@Inject @Composable</code> function that expects a more specific <code>Screen</code> subtype. Some platforms (like JVM) silently tolerate the missing cast, but Kotlin/Wasm rejects it with a <code>call_ref</code> precise-type mismatch at load time.</li>
+<li><strong>[IR/circuit]</strong> Fix Kotlin/Wasm <code>call_ref</code> precise-type mismatches in generated Circuit factories. Some platforms silently tolerated these IR-level type ambiguities, but Kotlin/Wasm rejects them at load-time.<ul>
+<li>Insert implicit casts when a generated <code>Presenter.Factory</code>/<code>Ui.Factory</code> dispatches its <code>screen: Screen</code> parameter to an underlying assisted factory or <code>@Inject @Composable</code> function that expects a more specific <code>Screen</code> subtype.</li>
+<li>Use the substituted return type when invoking the backing <code>Provider&lt;T&gt;</code> for non-wrapped injected dependencies. Without this, the IR call&rsquo;s type was the unsubstituted <code>T</code>.</li>
+</ul>
+</li>
 <li><strong>[IR/circuit]</strong> Propagate qualifier annotations from <code>@CircuitInject</code> declarations to the generated factory classes.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
