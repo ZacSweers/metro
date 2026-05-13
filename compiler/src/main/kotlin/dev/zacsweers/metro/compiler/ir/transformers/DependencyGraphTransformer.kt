@@ -660,9 +660,12 @@ internal class DependencyGraphTransformer(
     // Reports without irElement need batching by declaration
     val (withElement, withoutElement) = reports.partition { it.irElement != null }
     for (report in withElement) {
-      diagnosticReporter
-        .at(report.irElement!!, graphDeclaration.file)
-        .report(diagnosticFactory, report.message)
+      diagnosticReporter.reportAt(
+        report.irElement!!,
+        graphDeclaration.file,
+        diagnosticFactory,
+        report.message,
+      )
     }
 
     if (withoutElement.isNotEmpty()) {

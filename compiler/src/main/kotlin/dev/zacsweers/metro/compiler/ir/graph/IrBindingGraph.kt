@@ -967,9 +967,12 @@ internal class IrBindingGraph(
       collectError(message, element, factory)
     } else {
       with(metroContext) {
-        metroContext.diagnosticReporter
-          .at(element, node.metroGraphOrFail.file)
-          .report(factory, message)
+        metroContext.diagnosticReporter.reportAt(
+          element,
+          node.metroGraphOrFail.file,
+          factory,
+          message,
+        )
       }
     }
   }
