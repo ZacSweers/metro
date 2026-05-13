@@ -102,6 +102,7 @@ interface AppGraph : LoggedInGraph.Factory {
       return ProvideCountMetroFactory/* companion */.provideCount(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")

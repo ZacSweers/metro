@@ -38,6 +38,7 @@ class ClientDevice {
       return MetroFactory/* companion */.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(userAgentProvider: UserAgentProvider): ClientDevice {
       return error(message = "Never called")
@@ -82,6 +83,7 @@ class ClientId {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): ClientId {
       return error(message = "Never called")
@@ -138,6 +140,7 @@ class CommonAppHeadersInterceptor {
       return MetroFactory/* companion */.newInstance(additionalHeaders = <this>.#additionalHeaders.invoke(), lazyDelegate = DoubleCheck/* companion */.lazy<Provider<CommonAppHeadersInterceptor>, CommonAppHeadersInterceptor>(provider = <this>.#lazyDelegate))
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(additionalHeaders: Set<Pair<String, String>>, lazyDelegate: Lazy<CommonAppHeadersInterceptor>): CommonAppHeadersInterceptor {
       return error(message = "Never called")
@@ -201,6 +204,7 @@ class InternalHeader {
       return MetroFactory/* companion */.newInstance(key = <this>.#key.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(key: String): InternalHeader {
       return error(message = "Never called")
@@ -256,6 +260,7 @@ class UserAgent {
       return MetroFactory/* companion */.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(userAgentProvider: UserAgentProvider): UserAgent {
       return error(message = "Never called")
@@ -300,6 +305,7 @@ class UserAgentProvider {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): UserAgentProvider {
       return error(message = "Never called")
@@ -425,6 +431,7 @@ interface AppGraph {
     }
 
     @ElementsIntoSet
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(@Named(name = "other") otherHeaders: Set<Pair<String, String>>): Set<Pair<String, String>> {
       return error(message = "Never called")
@@ -474,6 +481,7 @@ interface AppGraph {
 
     @IntoSet
     @Named(name = "other")
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(header: InternalHeader): Pair<String, String> {
       return error(message = "Never called")
@@ -522,6 +530,7 @@ interface AppGraph {
 
     @ElementsIntoSet
     @Named(name = "other")
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Set<Pair<String, String>> {
       return error(message = "Never called")
@@ -568,6 +577,7 @@ interface AppGraph {
       return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")

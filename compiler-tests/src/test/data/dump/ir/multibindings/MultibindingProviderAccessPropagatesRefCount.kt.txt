@@ -42,6 +42,7 @@ class A {
       return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(x: X): A {
       return error(message = "Never called")
@@ -101,6 +102,7 @@ class B {
       return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(x: X): B {
       return error(message = "Never called")
@@ -160,6 +162,7 @@ class C {
       return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(x: X): C {
       return error(message = "Never called")
@@ -219,6 +222,7 @@ class MapConsumer {
       return MetroFactory/* companion */.newInstance(map = <this>.#map)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(map: Function0<Map<Int, B>>): MapConsumer {
       return error(message = "Never called")
@@ -278,6 +282,7 @@ class ProviderMapConsumer {
       return MetroFactory/* companion */.newInstance(map = <this>.#map.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(map: Map<Int, Function0<C>>): ProviderMapConsumer {
       return error(message = "Never called")
@@ -337,6 +342,7 @@ class SetConsumer {
       return MetroFactory/* companion */.newInstance(set = <this>.#set)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(set: Function0<Set<A>>): SetConsumer {
       return error(message = "Never called")
@@ -381,6 +387,7 @@ class XImpl : X {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): XImpl {
       return error(message = "Never called")
@@ -496,7 +503,7 @@ interface TestGraph {
   @Binds
   @IntoSet
   @ComptimeOnly
-  abstract fun A.bindA(): A {
+  fun A.bindA(): A {
     return error(message = "Never called")
   }
 
@@ -504,7 +511,7 @@ interface TestGraph {
   @IntoMap
   @IntKey(value = 1)
   @ComptimeOnly
-  abstract fun B.bindB(): B {
+  fun B.bindB(): B {
     return error(message = "Never called")
   }
 
@@ -512,13 +519,13 @@ interface TestGraph {
   @IntoMap
   @IntKey(value = 1)
   @ComptimeOnly
-  abstract fun C.bindC(): C {
+  fun C.bindC(): C {
     return error(message = "Never called")
   }
 
   @Binds
   @ComptimeOnly
-  abstract fun XImpl.bindX(): X {
+  fun XImpl.bindX(): X {
     return error(message = "Never called")
   }
 

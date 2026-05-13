@@ -53,6 +53,7 @@ class Service1 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(providedExample: ProvidedExample): Service1 {
       return error(message = "Never called")
@@ -114,6 +115,7 @@ class Service10 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s9: Service9): Service10 {
       return error(message = "Never called")
@@ -175,6 +177,7 @@ class Service11 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s10: Service10): Service11 {
       return error(message = "Never called")
@@ -236,6 +239,7 @@ class Service12 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s11: Service11): Service12 {
       return error(message = "Never called")
@@ -297,6 +301,7 @@ class Service13 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s12: Service12): Service13 {
       return error(message = "Never called")
@@ -358,6 +363,7 @@ class Service14 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s13: Service13): Service14 {
       return error(message = "Never called")
@@ -419,6 +425,7 @@ class Service15 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s14: Service14): Service15 {
       return error(message = "Never called")
@@ -480,6 +487,7 @@ class Service16 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s15: Service15): Service16 {
       return error(message = "Never called")
@@ -541,6 +549,7 @@ class Service17 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s16: Service16): Service17 {
       return error(message = "Never called")
@@ -602,6 +611,7 @@ class Service18 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s17: Service17): Service18 {
       return error(message = "Never called")
@@ -663,6 +673,7 @@ class Service19 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s18: Service18): Service19 {
       return error(message = "Never called")
@@ -724,6 +735,7 @@ class Service2 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s1: Service1): Service2 {
       return error(message = "Never called")
@@ -785,6 +797,7 @@ class Service20 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s19: Service19): Service20 {
       return error(message = "Never called")
@@ -846,6 +859,7 @@ class Service21 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s20: Service20): Service21 {
       return error(message = "Never called")
@@ -907,6 +921,7 @@ class Service22 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s21: Service21): Service22 {
       return error(message = "Never called")
@@ -968,6 +983,7 @@ class Service23 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s22: Service22): Service23 {
       return error(message = "Never called")
@@ -1029,6 +1045,7 @@ class Service24 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s23: Service23): Service24 {
       return error(message = "Never called")
@@ -1090,6 +1107,7 @@ class Service25 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s24: Service24): Service25 {
       return error(message = "Never called")
@@ -1151,6 +1169,7 @@ class Service26 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s25: Service25): Service26 {
       return error(message = "Never called")
@@ -1212,6 +1231,7 @@ class Service27 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s26: Service26): Service27 {
       return error(message = "Never called")
@@ -1273,6 +1293,7 @@ class Service28 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s27: Service27): Service28 {
       return error(message = "Never called")
@@ -1334,6 +1355,7 @@ class Service29 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s28: Service28): Service29 {
       return error(message = "Never called")
@@ -1395,6 +1417,7 @@ class Service3 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s2: Service2): Service3 {
       return error(message = "Never called")
@@ -1456,6 +1479,7 @@ class Service30 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s29: Service29): Service30 {
       return error(message = "Never called")
@@ -1517,6 +1541,7 @@ class Service4 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s3: Service3): Service4 {
       return error(message = "Never called")
@@ -1578,6 +1603,7 @@ class Service5 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s4: Service4): Service5 {
       return error(message = "Never called")
@@ -1639,6 +1665,7 @@ class Service6 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s5: Service5): Service6 {
       return error(message = "Never called")
@@ -1700,6 +1727,7 @@ class Service7 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s6: Service6): Service7 {
       return error(message = "Never called")
@@ -1761,6 +1789,7 @@ class Service8 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s7: Service7): Service8 {
       return error(message = "Never called")
@@ -1822,6 +1851,7 @@ class Service9 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s8: Service8): Service9 {
       return error(message = "Never called")

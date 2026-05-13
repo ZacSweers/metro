@@ -31,6 +31,7 @@ class Service1 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Service1 {
       return error(message = "Never called")
@@ -105,6 +106,7 @@ class Service3 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s2: Service2): Service3 {
       return error(message = "Never called")
@@ -250,6 +252,7 @@ object AppModule {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(s1: Service1): Service2 {
       return error(message = "Never called")

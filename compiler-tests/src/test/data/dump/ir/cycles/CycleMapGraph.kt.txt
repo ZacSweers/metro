@@ -42,6 +42,7 @@ class X {
       return MetroFactory/* companion */.newInstance(y = <this>.#y.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(y: Y): X {
       return error(message = "Never called")
@@ -106,6 +107,7 @@ class Y {
       return MetroFactory/* companion */.newInstance(mapOfProvidersOfX = <this>.#mapOfProvidersOfX.invoke(), mapOfProvidersOfY = <this>.#mapOfProvidersOfY.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(mapOfProvidersOfX: Map<String, Function0<X>>, mapOfProvidersOfY: Map<String, Function0<Y>>): Y {
       return error(message = "Never called")
@@ -198,14 +200,18 @@ interface CycleMapGraph {
   @StringKey(value = "X")
   abstract val X.x: X
     @ComptimeOnly
-    abstract get
+    get(): X {
+      return error(message = "Never called")
+    }
 
   @Binds
   @IntoMap
   @StringKey(value = "Y")
   abstract val Y.y: Y
     @ComptimeOnly
-    abstract get
+    get(): Y {
+      return error(message = "Never called")
+    }
 
 }
 

@@ -93,6 +93,7 @@ interface AppGraph {
       return ProvideAMetroFactory/* companion */.provideA(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")

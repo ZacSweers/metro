@@ -95,6 +95,7 @@ interface AppGraph {
       return ProvideOnlyMetroFactory/* companion */.provideOnly(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")
@@ -105,7 +106,7 @@ interface AppGraph {
   @Binds
   @IntoSet
   @ComptimeOnly
-  abstract fun String.bindOnly(): String {
+  fun String.bindOnly(): String {
     return error(message = "Never called")
   }
 

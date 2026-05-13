@@ -142,6 +142,10 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
         if (!isExternal && !metroFunction.annotations.isMultibinds) {
           declaration.apply {
             body = stubExpressionBody()
+            modality = Modality.OPEN
+            if (origin == Origins.FirstParty.DEFAULT_PROPERTY_ACCESSOR) {
+              origin = Origins.Default
+            }
             comptimeOnlyConstructor?.let { ctor -> annotations += buildAnnotation(symbol, ctor) }
           }
         }

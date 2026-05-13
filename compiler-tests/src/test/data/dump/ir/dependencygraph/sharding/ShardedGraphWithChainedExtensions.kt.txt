@@ -31,6 +31,7 @@ class AppService1 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): AppService1 {
       return error(message = "Never called")
@@ -77,6 +78,7 @@ class AppService2 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): AppService2 {
       return error(message = "Never called")
@@ -123,6 +125,7 @@ class AppService3 {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): AppService3 {
       return error(message = "Never called")
@@ -193,6 +196,7 @@ class ChildService1 {
     }
 
     @SingleIn(scope = ChildScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(app1: AppService1): ChildService1 {
       return error(message = "Never called")
@@ -254,6 +258,7 @@ class ChildService2 {
     }
 
     @SingleIn(scope = ChildScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(child1: ChildService1): ChildService2 {
       return error(message = "Never called")
@@ -315,6 +320,7 @@ class ChildService3 {
     }
 
     @SingleIn(scope = ChildScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(child2: ChildService2): ChildService3 {
       return error(message = "Never called")
@@ -390,6 +396,7 @@ class GrandchildService1 {
     }
 
     @SingleIn(scope = GrandchildScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(app2: AppService2, child3: ChildService3): GrandchildService1 {
       return error(message = "Never called")
@@ -451,6 +458,7 @@ class GrandchildService2 {
     }
 
     @SingleIn(scope = GrandchildScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(gc1: GrandchildService1): GrandchildService2 {
       return error(message = "Never called")

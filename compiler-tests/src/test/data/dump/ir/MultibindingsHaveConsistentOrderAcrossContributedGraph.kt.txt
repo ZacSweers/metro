@@ -29,6 +29,7 @@ class TaskImpl1 : Task {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): TaskImpl1 {
       return error(message = "Never called")
@@ -73,6 +74,7 @@ class TaskImpl2 : Task {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): TaskImpl2 {
       return error(message = "Never called")
@@ -252,6 +254,7 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
     }
 
     @IntoSet
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Task {
       return error(message = "Never called")
@@ -299,6 +302,7 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
     }
 
     @IntoSet
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Task {
       return error(message = "Never called")
@@ -322,13 +326,17 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
   @Binds
   abstract val TaskImpl2.bind: Task
     @ComptimeOnly
-    abstract get
+    get(): Task {
+      return error(message = "Never called")
+    }
 
   @IntoSet
   @Binds
   abstract val TaskImpl1.bind: Task
     @ComptimeOnly
-    abstract get
+    get(): Task {
+      return error(message = "Never called")
+    }
 
   abstract val tasks: Set<Task>
     abstract get
