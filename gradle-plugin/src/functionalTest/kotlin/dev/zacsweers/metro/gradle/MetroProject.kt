@@ -317,7 +317,7 @@ abstract class MetroProject(
     appendLine("  jvm()")
     appendLine("  js { nodejs() }")
     appendLine("  wasmJs { nodejs() }")
-    appendLine("  iosSimulatorArm64()")
+    appendLine("  ${KmpTarget.NATIVE_HOST.gradleTargetName}()")
     appendLine("}")
   }
 }
