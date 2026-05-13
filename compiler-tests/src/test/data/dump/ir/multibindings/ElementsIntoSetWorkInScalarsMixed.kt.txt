@@ -87,6 +87,7 @@ interface AppGraph {
     }
 
     @IntoSet
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
@@ -134,6 +135,7 @@ interface AppGraph {
     }
 
     @ElementsIntoSet
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Set<Int> {
       return error(message = "Never called")

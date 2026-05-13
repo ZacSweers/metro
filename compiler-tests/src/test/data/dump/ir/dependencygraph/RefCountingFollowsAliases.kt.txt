@@ -42,6 +42,7 @@ class BarA {
       return MetroFactory/* companion */.newInstance(foo = <this>.#foo)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(foo: Function0<Foo>): BarA {
       return error(message = "Never called")
@@ -101,6 +102,7 @@ class BarB {
       return MetroFactory/* companion */.newInstance(foo = <this>.#foo)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(foo: Function0<Foo>): BarB {
       return error(message = "Never called")
@@ -146,6 +148,7 @@ class BazImpl : BazMiddle {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): BazImpl {
       return error(message = "Never called")
@@ -176,7 +179,7 @@ class BazImpl : BazMiddle {
 
     @Binds
     @ComptimeOnly
-    abstract fun bindsAsBazMiddle(instance: BazImpl): BazMiddle {
+    fun bindsAsBazMiddle(instance: BazImpl): BazMiddle {
       return error(message = "Never called")
     }
 
@@ -220,6 +223,7 @@ class FooImpl : Foo {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): FooImpl {
       return error(message = "Never called")
@@ -250,7 +254,7 @@ class FooImpl : Foo {
 
     @Binds
     @ComptimeOnly
-    abstract fun bindsAsFoo(instance: FooImpl): Foo {
+    fun bindsAsFoo(instance: FooImpl): Foo {
       return error(message = "Never called")
     }
 
@@ -325,6 +329,7 @@ class Main {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(barA: Function0<BarA>, barB: Function0<BarB>, quxA: Function0<QuxA>, quxB: Function0<QuxB>): Main {
       return error(message = "Never called")
@@ -384,6 +389,7 @@ class QuxA {
       return MetroFactory/* companion */.newInstance(baz = <this>.#baz)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(baz: Function0<Baz>): QuxA {
       return error(message = "Never called")
@@ -443,6 +449,7 @@ class QuxB {
       return MetroFactory/* companion */.newInstance(baz = <this>.#baz)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(baz: Function0<Baz>): QuxB {
       return error(message = "Never called")
@@ -518,7 +525,7 @@ interface AppGraph : BazImpl.MetroContributionToAppScope, FooImpl.MetroContribut
 
   @Binds
   @ComptimeOnly
-  abstract fun bindBaz(impl: BazMiddle): Baz {
+  fun bindBaz(impl: BazMiddle): Baz {
     return error(message = "Never called")
   }
 

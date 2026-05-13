@@ -110,6 +110,7 @@ interface AppGraph {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
@@ -150,7 +151,7 @@ interface Bindings {
 
   @BindsOptionalOf
   @ComptimeOnly
-  abstract fun optionalInt(): Int {
+  fun optionalInt(): Int {
     return error(message = "Never called")
   }
 

@@ -27,6 +27,7 @@ class Bar : Base {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Bar {
       return error(message = "Never called")
@@ -80,6 +81,7 @@ class Foo : Base {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Foo {
       return error(message = "Never called")
@@ -169,18 +171,24 @@ interface AppGraph {
   @IntoSet
   abstract val Foo.bind: Any
     @ComptimeOnly
-    abstract get
+    get(): Any {
+      return error(message = "Never called")
+    }
 
   @Binds
   abstract val Bar.bind2: Base
     @ComptimeOnly
-    abstract get
+    get(): Base {
+      return error(message = "Never called")
+    }
 
   @Binds
   @IntoSet
   abstract val Base.bind3: Any
     @ComptimeOnly
-    abstract get
+    get(): Any {
+      return error(message = "Never called")
+    }
 
   abstract val values: Set<Any>
     abstract get

@@ -79,6 +79,7 @@ abstract class AppGraph {
       return StringFieldMetroFactory/* companion */.stringField(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")

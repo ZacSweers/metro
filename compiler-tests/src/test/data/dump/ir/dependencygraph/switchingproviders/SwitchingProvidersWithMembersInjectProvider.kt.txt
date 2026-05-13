@@ -98,6 +98,7 @@ class ScopedClass {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(injectable: MembersInjector<Injectable>, injectable2: MembersInjector<Injectable>): ScopedClass {
       return error(message = "Never called")
@@ -224,6 +225,7 @@ interface AppGraph {
     }
 
     @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")

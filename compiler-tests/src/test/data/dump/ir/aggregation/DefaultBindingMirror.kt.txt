@@ -30,6 +30,7 @@ class Impl : Base<Impl>, Other {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Impl {
       return error(message = "Never called")
@@ -60,7 +61,7 @@ class Impl : Base<Impl>, Other {
 
     @Binds
     @ComptimeOnly
-    abstract fun bindsAsBase(instance: Impl): Base<*> {
+    fun bindsAsBase(instance: Impl): Base<*> {
       return error(message = "Never called")
     }
 

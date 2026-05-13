@@ -47,6 +47,7 @@ class A {
       return MetroFactory/* companion */.newInstance(b = <this>.#b.invoke(), e = <this>.#e.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(b: B, e: E): A {
       return error(message = "Never called")
@@ -106,6 +107,7 @@ class B {
       return MetroFactory/* companion */.newInstance(c = <this>.#c.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(c: C): B {
       return error(message = "Never called")
@@ -177,6 +179,7 @@ class C {
       return tmp0
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(aProvider: Function0<A>): C {
       return error(message = "Never called")
@@ -281,6 +284,7 @@ class D {
       return MetroFactory/* companion */.newInstance(b = <this>.#b.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(b: B): D {
       return error(message = "Never called")
@@ -340,6 +344,7 @@ class E {
       return MetroFactory/* companion */.newInstance(d = <this>.#d.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(d: D): E {
       return error(message = "Never called")
@@ -525,6 +530,7 @@ interface CycleGraph {
       return ProvideObjectWithCycleMetroFactory/* companion */.provideObjectWithCycle(instance = <this>.#instance, obj = <this>.#obj)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(obj: Function0<Any>): Any {
       return error(message = "Never called")

@@ -31,6 +31,7 @@ class IntHolderImpl : IntHolder {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): IntHolderImpl {
       return error(message = "Never called")
@@ -65,7 +66,7 @@ class IntHolderImpl : IntHolder {
     @Binds
     @IntKey(value = 3)
     @ComptimeOnly
-    abstract fun bindIntoMapAsIntHolder4013004651(instance: IntHolderImpl): IntHolder {
+    fun bindIntoMapAsIntHolder4013004651(instance: IntHolderImpl): IntHolder {
       return error(message = "Never called")
     }
 
@@ -179,6 +180,7 @@ interface AppGraph : IntHolderImpl.MetroContributionToAppScope {
 
     @IntoMap
     @IntKey(value = 1)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
@@ -227,6 +229,7 @@ interface AppGraph : IntHolderImpl.MetroContributionToAppScope {
 
     @IntoMap
     @IntKey(value = 2)
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")

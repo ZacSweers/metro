@@ -42,6 +42,7 @@ class Bar : Foo {
       return MetroFactory/* companion */.newInstance(fooProvider = <this>.#fooProvider)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(fooProvider: Function0<Foo>): Bar {
       return error(message = "Never called")
@@ -113,7 +114,7 @@ interface BindsCycleGraph {
 
   @Binds
   @ComptimeOnly
-  abstract fun foo(bar: Bar): Foo {
+  fun foo(bar: Bar): Foo {
     return error(message = "Never called")
   }
 

@@ -90,6 +90,7 @@ interface ExampleGraph {
         }
 
         @SingleIn(scope = AppScope::class)
+        @ComptimeOnly
         @HiddenFromObjC
         fun mirrorFunction(): String {
           return error(message = "Never called")
@@ -114,7 +115,9 @@ interface ExampleGraph {
     @Binds
     abstract val String.bind: CharSequence
       @ComptimeOnly
-      abstract get
+      get(): CharSequence {
+        return error(message = "Never called")
+      }
 
   }
 

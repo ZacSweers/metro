@@ -84,6 +84,7 @@ abstract class AppGraph : BaseGraph {
       return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): String {
       return error(message = "Never called")
@@ -153,6 +154,7 @@ open class BaseGraph {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Int {
       return error(message = "Never called")
@@ -202,6 +204,7 @@ class ProtectedConstructorClass {
       return MetroFactory.newInstance()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): ProtectedConstructorClass {
       return error(message = "Never called")

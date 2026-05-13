@@ -37,6 +37,7 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
       return MetroFactory/* companion */.newInstance<ClassWithBackRefs<T, V, E>, /* null */, /* null */>()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun <T : Any?, V : Any?, E : V> mirrorFunction(): ClassWithBackRefs<T, V, E> {
       return error(message = "Never called")
@@ -91,6 +92,7 @@ class ClassWithBounds<T : Any> {
       return MetroFactory/* companion */.newInstance<ClassWithBounds<T>>()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun <T : Any> mirrorFunction(): ClassWithBounds<T> {
       return error(message = "Never called")
@@ -145,6 +147,7 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
       return MetroFactory/* companion */.newInstance<ClassWithMultiple<T, V, E>, /* null */, /* null */>()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun <T : Any?, V : Any?, E : Any?> mirrorFunction(): ClassWithMultiple<T, V, E> {
       return error(message = "Never called")
@@ -199,6 +202,7 @@ class ClassWithNullable<T : Any?, E : T?> {
       return MetroFactory/* companion */.newInstance<ClassWithNullable<T, E>, /* null */>()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun <T : Any?, E : T?> mirrorFunction(): ClassWithNullable<T, E> {
       return error(message = "Never called")
@@ -253,6 +257,7 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
       return MetroFactory/* companion */.newInstance<ClassWithWheres<T, V, E>, /* null */, /* null */>()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun <T : Any?, V : Any?, E : V> mirrorFunction(): ClassWithWheres<T, V, E> {
       return error(message = "Never called")
@@ -307,6 +312,7 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
       return MetroFactory/* companion */.newInstance<ComplexMonster<T, V, E, LongName, NullableLongName>, /* null */, /* null */, /* null */, /* null */>()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> mirrorFunction(): ComplexMonster<T, V, E, LongName, NullableLongName> {
       return error(message = "Never called")
@@ -361,6 +367,7 @@ class SimpleClass<T : Any?> {
       return MetroFactory/* companion */.newInstance<SimpleClass<T>>()
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun <T : Any?> mirrorFunction(): SimpleClass<T> {
       return error(message = "Never called")

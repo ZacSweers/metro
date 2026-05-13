@@ -66,6 +66,7 @@ class Entry {
       return MetroFactory/* companion */.newInstance(a1 = <this>.#a1.invoke(), a2 = <this>.#a2.invoke(), b1 = <this>.#b1.invoke(), b2 = <this>.#b2.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(a1: WrapperA1, a2: WrapperA2, b1: WrapperB1, b2: WrapperB2): Entry {
       return error(message = "Never called")
@@ -125,6 +126,7 @@ class SetConsumerA {
       return MetroFactory/* companion */.newInstance(set = <this>.#set.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(set: Set<Int>): SetConsumerA {
       return error(message = "Never called")
@@ -184,6 +186,7 @@ class SetConsumerB {
       return MetroFactory/* companion */.newInstance(set = <this>.#set.invoke())
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(set: Set<Int>): SetConsumerB {
       return error(message = "Never called")
@@ -243,6 +246,7 @@ class WrapperA1 {
       return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(consumer: Function0<SetConsumerA>): WrapperA1 {
       return error(message = "Never called")
@@ -302,6 +306,7 @@ class WrapperA2 {
       return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(consumer: Function0<SetConsumerA>): WrapperA2 {
       return error(message = "Never called")
@@ -361,6 +366,7 @@ class WrapperB1 {
       return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(consumer: Function0<SetConsumerB>): WrapperB1 {
       return error(message = "Never called")
@@ -420,6 +426,7 @@ class WrapperB2 {
       return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(consumer: Function0<SetConsumerB>): WrapperB2 {
       return error(message = "Never called")
@@ -530,6 +537,7 @@ interface TestGraph {
       return ProvideBaseMetroFactory/* companion */.provideBase(instance = <this>.#instance)
     }
 
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): Base {
       return error(message = "Never called")
@@ -578,6 +586,7 @@ interface TestGraph {
     }
 
     @IntoSet
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(base: Base): Int {
       return error(message = "Never called")
@@ -626,6 +635,7 @@ interface TestGraph {
     }
 
     @IntoSet
+    @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(base: Base): Int {
       return error(message = "Never called")
