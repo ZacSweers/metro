@@ -66,7 +66,10 @@ jobs:
     needs: generate-matrix
     timeout-minutes: 60
     strategy:
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      # TEMP: restricted to 2.4.0-Beta2 only while debugging the Beta2/RC hang.
+      # Restore to `${{ fromJson(needs.generate-matrix.outputs.matrix) }}` when fixed.
+      matrix:
+        kotlin-compiler: ["2.4.0-Beta2"]
       fail-fast: false
     permissions:
       checks: write
@@ -85,6 +88,40 @@ jobs:
 
       - name: Check root project
         run: |
+          # Watchdog: heartbeat every 60s. Gradle only emits lifecycle output on task completion —
+          # when a task hangs we get silence in the main stream. The watchdog logs interleave so we
+          # can pinpoint when the daemon went idle and which JVMs/subprocesses were alive at that
+          # moment. Lightweight snapshots (jps/top/df) go to stdout; heavyweight ones (jstack and
+          # the full process tree) go to _diagnostics/ for artifact upload.
+          mkdir -p _diagnostics
+          (
+            tick=0
+            while true; do
+              ts=$(date -u +%H:%M:%S)
+              tick=$((tick + 1))
+              echo "[watchdog $ts] === tick $tick ==="
+              echo "[watchdog $ts] uptime + load:"
+              uptime 2>&1 | sed 's/^/[watchdog]   /' || true
+              echo "[watchdog $ts] mem:"
+              free -h 2>&1 | sed 's/^/[watchdog]   /' || true
+              echo "[watchdog $ts] disk:"
+              df -h / 2>&1 | sed 's/^/[watchdog]   /' || true
+              echo "[watchdog $ts] jps:"
+              jps -lvm 2>&1 | sed 's/^/[watchdog]   /' || true
+              echo "[watchdog $ts] top (cpu hogs):"
+              top -bn1 -w512 2>/dev/null | head -25 | sed 's/^/[watchdog]   /' || true
+              # Heavy snapshots → files. jstack every running JVM, plus a process tree to surface
+              # node/yarn/konan subprocesses that don't show up in jps.
+              for pid in $(jps -q 2>/dev/null); do
+                jstack -l "$pid" > "_diagnostics/jstack-$pid-$ts.txt" 2>/dev/null || true
+              done
+              ps auxf > "_diagnostics/ps-$ts.txt" 2>/dev/null || true
+              sleep 60
+            done
+          ) &
+          WATCHDOG_PID=$!
+          trap 'kill "$WATCHDOG_PID" 2>/dev/null || true' EXIT
+
           # Each matrix Kotlin version may resolve a different NPM dep set, so refresh the
           # kotlin-js-store lockfiles before `check` validates them — but only when the matrix
           # version differs from the default in libs.versions.toml (the committed lockfiles
@@ -103,19 +140,27 @@ jobs:
           ./gradlew :compiler-tests:generateTests --console=plain '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
           echo "::endgroup::"
           echo "::group::Run checks"
-          ./gradlew check --continue --console=plain '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          # --info: emit task-start lines + test/Kotlin compile progress, not just task-complete
+          # --warning-mode all: surface deprecations that may correlate with hangs
+          # --profile: write build/reports/profile/*.html (captured by upload-reports on failure)
+          # metro.ciVerbose: enables testLogging events on every Test task (build-logic/metro.base)
+          # metro.debugCompilerTests: enables stdout + heap-dump-on-OOM in compiler-tests
+          ./gradlew check --continue --console=plain --info --warning-mode all --profile '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.ciVerbose=true -Pmetro.debugCompilerTests=true ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
           echo "::endgroup::"
           # TODO disabled for now because GHA is running smaller machines now it seems
           # echo "Running large tests..."
           # ./gradlew :compiler-tests:test --quiet '-Pmetro.enableLargeTests' '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v7
         with:
           name: reports-core-${{ matrix.kotlin-compiler }}
           path: |
             **/build/reports/**
+            **/build/test-results/**
+            tmp/**
+            _diagnostics/**
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v6

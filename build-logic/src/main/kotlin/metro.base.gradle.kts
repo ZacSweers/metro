@@ -42,12 +42,29 @@ pluginManager.withPlugin("java") {
 }
 
 // Suppress native access warnings and ReservedStackAccess warnings in forked JVMs
+val ciVerbose = providers.gradleProperty("metro.ciVerbose").map { it.toBoolean() }.orElse(false)
+
 tasks.withType<Test>().configureEach {
   jvmArgs(
     "--enable-native-access=ALL-UNNAMED",
     "--sun-misc-unsafe-memory-access=allow",
     "-XX:StackReservedPages=0",
   )
+
+  // metro.ciVerbose surfaces test-lifecycle events (started/passed/skipped/failed) and stdout/err
+  // so CI logs show in-flight test progress instead of just batch-completion summaries. Useful
+  // for diagnosing test hangs where the build dies inside a single test without ever printing a
+  // result line.
+  if (ciVerbose.get()) {
+    testLogging {
+      events("started", "passed", "skipped", "failed")
+      showStandardStreams = true
+      showStackTraces = true
+      showCauses = true
+      exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+      displayGranularity = 0
+    }
+  }
 }
 
 tasks.withType<JavaExec>().configureEach {
