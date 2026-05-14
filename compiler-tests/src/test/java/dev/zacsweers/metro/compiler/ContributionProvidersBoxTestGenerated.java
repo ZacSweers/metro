@@ -523,6 +523,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("GeneratedGraphExtension.kt")
+    public void testGeneratedGraphExtension() {
+      runTest("compiler-tests/src/test/data/box/api/GeneratedGraphExtension.kt");
+    }
+
+    @Test
     @TestMetadata("GeneratedProvidesInGraph.kt")
     public void testGeneratedProvidesInGraph() {
       runTest("compiler-tests/src/test/data/box/api/GeneratedProvidesInGraph.kt");

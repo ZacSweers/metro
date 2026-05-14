@@ -7,6 +7,8 @@ import androidx.compose.compiler.plugins.kotlin.k2.ComposeFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
+import dev.zacsweers.metro.compiler.api.GenerateGraphExtensionContributionExtension
+import dev.zacsweers.metro.compiler.api.GenerateGraphExtensionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
@@ -231,6 +233,7 @@ class MetroExtensionRegistrarConfigurator(
               GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
             )
             add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
+            add(GenerateGraphExtensionExtension.Factory().create(session, options, compatContext))
             add(GenerateProvidesInGraphExtension.Factory().create(session, options, compatContext))
             if (options.enableCircuitCodegen) {
               add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
@@ -246,6 +249,10 @@ class MetroExtensionRegistrarConfigurator(
             )
             add(
               GenerateBindsContributionMetroExtension.Factory()
+                .create(session, options, compatContext)
+            )
+            add(
+              GenerateGraphExtensionContributionExtension.Factory()
                 .create(session, options, compatContext)
             )
             if (options.enableCircuitCodegen) {
