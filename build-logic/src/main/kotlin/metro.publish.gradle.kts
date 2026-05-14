@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import foundry.gradle.properties.PropertyResolver
+import org.gradle.api.publish.PublishingExtension
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
@@ -30,9 +31,20 @@ tasks
 
 // `testKitSupportForJava` is only meant for the local FunctionalTest repo; don't let it publish
 // to Maven Central where it would race the real `maven` publication at the same coordinates.
-// The symmetric `maven` -> FunctionalTest task is left enabled: modules where artifactId matches
-// project.name (e.g. `:compiler`) don't get a `testKitSupportForJava` pub at all, so that task is
-// the only thing installing them into the FunctionalTest repo.
 tasks
   .matching { it.name == "publishTestKitSupportForJavaPublicationToMavenCentralRepository" }
   .configureEach { enabled = false }
+
+// Conversely, when `testKitSupportForJava` exists, disable the `maven` -> FunctionalTest task so
+// the two don't overwrite each other in the local repo. autonomousapps only creates this pub when
+// the existing `maven` pub's GAV differs from `(group, project.name, version)` -- which happens
+// for compat modules where POM_ARTIFACT_ID != project.name. Modules without the testkit pub
+// (e.g. `:compiler`) need the `maven` -> FunctionalTest task to stay enabled; otherwise nothing
+// installs them. autonomousapps creates the pub inside its own `afterEvaluate`, so check from a
+// later one.
+afterEvaluate {
+  val publishing = extensions.findByType(PublishingExtension::class.java) ?: return@afterEvaluate
+  if (publishing.publications.findByName("testKitSupportForJava") != null) {
+    tasks.findByName("publishMavenPublicationToFunctionalTestRepository")?.enabled = false
+  }
+}
