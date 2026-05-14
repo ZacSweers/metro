@@ -4,13 +4,16 @@ Changelog
 **Unreleased**
 --------------
 
+### Changes
+
+- Update Compose Multiplatform (used by the metrox-viewmodel artifacts) to `1.11.0`.
+
 1.1.0
 -----
 
 _2026-05-13_
 
 This release is identical to [1.0.1](https://github.com/ZacSweers/metro/releases/tag/1.0.1) but removes support for Kotlin `2.2.20` and `2.2.21`.
-
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
