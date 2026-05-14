@@ -116,6 +116,12 @@ val shadowJar =
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     mergeServiceFiles()
 
+    // Multiple embedded deps ship a JPMS `module-info.class` (incl. multi-release variants under
+    // META-INF/versions/N/). They describe the unshaded namespace, so they're meaningless after
+    // relocation.
+    exclude("module-info.class")
+    exclude("META-INF/versions/*/module-info.class")
+
     relocate("androidx.collection", "dev.zacsweers.metro.compiler.shaded.androidx.collection")
     relocate("androidx.tracing", "dev.zacsweers.metro.compiler.shaded.androidx.tracing")
     relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
