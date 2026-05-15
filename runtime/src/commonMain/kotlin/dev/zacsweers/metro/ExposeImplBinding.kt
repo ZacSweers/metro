@@ -6,7 +6,7 @@ import kotlin.annotation.AnnotationTarget.CLASS
 
 /**
  * When `generateContributionProviders` is enabled, classes annotated with `@Contributes*` and
- * `@Inject` normally ecnapsulate their implementation behind a generated `@Provides` binding. This
+ * `@Inject` normally encapsulate their implementation behind a generated `@Provides` binding. This
  * means the implementation type cannot be directly injected; only the bound supertype is available.
  *
  * In some cases, you may want to still expose the underlying impl binding on the graph too. To do
