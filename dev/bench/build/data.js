@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778736997030,
+  "lastUpdate": 1778867474742,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -14784,6 +14784,62 @@ window.BENCHMARK_DATA = {
             "value": 31955.685999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +3.35%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Nicholas Doglio",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Nicholas Doglio",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f24e154c~1",
+          "message": "[before] Fix minor typo in ExposeImplBinding docs (#2315)",
+          "timestamp": "2026-05-15T17:09:48+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f24e154caadcbc78cdc057af44524d7cc9ebfa64"
+        },
+        "date": 1778867474742,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19692.971999999998,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Nicholas Doglio",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Nicholas Doglio",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f24e154caadcbc78cdc057af44524d7cc9ebfa64",
+          "message": "[after] Fix minor typo in ExposeImplBinding docs (#2315)",
+          "timestamp": "2026-05-15T17:09:48+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f24e154caadcbc78cdc057af44524d7cc9ebfa64"
+        },
+        "date": 1778867474743,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20296.404000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +3.06%"
           }
         ]
       }

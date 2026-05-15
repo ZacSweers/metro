@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778736996907,
+  "lastUpdate": 1778867473158,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -14784,6 +14784,62 @@ window.BENCHMARK_DATA = {
             "value": 0.18580279056659563,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.18%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Nicholas Doglio",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Nicholas Doglio",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f24e154c~1",
+          "message": "[before] Fix minor typo in ExposeImplBinding docs (#2315)",
+          "timestamp": "2026-05-15T17:09:48+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f24e154caadcbc78cdc057af44524d7cc9ebfa64"
+        },
+        "date": 1778867473158,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.18089255475768237,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Nicholas Doglio",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Nicholas Doglio",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f24e154caadcbc78cdc057af44524d7cc9ebfa64",
+          "message": "[after] Fix minor typo in ExposeImplBinding docs (#2315)",
+          "timestamp": "2026-05-15T17:09:48+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f24e154caadcbc78cdc057af44524d7cc9ebfa64"
+        },
+        "date": 1778867473159,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.18136625637971204,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.26%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
