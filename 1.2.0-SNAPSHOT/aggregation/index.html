@@ -2348,17 +2348,17 @@
 </code></pre></div>
 <h2 id="generatecontributionproviders"><code>generateContributionProviders</code><a class="headerlink" href="#generatecontributionproviders" title="Permanent link">&para;</a></h2>
 <p>If you enable the new <code>generateContributionProviders</code> feature, Metro will instead generate top-level <code>@Provides</code> declarations that mirror the injected class&rsquo;s inputs but only return its <em>bound type</em>. This means the annotated class can remain <code>internal</code>, which both helps encapsulation and incremental compilation.</p>
-<div class="highlight"><pre><span></span><code>interface Base
+<div class="highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nc">Base</span>
 
-@ContributesBinding(AppScope::class)
-@Inject
-internal class Impl : Base
+<span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="nd">@Inject</span>
+<span class="kd">internal</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">Impl</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Base</span>
 
-// Works across modules!
-@DependencyGraph(AppScope::class)
-interface AppGraph {
-  val base: Base
-}
+<span class="c1">// Works across modules!</span>
+<span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">base</span><span class="p">:</span><span class="w"> </span><span class="n">Base</span>
+<span class="p">}</span>
 </code></pre></div>
 <p>The tradeoff is that <code>Impl</code> is no longer available directly on the graph.</p>
 <h2 id="implementation-notes">Implementation notes<a class="headerlink" href="#implementation-notes" title="Permanent link">&para;</a></h2>

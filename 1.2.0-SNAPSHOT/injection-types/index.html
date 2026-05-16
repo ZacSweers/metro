@@ -2196,7 +2196,7 @@ Metro will automatically generate a default factory as a nested class within the
 </code></pre></div>
 <p>If a nested class called <code>Factory</code> is already present, Metro will do nothing.</p>
 <h3 id="why-opt-in">Why opt-in?<a class="headerlink" href="#why-opt-in" title="Permanent link">&para;</a></h3>
-<p>The main reason this is behind an opt-in option at the moment is because compiler plugin IDE support requires some rudimentary configuration to work. See <a href="../installation.md/#ide-support">the docs for how to enable IDE support</a>.</p>
+<p>The main reason this is behind an opt-in option at the moment is because compiler plugin IDE support requires some rudimentary configuration to work. See <a href="../installation/#ide-support">the docs for how to enable IDE support</a>.</p>
 <p>Because of this, it&rsquo;s likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.</p>
 <div class="highlight"><pre><span></span><code>metro {
   generateAssistedFactories.set(true)
@@ -2401,7 +2401,7 @@ Metro will automatically generate a default factory as a nested class within the
 <li>Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not<br />
    currently compatible with non-JVM targets.</li>
 <li>IDE support is rudimentary at best and currently requires enabling a custom registry flag.<br />
-   See <a href="../installation.md/#ide-support">the docs for how to enable IDE support</a>.</li>
+   See <a href="../installation/#ide-support">the docs for how to enable IDE support</a>.</li>
 </ol>
 <p>Because of this, it&rsquo;s likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
