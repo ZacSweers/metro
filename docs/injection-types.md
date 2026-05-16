@@ -91,7 +91,7 @@ If a nested class called `Factory` is already present, Metro will do nothing.
 
 ### Why opt-in?
 
-The main reason this is behind an opt-in option at the moment is because compiler plugin IDE support requires some rudimentary configuration to work. See [the docs for how to enable IDE support](installation.md/#ide-support).
+The main reason this is behind an opt-in option at the moment is because compiler plugin IDE support requires some rudimentary configuration to work. See [the docs for how to enable IDE support](installation.md#ide-support).
 
 Because of this, it's likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
 
@@ -333,7 +333,7 @@ There are three reasons this is behind an opt-in option at the moment.
 2. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not
    currently compatible with non-JVM targets.
 3. IDE support is rudimentary at best and currently requires enabling a custom registry flag.
-   See [the docs for how to enable IDE support](installation.md/#ide-support).
+   See [the docs for how to enable IDE support](installation.md#ide-support).
 
 Because of this, it's likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
 
