@@ -2054,10 +2054,12 @@
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">ViewModelGraph</span>
 </code></pre></div>
-<p><code>ViewModelGraph</code> includes map multibindings for:<br />
-- <code>viewModelProviders</code> - Standard ViewModel providers<br />
-- <code>assistedFactoryProviders</code> - Assisted ViewModel factory providers<br />
-- <code>manualAssistedFactoryProviders</code> - Manual assisted factory providers</p>
+<p><code>ViewModelGraph</code> includes map multibindings for:</p>
+<ul>
+<li><code>viewModelProviders</code> - Standard ViewModel providers</li>
+<li><code>assistedFactoryProviders</code> - Assisted ViewModel factory providers</li>
+<li><code>manualAssistedFactoryProviders</code> - Manual assisted factory providers</li>
+</ul>
 <p>It also provides a <code>metroViewModelFactory</code> property for creating ViewModels.</p>
 <h3 id="metroviewmodelfactory">MetroViewModelFactory<a class="headerlink" href="#metroviewmodelfactory" title="Permanent link">&para;</a></h3>
 <p><code>MetroViewModelFactory</code> is a <code>ViewModelProvider.Factory</code> implementation that uses injected maps to create ViewModels.</p>

@@ -2271,11 +2271,13 @@
 <li><code>Kotlin-Inject</code>: Running kotlin-inject with kotlin-inject-anvil for contribution merging.</li>
 </ul>
 <h3 id="build-performance">Build Performance<a class="headerlink" href="#build-performance" title="Permanent link">&para;</a></h3>
-<p>Metro&rsquo;s compiler plugin is designed to be <em>fast</em>. Running as a compiler plugin allows it to:<br />
-- Avoid generating new sources that need to be compiled<br />
-- Avoid running KSP/KAPT<br />
-- Generate IR that lowers directly into target platforms<br />
-- Hook directly into kotlinc&rsquo;s IC APIs.</p>
+<p>Metro&rsquo;s compiler plugin is designed to be <em>fast</em>. Running as a compiler plugin allows it to:</p>
+<ul>
+<li>Avoid generating new sources that need to be compiled</li>
+<li>Avoid running KSP/KAPT</li>
+<li>Generate IR that lowers directly into target platforms</li>
+<li>Hook directly into kotlinc&rsquo;s IC APIs.</li>
+</ul>
 <p><strong>In a straightforward migration, it improves ABI-changing build performance by 80–85%.</strong></p>
 <h4 id="methodology">Methodology<a class="headerlink" href="#methodology" title="Permanent link">&para;</a></h4>
 <p>This benchmark uses <a href="https://github.com/gradle/gradle-profiler">gradle-profiler</a> to benchmark build performance using different tools.</p>
