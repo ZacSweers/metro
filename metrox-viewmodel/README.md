@@ -32,6 +32,7 @@ interface AppGraph : ViewModelGraph
 ```
 
 `ViewModelGraph` includes map multibindings for:
+
 - `viewModelProviders` - Standard ViewModel providers
 - `assistedFactoryProviders` - Assisted ViewModel factory providers
 - `manualAssistedFactoryProviders` - Manual assisted factory providers

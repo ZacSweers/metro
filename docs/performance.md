@@ -18,6 +18,7 @@ The below sections describe the two scenarios Metro's benchmarks run against usi
 ### Build Performance
 
 Metro's compiler plugin is designed to be _fast_. Running as a compiler plugin allows it to:
+
 - Avoid generating new sources that need to be compiled
 - Avoid running KSP/KAPT
 - Generate IR that lowers directly into target platforms
