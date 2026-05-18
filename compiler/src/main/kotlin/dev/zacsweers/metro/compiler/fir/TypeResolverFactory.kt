@@ -44,7 +44,8 @@ public sealed interface MetroFirTypeResolver {
     public fun create(functionSymbol: FirFunctionSymbol<*>): MetroFirTypeResolver?
 
     public companion object {
-      internal operator fun invoke(session: FirSession): Factory = FactoryImpl(session)
+      /** Use the cached factory provided by the API if possible. */
+      operator fun invoke(session: FirSession): Factory = FactoryImpl(session)
     }
   }
 
@@ -158,7 +159,7 @@ public sealed interface MetroFirTypeResolver {
   }
 }
 
-internal fun MetroFirTypeResolver.Factory.caching(): MetroFirTypeResolver.Factory {
+public fun MetroFirTypeResolver.Factory.caching(): MetroFirTypeResolver.Factory {
   return object : MetroFirTypeResolver.Factory by this {
     private val delegate = this@caching
     private val typeResolverCache = mutableMapOf<FirClassLikeSymbol<*>, Any>()
