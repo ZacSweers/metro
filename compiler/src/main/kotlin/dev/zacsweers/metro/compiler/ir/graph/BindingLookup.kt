@@ -638,11 +638,13 @@ internal class BindingLookup(
         duplicateBindings[key]?.let { onDuplicateBindings(key, it.toList()) }
 
         // Check if this is available from parent and is scoped.
-        // Skip locally declared bindings, they're explicitly provided in this graph
-        // (e.g. via @Provides) and should not be delegated to a parent even if the
-        // parent has the same key under a different scope.
-        // "If graph A provides `Logger` and graph B also provides `Logger` (overriding A's),
-        // ensure graph C uses B's"
+        // Skip locally declared bindings: they're explicitly provided in this graph (e.g. via
+        // `@Provides`) and should not be delegated to a parent even if the parent has the same
+        // key under a different scope. A local binding whose key is also bound by an ancestor is
+        // either an intentional override (annotated with `@OverridesParentBinding`) or an
+        // `INHERITED_BINDING_SHADOWED` error — both decided by `BindingGraphGenerator`'s parent
+        // context loop. By the time we reach this resolution path, only the local binding is in
+        // play.
         val scope = binding.scope
         if (scope != null && key !in locallyDeclaredKeys && parentContext?.contains(key) == true) {
           val token = parentContext.mark(key, scope)

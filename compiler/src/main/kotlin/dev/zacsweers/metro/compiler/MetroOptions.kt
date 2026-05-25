@@ -297,6 +297,18 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  PARENT_BINDING_OVERRIDE_BEHAVIOR(
+    RawMetroOption(
+      name = "parent-binding-override-behavior",
+      defaultValue = ParentBindingOverrideBehavior.ALLOW.name,
+      valueDescription = ParentBindingOverrideBehavior.entries.joinToString("|"),
+      description =
+        "Controls what happens when a graph extension declares a binding for a key already bound in an ancestor graph without an explicit @OverridesParentBinding annotation.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
+  ),
   INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY(
     RawMetroOption(
       name = "interop-annotations-named-arg-severity",
@@ -988,6 +1000,10 @@ public data class MetroOptions(
     },
   public val warnOnInjectAnnotationPlacement: Boolean =
     MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT.raw.defaultValue.expectAs(),
+  public val parentBindingOverrideBehavior: ParentBindingOverrideBehavior =
+    MetroOption.PARENT_BINDING_OVERRIDE_BEHAVIOR.raw.defaultValue.expectAs<String>().let {
+      ParentBindingOverrideBehavior.valueOf(it)
+    },
   public val interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
     MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -1147,6 +1163,8 @@ public data class MetroOptions(
       base.nonPublicContributionSeverity
     public var optionalBindingBehavior: OptionalBindingBehavior = base.optionalBindingBehavior
     public var warnOnInjectAnnotationPlacement: Boolean = base.warnOnInjectAnnotationPlacement
+    public var parentBindingOverrideBehavior: ParentBindingOverrideBehavior =
+      base.parentBindingOverrideBehavior
     public var interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
       base.interopAnnotationsNamedArgSeverity
     public var unusedGraphInputsSeverity: DiagnosticSeverity = base.unusedGraphInputsSeverity
@@ -1359,6 +1377,7 @@ public data class MetroOptions(
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
         warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement,
+        parentBindingOverrideBehavior = parentBindingOverrideBehavior,
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
         unusedGraphInputsSeverity = unusedGraphInputsSeverity,
         enabledLoggers = enabledLoggers,
@@ -1596,6 +1615,12 @@ public data class MetroOptions(
 
           WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
             warnOnInjectAnnotationPlacement = configuration.getAsBoolean(entry)
+
+          PARENT_BINDING_OVERRIDE_BEHAVIOR ->
+            parentBindingOverrideBehavior =
+              configuration.getAsString(entry).let {
+                ParentBindingOverrideBehavior.valueOf(it.uppercase(Locale.US))
+              }
 
           INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
             interopAnnotationsNamedArgSeverity =

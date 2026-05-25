@@ -326,6 +326,9 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
             )
           )
           add(
+            lazyOption("parent-binding-override-behavior", extension.parentBindingOverrideBehavior)
+          )
+          add(
             lazyOption(
               "interop-annotations-named-arg-severity",
               extension.interopAnnotationsNamedArgSeverity,

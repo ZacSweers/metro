@@ -122,6 +122,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, nonPublicContributionSeverity)
               WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
+              PARENT_BINDING_OVERRIDE_BEHAVIOR ->
+                processor.option(entry.raw.cliOption, parentBindingOverrideBehavior)
               INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
                 processor.option(entry.raw.cliOption, interopAnnotationsNamedArgSeverity)
               UNUSED_GRAPH_INPUTS_SEVERITY ->

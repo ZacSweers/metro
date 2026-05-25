@@ -115,6 +115,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("OverridesParentBindingInvalidSite.kt")
+    public void testOverridesParentBindingInvalidSite() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/OverridesParentBindingInvalidSite.kt");
+    }
+
+    @Test
     @TestMetadata("PrivateContributionError.kt")
     public void testPrivateContributionError() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/PrivateContributionError.kt");
@@ -457,6 +463,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("InheritedBindingShadowed.kt")
+    public void testInheritedBindingShadowed() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/InheritedBindingShadowed.kt");
+    }
+
+    @Test
     @TestMetadata("InternalBindings.kt")
     public void testInternalBindings() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/InternalBindings.kt");
@@ -490,6 +502,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("MultipleMissingDeps.kt")
     public void testMultipleMissingDeps() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MultipleMissingDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("ParentBindingOverrideDisallowed.kt")
+    public void testParentBindingOverrideDisallowed() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/ParentBindingOverrideDisallowed.kt");
     }
 
     @Test
@@ -1113,6 +1131,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DuplicateMapKeysAcrossExtensions.kt")
+    public void testDuplicateMapKeysAcrossExtensions() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/DuplicateMapKeysAcrossExtensions.kt");
+    }
+
+    @Test
     @TestMetadata("ElementsIntoSetMustHaveTypeArg.kt")
     public void testElementsIntoSetMustHaveTypeArg() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/ElementsIntoSetMustHaveTypeArg.kt");
@@ -1146,6 +1170,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("MissingBindingFunctionType.kt")
     public void testMissingBindingFunctionType() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/MissingBindingFunctionType.kt");
+    }
+
+    @Test
+    @TestMetadata("OverridesParentBindingOnSetContribution.kt")
+    public void testOverridesParentBindingOnSetContribution() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/OverridesParentBindingOnSetContribution.kt");
     }
 
     @Test

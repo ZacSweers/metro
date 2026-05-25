@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.ParentBindingOverrideBehavior
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsLikeCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
@@ -26,10 +29,12 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
+import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
@@ -40,6 +45,7 @@ import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.name.CallableId
 
 /**
  * Generates an [IrBindingGraph] for the given [node]. This only constructs the graph from available
@@ -211,6 +217,14 @@ internal class BindingGraphGenerator(
           // If we already have a binding provisioned in this scenario, ignore the parent's version.
           // This includes multibinding contributors — the same contribution discovered through
           // multiple include/contribution paths should only be registered once.
+          // A local binding from a *different* source than this inherited factory is a real shadow
+          // of an ancestor binding (same container reached from multiple levels is just dedup).
+          if (typeKey.multibindingKeyData == null) {
+            val existing = bindingLookup[typeKey]
+            if (existing != null && existing.sourceCallableId() != providerFactory.callableId) {
+              applyParentShadowBehavior(typeKey, existing)
+            }
+          }
           continue
         }
 
@@ -290,6 +304,13 @@ internal class BindingGraphGenerator(
           // If we already have a binding provisioned in this scenario, ignore the parent's version.
           // This includes multibinding contributors, so we ensure the same contribution discovered
           // through multiple include/contribution paths should only be registered once.
+          // A local binding from a *different* source than this inherited binds is a real shadow.
+          if (typeKey.multibindingKeyData == null) {
+            val existing = bindingLookup[typeKey]
+            if (existing != null && existing.sourceCallableId() != bindsCallable.callableId) {
+              applyParentShadowBehavior(typeKey, existing)
+            }
+          }
           continue
         }
 
@@ -667,8 +688,13 @@ internal class BindingGraphGenerator(
             // added through graph.addBinding(), which is disabled when full graph validation is
             // off.
             if (key in bindingLookup) {
-              // If we already have a binding provisioned in this scenario, ignore the parent's
-              // version
+              // The extension declares its own binding for this scoped inherited key. Multibinding
+              // contribution keys are synthetic per-contribution and disjoint with the parent's,
+              // so a collision here only happens for regular bindings — map-key duplicates land
+              // in validateMultibindings instead.
+              if (key.multibindingKeyData == null) {
+                bindingLookup[key]?.let { applyParentShadowBehavior(key, it) }
+              }
               continue
             }
 
@@ -707,6 +733,73 @@ internal class BindingGraphGenerator(
     }
 
     return graph
+  }
+
+  private fun IrBinding.hasOverridesParentBindingAnnotation(): Boolean {
+    return when (this) {
+      is IrBinding.BindingWithAnnotations -> annotations.isOverridesParentBinding
+      is IrBinding.BoundInstance -> {
+        val decl = reportableDeclaration ?: return false
+        decl
+          .metroAnnotations(metroSymbols.classIds, MetroAnnotations.Kind.OverridesParentBinding)
+          .isOverridesParentBinding
+      }
+      else -> false
+    }
+  }
+
+  /** The declaring callable of this binding, used to tell same-source dedup from a real shadow. */
+  private fun IrBinding.sourceCallableId(): CallableId? =
+    when (this) {
+      is IrBinding.Provided -> providerFactory.callableId
+      is IrBinding.Alias -> bindsCallable?.callableId
+      else -> null
+    }
+
+  /**
+   * Applies [MetroOptions.parentBindingOverrideBehavior] when a locally-declared [localBinding]
+   * shadows a binding inherited from an ancestor graph. The local binding still wins at resolution
+   * time (handled by the caller); this only decides whether to complain. Callers must have already
+   * ruled out same-source dedup (the same binding container reachable from multiple levels).
+   */
+  private fun applyParentShadowBehavior(key: IrTypeKey, localBinding: IrBinding) {
+    val behavior = options.parentBindingOverrideBehavior
+    if (behavior == ParentBindingOverrideBehavior.ALLOW) return
+
+    val declaration = localBinding.reportableDeclaration ?: node.sourceGraph
+    val keyRender = key.renderForDiagnostic(short = false)
+    val graphName = node.sourceGraph.name.asString()
+    val prefix =
+      "[Metro/InheritedBindingShadowed] Graph extension '$graphName' declares a binding for " +
+        "'$keyRender' that shadows an inherited binding from an ancestor graph."
+
+    when (behavior) {
+      ParentBindingOverrideBehavior.ALLOW -> return
+      ParentBindingOverrideBehavior.DISALLOW ->
+        reportCompat(
+          declaration,
+          MetroDiagnostics.INHERITED_BINDING_SHADOWED,
+          "$prefix Overriding inherited bindings is disallowed " +
+            "(parentBindingOverrideBehavior = DISALLOW). Differentiate via a qualifier or type.",
+        )
+      ParentBindingOverrideBehavior.WARN,
+      ParentBindingOverrideBehavior.REQUIRE_ANNOTATION -> {
+        if (localBinding.hasOverridesParentBindingAnnotation()) return
+        val factory =
+          if (behavior == ParentBindingOverrideBehavior.WARN) {
+            MetroDiagnostics.INHERITED_BINDING_SHADOWED_WARNING
+          } else {
+            MetroDiagnostics.INHERITED_BINDING_SHADOWED
+          }
+        reportCompat(
+          declaration,
+          factory,
+          "$prefix If this is intentional, annotate the local declaration with " +
+            "`@OverridesParentBinding`. Otherwise, remove the duplicate or differentiate via a " +
+            "qualifier or type.",
+        )
+      }
+    }
   }
 
   /** Collects all inherited data from parent nodes in a single pass. */

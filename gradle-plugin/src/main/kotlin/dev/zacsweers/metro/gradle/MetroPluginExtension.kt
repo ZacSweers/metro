@@ -239,6 +239,17 @@ constructor(
     objects.booleanProperty("metro.warnOnInjectAnnotationPlacement", true)
 
   /**
+   * Controls what happens when a graph extension declares a binding for a key already bound in an
+   * ancestor graph without an explicit `@OverridesParentBinding` annotation. Default is
+   * [ParentBindingOverrideBehavior.ALLOW].
+   */
+  @ExperimentalMetroGradleApi
+  public val parentBindingOverrideBehavior: Property<ParentBindingOverrideBehavior> =
+    objects
+      .property(ParentBindingOverrideBehavior::class.java)
+      .convention(ParentBindingOverrideBehavior.ALLOW)
+
+  /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters interop
    * annotations using positional arguments instead of named arguments.
    *

@@ -85,7 +85,6 @@ internal open class MutableBindingGraph<
   // Populated by initial graph setup and later seal()
   override val bindings = MutableScatterMap<TypeKey, Binding>(256)
   private val bindingIndices = MutableObjectIntMap<TypeKey>()
-  private val reportedMissingKeys = mutableSetOf<TypeKey>()
 
   var sealed = false
     private set
@@ -142,6 +141,8 @@ internal open class MutableBindingGraph<
 
     sealed = true
 
+    val reportedMissingKeys = mutableSetOf<TypeKey>()
+
     /**
      * Build the full adjacency mapping of keys to all their dependencies.
      *
@@ -164,13 +165,17 @@ internal open class MutableBindingGraph<
             val matchingRootEntry =
               roots.entries.firstOrNull { it.key.typeKey == binding.typeKey }?.value
             matchingRootEntry?.let { stackCopy.push(it) }
-            stackCopy.withEntry(stackEntry) { reportMissingBinding(missing, stackCopy) }
+            stackCopy.withEntry(stackEntry) {
+              reportMissingBinding(missing, stackCopy, reportedMissingKeys)
+            }
           }
         }
       }
 
     // Report all missing bindings _after_ building adjacency so we can backtrace where possible
-    missingBindings.forEach { (key, stack) -> reportMissingBinding(key, stack) }
+    missingBindings.forEach { (key, stack) ->
+      reportMissingBinding(key, stack, reportedMissingKeys)
+    }
 
     val topo =
       trace("Sort and validate") {
@@ -508,6 +513,7 @@ internal open class MutableBindingGraph<
   fun reportMissingBinding(
     typeKey: TypeKey,
     bindingStack: BindingStack,
+    reportedMissingKeys: MutableSet<TypeKey> = mutableSetOf(),
     extraContent: MessageRenderer.MessageBuilder.() -> Unit = {},
   ) {
     if (reportedMissingKeys.add(typeKey)) {
@@ -518,9 +524,7 @@ internal open class MutableBindingGraph<
         appendLine(bold(typeKey.render(short = false)))
         appendLine()
         appendBindingStack(bindingStack, short = false)
-        val hints = missingBindingHints(typeKey)
-        val messages = hints.messages
-        val similarBindings = hints.similarBindings
+        val (messages, similarBindings) = missingBindingHints(typeKey)
 
         if (messages.isNotEmpty() || similarBindings.isNotEmpty()) {
           if (messages.isNotEmpty()) {

@@ -70,6 +70,7 @@ internal class MetroAnnotations<T>(
   val isBindsOptionalOf: Boolean = false,
   val isOptionalBinding: Boolean = false,
   val isGraphPrivate: Boolean = false,
+  val isOverridesParentBinding: Boolean = false,
   val multibinds: T? = null,
   val assisted: T? = null,
   val scope: T? = null,
@@ -118,6 +119,7 @@ internal class MetroAnnotations<T>(
     isBindsOptionalOf: Boolean = this.isBindsOptionalOf,
     isOptionalBinding: Boolean = this.isOptionalBinding,
     isGraphPrivate: Boolean = this.isGraphPrivate,
+    isOverridesParentBinding: Boolean = this.isOverridesParentBinding,
     multibinds: T? = this.multibinds,
     assisted: T? = this.assisted,
     scope: T? = this.scope,
@@ -141,6 +143,7 @@ internal class MetroAnnotations<T>(
       isBindsOptionalOf = isBindsOptionalOf,
       isOptionalBinding = isOptionalBinding,
       isGraphPrivate = isGraphPrivate,
+      isOverridesParentBinding = isOverridesParentBinding,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -165,6 +168,7 @@ internal class MetroAnnotations<T>(
       isIntoMap = isIntoMap || other.isIntoMap,
       isAssistedFactory = isAssistedFactory || other.isAssistedFactory,
       isGraphPrivate = isGraphPrivate || other.isGraphPrivate,
+      isOverridesParentBinding = isOverridesParentBinding || other.isOverridesParentBinding,
       multibinds = multibinds ?: other.multibinds,
       assisted = assisted ?: other.assisted,
       scope = scope ?: other.scope,
@@ -194,6 +198,7 @@ internal class MetroAnnotations<T>(
     BindsOptionalOf,
     OptionalBinding,
     GraphPrivate,
+    OverridesParentBinding,
   }
 
   companion object {
@@ -214,6 +219,7 @@ internal class MetroAnnotations<T>(
         isAssistedFactory = false,
         isComposable = false,
         isGraphPrivate = false,
+        isOverridesParentBinding = false,
         multibinds = null,
         assisted = false,
         scope = null,
@@ -271,6 +277,7 @@ private fun IrAnnotationContainer.metroAnnotations(
   var isBindsOptionalOf = false
   var isOptionalBinding = false
   var isGraphPrivate = false
+  var isOverridesParentBinding = false
   var multibinds: IrAnnotation? = null
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
@@ -299,6 +306,10 @@ private fun IrAnnotationContainer.metroAnnotations(
           }
           ids.graphPrivateAnnotation if (Kind.GraphPrivate in kinds) -> {
             isGraphPrivate = true
+            continue
+          }
+          ids.overridesParentBindingAnnotation if (Kind.OverridesParentBinding in kinds) -> {
+            isOverridesParentBinding = true
             continue
           }
         }
@@ -346,6 +357,10 @@ private fun IrAnnotationContainer.metroAnnotations(
           }
           ids.graphPrivateAnnotation if (Kind.GraphPrivate in kinds) -> {
             isGraphPrivate = true
+            continue
+          }
+          ids.overridesParentBindingAnnotation if (Kind.OverridesParentBinding in kinds) -> {
+            isOverridesParentBinding = true
             continue
           }
         }
@@ -429,6 +444,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       isBindsOptionalOf = isBindsOptionalOf,
       isOptionalBinding = isOptionalBinding,
       isGraphPrivate = isGraphPrivate,
+      isOverridesParentBinding = isOverridesParentBinding,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -560,6 +576,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
   var isBindsOptionalOf = false
   var isOptionalBinding = false
   var isGraphPrivate = false
+  var isOverridesParentBinding = false
   var multibinds: MetroFirAnnotation? = null
   var assisted: MetroFirAnnotation? = null
   var lazyClassKey: MetroFirAnnotation? = null
@@ -592,6 +609,10 @@ private fun FirBasedSymbol<*>.metroAnnotations(
           }
           ids.graphPrivateAnnotation if (Kind.GraphPrivate in kinds) -> {
             isGraphPrivate = true
+            continue
+          }
+          ids.overridesParentBindingAnnotation if (Kind.OverridesParentBinding in kinds) -> {
+            isOverridesParentBinding = true
             continue
           }
         }
@@ -644,6 +665,10 @@ private fun FirBasedSymbol<*>.metroAnnotations(
           }
           ids.graphPrivateAnnotation if (Kind.GraphPrivate in kinds) -> {
             isGraphPrivate = true
+            continue
+          }
+          ids.overridesParentBindingAnnotation if (Kind.OverridesParentBinding in kinds) -> {
+            isOverridesParentBinding = true
             continue
           }
           DaggerSymbols.ClassIds.DAGGER_LAZY_CLASS_KEY -> {
@@ -716,6 +741,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       isBindsOptionalOf = isBindsOptionalOf,
       isOptionalBinding = isOptionalBinding,
       isGraphPrivate = isGraphPrivate,
+      isOverridesParentBinding = isOverridesParentBinding,
       multibinds = multibinds,
       assisted = assisted,
       scope = scopes.firstOrNull(),

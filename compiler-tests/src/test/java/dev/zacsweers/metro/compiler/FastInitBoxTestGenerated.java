@@ -1602,6 +1602,24 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("OverridesParentBindingMapKey.kt")
+      public void testOverridesParentBindingMapKey() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/OverridesParentBindingMapKey.kt");
+      }
+
+      @Test
+      @TestMetadata("OverridesParentBindingScopeIsChildScope.kt")
+      public void testOverridesParentBindingScopeIsChildScope() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/OverridesParentBindingScopeIsChildScope.kt");
+      }
+
+      @Test
+      @TestMetadata("ParentBindingOverrideBehaviorWarn.kt")
+      public void testParentBindingOverrideBehaviorWarn() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentBindingOverrideBehaviorWarn.kt");
+      }
+
+      @Test
       @TestMetadata("ParentBindingsAreAlsoIncluded.kt")
       public void testParentBindingsAreAlsoIncluded() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentBindingsAreAlsoIncluded.kt");

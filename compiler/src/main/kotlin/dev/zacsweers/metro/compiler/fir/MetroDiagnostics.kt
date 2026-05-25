@@ -39,6 +39,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_RETURN_TYPES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_SCOPE
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INHERITED_BINDING_SHADOWED
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INHERITED_BINDING_SHADOWED_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
@@ -71,6 +73,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJ
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OVERRIDES_PARENT_BINDING_INVALID_SITE
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OVERRIDES_PARENT_BINDING_ON_SET_CONTRIBUTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PRIVATE_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PRIVATE_CONTRIBUTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY
@@ -217,6 +221,10 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val DESUGARED_PROVIDER_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val DESUGARED_PROVIDER_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
+  // OverridesParentBinding errors
+  val OVERRIDES_PARENT_BINDING_INVALID_SITE by error1<KtElement, String>(NAME_IDENTIFIER)
+  val OVERRIDES_PARENT_BINDING_ON_SET_CONTRIBUTION by error1<KtElement, String>(NAME_IDENTIFIER)
+
   // IR errors
   val GRAPH_DEPENDENCY_CYCLE by error1<KtElement, String>(NAME_IDENTIFIER)
   val INCOMPATIBLE_OVERRIDES by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -225,6 +233,8 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val DUPLICATE_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val INCOMPATIBLE_SCOPE by error1<KtElement, String>(NAME_IDENTIFIER)
   val DUPLICATE_MAP_KEY by error1<KtElement, String>(NAME_IDENTIFIER)
+  val INHERITED_BINDING_SHADOWED by error1<KtElement, String>(NAME_IDENTIFIER)
+  val INHERITED_BINDING_SHADOWED_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val INVALID_ASSISTED_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val EMPTY_MULTIBINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val QUALIFIER_OVERRIDE_MISMATCH by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -400,6 +410,10 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(DUPLICATE_BINDING, "{0}", TO_STRING)
         put(INCOMPATIBLE_SCOPE, "{0}", TO_STRING)
         put(DUPLICATE_MAP_KEY, "{0}", TO_STRING)
+        put(INHERITED_BINDING_SHADOWED, "{0}", TO_STRING)
+        put(INHERITED_BINDING_SHADOWED_WARNING, "{0}", TO_STRING)
+        put(OVERRIDES_PARENT_BINDING_INVALID_SITE, "{0}", STRING)
+        put(OVERRIDES_PARENT_BINDING_ON_SET_CONTRIBUTION, "{0}", STRING)
         put(INVALID_ASSISTED_BINDING, "{0}", TO_STRING)
         put(EMPTY_MULTIBINDING, "{0}", TO_STRING)
         put(QUALIFIER_OVERRIDE_MISMATCH, "{0}", TO_STRING)

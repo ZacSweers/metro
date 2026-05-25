@@ -120,6 +120,9 @@ public class ClassIds(
   internal val graphPrivateAnnotation =
     Symbols.FqNames.metroRuntimePackage.classIdOf("GraphPrivate")
 
+  internal val overridesParentBindingAnnotation =
+    Symbols.FqNames.metroRuntimePackage.classIdOf("OverridesParentBinding")
+
   internal val exposeImplBindingAnnotation = Symbols.ClassIds.ExposeImplBinding
 
   internal val contributionProviderExclusionAnnotations by memoize {

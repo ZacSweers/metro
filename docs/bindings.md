@@ -136,6 +136,65 @@ interface MapMultibinding {
 
 Unlike Dagger, empty multibindings in Metro are a compile error by default. Empty multibindings are allowed but must be opted into via `@Multibinds(allowEmpty = true)`.
 
+!!! note "Multibindings across graph extensions"
+
+    Multibinding contributions from a parent graph flow down into its graph extensions: a child extension that requests `Map<String, String>` or `Set<T>` sees both its own contributions and the parent's.
+
+    For `Map` multibindings, duplicate map keys are an error wherever they appear in the merged view — including the case where the parent contributes `@IntoMap @StringKey("key")` and an extension contributes another `@IntoMap @StringKey("key")`. Metro reports `DUPLICATE_MAP_KEY` on the extension's request site rather than silently overriding. To intentionally replace the parent's value for a given key in the extension's view, annotate the extension's contribution with `@OverridesParentBinding` (see below).
+
+    For `Set` multibindings, a duplicate element contributed by an extension cannot be detected at compile time — duplicates are resolved by `Set` equality at runtime, the same as any other `Set`. `@OverridesParentBinding` is **not** valid on `@IntoSet` or `@ElementsIntoSet` contributions. If element identity matters, consider keying on a `Map` instead.
+
+## Overriding inherited bindings: `@OverridesParentBinding`
+
+When a graph extension declares a binding for a `(type, qualifier)` already bound by an ancestor graph, the extension's binding wins for that extension and its descendants. The ancestor's own view is unaffected. To make that intent explicit, annotate the local declaration with `@OverridesParentBinding`.
+
+```kotlin
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  @Provides @SingleIn(AppScope::class) fun appLogger(): Logger = AppLogger()
+}
+
+@GraphExtension(UserScope::class)
+interface UserGraph {
+  @Provides
+  @SingleIn(UserScope::class)
+  @OverridesParentBinding
+  fun userLogger(): Logger = UserLogger()
+}
+```
+
+`@OverridesParentBinding` is valid on:
+
+- `@Provides` and `@Binds` declarations
+- graph extension factory inputs — `@Provides` instance parameters and `@Includes` dependencies
+- `@IntoMap` map-key contributions
+
+The overriding declaration's scope is used in the child's view. The ancestor's scope is not inherited. It is **not** valid on `@IntoSet` / `@ElementsIntoSet` contributions, because set element conflicts can't be detected at compile time.
+
+For map multibindings, `@OverridesParentBinding` on a contribution causes its value to win for that map key in the child's merged view, replacing the ancestor's contribution for the same key. Without the annotation, a cross-extension map-key conflict stays a `DUPLICATE_MAP_KEY` error — there's no unambiguous winner unless you ask for one.
+
+`@OverridesParentBinding` is distinct from the `replaces = [...]` parameter on `@ContributesBinding` and related contribution annotations:
+
+- `replaces = [...]` operates at aggregation/discovery time on contribution _classes_. It says "do not merge this sibling contribution into the binding container."
+- `@OverridesParentBinding` operates at resolution time on binding _keys_ across the parent/extension hierarchy. It says "this extension's binding wins over an inherited one."
+
+Both can coexist on the same declaration.
+
+### Controlling unannotated shadows
+
+What happens when an extension shadows an inherited binding _without_ `@OverridesParentBinding` is configurable via the `metro.parentBindingOverrideBehavior` Gradle option:
+
+| Mode | Behavior |
+| --- | --- |
+| `ALLOW` (default) | The extension's binding silently wins. |
+| `WARN` | The extension's binding wins, but Metro warns and suggests `@OverridesParentBinding`. |
+| `REQUIRE_ANNOTATION` | An unannotated shadow is a compile error; `@OverridesParentBinding` is required to override. |
+| `DISALLOW` | Overriding an inherited binding is rejected entirely, even with `@OverridesParentBinding`. Differentiate via a qualifier or type instead. |
+
+This setting governs regular-binding shadows. Map-key conflicts remain a `DUPLICATE_MAP_KEY` error unless annotated (and can't be overridden under `DISALLOW`). Re-including the same binding container at multiple levels is not a shadow — the contributions are identical and are deduplicated.
+
+`@OverridesParentBinding` on a declaration that doesn't actually override anything is allowed and reports nothing, since container `@Provides`/`@Binds` declarations are commonly reused across graphs where only some are overrides.
+
 ??? note "Implementation Notes"
 
     Metro takes inspiration from Guice in handling these in the binding graph. Since they cannot be added directly to the graph as-is (otherwise they would cause duplicate binding errors), a synthetic `@MultibindingElement` _qualifier_ annotation is generated for them at compile-time to disambiguate them. These are user-invisible but allows them to participate directly in graph validation like any other dependency. Metro then just adds these bindings as dependencies to `Binding.Multibinding` types.

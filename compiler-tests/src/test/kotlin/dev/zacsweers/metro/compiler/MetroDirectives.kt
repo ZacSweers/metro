@@ -75,6 +75,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph)."
     )
+  val PARENT_BINDING_OVERRIDE_BEHAVIOR by
+    enumDirective<ParentBindingOverrideBehavior>(
+      "Controls what happens when a graph extension shadows an inherited binding without @OverridesParentBinding."
+    )
   val CONTRIBUTES_AS_INJECT by
     directive(
       "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations."

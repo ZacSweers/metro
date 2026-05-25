@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.ParentBindingOverrideBehavior
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.filterToSet
@@ -1080,42 +1081,82 @@ internal class IrBindingGraph(
   ) {
     if (binding !is IrBinding.Multibinding) return
     if (!binding.isMap) return
-    val keysWithDupes =
+    val declaredKeys = bindingLookup.getDeclaredKeys()
+    val groups =
       binding.sourceBindings
         .mapNotNull { bindings[it] }
         .filterIsInstance<IrBinding.BindingWithAnnotations>()
         .groupBy { it.annotations.mapKey }
-        .filterValues { it.size > 1 }
 
-    for ((mapKey, dupes) in keysWithDupes) {
+    val disallow = options.parentBindingOverrideBehavior == ParentBindingOverrideBehavior.DISALLOW
+
+    for ((mapKey, members) in groups) {
       if (mapKey == null) {
         reportCompilerBug("Map key should not be null for map multibindings")
       }
 
-      val stack = buildStackToRoot(binding.typeKey, roots, adjacency)
-
-      val message = buildString {
-        appendLine(
-          """
-            [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding '${binding.typeKey.renderForDiagnostic(short = false)}'.
-            The following bindings contribute the same map key '${mapKey.render(short = false)}':
-          """
-            .trimIndent()
-        )
-        appendLine()
-        for (dupe in dupes) {
-          val locationDiagnostic =
-            dupe.renderLocationDiagnostic(
-              shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
-              underlineTypeKey = false,
-            )
-          appendLine("    ${locationDiagnostic.location}")
-          locationDiagnostic.description?.let { appendLine(it.prependIndent("        ")) }
-        }
-        appendLine()
-        appendBindingStack(stack)
+      val annotatedLocals = members.filter {
+        it.typeKey in declaredKeys && it.annotations.isOverridesParentBinding
       }
-      onError(message, stack, MetroDiagnostics.DUPLICATE_MAP_KEY)
+      val nonAnnotatedLocals = members.filter {
+        it.typeKey in declaredKeys && !it.annotations.isOverridesParentBinding
+      }
+      val inherited = members.filter { it.typeKey !in declaredKeys }
+
+      when {
+        // Single contribution for this key — no dup. (An annotated contribution with no peer to
+        // override reports nothing; container contributions are reused across graphs.)
+        members.size == 1 -> {}
+
+        // Exactly one local with `@OverridesParentBinding` and all peers are inherited: an
+        // intentional override. Drop the inherited contributions so the local wins, unless
+        // overriding is disallowed entirely.
+        !disallow && annotatedLocals.size == 1 && nonAnnotatedLocals.isEmpty() -> {
+          for (other in inherited) {
+            binding.sourceBindings.remove(other.typeKey)
+          }
+        }
+
+        else -> {
+          val stack = buildStackToRoot(binding.typeKey, roots, adjacency)
+          val message = buildString {
+            appendLine(
+              """
+                [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding '${binding.typeKey.renderForDiagnostic(short = false)}'.
+                The following bindings contribute the same map key '${mapKey.render(short = false)}':
+              """
+                .trimIndent()
+            )
+            appendLine()
+            for (dupe in members) {
+              val locationDiagnostic =
+                dupe.renderLocationDiagnostic(
+                  shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+                  underlineTypeKey = false,
+                )
+              appendLine("    ${locationDiagnostic.location}")
+              locationDiagnostic.description?.let { appendLine(it.prependIndent("        ")) }
+            }
+            appendLine()
+            if (disallow && annotatedLocals.isNotEmpty()) {
+              appendLine(
+                "Overriding inherited contributions is disallowed (parentBindingOverrideBehavior = DISALLOW)."
+              )
+            } else if (annotatedLocals.size > 1) {
+              appendLine(
+                "Multiple local contributions are annotated with `@OverridesParentBinding` — only one may win."
+              )
+            } else {
+              appendLine(
+                "To replace the inherited contribution for this key, annotate the extension's contribution with `@OverridesParentBinding`."
+              )
+            }
+            appendLine()
+            appendBindingStack(stack)
+          }
+          onError(message, stack, MetroDiagnostics.DUPLICATE_MAP_KEY)
+        }
+      }
     }
   }
 
