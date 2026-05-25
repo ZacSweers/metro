@@ -94,6 +94,9 @@ internal class MetroIrPipeline(
           }
         }
       }
+
+      // All (possibly parallel) IR work is done, so flush the buffered IC tracking
+      trace("Flush IC tracking") { flushIcTracking() }
     } catch (_: ExitProcessingException) {
       // Reported internally
     }

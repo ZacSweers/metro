@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import dev.zacsweers.metro.compiler.ir.cache.IrCachesFactory
 import dev.zacsweers.metro.compiler.ir.cache.IrThreadUnsafeCachesFactory
@@ -51,6 +52,13 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   val lookupTracker: LookupTracker?
   val expectActualTracker: ExpectActualTracker
+
+  /**
+   * Flushes any buffered IC tracking (lookups + expect/actual links) to the underlying trackers.
+   * No-op unless [MetroOptions.bufferedIcTracking] is on. Call once after IR/graph validation
+   * completes, when no parallel work is in flight.
+   */
+  fun flushIcTracking()
 
   val messageRenderer: MessageRenderer
 
@@ -180,13 +188,33 @@ internal class IrMetroContextImpl(
     }
   }
 
-  override val lookupTracker: LookupTracker? = rawLookupTracker?.let {
-    if (options.reportsEnabled) RecordingLookupTracker(this, it) else it
+  override val lookupTracker: LookupTracker? = rawLookupTracker?.let { raw ->
+    val recording = if (options.reportsEnabled) RecordingLookupTracker(this, raw) else raw
+    if (options.bufferedIcTracking) {
+      BufferingLookupTracker(recording, parallel = options.parallelThreads > 0)
+    } else {
+      recording
+    }
   }
 
-  override val expectActualTracker: ExpectActualTracker =
-    if (options.reportsEnabled) RecordingExpectActualTracker(this, rawExpectActualTracker)
-    else rawExpectActualTracker
+  override val expectActualTracker: ExpectActualTracker = run {
+    val recording =
+      if (options.reportsEnabled) {
+        RecordingExpectActualTracker(this, rawExpectActualTracker)
+      } else {
+        rawExpectActualTracker
+      }
+    if (options.bufferedIcTracking) {
+      BufferingExpectActualTracker(recording, parallel = options.parallelThreads > 0)
+    } else {
+      recording
+    }
+  }
+
+  override fun flushIcTracking() {
+    lookupTracker?.expectAsOrNull<BufferingLookupTracker>()?.flush()
+    expectActualTracker.expectAsOrNull<BufferingExpectActualTracker>()?.flush()
+  }
 
   override val reportsDir: Path?
     get() = options.reportsDir.value

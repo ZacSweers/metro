@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import org.jetbrains.kotlin.backend.jvm.ir.fileParentOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getIoFile
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
+import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LocationInfo
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.incremental.components.Position
@@ -67,7 +68,7 @@ internal fun linkDeclarationsInCompilation(callingFile: IrFile?, calleeDeclarati
     }
     return
   }
-  context.expectActualTracker.report(expectedFile = expectedFile, actualFile = actualFile)
+  withExpectActualTracker { report(expectedFile = expectedFile, actualFile = actualFile) }
 }
 
 /**
@@ -182,15 +183,40 @@ internal fun trackLookup(
   }
 }
 
+/**
+ * Whether IC writes go straight to the trackers (and their report-file logging) and therefore need
+ * a lock under parallelism. Buffered tracking (`enableBufferedIcTracking`) writes to a thread-safe
+ * log that is flushed serially after IR, so it never needs a lock here.
+ */
+context(context: IrMetroContext)
+internal fun icWritesNeedLock(): Boolean =
+  !context.options.bufferedIcTracking && context.options.parallelThreads > 0
+
 context(context: IrMetroContext)
 internal inline fun withLookupTracker(body: LookupTracker.() -> Unit) {
-  context.lookupTracker?.let { tracker -> synchronized(tracker) { tracker.body() } }
+  context.lookupTracker?.let { tracker ->
+    if (icWritesNeedLock()) {
+      synchronized(tracker) { tracker.body() }
+    } else {
+      tracker.body()
+    }
+  }
+}
+
+context(context: IrMetroContext)
+internal inline fun withExpectActualTracker(body: ExpectActualTracker.() -> Unit) {
+  val tracker = context.expectActualTracker
+  if (icWritesNeedLock()) {
+    synchronized(tracker) { tracker.body() }
+  } else {
+    tracker.body()
+  }
 }
 
 /**
- * Run [body] with a [BindsTrackerScope] that has resolved [callingDeclaration]'s file path and
- * acquired the lookup tracker lock once. Lets a tight loop over many lookups pay both costs once
- * instead of per-call.
+ * Run [body] with a [BindsTrackerScope] that has resolved [callingDeclaration]'s file path once for
+ * a tight loop of lookups. When IC writes are unbuffered under parallelism, the lookup tracker lock
+ * is also acquired once instead of per-call.
  */
 context(context: IrMetroContext)
 internal inline fun batchTrackForCallingDeclaration(
@@ -198,9 +224,7 @@ internal inline fun batchTrackForCallingDeclaration(
   body: BindsTrackerScope.() -> Unit,
 ) {
   callingDeclaration.withAnalyzableKtFile { filePath ->
-    context.lookupTracker?.let { tracker ->
-      synchronized(tracker) { BindsTrackerScope(tracker, filePath).body() }
-    }
+    withLookupTracker { BindsTrackerScope(this, filePath).body() }
   }
 }
 
