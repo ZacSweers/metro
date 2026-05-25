@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import org.jetbrains.kotlin.backend.jvm.ir.fileParentOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getIoFile
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
+import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LocationInfo
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.incremental.components.Position
@@ -67,7 +68,7 @@ internal fun linkDeclarationsInCompilation(callingFile: IrFile?, calleeDeclarati
     }
     return
   }
-  context.expectActualTracker.report(expectedFile = expectedFile, actualFile = actualFile)
+  withExpectActualTracker { report(expectedFile = expectedFile, actualFile = actualFile) }
 }
 
 /**
@@ -190,6 +191,16 @@ internal inline fun withLookupTracker(body: LookupTracker.() -> Unit) {
     } else {
       tracker.body()
     }
+  }
+}
+
+context(context: IrMetroContext)
+internal inline fun withExpectActualTracker(body: ExpectActualTracker.() -> Unit) {
+  val tracker = context.expectActualTracker
+  if (context.options.parallelThreads > 0) {
+    synchronized(tracker) { tracker.body() }
+  } else {
+    tracker.body()
   }
 }
 
