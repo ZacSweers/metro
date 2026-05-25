@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779110884581,
+  "lastUpdate": 1779753102788,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -14896,6 +14896,62 @@ window.BENCHMARK_DATA = {
             "value": 19082.726000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.70%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7613e235~1",
+          "message": "[before] Update AGP to v9 (#2274)",
+          "timestamp": "2026-05-25T23:09:07+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7613e235b100697509a132f5a166c99407f025ec"
+        },
+        "date": 1779753102788,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19859.992,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7613e235b100697509a132f5a166c99407f025ec",
+          "message": "[after] Update AGP to v9 (#2274)",
+          "timestamp": "2026-05-25T23:09:07+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7613e235b100697509a132f5a166c99407f025ec"
+        },
+        "date": 1779753102789,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20188.406,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.65%"
           }
         ]
       }
