@@ -184,7 +184,13 @@ internal fun trackLookup(
 
 context(context: IrMetroContext)
 internal inline fun withLookupTracker(body: LookupTracker.() -> Unit) {
-  context.lookupTracker?.let { tracker -> synchronized(tracker) { tracker.body() } }
+  context.lookupTracker?.let { tracker ->
+    if (context.options.parallelThreads > 0) {
+      synchronized(tracker) { tracker.body() }
+    } else {
+      tracker.body()
+    }
+  }
 }
 
 /**
@@ -199,7 +205,12 @@ internal inline fun batchTrackForCallingDeclaration(
 ) {
   callingDeclaration.withAnalyzableKtFile { filePath ->
     context.lookupTracker?.let { tracker ->
-      synchronized(tracker) { BindsTrackerScope(tracker, filePath).body() }
+      val scope = BindsTrackerScope(tracker, filePath)
+      if (context.options.parallelThreads > 0) {
+        synchronized(tracker) { scope.body() }
+      } else {
+        scope.body()
+      }
     }
   }
 }
