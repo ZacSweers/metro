@@ -1,9 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-plugins {
-  alias(libs.plugins.android.test)
-  alias(libs.plugins.kotlin.android)
-}
+plugins { alias(libs.plugins.android.test) }
 
 android {
   namespace = "dev.zacsweers.metro.benchmark.startup.android.benchmark"

@@ -9,14 +9,8 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
-  alias(libs.plugins.android.library)
+  alias(libs.plugins.android.kmp)
   id("dev.zacsweers.metro")
-}
-
-android {
-  namespace = "dev.zacsweers.metro.test.integration.android"
-
-  buildFeatures { viewBinding = true }
 }
 
 @OptIn(ExperimentalMetroGradleApi::class, DelicateMetroGradleApi::class, RequiresIdeSupport::class)
@@ -30,7 +24,8 @@ metro {
 
 @OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
 kotlin {
-  androidTarget()
+  android { namespace = "dev.zacsweers.metro.test.integration.android" }
+
   jvm()
 
   js { browser() }

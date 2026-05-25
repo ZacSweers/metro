@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
-  alias(libs.plugins.kotlin.android) apply false
+  alias(libs.plugins.android.kmp) apply false
   alias(libs.plugins.kotlin.allopen) apply false
   alias(libs.plugins.kotlin.multiplatform) apply false
   alias(libs.plugins.ksp) apply false

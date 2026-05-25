@@ -49,7 +49,9 @@ rootProject.name = "metro-samples"
 include(
   ":android-app",
   ":circuit-app",
+  ":compose-viewmodels:androidApp",
   ":compose-viewmodels:app",
+  ":compose-viewmodels:desktopApp",
   ":compose-viewmodels:screen-details",
   ":compose-viewmodels:screen-home",
   ":compose-viewmodels:screen-settings",

@@ -542,7 +542,7 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
       buildMap {
         putAll(parsed)
         DiagnosticSeverity.entries.forEach { severity ->
-          @Suppress("RETURN_VALUE_NOT_USED") getOrPut(severity, ::emptyList)
+          @Suppress("RETURN_VALUE_NOT_USED_COERCION") getOrPut(severity, ::emptyList)
         }
       }
     }
