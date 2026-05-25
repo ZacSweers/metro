@@ -338,6 +338,9 @@ abstract class MetroCompilerTest {
               PARALLEL_THREADS -> {
                 processor.option(entry.raw.cliOption, this@toPluginOptions.parallelThreads)
               }
+              BUFFERED_IC_TRACKING -> {
+                processor.option(entry.raw.cliOption, this@toPluginOptions.bufferedIcTracking)
+              }
               ENABLE_FUNCTION_PROVIDERS -> {
                 processor.option(entry.raw.cliOption, enableFunctionProviders)
               }

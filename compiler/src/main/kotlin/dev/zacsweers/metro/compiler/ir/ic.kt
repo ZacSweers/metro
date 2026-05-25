@@ -183,10 +183,19 @@ internal fun trackLookup(
   }
 }
 
+/**
+ * Whether IC writes go straight to the trackers (and their report-file logging) and therefore need
+ * a lock under parallelism. Buffered tracking (`enableBufferedIcTracking`) writes to a thread-safe
+ * log that is flushed serially after IR, so it never needs a lock here.
+ */
+context(context: IrMetroContext)
+internal fun icWritesNeedLock(): Boolean =
+  !context.options.bufferedIcTracking && context.options.parallelThreads > 0
+
 context(context: IrMetroContext)
 internal inline fun withLookupTracker(body: LookupTracker.() -> Unit) {
   context.lookupTracker?.let { tracker ->
-    if (context.options.parallelThreads > 0) {
+    if (icWritesNeedLock()) {
       synchronized(tracker) { tracker.body() }
     } else {
       tracker.body()
@@ -197,7 +206,7 @@ internal inline fun withLookupTracker(body: LookupTracker.() -> Unit) {
 context(context: IrMetroContext)
 internal inline fun withExpectActualTracker(body: ExpectActualTracker.() -> Unit) {
   val tracker = context.expectActualTracker
-  if (context.options.parallelThreads > 0) {
+  if (icWritesNeedLock()) {
     synchronized(tracker) { tracker.body() }
   } else {
     tracker.body()
@@ -205,9 +214,9 @@ internal inline fun withExpectActualTracker(body: ExpectActualTracker.() -> Unit
 }
 
 /**
- * Run [body] with a [BindsTrackerScope] that has resolved [callingDeclaration]'s file path and
- * acquired the lookup tracker lock once. Lets a tight loop over many lookups pay both costs once
- * instead of per-call.
+ * Run [body] with a [BindsTrackerScope] that has resolved [callingDeclaration]'s file path once for
+ * a tight loop of lookups. When IC writes are unbuffered under parallelism, the lookup tracker lock
+ * is also acquired once instead of per-call.
  */
 context(context: IrMetroContext)
 internal inline fun batchTrackForCallingDeclaration(
@@ -215,14 +224,7 @@ internal inline fun batchTrackForCallingDeclaration(
   body: BindsTrackerScope.() -> Unit,
 ) {
   callingDeclaration.withAnalyzableKtFile { filePath ->
-    context.lookupTracker?.let { tracker ->
-      val scope = BindsTrackerScope(tracker, filePath)
-      if (context.options.parallelThreads > 0) {
-        synchronized(tracker) { scope.body() }
-      } else {
-        scope.body()
-      }
-    }
+    withLookupTracker { BindsTrackerScope(this, filePath).body() }
   }
 }
 
