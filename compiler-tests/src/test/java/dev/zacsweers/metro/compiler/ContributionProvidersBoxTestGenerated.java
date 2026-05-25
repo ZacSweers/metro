@@ -1322,6 +1322,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("DynamicGraphFactoryAcrossPackages.kt")
+      public void testDynamicGraphFactoryAcrossPackages() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphFactoryAcrossPackages.kt");
+      }
+
+      @Test
       @TestMetadata("DynamicGraphReplacesExtensionBindingFromClass.kt")
       public void testDynamicGraphReplacesExtensionBindingFromClass() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphReplacesExtensionBindingFromClass.kt");
