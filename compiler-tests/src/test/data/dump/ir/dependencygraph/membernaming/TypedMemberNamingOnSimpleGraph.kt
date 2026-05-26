@@ -7,14 +7,17 @@
  * names derived from the bindings.
  *
  * Each MemberNamer.Kind is exercised:
- *  - PROVIDER: regular @Inject bindings (Service, Repository).
- *  - INSTANCE: @Provides bound-instance creator parameter (Config) -- supplemental property.
+ *  - PROVIDER: regular @Inject chain (Config, Repository, Service).
+ *  - INSTANCE: @Provides bound-instance creator parameter (ProvidedExample) -- supplemental
+ *              property.
  *  - FACTORY:  an @AssistedInject target shared by two @AssistedFactory accessors. The shared
  *              target's generated MetroFactory is stored as a graph field, hitting the
  *              `binding.isAssisted` branch in IrGraphGenerator.computeBindingMetadata.
  */
 
-@Inject class Config
+class ProvidedExample
+
+@Inject class Config(val example: ProvidedExample)
 
 @Inject class Repository(val config: Config)
 
@@ -40,6 +43,6 @@ interface TestGraph {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(@Provides config: Config): TestGraph
+    fun create(@Provides example: ProvidedExample): TestGraph
   }
 }

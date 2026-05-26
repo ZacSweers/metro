@@ -1,40 +1,64 @@
 @Inject
 class Config {
+  val example: ProvidedExample
+    field = example
+    get
+
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  object MetroFactory : Factory<Config> {
-    private constructor() /* primary */ {
+  class MetroFactory : Factory<Config> {
+    private /* final field */ val example: Provider<ProvidedExample> = example
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(example: Provider<ProvidedExample>): Factory<Config> {
+        return MetroFactory(example = example)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(example: ProvidedExample): Config {
+        return Config(example = example)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(example: Provider<ProvidedExample>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
     @HiddenFromObjC
-    @JvmStatic
-    @JsStatic
-    fun create(): Factory<Config> {
-      return MetroFactory
-    }
-
-    @HiddenFromObjC
-    @JvmStatic
-    @JsStatic
-    fun newInstance(): Config {
-      return Config()
-    }
-
-    @HiddenFromObjC
     override operator fun invoke(): Config {
-      return MetroFactory.newInstance()
+      return MetroFactory/* companion */.newInstance(example = <this>.#example.invoke())
     }
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Config {
+    fun mirrorFunction(example: ProvidedExample): Config {
       return error(message = "Never called")
     }
 
   }
 
+  constructor(example: ProvidedExample) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class ProvidedExample {
   constructor() /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -303,19 +327,19 @@ interface TestGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph {
-    private val instance: Config
-      field = config
+    private val instance: ProvidedExample
+      field = example
 
-    private val provider: Provider<Config>
-      field = InstanceFactory/* companion */.invoke<Config>(value = <this>.#instance)
+    private val provider: Provider<ProvidedExample>
+      field = InstanceFactory/* companion */.invoke<ProvidedExample>(value = <this>.#instance)
 
     private val provider2: Provider<Service>
-      field = Service.MetroFactory/* companion */.create(repository = Repository.MetroFactory/* companion */.create(config = <this>.#provider))
+      field = Service.MetroFactory/* companion */.create(repository = Repository.MetroFactory/* companion */.create(config = Config.MetroFactory/* companion */.create(example = <this>.#provider)))
 
     private val factory: SharedWorker.MetroFactory
       field = SharedWorker.MetroFactory/* companion */.create(service = <this>.#provider2)
 
-    private constructor(@Provides config: Config) /* primary */ {
+    private constructor(@Provides example: ProvidedExample) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -348,8 +372,8 @@ interface TestGraph {
     @GraphFactoryInvokeFunctionMarker
     @JvmStatic
     @JsStatic
-    override fun create(@Provides config: Config): TestGraph {
-      return Impl(config = config)
+    override fun create(@Provides example: ProvidedExample): TestGraph {
+      return Impl(example = example)
     }
 
   }
@@ -366,13 +390,13 @@ interface TestGraph {
       }
 
       @GraphFactoryInvokeFunctionMarker
-      override fun create(@Provides config: Config): TestGraph {
-        return Impl(config = config)
+      override fun create(@Provides example: ProvidedExample): TestGraph {
+        return Impl(example = example)
       }
 
     }
 
-    abstract fun create(@Provides config: Config): TestGraph
+    abstract fun create(@Provides example: ProvidedExample): TestGraph
 
   }
 
