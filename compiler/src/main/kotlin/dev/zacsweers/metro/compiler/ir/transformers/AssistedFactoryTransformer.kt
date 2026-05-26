@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
+import dev.zacsweers.metro.compiler.ir.MemberNamer
 import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -369,7 +370,15 @@ internal class AssistedFactoryTransformer(
     }
 
     val ctor = implClass.primaryConstructor!!
-    val delegateFactoryField = assignConstructorParamsToFields(ctor, implClass).values.single()
+    val delegateFactoryField =
+      assignConstructorParamsToFields(
+          ctor,
+          implClass,
+          namer = memberNamer,
+          kind = MemberNamer.Kind.FACTORY,
+        )
+        .values
+        .single()
 
     implSamFunction.apply {
       finalizeFakeOverride(implClass.thisReceiverOrFail)

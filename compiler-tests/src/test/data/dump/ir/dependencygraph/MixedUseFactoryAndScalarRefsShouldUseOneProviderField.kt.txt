@@ -99,7 +99,7 @@ interface AppGraph {
   @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 107, endOffset = 169, newInstanceName = "provideString")
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
-    private /* final field */ val int: Provider<Int> = int
+    private /* final field */ val int2: Provider<Int> = int
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -132,7 +132,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): String {
-      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance, int = <this>.#int.invoke())
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance, int = <this>.#int2.invoke())
     }
 
     @ComptimeOnly

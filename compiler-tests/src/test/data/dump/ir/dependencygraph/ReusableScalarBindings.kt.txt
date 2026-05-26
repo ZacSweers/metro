@@ -164,7 +164,7 @@ interface AppGraph {
   @CallableMetadata(callableName = "provideDouble", propertyName = "", startOffset = 274, endOffset = 450, newInstanceName = "provideDouble")
   class ProvideDoubleMetroFactory : Factory<Double> {
     private /* final field */ val instance: AppGraph = instance
-    private /* final field */ val long: Provider<Long> = long
+    private /* final field */ val long2: Provider<Long> = long
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -197,7 +197,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Double {
-      return ProvideDoubleMetroFactory/* companion */.provideDouble(instance = <this>.#instance, long = <this>.#long.invoke(), long2 = <this>.#long.invoke())
+      return ProvideDoubleMetroFactory/* companion */.provideDouble(instance = <this>.#instance, long = <this>.#long2.invoke(), long2 = <this>.#long2.invoke())
     }
 
     @ComptimeOnly
@@ -259,7 +259,7 @@ interface AppGraph {
   @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 108, endOffset = 270, newInstanceName = "provideLong")
   class ProvideLongMetroFactory : Factory<Long> {
     private /* final field */ val instance: AppGraph = instance
-    private /* final field */ val int: Provider<Int> = int
+    private /* final field */ val int2: Provider<Int> = int
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -292,7 +292,7 @@ interface AppGraph {
 
     @HiddenFromObjC
     override operator fun invoke(): Long {
-      return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance, int = <this>.#int.invoke(), int2 = <this>.#int.invoke())
+      return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance, int = <this>.#int2.invoke(), int2 = <this>.#int2.invoke())
     }
 
     @ComptimeOnly

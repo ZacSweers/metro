@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
@@ -907,14 +908,14 @@ internal fun IrType.normalizeToKClassIfJavaClass(): IrType {
 }
 
 context(context: IrMetroContext)
-internal fun IrValueParameter.addBackingFieldTo(clazz: IrClass): IrField {
-  return clazz
-    .addField(toSafeIdentifier(name.asString()), type, DescriptorVisibilities.PRIVATE)
-    .apply {
-      isFinal = true
-      initializer =
-        context.createIrBuilder(symbol).run { irExprBody(irGet(this@addBackingFieldTo)) }
-    }
+internal fun IrValueParameter.addBackingFieldTo(
+  clazz: IrClass,
+  name: String = toSafeIdentifier(this.name.asString()),
+): IrField {
+  return clazz.addField(name, type, DescriptorVisibilities.PRIVATE).apply {
+    isFinal = true
+    initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(this@addBackingFieldTo)) }
+  }
 }
 
 // TODO eventually just return a Map<TypeKey, IrField>
@@ -922,10 +923,14 @@ context(context: IrMetroContext)
 internal fun assignConstructorParamsToFields(
   constructor: IrConstructor,
   clazz: IrClass = constructor.parentAsClass,
+  namer: MemberNamer = MemberNamer.Descriptive,
+  kind: MemberNamer.Kind = MemberNamer.Kind.PROVIDER,
 ): Map<IrValueParameter, IrField> {
+  val allocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
   return buildMap {
     for (irParameter in constructor.regularParameters) {
-      put(irParameter, irParameter.addBackingFieldTo(clazz))
+      val fieldName = allocator.allocateName(namer, kind) { irParameter.name.asString() }
+      put(irParameter, irParameter.addBackingFieldTo(clazz, fieldName))
     }
   }
 }
@@ -934,10 +939,15 @@ context(context: IrMetroContext)
 internal fun assignConstructorParamsToFields(
   parameters: Parameters,
   clazz: IrClass,
+  namer: MemberNamer = MemberNamer.Descriptive,
+  kind: MemberNamer.Kind = MemberNamer.Kind.PROVIDER,
 ): Map<Parameter, IrField> {
+  val allocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
   return buildMap {
     for (irParameter in parameters.regularParameters) {
-      put(irParameter, irParameter.asValueParameter.addBackingFieldTo(clazz))
+      val valueParam = irParameter.asValueParameter
+      val fieldName = allocator.allocateName(namer, kind) { valueParam.name.asString() }
+      put(irParameter, valueParam.addBackingFieldTo(clazz, fieldName))
     }
   }
 }

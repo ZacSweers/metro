@@ -150,7 +150,8 @@ internal class SyntheticGraphGenerator(
         }
 
     // Assign constructor parameters to fields for later access
-    val paramsToFields = assignConstructorParamsToFields(factoryConstructor, factoryImpl)
+    val paramsToFields =
+      assignConstructorParamsToFields(factoryConstructor, factoryImpl, namer = memberNamer)
 
     // Get the SAM function that needs to be implemented
     val samFunction = factoryImpl.singleAbstractFunction()

@@ -541,7 +541,7 @@ internal class InjectedClassTransformer(
 
       // Assign fields
       val constructorParametersToFields =
-        assignConstructorParamsToFields(constructorParameters, declaration)
+        assignConstructorParamsToFields(constructorParameters, declaration, namer = memberNamer)
 
       val invokeFunction =
         declaration.functions.first { it.origin == Origins.TopLevelInjectFunctionClassFunction }

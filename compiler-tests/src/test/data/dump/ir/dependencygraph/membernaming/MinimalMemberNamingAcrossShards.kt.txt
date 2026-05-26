@@ -261,7 +261,7 @@ class SharedWorker {
 @AssistedFactory
 fun interface PrimaryWorkerFactory {
   class Impl : PrimaryWorkerFactory {
-    private /* final field */ val delegateFactory: SharedWorker.MetroFactory = delegateFactory
+    private /* final field */ val factory: SharedWorker.MetroFactory = delegateFactory
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -284,7 +284,7 @@ fun interface PrimaryWorkerFactory {
     }
 
     override fun create(name: String): SharedWorker {
-      return <this>.#delegateFactory.invoke(name = name)
+      return <this>.#factory.invoke(name = name)
     }
 
   }
@@ -296,7 +296,7 @@ fun interface PrimaryWorkerFactory {
 @AssistedFactory
 fun interface SecondaryWorkerFactory {
   class Impl : SecondaryWorkerFactory {
-    private /* final field */ val delegateFactory: SharedWorker.MetroFactory = delegateFactory
+    private /* final field */ val factory: SharedWorker.MetroFactory = delegateFactory
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -319,7 +319,7 @@ fun interface SecondaryWorkerFactory {
     }
 
     override fun create(name: String): SharedWorker {
-      return <this>.#delegateFactory.invoke(name = name)
+      return <this>.#factory.invoke(name = name)
     }
 
   }

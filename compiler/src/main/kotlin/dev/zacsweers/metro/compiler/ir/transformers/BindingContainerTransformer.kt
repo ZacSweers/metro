@@ -7,6 +7,7 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
@@ -19,11 +20,13 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MemberNamer
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.ProviderFactory.Companion.lookupRealDeclaration
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
+import dev.zacsweers.metro.compiler.ir.allocateName
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.betterDumpKotlinLike
@@ -431,13 +434,18 @@ internal class BindingContainerTransformer(
         ctor.apply {
           val ownerClass = reference.parent.owner
           val typeRemapper = ownerClass.deepRemapperFor(factoryCls.defaultType)
+          val fieldNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
           addParameters(
             params = dedupedSourceParameters.allParameters,
             wrapInProvider = true,
             stubDefaults = false,
             typeRemapper = { type -> typeRemapper.remapType(type) },
           ) { typeKey, irParam ->
-            val field = irParam.addBackingFieldTo(factoryCls)
+            val fieldName =
+              fieldNameAllocator.allocateName(memberNamer, MemberNamer.Kind.PROVIDER) {
+                irParam.name.asString()
+              }
+            val field = irParam.addBackingFieldTo(factoryCls, fieldName)
             nameToField[irParam.name] = field
             typeKeyToField[typeKey] = field
           }
