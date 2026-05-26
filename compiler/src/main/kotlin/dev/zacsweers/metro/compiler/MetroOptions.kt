@@ -936,15 +936,20 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  SHORTEN_GENERATED_NAMES(
-    RawMetroOption.boolean(
-      name = "shorten-generated-names",
-      defaultValue = true,
-      valueDescription = "<true | false>",
+  MEMBER_NAMING_STRATEGY(
+    RawMetroOption(
+      name = "member-naming-strategy",
+      defaultValue = MemberNamingStrategy.MINIMAL.name,
+      valueDescription = MemberNamingStrategy.entries.joinToString("|"),
       description =
-        "When enabled, generated provider/instance/factory fields in graph classes, factory classes, and members-injector classes use short interned names (e.g. provider0, instance0, factory0) instead of descriptive names derived from types/parameters. Graph classes that exceed keys-per-graph-shard collapse further to a single provider* vocabulary. Reduces DEX/bytecode string-table size at the cost of debuggable generated names.",
+        "Strategy for naming generated provider/instance/factory fields in graph, factory, and " +
+          "members-injector classes. DESCRIPTIVE keeps names derived from types/parameters; " +
+          "TYPED uses short typed prefixes (provider*, instance*, factory*); MINIMAL collapses " +
+          "all kinds to a single short vocabulary. Nested-shard graphs always collapse to MINIMAL " +
+          "when the strategy is not DESCRIPTIVE. Default is MINIMAL.",
       required = false,
       allowMultipleOccurrences = false,
+      valueMapper = { it },
     )
   );
 
@@ -1123,8 +1128,10 @@ public data class MetroOptions(
     MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
   public val bindingContributionsAsContainers: Boolean =
     MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS.raw.defaultValue.expectAs(),
-  public val shortenGeneratedNames: Boolean =
-    MetroOption.SHORTEN_GENERATED_NAMES.raw.defaultValue.expectAs(),
+  public val memberNamingStrategy: MemberNamingStrategy =
+    MetroOption.MEMBER_NAMING_STRATEGY.raw.defaultValue.expectAs<String>().let {
+      MemberNamingStrategy.valueOf(it.uppercase(Locale.US))
+    },
 ) {
 
   public val reportsEnabled: Boolean
@@ -1248,7 +1255,7 @@ public data class MetroOptions(
     public var richDiagnostics: Boolean = base.richDiagnostics
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
     public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
-    public var shortenGeneratedNames: Boolean = base.shortenGeneratedNames
+    public var memberNamingStrategy: MemberNamingStrategy = base.memberNamingStrategy
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1443,7 +1450,7 @@ public data class MetroOptions(
         richDiagnostics = richDiagnostics,
         generateStaticAnnotations = generateStaticAnnotations,
         bindingContributionsAsContainers = bindingContributionsAsContainers,
-        shortenGeneratedNames = shortenGeneratedNames,
+        memberNamingStrategy = memberNamingStrategy,
       )
     }
 
@@ -1764,7 +1771,11 @@ public data class MetroOptions(
             generateStaticAnnotations = configuration.getAsBoolean(entry)
           BINDING_CONTRIBUTIONS_AS_CONTAINERS ->
             bindingContributionsAsContainers = configuration.getAsBoolean(entry)
-          SHORTEN_GENERATED_NAMES -> shortenGeneratedNames = configuration.getAsBoolean(entry)
+          MEMBER_NAMING_STRATEGY ->
+            memberNamingStrategy =
+              configuration.getAsString(entry).let {
+                MemberNamingStrategy.valueOf(it.uppercase(Locale.US))
+              }
         }
       }
     }

@@ -377,8 +377,8 @@ abstract class MetroCompilerTest {
                   this@toPluginOptions.bindingContributionsAsContainers,
                 )
               }
-              SHORTEN_GENERATED_NAMES -> {
-                processor.option(entry.raw.cliOption, this@toPluginOptions.shortenGeneratedNames)
+              MEMBER_NAMING_STRATEGY -> {
+                processor.option(entry.raw.cliOption, this@toPluginOptions.memberNamingStrategy)
               }
             }
           yield(option)

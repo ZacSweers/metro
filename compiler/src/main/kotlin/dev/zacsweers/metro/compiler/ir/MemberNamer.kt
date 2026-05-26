@@ -24,7 +24,7 @@ internal sealed interface MemberNamer {
     FACTORY,
   }
 
-  /** Uses the caller-supplied descriptive name. Default when no shortening is requested. */
+  /** Uses the caller-supplied descriptive name. */
   data object Descriptive : MemberNamer {
     override fun suggest(kind: Kind, descriptive: () -> String): String = descriptive()
   }

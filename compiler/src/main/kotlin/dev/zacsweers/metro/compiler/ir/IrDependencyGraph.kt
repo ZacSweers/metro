@@ -8,6 +8,7 @@ import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.Qualifier
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ClassIds
+import dev.zacsweers.metro.compiler.MemberNamingStrategy
 import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -83,17 +84,16 @@ internal interface IrDependencyGraph {
     compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
 
   /**
-   * Base [MemberNamer] for generated graph/factory/members-injector members in this compilation.
-   * Returns [MemberNamer.Typed] when [MetroOptions.shortenGeneratedNames] is on and
-   * [MemberNamer.Descriptive] otherwise. Nested-shard generation may override locally to
-   * [MemberNamer.Minimal].
+   * Base [MemberNamer] for generated graph/factory/members-injector members in this compilation,
+   * derived from [MetroOptions.memberNamingStrategy]. Nested-shard generation may override locally
+   * to [MemberNamer.Minimal] when the strategy is not [MemberNamingStrategy.DESCRIPTIVE].
    */
   @Provides
   fun provideMemberNamer(options: MetroOptions): MemberNamer =
-    if (options.shortenGeneratedNames) {
-      MemberNamer.Typed
-    } else {
-      MemberNamer.Descriptive
+    when (options.memberNamingStrategy) {
+      MemberNamingStrategy.DESCRIPTIVE -> MemberNamer.Descriptive
+      MemberNamingStrategy.TYPED -> MemberNamer.Typed
+      MemberNamingStrategy.MINIMAL -> MemberNamer.Minimal
     }
 
   @Provides
