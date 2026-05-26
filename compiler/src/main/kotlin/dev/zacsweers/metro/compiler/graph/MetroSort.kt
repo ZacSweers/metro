@@ -278,10 +278,14 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
   // Create reusable cycle checker that can mask edges dynamically
   val cycleChecker = ReusableCycleChecker(vertices, sccAdjacency, deferrableEdgesFrom)
 
-  // TODO this is... ugly? It's like we want a hierarchy of deferrable types (whole-node or just
-  //  edge)
-  // Prefer implicitly deferrable types (i.e. assisted factories) over regular types
-  // Sort candidates once upfront instead of sorting in each loop
+  // Two flavors of "deferrable" inform candidate priority:
+  // - implicit (whole-node, e.g., @AssistedFactory, user already marked it on-demand)
+  // - explicit (edge-only, source wraps the target in Provider/Lazy)
+  //
+  // Implicit wins ties so codegen prefers the user-visible choice.
+  // A DeferralKind { WHOLE_NODE, EDGE, NONE } ordinal would express this more cleanly but isn't
+  // worth the ripple through the rest of this logic.
+  // Sort candidates once upfront instead of sorting in each loop.
   val sortedCandidates =
     potentialCandidates.sortedWith(
       compareBy(
