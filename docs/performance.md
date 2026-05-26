@@ -184,6 +184,36 @@ metro {
 
 Default `0` disables chunking. Each chunk holds up to N contributions plus their promoted parent interfaces, so the chunk count tracks the contribution count rather than the raw supertype count. Most useful paired with `@MergeContributionsInIr` for the largest graphs.
 
+### Shortening generated member names
+
+For very large graphs, the descriptive declaration names Metro generates on can contribute a measurable amount of bytecode/string-table size. The `member-naming-strategy` compiler option swaps them for a smaller vocabulary.
+
+```kotlin
+metro {
+  compilerOptions.put("member-naming-strategy", "TYPED")
+}
+```
+
+Three values are accepted:
+
+- **`DESCRIPTIVE`** (default): names derived from binding types and parameters (e.g. `httpClientProvider`, `databaseProvider`).
+- **`TYPED`**: short kinded prefixes for graph supplemental and graph-as-shard binding properties (`provider`, `provider2`, ...; `instance`, `instance2`, ...; `factory`, `factory2`, ...).
+- **`MINIMAL`**: single short vocabulary; every kind collapses to `provider` (e.g. `provider`, `provider2`, `provider3`, ...).
+
+When sharding is active and a graph splits into multiple shard classes, each shard's binding properties always collapse to `MINIMAL` regardless of the chosen strategy (so long as it is not `DESCRIPTIVE`), and each shard uses its own name allocator. The same name string (`provider`, `provider2`, ...) therefore recurs across shard classes.
+
+#### When this matters
+
+- Graph classes with thousands of fields shrink because each field name in the constant pool's UTF-8 strings is shorter.
+- Multi-shard graphs additionally benefit from cross-class deduplication since the same short strings recur across shard classes.
+- Factory (and similar) classes benefit similarly via cross-class dedup in DEX, where the small fixed vocabulary recurs across thousands of generated factory classes.
+
+#### When this does not matter
+
+**Builds shrunk by R8/ProGuard:** Private generated field names are renamed/inlined/etc by the shrinker regardless of what Metro emits. There is effectively no artifact-size difference between `DESCRIPTIVE`, `TYPED`, and `MINIMAL` once R8 has run. The option is most useful for pipelines that ship un-minified bytecode (pure JVM server apps, distributed library AARs at author dev time, debug Android builds).
+
+Default is `DESCRIPTIVE` so generated code stays readable. Opt in only if you have a specific size constraint that benefits.
+
 ## Tracing
 
 If you want to investigate the performance of Metro's compiler pipeline, you can enable tracing in the Gradle DSL.
