@@ -939,14 +939,14 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   MEMBER_NAMING_STRATEGY(
     RawMetroOption(
       name = "member-naming-strategy",
-      defaultValue = MemberNamingStrategy.MINIMAL.name,
+      defaultValue = MemberNamingStrategy.DESCRIPTIVE.name,
       valueDescription = MemberNamingStrategy.entries.joinToString("|"),
       description =
         "Strategy for naming generated provider/instance/factory fields in graph, factory, and " +
           "members-injector classes. DESCRIPTIVE keeps names derived from types/parameters; " +
           "TYPED uses short typed prefixes (provider*, instance*, factory*); MINIMAL collapses " +
           "all kinds to a single short vocabulary. Nested-shard graphs always collapse to MINIMAL " +
-          "when the strategy is not DESCRIPTIVE. Default is MINIMAL.",
+          "when the strategy is not DESCRIPTIVE. Default is DESCRIPTIVE.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
