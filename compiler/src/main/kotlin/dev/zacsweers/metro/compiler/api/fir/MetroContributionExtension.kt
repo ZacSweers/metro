@@ -88,6 +88,24 @@ public interface MetroContributionExtension {
   ): List<Contribution>
 
   /**
+   * Returns binding container contributions that this extension provides for the given scope.
+   *
+   * Unlike [getContributions], these contributions are not merged in as graph supertypes; instead
+   * they participate as binding containers (analogous to `@BindingContainer` classes contributed
+   * via `@ContributesTo`). Their `@Provides` members are pulled into the graph, and their
+   * [BindingContainerContribution.replaces] entries flow through the existing replacement logic.
+   *
+   * The default implementation returns an empty list.
+   *
+   * @param scopeClassId The scope class ID to get binding container contributions for
+   * @return List of binding container contributions for this scope, empty if none
+   */
+  public fun getBindingContainerContributions(
+    scopeClassId: ClassId,
+    typeResolverFactory: MetroFirTypeResolver.Factory,
+  ): List<BindingContainerContribution> = emptyList()
+
+  /**
    * Represents a contribution to be merged into a dependency graph.
    *
    * @property supertype The supertype to add to the graph (typically a generated
@@ -98,6 +116,23 @@ public interface MetroContributionExtension {
    */
   public data class Contribution(
     val supertype: ConeKotlinType,
+    val replaces: List<ClassId>,
+    val originClassId: ClassId,
+  )
+
+  /**
+   * Represents a binding container contribution to be merged into a dependency graph.
+   *
+   * The contributed class is treated like a `@BindingContainer` for the requested scope: its
+   * `@Provides` members are pulled into the graph but the class itself is not added as a supertype.
+   *
+   * @property classId The [ClassId] of the binding container class
+   * @property replaces Classes that this contribution replaces (for replacement merging)
+   * @property originClassId The origin class this contribution came from (used for exclusion
+   *   matching when the graph excludes certain classes)
+   */
+  public data class BindingContainerContribution(
+    val classId: ClassId,
     val replaces: List<ClassId>,
     val originClassId: ClassId,
   )
