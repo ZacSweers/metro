@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.graph
 
 import androidx.collection.MutableObjectIntMap
-import androidx.collection.emptyIntObjectMap
 import com.google.common.truth.Truth.assertThat
 import java.util.SortedMap
 import java.util.SortedSet
@@ -272,6 +271,5 @@ class GraphPartitionerTest {
             put(k, v)
           }
         },
-      componentDag = emptyIntObjectMap(),
     )
 }

@@ -3,16 +3,10 @@
 package dev.zacsweers.metro.compiler.graph
 
 import androidx.collection.IntList
-import androidx.collection.IntObjectMap
-import androidx.collection.IntSet
 import androidx.collection.MutableIntList
-import androidx.collection.MutableIntObjectMap
-import androidx.collection.MutableIntSet
 import androidx.collection.MutableObjectIntMap
 import androidx.collection.ObjectIntMap
 import androidx.collection.ScatterMap
-import androidx.collection.emptyIntObjectMap
-import androidx.collection.emptyIntSet
 import dev.zacsweers.metro.compiler.calculateInitialCapacity
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.getAndAdd
@@ -30,7 +24,6 @@ import java.util.SortedSet
  * @param adjacency The reachable adjacency (forward and reverse) used for topological sorting.
  * @param components The strongly connected components computed during sorting.
  * @param componentOf Mapping from vertex to component ID.
- * @param componentDag The DAG of components (edges between component IDs).
  */
 internal data class GraphTopology<T>(
   val sortedKeys: List<T>,
@@ -39,7 +32,6 @@ internal data class GraphTopology<T>(
   val adjacency: GraphAdjacency<T>,
   val components: List<Component<T>>,
   val componentOf: ObjectIntMap<T>,
-  val componentDag: IntObjectMap<IntSet>,
 )
 
 /**
@@ -67,16 +59,14 @@ internal data class GraphAdjacency<T>(
  * │  ┌─────────────────┐│
  * │  │ Find SCCs       ││  ◄─── Detects cycles
  * │  │ Classify cycles ││  ◄─── Hard vs Soft
- * │  │ Build comp DAG  ││  ◄─── collapse the SCCs -> nodes
  * │  └─────────────────┘│
  * └─────────────────────┘
  *      │
  *      ▼
  * ┌──────────────────────┐
- * │  Phase 2: Kahn       │
+ * │  Phase 2: Expand     │
  * │  ┌──────────────────┐│
- * │  │ Topo sort DAG    ││  ◄─── Deterministic order
- * │  │ Expand components││  ◄─── Components -> vertices
+ * │  │ Components -> Vs ││  ◄─── Tarjan finish order
  * │  └──────────────────┘│
  * └──────────────────────┘
  *      │
@@ -122,24 +112,6 @@ internal data class GraphAdjacency<T>(
  * @param roots optional set of source roots for computing reachability. If null, all keys will be
  *   kept.
  * @param onSortedCycle optional callback reporting (sorted) cycles.
- * @param useSecondaryTopoSort Controls how the **component-level** ordering is produced.
- *     - `true` (default): build the component DAG and run a Kahn topological sort over it. Ties
- *       among simultaneously-ready components are broken by lowest component id (via
- *       `PriorityQueue<Int>`). The component DAG is exposed in the result.
- *     - `false`: skip the DAG build and Kahn's pass. Tarjan emits components in finish order (id 0
- *       = first-popped = a leaf with no outgoing dep edges, i.e. depends on nothing), which in this
- *       codebase's adjacency orientation IS the desired init order — prereqs first, dependents
- *       last. Tie-breaking is by DFS finish order, but **since Kahn assigns its tie-break by
- *       component id and Tarjan ids ARE finish-order, both paths produce the same order**. The
- *       component DAG isn't built — `componentDag` in the result is empty.
- *
- *   Both paths produce **the same `sortedKeys` order** in practice. The `false` path is purely a
- *   cheaper way to compute it for graphs that don't need the materialised `componentDag`. If you
- *   need `GraphTopology.componentDag` populated for downstream analysis, leave this `true`.
- *
- *   Note that the **vertex-level** Kahn pass inside [sortVerticesInSCC] always runs regardless of
- *   this flag — that's a different sort, ordering vertices within a single SCC by their hard
- *   intra-SCC edges.
  */
 context(traceScope: TraceScope)
 internal fun <V : Comparable<V>> metroSort(
@@ -149,7 +121,6 @@ internal fun <V : Comparable<V>> metroSort(
   roots: SortedSet<V>? = null,
   isImplicitlyDeferrable: (V) -> Boolean = { false },
   onSortedCycle: (List<V>) -> Unit = {},
-  useSecondaryTopoSort: Boolean = true,
 ): GraphTopology<V> {
   val deferredTypes = HashSet<V>()
 
@@ -192,32 +163,15 @@ internal fun <V : Comparable<V>> metroSort(
     }
   }
 
-  val componentDag: IntObjectMap<IntSet>
-  val componentOrder: IntList
-  if (useSecondaryTopoSort) {
-    // Build the component DAG with edges reversed for Kahn (dependent → prereqs) and run a
-    // priority-queued Kahn topological sort over it. Stable across builds: ties are broken by
-    // lowest component id.
-    componentDag =
-      trace("Build component DAG") {
-        buildComponentDag(reachableAdjacency.forward, componentOf, components.size)
-      }
-    componentOrder =
-      trace("Topo sort component DAG") {
-        topologicallySortComponentDag(componentDag, components.size)
-      }
-  } else {
-    // Tarjan finish-order matches Kahn-with-id-priority output (see KDoc); skip the DAG build.
-    componentDag = emptyIntObjectMap()
-    componentOrder =
-      trace("Component order from Tarjan finish order") {
-        MutableIntList(components.size).apply {
-          for (id in components.indices) {
-            add(id)
-          }
+  // Tarjan emits components in finish order, which in turn is the topological ordering we want
+  val componentOrder =
+    trace("Component order from Tarjan finish order") {
+      MutableIntList(components.size).apply {
+        for (id in components.indices) {
+          add(id)
         }
       }
-  }
+    }
 
   val sortedKeys =
     trace("Expand components") {
@@ -239,7 +193,6 @@ internal fun <V : Comparable<V>> metroSort(
     reachableAdjacency,
     components,
     componentOf,
-    componentDag,
   )
 }
 
@@ -442,8 +395,8 @@ private class ReusableCycleChecker<V>(
  *   expanded:         [X, A, B, Y]
  * ```
  *
- * @param componentOrder the topologically-sorted list of component IDs from
- *   [topologicallySortComponentDag].
+ * @param componentOrder component IDs in init order (prereqs first), taken directly from Tarjan's
+ *   finish order.
  * @param components vertices grouped by component ID (from [computeStronglyConnectedComponents]).
  * @param forwardAdjacency the reachable forward adjacency, used by [sortVerticesInSCC] to walk
  *   intra-SCC dependencies.
@@ -626,8 +579,9 @@ internal data class TarjanResult<V : Comparable<V>>(
  * ```
  *
  * Components are returned in **reverse topological order** (a property of Tarjan's): the first
- * popped SCC is a sink (depends on no later SCC), the last is a source. Callers wanting forward
- * topological order reverse the list (see how [topologicallySortComponentDag] is used).
+ * popped SCC is a sink (depends on no later SCC), the last is a source. Since edges here point from
+ * dependent to prerequisite, the sink is a leaf prerequisite and iterating ids 0..N is already the
+ * desired init order (prereqs first, dependents last).
  *
  * ### How it works
  *
@@ -653,20 +607,20 @@ internal data class TarjanResult<V : Comparable<V>>(
  *
  * Walk-through of the example (edges visited in sorted order):
  * ```
- *  step  action                           index   lowlink  dfsStack          popped
+ *  step  action                            index   lowlink  dfsStack          popped
  *  ───────────────────────────────────────────────────────────────────────────────────
- *  1     visit A                          A=0     A=0      [A]
+ *  1     visit A                           A=0     A=0      [A]
  *  2     A->B  visit B                     B=1     B=1      [A,B]
  *  3     B->D  visit D                     D=2     D=2      [A,B,D]
  *  4     D->C  visit C                     C=3     C=3      [A,B,D,C]
  *  5     C->A  (A on stack; back-edge)             C=0      [A,B,D,C]
- *  6     C done; lowlink≠index, don't pop
- *        D inherits lowlink from C                D=0      [A,B,D,C]
+ *  6     C done; lowlink!=index, don't pop
+ *        D inherits lowlink from C                 D=0      [A,B,D,C]
  *  7     D->E  visit E                     E=4     E=4      [A,B,D,C,E]
  *  8     E done; lowlink==index -> pop                      [A,B,D,C]         {E}
- *  9     D done; lowlink≠index, don't pop
- *  10    B inherits                               B=0      [A,B,D,C]
- *  11    A inherits                               A=0      [A,B,D,C]
+ *  9     D done; lowlink!=index, don't pop
+ *  10    B inherits                                B=0      [A,B,D,C]
+ *  11    A inherits                                A=0      [A,B,D,C]
  *  12    A done; lowlink==index -> pop                      []                {C,D,B,A}
  * ```
  *
@@ -912,146 +866,6 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
 
 private const val UNVISITED = -1
 private val EMPTY_INT_ARRAY = IntArray(0)
-
-/**
- * Collapses the per-vertex graph into a DAG over component IDs. Each SCC becomes a single node;
- * edges that cross between SCCs become edges in the DAG.
- *
- * **Edge direction is reversed** from the original graph. The original edges read "dependent ->
- * prerequisite" (a binding's outgoing edges point to what it needs). Kahn's topological sort works
- * in the opposite direction: we want to process prerequisites first, then nodes whose inputs are
- * all ready. So for every original edge `from -> to`, we record an edge in the DAG `componentOf[to]
- * -> componentOf[from]` (read as "prereq -> dependent"). Self-edges within an SCC are dropped since
- * they collapse onto the same component.
- *
- * Example:
- * ```
- *   Original (vertex graph):
- *     X -> A      A and B form an SCC (cycle A -> B -> A);
- *     A -> B      X is its own SCC; Y is its own SCC;
- *     B -> A      Y depends on B (so on the SCC).
- *     B -> Y
- *
- *   Components: c0={X}, c1={A,B}, c2={Y}
- *
- *   Cross-SCC edges in the original graph:
- *     X -> A     ->   c0 -> c1
- *     B -> Y     ->   c1 -> c2
- *     (A -> B and B -> A stay inside c1; dropped)
- *
- *   DAG returned (edges reversed for Kahn's):
- *     c1 ← c0           reads as "c0 must come before c1"
- *     c2 ← c1           reads as "c1 must come before c2"
- *
- *   So result map looks like:
- *     c1 -> {c0}
- *     c2 -> {c1}
- * ```
- *
- * @param originalEdges per-vertex outgoing edges of the input graph.
- * @param componentOf vertex -> SCC id, from [computeStronglyConnectedComponents].
- * @param componentCount total number of components (used to pre-size the result map).
- * @return A map keyed by SCC id whose values are the set of SCC ids that must run **before** the
- *   key (i.e., prerequisites, in Kahn-compatible orientation).
- */
-private fun <V> buildComponentDag(
-  originalEdges: Map<V, Set<V>>,
-  componentOf: ObjectIntMap<V>,
-  componentCount: Int,
-): IntObjectMap<IntSet> {
-  // At most one entry per component.
-  val dag = MutableIntObjectMap<MutableIntSet>(calculateInitialCapacity(componentCount, 7f / 8))
-
-  for ((fromVertex, outs) in originalEdges) {
-    // prerequisite side
-    val prereqComp = componentOf[fromVertex]
-    for (toVertex in outs) {
-      // dependent side
-      val dependentComp = componentOf[toVertex]
-      if (prereqComp != dependentComp) {
-        // Reverse the arrow so Kahn sees "prereq -> dependent"
-        dag.getOrPut(dependentComp, ::MutableIntSet).add(prereqComp)
-      }
-    }
-  }
-  @Suppress("UNCHECKED_CAST") // TODO why
-  return dag as IntObjectMap<IntSet>
-}
-
-/**
- * Topologically sorts the component DAG using Kahn's algorithm.
- *
- * At a glance:
- * 1. Compute the in-degree of every node (how many prereqs point at it).
- * 2. Seed a worklist with every node whose in-degree is 0 (no prereqs).
- * 3. Pop a node from the worklist, append it to the output, and decrement the in-degree of each of
- *    its dependents. Any dependent that drops to in-degree 0 is now ready and joins the worklist.
- * 4. Repeat until the worklist drains. If fewer nodes were emitted than exist, a cycle was present
- *    (impossible here since SCC collapse already removed cycles).
- *
- * Example using the DAG from [buildComponentDag] (`c1 -> {c0}`, `c2 -> {c1}`):
- * ```
- *   in-degrees:  c0=0, c1=1, c2=1
- *
- *   step 1: worklist = [c0]                emit c0, decrement c1 -> 0; worklist = [c1]
- *   step 2: worklist = [c1]                emit c1, decrement c2 -> 0; worklist = [c2]
- *   step 3: worklist = [c2]                emit c2;                   worklist = []
- *
- *   order:    [c0, c1, c2]
- * ```
- *
- * Note the [PriorityQueue] is intentionally keyed by component id. After processing a node,
- * multiple dependents may become ready at the same time; ordering them by id keeps the output
- * stable across builds. From the doc on the queue below:
- * ```
- *   (0)──▶(2)
- *    │
- *    └───▶(1)
- *
- *   After processing 0, both 1 and 2 are ready. A FIFO ArrayDeque would emit them in whatever
- *   order Kahn happens to find them; PriorityQueue dequeues the lowest id first (1 before 2),
- *   keeping generated code stable.
- * ```
- *
- * @param dag prereq-oriented DAG from [buildComponentDag]: keys are dependent components, values
- *   are the prerequisite components they depend on.
- * @param componentCount total number of components (also the upper bound on node ids).
- * @return Component ids in topological order (prereqs first, dependents last).
- * @throws IllegalStateException if a cycle remains. Should be impossible after SCC collapse.
- * @see <a href="https://en.wikipedia.org/wiki/Topological_sorting">Topological sorting</a>
- * @see <a href="https://www.interviewcake.com/concept/java/topological-sort">Topological sort</a>
- */
-private fun topologicallySortComponentDag(dag: IntObjectMap<IntSet>, componentCount: Int): IntList {
-  val inDegree = IntArray(componentCount)
-  // Avoid temporary list allocation from flatten()
-  dag.forEachValue { children -> children.forEach { child -> inDegree[child]++ } }
-
-  // PriorityQueue (not FIFO) so multiple ready nodes are emitted in id order — see the function
-  // KDoc above for why determinism matters here. Holds at most every component at once.
-  val queue =
-    PriorityQueue<Int>(componentCount.coerceAtLeast(1)).apply {
-      // Seed with every component whose in-degree is 0 (no prerequisites).
-      for (id in 0 until componentCount) {
-        if (inDegree[id] == 0) {
-          add(id)
-        }
-      }
-    }
-
-  // We emit exactly `componentCount` ids in the success path.
-  val order = MutableIntList(componentCount)
-  while (queue.isNotEmpty()) {
-    val c = queue.remove()
-    order += c
-    dag.getOrDefault(c, emptyIntSet()).forEach { n ->
-      if (--inDegree[n] == 0) {
-        queue += n
-      }
-    }
-  }
-  check(order.size == componentCount) { "Cycle remained after SCC collapse (should be impossible)" }
-  return order
-}
 
 internal fun <T : Comparable<T>> buildFullAdjacency(
   map: ScatterMap<T, *>,

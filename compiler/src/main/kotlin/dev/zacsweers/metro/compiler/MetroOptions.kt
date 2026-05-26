@@ -247,21 +247,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  USE_SECONDARY_TOPO_SORT(
-    RawMetroOption.boolean(
-      name = "use-secondary-topo-sort",
-      defaultValue = true,
-      valueDescription = "<true | false>",
-      description =
-        "When true (default), the binding graph runs a secondary Kahn topological sort over " +
-          "the component DAG produced by Tarjan's SCC pass, with PriorityQueue tie-breaking " +
-          "by component id. When false, Tarjan's reverse-topological output is used directly " +
-          "(componentDag is empty in the result). Both produce valid orders but with different " +
-          "tie-breaking, so flipping this re-orders observable codegen output.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   PUBLIC_SCOPED_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-scoped-provider-severity",
@@ -974,8 +959,6 @@ public data class MetroOptions(
     MetroOption.MERGED_SUPERTYPE_CHUNK_SIZE.raw.defaultValue.expectAs(),
   public val enableSwitchingProviders: Boolean =
     MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
-  public val useSecondaryTopoSort: Boolean =
-    MetroOption.USE_SECONDARY_TOPO_SORT.raw.defaultValue.expectAs(),
   public val publicScopedProviderSeverity: DiagnosticSeverity =
     MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -1154,7 +1137,6 @@ public data class MetroOptions(
     public var keysPerGraphShard: Int = base.keysPerGraphShard
     public var mergedSupertypeChunkSize: Int = base.mergedSupertypeChunkSize
     public var enableSwitchingProviders: Boolean = base.enableSwitchingProviders
-    public var useSecondaryTopoSort: Boolean = base.useSecondaryTopoSort
     public var publicScopedProviderSeverity: DiagnosticSeverity = base.publicScopedProviderSeverity
     public var nonPublicContributionSeverity: DiagnosticSeverity =
       base.nonPublicContributionSeverity
@@ -1368,7 +1350,6 @@ public data class MetroOptions(
         keysPerGraphShard = keysPerGraphShard,
         mergedSupertypeChunkSize = mergedSupertypeChunkSize,
         enableSwitchingProviders = enableSwitchingProviders,
-        useSecondaryTopoSort = useSecondaryTopoSort,
         publicScopedProviderSeverity = publicScopedProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
@@ -1594,8 +1575,6 @@ public data class MetroOptions(
           MERGED_SUPERTYPE_CHUNK_SIZE -> mergedSupertypeChunkSize = configuration.getAsInt(entry)
 
           ENABLE_SWITCHING_PROVIDERS -> enableSwitchingProviders = configuration.getAsBoolean(entry)
-
-          USE_SECONDARY_TOPO_SORT -> useSecondaryTopoSort = configuration.getAsBoolean(entry)
 
           PUBLIC_SCOPED_PROVIDER_SEVERITY ->
             publicScopedProviderSeverity =

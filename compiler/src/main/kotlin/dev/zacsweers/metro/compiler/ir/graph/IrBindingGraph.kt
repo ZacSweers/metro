@@ -339,7 +339,6 @@ internal class IrBindingGraph(
           roots = roots,
           keep = extraKeeps,
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
-          useSecondaryTopoSort = metroContext.options.useSecondaryTopoSort,
           onPopulated = {
             writeDiagnostic(
               "keys-populated",
