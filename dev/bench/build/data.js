@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779811851299,
+  "lastUpdate": 1779814715241,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -15176,6 +15176,62 @@ window.BENCHMARK_DATA = {
             "value": 20702.294,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.14%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bddbfc09~1",
+          "message": "[before] Add modes for reducing generated field name types ",
+          "timestamp": "2026-05-26T16:15:40+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bddbfc099e268bdaf36d743bdd7220cb1bbeb36f"
+        },
+        "date": 1779814715241,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20347.566,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bddbfc099e268bdaf36d743bdd7220cb1bbeb36f",
+          "message": "[after] Add modes for reducing generated field name types ",
+          "timestamp": "2026-05-26T16:15:40+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bddbfc099e268bdaf36d743bdd7220cb1bbeb36f"
+        },
+        "date": 1779814715242,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20894.188000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.69%"
           }
         ]
       }
