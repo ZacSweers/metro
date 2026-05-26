@@ -284,7 +284,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
     val constructorParametersToFields =
       trace("assignConstructorParamsToFields") {
-        assignConstructorParamsToFields(ctor, injectorClass)
+        assignConstructorParamsToFields(ctor, injectorClass, namer = memberNamer)
       }
 
     // TODO This is ugly. Can we just source all the params directly from the FIR class now?
