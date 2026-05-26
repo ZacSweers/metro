@@ -27,7 +27,7 @@ dependencyResolutionManagement {
   }
 }
 
-plugins { id("com.gradle.develocity") version "4.4.1" }
+plugins { id("com.gradle.develocity") version "4.4.2" }
 
 rootProject.name = "metro-ide-integration-tests"
 
