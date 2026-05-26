@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779755090182,
+  "lastUpdate": 1779756538872,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -15008,6 +15008,62 @@ window.BENCHMARK_DATA = {
             "value": 19628.341999999997,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.35%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "01b150e2~1",
+          "message": "[before] Fix dynamic class caching across files (#2344)",
+          "timestamp": "2026-05-26T00:12:52+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/01b150e2a13ec0c8b658aa6825246cd28626db79"
+        },
+        "date": 1779756538872,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17920.576,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "01b150e2a13ec0c8b658aa6825246cd28626db79",
+          "message": "[after] Fix dynamic class caching across files (#2344)",
+          "timestamp": "2026-05-26T00:12:52+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/01b150e2a13ec0c8b658aa6825246cd28626db79"
+        },
+        "date": 1779756538873,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17826.752,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.52%"
           }
         ]
       }

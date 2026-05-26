@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779755090029,
+  "lastUpdate": 1779756538748,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -15008,6 +15008,62 @@ window.BENCHMARK_DATA = {
             "value": 0.24285159267020945,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +4.56%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "01b150e2~1",
+          "message": "[before] Fix dynamic class caching across files (#2344)",
+          "timestamp": "2026-05-26T00:12:52+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/01b150e2a13ec0c8b658aa6825246cd28626db79"
+        },
+        "date": 1779756538748,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.24273969768468917,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "01b150e2a13ec0c8b658aa6825246cd28626db79",
+          "message": "[after] Fix dynamic class caching across files (#2344)",
+          "timestamp": "2026-05-26T00:12:52+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/01b150e2a13ec0c8b658aa6825246cd28626db79"
+        },
+        "date": 1779756538749,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.24715204290919207,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.82%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
