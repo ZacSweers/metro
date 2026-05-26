@@ -1464,6 +1464,45 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#shortening-generated-member-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Shortening generated member names
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shortening generated member names">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-this-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When this matters
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-this-does-not-matter" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When this does not matter
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2211,6 +2250,45 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#shortening-generated-member-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Shortening generated member names
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shortening generated member names">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-this-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When this matters
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-this-does-not-matter" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When this does not matter
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2461,6 +2539,28 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>Default <code>0</code> disables chunking. Each chunk holds up to N contributions plus their promoted parent interfaces, so the chunk count tracks the contribution count rather than the raw supertype count. Most useful paired with <code>@MergeContributionsInIr</code> for the largest graphs.</p>
+<h3 id="shortening-generated-member-names">Shortening generated member names<a class="headerlink" href="#shortening-generated-member-names" title="Permanent link">&para;</a></h3>
+<p>For very large graphs, the descriptive declaration names Metro generates on can contribute a measurable amount of bytecode/string-table size. The <code>member-naming-strategy</code> compiler option swaps them for a smaller vocabulary.</p>
+<div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">compilerOptions</span><span class="p">.</span><span class="na">put</span><span class="p">(</span><span class="s">&quot;member-naming-strategy&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TYPED&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Three values are accepted:</p>
+<ul>
+<li><strong><code>DESCRIPTIVE</code></strong> (default): names derived from binding types and parameters (e.g. <code>httpClientProvider</code>, <code>databaseProvider</code>).</li>
+<li><strong><code>TYPED</code></strong>: short kinded prefixes for graph supplemental and graph-as-shard binding properties (<code>provider</code>, <code>provider2</code>, &hellip;; <code>instance</code>, <code>instance2</code>, &hellip;; <code>factory</code>, <code>factory2</code>, &hellip;).</li>
+<li><strong><code>MINIMAL</code></strong>: single short vocabulary; every kind collapses to <code>provider</code> (e.g. <code>provider</code>, <code>provider2</code>, <code>provider3</code>, &hellip;).</li>
+</ul>
+<p>When sharding is active and a graph splits into multiple shard classes, each shard&rsquo;s binding properties always collapse to <code>MINIMAL</code> regardless of the chosen strategy (so long as it is not <code>DESCRIPTIVE</code>), and each shard uses its own name allocator. The same name string (<code>provider</code>, <code>provider2</code>, &hellip;) therefore recurs across shard classes.</p>
+<h4 id="when-this-matters">When this matters<a class="headerlink" href="#when-this-matters" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Graph classes with thousands of fields shrink because each field name in the constant pool&rsquo;s UTF-8 strings is shorter.</li>
+<li>Multi-shard graphs additionally benefit from cross-class deduplication since the same short strings recur across shard classes.</li>
+<li>Factory (and similar) classes benefit similarly via cross-class dedup in DEX, where the small fixed vocabulary recurs across thousands of generated factory classes.</li>
+</ul>
+<h4 id="when-this-does-not-matter">When this does not matter<a class="headerlink" href="#when-this-does-not-matter" title="Permanent link">&para;</a></h4>
+<p><strong>Builds shrunk by R8/ProGuard:</strong> Private generated field names are renamed/inlined/etc by the shrinker regardless of what Metro emits. There is effectively no artifact-size difference between <code>DESCRIPTIVE</code>, <code>TYPED</code>, and <code>MINIMAL</code> once R8 has run. The option is most useful for pipelines that ship un-minified bytecode (pure JVM server apps, distributed library AARs at author dev time, debug Android builds).</p>
+<p>Default is <code>DESCRIPTIVE</code> so generated code stays readable. Opt in only if you have a specific size constraint that benefits.</p>
 <h2 id="tracing">Tracing<a class="headerlink" href="#tracing" title="Permanent link">&para;</a></h2>
 <p>If you want to investigate the performance of Metro&rsquo;s compiler pipeline, you can enable tracing in the Gradle DSL.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>

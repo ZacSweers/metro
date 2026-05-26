@@ -6571,6 +6571,7 @@
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[IR]</strong> Add a <code>member-naming-strategy</code> compiler option for shortening generated member names in generated code. Accepts <code>DESCRIPTIVE</code> (default), <code>TYPED</code> (<code>provider*</code>/<code>instance*</code>/<code>factory*</code>), or <code>MINIMAL</code> (single collapsed <code>provider*</code> naming). See <a href="https://zacsweers.github.io/metro/performance/#shortening-generated-member-names">docs/performance.md</a> for guidance.</li>
 <li><strong>[IR/IC]</strong> Optimize IC tracking by buffering lookup and expect/actual records during IR and flushing them once after graph validation, avoiding per-write synchronization on the hot path. This is enabled by default but can be disabled via the <code>buffered-ic-tracking</code> compiler option if it causes any issues.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
