@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph.sharding
 
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MemberNamer
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.PropertyKind
 import org.jetbrains.kotlin.ir.types.IrType
@@ -18,6 +19,8 @@ internal data class ShardBinding(
   val propertyKind: PropertyKind,
   val irType: IrType,
   val nameHint: Name,
+  /** Member kind used by [MemberNamer] when allocating this binding's property name. */
+  val kind: MemberNamer.Kind,
   val isScoped: Boolean,
   /**
    * True if this binding is a deferred type (i.e., `DelegateFactory` for breaking cycles). Deferred

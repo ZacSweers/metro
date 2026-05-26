@@ -13,8 +13,10 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MemberNamer
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
+import dev.zacsweers.metro.compiler.ir.allocateName
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
@@ -400,7 +402,12 @@ internal class IrGraphGenerator(
       if (parentGraphParam != null) {
         val parentGraphType = parentGraphParam.type
         addProperty {
-            name = propertyNameAllocator.newName(parentGraphParam.name)
+            name =
+              propertyNameAllocator
+                .allocateName(memberNamer, MemberNamer.Kind.INSTANCE) {
+                  parentGraphParam.name.asString()
+                }
+                .asName()
             visibility = DescriptorVisibilities.PRIVATE
           }
           .apply {
@@ -519,7 +526,11 @@ internal class IrGraphGenerator(
     val instanceProperty =
       createBindingProperty(
           contextualTypeKey,
-          name.decapitalizeUS().suffixIfNot("Instance"),
+          memberNamer
+            .suggest(MemberNamer.Kind.INSTANCE) {
+              name.decapitalizeUS().suffixIfNot("Instance").asString()
+            }
+            .asName(),
           typeKey.type,
           PropertyKind.FIELD,
         )
@@ -532,7 +543,11 @@ internal class IrGraphGenerator(
     val providerProperty =
       createBindingProperty(
           providerContextKey,
-          instanceProperty.name.suffixIfNot("Provider"),
+          memberNamer
+            .suggest(MemberNamer.Kind.PROVIDER) {
+              instanceProperty.name.suffixIfNot("Provider").asString()
+            }
+            .asName(),
           providerType,
           PropertyKind.FIELD,
         )
@@ -608,7 +623,9 @@ internal class IrGraphGenerator(
 
     val graphDepProperty =
       addSimpleInstanceProperty(
-        propertyNameAllocator.newName(graphDep.sourceGraph.name.asString() + "Instance"),
+        propertyNameAllocator.allocateName(memberNamer, MemberNamer.Kind.INSTANCE) {
+          graphDep.sourceGraph.name.asString() + "Instance"
+        },
         param.typeKey,
       ) {
         irGet(irParam)
@@ -630,7 +647,11 @@ internal class IrGraphGenerator(
       val providerWrapperProperty =
         createBindingProperty(
           graphDepProviderContextKey,
-          graphDepProperty.name.suffixIfNot("Provider"),
+          memberNamer
+            .suggest(MemberNamer.Kind.PROVIDER) {
+              graphDepProperty.name.suffixIfNot("Provider").asString()
+            }
+            .asName(),
           graphDepProviderType,
           PropertyKind.FIELD,
         )
@@ -699,7 +720,9 @@ internal class IrGraphGenerator(
 
     val thisGraphProperty =
       addSimpleInstanceProperty(
-        propertyNameAllocator.newName("thisGraphInstance"),
+        propertyNameAllocator.allocateName(memberNamer, MemberNamer.Kind.INSTANCE) {
+          "thisGraphInstance"
+        },
         node.typeKey,
         // Use the concrete Impl type (thisReceiverParameter.type) for the backing field rather than
         // the graph's interface type for Wasm: https://github.com/ZacSweers/metro/issues/2181
@@ -722,7 +745,7 @@ internal class IrGraphGenerator(
       val property =
         createBindingProperty(
           thisGraphProviderContextKey,
-          "thisGraphInstanceProvider".asName(),
+          memberNamer.suggest(MemberNamer.Kind.PROVIDER) { "thisGraphInstanceProvider" }.asName(),
           thisGraphProviderType,
           PropertyKind.FIELD,
         )
@@ -820,6 +843,7 @@ internal class IrGraphGenerator(
       propertyKind = metadata.propertyKind,
       irType = metadata.irType,
       nameHint = metadata.nameHint,
+      kind = metadata.kind,
       isScoped = metadata.isScoped,
       isDeferred = isDeferred,
       switchingId = switchingId,
@@ -1372,16 +1396,25 @@ internal class IrGraphGenerator(
     var isProviderType = collectedIsProviderType
     val finalContextKey = collectedContextKey.letIf(isProviderType) { it.wrapInProvider() }
     val suffix: String
+    val kind: MemberNamer.Kind
     val irType =
       if (binding is IrBinding.ConstructorInjected && binding.isAssisted) {
         isProviderType = false
         suffix = "Factory"
+        kind = MemberNamer.Kind.FACTORY
         binding.classFactory.factoryClass.typeWith()
       } else if (propertyType == PropertyKind.GETTER) {
-        suffix = if (isProviderType) "Provider" else ""
+        if (isProviderType) {
+          suffix = "Provider"
+          kind = MemberNamer.Kind.PROVIDER
+        } else {
+          suffix = ""
+          kind = MemberNamer.Kind.INSTANCE
+        }
         finalContextKey.toIrType()
       } else {
         suffix = "Provider"
+        kind = MemberNamer.Kind.PROVIDER
         metroSymbols.metroProvider.typeWith(key.type)
       }
 
@@ -1391,6 +1424,7 @@ internal class IrGraphGenerator(
       contextKey = finalContextKey,
       irType = irType,
       nameHint = binding.nameHint.decapitalizeUS().suffixIfNot(suffix).asName(),
+      kind = kind,
       isProviderType = isProviderType,
       isScoped = binding.isScoped(),
     )
@@ -1403,6 +1437,7 @@ internal class IrGraphGenerator(
     val contextKey: IrContextualTypeKey,
     val irType: IrType,
     val nameHint: Name,
+    val kind: MemberNamer.Kind,
     val isProviderType: Boolean,
     val isScoped: Boolean,
   )
