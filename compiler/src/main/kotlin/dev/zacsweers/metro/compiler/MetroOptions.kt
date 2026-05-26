@@ -935,6 +935,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  SHORTEN_GENERATED_NAMES(
+    RawMetroOption.boolean(
+      name = "shorten-generated-names",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "When enabled, generated provider/instance/factory fields in graph classes, factory classes, and members-injector classes use short interned names (e.g. provider0, instance0, factory0) instead of descriptive names derived from types/parameters. Graph classes that exceed keys-per-graph-shard collapse further to a single provider* vocabulary. Reduces DEX/bytecode string-table size at the cost of debuggable generated names.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -1112,6 +1123,8 @@ public data class MetroOptions(
     MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
   public val bindingContributionsAsContainers: Boolean =
     MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS.raw.defaultValue.expectAs(),
+  public val shortenGeneratedNames: Boolean =
+    MetroOption.SHORTEN_GENERATED_NAMES.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1235,6 +1248,7 @@ public data class MetroOptions(
     public var richDiagnostics: Boolean = base.richDiagnostics
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
     public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
+    public var shortenGeneratedNames: Boolean = base.shortenGeneratedNames
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1429,6 +1443,7 @@ public data class MetroOptions(
         richDiagnostics = richDiagnostics,
         generateStaticAnnotations = generateStaticAnnotations,
         bindingContributionsAsContainers = bindingContributionsAsContainers,
+        shortenGeneratedNames = shortenGeneratedNames,
       )
     }
 
@@ -1749,6 +1764,7 @@ public data class MetroOptions(
             generateStaticAnnotations = configuration.getAsBoolean(entry)
           BINDING_CONTRIBUTIONS_AS_CONTAINERS ->
             bindingContributionsAsContainers = configuration.getAsBoolean(entry)
+          SHORTEN_GENERATED_NAMES -> shortenGeneratedNames = configuration.getAsBoolean(entry)
         }
       }
     }
