@@ -82,6 +82,20 @@ internal interface IrDependencyGraph {
   ): IrGeneratedDeclarationsRegistrarCompat =
     compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
 
+  /**
+   * Base [MemberNamer] for generated graph/factory/members-injector members in this compilation.
+   * Returns [MemberNamer.Typed] when [MetroOptions.shortenGeneratedNames] is on and
+   * [MemberNamer.Descriptive] otherwise. Nested-shard generation may override locally to
+   * [MemberNamer.Minimal].
+   */
+  @Provides
+  fun provideMemberNamer(options: MetroOptions): MemberNamer =
+    if (options.shortenGeneratedNames) {
+      MemberNamer.Typed
+    } else {
+      MemberNamer.Descriptive
+    }
+
   @Provides
   @SingleIn(IrScope::class)
   @ReportFile("log.txt")
