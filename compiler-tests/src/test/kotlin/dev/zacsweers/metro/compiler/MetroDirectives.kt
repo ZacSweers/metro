@@ -37,6 +37,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Maximum number of binding keys per graph shard when sharding is enabled.") {
       it.toInt()
     }
+  val MEMBER_NAMING_STRATEGY by
+    enumDirective<MemberNamingStrategy>(
+      "Strategy for naming generated provider/instance/factory members."
+    )
   val MERGED_SUPERTYPE_CHUNK_SIZE by
     valueDirective(
       "Maximum number of contribution supertypes per chunk when merging contributions in IR. 0 disables chunking."

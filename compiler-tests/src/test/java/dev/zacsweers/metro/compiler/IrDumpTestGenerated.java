@@ -317,6 +317,28 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/membernaming")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Membernaming {
+      @Test
+      public void testAllFilesPresentInMembernaming() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/membernaming"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("MinimalMemberNamingAcrossShards.kt")
+      public void testMinimalMemberNamingAcrossShards() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/membernaming/MinimalMemberNamingAcrossShards.kt");
+      }
+
+      @Test
+      @TestMetadata("TypedMemberNamingOnSimpleGraph.kt")
+      public void testTypedMemberNamingOnSimpleGraph() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/membernaming/TypedMemberNamingOnSimpleGraph.kt");
+      }
+    }
+
+    @Nested
     @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/sharding")
     @TestDataPath("$PROJECT_ROOT")
     public class Sharding {

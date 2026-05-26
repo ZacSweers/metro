@@ -95,6 +95,9 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
         keysPerGraphShard = it
       }
+      module.directives.singleOrZeroValue(MetroDirectives.MEMBER_NAMING_STRATEGY)?.let {
+        memberNamingStrategy = it
+      }
       module.directives.singleOrZeroValue(MetroDirectives.MERGED_SUPERTYPE_CHUNK_SIZE)?.let {
         mergedSupertypeChunkSize = it
       }

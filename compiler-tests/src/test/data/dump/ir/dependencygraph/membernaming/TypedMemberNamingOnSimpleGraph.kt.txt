@@ -1,0 +1,389 @@
+@Inject
+class Config {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Config> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): Factory<Config> {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): Config {
+      return Config()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Config {
+      return MetroFactory.newInstance()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): Config {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class Repository {
+  val config: Config
+    field = config
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Repository> {
+    private /* final field */ val config: Provider<Config> = config
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(config: Provider<Config>): Factory<Repository> {
+        return MetroFactory(config = config)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(config: Config): Repository {
+        return Repository(config = config)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(config: Provider<Config>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Repository {
+      return MetroFactory/* companion */.newInstance(config = <this>.#config.invoke())
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(config: Config): Repository {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(config: Config) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class Service {
+  val repository: Repository
+    field = repository
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Service> {
+    private /* final field */ val repository: Provider<Repository> = repository
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(repository: Provider<Repository>): Factory<Service> {
+        return MetroFactory(repository = repository)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(repository: Repository): Service {
+        return Service(repository = repository)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(repository: Provider<Repository>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Service {
+      return MetroFactory/* companion */.newInstance(repository = <this>.#repository.invoke())
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(repository: Repository): Service {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(repository: Repository) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@AssistedInject
+class SharedWorker {
+  val service: Service
+    field = service
+    get
+
+  val name: String
+    field = name
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @AssistedMarker
+  class MetroFactory {
+    private /* final field */ val service: Provider<Service> = service
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(service: Provider<Service>): MetroFactory {
+        return MetroFactory(service = service)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(service: Service, name: String): SharedWorker {
+        return SharedWorker(service = service, name = name)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(service: Provider<Service>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    operator fun invoke(name: String): SharedWorker {
+      return MetroFactory/* companion */.newInstance(service = <this>.#service.invoke(), name = name)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(service: Service, @Assisted name: String): SharedWorker {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(service: Service, @Assisted name: String) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@AssistedFactory
+fun interface PrimaryWorkerFactory {
+  class Impl : PrimaryWorkerFactory {
+    private /* final field */ val delegateFactory: SharedWorker.MetroFactory = delegateFactory
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @JvmStatic
+      @JsStatic
+      fun create(delegateFactory: SharedWorker.MetroFactory): Provider<PrimaryWorkerFactory> {
+        return InstanceFactory/* companion */.invoke<PrimaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
+      }
+
+    }
+
+    private constructor(delegateFactory: SharedWorker.MetroFactory) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun create(name: String): SharedWorker {
+      return <this>.#delegateFactory.invoke(name = name)
+    }
+
+  }
+
+  abstract fun create(name: String): SharedWorker
+
+}
+
+@AssistedFactory
+fun interface SecondaryWorkerFactory {
+  class Impl : SecondaryWorkerFactory {
+    private /* final field */ val delegateFactory: SharedWorker.MetroFactory = delegateFactory
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @JvmStatic
+      @JsStatic
+      fun create(delegateFactory: SharedWorker.MetroFactory): Provider<SecondaryWorkerFactory> {
+        return InstanceFactory/* companion */.invoke<SecondaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
+      }
+
+    }
+
+    private constructor(delegateFactory: SharedWorker.MetroFactory) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun create(name: String): SharedWorker {
+      return <this>.#delegateFactory.invoke(name = name)
+    }
+
+  }
+
+  abstract fun create(name: String): SharedWorker
+
+}
+
+@DependencyGraph
+interface TestGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : TestGraph {
+    private val instance: Config
+      field = config
+
+    private val provider: Provider<Config>
+      field = InstanceFactory/* companion */.invoke<Config>(value = <this>.#instance)
+
+    private val provider2: Provider<Service>
+      field = Service.MetroFactory/* companion */.create(repository = Repository.MetroFactory/* companion */.create(config = <this>.#provider))
+
+    private val factory: SharedWorker.MetroFactory
+      field = SharedWorker.MetroFactory/* companion */.create(service = <this>.#provider2)
+
+    private constructor(@Provides config: Config) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val primaryWorkerFactory: PrimaryWorkerFactory
+      override get(): PrimaryWorkerFactory {
+        return PrimaryWorkerFactory.Impl/* companion */.create(delegateFactory = <this>.#factory).invoke()
+      }
+
+    override val secondaryWorkerFactory: SecondaryWorkerFactory
+      override get(): SecondaryWorkerFactory {
+        return SecondaryWorkerFactory.Impl/* companion */.create(delegateFactory = <this>.#factory).invoke()
+      }
+
+    override val service: Service
+      override get(): Service {
+        return <this>.#provider2.invoke()
+      }
+
+  }
+
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    override fun create(@Provides config: Config): TestGraph {
+      return Impl(config = config)
+    }
+
+  }
+
+  @DependencyGraph.Factory
+  fun interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroImplMarker
+    object Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Provides config: Config): TestGraph {
+        return Impl(config = config)
+      }
+
+    }
+
+    abstract fun create(@Provides config: Config): TestGraph
+
+  }
+
+  abstract val primaryWorkerFactory: PrimaryWorkerFactory
+    abstract get
+
+  abstract val secondaryWorkerFactory: SecondaryWorkerFactory
+    abstract get
+
+  abstract val service: Service
+    abstract get
+
+}
+
