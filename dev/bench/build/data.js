@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779753102788,
+  "lastUpdate": 1779755090182,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -14952,6 +14952,62 @@ window.BENCHMARK_DATA = {
             "value": 20188.406,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.65%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "22cd6c77~1",
+          "message": "[before] Switch to WAL + non-synchronization in IC (#2343)",
+          "timestamp": "2026-05-25T23:43:21+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/22cd6c77890c9a919c49b1b47d2a07acee9094a5"
+        },
+        "date": 1779755090182,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19895.968,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "22cd6c77890c9a919c49b1b47d2a07acee9094a5",
+          "message": "[after] Switch to WAL + non-synchronization in IC (#2343)",
+          "timestamp": "2026-05-25T23:43:21+00:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/22cd6c77890c9a919c49b1b47d2a07acee9094a5"
+        },
+        "date": 1779755090183,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19628.341999999997,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.35%"
           }
         ]
       }
