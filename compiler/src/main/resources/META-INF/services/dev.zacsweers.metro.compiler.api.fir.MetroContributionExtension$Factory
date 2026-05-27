@@ -1,1 +1,2 @@
 dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension$Factory
+dev.zacsweers.metro.compiler.hilt.HiltContributionExtension$Factory
