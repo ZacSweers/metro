@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
@@ -31,6 +32,7 @@ import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.ClassId
 
@@ -59,6 +61,7 @@ internal class IrContributionMerger(
   private data class ScopedContributions(
     val allContributions: Map<ClassId, List<IrType>>,
     val bindingContainers: Map<ClassId, IrClass>,
+    val externalSupertypes: Map<ClassId, IrClass>,
     val originToContributions: Map<ClassId, Set<ClassId>>,
   )
 
@@ -193,6 +196,14 @@ internal class IrContributionMerger(
                 }
                 .associateByTo(mutableMapOf()) { it.classIdOrFail }
 
+            // External supertype contributions from IR extensions (e.g., Hilt entry points). These
+            // are top-level types added directly as graph supertypes, bypassing the
+            // MetroContribution-marker parent-promotion path.
+            val externalSupertypes =
+              allScopes
+                .flatMap { contributionData.getExtensionSupertypes(it, callingDeclaration) }
+                .associateBy { it.classIdOrFail }
+
             // Build a cache of origin class -> contribution classes mappings upfront
             // This maps from an origin class to all contributions that have an @Origin pointing to
             // it
@@ -223,7 +234,12 @@ internal class IrContributionMerger(
               }
             }
 
-            ScopedContributions(allContributions, bindingContainers, originToContributions)
+            ScopedContributions(
+              allContributions,
+              bindingContainers,
+              externalSupertypes,
+              originToContributions,
+            )
           }
         }
 
@@ -232,6 +248,7 @@ internal class IrContributionMerger(
       // Start with copies of the contributions maps (we'll modify these)
       val mutableAllContributions = scopedContributions.allContributions.toMutableMap()
       val mutableContributedBindingContainers = scopedContributions.bindingContainers.toMutableMap()
+      val mutableExternalSupertypes = scopedContributions.externalSupertypes.toMutableMap()
 
       // Process excludes FIRST - excluded classes should not have their `replaces` effect applied
       if (excluded.isNotEmpty()) {
@@ -246,6 +263,9 @@ internal class IrContributionMerger(
             // (binding containers don't have these, so this only affects @ContributesBinding etc.)
             val removedContribution = mutableAllContributions.remove(excludedClassId)
 
+            // Remove excluded external supertypes (raw IR extension contributions)
+            val removedExternalSupertype = mutableExternalSupertypes.remove(excludedClassId)
+
             // Remove contributions that have @Origin annotation pointing to the excluded class
             val originContributions = originToContributions[excludedClassId]
             originContributions?.forEach { contributionId ->
@@ -255,7 +275,10 @@ internal class IrContributionMerger(
 
             // Track unmatched if nothing was removed
             if (
-              removedContainer == null && removedContribution == null && originContributions == null
+              removedContainer == null &&
+                removedContribution == null &&
+                removedExternalSupertype == null &&
+                originContributions == null
             ) {
               unmatchedExclusions += excludedClassId
             }
@@ -388,14 +411,20 @@ internal class IrContributionMerger(
         }
       }
 
-      // Build and cache the result
+      // Build and cache the result. Combine native markers and external supertypes into a single
+      // sorted set. External supertypes are top-level types (no MetroContribution marker shape),
+      // but the downstream supertype-chunking flow handles them uniformly via the safe cast in
+      // computePromotedParents.
+      val combinedSupertypes = mutableSetOf<IrType>()
+      mutableAllContributions.values.forEach(combinedSupertypes::addAll)
+      mutableExternalSupertypes.values.forEach { irClass ->
+        combinedSupertypes.add(irClass.defaultType)
+      }
       val result =
         IrContributions(
           primaryScope,
           allScopes,
-          mutableAllContributions.values
-            .flatten()
-            .toSortedSet(compareBy { it.rawType().classIdOrFail.toString() }),
+          combinedSupertypes.toSortedSet(compareBy { it.rawType().classIdOrFail.toString() }),
           mutableContributedBindingContainers.toSortedMap(compareBy { it.toString() }),
         )
 
@@ -407,6 +436,13 @@ internal class IrContributionMerger(
 internal data class IrContributions(
   val primaryScope: ClassId?,
   val allScopes: Set<ClassId>,
+  /**
+   * All supertype contributions for the graph, sorted deterministically. Includes native nested
+   * `MetroContribution` markers as well as raw top-level external supertypes from
+   * [MetroIrContributionExtension]s (e.g., Hilt entry points). Downstream code distinguishes them
+   * via the safe cast in [computePromotedParents] (top-level externals have no `IrClass` parent to
+   * promote).
+   */
   val supertypes: SortedSet<IrType>,
   // Deterministic sort
   val bindingContainers: SortedMap<ClassId, IrClass>,
@@ -425,7 +461,9 @@ internal fun computePromotedParents(
   val existing = ownerGraph.superTypes.mapNotNullTo(mutableSetOf()) { it.rawTypeOrNull()?.classId }
   return buildMap {
     for (marker in contributions.supertypes) {
-      val parentClass = marker.rawType().parentAsClass
+      // Skip top-level types (e.g., external supertype contributions whose parent is an IrFile).
+      // Only nested MetroContribution markers have a class parent to promote.
+      val parentClass = marker.rawType().parent as? IrClass ?: continue
       val parentClassId = parentClass.classId ?: continue
       if (!existing.add(parentClassId)) continue
       put(marker, parentClass.symbol.defaultType)

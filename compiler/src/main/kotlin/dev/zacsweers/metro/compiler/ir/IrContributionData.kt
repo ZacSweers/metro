@@ -4,9 +4,12 @@ package dev.zacsweers.metro.compiler.ir
 
 import androidx.collection.MutableScatterMap
 import androidx.collection.MutableScatterSet
+import androidx.collection.ScatterSet
+import androidx.collection.mutableScatterSetOf
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
@@ -37,8 +40,10 @@ private typealias Scope = ClassId
 @Inject
 @SingleIn(IrScope::class)
 @ContributesBinding(IrScope::class)
-internal class IrContributionData(private val metroContext: IrMetroContext) :
-  Lockable by Lockable() {
+internal class IrContributionData(
+  private val metroContext: IrMetroContext,
+  private val irContributionExtensions: List<MetroIrContributionExtension>,
+) : Lockable by Lockable() {
 
   private val contributions = MutableScatterMap<Scope, MutableScatterSet<IrType>>()
   // Lazily populated caches use ConcurrentHashMap for thread-safe access during parallel
@@ -51,12 +56,18 @@ internal class IrContributionData(private val metroContext: IrMetroContext) :
     scopeHintCache.getOrPut(scope) { Symbols.CallableIds.scopeHint(scope) }
 
   private val bindingContainerContributions = MutableScatterMap<Scope, MutableScatterSet<IrClass>>()
-  private val externalBindingContainerContributions = ConcurrentHashMap<Scope, Set<IrClass>>()
+  private val externalBindingContainerContributions =
+    MutableScatterMap<Scope, ScatterSet<IrClass>>()
+
+  // External "raw" supertype contributions from IR extensions. Kept separate from `contributions`
+  // because the latter holds nested `MetroContribution` markers, while these are top-level
+  // interfaces (e.g., Hilt entry points) that don't have a contributing-class parent.
+  private val extensionSupertypes = MutableScatterMap<Scope, Set<IrClass>>()
 
   // Cache for findVisibleContributionClassesForScopeInHints results.
   // This avoids redundant lookups when both findExternalContributions and
   // findExternalBindingContainerContributions are called for the same scope.
-  private val visibleContributionClassesCache = ConcurrentHashMap<Scope, Set<IrClass>>()
+  private val visibleContributionClassesCache = MutableScatterMap<Scope, Set<IrClass>>()
 
   fun addContribution(scope: Scope, contribution: IrType) {
     checkNotLocked()
@@ -80,7 +91,28 @@ internal class IrContributionData(private val metroContext: IrMetroContext) :
     callingDeclaration: IrDeclaration,
   ): Set<IrClass> = buildSet {
     bindingContainerContributions[scope]?.forEach(::add)
-    addAll(findExternalBindingContainerContributions(scope, callingDeclaration))
+    findExternalBindingContainerContributions(scope, callingDeclaration).forEach(::add)
+  }
+
+  /**
+   * Returns "raw" supertype contributions from registered [MetroIrContributionExtension]s. These
+   * are top-level types (e.g., Hilt entry-point interfaces) that should be added directly as graph
+   * supertypes without parent promotion.
+   */
+  context(traceScope: TraceScope)
+  fun getExtensionSupertypes(scope: Scope, callingDeclaration: IrDeclaration): Set<IrClass> {
+    trackScopeHintLookup(scope, callingDeclaration)
+    return extensionSupertypes.getOrPut(scope) {
+      trace("Look up extension supertypes for $scope") {
+        irContributionExtensions.flatMapToSet { extension ->
+          extension.contributeSupertypes(scope, callingDeclaration).mapNotNullToSet { type ->
+            type.classOrNull?.owner?.also { irClass ->
+              with(metroContext) { trackClassLookup(callingDeclaration, irClass) }
+            }
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -189,18 +221,30 @@ internal class IrContributionData(private val metroContext: IrMetroContext) :
   ): Set<IrClass> {
     // Track the lookup before checking the cache so all callers register their dependency
     trackScopeHintLookup(scope, callingDeclaration)
-    return externalBindingContainerContributions.getOrPut(scope) {
-      trace("Look up external contributions for $scope") {
-        val contributingClasses =
-          findVisibleContributionClassesForScopeInHints(scope, callingDeclaration)
-        getScopedContributions(contributingClasses, scope, bindingContainersOnly = true)
-          .mapNotNullToSet {
-            it.classOrNull?.owner?.takeIf { irClass ->
-              with(metroContext) { irClass.isBindingContainer() }
+    return externalBindingContainerContributions
+      .getOrPut(scope) {
+        trace("Look up external contributions for $scope") {
+          val contributingClasses =
+            findVisibleContributionClassesForScopeInHints(scope, callingDeclaration)
+          val finalSet = mutableScatterSetOf<IrClass>()
+          // nativeContributions
+          getScopedContributions(contributingClasses, scope, bindingContainersOnly = true).forEach {
+            it.classOrNull
+              ?.owner
+              ?.takeIf { irClass -> with(metroContext) { irClass.isBindingContainer() } }
+              ?.let(finalSet::add)
+          }
+          // extensionContributions
+          irContributionExtensions.forEach { extension ->
+            for (irClass in extension.contributeBindingContainers(scope, callingDeclaration)) {
+              with(metroContext) { trackClassLookup(callingDeclaration, irClass) }
+              finalSet.add(irClass)
             }
           }
+          finalSet
+        }
       }
-    }
+      .asSet()
   }
 
   // Replacement processing is intentionally NOT done here. It's handled in
