@@ -106,6 +106,14 @@ private constructor(
   private val multibindingExpressionGenerator by memoize { MultibindingExpressionGenerator(this) }
 
   context(scope: IrBuilderWithScope)
+  override fun generateTracerBindingCode(): IrExpression {
+    val tracerTypeKey = IrTypeKey(metroSymbols.tracer.defaultType)
+    val tracerBinding = bindingGraph.findBinding(tracerTypeKey)
+      ?: reportCompilerBug("Runtime tracing is enabled but no Tracer binding was provided in the graph.")
+    return generateBindingCode(tracerBinding, tracerBinding.contextualTypeKey, AccessType.INSTANCE, null)
+  }
+
+  context(scope: IrBuilderWithScope)
   override fun generateBindingCode(
     binding: IrBinding,
     contextualTypeKey: IrContextualTypeKey,
@@ -159,7 +167,7 @@ private constructor(
             if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
               // Call constructor directly
               val targetConstructor = classFactory.targetConstructor!!
-              irCallConstructor(
+              val directExpr = irCallConstructor(
                   targetConstructor.symbol,
                   binding.type.typeParameters.map { it.defaultType },
                 )
@@ -176,11 +184,12 @@ private constructor(
                     arguments[i] = arg
                   }
                 }
+              maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             } else {
               // Constructor isn't public - call newInstance() on the factory object instead
               // Example_Factory.newInstance(...)
-              classFactory
+              val directExpr = classFactory
                 .invokeNewInstanceExpression(binding.typeKey, Symbols.Names.newInstance) {
                   newInstanceFunction,
                   parameters ->
@@ -191,6 +200,7 @@ private constructor(
                     fieldInitKey = null,
                   )
                 }
+              maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             }
           } else {
@@ -301,11 +311,12 @@ private constructor(
                   fieldInitKey = fieldInitKey,
                 )
 
-              irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
+              val directExpr = irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
+              maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             } else {
               // Function isn't public - call factory's static newInstance() method instead
-              providerFactory
+              val directExpr = providerFactory
                 .invokeNewInstanceExpression(binding.typeKey, providerFactory.newInstanceName) {
                   newInstanceFunction,
                   params ->
@@ -316,6 +327,7 @@ private constructor(
                     fieldInitKey = fieldInitKey,
                   )
                 }
+              maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             }
           } else {

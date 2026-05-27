@@ -2,26 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
-import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.*
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
-import dev.zacsweers.metro.compiler.ir.instanceFactory
-import dev.zacsweers.metro.compiler.ir.irInvoke
-import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
-import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.irReturn
-import org.jetbrains.kotlin.ir.builders.parent
+import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.constructors
 
 internal abstract class BindingExpressionGenerator<T : IrBinding>(
   context: IrMetroContext,
@@ -100,7 +93,6 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     useInstanceFactory: Boolean = true,
     allowPropertyGetter: Boolean = false,
   ): IrExpression {
-    // Step 1: Transform access type (INSTANCE <-> PROVIDER)
     val accessTransformed =
       when (requested) {
         actual -> this
@@ -118,17 +110,42 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
         }
       }
 
-    // Step 2: Convert provider if needed (e.g., Metro -> Dagger)
-    // Only do this if we're in PROVIDER mode (or transformed to it)
+    // Wrap in TracedProvider if runtime tracing is enabled.
+    val maybeTraced =
+      if (
+        options.enableRuntimeTracing &&
+          requested == AccessType.PROVIDER &&
+          contextualTypeKey.typeKey.classId != metroSymbols.tracer
+      ) {
+        with(scope) {
+          val tracerInstance = generateTracerBindingCode()
+          irCallConstructor(
+              metroSymbols.tracedProvider.constructors.first { it.owner.isPrimary },
+              listOf(contextualTypeKey.typeKey.type),
+            )
+            .apply {
+              arguments[0] = tracerInstance
+              arguments[1] = irString(contextualTypeKey.typeKey.toString())
+              arguments[2] = accessTransformed
+            }
+        }
+      } else {
+        accessTransformed
+      }
+
+    // Convert provider if needed (e.g., Metro -> Dagger)
     val finalAccessType = if (requested == AccessType.PROVIDER) requested else actual
     return if (finalAccessType == AccessType.PROVIDER) {
       with(scope) {
-        with(metroSymbols.providerTypeConverter) { accessTransformed.convertTo(contextualTypeKey) }
+        with(metroSymbols.providerTypeConverter) { maybeTraced.convertTo(contextualTypeKey) }
       }
     } else {
-      accessTransformed
+      maybeTraced
     }
   }
+
+  context(scope: IrBuilderWithScope)
+  abstract fun generateTracerBindingCode(): IrExpression
 
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.wrapInInstanceFactory(
@@ -159,6 +176,33 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
   protected fun IrExpression.unwrapProvider(type: IrType): IrExpression {
     return with(scope) {
       irInvoke(this@unwrapProvider, callee = metroSymbols.providerInvoke, typeHint = type)
+    }
+  }
+
+  context(scope: IrBuilderWithScope)
+  protected fun maybeWrapInTracedProviderAndInvoke(
+    directExpr: IrExpression,
+    contextualTypeKey: IrContextualTypeKey,
+  ): IrExpression {
+    if (!options.enableRuntimeTracing || contextualTypeKey.typeKey.classId == metroSymbols.tracer.owner.classId) {
+      return directExpr
+    }
+
+    return with(scope) {
+      // Wrap the expression in the provider
+      val lambdaProvider = wrapInProviderFunction(contextualTypeKey.typeKey.type) { directExpr }
+
+      // Invoke the TracedProvider
+      val tracerInstance = generateTracerBindingCode()
+      val tracedProvider = irCallConstructor(
+        metroSymbols.tracedProvider.owner.constructors.first { it.isPrimary }.symbol,
+        listOf(contextualTypeKey.typeKey.type)
+      ).apply {
+        arguments[0] = tracerInstance
+        arguments[1] = irString(contextualTypeKey.typeKey.toString())
+        arguments[2] = lambdaProvider
+      }
+      tracedProvider.unwrapProvider(contextualTypeKey.typeKey.type)
     }
   }
 }

@@ -60,6 +60,11 @@ internal class MultibindingExpressionGenerator(
     get() = parentGenerator.bindingGraph
 
   context(scope: IrBuilderWithScope)
+  override fun generateTracerBindingCode(): IrExpression {
+    return parentGenerator.generateTracerBindingCode()
+  }
+
+  context(scope: IrBuilderWithScope)
   override fun generateBindingCode(
     binding: IrBinding.Multibinding,
     contextualTypeKey: IrContextualTypeKey,

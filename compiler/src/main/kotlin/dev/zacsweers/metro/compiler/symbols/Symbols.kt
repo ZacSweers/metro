@@ -191,6 +191,8 @@ internal class Symbols(
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())
     val metroInstanceFactory =
       ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
+    val tracer = ClassId(FqNames.metroRuntimePackage, "Tracer".asName())
+    val tracedProvider = ClassId(FqNames.metroRuntimePackage, "TracedProvider".asName())
 
     val function0 = StandardClassIds.FunctionN(0)
 
@@ -379,6 +381,14 @@ internal class Symbols(
     }
 
     return metroFrameworkSymbols
+  }
+
+  val tracer: IrClassSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.tracer)!!
+  }
+
+  val tracedProvider: IrClassSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.tracedProvider)!!
   }
 
   val asContribution: IrSimpleFunctionSymbol by lazy {
