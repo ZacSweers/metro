@@ -360,6 +360,9 @@ abstract class MetroCompilerTest {
               ENABLE_CIRCUIT_CODEGEN -> {
                 processor.option(entry.raw.cliOption, enableCircuitCodegen)
               }
+              ENABLE_RUNTIME_TRACING -> {
+                processor.option(entry.raw.cliOption, enableRuntimeTracing)
+              }
               RICH_DIAGNOSTICS -> {
                 processor.option(entry.raw.cliOption, richDiagnostics)
               }

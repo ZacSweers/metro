@@ -212,6 +212,10 @@ class MetroExtensionRegistrarConfigurator(
       if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
         enableCircuitCodegen = true
       }
+
+      if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {
+        enableRuntimeTracing = true
+      }
     }
 
     if (!options.enabled) return

@@ -921,6 +921,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_RUNTIME_TRACING(
+    RawMetroOption.boolean(
+      name = "enable-runtime-tracing",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enables bytecode/IR tracing for binding injections using androidx.tracing.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   MEMBER_NAMING_STRATEGY(
     RawMetroOption(
       name = "member-naming-strategy",
@@ -1111,6 +1121,8 @@ public data class MetroOptions(
     MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
   public val bindingContributionsAsContainers: Boolean =
     MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS.raw.defaultValue.expectAs(),
+  public val enableRuntimeTracing: Boolean =
+    MetroOption.ENABLE_RUNTIME_TRACING.raw.defaultValue.expectAs(),
   public val memberNamingStrategy: MemberNamingStrategy =
     MetroOption.MEMBER_NAMING_STRATEGY.raw.defaultValue.expectAs<String>().let {
       MemberNamingStrategy.valueOf(it.uppercase(Locale.US))
@@ -1237,6 +1249,7 @@ public data class MetroOptions(
     public var richDiagnostics: Boolean = base.richDiagnostics
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
     public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
+    public var enableRuntimeTracing: Boolean = base.enableRuntimeTracing
     public var memberNamingStrategy: MemberNamingStrategy = base.memberNamingStrategy
 
     private fun FqName.classId(name: String): ClassId {
@@ -1431,6 +1444,7 @@ public data class MetroOptions(
         richDiagnostics = richDiagnostics,
         generateStaticAnnotations = generateStaticAnnotations,
         bindingContributionsAsContainers = bindingContributionsAsContainers,
+        enableRuntimeTracing = enableRuntimeTracing,
         memberNamingStrategy = memberNamingStrategy,
       )
     }
@@ -1750,6 +1764,8 @@ public data class MetroOptions(
             generateStaticAnnotations = configuration.getAsBoolean(entry)
           BINDING_CONTRIBUTIONS_AS_CONTAINERS ->
             bindingContributionsAsContainers = configuration.getAsBoolean(entry)
+          ENABLE_RUNTIME_TRACING ->
+            enableRuntimeTracing = configuration.getAsBoolean(entry)
           MEMBER_NAMING_STRATEGY ->
             memberNamingStrategy =
               configuration.getAsString(entry).let {

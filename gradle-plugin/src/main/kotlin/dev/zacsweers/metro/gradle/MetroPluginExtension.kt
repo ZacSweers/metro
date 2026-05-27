@@ -410,6 +410,14 @@ constructor(
     objects.booleanProperty("metro.enableCircuitCodegen", false)
 
   /**
+   * Enables bytecode/IR tracing for binding injections using androidx.tracing.
+   *
+   * Disabled by default.
+   */
+  public val enableRuntimeTracing: Property<Boolean> =
+    objects.booleanProperty("metro.enableRuntimeTracing", false)
+
+  /**
    * Configures Metro options for misc compiler options that don't necessarily warrant dedicated API
    * controls.
    */
