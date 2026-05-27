@@ -2599,6 +2599,40 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/hilt")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Hilt {
+      @Test
+      public void testAllFilesPresentInHilt() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/hilt"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("HiltDefineComponentScope.kt")
+      public void testHiltDefineComponentScope() {
+        runTest("compiler-tests/src/test/data/box/interop/hilt/HiltDefineComponentScope.kt");
+      }
+
+      @Test
+      @TestMetadata("HiltEntryPointInSingletonComponent.kt")
+      public void testHiltEntryPointInSingletonComponent() {
+        runTest("compiler-tests/src/test/data/box/interop/hilt/HiltEntryPointInSingletonComponent.kt");
+      }
+
+      @Test
+      @TestMetadata("HiltInRoundInstallIn.kt")
+      public void testHiltInRoundInstallIn() {
+        runTest("compiler-tests/src/test/data/box/interop/hilt/HiltInRoundInstallIn.kt");
+      }
+
+      @Test
+      @TestMetadata("HiltModuleInSingletonComponent.kt")
+      public void testHiltModuleInSingletonComponent() {
+        runTest("compiler-tests/src/test/data/box/interop/hilt/HiltModuleInSingletonComponent.kt");
+      }
+    }
+
+    @Nested
     @TestMetadata("compiler-tests/src/test/data/box/interop/kclass")
     @TestDataPath("$PROJECT_ROOT")
     public class Kclass {
