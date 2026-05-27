@@ -55,7 +55,7 @@ public class HiltContributionExtension(
     }
 
     // In-round source `@InstallIn @EntryPoint` interfaces.
-    for (installIn in findInRoundInstallIns(session)) {
+    for (installIn in findInRoundInstallIns(session, typeResolverFactory)) {
       if (!installIn.isEntryPoint) continue
       if (scopeClassId !in installIn.resolvedScopes(componentScopes)) continue
       contributions += contributionFor(installIn.classId)

@@ -38,10 +38,10 @@ internal object HiltSymbols {
   val ViewWithFragmentComponent =
     ClassId(hiltAndroidComponentsPackage, "ViewWithFragmentComponent".asName())
 
-  // Predicate for in-round source `@InstallIn` discovery.
+  // Hilt/Dagger predicates
   val installInPredicate = annotated(InstallIn.asSingleFqName())
-
-  // Standard scopes for the Android components
+  val modulePredicate = annotated(Module.asSingleFqName())
+  val entryPointPredicate = annotated(EntryPoint.asSingleFqName())
   val Singleton = ClassId(javaxInjectPackage, "Singleton".asName())
   val ActivityRetainedScoped = ClassId(hiltAndroidScopesPackage, "ActivityRetainedScoped".asName())
   val ActivityScoped = ClassId(hiltAndroidScopesPackage, "ActivityScoped".asName())

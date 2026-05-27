@@ -11,16 +11,18 @@ import org.jetbrains.kotlin.fir.backend.Fir2IrComponents
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.name.ClassId
 
 /**
  * IR-side Hilt interop.
  *
- * - [contributeBindingContainers]: surfaces Hilt `@InstallIn @Module` **classes from the
- *   classpath** (`@AggregatedDeps` markers). In-round source modules are emitted as contribution
- *   hints by [HiltFirDeclarationExtension] and flow through Metro's existing classpath-hint scan,
- *   so they don't need a dedicated path here.
+ * - [contributeBindingContainers]: surfaces Hilt `@InstallIn @Module` classes for both classpath
+ *   `@AggregatedDeps` markers and in-round source classes. We always route in-round modules here
+ *   too because the FIR-side hint emission ([HiltFirDeclarationExtension.getContributionHints])
+ *   only runs when `generateContributionHintsInFir` is enabled. Going through this method directly
+ *   makes Hilt interop work regardless of that flag.
  * - [contributeSupertypes]: surfaces Hilt `@InstallIn @EntryPoint` interfaces (both classpath
  *   `@AggregatedDeps` markers and in-round source classes) for the IR-only graph path
  *   (`@MergeContributionsInIr` graphs and `@GraphExtension`s).
@@ -62,6 +64,8 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
     val bridge = bridge ?: return emptyList()
 
     val result = mutableListOf<IrClass>()
+
+    // Classpath `@AggregatedDeps` modules.
     for (dep in bridge.scanner.deps()) {
       if (dep.modules.isEmpty()) continue
       if (dep.components.none { bridge.componentScopes.resolveScope(it) == scope }) continue
@@ -71,6 +75,15 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
         result += irClass
       }
     }
+
+    for (installIn in findInRoundInstallIns(bridge.session)) {
+      if (!installIn.isModule) continue
+      if (scope !in installIn.resolvedScopes(bridge.componentScopes)) continue
+      val irClass =
+        @Suppress("DEPRECATION") pluginContext.referenceClass(installIn.classId)?.owner ?: continue
+      result += irClass
+    }
+
     return result
   }
 
