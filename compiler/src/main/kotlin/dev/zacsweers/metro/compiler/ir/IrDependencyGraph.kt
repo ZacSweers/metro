@@ -11,11 +11,13 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MemberNamingStrategy
 import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.nio.file.Path
+import java.util.ServiceLoader
 import java.util.concurrent.ForkJoinPool
 import kotlin.io.path.appendText
 import kotlin.io.path.createFile
@@ -134,6 +136,30 @@ internal interface IrDependencyGraph {
     val moduleName =
       moduleFragment.name.asString().removePrefix("<").removeSuffix(">").ifBlank { "ir" }
     return TraceScope(traceDriver.tracer, "ir-$moduleName")
+  }
+
+  @Provides
+  @SingleIn(IrScope::class)
+  fun provideIrContributionExtensions(
+    pluginContext: IrPluginContext,
+    options: MetroOptions,
+  ): List<MetroIrContributionExtension> {
+    return ServiceLoader.load(
+        MetroIrContributionExtension.Factory::class.java,
+        MetroIrContributionExtension.Factory::class.java.classLoader,
+      )
+      .mapNotNull { factory ->
+        try {
+          factory.create(pluginContext, options)
+        } catch (e: Exception) {
+          if (options.debug) {
+            System.err.println(
+              "[Metro] Failed to load external IR contribution extension from ${factory::class}: ${e.message}"
+            )
+          }
+          null
+        }
+      }
   }
 
   @DependencyGraph.Factory
