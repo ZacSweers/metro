@@ -162,7 +162,15 @@ object MetroDirectives : SimpleDirectivesContainer() {
         "Verification runs inside MetroReportsChecker."
     )
   val ENABLE_CIRCUIT by directive("Enables Circuit code gen.")
-  val ENABLE_HILT_INTEROP by directive("Enables Hilt @InstallIn/@AggregatedDeps interop.")
+  val WITH_HILT by directive("Add Hilt-core as dependency.")
+  val ENABLE_HILT_INTEROP by
+    directive("Enables Hilt @InstallIn/@AggregatedDeps interop. Implicitly applies WITH_HILT.")
+  val ENABLE_HILT_KSP by
+    directive(
+      "Enable Hilt's KSP processors. Implicitly applies WITH_HILT and ENABLE_DAGGER_KSP since " +
+        "Hilt's processors require Dagger's per-@Provides factory classes to be generated in the " +
+        "same KSP round."
+    )
   val METRO_DUMP_KT_IR by
     directive("Like DUMP_KT_IR but uses betterDumpKotlinLike() for nested class name rendering.")
 
@@ -170,7 +178,20 @@ object MetroDirectives : SimpleDirectivesContainer() {
     return WITH_DAGGER in directives ||
       ENABLE_DAGGER_INTEROP in directives ||
       ENABLE_DAGGER_KSP in directives ||
-      ENABLE_ANVIL_KSP in directives
+      ENABLE_ANVIL_KSP in directives ||
+      // Hilt implies Dagger; pull dagger-runtime + javax/jakarta onto the compile classpath so
+      // `Singleton::class` etc. resolve in main modules that only have `// ENABLE_HILT_INTEROP`.
+      enableHilt(directives)
+  }
+
+  fun enableHilt(directives: RegisteredDirectives): Boolean {
+    return WITH_HILT in directives ||
+      ENABLE_HILT_INTEROP in directives ||
+      ENABLE_HILT_KSP in directives
+  }
+
+  fun enableHiltKsp(directives: RegisteredDirectives): Boolean {
+    return ENABLE_HILT_KSP in directives
   }
 
   fun enableDaggerRuntimeInterop(directives: RegisteredDirectives): Boolean {
@@ -180,7 +201,9 @@ object MetroDirectives : SimpleDirectivesContainer() {
   }
 
   fun enableDaggerKsp(directives: RegisteredDirectives): Boolean {
-    return ENABLE_DAGGER_KSP in directives
+    // Hilt's processors need Dagger's KSP processor in the same round to generate the per-@Provides
+    // factory classes that Metro's interop reads via `loadExternalBindingContainer`.
+    return ENABLE_DAGGER_KSP in directives || ENABLE_HILT_KSP in directives
   }
 
   fun enableAnvilKsp(directives: RegisteredDirectives): Boolean {

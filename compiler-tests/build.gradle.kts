@@ -75,6 +75,7 @@ val circuitRuntimeClasspath: Configuration by configurations.creating {
 // include transitive in this case to grab jakarta and javax
 val daggerRuntimeClasspath: Configuration by configurations.creating {}
 val daggerInteropClasspath: Configuration by configurations.creating { isTransitive = false }
+val hiltCoreClasspath: Configuration by configurations.creating { isTransitive = false }
 // include transitive in this case to grab jakarta and javax
 val guiceClasspath: Configuration by configurations.creating {}
 val javaxInteropClasspath: Configuration by configurations.creating { isTransitive = false }
@@ -155,6 +156,8 @@ dependencies {
   testImplementation(libs.ksp.symbolProcessing.commonDeps)
   testImplementation(libs.ksp.symbolProcessing.api)
   testImplementation(libs.dagger.compiler)
+  testImplementation(libs.hilt.compiler)
+  testImplementation(libs.hilt.core)
 
   metroRuntimeClasspath(project(":runtime"))
   daggerInteropClasspath(project(":interop-dagger"))
@@ -165,6 +168,7 @@ dependencies {
   anvilRuntimeClasspath(libs.anvil.annotations)
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
   daggerRuntimeClasspath(libs.dagger.runtime)
+  hiltCoreClasspath(libs.hilt.core)
   kiAnvilRuntimeClasspath(libs.kotlinInject.anvil.runtime)
   kiAnvilRuntimeClasspath(libs.kotlinInject.runtime)
   circuitRuntimeClasspath(libs.circuit.runtime.presenter)
@@ -230,6 +234,7 @@ tasks.withType<Test> {
 
   dependsOn(metroRuntimeClasspath)
   dependsOn(daggerInteropClasspath)
+  dependsOn(hiltCoreClasspath)
   dependsOn(guiceClasspath)
   dependsOn(javaxInteropClasspath)
   dependsOn(jakartaInteropClasspath)
@@ -334,6 +339,7 @@ tasks.withType<Test> {
   systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)
   systemProperty("daggerRuntime.classpath", daggerRuntimeClasspath.asPath)
   systemProperty("daggerInterop.classpath", daggerInteropClasspath.asPath)
+  systemProperty("hiltCore.classpath", hiltCoreClasspath.asPath)
   systemProperty("guice.classpath", guiceClasspath.asPath)
   systemProperty("javaxInterop.classpath", javaxInteropClasspath.asPath)
   systemProperty("jakartaInterop.classpath", jakartaInteropClasspath.asPath)

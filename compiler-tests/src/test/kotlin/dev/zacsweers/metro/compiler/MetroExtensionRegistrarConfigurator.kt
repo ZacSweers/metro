@@ -23,11 +23,14 @@ import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
 import dev.zacsweers.metro.compiler.circuit.configureCircuit
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
+import dev.zacsweers.metro.compiler.hilt.HiltContributionExtension
+import dev.zacsweers.metro.compiler.hilt.HiltFirDeclarationExtension
 import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
 import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
 import dev.zacsweers.metro.compiler.interop.configureGuiceInterop
+import dev.zacsweers.metro.compiler.interop.configureHiltAnnotations
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import kotlin.io.path.Path
@@ -63,6 +66,7 @@ fun TestConfigurationBuilder.configurePlugin(
   configureDaggerAnnotations()
   configureDaggerInterop()
   configureGuiceInterop()
+  configureHiltAnnotations()
   configureCircuit()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
   useAfterAnalysisCheckers(::MetroReportsChecker)
@@ -190,7 +194,7 @@ class MetroExtensionRegistrarConfigurator(
       if (
         MetroDirectives.WITH_DAGGER in module.directives ||
           MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
-          MetroDirectives.ENABLE_DAGGER_KSP in module.directives
+          MetroDirectives.enableDaggerKsp(module.directives)
       ) {
         includeDaggerAnnotations()
       }
@@ -245,6 +249,9 @@ class MetroExtensionRegistrarConfigurator(
             if (options.enableCircuitCodegen) {
               add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
             }
+            if (options.enableHiltInterop) {
+              add(HiltFirDeclarationExtension.Factory().create(session, options, compatContext)!!)
+            }
           }
         },
         loadExternalContributionExtensions = { session, options, compatContext ->
@@ -264,6 +271,9 @@ class MetroExtensionRegistrarConfigurator(
             )
             if (options.enableCircuitCodegen) {
               add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
+            }
+            if (options.enableHiltInterop) {
+              add(HiltContributionExtension.Factory().create(session, options, compatContext)!!)
             }
           }
         },
