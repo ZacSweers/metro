@@ -744,6 +744,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  INTEROP_INCLUDE_HILT_ANNOTATIONS(
+    RawMetroOption.boolean(
+      name = "interop-include-hilt-annotations",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Interop with Hilt @InstallIn/@AggregatedDeps annotations (typically used together with interop-include-dagger-annotations since Hilt modules are also Dagger modules).",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   INTEROP_INCLUDE_GUICE_ANNOTATIONS(
     RawMetroOption.boolean(
       name = "interop-include-guice-annotations",
@@ -1106,6 +1117,8 @@ public data class MetroOptions(
     MetroOption.GENERATE_CONTRIBUTION_PROVIDERS.raw.defaultValue.expectAs(),
   val enableCircuitCodegen: Boolean =
     MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
+  public val enableHiltInterop: Boolean =
+    MetroOption.INTEROP_INCLUDE_HILT_ANNOTATIONS.raw.defaultValue.expectAs(),
   public val richDiagnostics: Boolean = MetroOption.RICH_DIAGNOSTICS.raw.defaultValue.expectAs(),
   public val generateStaticAnnotations: Boolean =
     MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
@@ -1234,6 +1247,7 @@ public data class MetroOptions(
     public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
     public var generateContributionProviders: Boolean = base.generateContributionProviders
     public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
+    public var enableHiltInterop: Boolean = base.enableHiltInterop
     public var richDiagnostics: Boolean = base.richDiagnostics
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
     public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
@@ -1296,6 +1310,13 @@ public data class MetroOptions(
       customProvidesAnnotations.add(kotlinInjectPackage.classId("Provides"))
       customQualifierAnnotations.add(kotlinInjectPackage.classId("Qualifier"))
       customScopeAnnotations.add(kotlinInjectPackage.classId("Scope"))
+    }
+
+    public fun includeHiltAnnotations() {
+      enableHiltInterop = true
+      // Hilt modules are also Dagger `@Module`s, so the IR-side `isBindingContainer()` check
+      // requires Dagger annotations to be registered.
+      includeDaggerAnnotations()
     }
 
     public fun includeAnvilAnnotations() {
@@ -1428,6 +1449,7 @@ public data class MetroOptions(
         enableKClassToClassInterop = enableKClassToClassInterop,
         generateContributionProviders = generateContributionProviders,
         enableCircuitCodegen = enableCircuitCodegen,
+        enableHiltInterop = enableHiltInterop,
         richDiagnostics = richDiagnostics,
         generateStaticAnnotations = generateStaticAnnotations,
         bindingContributionsAsContainers = bindingContributionsAsContainers,
@@ -1716,6 +1738,9 @@ public data class MetroOptions(
           }
           INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeKotlinInjectAnvilAnnotations()
+          }
+          INTEROP_INCLUDE_HILT_ANNOTATIONS -> {
+            if (configuration.getAsBoolean(entry)) includeHiltAnnotations()
           }
           INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeGuiceAnnotations()

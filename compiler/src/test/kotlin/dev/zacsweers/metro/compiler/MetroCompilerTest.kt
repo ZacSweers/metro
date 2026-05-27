@@ -360,6 +360,9 @@ abstract class MetroCompilerTest {
               ENABLE_CIRCUIT_CODEGEN -> {
                 processor.option(entry.raw.cliOption, enableCircuitCodegen)
               }
+              INTEROP_INCLUDE_HILT_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, enableHiltInterop)
+              }
               RICH_DIAGNOSTICS -> {
                 processor.option(entry.raw.cliOption, richDiagnostics)
               }

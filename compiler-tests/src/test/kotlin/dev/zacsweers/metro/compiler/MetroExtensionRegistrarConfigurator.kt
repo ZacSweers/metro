@@ -212,6 +212,10 @@ class MetroExtensionRegistrarConfigurator(
       if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
         enableCircuitCodegen = true
       }
+
+      if (MetroDirectives.ENABLE_HILT_INTEROP in module.directives) {
+        includeHiltAnnotations()
+      }
     }
 
     if (!options.enabled) return

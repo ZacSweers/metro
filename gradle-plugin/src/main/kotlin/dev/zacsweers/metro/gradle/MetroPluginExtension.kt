@@ -530,6 +530,8 @@ constructor(
       objects.property(Boolean::class.java).convention(false)
     public val includeGuiceAnnotations: Property<Boolean> =
       objects.property(Boolean::class.java).convention(false)
+    public val includeHiltAnnotations: Property<Boolean> =
+      objects.property(Boolean::class.java).convention(false)
 
     // Intrinsics
     public val provider: SetProperty<String> = objects.setProperty(String::class.java)
@@ -607,6 +609,16 @@ constructor(
     public fun includeAnvilForKotlinInject() {
       includeKotlinInject()
       includeKotlinInjectAnvilAnnotations.set(true)
+    }
+
+    /**
+     * Includes Hilt `@InstallIn` / `@EntryPoint` interop. Hilt `@Module`s are also Dagger
+     * `@Module`s, so this implicitly enables Dagger annotation interop.
+     */
+    @JvmOverloads
+    public fun includeHilt(includeJavax: Boolean = true, includeJakarta: Boolean = true) {
+      includeHiltAnnotations.set(true)
+      includeDagger(includeJavax, includeJakarta)
     }
 
     /** Includes Guice annotations support. */

@@ -564,6 +564,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
                 value = enableGuiceRuntimeInterop.getOrElse(false).toString(),
               )
             )
+            add(lazyOption("interop-include-hilt-annotations", includeHiltAnnotations))
           }
         }
       }

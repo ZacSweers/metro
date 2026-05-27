@@ -162,6 +162,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
         "Verification runs inside MetroReportsChecker."
     )
   val ENABLE_CIRCUIT by directive("Enables Circuit code gen.")
+  val ENABLE_HILT_INTEROP by directive("Enables Hilt @InstallIn/@AggregatedDeps interop.")
   val METRO_DUMP_KT_IR by
     directive("Like DUMP_KT_IR but uses betterDumpKotlinLike() for nested class name rendering.")
 
