@@ -75,9 +75,15 @@ internal sealed class GraphNode {
     }
   }
 
-  abstract val publicAccessors: Set<IrTypeKey>
-  abstract val contextKey: IrContextualTypeKey
-  abstract val supertypeClassIds: Set<ClassId>
+  val publicAccessors: Set<IrTypeKey> by memoize { accessors.mapToSet { it.contextKey.typeKey } }
+
+  val contextKey: IrContextualTypeKey by memoize { IrContextualTypeKey(typeKey) }
+
+  // For quick lookups. Keep this lazy: some graph nodes have very large transitive supertype
+  // fan-out and most nodes never need to materialize this set.
+  val supertypeClassIds: Set<ClassId> by memoize {
+    supertypes.mapNotNullToSet { it.classOrNull?.owner?.classId }
+  }
 
   val metroGraph: IrClass? by memoize { sourceGraph.metroGraphOrNull }
 
@@ -160,13 +166,7 @@ internal sealed class GraphNode {
     override val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
     override val graphPrivateKeys: Set<IrTypeKey> = emptySet(),
     override val publishedBindsKeys: Set<IrTypeKey> = emptySet(),
-  ) : GraphNode() {
-    override val publicAccessors: Set<IrTypeKey> = accessors.mapToSet { it.contextKey.typeKey }
-    override val contextKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
-    override val supertypeClassIds: Set<ClassId> = supertypes.mapNotNullToSet {
-      it.classOrNull?.owner?.classId
-    }
-  }
+  ) : GraphNode()
 
   /** A graph node for a graph being compiled in the current compilation unit. */
   data class Local(
@@ -205,12 +205,6 @@ internal sealed class GraphNode {
     var proto: DependencyGraphProto? = null,
   ) : GraphNode() {
     val hasExtensions = graphExtensions.isNotEmpty()
-
-    override val publicAccessors: Set<IrTypeKey> = accessors.mapToSet { it.contextKey.typeKey }
-    override val contextKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
-    override val supertypeClassIds: Set<ClassId> = supertypes.mapNotNullToSet {
-      it.classOrNull?.owner?.classId
-    }
 
     override val directlyProvidedKeys: Set<IrTypeKey> by memoize {
       buildSet {
