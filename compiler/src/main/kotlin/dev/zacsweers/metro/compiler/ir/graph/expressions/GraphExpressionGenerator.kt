@@ -607,7 +607,8 @@ private constructor(
           bindingGetter.toTargetType(
             contextualTypeKey = contextualTypeKey,
             actual = actual,
-            allowPropertyGetter = binding.token?.let { !it.contextKey.isWrappedInProvider } ?: false,
+            allowPropertyGetter =
+              binding.token?.let { !it.contextKey.isWrappedInProvider } ?: false,
           )
         }
       }
