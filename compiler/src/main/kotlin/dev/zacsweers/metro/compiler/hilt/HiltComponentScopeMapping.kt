@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.hilt
 
+import java.util.Optional
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.name.ClassId
 
@@ -21,17 +24,35 @@ import org.jetbrains.kotlin.name.ClassId
  */
 internal class HiltComponentScopeMapping(private val session: FirSession) {
 
-  private val cache = mutableMapOf<ClassId, OptionalScope>()
+  private val cache = mutableMapOf<ClassId, Optional<ClassId>>()
+  private val installInComponentsByClassId = mutableMapOf<ClassId, List<ClassId>>()
 
   /** Returns the Metro scope ClassId for [componentClassId], or null if no mapping is known. */
   fun resolveScope(componentClassId: ClassId): ClassId? {
     cache[componentClassId]?.let {
-      return it.value
+      return it.orElse(null)
     }
     val resolved = BUILT_INS[componentClassId] ?: resolveDefineComponentScope(componentClassId)
-    cache[componentClassId] = OptionalScope(resolved)
+    cache[componentClassId] = Optional.ofNullable(resolved)
     return resolved
   }
+
+  /**
+   * Reads `@InstallIn`'s components for [classSymbol], caching by classId. The supertype
+   * generator's per-(container, scope) loop asks the same container K times for K graph scopes;
+   * this cache turns those K calls into one annotation parse.
+   */
+  fun installInComponents(
+    classSymbol: FirRegularClassSymbol,
+    typeResolver: TypeResolveService?,
+  ): List<ClassId> =
+    installInComponentsByClassId.getOrPut(classSymbol.classId) {
+      val rawAnnotations = @OptIn(SymbolInternals::class) classSymbol.fir.annotations
+      val installIn =
+        rawAnnotations.firstOrNull { it.toAnnotationClassIdSafe(session) == HiltSymbols.InstallIn }
+          ?: return@getOrPut emptyList()
+      installIn.installInComponents(session, typeResolver)
+    }
 
   private fun resolveDefineComponentScope(componentClassId: ClassId): ClassId? {
     val componentSymbol =
@@ -52,12 +73,6 @@ internal class HiltComponentScopeMapping(private val session: FirSession) {
     }
     return null
   }
-
-  /**
-   * Boxes the nullable resolution result so cache hits with a `null` scope are distinguishable from
-   * cache misses.
-   */
-  private data class OptionalScope(val value: ClassId?)
 
   companion object {
     /** The 8 standard Android Hilt components and their canonical scopes. */
