@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780048500832,
+  "lastUpdate": 1780095961474,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -15400,6 +15400,62 @@ window.BENCHMARK_DATA = {
             "value": 0.24742051918504945,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +1.59%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1aab7d0e~1",
+          "message": "[before] Add Hilt `@InstallIn` interop (#2361)",
+          "timestamp": "2026-05-29T22:21:43Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1aab7d0e8ec966473e596b110aab52380cdd9cf4"
+        },
+        "date": 1780095961474,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.28212415623965587,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1aab7d0e8ec966473e596b110aab52380cdd9cf4",
+          "message": "[after] Add Hilt `@InstallIn` interop (#2361)",
+          "timestamp": "2026-05-29T22:21:43Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1aab7d0e8ec966473e596b110aab52380cdd9cf4"
+        },
+        "date": 1780095961475,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2810238171959729,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.39%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
