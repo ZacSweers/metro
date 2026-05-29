@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780047457212,
+  "lastUpdate": 1780048327224,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -15288,6 +15288,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2518139245822361,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +3.57%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c57830df~1",
+          "message": "[before] Fix local bindings are not replaced with contribut",
+          "timestamp": "2026-05-29T09:08:08Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c57830df47ffcccacaf9a919cefa526a13a1c077"
+        },
+        "date": 1780048327224,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2412329750073381,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c57830df47ffcccacaf9a919cefa526a13a1c077",
+          "message": "[after] Fix local bindings are not replaced with contribut",
+          "timestamp": "2026-05-29T09:08:08Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c57830df47ffcccacaf9a919cefa526a13a1c077"
+        },
+        "date": 1780048327225,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2450236914785271,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.57%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
