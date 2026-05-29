@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779814715241,
+  "lastUpdate": 1780047457349,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -15232,6 +15232,62 @@ window.BENCHMARK_DATA = {
             "value": 20894.188000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.69%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3edc06f2~1",
+          "message": "[before] Update dependency com.facebook:ktfmt to v0.63 (#23",
+          "timestamp": "2026-05-29T04:51:10-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3edc06f26df9fb09599566cd1088f0584e754a66"
+        },
+        "date": 1780047457349,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 32873.39,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3edc06f26df9fb09599566cd1088f0584e754a66",
+          "message": "[after] Update dependency com.facebook:ktfmt to v0.63 (#23",
+          "timestamp": "2026-05-29T04:51:10-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3edc06f26df9fb09599566cd1088f0584e754a66"
+        },
+        "date": 1780047457350,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 28395.894,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -13.62%"
           }
         ]
       }
