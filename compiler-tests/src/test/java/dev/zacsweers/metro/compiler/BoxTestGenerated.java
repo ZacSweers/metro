@@ -2638,6 +2638,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("HiltModuleViaRealKsp.kt")
+      public void testHiltModuleViaRealKsp() {
+        runTest("compiler-tests/src/test/data/box/interop/hilt/HiltModuleViaRealKsp.kt");
+      }
+
+      @Test
       @TestMetadata("HiltNestedInstallIn.kt")
       public void testHiltNestedInstallIn() {
         runTest("compiler-tests/src/test/data/box/interop/hilt/HiltNestedInstallIn.kt");
