@@ -14,22 +14,13 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.name.ClassId
 
 /**
- * IR-side Hilt interop.
+ * Contributes Hilt modules and entry points to IR-only graph merging.
  *
- * - [contributeBindingContainers]: surfaces Hilt `@InstallIn @Module` classes for both classpath
- *   `@AggregatedDeps` markers and in-round source classes. We always route in-round modules here
- *   too because the FIR-side hint emission ([HiltFirDeclarationExtension.getContributionHints])
- *   only runs when `generateContributionHintsInFir` is enabled. Going through this method directly
- *   makes Hilt interop work regardless of that flag.
- * - [contributeSupertypes]: surfaces Hilt `@InstallIn @EntryPoint` interfaces (both classpath
- *   `@AggregatedDeps` markers and in-round source classes) for the IR-only graph path
- *   (`@MergeContributionsInIr` graphs and `@GraphExtension`s).
+ * The FIR contribution pipeline handles regular graph merging. This extension feeds the paths that
+ * merge contributions in IR, such as `@MergeContributionsInIr` graphs and graph extensions.
  *
- * `IrPluginContext` has no public API to walk a package's class symbols, so we obtain the FIR
- * session via the `Fir2IrComponents` bridge that every classpath `IrClass` implements (see
- * `IrRankedBindingProcessing.kt` for the same pattern). With the FIR session we drive
- * [HiltAggregatedDepsScanner] and a local [HiltComponentScopeMapping] (whose `inRoundInstallIns`
- * lazy is the IR-side equivalent of what the FIR-side extensions do).
+ * `IrPluginContext` cannot enumerate package classifiers, so this uses the FIR session available
+ * from `Fir2IrComponents` to read Hilt aggregated-deps markers.
  */
 public class HiltIrContributionExtension(private val pluginContext: IrPluginContext) :
   MetroIrContributionExtension {
@@ -66,7 +57,7 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
 
     val result = mutableListOf<IrClass>()
 
-    // Classpath `@AggregatedDeps` modules.
+    // Modules recorded by upstream Hilt processors.
     for (dep in bridge.scanner.deps()) {
       if (dep.modules.isEmpty()) continue
       if (dep.components.none { bridge.componentScopes.resolveScope(it) == scope }) continue
@@ -96,7 +87,7 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
 
     val result = mutableListOf<IrType>()
 
-    // Classpath `@AggregatedDeps` entry points.
+    // Entry points recorded by upstream Hilt processors.
     for (dep in bridge.scanner.deps()) {
       if (dep.entryPoints.isEmpty()) continue
       if (dep.components.none { bridge.componentScopes.resolveScope(it) == scope }) continue
@@ -108,8 +99,7 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
       }
     }
 
-    // In-round source `@InstallIn @EntryPoint` interfaces - read off the same FIR session that
-    // HiltFirDeclarationExtension's predicate registration populated.
+    // Entry points declared in this compilation.
     for (installIn in bridge.inRoundInstallIns) {
       if (!installIn.isEntryPoint) continue
       if (scope !in installIn.resolvedScopes(bridge.componentScopes)) continue

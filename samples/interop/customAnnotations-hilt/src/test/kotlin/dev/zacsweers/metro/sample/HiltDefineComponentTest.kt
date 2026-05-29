@@ -13,11 +13,9 @@ import javax.inject.Scope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Verifies user-declared `@DefineComponent`s resolve their scope from a co-located `@Scope`
- * annotation.
- */
+/** Verifies custom Hilt component scope mapping with a scoped module binding. */
 class HiltDefineComponentTest {
+  @FeatureScoped
   @DependencyGraph(FeatureScoped::class)
   interface FeatureGraph {
     val tag: String
@@ -37,5 +35,5 @@ class HiltDefineComponentTest {
 @Module
 @InstallIn(FeatureComponent::class)
 class FeatureModule {
-  @Provides fun provideTag(): String = "feature"
+  @FeatureScoped @Provides fun provideTag(): String = "feature"
 }

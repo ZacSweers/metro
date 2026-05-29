@@ -6,9 +6,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
-/**
- * Upstream Hilt entry point picked up by downstream `@DependencyGraph(Singleton::class)` graphs.
- */
+/** Upstream Hilt entry point contributed to downstream singleton-scoped Metro graphs. */
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface UpstreamEntryPoint {

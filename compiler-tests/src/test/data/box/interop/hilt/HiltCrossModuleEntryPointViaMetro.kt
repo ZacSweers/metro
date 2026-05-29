@@ -3,7 +3,7 @@
 // ENABLE_DAGGER_INTEROP
 // GENERATE_CONTRIBUTION_HINTS_IN_FIR
 // FILE: UpstreamEntryPoint.kt
-// Verifies Metro treats `@InstallIn` + `@EntryPoint` like `@ContributesTo` across module bounds.
+// Verifies Metro-hinted Hilt entry points and modules flow across module boundaries.
 package test
 
 import dagger.Module

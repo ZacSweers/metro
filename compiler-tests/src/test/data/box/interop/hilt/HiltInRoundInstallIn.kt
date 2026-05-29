@@ -1,8 +1,7 @@
 // ENABLE_HILT_INTEROP
 // ENABLE_DAGGER_INTEROP
 
-// Tests in-round `@InstallIn` source classes (no Hilt KAPT). They flow through Metro's existing
-// hint pipeline for modules and through HiltContributionExtension for entry points.
+// Verifies Hilt modules and entry points declared in the same compilation as the graph.
 
 import dagger.Module
 import dagger.Provides as DaggerProvides

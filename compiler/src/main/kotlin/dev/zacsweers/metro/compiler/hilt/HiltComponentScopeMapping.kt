@@ -15,25 +15,19 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.name.ClassId
 
 /**
- * Maps Hilt component class IDs to the Metro scope class ID Metro should treat as their scope, and
- * owns the single-pass scan of in-round `@InstallIn` classes for its owning consumer.
+ * Maps Hilt component class IDs to the Metro scope key used for contribution aggregation.
  *
- * For the 8 standard Android Hilt components the mapping is built in. For user-declared
- * `@DefineComponent` interfaces the scope is discovered on demand by looking up the component class
- * and finding an annotation on the same interface whose annotation class is itself annotated with
- * `@Scope`.
+ * Standard Android Hilt components are mapped directly. Custom `@DefineComponent` interfaces are
+ * mapped by looking for a scope annotation on the component interface itself.
  *
- * Each Hilt extension and the supertype generator constructs its own instance against the same
- * session; the scan inside an instance runs once.
+ * Instances are intentionally consumer-local. Failed custom-component lookups are not cached, so an
+ * early FIR phase cannot poison later queries after annotations are more fully resolved.
  */
 internal class HiltComponentScopeMapping(private val session: FirSession) {
 
   /**
-   * Cache of successfully resolved scopes. We deliberately don't cache `null` so a transient
-   * resolution failure (e.g. component annotations not yet promoted during an early FIR phase)
-   * doesn't poison later, fully-resolved queries from the supertype generator or IR phase. The
-   * built-in table covers the common case in a single lookup, so the retry cost for the rare
-   * unresolved-component case is negligible.
+   * Successful component-to-scope lookups. Null results are retried because custom component
+   * annotations may not be ready in every FIR phase.
    */
   private val cache = mutableMapOf<ClassId, ClassId>()
 
@@ -84,11 +78,7 @@ internal class HiltComponentScopeMapping(private val session: FirSession) {
     val result = mutableListOf<InRoundInstallIn>()
     for (symbol in symbols) {
       val classSymbol = symbol as? FirRegularClassSymbol ?: continue
-      // Use raw `fir.annotations` rather than `resolvedCompilerAnnotationsWithClassIds`. The
-      // latter is cached the first time it's accessed (e.g., by the predicate-based provider for
-      // the predicate's annotation) and may not include the other annotations on the same class
-      // (`@Module` / `@EntryPoint`) that got resolved later. The raw list contains every
-      // annotation; `toAnnotationClassIdSafe` handles both resolved and unresolved forms.
+      // Raw annotations are stable even if resolved annotation caches were populated early.
       val rawAnnotations = @OptIn(SymbolInternals::class) classSymbol.fir.annotations
       val installInAnnotation =
         rawAnnotations.firstOrNull { it.toAnnotationClassIdSafe(session) == HiltSymbols.InstallIn }

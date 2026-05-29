@@ -25,15 +25,12 @@ import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.name.ClassId
 
 /**
- * Treats in-round `@InstallIn @Module` and `@InstallIn @EntryPoint` like `@ContributesTo`:
- * - Modules emit a [ContributionHint] per resolved scope and ride the standard binding-container
- *   recognition (via `@dagger.Module` from [MetroOptions.Builder.includeDaggerAnnotations]).
- * - Entry points emit a hint and a [MetroFirDeclarationGenerationExtension.ContributionTarget], so
- *   [ContributionsFirGenerator] generates the same nested `@MetroContribution`-annotated interface
- *   it generates for `@ContributesTo`.
+ * Bridges in-round Hilt declarations into Metro's normal contribution pipeline.
  *
- * Compiled Hilt-only deps (`@AggregatedDeps` markers) go through [HiltContributionExtension] /
- * [HiltIrContributionExtension] instead.
+ * Modules only need contribution hints; Dagger interop later recognizes them as binding containers.
+ * Entry points also report [MetroFirDeclarationGenerationExtension.ContributionTarget]s so
+ * [ContributionsFirGenerator] can generate the same nested contribution interface used for
+ * `@ContributesTo`.
  */
 public class HiltFirDeclarationExtension(session: FirSession, compatContext: CompatContext) :
   MetroFirDeclarationGenerationExtension(session), CompatContext by compatContext {
@@ -52,7 +49,7 @@ public class HiltFirDeclarationExtension(session: FirSession, compatContext: Com
   override fun getContributionHints(): List<ContributionHint> {
     val hints = mutableListOf<ContributionHint>()
 
-    // Compiled @AggregatedDeps modules - emit a hint per (module, resolved scope).
+    // Upstream Hilt-processed modules need Metro hints for classpath discovery.
     for (dep in scanner.deps()) {
       if (dep.modules.isEmpty()) continue
       val scopes = dep.components.mapNotNull(componentScopes::resolveScope)
@@ -62,10 +59,7 @@ public class HiltFirDeclarationExtension(session: FirSession, compatContext: Com
       }
     }
 
-    // In-round @InstallIn source classes. Both `@Module` (recognized downstream as a binding
-    // container) and `@EntryPoint` (whose nested MetroContribution interface Metro's
-    // ContributionsFirGenerator generates from our getContributionTargets() report) emit hints so
-    // the classpath scan can find them.
+    // Current-compilation modules and entry points also emit hints for downstream modules.
     for (installIn in componentScopes.inRoundInstallIns) {
       if (!installIn.isModule && !installIn.isEntryPoint) continue
       for (scope in installIn.resolvedScopes(componentScopes)) {
@@ -111,14 +105,10 @@ internal data class InRoundInstallIn(
 }
 
 /**
- * Reads the `value: Class<?>[]` parameter of `@InstallIn`. Handles every shape the FIR pipeline
- * produces for vararg class arrays: a bare [FirGetClassCall] when written with a single component
- * (`@InstallIn(SingletonComponent::class)`), or a [FirVarargArgumentsExpression] containing the
- * class calls when multiple components are listed (or when fir2ir wraps a single one).
+ * Reads the `value: Class<?>[]` argument of `@InstallIn`.
  *
- * When [typeResolver] is provided, falls back to it for class arguments that aren't fully resolved
- * yet, which is necessary at FIR supertype-generation phase where annotation arguments may still
- * appear as `FirClassReferenceExpression` rather than `FirResolvedQualifier`.
+ * FIR may represent the argument as a single class call or as vararg class calls. The resolver
+ * fallback covers phases where annotation arguments have not yet been fully resolved.
  */
 internal fun FirAnnotation.installInComponents(
   session: FirSession,

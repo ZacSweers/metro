@@ -2,8 +2,7 @@
 // ENABLE_HILT_KSP
 // DISABLE_METRO
 // FILE: MyEntryPoint.kt
-// Hilt's KSP processors generate the `hilt_aggregated_deps/...` marker for the entry point on
-// lib's classpath; main consumes it via Metro's Hilt interop.
+// Verifies entry points discovered from Hilt-generated aggregation metadata.
 package test
 
 import dagger.hilt.EntryPoint

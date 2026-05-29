@@ -1,9 +1,7 @@
 // ENABLE_HILT_INTEROP
 // ENABLE_DAGGER_INTEROP
 
-// Verifies the dynamic component->scope mapping via a user-declared `@DefineComponent`.
-// The Android Hilt components live in hilt-android (not hilt-core), so we exercise the same
-// resolution path through a custom component declared in source.
+// Verifies custom `@DefineComponent` scope mapping and concrete Hilt scope compatibility.
 
 import dagger.Module
 import dagger.Provides as DaggerProvides
@@ -19,9 +17,11 @@ import javax.inject.Scope
 @Module
 @InstallIn(FeatureComponent::class)
 class FeatureModule {
+  @FeatureScoped
   @DaggerProvides fun provideTag(): String = "feature"
 }
 
+@FeatureScoped
 @DependencyGraph(FeatureScoped::class)
 interface FeatureGraph {
   val tag: String

@@ -11,10 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * Verifies an upstream `@InstallIn @Module` / `@InstallIn @EntryPoint` declared in `:lib` flows
- * into a downstream `@DependencyGraph(Singleton::class)` here.
- */
+/** Verifies upstream Hilt modules and entry points flow into a downstream Metro graph. */
 class HiltMultiModuleTest {
   @DependencyGraph(Singleton::class) interface AppGraph
 

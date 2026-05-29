@@ -7,7 +7,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
-/** Upstream Hilt module picked up by downstream `@DependencyGraph(Singleton::class)` graphs. */
+/** Upstream Hilt module contributed to downstream singleton-scoped Metro graphs. */
 @Module
 @InstallIn(SingletonComponent::class)
 class UpstreamModule {

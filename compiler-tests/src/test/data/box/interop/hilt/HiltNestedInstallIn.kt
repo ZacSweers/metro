@@ -1,8 +1,7 @@
 // ENABLE_HILT_INTEROP
 // ENABLE_DAGGER_INTEROP
 
-// Verifies in-round Hilt `@Module` / `@EntryPoint` nested inside an enclosing class merge into
-// the graph correctly.
+// Verifies nested Hilt modules and entry points declared in the same compilation as the graph.
 
 import dagger.Module
 import dagger.Provides as DaggerProvides

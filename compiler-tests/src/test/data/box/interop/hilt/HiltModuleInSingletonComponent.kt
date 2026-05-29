@@ -2,8 +2,7 @@
 // ENABLE_HILT_KSP
 // DISABLE_METRO
 // FILE: MyHiltModule.kt
-// Hilt's KSP processors generate the `hilt_aggregated_deps/...` marker and the per-@Provides
-// Dagger factory classes on lib's classpath; main consumes them via Metro's Hilt interop.
+// Verifies modules discovered from Hilt-generated aggregation metadata.
 package test
 
 import dagger.Module
