@@ -1075,6 +1075,62 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#hilt" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hilt
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hilt">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#built-in-component-to-scope-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Built-in component-to-scope mapping
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in component-to-scope mapping">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-definecomponent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Custom <code>@DefineComponent</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Limitations
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#diagnostics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1971,6 +2027,62 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#hilt" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Hilt
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hilt">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#built-in-component-to-scope-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Built-in component-to-scope mapping
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in component-to-scope mapping">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-definecomponent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Custom <code>@DefineComponent</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Limitations
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#diagnostics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2051,6 +2163,9 @@
 <span class="w">    </span><span class="c1">// Dagger</span>
 <span class="w">    </span><span class="n">includeDagger</span><span class="p">()</span>
 <span class="w">    </span><span class="n">includeAnvilForDagger</span><span class="p">()</span>
+
+<span class="w">    </span><span class="c1">// Hilt</span>
+<span class="w">    </span><span class="n">includeHilt</span><span class="p">()</span>
 
 <span class="w">    </span><span class="c1">// kotlin-inject</span>
 <span class="w">    </span><span class="n">includeKotlinInject</span><span class="p">()</span>
@@ -2173,6 +2288,103 @@
 <p class="admonition-title">Why not javax.inject?</p>
 <p>Guice dropped support for javax.inject in 7.0.0.</p>
 </div>
+<h2 id="hilt">Hilt<a class="headerlink" href="#hilt" title="Permanent link">&para;</a></h2>
+<p>Hilt interop lets a Metro <code>@DependencyGraph</code> merge Hilt modules and entry points during a migration. Enable it with:</p>
+<div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">interop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">includeHilt</span><span class="p">()</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><code>includeHilt()</code> implicitly chains <code>includeDagger()</code></p>
+</div>
+<p>Metro treats Hilt&rsquo;s component target as the graph scope. A <code>@DependencyGraph(&lt;scope&gt;)</code> will merge:</p>
+<ul>
+<li><code>@InstallIn(&lt;component&gt;::class) @Module</code> classes as binding containers. Their <code>@Provides</code> declarations enter the graph.</li>
+<li><code>@InstallIn(&lt;component&gt;::class) @EntryPoint</code> interfaces as graph supertypes. Their accessors are implemented by the graph.</li>
+</ul>
+<p>This works for Hilt declarations compiled in the same module as the graph, and for declarations coming from upstream modules. Upstream modules are discovered either through Metro&rsquo;s contribution hints, when they also apply <code>includeHilt()</code>, or through Hilt&rsquo;s generated aggregation metadata when Hilt&rsquo;s KSP or KAPT processor ran upstream.</p>
+<h3 id="built-in-component-to-scope-mapping">Built-in component-to-scope mapping<a class="headerlink" href="#built-in-component-to-scope-mapping" title="Permanent link">&para;</a></h3>
+<p>Standard Hilt components map to their canonical scopes automatically:</p>
+<table>
+<thead>
+<tr>
+<th>Hilt component</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SingletonComponent</code></td>
+<td><code>@Singleton</code></td>
+</tr>
+<tr>
+<td><code>ActivityRetainedComponent</code></td>
+<td><code>@ActivityRetainedScoped</code></td>
+</tr>
+<tr>
+<td><code>ActivityComponent</code></td>
+<td><code>@ActivityScoped</code></td>
+</tr>
+<tr>
+<td><code>ViewModelComponent</code></td>
+<td><code>@ViewModelScoped</code></td>
+</tr>
+<tr>
+<td><code>FragmentComponent</code></td>
+<td><code>@FragmentScoped</code></td>
+</tr>
+<tr>
+<td><code>ServiceComponent</code></td>
+<td><code>@ServiceScoped</code></td>
+</tr>
+<tr>
+<td><code>ViewComponent</code></td>
+<td><code>@ViewScoped</code></td>
+</tr>
+<tr>
+<td><code>ViewWithFragmentComponent</code></td>
+<td><code>@ViewScoped</code></td>
+</tr>
+</tbody>
+</table>
+<p>For example, <code>@DependencyGraph(Singleton::class)</code> pulls <code>@InstallIn(SingletonComponent::class)</code> sites, and <code>@DependencyGraph(ActivityScoped::class)</code> pulls <code>@InstallIn(ActivityComponent::class)</code> sites.</p>
+<h4 id="custom-definecomponent">Custom <code>@DefineComponent</code><a class="headerlink" href="#custom-definecomponent" title="Permanent link">&para;</a></h4>
+<p>Custom <code>@DefineComponent</code> interfaces work without extra registration. Metro resolves the component&rsquo;s Metro scope from the scope annotation declared on the component itself:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@Scope</span><span class="w"> </span><span class="nd">@Retention</span><span class="p">(</span><span class="n">AnnotationRetention</span><span class="p">.</span><span class="na">RUNTIME</span><span class="p">)</span><span class="w"> </span><span class="kd">annotation</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">FeatureScoped</span>
+
+<span class="nd">@FeatureScoped</span>
+<span class="nd">@DefineComponent</span><span class="p">(</span><span class="n">parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SingletonComponent</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">FeatureComponent</span>
+
+<span class="nd">@Module</span>
+<span class="nd">@InstallIn</span><span class="p">(</span><span class="n">FeatureComponent</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">FeatureModule</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@FeatureScoped</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideTag</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;feature&quot;</span>
+<span class="p">}</span>
+
+<span class="nd">@FeatureScoped</span>
+<span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">FeatureScoped</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">FeatureGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">tag</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The <code>@DependencyGraph(FeatureScoped::class)</code> argument is the aggregation key. If contributed Hilt<br />
+bindings are also scoped with <code>@FeatureScoped</code>, put <code>@FeatureScoped</code> on the graph too so Metro&rsquo;s<br />
+scope compatibility check sees the concrete scope annotation.</p>
+<h3 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>@TestInstallIn</code> and <code>@CustomTestApplication</code> are not supported.</li>
+<li><code>@DefineComponent.parent</code> is not used to derive Metro <code>@GraphExtension</code> parent/child relationships. Component hierarchy must be expressed through Metro&rsquo;s own graph extension APIs.</li>
+<li>No <code>EntryPointAccessors</code>-style runtime helper is shipped. Cast the graph to the entry-point interface directly, or write a small helper that does so for your codebase.</li>
+<li>The Hilt-internal <code>componentEntryPoints</code> field on <code>@AggregatedDeps</code> is ignored.</li>
+<li>A custom <code>@DefineComponent</code> must have a scope annotation on the component interface. If Metro cannot find one, matching <code>@InstallIn</code> sites are skipped without a diagnostic.</li>
+<li>Hilt component generation from <code>@HiltAndroidApp</code> is not consumed. Metro merges contributions itself.</li>
+</ul>
+<p>See <a href="https://github.com/ZacSweers/metro/tree/main/samples/interop/customAnnotations-hilt"><code>samples/interop/customAnnotations-hilt</code></a> for a complete two-module example.</p>
 <h2 id="diagnostics">Diagnostics<a class="headerlink" href="#diagnostics" title="Permanent link">&para;</a></h2>
 <p>When interoping with annotations that are written in Kotlin and have parameters, it may be unsafe to rely on positional arguments. Metro&rsquo;s own annotations often have the same indices, but not always! If you want to be super safe, you can enable the <code>interopAnnotationsNamedArgSeverity</code> to <code>WARN</code> or <code>ERROR</code> to report diagnostics for positional arguments in any custom annotations that Metro is configured to look at.</p>
 <div class="admonition question">
