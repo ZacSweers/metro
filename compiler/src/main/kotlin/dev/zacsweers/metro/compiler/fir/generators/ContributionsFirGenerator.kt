@@ -85,6 +85,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -943,34 +944,41 @@ internal class ContributionsFirGenerator(
     // synthesized @MetroContribution(scope) annotation)
     val externalScope = externalScopesFor(owner.classId)[name]
     if (externalScope != null) {
-      return createNestedClass(
-          owner,
-          name = name,
-          key = Keys.MetroContributionClassDeclaration,
-          classKind = ClassKind.INTERFACE,
-        ) {
-          modality = Modality.ABSTRACT
-          superType(owner.defaultType())
-        }
-        .apply {
-          markAsDeprecatedHidden(session)
-          val metroContribution =
-            buildMetroContributionAnnotation().apply {
-              replaceArgumentMapping(
-                buildAnnotationArgumentMapping {
-                  mapping[Symbols.Names.scope] = buildClassReference(session, externalScope)
-                }
-              )
-            }
-          replaceAnnotations(annotations + metroContribution)
-        }
-        .symbol
+      return createMetroContributionClass(
+        owner,
+        name,
+        scopeArg = buildClassReference(session, externalScope),
+        superTypeProviders = listOf { owner.defaultType() },
+      )
     }
 
     val contributions = findContributions(owner) ?: return null
     val generateAsContainer =
       session.metroFirBuiltIns.options.bindingContributionsAsContainers &&
         contributions.none { it is Contribution.ContributesTo }
+    return createMetroContributionClass(
+      owner,
+      name,
+      scopeArg = contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name),
+      superTypeProviders =
+        contributions.mapNotNull { contribution ->
+          if (contribution is Contribution.ContributesTo) {
+            { contribution.origin.defaultType(emptyList()) }
+          } else {
+            null
+          }
+        },
+      generateAsContainer = generateAsContainer,
+    )
+  }
+
+  private fun createMetroContributionClass(
+    owner: FirClassSymbol<*>,
+    name: Name,
+    scopeArg: FirGetClassCall?,
+    superTypeProviders: List<() -> ConeKotlinType> = emptyList(),
+    generateAsContainer: Boolean = false,
+  ): FirClassLikeSymbol<*> {
     return createNestedClass(
         owner,
         name = name,
@@ -979,37 +987,39 @@ internal class ContributionsFirGenerator(
       ) {
         // annoyingly not implicit from the class kind
         modality = Modality.ABSTRACT
-        for (contribution in contributions) {
-          if (contribution is Contribution.ContributesTo) {
-            superType(contribution.origin.defaultType(emptyList()))
-          }
-        }
+        superTypeProviders.forEach { superType(it()) }
       }
       .apply {
         markAsDeprecatedHidden(session)
-        val newAnnotations = buildList {
-          add(
-            buildMetroContributionAnnotation().apply {
-              contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)?.let {
-                originalScopeArg ->
-                replaceArgumentMapping(
-                  buildAnnotationArgumentMapping { mapping[Symbols.Names.scope] = originalScopeArg }
-                )
-              }
-            }
-          )
-          // Newer binding contributions are routed as @BindingContainer instead of being merged
-          // into the graph as a supertype, so that graphs don't accumulate one supertype per
-          // contributing class.
-          if (generateAsContainer) {
-            add(buildBindingContainerAnnotation())
-            add(buildOriginAnnotation(owner.classId))
-            add(buildComptimeOnlyAnnotation())
-          }
-        }
-        replaceAnnotations(annotations + newAnnotations)
+        replaceAnnotations(
+          annotations + metroContributionAnnotations(owner.classId, scopeArg, generateAsContainer)
+        )
       }
       .symbol
+  }
+
+  private fun metroContributionAnnotations(
+    originClassId: ClassId,
+    scopeArg: FirGetClassCall?,
+    generateAsContainer: Boolean,
+  ): List<FirAnnotation> = buildList {
+    add(
+      buildMetroContributionAnnotation().apply {
+        if (scopeArg != null) {
+          replaceArgumentMapping(
+            buildAnnotationArgumentMapping { mapping[Symbols.Names.scope] = scopeArg }
+          )
+        }
+      }
+    )
+    // Newer binding contributions are routed as @BindingContainer instead of being merged
+    // into the graph as a supertype, so that graphs don't accumulate one supertype per
+    // contributing class.
+    if (generateAsContainer) {
+      add(buildBindingContainerAnnotation())
+      add(buildOriginAnnotation(originClassId))
+      add(buildComptimeOnlyAnnotation())
+    }
   }
 
   private fun buildBindsAnnotation(): FirAnnotation {
