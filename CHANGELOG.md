@@ -14,19 +14,17 @@ Changelog
 
 - **[IR]** Fix graph extensions inheriting a farther ancestor's contribution-provider binding when a closer parent graph already owns a scoped binding for the same key.
 - **[IR]** Fix dynamic graphs (`createDynamicGraph`/`createDynamicGraphFactory`) sharing a single generated impl across call sites in different files. The shared impl was a `private` (on the JVM, package-private) nested class placed under one call site, so call sites in other packages failed at runtime with `IllegalAccessError`, and removing the owning file caused `NoClassDefFoundError`. Generated impls are now cached per-file.
-
-<<<<<<< z/rc2
+- **[IR]** Fix IR graph nodes eagerly resolving supertypes.
 
 ### Changes
 
 - Test Kotlin `2.4.0-RC2`.
-=======
+
 ### Contributors
 
 Special thanks to the following contributors for contributing to this release!
 
 - [@jonamireh](https://github.com/jonamireh)
->>>>>>> main
 
 1.1.1
 -----
