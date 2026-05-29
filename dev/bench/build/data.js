@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780095961605,
+  "lastUpdate": 1780098401461,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -15456,6 +15456,62 @@ window.BENCHMARK_DATA = {
             "value": 30204.409999999996,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +6.62%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c8ab1f47~1",
+          "message": "[before] Remove eager lookups of some GraphNode props (#235",
+          "timestamp": "2026-05-29T19:04:08-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c8ab1f4760d2c81d7464eeeee77caa3c28bd77cd"
+        },
+        "date": 1780098401461,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31627.066000000003,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c8ab1f4760d2c81d7464eeeee77caa3c28bd77cd",
+          "message": "[after] Remove eager lookups of some GraphNode props (#235",
+          "timestamp": "2026-05-29T19:04:08-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c8ab1f4760d2c81d7464eeeee77caa3c28bd77cd"
+        },
+        "date": 1780098401462,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 28549.276,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -9.73%"
           }
         ]
       }
