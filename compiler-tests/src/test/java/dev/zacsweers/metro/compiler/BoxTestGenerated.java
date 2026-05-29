@@ -2608,6 +2608,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("HiltCrossModuleEntryPointViaMetro.kt")
+      public void testHiltCrossModuleEntryPointViaMetro() {
+        runTest("compiler-tests/src/test/data/box/interop/hilt/HiltCrossModuleEntryPointViaMetro.kt");
+      }
+
+      @Test
       @TestMetadata("HiltDefineComponentScope.kt")
       public void testHiltDefineComponentScope() {
         runTest("compiler-tests/src/test/data/box/interop/hilt/HiltDefineComponentScope.kt");
@@ -2629,6 +2635,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("HiltModuleInSingletonComponent.kt")
       public void testHiltModuleInSingletonComponent() {
         runTest("compiler-tests/src/test/data/box/interop/hilt/HiltModuleInSingletonComponent.kt");
+      }
+
+      @Test
+      @TestMetadata("HiltNestedInstallIn.kt")
+      public void testHiltNestedInstallIn() {
+        runTest("compiler-tests/src/test/data/box/interop/hilt/HiltNestedInstallIn.kt");
       }
     }
 
