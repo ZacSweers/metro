@@ -47,7 +47,7 @@ internal class HiltComponentScopeMapping(private val session: FirSession) {
     return resolved
   }
 
-  /** Single-pass in-round `@InstallIn` scan. Computed once per session. */
+  /** Single-pass in-round `@InstallIn` scan. Computed once for this mapping instance. */
   val inRoundInstallIns: List<InRoundInstallIn> by memoize {
     scanInRoundInstallIns(MetroFirTypeResolver.Factory(session))
   }
