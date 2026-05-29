@@ -46,6 +46,9 @@ metro {
     includeDagger()
     includeAnvilForDagger()
 
+    // Hilt
+    includeHilt()
+
     // kotlin-inject
     includeKotlinInject()
     includeAnvilForKotlinInject()
@@ -186,6 +189,84 @@ Note the companion Gradle plugin automatically adds an extra `dev.zacsweers.metr
 
 !!! question "Why not javax.inject?"
     Guice dropped support for javax.inject in 7.0.0.
+
+## Hilt
+
+Hilt interop lets a Metro `@DependencyGraph` automatically merge Hilt-annotated declarations from upstream code. It also enables reuse of `@InstallIn` as an implicit `@ContributesTo` annotation, allowing you to keep these annotations in source during a migration.
+
+```kotlin
+metro {
+  interop {
+    includeHilt()
+  }
+}
+```
+
+!!! tip
+    `includeHilt()` implicitly chains `includeDagger()`
+
+What gets merged into a `@DependencyGraph(<scope>)`:
+
+* every `@InstallIn(<component>::class) @Module` whose `<component>` maps to `<scope>` becomes a binding container on the graph (its `@Provides` enter the graph),
+* every `@InstallIn(<component>::class) @EntryPoint` interface whose `<component>` maps to `<scope>` becomes a supertype of the graph (its accessors get implemented).
+
+Two discovery paths run in parallel for both module and entry-point shapes:
+
+1. **In-round source.** `@InstallIn` classes compiled in the same compilation as the graph are found through Metro's FIR predicate-based scan.
+2. **Upstream classpath.** Two sub-paths feed this:
+    - **Metro-emitted hints.** Upstream modules that also apply `includeHilt()` participate in Metro's standard cross-module contribution pipeline. `@InstallIn @Module` and `@InstallIn @EntryPoint` are treated the same way Metro treats `@ContributesTo` - the Hilt extension emits a classpath hint per resolved scope, and entry points additionally get a nested per-scope interface annotated with `@MetroContribution(scope)` generated on them (the shape Metro uses for `@ContributesTo`). The downstream classpath-hint scan picks them up with no extra wiring.
+    - **Hilt-generated markers.** Hilt's own `@AggregatedDeps` markers in the `hilt_aggregated_deps` package are parsed when Hilt's KSP / KAPT processor ran on an upstream module. This is what bridges Metro to existing Hilt-only upstream modules.
+
+### Built-in component-to-scope mapping
+
+The eight standard Android Hilt components map to their canonical scopes automatically:
+
+| Hilt component              | Scope                     |
+|-----------------------------|---------------------------|
+| `SingletonComponent`        | `@Singleton`              |
+| `ActivityRetainedComponent` | `@ActivityRetainedScoped` |
+| `ActivityComponent`         | `@ActivityScoped`         |
+| `ViewModelComponent`        | `@ViewModelScoped`        |
+| `FragmentComponent`         | `@FragmentScoped`         |
+| `ServiceComponent`          | `@ServiceScoped`          |
+| `ViewComponent`             | `@ViewScoped`             |
+| `ViewWithFragmentComponent` | `@ViewScoped`             |
+
+So `@DependencyGraph(Singleton::class)` automatically pulls every `@InstallIn(SingletonComponent::class)` site, `@DependencyGraph(ActivityScoped::class)` pulls every `@InstallIn(ActivityComponent::class)` site, and so on.
+
+#### Custom `@DefineComponent`
+
+User-declared `@DefineComponent` interfaces work without registration. Metro resolves the component's scope by finding a sibling annotation meta-annotated with `@Scope`:
+
+```kotlin
+@Scope @Retention(AnnotationRetention.RUNTIME) annotation class FeatureScoped
+
+@FeatureScoped
+@DefineComponent(parent = SingletonComponent::class)
+interface FeatureComponent
+
+@Module
+@InstallIn(FeatureComponent::class)
+class FeatureModule {
+  @Provides fun provideTag(): String = "feature"
+}
+
+@DependencyGraph(FeatureScoped::class)
+interface FeatureGraph {
+  val tag: String
+}
+```
+
+### Limitations
+
+* `@TestInstallIn` and `@CustomTestApplication` are not supported.
+* `@DefineComponent.parent` is not used to derive Metro `@GraphExtension` parent/child relationships. Component hierarchy must be expressed through Metro's own graph extension APIs.
+* No `EntryPointAccessors`-style runtime helper is shipped. Cast the graph to the entry-point interface directly, or write a small helper that does so for your codebase.
+* The `componentEntryPoints` field on `@AggregatedDeps` (Hilt-internal plumbing) is ignored.
+* Metro resolves a user `@DefineComponent`'s Metro scope by looking for an annotation declared on the same component interface whose annotation class is itself annotated with `@Scope` (Hilt's [own documented convention](https://dagger.dev/hilt/custom-components#defining-a-hilt-component) for `@DefineComponent`; see the [example above](#custom-definecomponent)). If no such scope annotation is declared on the component, its `@InstallIn` sites are silently skipped. No diagnostic is currently emitted for this case.
+* Hilt's component generation (the classes annotated with `@HiltAndroidApp` produces) is not consumed. Metro merges contributions itself; the generated Hilt components are not used.
+
+See [`samples/interop/customAnnotations-hilt`](https://github.com/ZacSweers/metro/tree/main/samples/interop/customAnnotations-hilt) for a complete two-module example.
 
 ## Diagnostics
 

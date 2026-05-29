@@ -4,6 +4,16 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- **[interop]** Add Hilt `@InstallIn` and `@EntryPoint` interop.
+  - Enabled with `metro { interop { includeHilt() } }`
+  - A `@DependencyGraph(<scope>)` automatically merges every `@InstallIn(<component>) @Module` (as a binding container) and `@InstallIn(<component>) @EntryPoint` (as a supertype) whose `<component>` maps to `<scope>`.
+    - The eight standard Android Hilt components map to their canonical scopes out of the box.
+    - User-declared `@DefineComponent` interfaces are resolved on demand by looking for an annotation on the same interface whose annotation class is itself annotated with `@Scope` (Hilt's own convention).
+  - Both consuming Hilt-generated aggregation deps and also treating `@InstallIn` + `@EntryPoint`/`@Module` as interop are supported.
+  - See [the docs](https://zacsweers.github.io/metro/interop/#hilt) for the details and current limitations.
+
 ### Enhancements
 
 - **[IR]** Add a `member-naming-strategy` compiler option for shortening generated member names in generated code. Accepts `DESCRIPTIVE` (default), `TYPED` (`provider*`/`instance*`/`factory*`), or `MINIMAL` (single collapsed `provider*` naming). See [docs/performance.md](https://zacsweers.github.io/metro/performance/#shortening-generated-member-names) for guidance.
