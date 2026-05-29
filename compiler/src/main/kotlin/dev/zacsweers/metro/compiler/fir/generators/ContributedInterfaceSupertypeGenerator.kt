@@ -30,6 +30,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.hilt.HiltComponentScopeMapping
 import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.safePathString
@@ -96,6 +97,15 @@ internal class ContributedInterfaceSupertypeGenerator(
   }
 
   private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session).caching() }
+
+  /**
+   * Lazy component-to-scope mapping for Hilt interop. Null when interop is disabled so we skip the
+   * `@InstallIn` lookup entirely on the hot path. Owns this generator's single-pass in-round scan.
+   */
+  private val hiltComponentScopes: HiltComponentScopeMapping? by lazy {
+    if (session.metroFirBuiltIns.options.enableHiltInterop) HiltComponentScopeMapping(session)
+    else null
+  }
 
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
@@ -209,11 +219,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     return buildMap {
       for (originClass in contributingClasses) {
         if (originClass.isBindingContainer(session)) {
-          val hasMatchingScope =
-            originClass.annotationsIn(session, session.classIds.contributesToAnnotations).any {
-              it.resolvedScopeClassId(session, typeResolver) == scopeClassId
-            }
-          put(originClass.classId, hasMatchingScope)
+          put(originClass.classId, containerMatchesScope(originClass, scopeClassId, typeResolver))
           continue
         }
 
@@ -238,6 +244,27 @@ internal class ContributedInterfaceSupertypeGenerator(
           }
         }
       }
+    }
+  }
+
+  /**
+   * Whether [container] is declared to be in-scope for [scopeClassId], via either
+   * `@ContributesTo(scope = scopeClassId)` or a Hilt `@InstallIn(component)` whose `component` maps
+   * to `scopeClassId`. Both shapes drive the supertype loop's binding-container filter.
+   */
+  private fun containerMatchesScope(
+    container: FirRegularClassSymbol,
+    scopeClassId: ClassId,
+    typeResolver: TypeResolveService,
+  ): Boolean {
+    val matchesContributesTo =
+      container.annotationsIn(session, session.classIds.contributesToAnnotations).any {
+        it.resolvedScopeClassId(session, typeResolver) == scopeClassId
+      }
+    if (matchesContributesTo) return true
+    val hiltScopes = hiltComponentScopes ?: return false
+    return hiltScopes.installInComponents(container, typeResolver).any {
+      hiltScopes.resolveScope(it) == scopeClassId
     }
   }
 
