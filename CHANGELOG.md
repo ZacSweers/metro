@@ -6,7 +6,7 @@ Changelog
 
 ### New
 
-- **[interop]** Add Hilt `@InstallIn` and `@EntryPoint` interop.
+- **[interop]** This release introduces experimental support for Hilt `@InstallIn` and `@EntryPoint` interop.
   - Enabled with `metro { interop { includeHilt() } }`
   - A `@DependencyGraph(<scope>)` automatically merges every `@InstallIn(<component>) @Module` (as a binding container) and `@InstallIn(<component>) @EntryPoint` (as a supertype) whose `<component>` maps to `<scope>`.
     - The eight standard Android Hilt components map to their canonical scopes out of the box.
