@@ -99,6 +99,25 @@ public abstract class MetroFirDeclarationGenerationExtension(session: FirSession
   public data class ContributionHint(val contributingClassId: ClassId, val scope: ClassId)
 
   /**
+   * Returns supertype contribution targets that should have Metro's standard nested
+   * `MetroContribution` interface generated on them, treating them as if they were declared with
+   * `@ContributesTo(scope)`. Use this when an interop annotation (e.g. Hilt's `@InstallIn
+   *
+   * @return List of contribution targets, empty by default
+   * @EntryPoint`) should participate in Metro's existing contribution codegen instead of having the
+   *   extension reimplement nested-class generation itself.
+   */
+  public open fun getContributionTargets(): List<ContributionTarget> = emptyList()
+
+  /**
+   * Declares that [contributingClassId]'s instances should be merged onto every
+   * `@DependencyGraph(<scope>)` whose `<scope>` equals [scope]. Metro generates the same nested
+   * `MetroContribution`-annotated interface it generates for `@ContributesTo(scope)` and threads
+   * the hint pipeline accordingly.
+   */
+  public data class ContributionTarget(val contributingClassId: ClassId, val scope: ClassId)
+
+  /**
    * Factory for creating [MetroFirDeclarationGenerationExtension] instances.
    *
    * Implementations should be registered via ServiceLoader in
