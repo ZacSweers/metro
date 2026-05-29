@@ -40,7 +40,7 @@ public class HiltContributionExtension(
     val contributions = mutableListOf<MetroContributionExtension.Contribution>()
 
     // Entry points recorded by upstream Hilt processors.
-    for (dep in scanner.deps()) {
+    for (dep in scanner.getAllDeps()) {
       if (dep.entryPoints.isEmpty()) continue
       if (dep.components.none { componentScopes.resolveScope(it) == scopeClassId }) continue
       for (entryPointClassId in dep.entryPoints) {

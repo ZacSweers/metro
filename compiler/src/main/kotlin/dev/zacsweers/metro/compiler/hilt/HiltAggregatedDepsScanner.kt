@@ -24,8 +24,8 @@ import org.jetbrains.kotlin.name.Name
  */
 internal class HiltAggregatedDepsScanner(private val session: FirSession) {
 
-  /** Parsed contents of one `@AggregatedDeps` annotation. */
-  internal data class AggregatedDep(
+  /** Materialized `@AggregatedDeps` annotation. */
+  data class AggregatedDep(
     val components: List<ClassId>,
     val modules: List<ClassId>,
     val entryPoints: List<ClassId>,
@@ -34,7 +34,7 @@ internal class HiltAggregatedDepsScanner(private val session: FirSession) {
 
   private val cached: List<AggregatedDep> by lazy { scan() }
 
-  fun deps(): List<AggregatedDep> = cached
+  fun getAllDeps(): List<AggregatedDep> = cached
 
   private fun scan(): List<AggregatedDep> {
     val names =

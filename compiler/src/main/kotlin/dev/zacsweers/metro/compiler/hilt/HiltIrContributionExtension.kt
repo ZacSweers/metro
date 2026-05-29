@@ -58,7 +58,7 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
     val result = mutableListOf<IrClass>()
 
     // Modules recorded by upstream Hilt processors.
-    for (dep in bridge.scanner.deps()) {
+    for (dep in bridge.scanner.getAllDeps()) {
       if (dep.modules.isEmpty()) continue
       if (dep.components.none { bridge.componentScopes.resolveScope(it) == scope }) continue
       for (moduleClassId in dep.modules) {
@@ -88,7 +88,7 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
     val result = mutableListOf<IrType>()
 
     // Entry points recorded by upstream Hilt processors.
-    for (dep in bridge.scanner.deps()) {
+    for (dep in bridge.scanner.getAllDeps()) {
       if (dep.entryPoints.isEmpty()) continue
       if (dep.components.none { bridge.componentScopes.resolveScope(it) == scope }) continue
       for (entryPointClassId in dep.entryPoints) {

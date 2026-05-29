@@ -165,20 +165,24 @@ internal class ContributionsFirGenerator(
   }
 
   /**
-   * Maps `(contributingClassId, MetroContributionTo<Scope> name)` -> `scope ClassId` for targets
-   * reported by external extensions via
-   * [MetroFirDeclarationGenerationExtension.getContributionTargets]. These classes get the same
-   * nested `MetroContribution`-annotated interface Metro generates for `@ContributesTo`; the scope
-   * `KClass<*>` argument is synthesized in [synthesizeScopeArg].
+   * Maps external target class IDs to their generated contribution names and scope class IDs.
+   *
+   * Targets are reported by [MetroFirDeclarationGenerationExtension.getContributionTargets]. Metro
+   * generates the same nested `MetroContribution`-annotated interface it generates for
+   * `@ContributesTo`, with the `KClass<*>` scope argument filled in during nested class generation.
    */
-  private val externalScopesByClassId: Map<ClassId, Map<Name, ClassId>> by lazy {
-    externalExtensions
-      .flatMap { it.getContributionTargets() }
-      .groupBy(keySelector = { it.contributingClassId }, valueTransform = { it.scope })
-      .mapValues { (_, scopes) ->
-        scopes.distinct().associateBy { MetroContributions.metroContributionName(it) }
-      }
-  }
+  private val externalScopesByClassId: FirCache<Unit, Map<ClassId, Map<Name, ClassId>>, Unit> =
+    session.firCachesFactory.createCache { _, _ ->
+      externalExtensions
+        .flatMap { it.getContributionTargets() }
+        .groupBy(keySelector = { it.contributingClassId }, valueTransform = { it.scope })
+        .mapValues { (_, scopes) ->
+          scopes.distinct().associateBy { MetroContributions.metroContributionName(it) }
+        }
+    }
+
+  private fun externalScopesFor(classId: ClassId): Map<Name, ClassId> =
+    externalScopesByClassId.getValue(Unit, Unit)[classId].orEmpty()
 
   // For each contributing class, track its nested contribution classes and their scope arguments
   private val contributingClassToScopedContributions:
@@ -774,7 +778,7 @@ internal class ContributionsFirGenerator(
       val isSupertypeContribution =
         parentClassSymbol?.let {
           it.isAnnotatedWithAny(session, session.classIds.contributesToAnnotations) ||
-            it.classId in externalScopesByClassId
+            externalScopesFor(it.classId).isNotEmpty()
         } ?: false
 
       return if (!isSupertypeContribution) {
@@ -830,8 +834,12 @@ internal class ContributionsFirGenerator(
     }
 
     val nativeNames = contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
-    val externalNames = externalScopesByClassId[classSymbol.classId]?.keys.orEmpty()
-    return if (externalNames.isEmpty()) nativeNames else nativeNames + externalNames
+    val externalNames = externalScopesFor(classSymbol.classId).keys
+    return if (externalNames.isEmpty()) {
+      nativeNames
+    } else {
+      nativeNames + externalNames
+    }
   }
 
   /**
@@ -933,7 +941,7 @@ internal class ContributionsFirGenerator(
 
     // External interop targets: same style as @ContributesTo (interface extending the owner with a
     // synthesized @MetroContribution(scope) annotation)
-    val externalScope = externalScopesByClassId[owner.classId]?.get(name)
+    val externalScope = externalScopesFor(owner.classId)[name]
     if (externalScope != null) {
       return createNestedClass(
           owner,

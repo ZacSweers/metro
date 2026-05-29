@@ -103,8 +103,11 @@ internal class ContributedInterfaceSupertypeGenerator(
    * `@InstallIn` lookup entirely on the hot path. Owns this generator's single-pass in-round scan.
    */
   private val hiltComponentScopes: HiltComponentScopeMapping? by lazy {
-    if (session.metroFirBuiltIns.options.enableHiltInterop) HiltComponentScopeMapping(session)
-    else null
+    if (session.metroFirBuiltIns.options.enableHiltInterop) {
+      HiltComponentScopeMapping(session)
+    } else {
+      null
+    }
   }
 
   private val inCompilationScopesToContributions:

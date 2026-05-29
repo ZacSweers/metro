@@ -50,7 +50,7 @@ public class HiltFirDeclarationExtension(session: FirSession, compatContext: Com
     val hints = mutableListOf<ContributionHint>()
 
     // Upstream Hilt-processed modules need Metro hints for classpath discovery.
-    for (dep in scanner.deps()) {
+    for (dep in scanner.getAllDeps()) {
       if (dep.modules.isEmpty()) continue
       val scopes = dep.components.mapNotNull(componentScopes::resolveScope)
       if (scopes.isEmpty()) continue
