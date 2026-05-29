@@ -194,7 +194,7 @@ internal class IrContributionMerger(
                 .flatMap {
                   contributionData.getBindingContainerContributions(it, callingDeclaration)
                 }
-                .associateByTo(mutableMapOf()) { it.classIdOrFail }
+                .associateBy { it.classIdOrFail }
 
             // External supertype contributions from IR extensions (e.g., Hilt entry points). These
             // are top-level types added directly as graph supertypes, bypassing the
