@@ -33,8 +33,7 @@ public class HiltContributionExtension(
   private val componentScopes by memoize { HiltComponentScopeMapping(session) }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    // The `@InstallIn` predicate is registered by [HiltFirDeclarationExtension]; predicates are
-    // session-global so we can query it here without re-registering.
+    register(HiltSymbols.installInPredicate)
   }
 
   override fun getContributions(
