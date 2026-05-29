@@ -101,11 +101,13 @@ public abstract class MetroFirDeclarationGenerationExtension(session: FirSession
   /**
    * Returns supertype contribution targets that should have Metro's standard nested
    * `MetroContribution` interface generated on them, treating them as if they were declared with
-   * `@ContributesTo(scope)`. Use this when an interop annotation (e.g. Hilt's `@InstallIn
+   * `@ContributesTo(scope)`.
+   *
+   * Use this when an interop annotation, such as Hilt's `@InstallIn @EntryPoint`, should
+   * participate in Metro's existing contribution codegen instead of reimplementing nested-class
+   * generation in the extension.
    *
    * @return List of contribution targets, empty by default
-   * @EntryPoint`) should participate in Metro's existing contribution codegen instead of having the
-   *   extension reimplement nested-class generation itself.
    */
   public open fun getContributionTargets(): List<ContributionTarget> = emptyList()
 
