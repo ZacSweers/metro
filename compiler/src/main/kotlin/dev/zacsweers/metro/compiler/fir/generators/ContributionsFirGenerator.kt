@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
+import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -98,10 +99,14 @@ import org.jetbrains.kotlin.types.ConstantValueKind
 // TODO a bunch of this could probably be cleaned up now that the functions are generated in IR
 /**
  * Generates `@MetroContribution`-annotated nested contribution classes for
- * `@Contributes*`-annotated classes.
+ * `@Contributes*`-annotated classes (and any external interop extensions that report
+ * [ContributionTarget][dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension.ContributionTarget]s).
  */
-internal class ContributionsFirGenerator(session: FirSession, compatContext: CompatContext) :
-  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
+internal class ContributionsFirGenerator(
+  session: FirSession,
+  compatContext: CompatContext,
+  private val externalExtensions: List<MetroFirDeclarationGenerationExtension>,
+) : FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   companion object {
     /** Suffix appended to the contributing class name for the holder class. */
@@ -157,6 +162,22 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     val holder = topLevelContributionHolders[classId] ?: return null
     if (!holder.contributingClassSymbol.usesContributionProviderPath(session)) return null
     return holder
+  }
+
+  /**
+   * Maps `(contributingClassId, MetroContributionTo<Scope> name)` -> `scope ClassId` for targets
+   * reported by external extensions via
+   * [MetroFirDeclarationGenerationExtension.getContributionTargets]. These classes get the same
+   * nested `MetroContribution`-annotated interface Metro generates for `@ContributesTo`; the scope
+   * `KClass<*>` argument is synthesized in [synthesizeScopeArg].
+   */
+  private val externalScopesByClassId: Map<ClassId, Map<Name, ClassId>> by lazy {
+    externalExtensions
+      .flatMap { it.getContributionTargets() }
+      .groupBy(keySelector = { it.contributingClassId }, valueTransform = { it.scope })
+      .mapValues { (_, scopes) ->
+        scopes.distinct().associateBy { MetroContributions.metroContributionName(it) }
+      }
   }
 
   // For each contributing class, track its nested contribution classes and their scope arguments
@@ -744,14 +765,19 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         return emptySet()
       }
 
-      // Metro contribution class that needs a binding mirror IFF it's not a @ContributesTo
-      val isContributesTo =
-        context.owner
-          .parentsWithSelf(session)
-          .drop(1)
-          .firstOrNull { it is FirClassSymbol }
-          ?.isAnnotatedWithAny(session, session.classIds.contributesToAnnotations) ?: false
-      return if (!isContributesTo) {
+      // Metro contribution class that needs a binding mirror IFF it's not a @ContributesTo (or an
+      // external supertype-style contribution target). The latter are pure supertype contributors -
+      // they don't carry @Binds, so a BindsMirror would be empty noise.
+      val parentClassSymbol =
+        context.owner.parentsWithSelf(session).drop(1).firstOrNull { it is FirClassSymbol }
+
+      val isSupertypeContribution =
+        parentClassSymbol?.let {
+          it.isAnnotatedWithAny(session, session.classIds.contributesToAnnotations) ||
+            it.classId in externalScopesByClassId
+        } ?: false
+
+      return if (!isSupertypeContribution) {
         setOf(Symbols.Names.BindsMirrorClass)
       } else {
         emptySet()
@@ -803,7 +829,9 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       }
     }
 
-    return contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
+    val nativeNames = contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
+    val externalNames = externalScopesByClassId[classSymbol.classId]?.keys.orEmpty()
+    return if (externalNames.isEmpty()) nativeNames else nativeNames + externalNames
   }
 
   /**
@@ -902,6 +930,35 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     }
 
     if (!name.identifier.startsWith(Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX)) return null
+
+    // External interop targets: same style as @ContributesTo (interface extending the owner with a
+    // synthesized @MetroContribution(scope) annotation)
+    val externalScope = externalScopesByClassId[owner.classId]?.get(name)
+    if (externalScope != null) {
+      return createNestedClass(
+          owner,
+          name = name,
+          key = Keys.MetroContributionClassDeclaration,
+          classKind = ClassKind.INTERFACE,
+        ) {
+          modality = Modality.ABSTRACT
+          superType(owner.defaultType())
+        }
+        .apply {
+          markAsDeprecatedHidden(session)
+          val metroContribution =
+            buildMetroContributionAnnotation().apply {
+              replaceArgumentMapping(
+                buildAnnotationArgumentMapping {
+                  mapping[Symbols.Names.scope] = buildClassReference(session, externalScope)
+                }
+              )
+            }
+          replaceAnnotations(annotations + metroContribution)
+        }
+        .symbol
+    }
+
     val contributions = findContributions(owner) ?: return null
     val generateAsContainer =
       session.metroFirBuiltIns.options.bindingContributionsAsContainers &&
