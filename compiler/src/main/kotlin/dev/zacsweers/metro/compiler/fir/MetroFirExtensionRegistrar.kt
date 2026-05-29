@@ -128,9 +128,9 @@ public class MetroFirExtensionRegistrar(
 
         // These need to run in the IDE for supertype merging inlays to be visible
         add(
-          wrapNativeGenerator("FirGen - ContributionsGenerator", true, ::ContributionsFirGenerator)(
-            session
-          )
+          wrapNativeGenerator("FirGen - ContributionsGenerator", true) { session, compatContext ->
+            ContributionsFirGenerator(session, compatContext, externalExtensions)
+          }(session)
         )
 
         if (isCli) {
