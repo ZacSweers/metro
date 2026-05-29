@@ -756,8 +756,15 @@ internal class BindingGraphGenerator(
           continue
         }
         for (factory in factories) {
-          if (!factory.annotations.isScoped && key !in extendedNode.graphPrivateKeys) {
-            val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
+          if (key in extendedNode.graphPrivateKeys) continue
+
+          val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
+          if (factory.annotations.isScoped) {
+            // Scoped parent bindings live on the graph that owns their scope, but they still
+            // shadow farther ancestor bindings for the same key. Graph extensions resolve them
+            // through the parent context instead of inheriting the factory directly.
+            providerFactoryKeys.add(key)
+          } else {
             providerFactories.add(RawProviderFactoryEntry(key, factory, isDynamicInParent))
             providerFactoryKeys.add(key)
           }
