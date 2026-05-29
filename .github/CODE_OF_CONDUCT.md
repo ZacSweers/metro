@@ -24,7 +24,7 @@ community include:
   and learning from the experience
 * Focusing on what is best not just for us as individuals, but for the
   overall community
-* Respecting maintainers' time and not asking for ETAs
+* Respecting maintainers' time and not asking for ETAs. [You are not blocked](https://www.zacsweers.dev/you-are-not-blocked/)
 
 Examples of unacceptable behavior include:
 

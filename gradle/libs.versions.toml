@@ -41,7 +41,7 @@ kotlinInject-anvil = "0.1.7"
 kotlinx-benchmark = "0.4.17"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
-ksp = "2.3.8"
+ksp = "2.3.9"
 ktfmt = "0.62"
 ktor = "3.5.0"
 okhttp = "5.3.2"
@@ -77,7 +77,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
-shadow = { id = "com.gradleup.shadow", version = "9.4.1" }
+shadow = { id = "com.gradleup.shadow", version = "9.4.2" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.18" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
