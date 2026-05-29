@@ -388,6 +388,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("replacedBindings.kt")
+      public void testReplacedBindings() {
+        runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/replacedBindings.kt");
+      }
+
+      @Test
       @TestMetadata("scoped.kt")
       public void testScoped() {
         runTest("compiler-tests/src/test/data/box/aggregation/contributionproviders/scoped.kt");

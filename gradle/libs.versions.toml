@@ -41,8 +41,7 @@ kotlinInject-anvil = "0.1.7"
 kotlinx-benchmark = "0.4.17"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
-ksp = "2.3.8"
-ktfmt = "0.62"
+ksp = "2.3.9"
 ktor = "3.5.0"
 okhttp = "5.3.2"
 okio = "3.17.0"
@@ -77,7 +76,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
-shadow = { id = "com.gradleup.shadow", version = "9.4.1" }
+shadow = { id = "com.gradleup.shadow", version = "9.4.2" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.18" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
@@ -175,10 +174,6 @@ kotlin-testJunit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", versio
 kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinx-benchmark" }
 kotlinx-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.7.1"
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
-
-# Only present to trigger automatic renovate updates
-gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "gjf" }
-ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 
 graphSupport = "com.autonomousapps:graph-support:0.12.0"
 
