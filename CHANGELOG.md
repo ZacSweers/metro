@@ -7,11 +7,26 @@ Changelog
 ### Enhancements
 
 - **[IR]** Add a `member-naming-strategy` compiler option for shortening generated member names in generated code. Accepts `DESCRIPTIVE` (default), `TYPED` (`provider*`/`instance*`/`factory*`), or `MINIMAL` (single collapsed `provider*` naming). See [docs/performance.md](https://zacsweers.github.io/metro/performance/#shortening-generated-member-names) for guidance.
+- **[IR]** Lazily compute cached hashCode and toString renders for compiler-internal type keys without delegation.
 - **[IR/IC]** Optimize IC tracking by buffering lookup and expect/actual records during IR and flushing them once after graph validation, avoiding per-write synchronization on the hot path. This is enabled by default but can be disabled via the `buffered-ic-tracking` compiler option if it causes any issues.
 
 ### Fixes
 
+- **[IR]** Fix graph extensions inheriting a farther ancestor's contribution-provider binding when a closer parent graph already owns a scoped binding for the same key.
 - **[IR]** Fix dynamic graphs (`createDynamicGraph`/`createDynamicGraphFactory`) sharing a single generated impl across call sites in different files. The shared impl was a `private` (on the JVM, package-private) nested class placed under one call site, so call sites in other packages failed at runtime with `IllegalAccessError`, and removing the owning file caused `NoClassDefFoundError`. Generated impls are now cached per-file.
+
+<<<<<<< z/rc2
+
+### Changes
+
+- Test Kotlin `2.4.0-RC2`.
+=======
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@jonamireh](https://github.com/jonamireh)
+>>>>>>> main
 
 1.1.1
 -----
