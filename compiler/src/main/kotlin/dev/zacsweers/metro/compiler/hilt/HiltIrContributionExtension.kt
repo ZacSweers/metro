@@ -6,12 +6,10 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.Fir2IrComponents
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.name.ClassId
 
@@ -27,10 +25,11 @@ import org.jetbrains.kotlin.name.ClassId
  *   `@AggregatedDeps` markers and in-round source classes) for the IR-only graph path
  *   (`@MergeContributionsInIr` graphs and `@GraphExtension`s).
  *
- * `IrPluginContext` has no public API to enumerate a package, so we obtain the FIR session via the
- * `Fir2IrComponents` bridge that every classpath `IrClass` implements (see
- * `IrRankedBindingProcessing.kt` for the same pattern). With the FIR session we can call back into
- * [HiltAggregatedDepsScanner] and [findInRoundInstallIns] exactly like the FIR-side extensions do.
+ * `IrPluginContext` has no public API to walk a package's class symbols, so we obtain the FIR
+ * session via the `Fir2IrComponents` bridge that every classpath `IrClass` implements (see
+ * `IrRankedBindingProcessing.kt` for the same pattern). With the FIR session we drive
+ * [HiltAggregatedDepsScanner] and a local [HiltComponentScopeMapping] (whose `inRoundInstallIns`
+ * lazy is the IR-side equivalent of what the FIR-side extensions do).
  */
 public class HiltIrContributionExtension(private val pluginContext: IrPluginContext) :
   MetroIrContributionExtension {
@@ -44,18 +43,20 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
       @Suppress("DEPRECATION") pluginContext.referenceClass(HiltSymbols.InstallIn)?.owner
         ?: return@memoize null
     val components = anyHiltClass as? Fir2IrComponents ?: return@memoize null
+    val session = components.session
     Bridge(
-      session = components.session,
-      scanner = HiltAggregatedDepsScanner(components.session),
-      componentScopes = HiltComponentScopeMapping(components.session),
+      scanner = HiltAggregatedDepsScanner(session),
+      componentScopes = HiltComponentScopeMapping(session),
     )
   }
 
   private class Bridge(
-    val session: FirSession,
     val scanner: HiltAggregatedDepsScanner,
     val componentScopes: HiltComponentScopeMapping,
-  )
+  ) {
+    val inRoundInstallIns: List<InRoundInstallIn>
+      get() = componentScopes.inRoundInstallIns
+  }
 
   override fun contributeBindingContainers(
     scope: ClassId,
@@ -76,7 +77,7 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
       }
     }
 
-    for (installIn in findInRoundInstallIns(bridge.session)) {
+    for (installIn in bridge.inRoundInstallIns) {
       if (!installIn.isModule) continue
       if (scope !in installIn.resolvedScopes(bridge.componentScopes)) continue
       val irClass =
@@ -109,7 +110,7 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
 
     // In-round source `@InstallIn @EntryPoint` interfaces - read off the same FIR session that
     // HiltFirDeclarationExtension's predicate registration populated.
-    for (installIn in findInRoundInstallIns(bridge.session)) {
+    for (installIn in bridge.inRoundInstallIns) {
       if (!installIn.isEntryPoint) continue
       if (scope !in installIn.resolvedScopes(bridge.componentScopes)) continue
       val irClass =
