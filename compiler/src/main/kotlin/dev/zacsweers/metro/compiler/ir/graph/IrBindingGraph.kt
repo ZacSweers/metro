@@ -29,6 +29,7 @@ import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.locationOrNull
+import dev.zacsweers.metro.compiler.ir.originClassId
 import dev.zacsweers.metro.compiler.ir.originContextOrNull
 import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
@@ -862,13 +863,18 @@ internal class IrBindingGraph(
               callingDeclaration = node.sourceGraph,
             )
           }
-          .find { contribution ->
-            val implementsKey = contribution.implements(klass.classId!!)
+          .map { contribution ->
+            contribution.originClassId()?.let { originClassId ->
+              referenceClass(originClassId)?.owner
+            } ?: contribution
+          }
+          .find { contributingClass ->
+            val implementsKey = contributingClass.implements(klass.classId!!)
             val bindsKey =
-              contribution
+              contributingClass
                 .annotationsIn(metroContext.metroSymbols.classIds.allContributesAnnotations)
                 .any { annotation ->
-                  val result = boundTypeResolver.resolveBoundType(contribution, annotation)
+                  val result = boundTypeResolver.resolveBoundType(contributingClass, annotation)
                   result == null || result.typeKey.type.rawTypeOrNull()?.classId == klass.classId
                 }
             implementsKey && bindsKey
