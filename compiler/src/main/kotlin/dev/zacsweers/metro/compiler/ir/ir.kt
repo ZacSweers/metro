@@ -296,8 +296,8 @@ internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>
 }
 
 /**
- * Returns `true` if this class's binding contributions are represented by generated provider
- * holder containers.
+ * Returns `true` if this class's binding contributions are represented by generated provider holder
+ * containers.
  */
 internal fun IrClass.usesContributionProviderPath(
   options: MetroOptions,
