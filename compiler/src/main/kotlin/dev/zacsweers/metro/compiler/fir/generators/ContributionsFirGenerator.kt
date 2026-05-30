@@ -118,6 +118,11 @@ internal class ContributionsFirGenerator(
   private val generateContributionProviders: Boolean
     get() = session.metroFirBuiltIns.options.generateContributionProviders
 
+  private val generateContributionProviderHolders: Boolean
+    get() =
+      generateContributionProviders ||
+        session.metroFirBuiltIns.options.bindingContributionsAsContainers
+
   /** Lazily resolves binding contributions for a holder. */
   private fun ContributionsHolder.bindingContributions(): Set<Contribution.BindingContribution> {
     val contributions = findContributions(contributingClassSymbol) ?: return emptySet()
@@ -150,7 +155,8 @@ internal class ContributionsFirGenerator(
 
   private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session) }
 
-  // Maps holder ClassId -> info. Only populated for generateContributionProviders mode.
+  // Maps holder ClassId -> info. Only populated when generated contribution provider holders are
+  // enabled.
   // This uses a simple map because the holder ClassId is deterministic (no scope resolution
   // needed).
   private val topLevelContributionHolders = mutableMapOf<ClassId, ContributionsHolder>()
@@ -237,7 +243,7 @@ internal class ContributionsFirGenerator(
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
-    if (!generateContributionProviders) return emptySet()
+    if (!generateContributionProviderHolders) return emptySet()
 
     // Avoid annotation resolution here — in the IDE this runs during
     // FirExtensionDeclarationsSymbolProvider's cache init and re-entering it causes a
@@ -359,10 +365,8 @@ internal class ContributionsFirGenerator(
       return setOf(SpecialNames.INIT)
     }
 
-    // Generate provides function names for nested contribution interfaces inside holder classes
-    if (
-      generateContributionProviders && classSymbol.hasOrigin(Keys.MetroContributionClassDeclaration)
-    ) {
+    // Generate provides function names for nested contribution containers inside holder classes
+    if (classSymbol.hasOrigin(Keys.MetroContributionClassDeclaration)) {
       val holderClassId = classSymbol.classId.parentClassId ?: return emptySet()
       val holderInfo = getHolder(holderClassId) ?: return emptySet()
       return buildSet {
@@ -391,10 +395,9 @@ internal class ContributionsFirGenerator(
       return listOf(createDefaultPrivateConstructor(context.owner, Keys.Default).symbol)
     }
 
-    // Private constructor for nested contribution interfaces inside holder classes
+    // Private constructor for nested contribution containers inside holder classes
     if (
-      generateContributionProviders &&
-        context.owner.hasOrigin(Keys.MetroContributionClassDeclaration) &&
+      context.owner.hasOrigin(Keys.MetroContributionClassDeclaration) &&
         getHolder(context.owner.classId.parentClassId ?: return emptyList()) != null
     ) {
       return listOf(createDefaultPrivateConstructor(context.owner, Keys.Default).symbol)
@@ -408,7 +411,6 @@ internal class ContributionsFirGenerator(
     context: MemberGenerationContext?,
   ): List<FirNamedFunctionSymbol> {
     if (context == null) return emptyList()
-    if (!generateContributionProviders) return emptyList()
     if (!context.owner.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptyList()
 
     val holderClassId = context.owner.classId.parentClassId ?: return emptyList()
@@ -651,12 +653,6 @@ internal class ContributionsFirGenerator(
     contribution: Contribution.BindingContribution,
     contributingClassSymbol: FirClassSymbol<*>,
   ): Name {
-    val baseName =
-      contributingClassSymbol.classId
-        .joinSimpleNames(separator = "", camelCase = true)
-        .shortClassName
-        .asString()
-
     // Resolve the bound type to disambiguate multiple bindings from the same class
     val boundType =
       resolveBoundTypeRef(contributingClassSymbol, contribution.annotation).first?.coneTypeOrNull
@@ -690,7 +686,14 @@ internal class ContributionsFirGenerator(
       contribution.mapKey?.hashCode()?.toUInt()?.let(::append)
     }
 
-    return "$prefix$baseName$boundSuffix$annotationSuffix".asName()
+    val stableSuffix =
+      listOf(contributingClassSymbol.classId.asString(), prefix, boundSuffix, annotationSuffix)
+        .joinToString(separator = "|")
+        .hashCode()
+        .toUInt()
+        .toString(radix = 36)
+
+    return "${prefix}_$stableSuffix".asName()
   }
 
   /**
@@ -820,10 +823,8 @@ internal class ContributionsFirGenerator(
     }
 
     if (classSymbol.usesContributionProviderPath(session)) {
-      // When generating contribution providers, only generate nested classes for ContributesTo
-      // (binding contributions are generated as top-level holder classes instead).
-      // Classes that don't skip factory (e.g. extension-generated top-level classes,
-      // @ExposeImplBinding) fall through to the standard nested contribution path.
+      // Binding contributions are generated as top-level holder containers on this path. Keep the
+      // standard nested contribution classes only for any remaining ContributesTo annotations.
       val contributions = findContributions(classSymbol)
       val hasContributesTo = contributions?.any { it is Contribution.ContributesTo } == true
       // Still need the nested contribution classes for ContributesTo
@@ -868,7 +869,7 @@ internal class ContributionsFirGenerator(
         .symbol
     }
 
-    // Generate nested contribution binding container objects inside holder classes
+    // Generate nested binding container objects inside contribution provider holder classes.
     val contributionHolder = getHolder(owner.classId)
     if (contributionHolder != null) {
 

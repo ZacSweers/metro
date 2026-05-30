@@ -124,9 +124,7 @@ internal class ContributionIrTransformer(
             val scope = metroContributionAnno.requireScope()
 
             val isContributionProviderNested =
-              context.options.generateContributionProviders &&
-                declaration.parentClassOrNull?.origin ==
-                  Origins.ContributionProviderHolderDeclaration
+              declaration.parentClassOrNull?.origin == Origins.ContributionProviderHolderDeclaration
 
             if (isContributionProviderNested) {
               // Contribution interface inside a provider holder class: @Provides functions are

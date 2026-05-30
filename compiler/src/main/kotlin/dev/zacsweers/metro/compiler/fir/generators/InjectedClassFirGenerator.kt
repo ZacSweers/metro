@@ -473,7 +473,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       // has binding contributions — the contribution provider generates its own provides function
       // and factory. The inject factory would be redundant and leak internal types.
       // @ExposeImplBinding opts out of this skip.
-      val skipFactory = classSymbol.usesContributionProviderPath(session)
+      val skipFactory =
+        session.metroFirBuiltIns.options.generateContributionProviders &&
+          classSymbol.usesContributionProviderPath(session)
 
       if (injectedClass.isConstructorInjected && !skipFactory) {
         val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroFactory)

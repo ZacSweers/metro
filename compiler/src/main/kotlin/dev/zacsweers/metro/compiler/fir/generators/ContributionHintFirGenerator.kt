@@ -73,9 +73,6 @@ internal class ContributionHintFirGenerator(
     session.firCachesFactory.createCache { _, _ ->
       val callableIds = mutableMapOf<CallableId, MutableSet<FirClassSymbol<*>>>()
 
-      val generateContributionProviders =
-        session.metroFirBuiltIns.options.generateContributionProviders
-
       val contributingClasses = contributedClassSymbols()
       for (contributingClass in contributingClasses) {
         val contributions =
@@ -94,13 +91,11 @@ internal class ContributionHintFirGenerator(
           }
         }
 
-        // When generateContributionProviders is enabled, generate hints pointing to the
-        // generated container objects instead of the original class. The container objects
-        // are not visible to the predicate-based provider (they're generated declarations),
-        // so we must compute their ClassIds and resolve them here.
+        // When binding contributions use generated provider holders, generate hints pointing to
+        // the generated container objects instead of the original class. The container objects are
+        // not visible to the predicate-based provider, so we must compute their ClassIds here.
         val hasBindingContributions =
-          generateContributionProviders &&
-            contributingClass.usesContributionProviderPath(session) &&
+          contributingClass.usesContributionProviderPath(session) &&
             contributions.any { annotation ->
               val classId = annotation.toAnnotationClassIdSafe(session) ?: return@any false
               classId !in session.classIds.contributesToAnnotations

@@ -106,7 +106,10 @@ internal class InjectedClassTransformer(
     // Skip factory generation when generateContributionProviders is enabled and the class
     // has binding contributions — the contribution provider handles construction.
     // @ExposeImplBinding opts out of this skip.
-    if (declaration.usesContributionProviderPath(options, metroSymbols.classIds)) {
+    if (
+      options.generateContributionProviders &&
+        declaration.usesContributionProviderPath(options, metroSymbols.classIds)
+    ) {
       // Cache absence so later lookups (e.g., from BindingLookup) return null instead of
       // attempting to generate after locking.
       generatedFactories[declaration.classIdOrFail] = Optional.empty()

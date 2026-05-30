@@ -296,19 +296,25 @@ internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>
 }
 
 /**
- * Returns `true` if factory generation should be skipped for this class because
- * [generateContributionProviders][MetroOptions.generateContributionProviders] is enabled and the
- * class has `@Contributes*` annotations (unless the class is annotated with `@ExposeImplBinding` or
- * is an extension-generated top-level class, which opt out of the skip).
+ * Returns `true` if this class's binding contributions are represented by generated provider
+ * holder containers.
  */
 internal fun IrClass.usesContributionProviderPath(
   options: MetroOptions,
   classIds: ClassIds,
 ): Boolean {
-  if (!options.generateContributionProviders) return false
+  val hasBindingContribution =
+    annotationsIn(classIds.contributesBindingLikeAnnotationsWithContainers).any()
+  if (!hasBindingContribution) return false
+
+  val hasContributesTo = annotationsIn(classIds.contributesToAnnotations).any()
+  val shouldUseProviderPath =
+    options.generateContributionProviders ||
+      (options.bindingContributionsAsContainers && !hasContributesTo)
+  if (!shouldUseProviderPath) return false
+
   if (isExtensionGenerated) return false
   if (annotationsIn(classIds.contributionProviderExclusionAnnotations).any()) return false
-  if (!annotationsIn(classIds.contributesBindingLikeAnnotationsWithContainers).any()) return false
   // Can't generate a contribution provider if the inject constructor is private
   val injectCtor =
     findInjectableConstructor(onlyUsePrimaryConstructor = false, classIds.injectLikeAnnotations)

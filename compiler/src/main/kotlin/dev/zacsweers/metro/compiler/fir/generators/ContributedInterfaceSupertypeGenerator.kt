@@ -548,10 +548,9 @@ internal class ContributedInterfaceSupertypeGenerator(
           }
         }
         .plus(
-          // When generateContributionProviders is enabled, binding contributions are represented
-          // by provider-holder binding containers that only carry @Origin. Scan the origin class
-          // too so its original @ContributesBinding(replaces = ...) annotations still participate
-          // in FIR merging, matching the IR fallback logic.
+          // Provider-holder binding containers only carry @Origin. Scan the origin class too so
+          // its original @ContributesBinding(replaces = ...) annotations still participate in FIR
+          // merging, matching the IR fallback logic.
           contributionMappingsByClassId.toList().mapNotNull { (containerClassId, isBindingContainer)
             ->
             if (!isBindingContainer) return@mapNotNull null

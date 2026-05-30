@@ -174,6 +174,7 @@ internal fun validateInjectionSiteType(
   // classes (the assisted-injection error is more actionable).
   if (
     clazz != null &&
+      session.metroFirBuiltIns.options.generateContributionProviders &&
       !clazz.classKind.isObject &&
       clazz.findAssistedInjectConstructors(session, checkClass = true).isEmpty() &&
       clazz.usesContributionProviderPath(session)
