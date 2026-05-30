@@ -1,3 +1,309 @@
+// FILE: AFragmentInjectorContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class AFragmentInjectorContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = AFragmentInjector::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    class ProvideIntoMap_17kstpuMetroFactory : Factory<Injector> {
+      private /* final field */ val memberInjector: Provider<MembersInjector<AFragment>> = memberInjector
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun create(memberInjector: Provider<MembersInjector<AFragment>>): Factory<Injector> {
+          return ProvideIntoMap_17kstpuMetroFactory(memberInjector = memberInjector)
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun provideIntoMap_17kstpu(memberInjector: MembersInjector<AFragment>): Injector {
+          return ToAppScope.provideIntoMap_17kstpu(memberInjector = memberInjector)
+        }
+
+      }
+
+      @HiddenFromObjC
+      private constructor(memberInjector: Provider<MembersInjector<AFragment>>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Injector {
+        return ProvideIntoMap_17kstpuMetroFactory/* companion */.provideIntoMap_17kstpu(memberInjector = <this>.#memberInjector.invoke())
+      }
+
+      @IntoMap
+      @ClassKey(value = AFragment::class)
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(memberInjector: MembersInjector<AFragment>): Injector {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    @IntoMap
+    @ClassKey(value = AFragment::class)
+    fun provideIntoMap_17kstpu(memberInjector: MembersInjector<AFragment>): Injector {
+      return AFragmentInjector(memberInjector = memberInjector)
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: AViewModelContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class AViewModelContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = AViewModel::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    object ProvideIntoMap_1tjotspMetroFactory : Factory<ViewModel> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): Factory<ViewModel> {
+        return ProvideIntoMap_1tjotspMetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideIntoMap_1tjotsp(): ViewModel {
+        return ToAppScope.provideIntoMap_1tjotsp()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): ViewModel {
+        return ProvideIntoMap_1tjotspMetroFactory.provideIntoMap_1tjotsp()
+      }
+
+      @IntoMap
+      @ClassKey(value = AViewModel::class)
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): ViewModel {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    @IntoMap
+    @ClassKey(value = AViewModel::class)
+    fun provideIntoMap_1tjotsp(): ViewModel {
+      return AViewModel()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: BFragmentInjectorContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class BFragmentInjectorContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = BFragmentInjector::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    class ProvideIntoMap_1319psqMetroFactory : Factory<Injector> {
+      private /* final field */ val memberInjector: Provider<MembersInjector<BFragment>> = memberInjector
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun create(memberInjector: Provider<MembersInjector<BFragment>>): Factory<Injector> {
+          return ProvideIntoMap_1319psqMetroFactory(memberInjector = memberInjector)
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun provideIntoMap_1319psq(memberInjector: MembersInjector<BFragment>): Injector {
+          return ToAppScope.provideIntoMap_1319psq(memberInjector = memberInjector)
+        }
+
+      }
+
+      @HiddenFromObjC
+      private constructor(memberInjector: Provider<MembersInjector<BFragment>>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Injector {
+        return ProvideIntoMap_1319psqMetroFactory/* companion */.provideIntoMap_1319psq(memberInjector = <this>.#memberInjector.invoke())
+      }
+
+      @IntoMap
+      @ClassKey(value = BFragment::class)
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(memberInjector: MembersInjector<BFragment>): Injector {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    @IntoMap
+    @ClassKey(value = BFragment::class)
+    fun provideIntoMap_1319psq(memberInjector: MembersInjector<BFragment>): Injector {
+      return BFragmentInjector(memberInjector = memberInjector)
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: BViewModelContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class BViewModelContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = BViewModel::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    object ProvideIntoMap_r40ufuMetroFactory : Factory<ViewModel> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): Factory<ViewModel> {
+        return ProvideIntoMap_r40ufuMetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideIntoMap_r40ufu(): ViewModel {
+        return ToAppScope.provideIntoMap_r40ufu()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): ViewModel {
+        return ProvideIntoMap_r40ufuMetroFactory.provideIntoMap_r40ufu()
+      }
+
+      @IntoMap
+      @ClassKey(value = BViewModel::class)
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): ViewModel {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    @IntoMap
+    @ClassKey(value = BViewModel::class)
+    fun provideIntoMap_r40ufu(): ViewModel {
+      return BViewModel()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
 // FILE: MultibindingInParentMemberInjectedClass.kt
 
 class AFragment : Fragment {
@@ -104,39 +410,6 @@ class AFragmentInjector : Injector {
 
   }
 
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = AFragmentInjector::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @IntoMap
-      @ClassKey(value = AFragment::class)
-      @CallableMetadata(callableName = "bindIntoMapAsInjector3288387779", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsInjector32883877793288387779_intomap(instance: AFragmentInjector): Injector
-
-    }
-
-    @IntoMap
-    @Binds
-    @ClassKey(value = AFragment::class)
-    @ComptimeOnly
-    fun bindIntoMapAsInjector3288387779(instance: AFragmentInjector): Injector {
-      return error(message = "Never called")
-    }
-
-  }
-
   constructor(memberInjector: MembersInjector<AFragment>) /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -179,39 +452,6 @@ class AViewModel : ViewModel {
     @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): AViewModel {
-      return error(message = "Never called")
-    }
-
-  }
-
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = AViewModel::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @IntoMap
-      @ClassKey(value = AViewModel::class)
-      @CallableMetadata(callableName = "bindIntoMapAsViewModel2182965618", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsViewModel21829656184203417713_intomap(instance: AViewModel): ViewModel
-
-    }
-
-    @IntoMap
-    @Binds
-    @ClassKey(value = AViewModel::class)
-    @ComptimeOnly
-    fun bindIntoMapAsViewModel2182965618(instance: AViewModel): ViewModel {
       return error(message = "Never called")
     }
 
@@ -338,39 +578,6 @@ class BFragmentInjector : Injector {
 
   }
 
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = BFragmentInjector::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @IntoMap
-      @ClassKey(value = BFragment::class)
-      @CallableMetadata(callableName = "bindIntoMapAsInjector3091874274", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsInjector30918742743091874274_intomap(instance: BFragmentInjector): Injector
-
-    }
-
-    @IntoMap
-    @Binds
-    @ClassKey(value = BFragment::class)
-    @ComptimeOnly
-    fun bindIntoMapAsInjector3091874274(instance: BFragmentInjector): Injector {
-      return error(message = "Never called")
-    }
-
-  }
-
   constructor(memberInjector: MembersInjector<BFragment>) /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -413,39 +620,6 @@ class BViewModel : ViewModel {
     @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): BViewModel {
-      return error(message = "Never called")
-    }
-
-  }
-
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = BViewModel::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @IntoMap
-      @ClassKey(value = BViewModel::class)
-      @CallableMetadata(callableName = "bindIntoMapAsViewModel386014259", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsViewModel3860142592406466354_intomap(instance: BViewModel): ViewModel
-
-    }
-
-    @IntoMap
-    @Binds
-    @ClassKey(value = BViewModel::class)
-    @ComptimeOnly
-    fun bindIntoMapAsViewModel386014259(instance: BViewModel): ViewModel {
       return error(message = "Never called")
     }
 
@@ -658,7 +832,7 @@ class ViewModelFactory {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : AFragmentInjector.MetroContributionToAppScope, AViewModel.MetroContributionToAppScope, BFragmentInjector.MetroContributionToAppScope, BViewModel.MetroContributionToAppScope {
+interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
@@ -675,8 +849,8 @@ interface AppGraph : AFragmentInjector.MetroContributionToAppScope, AViewModel.M
       private get(): Provider<Map<KClass<*>, Injector>> {
         return { // BLOCK
           val tmp0_builder: MapFactory.Builder<KClass<*>, Injector> = MapFactory/* companion */.builder<KClass<*>, Injector>(size = 2)
-          tmp0_builder.put(key = BFragment::class, providerOfValue = BFragmentInjector.MetroFactory/* companion */.create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<BFragment>>(value = BFragment.MetroMembersInjector/* companion */.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
-          tmp0_builder.put(key = AFragment::class, providerOfValue = AFragmentInjector.MetroFactory/* companion */.create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<AFragment>>(value = AFragment.MetroMembersInjector/* companion */.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
+          tmp0_builder.put(key = AFragment::class, providerOfValue = AFragmentInjectorContributions.ToAppScope.ProvideIntoMap_17kstpuMetroFactory/* companion */.create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<AFragment>>(value = AFragment.MetroMembersInjector/* companion */.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
+          tmp0_builder.put(key = BFragment::class, providerOfValue = BFragmentInjectorContributions.ToAppScope.ProvideIntoMap_1319psqMetroFactory/* companion */.create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<BFragment>>(value = BFragment.MetroMembersInjector/* companion */.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
           tmp0_builder.build()
         }
       }
@@ -685,8 +859,8 @@ interface AppGraph : AFragmentInjector.MetroContributionToAppScope, AViewModel.M
       private get(): Provider<Map<KClass<*>, Function0<ViewModel>>> {
         return { // BLOCK
           val tmp0_builder: MapProviderFactory.Builder<KClass<*>, ViewModel> = MapProviderFactory/* companion */.builder<KClass<*>, ViewModel>(size = 2)
-          tmp0_builder.put(key = BViewModel::class, providerOfValue = BViewModel.MetroFactory.create())
-          tmp0_builder.put(key = AViewModel::class, providerOfValue = AViewModel.MetroFactory.create())
+          tmp0_builder.put(key = AViewModel::class, providerOfValue = AViewModelContributions.ToAppScope.ProvideIntoMap_1tjotspMetroFactory.create())
+          tmp0_builder.put(key = BViewModel::class, providerOfValue = BViewModelContributions.ToAppScope.ProvideIntoMap_r40ufuMetroFactory.create())
           tmp0_builder.build()
         }
       }
@@ -720,6 +894,34 @@ interface AppGraph : AFragmentInjector.MetroContributionToAppScope, AViewModel.M
 }
 
 interface Injector {
+}
+
+// FILE: aFragmentInjectorContributionsToAppScopeAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: AFragmentInjectorContributions.ToAppScope) {
+  return error(message = "Never called")
+}
+
+// FILE: aViewModelContributionsToAppScopeAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: AViewModelContributions.ToAppScope) {
+  return error(message = "Never called")
+}
+
+// FILE: bFragmentInjectorContributionsToAppScopeAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: BFragmentInjectorContributions.ToAppScope) {
+  return error(message = "Never called")
+}
+
+// FILE: bViewModelContributionsToAppScopeAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: BViewModelContributions.ToAppScope) {
+  return error(message = "Never called")
 }
 
 // FILE: aFragmentInjectorAppScope.kt

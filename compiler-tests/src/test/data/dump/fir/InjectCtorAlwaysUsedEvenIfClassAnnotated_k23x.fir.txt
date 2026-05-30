@@ -20,12 +20,18 @@ FILE: InjectCtorAlwaysUsedEvenIfClassAnnotated_k23x.kt
 
         }
 
-        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/MetroContribution|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) @R|dev/zacsweers/metro/BindingContainer|() @R|dev/zacsweers/metro/Origin|(value = <getClass>(Q|Impl|)) @R|dev/zacsweers/metro/internal/ComptimeOnly|() public abstract interface MetroContributionToAppScope : R|kotlin/Any| {
-            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public abstract class BindsMirror : R|kotlin/Any| {
-                private constructor(): R|Impl.MetroContributionToAppScope.BindsMirror| {
-                    super<R|kotlin/Any|>()
-                }
+    }
+FILE: /ImplContributions.kt
+    @R|kotlin/native/HiddenFromObjC|() @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public abstract class ImplContributions : R|kotlin/Any| {
+        private constructor(): R|ImplContributions| {
+            super<R|kotlin/Any|>()
+        }
 
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/MetroContribution|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) @R|dev/zacsweers/metro/Origin|(value = <getClass>(Q|Impl|), context = String(contribution_provider)) @R|dev/zacsweers/metro/BindingContainer|() @R|dev/zacsweers/metro/internal/IROnlyFactories|() @R|dev/zacsweers/metro/ContributesTo|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public final object ToAppScope : R|kotlin/Any| {
+            @R|dev/zacsweers/metro/Provides|() public final fun provide_kcqqv6(): R|Base|
+
+            private constructor(): R|ImplContributions.ToAppScope| {
+                super<R|kotlin/Any|>()
             }
 
         }

@@ -46,7 +46,7 @@ abstract class ImplContributions {
   @IROnlyFactories
   @ContributesTo(scope = AppScope::class)
   object ToAppScope {
-    class ProvideImplAsBaseMetroFactory : Factory<Base> {
+    class Provide_kcqqv6MetroFactory : Factory<Base> {
       private /* final field */ val string: Provider<String> = string
       private /* final field */ val longProvider: Provider<Long> = longProvider
       private /* final field */ val lazyBool: Provider<Boolean> = lazyBool
@@ -62,14 +62,14 @@ abstract class ImplContributions {
         @JvmStatic
         @JsStatic
         fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Base> {
-          return ProvideImplAsBaseMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
+          return Provide_kcqqv6MetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun provideImplAsBase(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
-          return ToAppScope.provideImplAsBase(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
+        fun provide_kcqqv6(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
+          return ToAppScope.provide_kcqqv6(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
       }
@@ -83,7 +83,7 @@ abstract class ImplContributions {
 
       @HiddenFromObjC
       override operator fun invoke(): Base {
-        return ProvideImplAsBaseMetroFactory/* companion */.provideImplAsBase(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = DoubleCheck/* companion */.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = ProviderOfLazy/* companion */.create<Double>(provider = <this>.#providerOfLazyDouble))
+        return Provide_kcqqv6MetroFactory/* companion */.provide_kcqqv6(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = DoubleCheck/* companion */.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = ProviderOfLazy/* companion */.create<Double>(provider = <this>.#providerOfLazyDouble))
       }
 
       @ComptimeOnly
@@ -101,7 +101,7 @@ abstract class ImplContributions {
     }
 
     @Provides
-    fun provideImplAsBase(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
+    fun provide_kcqqv6(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
       return Impl(string = string, longProvider = longProvider, longFun = longFun, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
     }
 

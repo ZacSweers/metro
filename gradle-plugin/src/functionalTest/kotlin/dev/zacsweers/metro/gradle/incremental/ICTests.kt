@@ -565,7 +565,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
       val classLoader = project.classLoader()
       val exampleGraph = classLoader.loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.NewContribution\$MetroContributionToUnit")
+        .contains("test.NewContributionContributions\$ToUnit")
     }
   }
 
@@ -612,7 +612,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
       with(project.classLoader()) {
         val exampleGraph = loadClass("test.ExampleGraph")
         assertThat(exampleGraph.interfaces.map { it.name })
-          .contains("test.Impl2\$MetroContributionToUnit")
+          .contains("test.Impl2Contributions\$ToUnit")
       }
     }
 
@@ -634,7 +634,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
       val classLoader = project.classLoader()
       val exampleGraph = classLoader.loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
-        .doesNotContain("test.Impl2\$MetroContributionToUnit")
+        .doesNotContain("test.Impl2Contributions\$ToUnit")
     }
   }
 

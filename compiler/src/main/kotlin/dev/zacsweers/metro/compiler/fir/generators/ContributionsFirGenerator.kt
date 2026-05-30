@@ -50,6 +50,7 @@ import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.native.interop.parentsWithSelf
 import org.jetbrains.kotlin.fir.caches.FirCache
@@ -251,6 +252,13 @@ internal class ContributionsFirGenerator(
   private fun holderClassId(contributingClassId: ClassId): ClassId =
     MetroContributions.holderClassId(contributingClassId)
 
+  private fun ContributionsHolder.holderVisibility() =
+    if (generateContributionProviders) {
+      Visibilities.Public
+    } else {
+      contributingClassSymbol.rawStatus.visibility
+    }
+
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
     if (!generateContributionProviderHolders) return emptySet()
@@ -277,10 +285,11 @@ internal class ContributionsFirGenerator(
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun generateTopLevelClassLikeDeclaration(classId: ClassId): FirClassLikeSymbol<*>? {
-    if (getHolder(classId) == null) return null
+    val holderInfo = getHolder(classId) ?: return null
 
     return createTopLevelClass(classId, Keys.ContributionProviderHolderDeclaration) {
         modality = Modality.ABSTRACT
+        visibility = holderInfo.holderVisibility()
       }
       .apply {
         buildHiddenFromObjCAnnotation(session)?.let { replaceAnnotationsSafe(listOf(it)) }
@@ -884,7 +893,7 @@ internal class ContributionsFirGenerator(
         resolvedScopeClassId(session)
       }
 
-    return scopeClassId?.shortClassName?.asString()?.takeUnless(String::isErrorName)
+    return scopeClassId?.shortClassName?.asString()?.takeUnless { it.isErrorName() }
   }
 
   private fun String.isErrorName(): Boolean = '<' in this || '>' in this
@@ -927,7 +936,9 @@ internal class ContributionsFirGenerator(
           name = name,
           key = Keys.MetroContributionClassDeclaration,
           classKind = ClassKind.OBJECT,
-        ) {}
+        ) {
+          visibility = contributionHolder.holderVisibility()
+        }
         .apply {
           markAsDeprecatedHidden(session)
 

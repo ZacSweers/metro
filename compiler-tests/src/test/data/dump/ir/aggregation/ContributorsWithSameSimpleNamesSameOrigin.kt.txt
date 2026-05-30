@@ -55,45 +55,6 @@ class FooImpl : Foo {
 
   }
 
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = FooImpl::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @CallableMetadata(callableName = "bindsAsFoo", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsFoo(instance: FooImpl): Foo
-
-      @Binds
-      @CallableMetadata(callableName = "bindsAsFoo2", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsFoo2(instance: FooImpl): Foo
-
-    }
-
-    @Binds
-    @ComptimeOnly
-    fun bindsAsFoo(instance: FooImpl): Foo {
-      return error(message = "Never called")
-    }
-
-    @Binds
-    @ComptimeOnly
-    fun bindsAsFoo2(instance: FooImpl): Foo {
-      return error(message = "Never called")
-    }
-
-  }
-
   constructor() /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -106,6 +67,80 @@ class FooImpl : Foo {
   override fun foo() {
   }
 
+}
+
+// FILE: FooImplContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class FooImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = FooImpl::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    object Provide_cajzi1MetroFactory : Factory<Foo> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): Factory<Foo> {
+        return Provide_cajzi1MetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provide_cajzi1(): Foo {
+        return ToAppScope.provide_cajzi1()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Foo {
+        return Provide_cajzi1MetroFactory.provide_cajzi1()
+      }
+
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): Foo {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    fun provide_cajzi1(): Foo {
+      return FooImpl()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: fooImplContributionsToAppScopeAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: FooImplContributions.ToAppScope) {
+  return error(message = "Never called")
 }
 
 // FILE: fooImplAppScope.kt

@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 public class FirDumpTestGenerated extends AbstractFirDumpTest {
   @Test
   public void testAllFilesPresentInFir() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
   }
 
   @Test
@@ -63,7 +63,7 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
   public class Aggregation {
     @Test
     public void testAllFilesPresentInAggregation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/aggregation"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
     }
 
     @Test

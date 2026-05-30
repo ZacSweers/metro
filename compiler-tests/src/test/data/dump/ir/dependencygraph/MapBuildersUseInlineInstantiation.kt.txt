@@ -1,3 +1,74 @@
+// FILE: IntHolderImplContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class IntHolderImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = IntHolderImpl::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    object ProvideIntoMap_wwao9bMetroFactory : Factory<IntHolder> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): Factory<IntHolder> {
+        return ProvideIntoMap_wwao9bMetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideIntoMap_wwao9b(): IntHolder {
+        return ToAppScope.provideIntoMap_wwao9b()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): IntHolder {
+        return ProvideIntoMap_wwao9bMetroFactory.provideIntoMap_wwao9b()
+      }
+
+      @IntoMap
+      @IntKey(value = 3)
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): IntHolder {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    @IntoMap
+    @IntKey(value = 3)
+    fun provideIntoMap_wwao9b(): IntHolder {
+      return IntHolderImpl()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
 // FILE: MapBuildersUseInlineInstantiation.kt
 
 @Inject
@@ -39,39 +110,6 @@ class IntHolderImpl : IntHolder {
 
   }
 
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = IntHolderImpl::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @IntoMap
-      @IntKey(value = 3)
-      @CallableMetadata(callableName = "bindIntoMapAsIntHolder4013004651", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsIntHolder40130046514013004651_intomap(instance: IntHolderImpl): IntHolder
-
-    }
-
-    @IntoMap
-    @Binds
-    @IntKey(value = 3)
-    @ComptimeOnly
-    fun bindIntoMapAsIntHolder4013004651(instance: IntHolderImpl): IntHolder {
-      return error(message = "Never called")
-    }
-
-  }
-
   constructor() /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -81,7 +119,7 @@ class IntHolderImpl : IntHolder {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : IntHolderImpl.MetroContributionToAppScope {
+interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
@@ -116,7 +154,7 @@ interface AppGraph : IntHolderImpl.MetroContributionToAppScope {
     private val mapOfIntToIntHolder: Map<Int, IntHolder>
       private get(): Map<Int, IntHolder> {
         return buildMap<Int, IntHolder>(capacity = 1, builderAction = local fun MutableMap<Int, IntHolder>.<anonymous>() {
-          $receiver.put(key = 3, value = IntHolderImpl())
+          $receiver.put(key = 3, value = IntHolderImplContributions.ToAppScope.provideIntoMap_wwao9b())
         }
 )
       }
@@ -260,6 +298,13 @@ interface AppGraph : IntHolderImpl.MetroContributionToAppScope {
 }
 
 interface IntHolder {
+}
+
+// FILE: intHolderImplContributionsToAppScopeAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: IntHolderImplContributions.ToAppScope) {
+  return error(message = "Never called")
 }
 
 // FILE: intHolderImplAppScope.kt

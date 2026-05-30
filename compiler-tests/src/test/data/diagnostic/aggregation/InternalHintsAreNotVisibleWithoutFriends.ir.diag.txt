@@ -5,4 +5,3 @@
 
 Similar bindings:
   - ContributedInterface (Contributed by 'Impl' but that class is internal to its module and its module is not a friend module to this one.)
-

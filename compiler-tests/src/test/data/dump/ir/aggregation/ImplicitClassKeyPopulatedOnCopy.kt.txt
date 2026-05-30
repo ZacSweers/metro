@@ -1,3 +1,74 @@
+// FILE: ExplicitKeyImplContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class ExplicitKeyImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = ExplicitKeyImpl::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    object ProvideIntoMap_voej5vMetroFactory : Factory<Base> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): Factory<Base> {
+        return ProvideIntoMap_voej5vMetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideIntoMap_voej5v(): Base {
+        return ToAppScope.provideIntoMap_voej5v()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Base {
+        return ProvideIntoMap_voej5vMetroFactory.provideIntoMap_voej5v()
+      }
+
+      @IntoMap
+      @ClassKey(value = Base::class)
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): Base {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    @IntoMap
+    @ClassKey(value = Base::class)
+    fun provideIntoMap_voej5v(): Base {
+      return ExplicitKeyImpl()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
 // FILE: ImplicitClassKeyPopulatedOnCopy.kt
 
 @ClassKey(value = Base::class)
@@ -34,39 +105,6 @@ class ExplicitKeyImpl : Base {
     @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): ExplicitKeyImpl {
-      return error(message = "Never called")
-    }
-
-  }
-
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = ExplicitKeyImpl::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @IntoMap
-      @ClassKey(value = Base::class)
-      @CallableMetadata(callableName = "bindIntoMapAsBase855602051", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsBase855602051855602051_intomap(instance: ExplicitKeyImpl): Base
-
-    }
-
-    @IntoMap
-    @Binds
-    @ClassKey(value = Base::class)
-    @ComptimeOnly
-    fun bindIntoMapAsBase855602051(instance: ExplicitKeyImpl): Base {
       return error(message = "Never called")
     }
 
@@ -119,39 +157,6 @@ class ImplicitKeyImpl : Base {
 
   }
 
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = ImplicitKeyImpl::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @IntoMap
-      @ClassKey(value = ImplicitKeyImpl::class)
-      @CallableMetadata(callableName = "bindIntoMapAsBase4194623803", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsBase41946238031920108602_intomap(instance: ImplicitKeyImpl): Base
-
-    }
-
-    @IntoMap
-    @Binds
-    @ClassKey(value = ImplicitKeyImpl::class)
-    @ComptimeOnly
-    fun bindIntoMapAsBase4194623803(instance: ImplicitKeyImpl): Base {
-      return error(message = "Never called")
-    }
-
-  }
-
   constructor() /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -161,6 +166,91 @@ class ImplicitKeyImpl : Base {
 }
 
 interface Base {
+}
+
+// FILE: ImplicitKeyImplContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class ImplicitKeyImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = ImplicitKeyImpl::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    object ProvideIntoMap_11onzzlMetroFactory : Factory<Base> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): Factory<Base> {
+        return ProvideIntoMap_11onzzlMetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideIntoMap_11onzzl(): Base {
+        return ToAppScope.provideIntoMap_11onzzl()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Base {
+        return ProvideIntoMap_11onzzlMetroFactory.provideIntoMap_11onzzl()
+      }
+
+      @IntoMap
+      @ClassKey(value = ImplicitKeyImpl::class)
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): Base {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    @IntoMap
+    @ClassKey(value = ImplicitKeyImpl::class)
+    fun provideIntoMap_11onzzl(): Base {
+      return ImplicitKeyImpl()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: explicitKeyImplContributionsToAppScopeAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: ExplicitKeyImplContributions.ToAppScope) {
+  return error(message = "Never called")
+}
+
+// FILE: implicitKeyImplContributionsToAppScopeAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: ImplicitKeyImplContributions.ToAppScope) {
+  return error(message = "Never called")
 }
 
 // FILE: explicitKeyImplAppScope.kt
