@@ -1,0 +1,5 @@
+/InlineProviderDiagnostics.kt:9:40: warning: There is no benefit to scoped inline providers
+
+/InlineProviderDiagnostics.kt:13:11: warning: There is no benefit to private inline providers (effective visibility is private-in-class)
+
+/InlineProviderDiagnostics.kt:16:22: warning: Inline provider is effectively internal and must annotated `@PublishedApi` to be useful

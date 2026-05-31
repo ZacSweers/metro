@@ -1231,6 +1231,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("InlineProviderDiagnostics.kt")
+    public void testInlineProviderDiagnostics() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/InlineProviderDiagnostics.kt");
+    }
+
+    @Test
     @TestMetadata("LazyAssistedFactoryProvides.kt")
     public void testLazyAssistedFactoryProvides() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/LazyAssistedFactoryProvides.kt");

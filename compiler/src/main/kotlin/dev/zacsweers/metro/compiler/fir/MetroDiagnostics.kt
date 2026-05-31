@@ -40,6 +40,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_RETURN_TYPES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INLINE_PROVIDES_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTRINSIC_BINDING_ERROR
@@ -100,6 +101,7 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticsContainer
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.DECLARATION_RETURN_TYPE
+import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.INLINE_FUN_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.MODALITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.NAME_IDENTIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.OVERRIDE_MODIFIER
@@ -166,6 +168,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val PROVIDER_OVERRIDES by error0<KtElement>(MODALITY_MODIFIER)
   val PROVIDES_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val PROVIDES_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val INLINE_PROVIDES_WARNING by warning1<KtElement, String>(INLINE_FUN_MODIFIER)
   val REDUNDANT_PROVIDES by warning1<KtElement, String>(NAME_IDENTIFIER)
   val CONFLICTING_PROVIDES_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPICIOUS_AGGREGATION_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -324,6 +327,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(ASSISTED_INJECTION_WARNING, "{0}", STRING)
         put(PROVIDES_ERROR, "{0}", STRING)
         put(PROVIDES_WARNING, "{0}", STRING)
+        put(INLINE_PROVIDES_WARNING, "{0}", STRING)
         put(REDUNDANT_PROVIDES, "{0}", STRING)
         put(CONFLICTING_PROVIDES_SCOPE, "{0}", STRING)
         put(SUSPICIOUS_AGGREGATION_SCOPE, "{0}", STRING)

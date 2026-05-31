@@ -30,6 +30,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.descriptors.EffectiveVisibility
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -51,8 +52,10 @@ import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
+import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isExtension
+import org.jetbrains.kotlin.fir.declarations.utils.isInline
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
@@ -257,13 +260,44 @@ internal object BindingContainerCallableChecker :
       }
 
       if (annotations.isProvides) {
+        if (declaration.isInline) {
+          // Inline provides cannot be scoped nor is it useful for them to be private
+          if (annotations.scope != null) {
+            reporter.reportOn(
+              source,
+              MetroDiagnostics.INLINE_PROVIDES_WARNING,
+              "There is no benefit to scoped inline providers",
+            )
+          }
+          val effectiveVisibility = declaration.effectiveVisibility
+          when {
+            effectiveVisibility == EffectiveVisibility.Internal -> {
+              reporter.reportOn(
+                source,
+                MetroDiagnostics.INLINE_PROVIDES_WARNING,
+                "Inline provider is effectively internal and must annotated `@PublishedApi` to be useful",
+              )
+            }
+            effectiveVisibility.publicApi -> {
+              // Ok
+            }
+            else -> {
+              // Bad
+              reporter.reportOn(
+                source,
+                MetroDiagnostics.INLINE_PROVIDES_WARNING,
+                "There is no benefit to private inline providers (effective visibility is ${effectiveVisibility.name})",
+              )
+            }
+          }
+        }
+
         containingClassSymbol?.let { containingClass ->
           if (!containingClass.isBindingContainer(session)) {
             if (containingClass.classKind?.isObject == true && !containingClass.isCompanion) {
               // @Provides declarations can't live in non-@BindingContainer objects, this is a
-              // common
-              // case hit when migrating from Dagger/Anvil and you have a non-contributed @Module,
-              // e.g. `@Module object MyModule { /* provides */ }`
+              // common case hit when migrating from Dagger/Anvil and you have a non-contributed
+              // @Module, e.g. `@Module object MyModule { /* provides */ }`
               reporter.reportOn(
                 source,
                 MetroDiagnostics.PROVIDES_ERROR,
