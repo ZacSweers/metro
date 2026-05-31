@@ -2971,6 +2971,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("InlineProvidesBytecodeCheck.kt")
+    public void testInlineProvidesBytecodeCheck() {
+      runTest("compiler-tests/src/test/data/box/provides/InlineProvidesBytecodeCheck.kt");
+    }
+
+    @Test
     @TestMetadata("JvmFieldProvidersAreRespected.kt")
     public void testJvmFieldProvidersAreRespected() {
       runTest("compiler-tests/src/test/data/box/provides/JvmFieldProvidersAreRespected.kt");
