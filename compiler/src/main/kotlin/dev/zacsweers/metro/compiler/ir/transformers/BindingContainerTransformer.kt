@@ -74,6 +74,7 @@ import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.ProviderFactoryProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.safeNestedSimpleName
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -731,7 +732,10 @@ internal class BindingContainerTransformer(
     }
 
     val generatedClassId by lazy {
-      parent.owner.classIdOrFail.createNestedClassId(Name.identifier(simpleName))
+      val parentClassId = parent.owner.classIdOrFail
+      val safeName =
+        parentClassId.safeNestedSimpleName(candidate = simpleName, hashSource = toString())
+      parentClassId.createNestedClassId(Name.identifier(safeName))
     }
 
     private val cachedToString by lazy {
@@ -1118,8 +1122,8 @@ internal class BindingContainerTransformer(
 
   /**
    * Finds the `@Provides` function on the binding container that corresponds to an invisible
-   * factory. The factory ClassId encodes the callable name (e.g., `ProvideImplMetroFactory`
-   * corresponds to `provideImpl`).
+   * factory. The proto metadata carries the callable name because factory class names may be
+   * shortened to stay under filesystem limits.
    */
   private fun findProvidesForInvisibleFactory(
     container: IrClass,

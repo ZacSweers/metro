@@ -93,7 +93,7 @@ internal class ContributionHintFirGenerator(
         // When binding contributions use generated provider holders, generate hints pointing to
         // the generated container objects instead of the original class. The container objects are
         // not visible to the predicate-based provider, so we must compute their ClassIds here.
-        val hasBindingContributions =
+        val usesGeneratedProviderHolderHints =
           contributingClass.usesContributionProviderPath(session) &&
             contributions.any { annotation ->
               val classId = annotation.toAnnotationClassIdSafe(session) ?: return@any false
@@ -102,7 +102,7 @@ internal class ContributionHintFirGenerator(
 
         for (contributionScope in contributionScopes) {
           val hintName = contributionScope.scopeHintFunctionName()
-          if (hasBindingContributions) {
+          if (usesGeneratedProviderHolderHints) {
             // Compute the container object ClassId and generate hint pointing to it
             val containerClassId =
               MetroContributions.containerObjectClassId(

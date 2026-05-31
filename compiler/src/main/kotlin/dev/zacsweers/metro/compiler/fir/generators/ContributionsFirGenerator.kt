@@ -43,6 +43,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
+import dev.zacsweers.metro.compiler.hashSuffix
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -707,14 +708,10 @@ internal class ContributionsFirGenerator(
       contribution.mapKey?.hashCode()?.toUInt()?.let(::append)
     }
 
-    val stableSuffix =
-      listOf(contributingClassSymbol.classId.asString(), prefix, boundSuffix, annotationSuffix)
-        .joinToString(separator = "|")
-        .hashCode()
-        .toUInt()
-        .toString(radix = 36)
+    val hash =
+      listOf(contributingClassSymbol.classId, prefix, boundSuffix, annotationSuffix).hashSuffix
 
-    return "${prefix}_$stableSuffix".asName()
+    return "${prefix}_$hash".asName()
   }
 
   /**

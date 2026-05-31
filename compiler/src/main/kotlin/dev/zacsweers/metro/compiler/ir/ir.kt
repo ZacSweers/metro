@@ -298,6 +298,11 @@ internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>
 /**
  * Returns `true` if this class's binding contributions are represented by generated provider holder
  * containers.
+ *
+ * This is broader than [MetroOptions.generateContributionProviders]. The
+ * [MetroOptions.bindingContributionsAsContainers] mode reuses the same provider-holder machinery
+ * internally for pure binding contributions without opting into public contribution-provider
+ * semantics.
  */
 internal fun IrClass.usesContributionProviderPath(
   options: MetroOptions,
@@ -309,6 +314,9 @@ internal fun IrClass.usesContributionProviderPath(
 
   val hasContributesTo = annotationsIn(classIds.contributesToAnnotations).any()
   val shouldUseProviderPath =
+    // `bindingContributionsAsContainers` reuses the provider-holder machinery internally to keep
+    // pure binding contributions out of graph supertypes. It does not opt into the public-provider
+    // semantics of `generateContributionProviders`.
     options.generateContributionProviders ||
       (options.bindingContributionsAsContainers && !hasContributesTo)
   if (!shouldUseProviderPath) return false
