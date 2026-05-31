@@ -605,6 +605,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("InlineStatusIsPropagated.kt")
+    public void testInlineStatusIsPropagated() {
+      runTest("compiler-tests/src/test/data/dump/ir/provides/InlineStatusIsPropagated.kt");
+    }
+
+    @Test
     @TestMetadata("JvmFieldProvidersUseFieldAccess.kt")
     public void testJvmFieldProvidersUseFieldAccess() {
       runTest("compiler-tests/src/test/data/dump/ir/provides/JvmFieldProvidersUseFieldAccess.kt");

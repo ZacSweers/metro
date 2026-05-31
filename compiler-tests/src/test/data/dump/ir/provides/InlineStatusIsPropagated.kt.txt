@@ -1,0 +1,175 @@
+@BindingContainer
+object Bindings {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideBoolean", propertyName = "", startOffset = 113, endOffset = 194, newInstanceName = "provideBoolean")
+  object ProvideBooleanMetroFactory : Factory<Boolean> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): Factory<Boolean> {
+      return ProvideBooleanMetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    inline fun provideBoolean(): Boolean {
+      return Bindings.provideBoolean()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Boolean {
+      return ProvideBooleanMetroFactory.provideBoolean()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    inline fun mirrorFunction(): Boolean {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideFloat", propertyName = "", startOffset = 307, endOffset = 441, newInstanceName = "provideFloat")
+  object ProvideFloatMetroFactory : Factory<Float> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): Factory<Float> {
+      return ProvideFloatMetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun provideFloat(): Float {
+      return Bindings.provideFloat()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Float {
+      return ProvideFloatMetroFactory.provideFloat()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): Float {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 67, endOffset = 109, newInstanceName = "provideInt")
+  object ProvideIntMetroFactory : Factory<Int> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): Factory<Int> {
+      return ProvideIntMetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    inline fun provideInt(): Int {
+      return Bindings.provideInt()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory.provideInt()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    inline fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 198, endOffset = 303, newInstanceName = "provideLong")
+  object ProvideLongMetroFactory : Factory<Long> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): Factory<Long> {
+      return ProvideLongMetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun provideLong(): Long {
+      return Bindings.provideLong()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Long {
+      return ProvideLongMetroFactory.provideLong()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): Long {
+      return error(message = "Never called")
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  @PublishedApi
+  internal inline fun provideBoolean(): Boolean {
+    return false
+  }
+
+  @Provides
+  internal inline fun provideFloat(): Float {
+    return 3.0F
+  }
+
+  @Provides
+  inline fun provideInt(): Int {
+    return 3
+  }
+
+  @Provides
+  private inline fun provideLong(): Long {
+    return 3L
+  }
+
+}
+

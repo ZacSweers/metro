@@ -2293,6 +2293,10 @@ internal fun IrClass.staticIshDeclarationContainerOrNull(): IrClass? {
 internal val IrFunction.isStaticIsh: Boolean
   get() = parent is IrClass && (dispatchReceiverParameter == null || parentAsClass.isObject)
 
+internal fun IrDeclarationWithVisibility.isEffectivelyPublic(): Boolean {
+  return effectiveVisibility() == DescriptorVisibilities.PUBLIC
+}
+
 // TODO reconcile this with isVisibleTo()?
 internal fun IrDeclarationWithVisibility.effectiveVisibility(): DescriptorVisibility {
   if (isTopLevelDeclaration) return visibility
@@ -2313,4 +2317,18 @@ internal fun IrDeclarationWithVisibility.effectiveVisibility(): DescriptorVisibi
       }
     }
     ?.visibility ?: visibility
+}
+
+internal fun IrFunction.canBeInlined(): Boolean {
+  if (this !is IrSimpleFunction) return false
+  if (!this.isInline) return false
+  val effectiveVisibility = effectiveVisibility()
+  return when (effectiveVisibility) {
+    DescriptorVisibilities.PUBLIC -> true
+    DescriptorVisibilities.INTERNAL -> {
+      // Check that it's @PublishedApi
+      hasAnnotation(StandardNames.FqNames.publishedApi)
+    }
+    else -> false
+  }
 }

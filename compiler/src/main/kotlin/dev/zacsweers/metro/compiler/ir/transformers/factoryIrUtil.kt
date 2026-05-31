@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
+import dev.zacsweers.metro.compiler.ir.canBeInlined
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -246,6 +247,8 @@ internal fun generateStaticNewInstanceFunction(
         // Placeholder, replaced in body
         returnType = context.irBuiltIns.unitType,
         origin = Origins.FactoryNewInstanceFunction,
+        // inline can only work if the target is visible
+        isInline = targetFunction?.canBeInlined() == true,
       )
       .apply {
         val typeParams = copyTypeParametersFrom(sourceTypeParameters)
@@ -322,6 +325,7 @@ internal fun generateMetadataVisibleMirrorFunction(
       .addFunction {
         name = Symbols.Names.mirrorFunction
         this.returnType = returnType
+        this.isInline = target?.canBeInlined() == true
       }
       .apply {
         if (target is IrConstructor) {
