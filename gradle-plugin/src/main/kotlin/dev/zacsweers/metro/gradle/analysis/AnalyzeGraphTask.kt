@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
 import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createParentDirectories
@@ -32,6 +33,7 @@ import org.gradle.api.tasks.TaskAction
  * The output is a comprehensive JSON report useful for CI validation, automated analysis, and
  * identifying potential issues in a dependency graph structure.
  */
+@ExperimentalMetroGradleApi
 @CacheableTask
 public abstract class AnalyzeGraphTask : DefaultTask() {
 

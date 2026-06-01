@@ -5,7 +5,9 @@ package dev.zacsweers.metro.gradle.analysis
 import com.google.common.graph.Graph
 import com.google.common.graph.GraphBuilder
 import com.google.common.graph.ImmutableGraph
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 
+@ExperimentalMetroGradleApi
 public class BindingGraph
 private constructor(
   private val bindings: Map<String, BindingMetadata>,

@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
 /** Aggregated graph metadata for a project, as produced by [GenerateGraphMetadataTask]. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class AggregatedGraphMetadata(
   val projectPath: String,
@@ -15,6 +17,7 @@ public data class AggregatedGraphMetadata(
 )
 
 /** Metadata for a single dependency graph. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class GraphMetadata(
   val graph: String,
@@ -32,6 +35,7 @@ public data class GraphMetadata(
 )
 
 /** Compiler-collected counters for a graph. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class GraphStatsMetadata(
   val providerFactories: Int = 0,
@@ -59,6 +63,7 @@ public data class GraphStatsMetadata(
 )
 
 /** Compiler-collected counters for graph/codegen optimizations. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class GraphOptimizationStatsMetadata(
   val bindingsPrunedByShrinking: Int = 0,
@@ -73,6 +78,7 @@ public data class GraphOptimizationStatsMetadata(
 )
 
 /** Root entry points into the graph. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class RootsMetadata(
   /** Accessor properties that expose bindings from the graph. */
@@ -82,12 +88,15 @@ public data class RootsMetadata(
 )
 
 /** Metadata for an accessor property. */
-@Serializable public data class AccessorMetadata(val key: String, val isDeferrable: Boolean = false)
+@ExperimentalMetroGradleApi
+@Serializable
+public data class AccessorMetadata(val key: String, val isDeferrable: Boolean = false)
 
 /** Metadata for an injector function. */
-@Serializable public data class InjectorMetadata(val key: String)
+@ExperimentalMetroGradleApi @Serializable public data class InjectorMetadata(val key: String)
 
 /** Graph extension information. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class ExtensionsMetadata(
   /** Extension accessors (non-factory). */
@@ -99,13 +108,17 @@ public data class ExtensionsMetadata(
 )
 
 /** Metadata for an extension accessor. */
-@Serializable public data class ExtensionAccessorMetadata(val key: String)
+@ExperimentalMetroGradleApi
+@Serializable
+public data class ExtensionAccessorMetadata(val key: String)
 
 /** Metadata for an extension factory accessor. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class ExtensionFactoryAccessorMetadata(val key: String, val isSAM: Boolean = false)
 
 /** Metadata for a single binding within a graph. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class BindingMetadata(
   val key: String,
@@ -135,6 +148,7 @@ public data class BindingMetadata(
  *
  * This has the same structure as [BindingMetadata] plus [assistedParameters].
  */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class AssistedTargetMetadata(
   val key: String,
@@ -154,9 +168,12 @@ public data class AssistedTargetMetadata(
 )
 
 /** Metadata for an assisted parameter (injected at call time). */
-@Serializable public data class AssistedParameterMetadata(val key: String, val name: String)
+@ExperimentalMetroGradleApi
+@Serializable
+public data class AssistedParameterMetadata(val key: String, val name: String)
 
 /** Metadata for a dependency reference. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class DependencyMetadata(
   val key: String,
@@ -170,6 +187,7 @@ public data class DependencyMetadata(
 }
 
 /** Metadata for multibinding configuration. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class MultibindingMetadata(
   val type: String, // "MAP" or "SET"
@@ -178,6 +196,7 @@ public data class MultibindingMetadata(
 )
 
 /** Metadata for optional wrapper bindings. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class OptionalWrapperMetadata(
   val wrappedType: String,

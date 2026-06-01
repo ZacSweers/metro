@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import java.io.File
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.writeText
@@ -38,6 +39,7 @@ import org.gradle.api.tasks.TaskAction
  *
  * One HTML file is generated per dependency graph, plus an index page.
  */
+@ExperimentalMetroGradleApi
 @CacheableTask
 public abstract class GenerateGraphHtmlTask : DefaultTask() {
 

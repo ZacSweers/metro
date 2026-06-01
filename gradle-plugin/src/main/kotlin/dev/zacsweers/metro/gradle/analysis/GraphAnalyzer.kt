@@ -4,8 +4,10 @@ package dev.zacsweers.metro.gradle.analysis
 
 import com.autonomousapps.graph.ShortestPath
 import com.google.common.graph.Graph
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 
 /** Performs various graph analysis algorithms on a [BindingGraph] using Guava graphs. */
+@ExperimentalMetroGradleApi
 public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
 
   private val fullGraph: Graph<String>
