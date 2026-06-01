@@ -65,6 +65,11 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
     target.tasks.register(MetroEnvTask.AGGREGATE_NAME) { task ->
       task.group = "metro"
       task.description = "Generates Metro environment reports for all Kotlin compilations"
+      task.dependsOn(
+        target.tasks.matching { candidate ->
+          candidate.name != MetroEnvTask.AGGREGATE_NAME && candidate.name.endsWith("MetroEnv")
+        }
+      )
     }
 
     // Only register analysis tasks when metro's extension is configured
@@ -308,51 +313,51 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
         isJvmTarget = isJvmTarget,
       )
 
-    val envReportTask =
-      project.tasks.register(
-        "generate${kotlinCompilation.compileKotlinTaskName.capitalizeUS()}MetroEnv",
-        MetroEnvTask::class.java,
-      ) { task ->
-        task.description =
-          "Generates a Metro env report for ${project.path} ${kotlinCompilation.target.name}/${kotlinCompilation.name}"
-        task.projectPath.set(project.path)
-        task.targetName.set(kotlinCompilation.target.name)
-        task.compilationName.set(kotlinCompilation.name)
-        task.platformType.set(kotlinCompilation.platformType.name)
-        task.compileTaskName.set(kotlinCompilation.compileKotlinTaskName)
-        task.metroVersion.set(VERSION)
-        task.metroCompilerArtifact.set(
-          project.providers.systemProperty(COMPILER_VERSION_OVERRIDE).orElse(VERSION).map {
-            "dev.zacsweers.metro:compiler:$it"
-          }
-        )
-        task.kotlinVersion.set(kotlinVersion.toString())
-        task.kotlinCompilerVersion.set(kotlinVersion.toString())
-        task.gradleVersion.set(GradleVersion.current().version)
-        task.javaVersion.set(JavaVersion.current().toString())
-        task.os.set(
-          "${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})"
-        )
-        task.metroCompilerOptions.set(metroOptions.map { it.renderForReport() })
-        task.outputFile.set(
-          project.layout.buildDirectory.file(
-            "reports/metro/env/${kotlinCompilation.target.name}/${kotlinCompilation.name}.txt"
-          )
-        )
-      }
-
-    kotlinCompilation.compileTaskProvider.configure { compileTask ->
-      envReportTask.configure { task ->
-        task.kotlinLanguageVersion.set(
+    project.tasks.register(
+      "generate${kotlinCompilation.compileKotlinTaskName.capitalizeUS()}MetroEnv",
+      MetroEnvTask::class.java,
+    ) { task ->
+      task.description =
+        "Generates a Metro env report for ${project.path} ${kotlinCompilation.target.name}/${kotlinCompilation.name}"
+      task.projectPath.set(project.path)
+      task.targetName.set(kotlinCompilation.target.name)
+      task.compilationName.set(kotlinCompilation.name)
+      task.platformType.set(kotlinCompilation.platformType.name)
+      task.compileTaskName.set(kotlinCompilation.compileKotlinTaskName)
+      task.metroVersion.set(VERSION)
+      task.metroCompilerArtifact.set(
+        project.providers.systemProperty(COMPILER_VERSION_OVERRIDE).orElse(VERSION).map {
+          "dev.zacsweers.metro:compiler:$it"
+        }
+      )
+      task.kotlinVersion.set(kotlinVersion.toString())
+      task.kotlinCompilerVersion.set(kotlinVersion.toString())
+      task.gradleVersion.set(GradleVersion.current().version)
+      task.javaVersion.set(JavaVersion.current().toString())
+      task.os.set(
+        "${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})"
+      )
+      task.kotlinLanguageVersion.set(
+        kotlinCompilation.compileTaskProvider.flatMap { compileTask ->
           compileTask.compilerOptions.languageVersion.map { it.version }
+        }
+      )
+      task.kotlinApiVersion.set(
+        kotlinCompilation.compileTaskProvider.flatMap { compileTask ->
+          compileTask.compilerOptions.apiVersion.map { it.version }
+        }
+      )
+      task.freeCompilerArgs.set(
+        kotlinCompilation.compileTaskProvider.flatMap { compileTask ->
+          compileTask.compilerOptions.freeCompilerArgs
+        }
+      )
+      task.metroCompilerOptions.set(metroOptions.map { it.renderForReport() })
+      task.outputFile.set(
+        project.layout.buildDirectory.file(
+          "reports/metro/env/${kotlinCompilation.target.name}/${kotlinCompilation.name}.txt"
         )
-        task.kotlinApiVersion.set(compileTask.compilerOptions.apiVersion.map { it.version })
-        task.freeCompilerArgs.set(compileTask.compilerOptions.freeCompilerArgs)
-      }
-    }
-
-    project.tasks.named(MetroEnvTask.AGGREGATE_NAME).configure { task ->
-      task.dependsOn(envReportTask)
+      )
     }
 
     return metroOptions
