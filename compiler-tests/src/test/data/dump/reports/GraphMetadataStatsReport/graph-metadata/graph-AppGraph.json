@@ -1,0 +1,250 @@
+{
+  "graph": "AppGraph",
+  "scopes": [
+    "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
+  ],
+  "aggregationScopes": [
+    "dev.zacsweers.metro.AppScope"
+  ],
+  "roots": {
+    "accessors": [
+      {
+        "key": "F",
+        "isDeferrable": false
+      },
+      {
+        "key": "G",
+        "isDeferrable": false
+      },
+      {
+        "key": "A",
+        "isDeferrable": false
+      },
+      {
+        "key": "B",
+        "isDeferrable": false
+      },
+      {
+        "key": "C",
+        "isDeferrable": false
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 2,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 4,
+    "mergedSupertypeChunkSize": 2,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "enableFunctionProviders": true,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "richDiagnostics": false,
+    "generateStaticAnnotations": true,
+    "bindingContributionsAsContainers": true,
+    "memberNamingStrategy": "DESCRIPTIVE"
+  },
+  "stats": {
+    "providerFactories": 1,
+    "bindsCallables": 0,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 5,
+    "injectors": 0,
+    "graphExtensionAccessors": 0,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 7,
+    "validatedKeys": 7,
+    "reachableKeys": 7,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 6,
+    "scopedProviderProperties": 6,
+    "shards": 2,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 0,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 1,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 2,
+      "shardedSupertypes": 2,
+      "shardedInitFunctions": 2,
+      "providerInlines": 0
+    }
+  },
+  "bindings": [
+    {
+      "key": "A",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "A",
+      "dependencies": [],
+      "isSynthetic": false,
+      "origin": "GraphMetadataStatsReport.kt:24:1",
+      "declaration": "A"
+    },
+    {
+      "key": "B",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "B",
+      "dependencies": [
+        {
+          "key": "A",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "GraphMetadataStatsReport.kt:26:1",
+      "declaration": "B"
+    },
+    {
+      "key": "C",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "C",
+      "dependencies": [
+        {
+          "key": "B",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "GraphMetadataStatsReport.kt:28:1",
+      "declaration": "C"
+    },
+    {
+      "key": "D",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "D",
+      "dependencies": [
+        {
+          "key": "C",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "GraphMetadataStatsReport.kt:30:1",
+      "declaration": "D"
+    },
+    {
+      "key": "E",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "E",
+      "dependencies": [
+        {
+          "key": "D",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "GraphMetadataStatsReport.kt:32:1",
+      "declaration": "E"
+    },
+    {
+      "key": "F",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "F",
+      "dependencies": [
+        {
+          "key": "E",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "GraphMetadataStatsReport.kt:34:1",
+      "declaration": "F"
+    },
+    {
+      "key": "G",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "provideG",
+      "dependencies": [
+        {
+          "key": "F",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "GraphMetadataStatsReport.kt:41:13",
+      "declaration": "provideG"
+    }
+  ]
+}

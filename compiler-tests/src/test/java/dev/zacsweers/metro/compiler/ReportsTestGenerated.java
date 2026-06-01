@@ -34,6 +34,12 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Test
+  @TestMetadata("GraphMetadataStatsReport.kt")
+  public void testGraphMetadataStatsReport() {
+    runTest("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport.kt");
+  }
+
+  @Test
   @TestMetadata("SimpleTraceGeneration.kt")
   public void testSimpleTraceGeneration() {
     runTest("compiler-tests/src/test/data/dump/reports/SimpleTraceGeneration.kt");

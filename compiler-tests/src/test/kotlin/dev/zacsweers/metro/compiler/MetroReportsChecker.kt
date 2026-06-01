@@ -79,7 +79,7 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
     var generatedMissingFiles = false
     var lastError: AssertionFailedError? = null
     for (reportName in reportNamesToCheck) {
-      val baseFileName = "$reportName.txt"
+      val baseFileName = reportFileName(reportName)
       val reportFile = File(reportsDir, baseFileName)
       val expectedFile = File(testDataFile.withoutExtension(), baseFileName)
 
@@ -107,6 +107,10 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
     if (generatedMissingFiles) {
       throw lastError!!
     }
+  }
+
+  private fun reportFileName(reportName: String): String {
+    return if (File(reportName).extension.isEmpty()) "$reportName.txt" else reportName
   }
 
   private fun checkTraces(allDirectives: RegisteredDirectives) {
