@@ -20,18 +20,25 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 internal class GraphMetadataReporter(
   private val context: IrMetroContext,
   private val json: Json = Json {
     prettyPrint = true
+    encodeDefaults = true
     @OptIn(ExperimentalSerializationApi::class)
     prettyPrintIndent = "  "
   },
 ) {
 
-  fun write(node: GraphNode.Local, bindingGraph: IrBindingGraph) {
+  fun write(
+    node: GraphNode.Local,
+    bindingGraph: IrBindingGraph,
+    sealResult: IrBindingGraph.BindingGraphResult,
+    codegenStats: CodegenStats?,
+  ) {
     val reportsDir = context.reportsDir ?: return
     val outputDir = reportsDir.resolve("graph-metadata")
     outputDir.createDirectories()
@@ -131,6 +138,8 @@ internal class GraphMetadataReporter(
       )
       put("roots", rootsJson)
       put("extensions", extensionsJson)
+      put("config", json.encodeToJsonElement(context.options))
+      codegenStats?.let { put("stats", buildStatsJson(node, bindingGraph, sealResult, it)) }
       put("bindings", JsonArray(bindings))
     }
 
@@ -142,6 +151,64 @@ internal class GraphMetadataReporter(
 
   private fun buildAnnotationArray(annotations: Collection<IrAnnotation>): JsonArray {
     return JsonArray(annotations.map { JsonPrimitive(it.render(short = false)) })
+  }
+
+  private fun buildStatsJson(
+    node: GraphNode.Local,
+    bindingGraph: IrBindingGraph,
+    sealResult: IrBindingGraph.BindingGraphResult,
+    codegenStats: CodegenStats,
+  ): JsonObject {
+    val bindings = bindingGraph.bindingsSnapshot().asMap().values
+    val options = context.options
+    return buildJsonObject {
+      put("providerFactories", JsonPrimitive(node.providerFactories.values.sumOf { it.size }))
+      put("bindsCallables", JsonPrimitive(node.bindsCallables.values.sumOf { it.size }))
+      put("multibindsCallables", JsonPrimitive(node.multibindsCallables.size))
+      put("optionalBindings", JsonPrimitive(node.optionalKeys.values.sumOf { it.size }))
+      put("accessors", JsonPrimitive(node.accessors.size))
+      put("injectors", JsonPrimitive(node.injectors.size))
+      val graphExtensionAccessors = node.graphExtensions.values.flatten()
+      put("graphExtensionAccessors", JsonPrimitive(graphExtensionAccessors.count { !it.isFactory }))
+      put("graphExtensionFactories", JsonPrimitive(graphExtensionAccessors.count { it.isFactory }))
+      put("includedGraphs", JsonPrimitive(node.includedGraphNodes.size))
+      put("bindingContainers", JsonPrimitive(node.bindingContainers.size))
+      put("dynamicBindings", JsonPrimitive(node.dynamicTypeKeys.values.sumOf { it.size }))
+      put("graphPrivateKeys", JsonPrimitive(node.graphPrivateKeys.size))
+      put("publishedBindsKeys", JsonPrimitive(node.publishedBindsKeys.size))
+      put("populatedKeys", JsonPrimitive(bindings.size))
+      put("validatedKeys", JsonPrimitive(sealResult.sortedKeys.size))
+      put("reachableKeys", JsonPrimitive(sealResult.reachableKeys.size))
+      put("deferredKeys", JsonPrimitive(sealResult.deferredTypes.size))
+      put("unusedInputs", JsonPrimitive(sealResult.unusedKeys.count { it.value != null }))
+      put("providerProperties", JsonPrimitive(codegenStats.providerProperties))
+      put("scopedProviderProperties", JsonPrimitive(codegenStats.scopedProviderProperties))
+      put("shards", JsonPrimitive(codegenStats.shards))
+      put(
+        "optimizations",
+        buildJsonObject {
+          val bindingsPruned =
+            if (options.shrinkUnusedBindings) {
+              bindings.size - sealResult.sortedKeys.size
+            } else {
+              0
+            }
+          put("bindingsPrunedByShrinking", JsonPrimitive(bindingsPruned.coerceAtLeast(0)))
+          put(
+            "classConstructorDirectInvocations",
+            JsonPrimitive(codegenStats.classConstructorDirectInvocations),
+          )
+          put(
+            "classConstructorNewInstanceCalls",
+            JsonPrimitive(codegenStats.classConstructorNewInstanceCalls),
+          )
+          put("providerDirectInvocations", JsonPrimitive(codegenStats.providerDirectInvocations))
+          put("providerNewInstanceCalls", JsonPrimitive(codegenStats.providerNewInstanceCalls))
+          put("shardsGenerated", JsonPrimitive(codegenStats.shards))
+          put("providerInlines", JsonPrimitive(0))
+        },
+      )
+    }
   }
 
   /**
@@ -310,5 +377,15 @@ internal class GraphMetadataReporter(
       put("allowsAbsent", JsonPrimitive(allowsAbsent))
       put("wrapperKey", JsonPrimitive(wrapperKey))
     }
+  }
+
+  class CodegenStats {
+    var providerProperties: Int = 0
+    var scopedProviderProperties: Int = 0
+    var shards: Int = 0
+    var classConstructorDirectInvocations: Int = 0
+    var classConstructorNewInstanceCalls: Int = 0
+    var providerDirectInvocations: Int = 0
+    var providerNewInstanceCalls: Int = 0
   }
 }
