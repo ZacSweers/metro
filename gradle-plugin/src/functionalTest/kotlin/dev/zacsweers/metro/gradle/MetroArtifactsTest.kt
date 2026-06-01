@@ -14,6 +14,9 @@ import org.junit.Test
 class MetroArtifactsTest {
   @Test
   fun `generateMetroGraphMetadata task creates aggregated JSON output`() {
+    val topLevelFirGenEnabled =
+      getTestCompilerVersion().toKotlinVersion() >= KotlinVersion(2, 3, 20)
+
     val fixture =
       object : MetroProject(multiplatform = false) {
         override fun sources() =
@@ -74,9 +77,9 @@ class MetroArtifactsTest {
                 "debug": false,
                 "enabled": true,
                 "generateAssistedFactories": false,
-                "enableTopLevelFunctionInjection": true,
+                "enableTopLevelFunctionInjection": $topLevelFirGenEnabled,
                 "generateContributionHints": true,
-                "generateContributionHintsInFir": true,
+                "generateContributionHintsInFir": $topLevelFirGenEnabled,
                 "shrinkUnusedBindings": true,
                 "statementsPerInitFun": 25,
                 "enableGraphSharding": true,
