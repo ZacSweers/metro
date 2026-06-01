@@ -4,6 +4,7 @@ package dev.zacsweers.metro.gradle.analysis
 
 import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 /** Aggregated graph metadata for a project, as produced by [GenerateGraphMetadataTask]. */
 @Serializable
@@ -23,7 +24,52 @@ public data class GraphMetadata(
   val roots: RootsMetadata? = null,
   /** Graph extension information. */
   val extensions: ExtensionsMetadata? = null,
+  /** Compiler options used for this graph's generated implementation. */
+  val config: JsonObject? = null,
+  /** Compiler-collected counters for this graph. */
+  val stats: GraphStatsMetadata? = null,
   val bindings: List<BindingMetadata>,
+)
+
+/** Compiler-collected counters for a graph. */
+@Serializable
+public data class GraphStatsMetadata(
+  val providerFactories: Int = 0,
+  val bindsCallables: Int = 0,
+  val multibindsCallables: Int = 0,
+  val optionalBindings: Int = 0,
+  val accessors: Int = 0,
+  val injectors: Int = 0,
+  val graphExtensionAccessors: Int = 0,
+  val graphExtensionFactories: Int = 0,
+  val includedGraphs: Int = 0,
+  val bindingContainers: Int = 0,
+  val dynamicBindings: Int = 0,
+  val graphPrivateKeys: Int = 0,
+  val publishedBindsKeys: Int = 0,
+  val populatedKeys: Int = 0,
+  val validatedKeys: Int = 0,
+  val reachableKeys: Int = 0,
+  val deferredKeys: Int = 0,
+  val unusedInputs: Int = 0,
+  val providerProperties: Int = 0,
+  val scopedProviderProperties: Int = 0,
+  val shards: Int = 0,
+  val optimizations: GraphOptimizationStatsMetadata = GraphOptimizationStatsMetadata(),
+)
+
+/** Compiler-collected counters for graph/codegen optimizations. */
+@Serializable
+public data class GraphOptimizationStatsMetadata(
+  val bindingsPrunedByShrinking: Int = 0,
+  val classConstructorDirectInvocations: Int = 0,
+  val classConstructorNewInstanceCalls: Int = 0,
+  val providerDirectInvocations: Int = 0,
+  val providerNewInstanceCalls: Int = 0,
+  val shardsGenerated: Int = 0,
+  val shardedSupertypes: Int = 0,
+  val shardedInitFunctions: Int = 0,
+  val providerInlines: Int = 0,
 )
 
 /** Root entry points into the graph. */

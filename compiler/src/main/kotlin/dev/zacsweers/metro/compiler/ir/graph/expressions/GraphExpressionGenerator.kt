@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
+import dev.zacsweers.metro.compiler.ir.graph.GraphMetadataReporter
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
@@ -60,6 +61,7 @@ private constructor(
   override val bindingGraph: IrBindingGraph,
   private val metroDeclarations: MetroDeclarations,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
+  private val codegenStats: GraphMetadataReporter.CodegenStats?,
   /**
    * For extension graphs, maps ancestor graph type key -> list of properties to chain through. Used
    * to access ancestor bindings in non-shard context.
@@ -77,6 +79,7 @@ private constructor(
     private val bindingGraph: IrBindingGraph,
     private val metroDeclarations: MetroDeclarations,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
+    private val codegenStats: GraphMetadataReporter.CodegenStats?,
     /**
      * For extension graphs, maps ancestor graph type key -> list of properties to chain through.
      * Used to access ancestor bindings in non-shard context.
@@ -95,6 +98,7 @@ private constructor(
         bindingGraph = bindingGraph,
         metroDeclarations = metroDeclarations,
         graphExtensionGenerator = graphExtensionGenerator,
+        codegenStats = codegenStats,
         traceScope = traceScope,
         ancestorGraphProperties = ancestorGraphProperties,
         shardContext = shardContext,
@@ -157,6 +161,7 @@ private constructor(
 
           if (canBypassFactory) {
             if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
+              codegenStats?.run { classConstructorDirectInvocations++ }
               // Call constructor directly
               val targetConstructor = classFactory.targetConstructor!!
               irCallConstructor(
@@ -178,6 +183,7 @@ private constructor(
                 }
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             } else {
+              codegenStats?.run { classConstructorNewInstanceCalls++ }
               // Constructor isn't public - call newInstance() on the factory object instead
               // Example_Factory.newInstance(...)
               classFactory
@@ -290,6 +296,7 @@ private constructor(
 
             // If we need a dispatch receiver but couldn't get one, fall back to factory
             if (providerFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
+              codegenStats?.run { providerDirectInvocations++ }
               // Call the provider function directly
               val realFunction =
                 providerFactory.realDeclaration?.expectAsOrNull<IrFunction>() ?: providerFunction
@@ -304,6 +311,7 @@ private constructor(
               irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             } else {
+              codegenStats?.run { providerNewInstanceCalls++ }
               // Function isn't public - call factory's static newInstance() method instead
               providerFactory
                 .invokeNewInstanceExpression(binding.typeKey, providerFactory.newInstanceName) {

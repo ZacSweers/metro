@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.WrappedType.Canonical
 import dev.zacsweers.metro.compiler.graph.WrappedType.Provider
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createParentDirectories
@@ -15,7 +17,6 @@ import kotlin.io.path.writeText
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -30,6 +31,8 @@ internal class GraphMetadataReporter(
     encodeDefaults = true
     @OptIn(ExperimentalSerializationApi::class)
     prettyPrintIndent = "  "
+    @OptIn(ExperimentalSerializationApi::class)
+    explicitNulls = false
   },
 ) {
 
@@ -161,6 +164,8 @@ internal class GraphMetadataReporter(
   ): JsonObject {
     val bindings = bindingGraph.bindingsSnapshot().asMap().values
     val options = context.options
+    val shardedSupertypes =
+      node.supertypes.count { it.rawTypeOrNull()?.origin == Origins.ContributionSupertypeChunk }
     return buildJsonObject {
       put("providerFactories", JsonPrimitive(node.providerFactories.values.sumOf { it.size }))
       put("bindsCallables", JsonPrimitive(node.bindsCallables.values.sumOf { it.size }))
@@ -205,6 +210,8 @@ internal class GraphMetadataReporter(
           put("providerDirectInvocations", JsonPrimitive(codegenStats.providerDirectInvocations))
           put("providerNewInstanceCalls", JsonPrimitive(codegenStats.providerNewInstanceCalls))
           put("shardsGenerated", JsonPrimitive(codegenStats.shards))
+          put("shardedSupertypes", JsonPrimitive(shardedSupertypes))
+          put("shardedInitFunctions", JsonPrimitive(codegenStats.shardedInitFunctions))
           put("providerInlines", JsonPrimitive(0))
         },
       )
@@ -274,11 +281,11 @@ internal class GraphMetadataReporter(
 
       when (binding) {
         is Multibinding -> put("multibinding", binding.toJson())
-        else -> put("multibinding", JsonNull)
+        else -> Unit
       }
       when (binding) {
         is CustomWrapper -> put("optionalWrapper", binding.toJson())
-        else -> put("optionalWrapper", JsonNull)
+        else -> Unit
       }
       if (binding is IrBinding.Alias) {
         put("aliasTarget", JsonPrimitive(binding.aliasedType.render(short = false)))
@@ -387,5 +394,6 @@ internal class GraphMetadataReporter(
     var classConstructorNewInstanceCalls: Int = 0
     var providerDirectInvocations: Int = 0
     var providerNewInstanceCalls: Int = 0
+    var shardedInitFunctions: Int = 0
   }
 }

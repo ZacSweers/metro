@@ -171,33 +171,10 @@ internal class IrGraphGenerator(
       BindingPropertyContext(bindingGraph, graphKey = node.typeKey, parent = parentBindingContext)
     }
 
-  /**
-   * To avoid `MethodTooLargeException`, we split property field initializations up over multiple
-   * constructor inits.
-   *
-   * @see <a href="https://github.com/ZacSweers/metro/issues/645">#645</a>
-   */
-  private val propertyInitializers = mutableListOf<Pair<IrProperty, PropertyInitializer>>()
-
-  // TODO replace with irAttribute
-  private val propertiesToTypeKeys = mutableMapOf<IrProperty, IrTypeKey>()
-
   private val graphMetadataReporter =
     trace("Init graphMetadataReporter") { GraphMetadataReporter(this@IrGraphGenerator) }
 
-  @IgnorableReturnValue
-  fun IrProperty.withInit(typeKey: IrTypeKey, init: PropertyInitializer): IrProperty = apply {
-    // Only necessary for fields
-    if (backingField != null) {
-      propertiesToTypeKeys[this] = typeKey
-      propertyInitializers += (this to init)
-    } else {
-      getter!!.apply {
-        this.body =
-          createIrBuilder(symbol).run { irExprBodySafe(init(dispatchReceiverParameter!!, typeKey)) }
-      }
-    }
-  }
+  private val codegenStats = if (reportsDir != null) GraphMetadataReporter.CodegenStats() else null
 
   @IgnorableReturnValue
   fun IrProperty.initFinal(body: IrBuilderWithScope.() -> IrExpression): IrProperty = apply {
@@ -261,6 +238,7 @@ internal class IrGraphGenerator(
             bindingGraph = bindingGraph,
             metroDeclarations = metroDeclarations,
             graphExtensionGenerator = graphExtensionGenerator,
+            codegenStats = codegenStats,
           )
         }
 
@@ -287,6 +265,8 @@ internal class IrGraphGenerator(
       // Filter bindings that need properties
       val collectedBindings =
         trace("Filter to IR properties") { initOrder.filterOnlyIrProperties() }
+      codegenStats?.providerProperties = collectedBindings.size
+      codegenStats?.scopedProviderProperties = collectedBindings.count { it.binding.isScoped() }
 
       // Convert collected bindings to ShardBinding for shard generator
       val shardBindings = trace("Map to shard bindings") { collectedBindings.mapToShardBindings() }
@@ -305,6 +285,7 @@ internal class IrGraphGenerator(
             )
             .generateShards(diagnosticTag = diagnosticTag)
         }
+      codegenStats?.shards = shardResult?.takeUnless { it.isGraphAsShard }?.shards?.size ?: 0
 
       if (shardResult != null) {
         // Create shard field properties on the main class (only for nested shards)
@@ -360,7 +341,12 @@ internal class IrGraphGenerator(
               .toSet()
           val graphProto =
             node.toProto(bindingGraph = bindingGraph, ownProviderFactories = ownProviderFactories)
-          graphMetadataReporter.write(node, bindingGraph)
+          graphMetadataReporter.write(
+            node,
+            bindingGraph,
+            sealResult,
+            codegenStats,
+          )
           val metroMetadata = createMetroMetadata(dependency_graph = graphProto)
 
           writeDiagnostic(
@@ -1276,6 +1262,7 @@ internal class IrGraphGenerator(
           }
         }
     }
+    codegenStats?.run { shardedInitFunctions += initFunctionsToCall.size }
 
     if (shard.isGraphAsShard) {
       // For graph-as-shard, add init calls to main constructor
