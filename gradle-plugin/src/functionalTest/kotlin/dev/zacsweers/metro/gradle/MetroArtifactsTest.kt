@@ -13,6 +13,47 @@ import org.junit.Test
 
 class MetroArtifactsTest {
   @Test
+  fun `metroEnv task creates human-readable output`() {
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    build(project.rootDir, "metroEnv")
+
+    val report =
+      project.rootDir
+        .toPath()
+        .resolve("build/reports/metro/env")
+        .toFile()
+        .walk()
+        .single { it.name == "main.txt" }
+        .toPath()
+    assertTrue(report.exists(), "Metro environment report should exist")
+
+    val content = report.readText()
+    assertThat(content).contains("Metro environment report")
+    assertThat(content).contains("Project")
+    assertThat(content).contains("Versions")
+    assertThat(content).contains("Kotlin compiler options")
+    assertThat(content).contains("Metro compiler plugin options")
+    assertThat(content).contains("  compilation: main")
+    assertThat(content).contains("    enabled = true")
+    assertThat(content).contains("    reports-destination = ")
+  }
+
+  @Test
   fun `generateMetroGraphMetadata task creates aggregated JSON output`() {
     val topLevelFirGenEnabled =
       getTestCompilerVersion().toKotlinVersion() >= KotlinVersion(2, 3, 20)

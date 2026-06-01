@@ -21,6 +21,7 @@ Changelog
 - **[IR]** Lazily compute cached hashCode and toString renders for compiler-internal type keys without delegation.
 - **[IR]** Propagate `inline` modifiers from `@Provides` functions to factory `newInstance()` functions.
 - **[IR/IC]** Optimize IC tracking by buffering lookup and expect/actual records during IR and flushing them once after graph validation, avoiding per-write synchronization on the hot path. This is enabled by default but can be disabled via the `buffered-ic-tracking` compiler option if it causes any issues.
+- **[Gradle]** Add a `metroEnv` task that writes human-readable Metro/Kotlin/Gradle environment reports for bug reports.
 - **[Reporting]** Add compiler stats to reporting.
 
 ### Fixes
