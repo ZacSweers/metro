@@ -182,6 +182,42 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport")
+  @TestDataPath("$PROJECT_ROOT")
+  public class GraphMetadataStatsReport {
+    @Test
+    public void testAllFilesPresentInGraphMetadataStatsReport() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/graph-metadata")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Graph_metadata {
+      @Test
+      public void testAllFilesPresentInGraph_metadata() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/graph-metadata"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/provider-factories")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Provider_factories {
+      @Test
+      public void testAllFilesPresentInProvider_factories() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/provider-factories"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("StatsModule.ProvideGMetroFactory.kt")
+      public void testStatsModule_ProvideGMetroFactory() {
+        runTest("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/provider-factories/StatsModule.ProvideGMetroFactory.kt");
+      }
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement")
   @TestDataPath("$PROJECT_ROOT")
   public class UnmatchedReplacement {
