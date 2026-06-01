@@ -22,7 +22,9 @@ import org.opentest4j.AssertionFailedError
  * 1. Find the specified report files in the reports destination
  * 2. Compare each report file against an expected file alongside the test data
  *
- * Expected files should be named: `<testFile>/<diagnosticKey>/<path>/<reportName>.txt`
+ * Expected files should be named: `<testFile>/<diagnosticKey>/<path>/<reportName>.txt`. If the
+ * report name includes an explicit extension, the expected file appends `.txt` to avoid treating
+ * generated `.kt` reports as test inputs.
  *
  * Example usage:
  * ```
@@ -81,7 +83,7 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
     for (reportName in reportNamesToCheck) {
       val baseFileName = reportFileName(reportName)
       val reportFile = File(reportsDir, baseFileName)
-      val expectedFile = File(testDataFile.withoutExtension(), baseFileName)
+      val expectedFile = File(testDataFile.withoutExtension(), expectedReportFileName(reportName))
 
       if (!reportFile.exists()) {
         testServices.assertions.fail {
@@ -111,6 +113,11 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
 
   private fun reportFileName(reportName: String): String {
     return if (File(reportName).extension.isEmpty()) "$reportName.txt" else reportName
+  }
+
+  private fun expectedReportFileName(reportName: String): String {
+    return if (File(reportName).extension.isEmpty()) reportFileName(reportName)
+    else "${reportName}.txt"
   }
 
   private fun checkTraces(allDirectives: RegisteredDirectives) {

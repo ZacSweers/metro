@@ -150,7 +150,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     stringDirective(
       "Specifies report file names to verify against expected files. Can be specified multiple times. " +
         "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir/test/AppGraph'. " +
-        "Expected files should be named '<testFile>/<diagnosticKey>/<path>/<reportName>.txt'."
+        "Expected files should be named '<testFile>/<diagnosticKey>/<path>/<reportName>.txt'. " +
+        "For report names with explicit extensions, append '.txt' to the expected file."
     )
   val TRACE_DESTINATION by
     stringDirective(

@@ -208,12 +208,6 @@ public class ReportsTestGenerated extends AbstractReportsTest {
       public void testAllFilesPresentInProvider_factories() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/provider-factories"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
-
-      @Test
-      @TestMetadata("StatsModule.ProvideGMetroFactory.kt")
-      public void testStatsModule_ProvideGMetroFactory() {
-        runTest("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/provider-factories/StatsModule.ProvideGMetroFactory.kt");
-      }
     }
   }
 
