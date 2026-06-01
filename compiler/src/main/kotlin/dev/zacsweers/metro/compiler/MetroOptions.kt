@@ -1,5 +1,7 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+@file:UseSerializers(ClassIdSerializer::class)
+
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
@@ -10,6 +12,15 @@ import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
+import kotlinx.serialization.UseSerializers
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
@@ -954,14 +965,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   }
 }
 
+@Serializable
 public data class MetroOptions(
   public val debug: Boolean = MetroOption.DEBUG.raw.defaultValue.expectAs(),
   public val enabled: Boolean = MetroOption.ENABLED.raw.defaultValue.expectAs(),
+  @Transient
   private val rawReportsDestination: Path? =
     MetroOption.REPORTS_DESTINATION.raw.defaultValue
       .expectAs<String>()
       .takeUnless(String::isBlank)
       ?.let(Paths::get),
+  @Transient
   private val rawTraceDestination: Path? =
     MetroOption.TRACE_DESTINATION.raw.defaultValue
       .expectAs<String>()
@@ -1134,6 +1148,7 @@ public data class MetroOptions(
     get() = rawReportsDestination != null
 
   @OptIn(ExperimentalPathApi::class)
+  @Transient
   public val reportsDir: Lazy<Path?> = lazy {
     rawReportsDestination?.apply {
       if (exists()) {
@@ -1146,6 +1161,7 @@ public data class MetroOptions(
   public val traceEnabled: Boolean
     get() = rawTraceDestination != null
 
+  @Transient
   public val traceDir: Lazy<Path?> = lazy {
     // Don't wipe the directory: when a Gradle daemon reruns compilation
     // (e.g. gradle-profiler iterations), wiping each time loses every
@@ -1852,5 +1868,18 @@ public data class MetroOptions(
         IDE_WARN -> if (isIde) WARN else NONE
         IDE_ERROR -> if (isIde) ERROR else NONE
       }
+  }
+}
+
+internal object ClassIdSerializer : KSerializer<ClassId> {
+  override val descriptor: SerialDescriptor =
+    PrimitiveSerialDescriptor("ClassId", PrimitiveKind.STRING)
+
+  override fun serialize(encoder: Encoder, value: ClassId) {
+    encoder.encodeString(value.asString())
+  }
+
+  override fun deserialize(decoder: Decoder): ClassId {
+    return ClassId.fromString(decoder.decodeString(), false)
   }
 }
