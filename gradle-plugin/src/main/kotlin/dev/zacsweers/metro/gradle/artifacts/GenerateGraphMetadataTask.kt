@@ -59,6 +59,7 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
     prettyPrint = true
     prettyPrintIndent = "  "
     encodeDefaults = true
+    ignoreUnknownKeys = true
   }
 
   init {

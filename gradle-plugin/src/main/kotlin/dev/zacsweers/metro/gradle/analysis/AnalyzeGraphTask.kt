@@ -54,6 +54,7 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
     prettyPrint = true
     prettyPrintIndent = "  "
     encodeDefaults = true
+    ignoreUnknownKeys = true
   }
 
   init {

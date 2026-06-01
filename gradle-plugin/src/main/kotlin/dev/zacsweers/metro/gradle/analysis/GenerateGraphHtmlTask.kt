@@ -61,6 +61,7 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
   private val json = Json {
     prettyPrint = true
     prettyPrintIndent = "  "
+    ignoreUnknownKeys = true
   }
 
   init {
