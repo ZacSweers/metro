@@ -19,6 +19,7 @@ buildscript {
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.kotlin.plugin.serialization)
   alias(libs.plugins.poko)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
@@ -130,6 +131,10 @@ val shadowJar =
     relocate(
       "com.jakewharton.crossword",
       "dev.zacsweers.metro.compiler.shaded.com.jakewharton.crossword",
+    )
+    relocate(
+      "kotlinx.serialization",
+      "dev.zacsweers.metro.compiler.shaded.kotlinx.serialization",
     )
     relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
     // Relocate the metro runtime while excluding the compiler's own package
