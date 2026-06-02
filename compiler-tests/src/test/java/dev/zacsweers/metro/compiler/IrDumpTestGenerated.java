@@ -611,9 +611,21 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("InlinedProviderIsComptimeOnly.kt")
+    public void testInlinedProviderIsComptimeOnly() {
+      runTest("compiler-tests/src/test/data/dump/ir/provides/InlinedProviderIsComptimeOnly.kt");
+    }
+
+    @Test
     @TestMetadata("JvmFieldProvidersUseFieldAccess.kt")
     public void testJvmFieldProvidersUseFieldAccess() {
       runTest("compiler-tests/src/test/data/dump/ir/provides/JvmFieldProvidersUseFieldAccess.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderInliningDisabled.kt")
+    public void testProviderInliningDisabled() {
+      runTest("compiler-tests/src/test/data/dump/ir/provides/ProviderInliningDisabled.kt");
     }
   }
 
