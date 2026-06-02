@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.proto.EnumEntryProto
 import dev.zacsweers.metro.compiler.proto.InlinedProviderProto
 import dev.zacsweers.metro.compiler.proto.InlinedValueProto
@@ -181,12 +183,17 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
     }
 
     context(context: IrMetroContext)
-    fun fromProviderFactory(factory: ProviderFactory.Metro): IrInlinedProvider? {
-      if (!factory.isInlinableProviderShape()) return null
-      val value = factory.realDeclaration?.inlinedProviderValue() ?: return null
-      if (factory.annotations.isScoped) {
+    fun fromProviderFactory(
+      annotations: MetroAnnotations<IrAnnotation>,
+      parameters: Parameters,
+      realDeclaration: IrDeclaration?,
+      requiresDispatchReceiver: Boolean,
+    ): IrInlinedProvider? {
+      if (!isInlinableProvider(annotations, parameters, requiresDispatchReceiver)) return null
+      val value = realDeclaration?.inlinedProviderValue() ?: return null
+      if (annotations.isScoped) {
         context.reportCompat(
-          factory.realDeclaration,
+          realDeclaration,
           MetroDiagnostics.PROVIDES_ERROR,
           "Constant providers cannot be scoped; remove the scope annotation or change the body.",
         )
@@ -195,7 +202,11 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
       return IrInlinedProvider(value)
     }
 
-    private fun ProviderFactory.Metro.isInlinableProviderShape(): Boolean {
+    private fun isInlinableProvider(
+      annotations: MetroAnnotations<IrAnnotation>,
+      parameters: Parameters,
+      requiresDispatchReceiver: Boolean,
+    ): Boolean {
       return !annotations.isIntoMultibinding &&
         parameters.nonDispatchParameters.isEmpty() &&
         !requiresDispatchReceiver
