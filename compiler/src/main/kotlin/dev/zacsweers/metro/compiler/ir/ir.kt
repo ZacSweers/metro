@@ -103,6 +103,7 @@ import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
+import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
@@ -1992,12 +1993,49 @@ internal fun IrBuilderWithScope.instanceFactory(
     )
   }
 
+  if ((arg as? IrConst)?.kind == IrConstKind.Boolean) {
+    context.pluginContext
+      .referenceClass(Symbols.ClassIds.BooleanFactory)
+      ?.owner
+      ?.companionObject()
+      ?.let { companionObject ->
+        return irInvoke(
+          irGetObject(companionObject.symbol),
+          callee = companionObject.requireSimpleFunction(Symbols.StringNames.INVOKE).owner.symbol,
+          args = listOf(arg),
+        )
+      }
+  }
+
+  primitiveFactoryClassId(arg)?.let { primitiveFactoryClassId ->
+    val constructor =
+      context.pluginContext.referenceClass(primitiveFactoryClassId)?.owner?.primaryConstructor
+    if (constructor != null) {
+      return irCallConstructor(constructor.symbol, emptyList()).apply { arguments[0] = arg }
+    }
+  }
+
   return irInvoke(
     irGetObject(context.metroSymbols.instanceFactoryCompanionObject),
     callee = context.metroSymbols.instanceFactoryInvoke,
     typeArgs = listOf(type),
     args = listOf(arg),
   )
+}
+
+private fun primitiveFactoryClassId(arg: IrExpression): ClassId? {
+  val const = arg as? IrConst ?: return null
+  return when (const.kind) {
+    IrConstKind.Byte -> Symbols.ClassIds.ByteFactory
+    IrConstKind.Short -> Symbols.ClassIds.ShortFactory
+    IrConstKind.Int -> Symbols.ClassIds.IntFactory
+    IrConstKind.Long -> Symbols.ClassIds.LongFactory
+    IrConstKind.Boolean -> Symbols.ClassIds.BooleanFactory
+    IrConstKind.Char -> Symbols.ClassIds.CharFactory
+    IrConstKind.Float -> Symbols.ClassIds.FloatFactory
+    IrConstKind.Double -> Symbols.ClassIds.DoubleFactory
+    else -> null
+  }
 }
 
 context(context: IrMetroContext)

@@ -43,6 +43,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
   /** The name for the generated newInstance function. */
   abstract val newInstanceName: Name
   abstract override val function: IrSimpleFunction
+  open val inlinedValue: IrInlinedProvider? = null
 
   /**
    * The class that contains this provider function. For instance methods, this is the graph or
@@ -87,6 +88,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val realDeclaration: IrDeclaration?,
     private val callableMetadata: IrCallableMetadata,
     parametersLazy: Lazy<Parameters>,
+    override val inlinedValue: IrInlinedProvider? = null,
   ) : ProviderFactory() {
     val mirrorFunction: IrSimpleFunction
       get() = callableMetadata.mirrorFunction
@@ -123,6 +125,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         realDeclaration = realDeclaration,
         callableMetadata = callableMetadata,
         parametersLazy = lazy { parameters.remapTypes(remapper) },
+        inlinedValue = inlinedValue,
       )
     }
   }
@@ -169,6 +172,8 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       callableMetadata: IrCallableMetadata,
       /** Pre-computed real declaration for in-compilation case. If null, will be looked up. */
       realDeclaration: IrDeclaration? = null,
+      inlinedValue: IrInlinedProvider? = null,
+      computeInlinedValue: Boolean = true,
     ): Metro? {
       val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
       val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
@@ -195,19 +200,37 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         return null
       }
 
+      val transformedContextKey = contextKey.withIrTypeKey(typeKey)
+      val realDecl =
+        realDeclaration
+          ?: lookupRealDeclaration(
+            callableMetadata.isPropertyAccessor,
+            callableMetadata.function,
+          )
+      val lazyParams = memoize { callableMetadata.function.parameters() }
+      val computedInlinedValue =
+        inlinedValue
+          ?: if (computeInlinedValue) {
+            IrInlinedProvider.fromProviderFactory(
+              annotations = callableMetadata.annotations,
+              parameters = lazyParams.value,
+              realDeclaration = realDecl,
+              requiresDispatchReceiver =
+                callableMetadata.function.dispatchReceiverParameter != null &&
+                  callableMetadata.function.parentClassOrNull?.isObject != true,
+            )
+          } else {
+            null
+          }
       return Metro(
         factoryClass = clazz,
         typeKey = typeKey,
-        contextualTypeKey = contextKey.withIrTypeKey(typeKey),
+        contextualTypeKey = transformedContextKey,
         rawTypeKey = rawTypeKey,
         callableMetadata = callableMetadata,
-        realDeclaration =
-          realDeclaration
-            ?: lookupRealDeclaration(
-              callableMetadata.isPropertyAccessor,
-              callableMetadata.function,
-            ),
-        parametersLazy = memoize { callableMetadata.function.parameters() },
+        realDeclaration = realDecl,
+        parametersLazy = lazyParams,
+        inlinedValue = computedInlinedValue,
       )
     }
 

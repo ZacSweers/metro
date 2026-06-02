@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrCallableMetadata
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrInlinedProvider
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -30,6 +31,7 @@ import dev.zacsweers.metro.compiler.ir.allocateName
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.betterDumpKotlinLike
+import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -131,6 +133,7 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 @Inject
 @SingleIn(IrScope::class)
@@ -526,6 +529,8 @@ internal class BindingContainerTransformer(
         ) ?: exitProcessing()
       }
 
+    markComptimeOnlyIfInlined(providerFactory)
+
     factoryCls.dumpToMetroLog()
 
     trace("Write provider-factory diagnostic") {
@@ -766,7 +771,10 @@ internal class BindingContainerTransformer(
     }
   }
 
-  private fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory.Metro {
+  private fun externalProviderFactoryFor(
+    factoryCls: IrClass,
+    entry: ProviderFactoryProto,
+  ): ProviderFactory.Metro {
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
     val mirrorFunction = factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
@@ -780,6 +788,8 @@ internal class BindingContainerTransformer(
       mirrorFunction,
       sourceAnnotations,
       callableMetadata,
+      inlinedValue = IrInlinedProvider.fromProto(entry.inlined),
+      computeInlinedValue = false,
     ) ?: exitProcessing()
   }
 
@@ -949,7 +959,7 @@ internal class BindingContainerTransformer(
             } else {
               trace("External factory ${classId.shortClassName}") {
                 val factoryClass = pluginContext.referenceClass(classId)!!.owner
-                val providerFactory = externalProviderFactoryFor(factoryClass)
+                val providerFactory = externalProviderFactoryFor(factoryClass, entry)
                 providerFactory.callableId to providerFactory
               }
             }
@@ -1042,7 +1052,22 @@ internal class BindingContainerTransformer(
       sourceAnnotations = sourceAnnotations,
       callableMetadata = callableMetadata,
       realDeclaration = originClass ?: providesFunction,
+      inlinedValue = IrInlinedProvider.fromProto(entry.inlined),
+      computeInlinedValue = false,
     )
+  }
+
+  private fun markComptimeOnlyIfInlined(providerFactory: ProviderFactory) {
+    if (!pluginContext.platform.isJvm()) return
+    if (providerFactory !is ProviderFactory.Metro) return
+    if (providerFactory.inlinedValue == null) return
+
+    val factoryClass = providerFactory.factoryClass
+    // TODO the if check here is if/when we move factory gen totally to IR
+    if (!factoryClass.hasAnnotation(Symbols.ClassIds.ComptimeOnly)) {
+      factoryClass.annotations +=
+        buildAnnotation(factoryClass.symbol, metroSymbols.comptimeOnlyAnnotationConstructor)
+    }
   }
 
   /**
