@@ -210,7 +210,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       val lazyParams = memoize { callableMetadata.function.parameters() }
       val computedInlinedValue =
         inlinedValue
-          ?: if (computeInlinedValue) {
+          ?: if (computeInlinedValue && context.options.enableProviderInlining) {
             IrInlinedProvider.fromProviderFactory(
               annotations = callableMetadata.annotations,
               parameters = lazyParams.value,

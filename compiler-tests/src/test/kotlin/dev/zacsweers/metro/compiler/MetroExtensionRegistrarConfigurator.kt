@@ -165,6 +165,9 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
         parallelThreads = it
       }
+      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_PROVIDER_INLINING)?.let {
+        enableProviderInlining = it
+      }
       contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
       module.directives.singleOrZeroValue(MetroDirectives.DESUGARED_PROVIDER_SEVERITY)?.let {
         desugaredProviderSeverity = it

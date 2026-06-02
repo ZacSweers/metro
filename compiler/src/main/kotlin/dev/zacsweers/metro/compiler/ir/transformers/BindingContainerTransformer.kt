@@ -788,7 +788,7 @@ internal class BindingContainerTransformer(
       mirrorFunction,
       sourceAnnotations,
       callableMetadata,
-      inlinedValue = IrInlinedProvider.fromProto(entry.inlined),
+      inlinedValue = entry.inlinedValueIfEnabled(),
       computeInlinedValue = false,
     ) ?: exitProcessing()
   }
@@ -1052,9 +1052,14 @@ internal class BindingContainerTransformer(
       sourceAnnotations = sourceAnnotations,
       callableMetadata = callableMetadata,
       realDeclaration = originClass ?: providesFunction,
-      inlinedValue = IrInlinedProvider.fromProto(entry.inlined),
+      inlinedValue = entry.inlinedValueIfEnabled(),
       computeInlinedValue = false,
     )
+  }
+
+  private fun ProviderFactoryProto.inlinedValueIfEnabled(): IrInlinedProvider? {
+    if (!options.enableProviderInlining) return null
+    return IrInlinedProvider.fromProto(inlined)
   }
 
   private fun markComptimeOnlyIfInlined(providerFactory: ProviderFactory) {

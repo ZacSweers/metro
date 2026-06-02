@@ -339,6 +339,9 @@ abstract class MetroCompilerTest {
               BUFFERED_IC_TRACKING -> {
                 processor.option(entry.raw.cliOption, this@toPluginOptions.bufferedIcTracking)
               }
+              ENABLE_PROVIDER_INLINING -> {
+                processor.option(entry.raw.cliOption, this@toPluginOptions.enableProviderInlining)
+              }
               ENABLE_FUNCTION_PROVIDERS -> {
                 processor.option(entry.raw.cliOption, enableFunctionProviders)
               }
