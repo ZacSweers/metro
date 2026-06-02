@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.internal
 
 import kotlin.jvm.JvmInline
+import kotlin.jvm.JvmStatic
 
 @JvmInline
 public value class ByteFactory(override val value: Byte) : Factory<Byte>, Lazy<Byte> {
@@ -33,10 +34,21 @@ public value class LongFactory(override val value: Long) : Factory<Long>, Lazy<L
 }
 
 @JvmInline
-public value class BooleanFactory(override val value: Boolean) : Factory<Boolean>, Lazy<Boolean> {
+public value class BooleanFactory private constructor(override val value: Boolean) :
+  Factory<Boolean>, Lazy<Boolean> {
   override fun isInitialized(): Boolean = true
 
   override fun invoke(): Boolean = value
+
+  public companion object {
+    private val TRUE: Factory<Boolean> = BooleanFactory(true)
+    private val FALSE: Factory<Boolean> = BooleanFactory(false)
+
+    @JvmStatic
+    public operator fun invoke(value: Boolean): Factory<Boolean> {
+      return if (value) TRUE else FALSE
+    }
+  }
 }
 
 @JvmInline
