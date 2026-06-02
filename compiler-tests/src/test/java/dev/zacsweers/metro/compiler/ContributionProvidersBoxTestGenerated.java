@@ -2977,6 +2977,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("InlinedProvidesBytecodeCheck.kt")
+    public void testInlinedProvidesBytecodeCheck() {
+      runTest("compiler-tests/src/test/data/box/provides/InlinedProvidesBytecodeCheck.kt");
+    }
+
+    @Test
     @TestMetadata("JvmFieldProvidersAreRespected.kt")
     public void testJvmFieldProvidersAreRespected() {
       runTest("compiler-tests/src/test/data/box/provides/JvmFieldProvidersAreRespected.kt");
