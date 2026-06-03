@@ -14,7 +14,7 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 
 @DisableCachingByDefault(because = "Diagnostic report for local bug reports")
-public abstract class MetroEnvTask : DefaultTask() {
+internal abstract class MetroEnvTask : DefaultTask() {
 
   @get:Input public abstract val projectPath: Property<String>
 
