@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.compat.k2420_dev_835
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.compat.k240_beta2.CompatContextImpl as DelegateType
+import dev.zacsweers.metro.compiler.compat.k240.CompatContextImpl as DelegateType
 
 public class CompatContextImpl : CompatContext by DelegateType() {
   public class Factory : CompatContext.Factory {

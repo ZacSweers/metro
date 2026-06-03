@@ -30,7 +30,7 @@ Changelog
 
 ### Changes
 
-- Test Kotlin `2.4.0-RC2`.
+- Build against Kotlin `2.4.0`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
 
 ### Contributors
 

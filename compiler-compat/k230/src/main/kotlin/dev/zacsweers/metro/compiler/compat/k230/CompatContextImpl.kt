@@ -3,11 +3,14 @@
 package dev.zacsweers.metro.compiler.compat.k230
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
+import kotlin.reflect.KClass
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.KtSourceElementOffsetStrategy
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
+import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.LanguageVersionSettings
@@ -17,6 +20,10 @@ import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.fakeElement as fakeElementNative
+import org.jetbrains.kotlin.fir.FirAnnotationContainer
+import org.jetbrains.kotlin.fir.FirElement
+import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
@@ -26,7 +33,15 @@ import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.FirSimpleFunctionBuilder
 import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
+import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
+import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.declarations.impl.FirResolvedDeclarationStatusImpl
+import org.jetbrains.kotlin.fir.declarations.result
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirExpressionEvaluator
+import org.jetbrains.kotlin.fir.expressions.PrivateConstantEvaluatorAPI
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
@@ -43,12 +58,18 @@ import org.jetbrains.kotlin.fir.toEffectiveVisibility
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.ir.builders.IrBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.util.PrivateForInline
 
 public class CompatContextImpl : CompatContext {
 
@@ -187,6 +208,49 @@ public class CompatContextImpl : CompatContext {
 
   override fun IrProperty.addBackingFieldCompat(builder: IrFieldBuilder.() -> Unit): IrField {
     return addBackingField(builder)
+  }
+
+  override fun createIrGeneratedDeclarationsRegistrar(
+    pluginContext: IrPluginContext
+  ): IrGeneratedDeclarationsRegistrarCompat {
+    return IrConstructorCallIrGeneratedDeclarationsRegistrarCompat(
+      pluginContext.metadataDeclarationRegistrar
+    )
+  }
+
+  override fun IrBuilder.irAnnotationCompat(
+    callee: IrConstructorSymbol,
+    typeArguments: List<IrType>,
+  ): IrConstructorCall {
+    return irCallConstructor(callee, typeArguments)
+  }
+
+  override fun <T : FirElement> FirExpression.evaluateAsCompat(
+    session: FirSession,
+    tKlass: KClass<T>,
+  ): T? {
+    @Suppress("UNCHECKED_CAST") @OptIn(PrivateConstantEvaluatorAPI::class, PrivateForInline::class)
+    return FirExpressionEvaluator.evaluateExpression(this, session)?.result as? T
+  }
+
+  override fun FirAnnotationContainer.getDeprecationsProviderCompat(
+    session: FirSession
+  ): DeprecationsProvider? {
+    return getDeprecationsProvider(session)
+  }
+
+  override fun FirAnnotation.getBooleanArgumentCompat(
+    name: Name,
+    session: FirSession,
+  ): Boolean? {
+    return getBooleanArgument(name, session)
+  }
+
+  override fun FirAnnotation.getStringArgumentCompat(
+    name: Name,
+    session: FirSession,
+  ): String? {
+    return getStringArgument(name, session)
   }
 
   public class Factory : CompatContext.Factory {

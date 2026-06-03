@@ -19,8 +19,13 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
+import org.jetbrains.kotlin.fir.FirEvaluatorResult
+import org.jetbrains.kotlin.fir.FirEvaluatorResult.CompileTimeException
+import org.jetbrains.kotlin.fir.FirEvaluatorResult.Evaluated
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
+import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
@@ -28,8 +33,10 @@ import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
+import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
-import org.jetbrains.kotlin.fir.declarations.result
+import org.jetbrains.kotlin.fir.declarations.getStringArgument
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpressionEvaluator
 import org.jetbrains.kotlin.fir.expressions.PrivateConstantEvaluatorAPI
@@ -46,7 +53,7 @@ import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
-import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irAnnotation
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
@@ -56,7 +63,6 @@ import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.util.PrivateForInline
 
 public interface CompatContext {
   public companion object Companion {
@@ -471,7 +477,7 @@ public interface CompatContext {
     callee: IrConstructorSymbol,
     typeArguments: List<IrType>,
   ): IrConstructorCall {
-    return irCallConstructor(callee, typeArguments)
+    return irAnnotation(callee, typeArguments)
   }
 
   @CompatApi(
@@ -483,8 +489,8 @@ public interface CompatContext {
     session: FirSession,
     tKlass: KClass<T>,
   ): T? {
-    @Suppress("UNCHECKED_CAST") @OptIn(PrivateConstantEvaluatorAPI::class, PrivateForInline::class)
-    return FirExpressionEvaluator.evaluateExpression(this, session)?.result as? T
+    @OptIn(PrivateConstantEvaluatorAPI::class)
+    return FirExpressionEvaluator.evaluateExpression(this, session)?.unwrapOr {}
   }
 
   @CompatApi(
@@ -495,7 +501,29 @@ public interface CompatContext {
   public fun FirAnnotationContainer.getDeprecationsProviderCompat(
     session: FirSession
   ): DeprecationsProvider? {
-    return getDeprecationsProvider(session)
+    return when (this) {
+      is FirCallableDeclaration -> getDeprecationsProvider(session)
+      is FirClassLikeDeclaration -> getDeprecationsProvider(session)
+      else -> null
+    }
+  }
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 removed the session parameter from FirAnnotation argument helpers",
+  )
+  public fun FirAnnotation.getBooleanArgumentCompat(name: Name, session: FirSession): Boolean? {
+    return getBooleanArgument(name)
+  }
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 removed the session parameter from FirAnnotation argument helpers",
+  )
+  public fun FirAnnotation.getStringArgumentCompat(name: Name, session: FirSession): String? {
+    return getStringArgument(name)
   }
 
   @CompatApi(
@@ -510,6 +538,18 @@ public interface CompatContext {
   ): FirValueParameter {
     return buildValueParameterCopy(original, init)
   }
+}
+
+private fun <T : FirElement> FirEvaluatorResult.unwrapOr(
+  action: (CompileTimeException) -> Unit
+): T? {
+  @Suppress("UNCHECKED_CAST")
+  when (this) {
+    is CompileTimeException -> action(this)
+    is Evaluated -> return this.result as? T
+    else -> return null
+  }
+  return null
 }
 
 private data class FactoryData(
