@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780500442630,
+  "lastUpdate": 1780508087578,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -15680,6 +15680,62 @@ window.BENCHMARK_DATA = {
             "value": 31400.273999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.46%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6d55f7a2~1",
+          "message": "[before] Add primitive factories + inline provider bodies s",
+          "timestamp": "2026-06-03T12:51:33-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6d55f7a2ebe950e19eb3518e912f3106e82c425b"
+        },
+        "date": 1780508087578,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 33943.752,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6d55f7a2ebe950e19eb3518e912f3106e82c425b",
+          "message": "[after] Add primitive factories + inline provider bodies s",
+          "timestamp": "2026-06-03T12:51:33-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6d55f7a2ebe950e19eb3518e912f3106e82c425b"
+        },
+        "date": 1780508087579,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 32663.140000000003,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.77%"
           }
         ]
       }
