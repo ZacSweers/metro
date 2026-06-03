@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.compat
 
 import java.util.ServiceLoader
-import kotlin.reflect.KClass
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
@@ -19,27 +18,16 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
-import org.jetbrains.kotlin.fir.FirEvaluatorResult
-import org.jetbrains.kotlin.fir.FirEvaluatorResult.CompileTimeException
-import org.jetbrains.kotlin.fir.FirEvaluatorResult.Evaluated
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
-import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
-import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
-import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
-import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
-import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
-import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirExpression
-import org.jetbrains.kotlin.fir.expressions.FirExpressionEvaluator
-import org.jetbrains.kotlin.fir.expressions.PrivateConstantEvaluatorAPI
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
@@ -53,15 +41,20 @@ import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
-import org.jetbrains.kotlin.ir.builders.irAnnotation
+import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 public interface CompatContext {
@@ -417,9 +410,7 @@ public interface CompatContext {
     declaration: IrDeclaration,
     factory: KtDiagnosticFactory1<A>,
     a: A,
-  ) {
-    at(declaration).report(factory, a)
-  }
+  )
 
   @CompatApi(
     since = "2.4.0",
@@ -431,9 +422,7 @@ public interface CompatContext {
     file: IrFile,
     factory: KtDiagnosticFactory1<A>,
     a: A,
-  ) {
-    at(element, file).report(factory, a)
-  }
+  )
 
   @CompatApi(
     since = "2.4.0",
@@ -462,11 +451,7 @@ public interface CompatContext {
   )
   public fun createIrGeneratedDeclarationsRegistrar(
     pluginContext: IrPluginContext
-  ): IrGeneratedDeclarationsRegistrarCompat {
-    return IrConstructorCallIrGeneratedDeclarationsRegistrarCompat(
-      pluginContext.metadataDeclarationRegistrar
-    )
-  }
+  ): IrGeneratedDeclarationsRegistrarCompat
 
   @CompatApi(
     since = "2.4.0",
@@ -476,9 +461,75 @@ public interface CompatContext {
   public fun IrBuilder.irAnnotationCompat(
     callee: IrConstructorSymbol,
     typeArguments: List<IrType>,
-  ): IrConstructorCall {
-    return irAnnotation(callee, typeArguments)
+  ): IrConstructorCall
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "2.4 changed IrAnnotationContainer.annotations from IrConstructorCall to IrAnnotation",
+  )
+  public fun IrAnnotationContainer.addAnnotationCompat(annotation: IrConstructorCall) {
+    replaceAnnotationsCompat(annotationsCompat() + annotation)
   }
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "2.4 changed IrAnnotationContainer.annotations from IrConstructorCall to IrAnnotation",
+  )
+  public fun IrAnnotationContainer.annotationsCompat(): List<IrConstructorCall>
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "2.4 changed IrAnnotationContainer.annotations from IrConstructorCall to IrAnnotation",
+  )
+  public fun IrAnnotationContainer.addAnnotationsCompat(annotations: List<IrConstructorCall>) {
+    replaceAnnotationsCompat(annotationsCompat() + annotations)
+  }
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "2.4 changed IrAnnotationContainer.annotations from IrConstructorCall to IrAnnotation",
+  )
+  public fun IrAnnotationContainer.replaceAnnotationsCompat(annotations: List<IrConstructorCall>)
+
+  /** Abstraction over the newer DeclarationFinder APIs. Can remove on 2.3.20+ */
+  @CompatApi(
+    since = "2.3.20",
+    reason = CompatApi.Reason.COMPAT,
+    message = "2.3.20 deprecated the old reference* functions",
+  )
+  public interface DeclarationFinderCompat {
+    public fun findClass(classId: ClassId): IrClassSymbol?
+
+    public fun findClassifier(classId: ClassId): IrSymbol?
+
+    public fun findConstructors(classId: ClassId): Collection<IrConstructorSymbol>
+
+    public fun findFunctions(callableId: CallableId): Collection<IrSimpleFunctionSymbol>
+
+    public fun findProperties(callableId: CallableId): Collection<IrPropertySymbol>
+  }
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 replaced reference* APIs with DeclarationFinder APIs",
+  )
+  public fun IrPluginContext.finderForBuiltinsCompat(): DeclarationFinderCompat
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4 replaced reference* APIs with DeclarationFinder APIs",
+  )
+  public fun IrPluginContext.finderForSourceCompat(fromFile: IrFile): DeclarationFinderCompat
 
   @CompatApi(
     since = "2.4.0",
@@ -487,11 +538,8 @@ public interface CompatContext {
   )
   public fun <T : FirElement> FirExpression.evaluateAsCompat(
     session: FirSession,
-    tKlass: KClass<T>,
-  ): T? {
-    @OptIn(PrivateConstantEvaluatorAPI::class)
-    return FirExpressionEvaluator.evaluateExpression(this, session)?.unwrapOr {}
-  }
+    tKlass: kotlin.reflect.KClass<T>,
+  ): T?
 
   @CompatApi(
     since = "2.4.0-Beta2",
@@ -500,31 +548,21 @@ public interface CompatContext {
   )
   public fun FirAnnotationContainer.getDeprecationsProviderCompat(
     session: FirSession
-  ): DeprecationsProvider? {
-    return when (this) {
-      is FirCallableDeclaration -> getDeprecationsProvider(session)
-      is FirClassLikeDeclaration -> getDeprecationsProvider(session)
-      else -> null
-    }
-  }
+  ): DeprecationsProvider?
 
   @CompatApi(
     since = "2.4.0",
     reason = CompatApi.Reason.ABI_CHANGE,
     message = "2.4 removed the session parameter from FirAnnotation argument helpers",
   )
-  public fun FirAnnotation.getBooleanArgumentCompat(name: Name, session: FirSession): Boolean? {
-    return getBooleanArgument(name)
-  }
+  public fun FirAnnotation.getBooleanArgumentCompat(name: Name, session: FirSession): Boolean?
 
   @CompatApi(
     since = "2.4.0",
     reason = CompatApi.Reason.ABI_CHANGE,
     message = "2.4 removed the session parameter from FirAnnotation argument helpers",
   )
-  public fun FirAnnotation.getStringArgumentCompat(name: Name, session: FirSession): String? {
-    return getStringArgument(name)
-  }
+  public fun FirAnnotation.getStringArgumentCompat(name: Name, session: FirSession): String?
 
   @CompatApi(
     since = "2.4.0-Beta2",
@@ -535,21 +573,7 @@ public interface CompatContext {
   public fun buildValueParameterCopyCompat(
     original: FirValueParameter,
     init: FirValueParameterBuilder.() -> Unit,
-  ): FirValueParameter {
-    return buildValueParameterCopy(original, init)
-  }
-}
-
-private fun <T : FirElement> FirEvaluatorResult.unwrapOr(
-  action: (CompileTimeException) -> Unit
-): T? {
-  @Suppress("UNCHECKED_CAST")
-  when (this) {
-    is CompileTimeException -> action(this)
-    is Evaluated -> return this.result as? T
-    else -> return null
-  }
-  return null
+  ): FirValueParameter
 }
 
 private data class FactoryData(

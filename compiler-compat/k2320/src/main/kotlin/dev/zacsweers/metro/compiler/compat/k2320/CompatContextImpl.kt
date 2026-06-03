@@ -5,6 +5,8 @@ package dev.zacsweers.metro.compiler.compat.k2320
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.k230.CompatContextImpl as DelegateType
 import org.jetbrains.kotlin.GeneratedDeclarationKey
+import org.jetbrains.kotlin.backend.common.extensions.DeclarationFinder
+import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
@@ -42,8 +44,15 @@ import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 public class CompatContextImpl : CompatContext by DelegateType() {
@@ -185,9 +194,42 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     report(factory, message)
   }
 
+  override fun IrPluginContext.finderForBuiltinsCompat(): CompatContext.DeclarationFinderCompat {
+    return ReferenceApiDeclarationFinderCompat(finderForBuiltins())
+  }
+
+  override fun IrPluginContext.finderForSourceCompat(
+    fromFile: IrFile
+  ): CompatContext.DeclarationFinderCompat {
+    return ReferenceApiDeclarationFinderCompat(finderForSource(fromFile))
+  }
+
   public class Factory : CompatContext.Factory {
     override val minVersion: String = "2.3.20"
 
     override fun create(): CompatContext = CompatContextImpl()
+  }
+}
+
+private class ReferenceApiDeclarationFinderCompat(private val delegate: DeclarationFinder) :
+  CompatContext.DeclarationFinderCompat {
+  override fun findClass(classId: ClassId): IrClassSymbol? {
+    return delegate.findClass(classId)
+  }
+
+  override fun findClassifier(classId: ClassId): IrSymbol? {
+    return delegate.findClass(classId)
+  }
+
+  override fun findConstructors(classId: ClassId): Collection<IrConstructorSymbol> {
+    return delegate.findConstructors(classId)
+  }
+
+  override fun findFunctions(callableId: CallableId): Collection<IrSimpleFunctionSymbol> {
+    return delegate.findFunctions(callableId)
+  }
+
+  override fun findProperties(callableId: CallableId): Collection<IrPropertySymbol> {
+    return delegate.findProperties(callableId)
   }
 }

@@ -28,12 +28,12 @@ internal value class IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
 
   override fun registerFunctionAsMetadataVisible(irFunction: IrSimpleFunction) =
     delegate.registerFunctionAsMetadataVisible(
-      irFunction.apply { this.annotations = annotations.mapToIrAnnotation() }
+      irFunction.apply { this.annotations = annotationsCompat().mapToIrAnnotation() }
     )
 
   override fun registerConstructorAsMetadataVisible(irConstructor: IrConstructor) =
     delegate.registerConstructorAsMetadataVisible(
-      irConstructor.apply { this.annotations = annotations.mapToIrAnnotation() }
+      irConstructor.apply { this.annotations = annotationsCompat().mapToIrAnnotation() }
     )
 
   override fun addCustomMetadataExtension(
@@ -47,6 +47,10 @@ internal value class IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
 
   private fun List<IrConstructorCall>.mapToIrAnnotation(): List<IrAnnotation> {
     return map { it.toIrAnnotation() }
+  }
+
+  private fun IrDeclaration.annotationsCompat(): List<IrConstructorCall> {
+    return (annotations as List<*>).map { it as IrConstructorCall }
   }
 
   private fun IrConstructorCall.toIrAnnotation(): IrAnnotation {

@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import dev.zacsweers.metro.compiler.compat.k2320.CompatContextImpl as DelegateType
 import kotlin.reflect.KClass
+import org.jetbrains.kotlin.backend.common.extensions.DeclarationFinder
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
@@ -22,7 +23,10 @@ import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
+import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
+import org.jetbrains.kotlin.fir.declarations.getStringArgument
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpressionEvaluator
 import org.jetbrains.kotlin.fir.expressions.PrivateConstantEvaluatorAPI
@@ -32,11 +36,22 @@ import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBuilder
 import org.jetbrains.kotlin.ir.builders.irAnnotation
+import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
+import org.jetbrains.kotlin.ir.expressions.IrAnnotation as KotlinIrAnnotation
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.expressions.impl.IrAnnotationImpl
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 
 public class CompatContextImpl : CompatContext by DelegateType() {
   context(_: CompilerPluginRegistrar)
@@ -66,6 +81,36 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     typeArguments: List<IrType>,
   ): IrConstructorCall {
     return irAnnotation(callee, typeArguments)
+  }
+
+  override fun IrAnnotationContainer.addAnnotationCompat(annotation: IrConstructorCall) {
+    replaceAnnotationsCompat(annotationsCompat() + annotation)
+  }
+
+  override fun IrAnnotationContainer.annotationsCompat(): List<IrConstructorCall> {
+    return (annotations as List<*>).map { it as IrConstructorCall }
+  }
+
+  override fun IrAnnotationContainer.addAnnotationsCompat(annotations: List<IrConstructorCall>) {
+    replaceAnnotationsCompat(annotationsCompat() + annotations)
+  }
+
+  override fun IrAnnotationContainer.replaceAnnotationsCompat(
+    annotations: List<IrConstructorCall>
+  ) {
+    (this as IrMutableAnnotationContainer).annotations = annotations.map {
+      it.toKotlinIrAnnotation()
+    }
+  }
+
+  override fun IrPluginContext.finderForBuiltinsCompat(): CompatContext.DeclarationFinderCompat {
+    return finderForBuiltins().asCompat()
+  }
+
+  override fun IrPluginContext.finderForSourceCompat(
+    fromFile: IrFile
+  ): CompatContext.DeclarationFinderCompat {
+    return finderForSource(fromFile).asCompat()
   }
 
   override fun <T : FirElement> FirExpression.evaluateAsCompat(
@@ -103,6 +148,20 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     }
   }
 
+  override fun FirAnnotation.getBooleanArgumentCompat(
+    name: Name,
+    session: FirSession,
+  ): Boolean? {
+    return getBooleanArgument(name)
+  }
+
+  override fun FirAnnotation.getStringArgumentCompat(
+    name: Name,
+    session: FirSession,
+  ): String? {
+    return getStringArgument(name)
+  }
+
   override fun buildValueParameterCopyCompat(
     original: FirValueParameter,
     init: FirValueParameterBuilder.() -> Unit,
@@ -114,6 +173,51 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     override val minVersion: String = "2.4.0"
 
     override fun create(): CompatContext = CompatContextImpl()
+  }
+}
+
+private fun IrConstructorCall.toKotlinIrAnnotation(): KotlinIrAnnotation {
+  if (this is KotlinIrAnnotation) return this
+  val call = this
+  return IrAnnotationImpl(
+      startOffset = startOffset,
+      endOffset = endOffset,
+      type = type,
+      symbol = symbol,
+      typeArgumentsCount = typeArguments.size,
+      constructorTypeArgumentsCount = constructorTypeArgumentsCount,
+      origin = origin,
+      source = source,
+    )
+    .apply {
+      for (param in call.symbol.owner.parameters) {
+        arguments[param.indexInParameters] = call.arguments[param.indexInParameters]
+      }
+    }
+}
+
+private fun DeclarationFinder.asCompat(): CompatContext.DeclarationFinderCompat {
+  val finder = this
+  return object : CompatContext.DeclarationFinderCompat {
+    override fun findClass(classId: ClassId): IrClassSymbol? {
+      return finder.findClass(classId)
+    }
+
+    override fun findClassifier(classId: ClassId): IrSymbol? {
+      return finder.findClassifier(classId)
+    }
+
+    override fun findConstructors(classId: ClassId): Collection<IrConstructorSymbol> {
+      return finder.findConstructors(classId)
+    }
+
+    override fun findFunctions(callableId: CallableId): Collection<IrSimpleFunctionSymbol> {
+      return finder.findFunctions(callableId)
+    }
+
+    override fun findProperties(callableId: CallableId): Collection<IrPropertySymbol> {
+      return finder.findProperties(callableId)
+    }
   }
 }
 

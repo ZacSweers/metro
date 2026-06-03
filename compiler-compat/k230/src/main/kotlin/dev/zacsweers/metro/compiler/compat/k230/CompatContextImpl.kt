@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.fakeElement as fakeElementNative
@@ -32,7 +33,9 @@ import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.FirSimpleFunctionBuilder
+import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
 import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
@@ -58,16 +61,27 @@ import org.jetbrains.kotlin.fir.toEffectiveVisibility
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.ir.IrDiagnosticReporter
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.util.PrivateForInline
 
@@ -79,6 +93,23 @@ public class CompatContextImpl : CompatContext {
     languageVersionSettings: LanguageVersionSettings,
   ): KtDiagnosticWithoutSource? {
     return create(message, languageVersionSettings)
+  }
+
+  override fun <A : Any> IrDiagnosticReporter.reportAt(
+    declaration: IrDeclaration,
+    factory: KtDiagnosticFactory1<A>,
+    a: A,
+  ) {
+    at(declaration).report(factory, a)
+  }
+
+  override fun <A : Any> IrDiagnosticReporter.reportAt(
+    element: IrElement,
+    file: IrFile,
+    factory: KtDiagnosticFactory1<A>,
+    a: A,
+  ) {
+    at(element, file).report(factory, a)
   }
 
   context(_: CompilerPluginRegistrar)
@@ -225,6 +256,34 @@ public class CompatContextImpl : CompatContext {
     return irCallConstructor(callee, typeArguments)
   }
 
+  override fun IrAnnotationContainer.addAnnotationCompat(annotation: IrConstructorCall) {
+    replaceAnnotationsCompat(annotationsCompat() + annotation)
+  }
+
+  override fun IrAnnotationContainer.addAnnotationsCompat(annotations: List<IrConstructorCall>) {
+    replaceAnnotationsCompat(annotationsCompat() + annotations)
+  }
+
+  override fun IrAnnotationContainer.annotationsCompat(): List<IrConstructorCall> {
+    return annotations
+  }
+
+  override fun IrAnnotationContainer.replaceAnnotationsCompat(
+    annotations: List<IrConstructorCall>
+  ) {
+    (this as IrMutableAnnotationContainer).annotations = annotations
+  }
+
+  override fun IrPluginContext.finderForBuiltinsCompat(): CompatContext.DeclarationFinderCompat {
+    return ReferenceApiDeclarationFinderCompat(this)
+  }
+
+  override fun IrPluginContext.finderForSourceCompat(
+    fromFile: IrFile
+  ): CompatContext.DeclarationFinderCompat {
+    return ReferenceApiDeclarationFinderCompat(this)
+  }
+
   override fun <T : FirElement> FirExpression.evaluateAsCompat(
     session: FirSession,
     tKlass: KClass<T>,
@@ -253,9 +312,39 @@ public class CompatContextImpl : CompatContext {
     return getStringArgument(name, session)
   }
 
+  override fun buildValueParameterCopyCompat(
+    original: FirValueParameter,
+    init: FirValueParameterBuilder.() -> Unit,
+  ): FirValueParameter {
+    return buildValueParameterCopy(original, init)
+  }
+
   public class Factory : CompatContext.Factory {
     override val minVersion: String = "2.3.0"
 
     override fun create(): CompatContext = CompatContextImpl()
+  }
+
+  private class ReferenceApiDeclarationFinderCompat(private val context: IrPluginContext) :
+    CompatContext.DeclarationFinderCompat {
+    override fun findClass(classId: ClassId): IrClassSymbol? {
+      return context.referenceClass(classId)
+    }
+
+    override fun findClassifier(classId: ClassId): IrSymbol? {
+      return context.referenceClass(classId)
+    }
+
+    override fun findConstructors(classId: ClassId): Collection<IrConstructorSymbol> {
+      return context.referenceConstructors(classId)
+    }
+
+    override fun findFunctions(callableId: CallableId): Collection<IrSimpleFunctionSymbol> {
+      return context.referenceFunctions(callableId)
+    }
+
+    override fun findProperties(callableId: CallableId): Collection<IrPropertySymbol> {
+      return context.referenceProperties(callableId)
+    }
   }
 }
