@@ -6,10 +6,16 @@ interface AppGraph {
     private val intInstance: Int
       field = int
 
-    private val intInstanceProvider: Provider<Int>
+    private val intInstanceProvider: IntFactory
       field = IntFactory(value = <this>.#intInstance)
 
-    private constructor(@Provides int: Int) /* primary */ {
+    private val longInstance: Long
+      field = long
+
+    private val longInstanceProvider: LongFactory
+      field = LongFactory(value = <this>.#longInstance)
+
+    private constructor(@Provides int: Int, @Provides long: Long) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -25,6 +31,16 @@ interface AppGraph {
         return <this>.#intInstanceProvider
       }
 
+    override val longProvider: Function0<Long>
+      override get(): Function0<Long> {
+        return <this>.#longInstanceProvider
+      }
+
+    override val longProvider2: Function0<Long>
+      override get(): Function0<Long> {
+        return <this>.#longInstanceProvider
+      }
+
   }
 
   companion object Companion : Factory {
@@ -37,8 +53,8 @@ interface AppGraph {
     @GraphFactoryInvokeFunctionMarker
     @JvmStatic
     @JsStatic
-    override fun create(@Provides int: Int): AppGraph {
-      return Impl(int = int)
+    override fun create(@Provides int: Int, @Provides long: Long): AppGraph {
+      return Impl(int = int, long = long)
     }
 
   }
@@ -55,13 +71,13 @@ interface AppGraph {
       }
 
       @GraphFactoryInvokeFunctionMarker
-      override fun create(@Provides int: Int): AppGraph {
-        return Impl(int = int)
+      override fun create(@Provides int: Int, @Provides long: Long): AppGraph {
+        return Impl(int = int, long = long)
       }
 
     }
 
-    abstract fun create(@Provides int: Int): AppGraph
+    abstract fun create(@Provides int: Int, @Provides long: Long): AppGraph
 
   }
 
@@ -69,6 +85,12 @@ interface AppGraph {
     abstract get
 
   abstract val intProvider: Function0<Int>
+    abstract get
+
+  abstract val longProvider: Function0<Long>
+    abstract get
+
+  abstract val longProvider2: Function0<Long>
     abstract get
 
 }
