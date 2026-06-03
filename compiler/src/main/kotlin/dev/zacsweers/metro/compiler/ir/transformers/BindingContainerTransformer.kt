@@ -108,6 +108,7 @@ import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
@@ -458,6 +459,7 @@ internal class BindingContainerTransformer(
       }
     }
 
+    val inlinedValue = reference.inlinedValueIfEnabled()
     val bytecodeFunction =
       trace("Implement creator bodies") {
         implementCreatorBodies(factoryCls, ctor.symbol, reference, dedupedSourceParameters)
@@ -526,6 +528,8 @@ internal class BindingContainerTransformer(
           sourceAnnotations = reference.annotations,
           callableMetadata = callableMetadata,
           realDeclaration = realDeclaration,
+          inlinedValue = inlinedValue,
+          computeInlinedValue = false,
         ) ?: exitProcessing()
       }
 
@@ -653,7 +657,9 @@ internal class BindingContainerTransformer(
       targetConstructor = factoryConstructor,
       parameters = factoryParameters,
       sourceFunction = reference.callee?.owner,
-      returnTypeProvider = { metroSymbols.metroFactory.typeWith(reference.typeKey.type) },
+      returnTypeProvider = { typeParams ->
+        factoryCls.symbol.typeWithParameters(typeParams)
+      },
       sourceTypeParameters = reference.parent.owner,
     )
 
@@ -697,6 +703,15 @@ internal class BindingContainerTransformer(
       }
 
     return newInstanceFunction
+  }
+
+  private fun CallableReference.inlinedValueIfEnabled(): IrInlinedProvider? {
+    if (!options.enableProviderInlining) return null
+    return IrInlinedProvider.fromProviderFactory(
+      annotations = annotations,
+      parameters = parameters,
+      realDeclaration = callee?.owner ?: backingField,
+    )
   }
 
   internal class CallableReference(

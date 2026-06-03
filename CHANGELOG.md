@@ -21,6 +21,7 @@ Changelog
 - **[IR]** Add a `member-naming-strategy` compiler option for shortening generated member names in generated code. Accepts `DESCRIPTIVE` (default), `TYPED` (`provider*`/`instance*`/`factory*`), or `MINIMAL` (single collapsed `provider*` naming). See [docs/performance.md](https://zacsweers.github.io/metro/performance/#shortening-generated-member-names) for guidance.
 - **[IR]** Lazily compute cached hashCode and toString renders for compiler-internal type keys without delegation.
 - **[IR]** Propagate `inline` modifiers from `@Provides` functions to factory `newInstance()` functions.
+- **[IR]** Preserve concrete generated provider factory return types where possible instead of widening to `Factory<T>`. In the future, Metro may generate these as value classes and this will allow better compiler optimization in those scenarios.
 - **[IR/IC]** Optimize IC tracking by buffering lookup and expect/actual records during IR and flushing them once after graph validation, avoiding per-write synchronization on the hot path. This is enabled by default but can be disabled via the `buffered-ic-tracking` compiler option if it causes any issues.
 - **[IR/runtime]** Add internal primitive instance factories and use them where possible for primitive graph inputs and inlined providers.
 

@@ -215,9 +215,6 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
               annotations = callableMetadata.annotations,
               parameters = lazyParams.value,
               realDeclaration = realDecl,
-              requiresDispatchReceiver =
-                callableMetadata.function.dispatchReceiverParameter != null &&
-                  callableMetadata.function.parentClassOrNull?.isObject != true,
             )
           } else {
             null

@@ -185,22 +185,11 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
       annotations: MetroAnnotations<IrAnnotation>,
       parameters: Parameters,
       realDeclaration: IrDeclaration?,
-      requiresDispatchReceiver: Boolean,
     ): IrInlinedProvider? {
-      if (!isInlinableProvider(annotations, parameters, requiresDispatchReceiver)) return null
+      if (!parameters.allParameters.isEmpty()) return null
       if (annotations.isScoped) return null
       val value = realDeclaration?.inlinedProviderValue() ?: return null
       return IrInlinedProvider(value)
-    }
-
-    private fun isInlinableProvider(
-      annotations: MetroAnnotations<IrAnnotation>,
-      parameters: Parameters,
-      requiresDispatchReceiver: Boolean,
-    ): Boolean {
-      return !annotations.isIntoMultibinding &&
-        parameters.nonDispatchParameters.isEmpty() &&
-        !requiresDispatchReceiver
     }
 
     private fun IrDeclaration.inlinedProviderValue(): Value? {

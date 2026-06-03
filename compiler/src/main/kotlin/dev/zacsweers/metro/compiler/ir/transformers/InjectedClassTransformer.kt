@@ -704,7 +704,7 @@ internal class InjectedClassTransformer(
       factoryClass = factoryCls,
       sourceTypeParameters = targetClass,
       returnTypeProvider = { typeParams ->
-        metroSymbols.metroFactory.typeWith(targetClass.symbol.typeWithParameters(typeParams))
+        factoryCls.symbol.typeWithParameters(typeParams)
       },
       targetConstructor = factoryConstructor,
       parameters = dedupedMerged,
