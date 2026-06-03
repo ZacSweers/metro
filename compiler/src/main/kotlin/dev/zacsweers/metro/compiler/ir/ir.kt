@@ -2024,7 +2024,7 @@ internal fun IrBuilderWithScope.instanceFactory(
   )
 }
 
-private fun primitiveFactoryClassId(type: IrType, arg: IrExpression): ClassId? {
+private fun primitiveFactoryClassId(type: IrType, arg: IrExpression?): ClassId? {
   if (!type.isMarkedNullable()) {
     val typeClassId = type.classOrNull?.owner?.classId
     when (typeClassId) {

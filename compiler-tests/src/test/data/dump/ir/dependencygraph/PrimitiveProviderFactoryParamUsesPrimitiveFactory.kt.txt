@@ -6,9 +6,6 @@ interface AppGraph {
     private val intInstance: Int
       field = int
 
-    private val intInstanceProvider: IntFactory
-      field = IntFactory(value = <this>.#intInstance)
-
     private val longInstance: Long
       field = long
 
@@ -28,7 +25,7 @@ interface AppGraph {
 
     override val intProvider: Function0<Int>
       override get(): Function0<Int> {
-        return <this>.#intInstanceProvider
+        return IntFactory(value = <this>.#intInstance)
       }
 
     override val longProvider: Function0<Long>
