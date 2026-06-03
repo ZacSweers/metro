@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_TYPE_PARAM_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
@@ -16,7 +17,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -80,7 +80,10 @@ internal object MapKeyChecker : FirClassChecker(MppCheckerKind.Common) {
         "Map key annotations must have a primary constructor with at least one parameter.",
       )
     } else {
-      val unwrapValues = anno.getBooleanArgument(Symbols.Names.unwrapValue, session) ?: true
+      val unwrapValues =
+        with(session.compatContext) {
+          anno.getBooleanArgumentCompat(Symbols.Names.unwrapValue, session)
+        } ?: true
       if (unwrapValues) {
         when (ctor.valueParameterSymbols.size) {
           0 -> {
@@ -106,7 +109,9 @@ internal object MapKeyChecker : FirClassChecker(MppCheckerKind.Common) {
       }
 
       val implicitClassKey =
-        anno.getBooleanArgument(Symbols.Names.implicitClassKey, session) == true
+        with(session.compatContext) {
+          anno.getBooleanArgumentCompat(Symbols.Names.implicitClassKey, session)
+        } == true
       if (implicitClassKey) {
         if (ctor.valueParameterSymbols.size != 1) {
           reporter.reportOn(

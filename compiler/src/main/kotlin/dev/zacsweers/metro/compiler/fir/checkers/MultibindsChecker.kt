@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.hasImplicitClassKey
 import dev.zacsweers.metro.compiler.fir.isOrImplements
@@ -30,7 +31,6 @@ import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
-import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
@@ -196,7 +196,9 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
                           "Multibinding map key '${keyClass.classId.diagnosticString}' is not annotated with @MapKey(unwrapValue = false).",
                         )
                       } else if (
-                        mapKey.getBooleanArgument(Symbols.Names.unwrapValue, session) != false
+                        with(session.compatContext) {
+                          mapKey.getBooleanArgumentCompat(Symbols.Names.unwrapValue, session)
+                        } != false
                       ) {
                         reporter.reportOn(
                           declaration.returnTypeRef.source ?: source,
