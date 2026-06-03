@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.proto.EnumEntryProto
 import dev.zacsweers.metro.compiler.proto.InlinedProviderProto
@@ -182,7 +181,6 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
       return IrInlinedProvider(value.toValue() ?: return null)
     }
 
-    context(context: IrMetroContext)
     fun fromProviderFactory(
       annotations: MetroAnnotations<IrAnnotation>,
       parameters: Parameters,
@@ -190,15 +188,8 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
       requiresDispatchReceiver: Boolean,
     ): IrInlinedProvider? {
       if (!isInlinableProvider(annotations, parameters, requiresDispatchReceiver)) return null
+      if (annotations.isScoped) return null
       val value = realDeclaration?.inlinedProviderValue() ?: return null
-      if (annotations.isScoped) {
-        context.reportCompat(
-          realDeclaration,
-          MetroDiagnostics.PROVIDES_ERROR,
-          "Constant providers cannot be scoped; remove the scope annotation or change the body.",
-        )
-        return null
-      }
       return IrInlinedProvider(value)
     }
 
