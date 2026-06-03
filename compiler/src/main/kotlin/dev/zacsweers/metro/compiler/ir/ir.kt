@@ -100,6 +100,7 @@ import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
+import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
@@ -2013,12 +2014,64 @@ internal fun IrBuilderWithScope.instanceFactory(
     )
   }
 
+  val primitiveFactoryCidOrNull = primitiveFactoryClassId(type, arg)
+  if (primitiveFactoryCidOrNull == Symbols.ClassIds.BooleanFactory) {
+    context.pluginContext
+      .referenceClass(Symbols.ClassIds.BooleanFactory)
+      ?.owner
+      ?.companionObject()
+      ?.let { companionObject ->
+        return irInvoke(
+          irGetObject(companionObject.symbol),
+          callee = companionObject.requireSimpleFunction(Symbols.StringNames.INVOKE).owner.symbol,
+          args = listOf(arg),
+        )
+      }
+  }
+
+  primitiveFactoryCidOrNull?.let { primitiveFactoryClassId ->
+    val constructor =
+      context.pluginContext.referenceClass(primitiveFactoryClassId)?.owner?.primaryConstructor
+    if (constructor != null) {
+      return irCallConstructor(constructor.symbol, emptyList()).apply { arguments[0] = arg }
+    }
+  }
+
   return irInvoke(
     irGetObject(context.metroSymbols.instanceFactoryCompanionObject),
     callee = context.metroSymbols.instanceFactoryInvoke,
     typeArgs = listOf(type),
     args = listOf(arg),
   )
+}
+
+private fun primitiveFactoryClassId(type: IrType, arg: IrExpression?): ClassId? {
+  if (!type.isMarkedNullable()) {
+    val typeClassId = type.classOrNull?.owner?.classId
+    when (typeClassId) {
+      StandardClassIds.Byte -> return Symbols.ClassIds.ByteFactory
+      StandardClassIds.Short -> return Symbols.ClassIds.ShortFactory
+      StandardClassIds.Int -> return Symbols.ClassIds.IntFactory
+      StandardClassIds.Long -> return Symbols.ClassIds.LongFactory
+      StandardClassIds.Boolean -> return Symbols.ClassIds.BooleanFactory
+      StandardClassIds.Char -> return Symbols.ClassIds.CharFactory
+      StandardClassIds.Float -> return Symbols.ClassIds.FloatFactory
+      StandardClassIds.Double -> return Symbols.ClassIds.DoubleFactory
+    }
+  }
+
+  val const = arg as? IrConst ?: return null
+  return when (const.kind) {
+    IrConstKind.Byte -> Symbols.ClassIds.ByteFactory
+    IrConstKind.Short -> Symbols.ClassIds.ShortFactory
+    IrConstKind.Int -> Symbols.ClassIds.IntFactory
+    IrConstKind.Long -> Symbols.ClassIds.LongFactory
+    IrConstKind.Boolean -> Symbols.ClassIds.BooleanFactory
+    IrConstKind.Char -> Symbols.ClassIds.CharFactory
+    IrConstKind.Float -> Symbols.ClassIds.FloatFactory
+    IrConstKind.Double -> Symbols.ClassIds.DoubleFactory
+    else -> null
+  }
 }
 
 context(context: IrMetroContext)

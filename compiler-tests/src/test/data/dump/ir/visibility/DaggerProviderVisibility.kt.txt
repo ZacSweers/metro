@@ -8,9 +8,6 @@ interface ExampleGraph {
     private val moduleWithInternalInstance: ModuleWithInternal
       field = ModuleWithInternal()
 
-    private val moduleWithInternalInstanceProvider: Provider<ModuleWithInternal>
-      field = InstanceFactory/* companion */.invoke<ModuleWithInternal>(value = <this>.#moduleWithInternalInstance)
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */

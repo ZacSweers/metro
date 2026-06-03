@@ -76,9 +76,6 @@ interface ExampleGraph {
     private val internalModuleInstance: InternalModule
       field = InternalModule()
 
-    private val internalModuleInstanceProvider: Provider<InternalModule>
-      field = InstanceFactory/* companion */.invoke<InternalModule>(value = <this>.#internalModuleInstance)
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */

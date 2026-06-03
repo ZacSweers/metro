@@ -336,9 +336,6 @@ interface TestGraph {
     private val instance: ProvidedExample
       field = example
 
-    private val provider: Provider<ProvidedExample>
-      field = InstanceFactory/* companion */.invoke<ProvidedExample>(value = <this>.#instance)
-
     internal val shard1: Shard1
 
     internal val shard2: Shard2
@@ -353,7 +350,7 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#provider = DoubleCheck/* companion */.provider<Provider<Config>, Config>(delegate = Config.MetroFactory/* companion */.create(example = <this>.#graph.#provider))
+        <this>.#provider = DoubleCheck/* companion */.provider<Provider<Config>, Config>(delegate = Config.MetroFactory/* companion */.create(example = InstanceFactory/* companion */.invoke<ProvidedExample>(value = <this>.#graph.#instance)))
       }
 
     }

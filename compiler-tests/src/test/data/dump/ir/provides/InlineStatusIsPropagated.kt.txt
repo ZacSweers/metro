@@ -2,6 +2,7 @@
 object Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provideBoolean", propertyName = "", startOffset = 113, endOffset = 194, newInstanceName = "provideBoolean")
+  @ComptimeOnly
   object ProvideBooleanMetroFactory : Factory<Boolean> {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -38,6 +39,7 @@ object Bindings {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provideFloat", propertyName = "", startOffset = 307, endOffset = 441, newInstanceName = "provideFloat")
+  @ComptimeOnly
   object ProvideFloatMetroFactory : Factory<Float> {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -74,6 +76,7 @@ object Bindings {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 67, endOffset = 109, newInstanceName = "provideInt")
+  @ComptimeOnly
   object ProvideIntMetroFactory : Factory<Int> {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -110,6 +113,7 @@ object Bindings {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 198, endOffset = 303, newInstanceName = "provideLong")
+  @ComptimeOnly
   object ProvideLongMetroFactory : Factory<Long> {
     private constructor() /* primary */ {
       super/*Any*/()

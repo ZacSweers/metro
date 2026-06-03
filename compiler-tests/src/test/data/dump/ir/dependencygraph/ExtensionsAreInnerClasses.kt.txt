@@ -14,9 +14,6 @@ interface AppGraph : LoggedInGraph.Factory {
       private val idInstance: String
         field = id
 
-      private val idInstanceProvider: Provider<String>
-        field = InstanceFactory/* companion */.invoke<String>(value = <this>.#idInstance)
-
       constructor(appGraphImpl: Impl, @Provides id: String) /* primary */ {
         super/*Any*/()
         /* <init>() */

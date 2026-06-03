@@ -1385,5 +1385,17 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testProvides_ReturnTypeCannotBeIntrinsic_DaggerInterop() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_ReturnTypeCannotBeIntrinsic_DaggerInterop.kt");
     }
+
+    @Test
+    @TestMetadata("ScopedConstantProvider.kt")
+    public void testScopedConstantProvider() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ScopedConstantProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedConstantProviderInliningDisabled.kt")
+    public void testScopedConstantProviderInliningDisabled() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ScopedConstantProviderInliningDisabled.kt");
+    }
   }
 }
