@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
 import dev.zacsweers.metro.compiler.fir.scopeArgument
@@ -73,9 +72,6 @@ internal class ContributionHintFirGenerator(
     session.firCachesFactory.createCache { _, _ ->
       val callableIds = mutableMapOf<CallableId, MutableSet<FirClassSymbol<*>>>()
 
-      val generateContributionProviders =
-        session.metroFirBuiltIns.options.generateContributionProviders
-
       val contributingClasses = contributedClassSymbols()
       for (contributingClass in contributingClasses) {
         val contributions =
@@ -94,13 +90,11 @@ internal class ContributionHintFirGenerator(
           }
         }
 
-        // When generateContributionProviders is enabled, generate hints pointing to the
-        // generated container objects instead of the original class. The container objects
-        // are not visible to the predicate-based provider (they're generated declarations),
-        // so we must compute their ClassIds and resolve them here.
-        val hasBindingContributions =
-          generateContributionProviders &&
-            contributingClass.usesContributionProviderPath(session) &&
+        // When binding contributions use generated provider holders, generate hints pointing to
+        // the generated container objects instead of the original class. The container objects are
+        // not visible to the predicate-based provider, so we must compute their ClassIds here.
+        val usesGeneratedProviderHolderHints =
+          contributingClass.usesContributionProviderPath(session) &&
             contributions.any { annotation ->
               val classId = annotation.toAnnotationClassIdSafe(session) ?: return@any false
               classId !in session.classIds.contributesToAnnotations
@@ -108,7 +102,7 @@ internal class ContributionHintFirGenerator(
 
         for (contributionScope in contributionScopes) {
           val hintName = contributionScope.scopeHintFunctionName()
-          if (hasBindingContributions) {
+          if (usesGeneratedProviderHolderHints) {
             // Compute the container object ClassId and generate hint pointing to it
             val containerClassId =
               MetroContributions.containerObjectClassId(

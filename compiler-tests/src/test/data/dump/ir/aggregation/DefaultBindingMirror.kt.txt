@@ -38,35 +38,6 @@ class Impl : Base<Impl>, Other {
 
   }
 
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = Impl::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @CallableMetadata(callableName = "bindsAsBase", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsBase(instance: Impl): Base<*>
-
-    }
-
-    @Binds
-    @ComptimeOnly
-    fun bindsAsBase(instance: Impl): Base<*> {
-      return error(message = "Never called")
-    }
-
-  }
-
   constructor() /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -92,6 +63,80 @@ interface Base<T : Any?> {
 }
 
 interface Other {
+}
+
+// FILE: ImplContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class ImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = Impl::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    object Provide_kcqqv6MetroFactory : Factory<Base<*>> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): Factory<Base<*>> {
+        return Provide_kcqqv6MetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provide_kcqqv6(): Base<*> {
+        return ToAppScope.provide_kcqqv6()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Base<*> {
+        return Provide_kcqqv6MetroFactory.provide_kcqqv6()
+      }
+
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): Base<*> {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    fun provide_kcqqv6(): Base<*> {
+      return Impl()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: implContributionsToAppScopeAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: ImplContributions.ToAppScope) {
+  return error(message = "Never called")
 }
 
 // FILE: implAppScope.kt

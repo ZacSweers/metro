@@ -1809,9 +1809,6 @@ class AggregationTest : MetroCompilerTest() {
 
             test.ContributedInterface is requested at
                 [test.AltGraph] test.AltGraph.contributedInterface
-
-        Similar bindings:
-          - Impl (Subtype). Type: ConstructorInjected. Source: AltScope.kt:12:1
         """
           .trimIndent()
       )
@@ -3337,8 +3334,8 @@ class AggregationTest : MetroCompilerTest() {
         e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.
 
         (context)
-        Encountered while processing declaration 'feature.TestClass.MetroContributionToAppScope.BindsMirror.bindIntoMapAsCloseable18543831191854383119_intomap' (no source location available)
-        - This is Metro-generated code that contributes 'feature.TestClass' (where the problem is) to AppScope.
+        Encountered while processing declaration 'feature.TestClassContributions.ToAppScope.provideIntoMap_j00c8' (no source location available)
+        - This is Metro-generated code that contributes 'feature.TestClassContributions' (where the problem is) to AppScope.
         """
           .trimIndent()
       )

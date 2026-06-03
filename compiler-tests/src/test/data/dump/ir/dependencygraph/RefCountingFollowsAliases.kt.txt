@@ -1,3 +1,139 @@
+// FILE: BazImplContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class BazImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = BazImpl::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    object Provide_1fipereMetroFactory : Factory<BazMiddle> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): Factory<BazMiddle> {
+        return Provide_1fipereMetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provide_1fipere(): BazMiddle {
+        return ToAppScope.provide_1fipere()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): BazMiddle {
+        return Provide_1fipereMetroFactory.provide_1fipere()
+      }
+
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): BazMiddle {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    fun provide_1fipere(): BazMiddle {
+      return BazImpl()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: FooImplContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class FooImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = FooImpl::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    object Provide_cajzi1MetroFactory : Factory<Foo> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): Factory<Foo> {
+        return Provide_cajzi1MetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provide_cajzi1(): Foo {
+        return ToAppScope.provide_cajzi1()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Foo {
+        return Provide_cajzi1MetroFactory.provide_cajzi1()
+      }
+
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): Foo {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    fun provide_cajzi1(): Foo {
+      return FooImpl()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: RefCountingFollowsAliases.kt
+
 @Inject
 class BarA {
   val foo: Function0<Foo>
@@ -156,35 +292,6 @@ class BazImpl : BazMiddle {
 
   }
 
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = BazImpl::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @CallableMetadata(callableName = "bindsAsBazMiddle", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsBazMiddle(instance: BazImpl): BazMiddle
-
-    }
-
-    @Binds
-    @ComptimeOnly
-    fun bindsAsBazMiddle(instance: BazImpl): BazMiddle {
-      return error(message = "Never called")
-    }
-
-  }
-
   constructor() /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -226,35 +333,6 @@ class FooImpl : Foo {
     @ComptimeOnly
     @HiddenFromObjC
     fun mirrorFunction(): FooImpl {
-      return error(message = "Never called")
-    }
-
-  }
-
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = FooImpl::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @CallableMetadata(callableName = "bindsAsFoo", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsFoo(instance: FooImpl): Foo
-
-    }
-
-    @Binds
-    @ComptimeOnly
-    fun bindsAsFoo(instance: FooImpl): Foo {
       return error(message = "Never called")
     }
 
@@ -466,7 +544,7 @@ class QuxB {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : BazImpl.MetroContributionToAppScope, FooImpl.MetroContributionToAppScope {
+interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @ComptimeOnly
   abstract class BindsMirror {
@@ -485,14 +563,14 @@ interface AppGraph : BazImpl.MetroContributionToAppScope, FooImpl.MetroContribut
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val fooImplProvider: Provider<FooImpl>
-      field = FooImpl.MetroFactory.create()
+    private val provide_cajzi1Provider: Provider<Foo>
+      field = FooImplContributions.ToAppScope.Provide_cajzi1MetroFactory.create()
 
-    private val bazImplProvider: Provider<BazImpl>
-      field = BazImpl.MetroFactory.create()
+    private val provide_1fipereProvider: Provider<BazMiddle>
+      field = BazImplContributions.ToAppScope.Provide_1fipereMetroFactory.create()
 
     private val mainProvider: Provider<Main>
-      field = DoubleCheck/* companion */.provider<Provider<Main>, Main>(delegate = Main.MetroFactory/* companion */.create(barA = BarA.MetroFactory/* companion */.create(foo = <this>.#fooImplProvider), barB = BarB.MetroFactory/* companion */.create(foo = <this>.#fooImplProvider), quxA = QuxA.MetroFactory/* companion */.create(baz = <this>.#bazImplProvider), quxB = QuxB.MetroFactory/* companion */.create(baz = <this>.#bazImplProvider)))
+      field = DoubleCheck/* companion */.provider<Provider<Main>, Main>(delegate = Main.MetroFactory/* companion */.create(barA = BarA.MetroFactory/* companion */.create(foo = <this>.#provide_cajzi1Provider), barB = BarB.MetroFactory/* companion */.create(foo = <this>.#provide_cajzi1Provider), quxA = QuxA.MetroFactory/* companion */.create(baz = <this>.#provide_1fipereProvider), quxB = QuxB.MetroFactory/* companion */.create(baz = <this>.#provide_1fipereProvider)))
 
     private constructor() /* primary */ {
       super/*Any*/()

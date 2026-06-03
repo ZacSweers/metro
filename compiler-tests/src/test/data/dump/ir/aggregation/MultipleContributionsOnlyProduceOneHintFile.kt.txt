@@ -1,3 +1,235 @@
+// FILE: Base1ImplContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class Base1ImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @Origin(value = Base1Impl::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AppScope::class)
+  object ToAppScope {
+    class ProvideIntoSet_1u64zm4MetroFactory : Factory<Base2> {
+      private /* final field */ val instance: Provider<Any?> = instance
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun create(@Named(name = "metro_scoped_Base1Impl") instance: Provider<Any?>): Factory<Base2> {
+          return ProvideIntoSet_1u64zm4MetroFactory(instance = instance)
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun provideIntoSet_1u64zm4(@Named(name = "metro_scoped_Base1Impl") instance: Any?): Base2 {
+          return ToAppScope.provideIntoSet_1u64zm4(instance = instance)
+        }
+
+      }
+
+      @HiddenFromObjC
+      private constructor(instance: Provider<Any?>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Base2 {
+        return ProvideIntoSet_1u64zm4MetroFactory/* companion */.provideIntoSet_1u64zm4(instance = <this>.#instance.invoke())
+      }
+
+      @IntoSet
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(@Named(name = "metro_scoped_Base1Impl") instance: Any?): Base2 {
+        return error(message = "Never called")
+      }
+
+    }
+
+    class ProvideIntoSet_1u64zmzMetroFactory : Factory<Base3> {
+      private /* final field */ val instance: Provider<Any?> = instance
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun create(@Named(name = "metro_scoped_Base1Impl") instance: Provider<Any?>): Factory<Base3> {
+          return ProvideIntoSet_1u64zmzMetroFactory(instance = instance)
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun provideIntoSet_1u64zmz(@Named(name = "metro_scoped_Base1Impl") instance: Any?): Base3 {
+          return ToAppScope.provideIntoSet_1u64zmz(instance = instance)
+        }
+
+      }
+
+      @HiddenFromObjC
+      private constructor(instance: Provider<Any?>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Base3 {
+        return ProvideIntoSet_1u64zmzMetroFactory/* companion */.provideIntoSet_1u64zmz(instance = <this>.#instance.invoke())
+      }
+
+      @IntoSet
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(@Named(name = "metro_scoped_Base1Impl") instance: Any?): Base3 {
+        return error(message = "Never called")
+      }
+
+    }
+
+    class Provide_1bsorlxMetroFactory : Factory<Base1> {
+      private /* final field */ val instance: Provider<Any?> = instance
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun create(@Named(name = "metro_scoped_Base1Impl") instance: Provider<Any?>): Factory<Base1> {
+          return Provide_1bsorlxMetroFactory(instance = instance)
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun provide_1bsorlx(@Named(name = "metro_scoped_Base1Impl") instance: Any?): Base1 {
+          return ToAppScope.provide_1bsorlx(instance = instance)
+        }
+
+      }
+
+      @HiddenFromObjC
+      private constructor(instance: Provider<Any?>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Base1 {
+        return Provide_1bsorlxMetroFactory/* companion */.provide_1bsorlx(instance = <this>.#instance.invoke())
+      }
+
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(@Named(name = "metro_scoped_Base1Impl") instance: Any?): Base1 {
+        return error(message = "Never called")
+      }
+
+    }
+
+    object ProvideScopedInstanceBase1ImplMetroFactory : Factory<Any?> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): Factory<Any?> {
+        return ProvideScopedInstanceBase1ImplMetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideScopedInstanceBase1Impl(): Any? {
+        return ToAppScope.provideScopedInstanceBase1Impl()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Any? {
+        return ProvideScopedInstanceBase1ImplMetroFactory.provideScopedInstanceBase1Impl()
+      }
+
+      @SingleIn(scope = AppScope::class)
+      @Named(name = "metro_scoped_Base1Impl")
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): Any? {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    @IntoSet
+    fun provideIntoSet_1u64zm4(@Named(name = "metro_scoped_Base1Impl") instance: Any?): Base2 {
+      return instance /*as Base2 */
+    }
+
+    @Provides
+    @IntoSet
+    fun provideIntoSet_1u64zmz(@Named(name = "metro_scoped_Base1Impl") instance: Any?): Base3 {
+      return instance /*as Base3 */
+    }
+
+    @Provides
+    @SingleIn(scope = AppScope::class)
+    @Named(name = "metro_scoped_Base1Impl")
+    fun provideScopedInstanceBase1Impl(): Any? {
+      return Base1Impl()
+    }
+
+    @Provides
+    fun provide_1bsorlx(@Named(name = "metro_scoped_Base1Impl") instance: Any?): Base1 {
+      return instance /*as Base1 */
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: base1ImplContributionsToAppScopeAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: Base1ImplContributions.ToAppScope) {
+  return error(message = "Never called")
+}
+
 // FILE: file0.kt
 
 interface Base1 {
@@ -53,59 +285,6 @@ class Base1Impl : Base1, Base2, Base3 {
 
   }
 
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @MetroContribution(scope = AppScope::class)
-  @BindingContainer
-  @Origin(value = Base1Impl::class)
-  @ComptimeOnly
-  interface MetroContributionToAppScope {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @ComptimeOnly
-    abstract class BindsMirror {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @Binds
-      @IntoSet
-      @CallableMetadata(callableName = "bindIntoSetAsBase2", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoSetAsBase2_intoset(instance: Base1Impl): Base2
-
-      @Binds
-      @IntoSet
-      @CallableMetadata(callableName = "bindIntoSetAsBase3", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoSetAsBase3_intoset(instance: Base1Impl): Base3
-
-      @Binds
-      @CallableMetadata(callableName = "bindsAsBase1", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsBase1(instance: Base1Impl): Base1
-
-    }
-
-    @IntoSet
-    @Binds
-    @ComptimeOnly
-    fun bindIntoSetAsBase2(instance: Base1Impl): Base2 {
-      return error(message = "Never called")
-    }
-
-    @IntoSet
-    @Binds
-    @ComptimeOnly
-    fun bindIntoSetAsBase3(instance: Base1Impl): Base3 {
-      return error(message = "Never called")
-    }
-
-    @Binds
-    @ComptimeOnly
-    fun bindsAsBase1(instance: Base1Impl): Base1 {
-      return error(message = "Never called")
-    }
-
-  }
-
   constructor() /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -117,12 +296,13 @@ class Base1Impl : Base1, Base2, Base3 {
 // FILE: file2.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : Base1Impl.MetroContributionToAppScope {
+interface ExampleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : ExampleGraph {
-    private val base1ImplProvider: Provider<Base1Impl>
-      field = DoubleCheck/* companion */.provider<Provider<Base1Impl>, Base1Impl>(delegate = Base1Impl.MetroFactory.create())
+    @Named(name = "metro_scoped_Base1Impl")
+    private val provideScopedInstanceBase1ImplProvider: Provider<Any?>
+      field = DoubleCheck/* companion */.provider<Provider<Any?>, Any?>(delegate = Base1ImplContributions.ToAppScope.ProvideScopedInstanceBase1ImplMetroFactory.create())
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -137,7 +317,7 @@ interface ExampleGraph : Base1Impl.MetroContributionToAppScope {
 
     override val composerPrefs: Base1
       override get(): Base1 {
-        return <this>.#base1ImplProvider.invoke()
+        return Base1ImplContributions.ToAppScope.provide_1bsorlx(instance = <this>.#provideScopedInstanceBase1ImplProvider.invoke())
       }
 
     override val prewarms: Set<Base3>
@@ -147,12 +327,12 @@ interface ExampleGraph : Base1Impl.MetroContributionToAppScope {
 
     private val setOfBase2: Set<Base2>
       private get(): Set<Base2> {
-        return setOf<Base2>(element = <this>.#base1ImplProvider.invoke())
+        return setOf<Base2>(element = Base1ImplContributions.ToAppScope.provideIntoSet_1u64zm4(instance = <this>.#provideScopedInstanceBase1ImplProvider.invoke()))
       }
 
     private val setOfBase3: Set<Base3>
       private get(): Set<Base3> {
-        return setOf<Base3>(element = <this>.#base1ImplProvider.invoke())
+        return setOf<Base3>(element = Base1ImplContributions.ToAppScope.provideIntoSet_1u64zmz(instance = <this>.#provideScopedInstanceBase1ImplProvider.invoke()))
       }
 
   }

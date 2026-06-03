@@ -4,4 +4,3 @@
         [AppGraph] RepositoryImpl(…, dep)
     Repository is requested at
         [AppGraph] AppGraph.repo
-

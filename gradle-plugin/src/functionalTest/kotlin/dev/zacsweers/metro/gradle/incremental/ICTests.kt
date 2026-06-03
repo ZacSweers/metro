@@ -560,12 +560,14 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    // Verify that the new contribution is included in the interfaces
+    // Verify that the new generated contribution is present.
     ifJvmTarget {
       val classLoader = project.classLoader()
-      val exampleGraph = classLoader.loadClass("test.ExampleGraph")
-      assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.NewContribution\$MetroContributionToUnit")
+      assertThat(
+          runCatching { classLoader.loadClass("test.NewContributionContributions\$ToUnit") }
+            .isSuccess
+        )
+        .isTrue()
     }
   }
 
@@ -607,12 +609,10 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    // Verify that the new contribution is included in the interfaces
+    // Verify that the generated contribution is present.
     ifJvmTarget {
       with(project.classLoader()) {
-        val exampleGraph = loadClass("test.ExampleGraph")
-        assertThat(exampleGraph.interfaces.map { it.name })
-          .contains("test.Impl2\$MetroContributionToUnit")
+        assertThat(runCatching { loadClass("test.Impl2Contributions\$ToUnit") }.isSuccess).isTrue()
       }
     }
 
@@ -629,12 +629,11 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    // Verify that the removed contribution is removed from supertypes
+    // Verify that the removed contribution is removed from generated outputs.
     ifJvmTarget {
       val classLoader = project.classLoader()
-      val exampleGraph = classLoader.loadClass("test.ExampleGraph")
-      assertThat(exampleGraph.interfaces.map { it.name })
-        .doesNotContain("test.Impl2\$MetroContributionToUnit")
+      assertThat(runCatching { classLoader.loadClass("test.Impl2Contributions\$ToUnit") }.isSuccess)
+        .isFalse()
     }
   }
 

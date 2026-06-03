@@ -6,5 +6,5 @@
         [ExampleGraph] ExampleGraph.inject()
 
 Similar bindings:
-  - Dependency (Different qualifier). Type: Alias. Source: DependencyImpl.kt:25:1
+  - Dependency (Different qualifier). Type: DependencyImpl (Contributing class). This is a generated contribution provider for DependencyImpl. If that class is the binding you're looking for, annotate the contributing class with `@ExposeImplBinding` to expose its impl type to the graph. Source: DependencyImpl.kt:25:1
 

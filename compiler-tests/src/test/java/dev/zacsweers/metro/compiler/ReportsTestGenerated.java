@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 public class ReportsTestGenerated extends AbstractReportsTest {
   @Test
   public void testAllFilesPresentInReports() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
   }
 
   @Test
@@ -51,7 +51,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   public class BasicKeysUnusedReport {
     @Test
     public void testAllFilesPresentInBasicKeysUnusedReport() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
     }
 
     @Nested
@@ -60,7 +60,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     public class Keys_unused {
       @Test
       public void testAllFilesPresentInKeys_unused() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused"), Pattern.compile("^(.+)\\.kt$"), null, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
       }
 
       @Nested
@@ -69,7 +69,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
       public class AppGraph {
         @Test
         public void testAllFilesPresentInAppGraph() {
-          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
+          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
         }
 
         @Nested
@@ -78,7 +78,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
         public class Impl {
           @Test
           public void testAllFilesPresentInImpl() {
-            KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl"), Pattern.compile("^(.+)\\.kt$"), null, true);
+            KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
           }
 
           @Nested
@@ -87,7 +87,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
           public class ChildGraphImpl {
             @Test
             public void testAllFilesPresentInChildGraphImpl() {
-              KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl/ChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), null, true);
+              KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl/ChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
             }
 
             @Nested
@@ -96,7 +96,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
             public class GrandchildGraphImpl {
               @Test
               public void testAllFilesPresentInGrandchildGraphImpl() {
-                KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl/ChildGraphImpl/GrandchildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), null, true);
+                KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl/ChildGraphImpl/GrandchildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
               }
             }
           }
@@ -111,7 +111,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   public class DeeplyNestedGraphsKeysPopulatedReport {
     @Test
     public void testAllFilesPresentInDeeplyNestedGraphsKeysPopulatedReport() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
     }
 
     @Nested
@@ -120,7 +120,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     public class Keys_populated {
       @Test
       public void testAllFilesPresentInKeys_populated() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated"), Pattern.compile("^(.+)\\.kt$"), null, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
       }
 
       @Nested
@@ -129,7 +129,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
       public class AppGraph {
         @Test
         public void testAllFilesPresentInAppGraph() {
-          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
+          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
         }
 
         @Nested
@@ -138,7 +138,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
         public class Impl {
           @Test
           public void testAllFilesPresentInImpl() {
-            KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl"), Pattern.compile("^(.+)\\.kt$"), null, true);
+            KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
           }
 
           @Nested
@@ -147,7 +147,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
           public class ChildGraphImpl {
             @Test
             public void testAllFilesPresentInChildGraphImpl() {
-              KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), null, true);
+              KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
             }
 
             @Nested
@@ -156,7 +156,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
             public class GrandChildGraphImpl {
               @Test
               public void testAllFilesPresentInGrandChildGraphImpl() {
-                KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl/GrandChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), null, true);
+                KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl/GrandChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
               }
 
               @Nested
@@ -165,7 +165,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
               public class GreatGrandChildGraphImpl {
                 @Test
                 public void testAllFilesPresentInGreatGrandChildGraphImpl() {
-                  KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl/GrandChildGraphImpl/GreatGrandChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), null, true);
+                  KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl/GrandChildGraphImpl/GreatGrandChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
                 }
               }
             }
@@ -181,7 +181,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   public class UnmatchedReplacement {
     @Test
     public void testAllFilesPresentInUnmatchedReplacement() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
     }
 
     @Nested
@@ -190,7 +190,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     public class Merging_unmatched_exclusions_fir {
       @Test
       public void testAllFilesPresentInMerging_unmatched_exclusions_fir() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-fir"), Pattern.compile("^(.+)\\.kt$"), null, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-fir"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
       }
     }
 
@@ -200,7 +200,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     public class Merging_unmatched_exclusions_ir {
       @Test
       public void testAllFilesPresentInMerging_unmatched_exclusions_ir() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-ir"), Pattern.compile("^(.+)\\.kt$"), null, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-ir"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
       }
 
       @Nested
@@ -209,7 +209,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
       public class Kotlin {
         @Test
         public void testAllFilesPresentInKotlin() {
-          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-ir/kotlin"), Pattern.compile("^(.+)\\.kt$"), null, true);
+          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-ir/kotlin"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
         }
       }
     }
@@ -220,7 +220,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     public class Merging_unmatched_replacements_fir {
       @Test
       public void testAllFilesPresentInMerging_unmatched_replacements_fir() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-fir"), Pattern.compile("^(.+)\\.kt$"), null, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-fir"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
       }
     }
 
@@ -230,7 +230,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     public class Merging_unmatched_replacements_ir {
       @Test
       public void testAllFilesPresentInMerging_unmatched_replacements_ir() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-ir"), Pattern.compile("^(.+)\\.kt$"), null, true);
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-ir"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
       }
 
       @Nested
@@ -239,7 +239,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
       public class Kotlin {
         @Test
         public void testAllFilesPresentInKotlin() {
-          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-ir/kotlin"), Pattern.compile("^(.+)\\.kt$"), null, true);
+          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-ir/kotlin"), Pattern.compile("^(.+)\\.kt$"), Pattern.compile("^(.+)\\.k(?!2321\\b)\\w+\\.kt(s)?$"), true);
         }
       }
     }
