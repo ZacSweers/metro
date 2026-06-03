@@ -197,7 +197,7 @@ dependencies {
   // Cover for https://github.com/tschuchortdev/kotlin-compile-testing/issues/274
   testImplementation(libs.kotlin.aptEmbeddable)
   if (testCompilerVersion.startsWith("2.4")) {
-    testImplementation("dev.zacsweers.kctfork:core:0.13.0-alpha01")
+    testImplementation("dev.zacsweers.kctfork:core:0.13.0")
     testImplementation("dev.zacsweers.kctfork:ksp:0.13.0-alpha01")
   } else {
     testImplementation(libs.kct)

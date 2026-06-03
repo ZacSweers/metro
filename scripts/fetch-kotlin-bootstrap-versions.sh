@@ -20,7 +20,7 @@ ALL_VERSIONS=$(curl -sSL "$MAVEN_BASE/maven-metadata.xml" \
   | grep -oE '<version>[^<]+</version>' \
   | sed 's/<version>//; s/<\/version>//' \
   | sort -V -r)
-VERSIONS=$(echo "$ALL_VERSIONS" | head -n "$COUNT" | sort -V)
+VERSIONS=$(printf '%s\n' "$ALL_VERSIONS" | awk -v count="$COUNT" 'NR <= count { print }' | sort -V)
 
 # For each version, fetch the timestamp from its directory page
 for VERSION in $VERSIONS; do
