@@ -1993,7 +1993,8 @@ internal fun IrBuilderWithScope.instanceFactory(
     )
   }
 
-  if ((arg as? IrConst)?.kind == IrConstKind.Boolean) {
+  val primitiveFactoryCidOrNull = primitiveFactoryClassId(type, arg)
+  if (primitiveFactoryCidOrNull == Symbols.ClassIds.BooleanFactory) {
     context.pluginContext
       .referenceClass(Symbols.ClassIds.BooleanFactory)
       ?.owner
@@ -2007,7 +2008,7 @@ internal fun IrBuilderWithScope.instanceFactory(
       }
   }
 
-  primitiveFactoryClassId(arg)?.let { primitiveFactoryClassId ->
+  primitiveFactoryCidOrNull?.let { primitiveFactoryClassId ->
     val constructor =
       context.pluginContext.referenceClass(primitiveFactoryClassId)?.owner?.primaryConstructor
     if (constructor != null) {
@@ -2023,7 +2024,21 @@ internal fun IrBuilderWithScope.instanceFactory(
   )
 }
 
-private fun primitiveFactoryClassId(arg: IrExpression): ClassId? {
+private fun primitiveFactoryClassId(type: IrType, arg: IrExpression): ClassId? {
+  if (!type.isMarkedNullable()) {
+    val typeClassId = type.classOrNull?.owner?.classId
+    when (typeClassId) {
+      StandardClassIds.Byte -> return Symbols.ClassIds.ByteFactory
+      StandardClassIds.Short -> return Symbols.ClassIds.ShortFactory
+      StandardClassIds.Int -> return Symbols.ClassIds.IntFactory
+      StandardClassIds.Long -> return Symbols.ClassIds.LongFactory
+      StandardClassIds.Boolean -> return Symbols.ClassIds.BooleanFactory
+      StandardClassIds.Char -> return Symbols.ClassIds.CharFactory
+      StandardClassIds.Float -> return Symbols.ClassIds.FloatFactory
+      StandardClassIds.Double -> return Symbols.ClassIds.DoubleFactory
+    }
+  }
+
   val const = arg as? IrConst ?: return null
   return when (const.kind) {
     IrConstKind.Byte -> Symbols.ClassIds.ByteFactory

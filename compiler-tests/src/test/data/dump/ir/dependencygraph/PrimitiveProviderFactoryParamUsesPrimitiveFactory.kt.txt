@@ -1,0 +1,75 @@
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val intInstance: Int
+      field = int
+
+    private val intInstanceProvider: Provider<Int>
+      field = IntFactory(value = <this>.#intInstance)
+
+    private constructor(@Provides int: Int) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return <this>.#intInstance
+      }
+
+    override val intProvider: Function0<Int>
+      override get(): Function0<Int> {
+        return <this>.#intInstanceProvider
+      }
+
+  }
+
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    override fun create(@Provides int: Int): AppGraph {
+      return Impl(int = int)
+    }
+
+  }
+
+  @DependencyGraph.Factory
+  interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroImplMarker
+    object Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Provides int: Int): AppGraph {
+        return Impl(int = int)
+      }
+
+    }
+
+    abstract fun create(@Provides int: Int): AppGraph
+
+  }
+
+  abstract val int: Int
+    abstract get
+
+  abstract val intProvider: Function0<Int>
+    abstract get
+
+}
+

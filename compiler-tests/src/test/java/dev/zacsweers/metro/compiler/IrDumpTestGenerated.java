@@ -249,6 +249,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("PrimitiveProviderFactoryParamUsesPrimitiveFactory.kt")
+    public void testPrimitiveProviderFactoryParamUsesPrimitiveFactory() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/PrimitiveProviderFactoryParamUsesPrimitiveFactory.kt");
+    }
+
+    @Test
     @TestMetadata("ProviderAccessorsAreTrackedInRefCounting.kt")
     public void testProviderAccessorsAreTrackedInRefCounting() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/ProviderAccessorsAreTrackedInRefCounting.kt");
