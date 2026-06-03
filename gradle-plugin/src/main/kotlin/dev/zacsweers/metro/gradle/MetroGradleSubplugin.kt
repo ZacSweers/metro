@@ -66,8 +66,8 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       task.group = "metro"
       task.description = "Generates Metro environment reports for all Kotlin compilations"
       task.dependsOn(
-        target.tasks.matching { candidate ->
-          candidate.name != MetroEnvTask.AGGREGATE_NAME && candidate.name.endsWith("MetroEnv")
+        target.tasks.named { candidate ->
+          candidate != MetroEnvTask.AGGREGATE_NAME && candidate.endsWith("MetroEnv")
         }
       )
     }
