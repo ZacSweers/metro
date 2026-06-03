@@ -14,7 +14,7 @@ class RepositoryImpl : Repository {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<RepositoryImpl> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -67,7 +67,7 @@ class Service {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(repo: Provider<Repository>): Factory<Service> {
+      fun create(repo: Provider<Repository>): MetroFactory {
         return MetroFactory(repo = repo)
       }
 

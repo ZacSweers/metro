@@ -74,7 +74,7 @@ interface AppGraph : LoggedInGraph.Factory {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Int> {
+      fun create(instance: AppGraph): ProvideCountMetroFactory {
         return ProvideCountMetroFactory(instance = instance)
       }
 

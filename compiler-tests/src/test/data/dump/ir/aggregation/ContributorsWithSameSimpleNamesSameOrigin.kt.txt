@@ -31,7 +31,7 @@ class FooImpl : Foo {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<FooImpl> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 

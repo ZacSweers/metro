@@ -73,7 +73,7 @@ interface ExampleGraph {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun create(): Factory<String> {
+        fun create(): ProvideStringMetroFactory {
           return ProvideStringMetroFactory
         }
 

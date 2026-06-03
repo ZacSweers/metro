@@ -18,7 +18,7 @@ class Config {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(example: Provider<ProvidedExample>): Factory<Config> {
+      fun create(example: Provider<ProvidedExample>): MetroFactory {
         return MetroFactory(example = example)
       }
 
@@ -89,7 +89,7 @@ class Repository {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(config: Provider<Config>): Factory<Repository> {
+      fun create(config: Provider<Config>): MetroFactory {
         return MetroFactory(config = config)
       }
 
@@ -151,7 +151,7 @@ class Service {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(repository: Provider<Repository>): Factory<Service> {
+      fun create(repository: Provider<Repository>): MetroFactory {
         return MetroFactory(repository = repository)
       }
 

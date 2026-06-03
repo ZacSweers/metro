@@ -18,7 +18,7 @@ class FinalThing {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(@Named(name = "final") ints: Provider<Set<Int>>): Factory<FinalThing> {
+      fun create(@Named(name = "final") ints: Provider<Set<Int>>): MetroFactory {
         return MetroFactory(ints = ints)
       }
 
@@ -173,7 +173,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Int> {
+      fun create(instance: AppGraph): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 

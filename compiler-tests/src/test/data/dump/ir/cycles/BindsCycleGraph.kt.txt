@@ -17,7 +17,7 @@ class Bar : Foo {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(fooProvider: Provider<Foo>): Factory<Bar> {
+      fun create(fooProvider: Provider<Foo>): MetroFactory {
         return MetroFactory(fooProvider = fooProvider)
       }
 

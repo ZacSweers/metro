@@ -91,7 +91,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph, int: Provider<Int>): Factory<Double> {
+      fun create(instance: AppGraph, int: Provider<Int>): BindDoubleMetroFactory {
         return BindDoubleMetroFactory(instance = instance, int = int)
       }
 
@@ -140,7 +140,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph, int: Provider<Int>): Factory<Long> {
+      fun create(instance: AppGraph, int: Provider<Int>): BindLongMetroFactory {
         return BindLongMetroFactory(instance = instance, int = int)
       }
 
@@ -188,7 +188,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Int> {
+      fun create(instance: AppGraph): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 

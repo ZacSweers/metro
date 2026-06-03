@@ -12,7 +12,7 @@ class A {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<A> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -65,7 +65,7 @@ class B {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(a: Provider<A>): Factory<B> {
+      fun create(a: Provider<A>): MetroFactory {
         return MetroFactory(a = a)
       }
 
@@ -132,7 +132,7 @@ class C {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(b: Provider<B>, d: Provider<D>): Factory<C> {
+      fun create(b: Provider<B>, d: Provider<D>): MetroFactory {
         return MetroFactory(b = b, d = d)
       }
 
@@ -194,7 +194,7 @@ class D {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(c: Provider<C>): Factory<D> {
+      fun create(c: Provider<C>): MetroFactory {
         return MetroFactory(c = c)
       }
 
@@ -256,7 +256,7 @@ class E {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(c: Provider<C>): Factory<E> {
+      fun create(c: Provider<C>): MetroFactory {
         return MetroFactory(c = c)
       }
 

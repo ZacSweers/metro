@@ -14,7 +14,7 @@ class AppService1 {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<AppService1> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -61,7 +61,7 @@ class AppService2 {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<AppService2> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -108,7 +108,7 @@ class AppService3 {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<AppService3> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -155,7 +155,7 @@ class AppService4 {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<AppService4> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -211,7 +211,7 @@ class Feature1Service1 {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<Feature1Service1> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -264,7 +264,7 @@ class Feature1Service2 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(f1s1: Provider<Feature1Service1>): Factory<Feature1Service2> {
+      fun create(f1s1: Provider<Feature1Service1>): MetroFactory {
         return MetroFactory(f1s1 = f1s1)
       }
 
@@ -326,7 +326,7 @@ class Feature1Service3 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(f1s2: Provider<Feature1Service2>): Factory<Feature1Service3> {
+      fun create(f1s2: Provider<Feature1Service2>): MetroFactory {
         return MetroFactory(f1s2 = f1s2)
       }
 
@@ -397,7 +397,7 @@ class Feature2Service1 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(app: Provider<AppService1>): Factory<Feature2Service1> {
+      fun create(app: Provider<AppService1>): MetroFactory {
         return MetroFactory(app = app)
       }
 
@@ -459,7 +459,7 @@ class Feature2Service2 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(f2s1: Provider<Feature2Service1>): Factory<Feature2Service2> {
+      fun create(f2s1: Provider<Feature2Service1>): MetroFactory {
         return MetroFactory(f2s1 = f2s1)
       }
 
@@ -521,7 +521,7 @@ class Feature2Service3 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(f2s2: Provider<Feature2Service2>): Factory<Feature2Service3> {
+      fun create(f2s2: Provider<Feature2Service2>): MetroFactory {
         return MetroFactory(f2s2 = f2s2)
       }
 

@@ -18,7 +18,7 @@ class InternalModule {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: InternalModule): Factory<Int> {
+      fun create(instance: InternalModule): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 

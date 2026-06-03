@@ -12,7 +12,7 @@ object Bindings {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<Int> {
+    fun create(): ProvideIntMetroFactory {
       return ProvideIntMetroFactory
     }
 

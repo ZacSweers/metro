@@ -17,7 +17,7 @@ interface IntProvider {
       fun create(instance: IntProvider, stringValue: Provider<String?> = provider<String?>(provider = local fun <anonymous>(): String? {
         return null
       }
-)): Factory<Int> {
+)): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance, stringValue = stringValue)
       }
 

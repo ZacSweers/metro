@@ -15,7 +15,7 @@ class ExplicitKeyImpl : Base {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<ExplicitKeyImpl> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -95,7 +95,7 @@ class ImplicitKeyImpl : Base {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<ImplicitKeyImpl> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 

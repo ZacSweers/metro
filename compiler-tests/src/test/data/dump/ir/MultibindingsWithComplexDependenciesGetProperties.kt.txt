@@ -55,7 +55,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph, string: Provider<String>): Factory<Int> {
+      fun create(instance: AppGraph, string: Provider<String>): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance, string = string)
       }
 
@@ -103,7 +103,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): ProvideStringMetroFactory {
         return ProvideStringMetroFactory(instance = instance)
       }
 

@@ -11,7 +11,7 @@ class Bar : Base {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<Bar> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -65,7 +65,7 @@ class Foo : Base {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<Foo> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 

@@ -17,7 +17,7 @@ class X {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(y: Provider<Y>): Factory<X> {
+      fun create(y: Provider<Y>): MetroFactory {
         return MetroFactory(y = y)
       }
 
@@ -82,7 +82,7 @@ class Y {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(mapOfProvidersOfX: Provider<Map<String, Function0<X>>>, mapOfProvidersOfY: Provider<Map<String, Function0<Y>>>): Factory<Y> {
+      fun create(mapOfProvidersOfX: Provider<Map<String, Function0<X>>>, mapOfProvidersOfY: Provider<Map<String, Function0<Y>>>): MetroFactory {
         return MetroFactory(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 

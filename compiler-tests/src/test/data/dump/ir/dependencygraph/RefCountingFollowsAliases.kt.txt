@@ -17,7 +17,7 @@ class BarA {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(foo: Provider<Foo>): Factory<BarA> {
+      fun create(foo: Provider<Foo>): MetroFactory {
         return MetroFactory(foo = foo)
       }
 
@@ -77,7 +77,7 @@ class BarB {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(foo: Provider<Foo>): Factory<BarB> {
+      fun create(foo: Provider<Foo>): MetroFactory {
         return MetroFactory(foo = foo)
       }
 
@@ -132,7 +132,7 @@ class BazImpl : BazMiddle {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<BazImpl> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -207,7 +207,7 @@ class FooImpl : Foo {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<FooImpl> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -303,7 +303,7 @@ class Main {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Factory<Main> {
+      fun create(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): MetroFactory {
         return MetroFactory(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
       }
 
@@ -364,7 +364,7 @@ class QuxA {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(baz: Provider<Baz>): Factory<QuxA> {
+      fun create(baz: Provider<Baz>): MetroFactory {
         return MetroFactory(baz = baz)
       }
 
@@ -424,7 +424,7 @@ class QuxB {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(baz: Provider<Baz>): Factory<QuxB> {
+      fun create(baz: Provider<Baz>): MetroFactory {
         return MetroFactory(baz = baz)
       }
 

@@ -70,7 +70,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): ProvideOnlyMetroFactory {
         return ProvideOnlyMetroFactory(instance = instance)
       }
 

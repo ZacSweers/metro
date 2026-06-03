@@ -54,7 +54,7 @@ abstract class AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): StringFieldMetroFactory {
         return StringFieldMetroFactory(instance = instance)
       }
 

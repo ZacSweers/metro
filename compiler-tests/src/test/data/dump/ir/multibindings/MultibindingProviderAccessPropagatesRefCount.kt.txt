@@ -17,7 +17,7 @@ class A {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(x: Provider<X>): Factory<A> {
+      fun create(x: Provider<X>): MetroFactory {
         return MetroFactory(x = x)
       }
 
@@ -77,7 +77,7 @@ class B {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(x: Provider<X>): Factory<B> {
+      fun create(x: Provider<X>): MetroFactory {
         return MetroFactory(x = x)
       }
 
@@ -137,7 +137,7 @@ class C {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(x: Provider<X>): Factory<C> {
+      fun create(x: Provider<X>): MetroFactory {
         return MetroFactory(x = x)
       }
 
@@ -197,7 +197,7 @@ class MapConsumer {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(map: Provider<Map<Int, B>>): Factory<MapConsumer> {
+      fun create(map: Provider<Map<Int, B>>): MetroFactory {
         return MetroFactory(map = map)
       }
 
@@ -257,7 +257,7 @@ class ProviderMapConsumer {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(map: Provider<Map<Int, Function0<C>>>): Factory<ProviderMapConsumer> {
+      fun create(map: Provider<Map<Int, Function0<C>>>): MetroFactory {
         return MetroFactory(map = map)
       }
 
@@ -317,7 +317,7 @@ class SetConsumer {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(set: Provider<Set<A>>): Factory<SetConsumer> {
+      fun create(set: Provider<Set<A>>): MetroFactory {
         return MetroFactory(set = set)
       }
 
@@ -371,7 +371,7 @@ class XImpl : X {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<XImpl> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 

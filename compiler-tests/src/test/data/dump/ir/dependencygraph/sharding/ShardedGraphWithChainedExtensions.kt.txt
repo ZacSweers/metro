@@ -14,7 +14,7 @@ class AppService1 {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<AppService1> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -61,7 +61,7 @@ class AppService2 {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<AppService2> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -108,7 +108,7 @@ class AppService3 {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<AppService3> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -170,7 +170,7 @@ class ChildService1 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(app1: Provider<AppService1>): Factory<ChildService1> {
+      fun create(app1: Provider<AppService1>): MetroFactory {
         return MetroFactory(app1 = app1)
       }
 
@@ -232,7 +232,7 @@ class ChildService2 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(child1: Provider<ChildService1>): Factory<ChildService2> {
+      fun create(child1: Provider<ChildService1>): MetroFactory {
         return MetroFactory(child1 = child1)
       }
 
@@ -294,7 +294,7 @@ class ChildService3 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(child2: Provider<ChildService2>): Factory<ChildService3> {
+      fun create(child2: Provider<ChildService2>): MetroFactory {
         return MetroFactory(child2 = child2)
       }
 
@@ -370,7 +370,7 @@ class GrandchildService1 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(app2: Provider<AppService2>, child3: Provider<ChildService3>): Factory<GrandchildService1> {
+      fun create(app2: Provider<AppService2>, child3: Provider<ChildService3>): MetroFactory {
         return MetroFactory(app2 = app2, child3 = child3)
       }
 
@@ -432,7 +432,7 @@ class GrandchildService2 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(gc1: Provider<GrandchildService1>): Factory<GrandchildService2> {
+      fun create(gc1: Provider<GrandchildService1>): MetroFactory {
         return MetroFactory(gc1 = gc1)
       }
 

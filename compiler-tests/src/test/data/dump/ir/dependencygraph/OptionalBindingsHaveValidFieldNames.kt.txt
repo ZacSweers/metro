@@ -52,7 +52,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): StringMetroFactory {
         return StringMetroFactory(instance = instance)
       }
 

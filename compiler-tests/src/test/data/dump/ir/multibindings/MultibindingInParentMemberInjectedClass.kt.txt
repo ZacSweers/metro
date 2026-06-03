@@ -71,7 +71,7 @@ class AFragmentInjector : Injector {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(memberInjector: Provider<MembersInjector<AFragment>>): Factory<AFragmentInjector> {
+      fun create(memberInjector: Provider<MembersInjector<AFragment>>): MetroFactory {
         return MetroFactory(memberInjector = memberInjector)
       }
 
@@ -160,7 +160,7 @@ class AViewModel : ViewModel {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<AViewModel> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -305,7 +305,7 @@ class BFragmentInjector : Injector {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(memberInjector: Provider<MembersInjector<BFragment>>): Factory<BFragmentInjector> {
+      fun create(memberInjector: Provider<MembersInjector<BFragment>>): MetroFactory {
         return MetroFactory(memberInjector = memberInjector)
       }
 
@@ -394,7 +394,7 @@ class BViewModel : ViewModel {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<BViewModel> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -538,7 +538,7 @@ class FragmentInjector {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(injectors: Provider<Map<KClass<*>, Injector>>): Factory<FragmentInjector> {
+      fun create(injectors: Provider<Map<KClass<*>, Injector>>): MetroFactory {
         return MetroFactory(injectors = injectors)
       }
 
@@ -616,7 +616,7 @@ class ViewModelFactory {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(viewModels: Provider<Map<KClass<*>, Function0<ViewModel>>>): Factory<ViewModelFactory> {
+      fun create(viewModels: Provider<Map<KClass<*>, Function0<ViewModel>>>): MetroFactory {
         return MetroFactory(viewModels = viewModels)
       }
 

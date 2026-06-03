@@ -61,7 +61,7 @@ abstract class ImplContributions {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Base> {
+        fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): ProvideImplAsBaseMetroFactory {
           return ProvideImplAsBaseMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 

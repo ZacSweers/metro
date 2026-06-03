@@ -63,7 +63,7 @@ abstract class ImplContributions {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Bar> {
+        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): ProvideImplAsBarMetroFactory {
           return ProvideImplAsBarMetroFactory(instance = instance)
         }
 
@@ -108,7 +108,7 @@ abstract class ImplContributions {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Foo> {
+        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): ProvideImplAsFooMetroFactory {
           return ProvideImplAsFooMetroFactory(instance = instance)
         }
 
@@ -156,7 +156,7 @@ abstract class ImplContributions {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Any?> {
+        fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): ProvideScopedInstanceImplMetroFactory {
           return ProvideScopedInstanceImplMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 

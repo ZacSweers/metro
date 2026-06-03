@@ -68,7 +68,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): ProvideAMetroFactory {
         return ProvideAMetroFactory(instance = instance)
       }
 
