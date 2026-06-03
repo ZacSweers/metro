@@ -94,6 +94,7 @@
     "compilerVersionAliases": {},
     "parallelThreads": 0,
     "bufferedIcTracking": true,
+    "enableProviderInlining": true,
     "enableFunctionProviders": true,
     "desugaredProviderSeverity": "WARN",
     "enableKClassToClassInterop": false,
