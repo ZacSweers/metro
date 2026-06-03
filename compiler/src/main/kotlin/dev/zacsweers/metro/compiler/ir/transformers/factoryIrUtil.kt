@@ -8,6 +8,8 @@ import dev.zacsweers.metro.compiler.applyIf
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
+import dev.zacsweers.metro.compiler.ir.addAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.annotationClass
@@ -25,6 +27,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.setExtensionReceiver
@@ -40,7 +43,6 @@ import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGetObject
-import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
@@ -49,14 +51,12 @@ import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
@@ -336,11 +336,7 @@ internal fun generateMetadataVisibleMirrorFunction(
             classMetroAnnotations.qualifier?.ir?.let(::add)
           }
           if (scopeAndQualifierAnnotations.isNotEmpty()) {
-            val container =
-              object : IrAnnotationContainer {
-                override val annotations: List<IrConstructorCall> = scopeAndQualifierAnnotations
-              }
-            copyAnnotationsFrom(container)
+            addAnnotationsCompat(scopeAndQualifierAnnotations)
           }
           copyTypeParametersFrom(sourceClass)
         } else {
@@ -349,7 +345,7 @@ internal fun generateMetadataVisibleMirrorFunction(
 
           // If it's a regular (provides) function or backing field, just always copy its
           // annotations
-          this.annotations =
+          replaceAnnotationsCompat(
             annotations
               .mirrorIrConstructorCalls(symbol)
               .filterNot {
@@ -357,6 +353,7 @@ internal fun generateMetadataVisibleMirrorFunction(
                 it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
               }
               .map { it.deepCopyWithSymbols() }
+          )
         }
         if (target != null) {
           copyParametersFrom(target)
@@ -379,8 +376,9 @@ internal fun generateMetadataVisibleMirrorFunction(
 
         // On JVM, mark as @ComptimeOnly so R8 can strip the mirror function from runtime jars
         if (context.pluginContext.platform.isJvm()) {
-          this.annotations +=
+          addAnnotationCompat(
             buildAnnotation(symbol, context.metroSymbols.comptimeOnlyAnnotationConstructor)
+          )
         }
       }
   addHiddenFromObjCAnnotation(function)
@@ -479,9 +477,9 @@ internal fun IrFunction.addParameters(
         param.asValueParameter
           .annotationsIn(context.metroSymbols.classIds.optionalBindingAnnotations)
           .firstOrNull()
-          ?.let { annotations += it.deepCopyWithSymbols() }
+          ?.let { addAnnotationCompat(it.deepCopyWithSymbols()) }
         if (copyQualifiers) {
-          param.typeKey.qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
+          param.typeKey.qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
         }
       }
       .also { onParam(param.typeKey, it) }

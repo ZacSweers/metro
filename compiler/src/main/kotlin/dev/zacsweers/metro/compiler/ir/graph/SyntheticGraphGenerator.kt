@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.additionalScopes
+import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
@@ -31,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.renderDiagnostic
 import dev.zacsweers.metro.compiler.ir.renderLocationDiagnostic
+import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeClassOrNull
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
@@ -67,7 +69,6 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
@@ -249,7 +250,7 @@ internal class SyntheticGraphGenerator(
       createThisReceiverParameter()
 
       // Add a @DependencyGraph(...) annotation
-      annotations += graphAnno
+      addAnnotationCompat(graphAnno)
 
       superTypes += supertype
 
@@ -289,7 +290,9 @@ internal class SyntheticGraphGenerator(
           // Copy over any creator params
           creatorFunction?.let {
             for (param in it.regularParameters) {
-              addValueParameter(param.name, param.type).apply { this.copyAnnotationsFrom(param) }
+              addValueParameter(param.name, param.type).apply {
+                replaceAnnotationsCompat(param.annotationsCompat())
+              }
             }
           }
 

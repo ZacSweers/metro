@@ -227,7 +227,7 @@ internal class IrGraphGenerator(
         }
         .apply {
           graphPropertyData = GraphPropertyData(contextKey, type)
-          contextKey.typeKey.qualifier?.ir?.let { annotations += it.deepCopyWithSymbols() }
+          contextKey.typeKey.qualifier?.ir?.let { addAnnotationCompat(it.deepCopyWithSymbols()) }
         }
 
     return property.ensureInitialized(propertyKind, type)

@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.metroAnnotationsCache
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.asIrAnnotation
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
@@ -277,7 +278,7 @@ private fun IrAnnotationContainer.metroAnnotations(
   var qualifier: IrAnnotation? = null
   val mapKeys = mutableSetOf<IrAnnotation>()
 
-  for (annotation in annotations) {
+  for (annotation in annotationsCompat()) {
     val annotationClass = annotation.type.classOrNull?.owner ?: continue
     val classId = annotationClass.classId ?: continue
 
