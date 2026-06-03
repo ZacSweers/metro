@@ -40,6 +40,39 @@ message ProviderFactoryProto {
   string property_name = 5;
   // The newInstance function name
   string new_instance_name = 6;
+  // If present, callers should materialize this value instead of invoking the factory.
+  InlinedProviderProto inlined = 7;
+}
+
+message InlinedProviderProto {
+  // Current provider inlining materializes a value directly at the call site. If a future
+  // inlineable shape needs different semantics (for example, dependency passthrough), add a new
+  // field here rather than overloading InlinedValueProto.
+  oneof kind {
+    InlinedValueProto value = 1;
+  }
+}
+
+message InlinedValueProto {
+  oneof kind {
+    // Byte and Short constants are widened and materialized using the target type.
+    int32 int_value = 1;
+    int64 long_value = 2;
+    float float_value = 3;
+    double double_value = 4;
+    bool bool_value = 5;
+    string string_value = 6;
+    int32 char_value = 7;
+    bool is_null = 8;
+    string object_class_id = 9;
+    EnumEntryProto enum_value = 10;
+    string class_literal_class_id = 11;
+  }
+}
+
+message EnumEntryProto {
+  string enum_class_id = 1;
+  string entry_name = 2;
 }
 
 message AssistedFactoryImplProto {

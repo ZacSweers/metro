@@ -330,14 +330,11 @@ interface TestGraph {
     private val instance: ProvidedExample
       field = example
 
-    private val provider: Provider<ProvidedExample>
-      field = InstanceFactory/* companion */.invoke<ProvidedExample>(value = <this>.#instance)
-
-    private val provider2: Provider<Service>
-      field = Service.MetroFactory/* companion */.create(repository = Repository.MetroFactory/* companion */.create(config = Config.MetroFactory/* companion */.create(example = <this>.#provider)))
+    private val provider: Provider<Service>
+      field = Service.MetroFactory/* companion */.create(repository = Repository.MetroFactory/* companion */.create(config = Config.MetroFactory/* companion */.create(example = InstanceFactory/* companion */.invoke<ProvidedExample>(value = <this>.#instance))))
 
     private val factory: SharedWorker.MetroFactory
-      field = SharedWorker.MetroFactory/* companion */.create(service = <this>.#provider2)
+      field = SharedWorker.MetroFactory/* companion */.create(service = <this>.#provider)
 
     private constructor(@Provides example: ProvidedExample) /* primary */ {
       super/*Any*/()
@@ -357,7 +354,7 @@ interface TestGraph {
 
     override val service: Service
       override get(): Service {
-        return <this>.#provider2.invoke()
+        return <this>.#provider.invoke()
       }
 
   }

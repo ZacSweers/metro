@@ -1,0 +1,94 @@
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val intInstance: Int
+      field = int
+
+    private val longInstance: Long
+      field = long
+
+    private val longInstanceProvider: LongFactory
+      field = LongFactory(value = <this>.#longInstance)
+
+    private constructor(@Provides int: Int, @Provides long: Long) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return <this>.#intInstance
+      }
+
+    override val intProvider: Function0<Int>
+      override get(): Function0<Int> {
+        return IntFactory(value = <this>.#intInstance)
+      }
+
+    override val longProvider: Function0<Long>
+      override get(): Function0<Long> {
+        return <this>.#longInstanceProvider
+      }
+
+    override val longProvider2: Function0<Long>
+      override get(): Function0<Long> {
+        return <this>.#longInstanceProvider
+      }
+
+  }
+
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    override fun create(@Provides int: Int, @Provides long: Long): AppGraph {
+      return Impl(int = int, long = long)
+    }
+
+  }
+
+  @DependencyGraph.Factory
+  interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroImplMarker
+    object Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Provides int: Int, @Provides long: Long): AppGraph {
+        return Impl(int = int, long = long)
+      }
+
+    }
+
+    abstract fun create(@Provides int: Int, @Provides long: Long): AppGraph
+
+  }
+
+  abstract val int: Int
+    abstract get
+
+  abstract val intProvider: Function0<Int>
+    abstract get
+
+  abstract val longProvider: Function0<Long>
+    abstract get
+
+  abstract val longProvider2: Function0<Long>
+    abstract get
+
+}
+

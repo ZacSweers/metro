@@ -162,6 +162,14 @@ internal class Symbols(
     val CallableMetadata =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.CALLABLE_METADATA.asName())
     val ComptimeOnly = ClassId(FqNames.metroRuntimeInternalPackage, "ComptimeOnly".asName())
+    val ByteFactory = ClassId(FqNames.metroRuntimeInternalPackage, "ByteFactory".asName())
+    val ShortFactory = ClassId(FqNames.metroRuntimeInternalPackage, "ShortFactory".asName())
+    val IntFactory = ClassId(FqNames.metroRuntimeInternalPackage, "IntFactory".asName())
+    val LongFactory = ClassId(FqNames.metroRuntimeInternalPackage, "LongFactory".asName())
+    val BooleanFactory = ClassId(FqNames.metroRuntimeInternalPackage, "BooleanFactory".asName())
+    val CharFactory = ClassId(FqNames.metroRuntimeInternalPackage, "CharFactory".asName())
+    val FloatFactory = ClassId(FqNames.metroRuntimeInternalPackage, "FloatFactory".asName())
+    val DoubleFactory = ClassId(FqNames.metroRuntimeInternalPackage, "DoubleFactory".asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
     val Throws = ClassId(StandardClassIds.BASE_KOTLIN_PACKAGE, "Throws".asName())
     val IllegalStateException =

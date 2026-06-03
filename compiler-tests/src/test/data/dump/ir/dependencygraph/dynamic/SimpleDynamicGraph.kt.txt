@@ -8,9 +8,6 @@ class Example {
     private val container0Instance: TestIntProvider
       field = container0
 
-    private val container0InstanceProvider: Provider<TestIntProvider>
-      field = InstanceFactory/* companion */.invoke<TestIntProvider>(value = <this>.#container0Instance)
-
     constructor(container0: TestIntProvider) /* primary */ {
       super/*Any*/()
       /* <init>() */

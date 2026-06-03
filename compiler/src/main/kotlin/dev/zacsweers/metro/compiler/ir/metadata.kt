@@ -145,6 +145,7 @@ private fun createGraphProto(
             property_name =
               if (factory.isPropertyAccessor) factory.callableId.callableName.asString() else "",
             new_instance_name = factory.newInstanceName.asString(),
+            inlined = factory.inlinedValue?.toProto(),
           )
         }
         .sortedBy { it.class_id },

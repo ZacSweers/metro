@@ -855,6 +855,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_PROVIDER_INLINING(
+    RawMetroOption.boolean(
+      name = "enable-provider-inlining",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable inlining constant provider bodies directly into generated graph accessors. Enabled by default; can be disabled as a kill-switch.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   ENABLE_FUNCTION_PROVIDERS(
     RawMetroOption.boolean(
       name = "enable-function-providers",
@@ -1119,6 +1130,8 @@ public data class MetroOptions(
   public val parallelThreads: Int = MetroOption.PARALLEL_THREADS.raw.defaultValue.expectAs(),
   public val bufferedIcTracking: Boolean =
     MetroOption.BUFFERED_IC_TRACKING.raw.defaultValue.expectAs(),
+  public val enableProviderInlining: Boolean =
+    MetroOption.ENABLE_PROVIDER_INLINING.raw.defaultValue.expectAs(),
   public val enableFunctionProviders: Boolean =
     MetroOption.ENABLE_FUNCTION_PROVIDERS.raw.defaultValue.expectAs(),
   public val desugaredProviderSeverity: DiagnosticSeverity =
@@ -1258,6 +1271,7 @@ public data class MetroOptions(
     public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
     public var parallelThreads: Int = base.parallelThreads
     public var bufferedIcTracking: Boolean = base.bufferedIcTracking
+    public var enableProviderInlining: Boolean = base.enableProviderInlining
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
     public var desugaredProviderSeverity: DiagnosticSeverity = base.desugaredProviderSeverity
     public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
@@ -1455,6 +1469,7 @@ public data class MetroOptions(
         compilerVersionAliases = compilerVersionAliases,
         parallelThreads = parallelThreads,
         bufferedIcTracking = bufferedIcTracking,
+        enableProviderInlining = enableProviderInlining,
         enableFunctionProviders = enableFunctionProviders,
         desugaredProviderSeverity =
           if (enableFunctionProviders) {
@@ -1774,6 +1789,7 @@ public data class MetroOptions(
           }
           PARALLEL_THREADS -> parallelThreads = configuration.getAsInt(entry)
           BUFFERED_IC_TRACKING -> bufferedIcTracking = configuration.getAsBoolean(entry)
+          ENABLE_PROVIDER_INLINING -> enableProviderInlining = configuration.getAsBoolean(entry)
           ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = configuration.getAsBoolean(entry)
           DESUGARED_PROVIDER_SEVERITY ->
             desugaredProviderSeverity =

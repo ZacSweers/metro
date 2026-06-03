@@ -198,7 +198,7 @@ dependencies {
   testImplementation(libs.kotlin.aptEmbeddable)
   if (testCompilerVersion.startsWith("2.4")) {
     testImplementation("dev.zacsweers.kctfork:core:0.13.0")
-    testImplementation("dev.zacsweers.kctfork:ksp:0.13.0-alpha01")
+    testImplementation("dev.zacsweers.kctfork:ksp:0.13.0")
   } else {
     testImplementation(libs.kct)
     testImplementation(libs.kct.ksp)

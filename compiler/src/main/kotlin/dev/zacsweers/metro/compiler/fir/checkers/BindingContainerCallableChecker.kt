@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -54,17 +55,28 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.declarations.utils.isConst
 import org.jetbrains.kotlin.fir.declarations.utils.isExtension
 import org.jetbrains.kotlin.fir.declarations.utils.isInline
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirBlock
+import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
+import org.jetbrains.kotlin.fir.expressions.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.propertyIfAccessor
+import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -72,6 +84,7 @@ import org.jetbrains.kotlin.fir.types.isList
 import org.jetbrains.kotlin.fir.types.isSet
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
+import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.fir.types.type
 
 internal object BindingContainerCallableChecker :
@@ -400,6 +413,22 @@ internal object BindingContainerCallableChecker :
         }
 
       if (
+        annotations.isProvides &&
+          annotations.isScoped &&
+          session.metroFirBuiltIns.options.enableProviderInlining &&
+          containingClassSymbol?.classKind?.isObject == true &&
+          declaration.receiverParameter == null &&
+          (declaration as? FirFunction)?.valueParameters?.isEmpty() != false &&
+          bodyExpression?.isInlineableConstantProviderBody(session) == true
+      ) {
+        reporter.reportOn(
+          annotations.scope?.fir?.source ?: source,
+          MetroDiagnostics.INLINABLE_PROVIDES_WARNING,
+          "This provider's body is a simple inlineable constant. Consider removing the scope annotation to allow Metro to generate more efficient code.",
+        )
+      }
+
+      if (
         !isPrivate &&
           bodyExpression != null &&
           !declaration.isExtension &&
@@ -608,6 +637,31 @@ internal object BindingContainerCallableChecker :
       }
     }
     return false
+  }
+
+  private fun FirExpression.isInlineableConstantProviderBody(session: FirSession): Boolean {
+    return when (this) {
+      is FirLiteralExpression -> true
+      is FirClassReferenceExpression -> true
+      is FirPropertyAccessExpression ->
+        calleeReference.toResolvedCallableSymbol().isConstPropertyAccess() ||
+          resolvedType.toClassSymbolCompat(session)?.classKind?.isObject == true
+      is FirFunctionCall -> toResolvedCallableSymbol().isConstPropertyAccess()
+      is FirBlock -> {
+        val singleStatement = statements.singleOrNull() as? FirReturnExpression ?: return false
+        singleStatement.result.isInlineableConstantProviderBody(session)
+      }
+      else -> false
+    }
+  }
+
+  @OptIn(SymbolInternals::class)
+  private fun FirCallableSymbol<*>?.isConstPropertyAccess(): Boolean {
+    return when (this) {
+      is FirPropertySymbol -> fir.isConst
+      is FirPropertyAccessorSymbol -> propertySymbol.fir.isConst
+      else -> false
+    }
   }
 }
 

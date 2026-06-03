@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
 
 private const val INITIAL_VALUE = 512
 
@@ -55,6 +56,11 @@ internal class BindingPropertyCollector(
      * does not use SwitchingProvider.
      */
     val switchingId: Int? = null,
+  )
+
+  data class Result(
+    val initOrder: List<CollectedProperty>,
+    val cachedProviderContextKeys: Set<IrContextualTypeKey>,
   )
 
   /**
@@ -151,7 +157,7 @@ internal class BindingPropertyCollector(
     }
   }
 
-  fun collect(): List<CollectedProperty> {
+  fun collect(): Result {
     val keysWithBackingProperties = mutableMapOf<IrContextualTypeKey, CollectedProperty>()
 
     // Roots (accessors/injectors) + keeps don't get properties themselves, but they contribute to
@@ -246,7 +252,16 @@ internal class BindingPropertyCollector(
         addAll(assistedTargetProperties)
       }
 
-    return orderedProperties
+    val cachedProviderContextKeys =
+      keysWithBackingProperties.values
+        .asSequence()
+        .filter { it.propertyKind == PropertyKind.FIELD }
+        .mapTo(mutableSetOf()) { it.contextualTypeKey }
+
+    return Result(
+      initOrder = orderedProperties,
+      cachedProviderContextKeys = cachedProviderContextKeys,
+    )
   }
 
   /**
@@ -299,11 +314,21 @@ internal class BindingPropertyCollector(
 
     // refcounts are finalized - check if we need a property to cache the factory
     if (contextKey !in keysWithBackingProperties) {
-      // If we have multiple factory refs or any type has both types of refs, use a backing field
-      // property (unless it's a graph extension)
+      // Provider access normally means "build or reuse the binding's factory". For computed
+      // bindings, a scalar access and a provider access would otherwise generate the binding twice:
+      // once as a direct instance expression and once as a provider/factory expression. Cache the
+      // provider in that mixed case, and also cache it whenever multiple provider sites need it.
+      //
+      // Bound instances are different: their scalar value is already stored in an instance field by
+      // IrGraphGenerator. A single provider access can cheaply wrap that field at the call site, so
+      // only cache the provider wrapper when multiple provider sites need to share it.
       val useField =
         !isGraphExtension &&
-          (node.factoryRefCount > 1 || ((node.factoryRefCount == 1) && (node.scalarRefCount >= 1)))
+          if (binding is IrBinding.BoundInstance) {
+            node.factoryRefCount > 1
+          } else {
+            node.factoryRefCount > 1 || ((node.factoryRefCount == 1) && (node.scalarRefCount >= 1))
+          }
 
       // For graph extensions, convert factory refs to scalar refs for the purpose of deciding
       // whether to create a getter property
@@ -311,11 +336,25 @@ internal class BindingPropertyCollector(
         if (isGraphExtension) node.scalarRefCount + node.factoryRefCount else node.scalarRefCount
 
       if (useField) {
+        // For bound instances, the scalar instance field is created separately by IrGraphGenerator.
+        // The collected FIELD here represents the cached provider wrapper, so expose it under the
+        // provider context key that the generator should cache.
+        val propertyContextKey =
+          if (binding is IrBinding.BoundInstance) {
+            context(metroContext) { contextKey.wrapInProvider() }
+          } else {
+            contextKey
+          }
         // Assign switching ID if eligible for switching providers
         val switchingId =
           if (shouldUseSwitchingProvider(binding, PropertyKind.FIELD)) nextSwitchingId++ else null
-        keysWithBackingProperties[contextKey] =
-          CollectedProperty(binding, PropertyKind.FIELD, contextKey, switchingId = switchingId)
+        keysWithBackingProperties[propertyContextKey] =
+          CollectedProperty(
+            binding,
+            PropertyKind.FIELD,
+            propertyContextKey,
+            switchingId = switchingId,
+          )
       } else if (effectiveScalarRefCount > 1 && !node.binding.isSimpleBinding()) {
         keysWithBackingProperties[contextKey] =
           CollectedProperty(binding, PropertyKind.GETTER, contextKey)

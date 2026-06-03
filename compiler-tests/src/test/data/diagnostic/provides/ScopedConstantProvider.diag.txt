@@ -1,0 +1,1 @@
+/ScopedConstantProvider.kt:8:3: warning: This provider's body is a simple inlineable constant. Consider removing the scope annotation to allow Metro to generate more efficient code.

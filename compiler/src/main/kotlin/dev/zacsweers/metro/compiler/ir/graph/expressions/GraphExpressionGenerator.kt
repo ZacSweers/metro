@@ -277,6 +277,14 @@ private constructor(
                 "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
               )
 
+          if (options.enableProviderInlining) {
+            providerFactory.inlinedValue?.let { value ->
+              return value
+                .materialize(binding.typeKey.type)
+                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+            }
+          }
+
           // Optimization: Skip factory instantiation when we don't need a provider instance.
           // This applies when accessType is INSTANCE and the providerFactory supports direct
           // invocation
