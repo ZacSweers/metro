@@ -6,9 +6,9 @@ plugins {
 }
 
 dependencies {
-  // The compiler version reported by these IDEs maps to 2.4.0-dev-2633, but the published
-  // compiler artifact uses the IJ build version.
-  compileOnly("org.jetbrains.kotlin:kotlin-compiler:2.4.0-ij261-32")
+  val kotlinVersion =
+    providers.fileContents(layout.projectDirectory.file("version.txt")).asText.map { it.trim() }
+  compileOnly(kotlinVersion.map { "org.jetbrains.kotlin:kotlin-compiler:$it" })
   compileOnly(libs.kotlin.stdlib)
   api(project(":compiler-compat"))
   implementation(project(":compiler-compat:k2320"))
