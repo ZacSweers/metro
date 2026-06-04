@@ -87,11 +87,10 @@ hiding them behind `Provider<T>` when a concrete factory type is available.
 
 ## Generated Factories
 
-Generated provider factories also preserve their concrete type through their `create()` functions.
-`BindingContainerTransformer` and `InjectedClassTransformer` return the generated factory class
-type from `create()` instead of widening to `Factory<T>`. This does not change factory creation for
-inlined constants: generated factory `create()` functions still return generated factory instances,
-and inlining remains a graph expression optimization.
+Generated factory `create()` functions return the concrete generated factory type, not `Factory<T>`.
+Any metadata-backed or phantom factory declarations used for cross-module lookups must mirror that
+same return type so JVM call descriptors match the real generated factory. Inlined constants do not
+change factory creation; inlining remains a graph expression optimization.
 
 Value-class provider factories are intentionally not generated today. Fir2Ir computes value-class
 representation from FIR declarations, while Metro currently creates regular factory constructors
@@ -100,8 +99,7 @@ constructor/property in FIR leaves Fir2Ir with no representation to lower.
 
 Future value-class factory support can either generate the backing FIR member declarations alongside
 the factory class declaration, or wait for Kotlin compiler plugin support for generating new classes
-directly in IR. Until then, Metro still preserves concrete generated factory return types where that
-does not change factory construction behavior.
+directly in IR.
 
 ## Bound Instances
 
