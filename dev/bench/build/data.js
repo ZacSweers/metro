@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780606401446,
+  "lastUpdate": 1780607136049,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -16240,6 +16240,62 @@ window.BENCHMARK_DATA = {
             "value": 30529.3,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.38%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5759269e~1",
+          "message": "[before] Fix copyright header for Lock.native.kt",
+          "timestamp": "2026-06-04T16:26:19-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5759269e5bb1b375438e97ac53a181d77cde1189"
+        },
+        "date": 1780607136049,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 33092.448,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5759269e5bb1b375438e97ac53a181d77cde1189",
+          "message": "[after] Fix copyright header for Lock.native.kt",
+          "timestamp": "2026-06-04T16:26:19-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5759269e5bb1b375438e97ac53a181d77cde1189"
+        },
+        "date": 1780607136050,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 32193.841999999997,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.72%"
           }
         ]
       }

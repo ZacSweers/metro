@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780606401321,
+  "lastUpdate": 1780607135884,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -16240,6 +16240,62 @@ window.BENCHMARK_DATA = {
             "value": 0.23439283133220049,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.14%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5759269e~1",
+          "message": "[before] Fix copyright header for Lock.native.kt",
+          "timestamp": "2026-06-04T16:26:19-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5759269e5bb1b375438e97ac53a181d77cde1189"
+        },
+        "date": 1780607135884,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.24003042195034935,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5759269e5bb1b375438e97ac53a181d77cde1189",
+          "message": "[after] Fix copyright header for Lock.native.kt",
+          "timestamp": "2026-06-04T16:26:19-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5759269e5bb1b375438e97ac53a181d77cde1189"
+        },
+        "date": 1780607135885,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.24049126248257605,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.19%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
