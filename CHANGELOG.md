@@ -41,6 +41,7 @@ Changelog
 - No longer test Kotlin `2.4.0` pre-release builds. Kotlin `2.4.0-dev-2124` _is_ still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.
 - Test Android Studio Quail 1 stable (`2026.1.1.8`).
 - Test IntelliJ `2026.1.2`.
+- Test IntelliJ `2026.1.3`.
 
 ### Contributors
 
