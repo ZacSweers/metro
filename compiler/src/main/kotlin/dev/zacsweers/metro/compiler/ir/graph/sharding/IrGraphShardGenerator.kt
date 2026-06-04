@@ -262,7 +262,7 @@ internal class IrGraphShardGenerator(
           .apply {
             graphPropertyData = GraphPropertyData(shardBinding.contextKey, shardBinding.irType)
             shardBinding.contextKey.typeKey.qualifier?.ir?.let {
-              annotations += it.deepCopyWithSymbols()
+              addAnnotationCompat(it.deepCopyWithSymbols())
             }
             ensureInitialized(shardBinding.propertyKind, shardBinding.irType)
           }
@@ -351,7 +351,7 @@ internal class IrGraphShardGenerator(
             .apply {
               graphPropertyData = GraphPropertyData(shardBinding.contextKey, shardBinding.irType)
               shardBinding.contextKey.typeKey.qualifier?.ir?.let {
-                annotations += it.deepCopyWithSymbols()
+                addAnnotationCompat(it.deepCopyWithSymbols())
               }
               ensureInitialized(shardBinding.propertyKind, shardBinding.irType)
             }

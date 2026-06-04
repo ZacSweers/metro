@@ -44,7 +44,6 @@ import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.declaredFunctions
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
-import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getTargetType
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
@@ -807,7 +806,9 @@ internal fun MetroFirAnnotation.hasImplicitClassKey(session: FirSession): Boolea
     annotationClassSymbol.resolvedCompilerAnnotationsWithClassIds
       .annotationsIn(session, session.classIds.mapKeyAnnotations)
       .firstOrNull() ?: return false
-  return mapKeyAnno.getBooleanArgument(Symbols.Names.implicitClassKey, session) == true
+  return with(session.compatContext) {
+    mapKeyAnno.getBooleanArgumentCompat(Symbols.Names.implicitClassKey, session)
+  } == true
 }
 
 /**

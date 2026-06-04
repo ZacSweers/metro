@@ -27,6 +27,7 @@ import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
+import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -556,7 +557,7 @@ internal class GraphNodes(
             // @GraphExtension.Factory marker annotations in one walk (was previously two walks —
             // scopeAnnotations() + isAnnotatedWithAny()).
             var isExtensionFactory = false
-            for (anno in clazz.annotations) {
+            for (anno in clazz.annotationsCompat()) {
               val annoClass = anno.type.classOrNull?.owner ?: continue
               if (!isExtensionFactory) {
                 val annoClassId = annoClass.classId
@@ -599,7 +600,7 @@ internal class GraphNodes(
       if (graphDeclaration.origin.isSyntheticGeneratedGraph) {
         // If it's a contributed/dynamic graph, just add it directly as these are not visible to
         // metadata anyway
-        graphDeclaration.annotations += inheritedScopes
+        graphDeclaration.addAnnotationsCompat(inheritedScopes)
       } else {
         metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
           graphDeclaration,

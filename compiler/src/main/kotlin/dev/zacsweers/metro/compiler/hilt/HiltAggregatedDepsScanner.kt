@@ -4,8 +4,8 @@ package dev.zacsweers.metro.compiler.hilt
 
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
+import dev.zacsweers.metro.compiler.fir.compatContext
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
@@ -53,7 +53,11 @@ internal class HiltAggregatedDepsScanner(private val session: FirSession) {
         markerSymbol.annotationsIn(session, setOf(HiltSymbols.AggregatedDeps)).firstOrNull()
           ?: continue
 
-      val test = annotation.getStringArgument(HiltNames.test, session).orEmpty()
+      val test =
+        with(session.compatContext) {
+            annotation.getStringArgumentCompat(HiltNames.test, session)
+          }
+          .orEmpty()
       if (test.isNotEmpty()) continue
 
       result +=

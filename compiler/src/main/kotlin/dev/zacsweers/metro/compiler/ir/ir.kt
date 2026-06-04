@@ -46,7 +46,6 @@ import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.config.LanguageFeature
-import org.jetbrains.kotlin.config.LanguageVersion
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
@@ -65,7 +64,6 @@ import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
-import org.jetbrains.kotlin.ir.builders.irAnnotation
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -271,9 +269,15 @@ internal fun IrType.rawTypeOrNull(): IrClass? {
   }
 }
 
+private val irAnnotationCompatContext: CompatContext by lazy { CompatContext.create() }
+
+internal fun IrAnnotationContainer.annotationsCompat(): List<IrConstructorCall> {
+  return with(irAnnotationCompatContext) { this@annotationsCompat.annotationsCompat() }
+}
+
 // Compat copies because of IrAnnotation in 2.4.0
 internal fun IrAnnotationContainer.getAnnotation(name: FqName): IrConstructorCall? =
-  annotations.find {
+  annotationsCompat().find {
     it.isAnnotationWithEqualFqName(name)
   }
 
@@ -293,7 +297,7 @@ internal fun IrConstructorCall.getAnnotationStringValue(name: String): String {
 }
 
 internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>): Boolean {
-  return names.any { hasAnnotation(it) }
+  return annotationsIn(names.toSet()).any()
 }
 
 /**
@@ -318,7 +322,7 @@ internal fun IrClass.usesContributionProviderPath(
 }
 
 internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<IrConstructorCall> {
-  return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId in names }
+  return annotationsCompat().asSequence().filter { it.symbol.owner.parentAsClass.classId in names }
 }
 
 /**
@@ -344,7 +348,9 @@ internal fun <Container, T> Container.repeatableAnnotationsIn(
 }
 
 internal fun IrAnnotationContainer.findAnnotations(classId: ClassId): Sequence<IrConstructorCall> {
-  return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId == classId }
+  return annotationsCompat().asSequence().filter {
+    it.symbol.owner.parentAsClass.classId == classId
+  }
 }
 
 internal fun IrConstructorCall.isAnnotatedWithAny(names: Set<ClassId>): Boolean {
@@ -1316,10 +1322,10 @@ private fun IrSimpleType.patchMutableCollections(): IrSimpleType {
 internal val IrProperty.allAnnotations: List<IrConstructorCall>
   get() {
     return buildList {
-        addAll(annotations)
-        getter?.let { addAll(it.annotations) }
-        setter?.let { addAll(it.annotations) }
-        backingField?.let { addAll(it.annotations) }
+        addAll(annotationsCompat())
+        getter?.let { addAll(it.annotationsCompat()) }
+        setter?.let { addAll(it.annotationsCompat()) }
+        backingField?.let { addAll(it.annotationsCompat()) }
       }
       .distinct()
   }
@@ -1431,11 +1437,26 @@ internal fun buildAnnotation(
   body: IrBuilderWithScope.(IrConstructorCall) -> Unit = {},
 ): IrConstructorCall {
   return context.createIrBuilder(symbol).run {
-    if (context.languageVersionSettings.languageVersion >= LanguageVersion.KOTLIN_2_4) {
-      irAnnotation(callee, typeArguments = emptyList()).also { body(it) }
-    } else {
-      irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
+    with(irAnnotationCompatContext) {
+      irAnnotationCompat(callee = callee, typeArguments = emptyList()).also { body(it) }
     }
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrAnnotationContainer.addAnnotationCompat(annotation: IrConstructorCall) {
+  with(context as CompatContext) { this@addAnnotationCompat.addAnnotationCompat(annotation) }
+}
+
+context(context: IrMetroContext)
+internal fun IrAnnotationContainer.addAnnotationsCompat(annotations: List<IrConstructorCall>) {
+  with(context as CompatContext) { this@addAnnotationsCompat.addAnnotationsCompat(annotations) }
+}
+
+context(context: IrMetroContext)
+internal fun IrAnnotationContainer.replaceAnnotationsCompat(annotations: List<IrConstructorCall>) {
+  with(context as CompatContext) {
+    this@replaceAnnotationsCompat.replaceAnnotationsCompat(annotations)
   }
 }
 
@@ -1449,7 +1470,7 @@ internal fun buildAnnotation(
 context(context: IrMetroContext)
 internal fun addHiddenFromObjCAnnotation(function: IrFunction) {
   val ctor = context.metroSymbols.hiddenFromObjCAnnotationConstructor ?: return
-  function.annotations += buildAnnotation(function.symbol, ctor)
+  function.addAnnotationCompat(buildAnnotation(function.symbol, ctor))
 }
 
 /**
@@ -1460,10 +1481,10 @@ context(context: IrMetroContext)
 internal fun addStaticAnnotations(function: IrFunction) {
   if (!context.options.generateStaticAnnotations) return
   context.metroSymbols.jvmStaticAnnotationConstructor?.let { ctor ->
-    function.annotations += buildAnnotation(function.symbol, ctor)
+    function.addAnnotationCompat(buildAnnotation(function.symbol, ctor))
   }
   context.metroSymbols.jsStaticAnnotationConstructor?.let { ctor ->
-    function.annotations += buildAnnotation(function.symbol, ctor)
+    function.addAnnotationCompat(buildAnnotation(function.symbol, ctor))
   }
 }
 
@@ -1817,10 +1838,11 @@ internal fun patchQualifierAnnotation(
   correctQualifier: IrConstructorCall?,
 ) {
   // Remove any existing qualifier annotations
-  parameter.annotations -=
-    parameter.annotationsAnnotatedWith(context.metroSymbols.classIds.qualifierAnnotations)
+  val annotationsToRemove =
+    parameter.annotationsAnnotatedWith(context.metroSymbols.classIds.qualifierAnnotations).toSet()
+  parameter.replaceAnnotationsCompat(parameter.annotationsCompat() - annotationsToRemove)
   // Add the correct qualifier if present
-  correctQualifier?.let { parameter.annotations += it }
+  correctQualifier?.let { parameter.addAnnotationCompat(it) }
 }
 
 /**
