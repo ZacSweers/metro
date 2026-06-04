@@ -12,20 +12,19 @@ import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 /** A ViewModel that demonstrates assisted injection with a [data] parameter. */
 @AssistedInject
 class DetailsViewModel(@Assisted val data: String) : ViewModel() {
-  private val _count = MutableStateFlow(0)
-  val count: StateFlow<Int> = _count.asStateFlow()
+  val count: StateFlow<Int>
+    field: MutableStateFlow<Int> = MutableStateFlow(0)
 
   fun increment() {
-    _count.value++
+    count.value++
   }
 
   fun decrement() {
-    _count.value--
+    count.value--
   }
 
   @AssistedFactory
