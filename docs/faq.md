@@ -44,6 +44,9 @@ There's a few reasons! Mainly, this is harder to maintain in codebases.
 - They are harder to find (no "find usages" support from your assisted type).
 - They are harder to read (they are nameless).
 
+### **Our codebase is large and modular, so we basically always want contributions to be public and exposed to downstream compilations. How can I enforce this?**
+
+Set `nonPublicContributionSeverity` to `ERROR`. Note this diagnostic only fires for internal `@ExposeImplBinding`-annotated types if you enable `generateContributionProviders`.
 
 ### **I'm seeing a `ReservedStackAccess` stack overflow warning from the JVM at runtime?**
 

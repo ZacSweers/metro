@@ -111,6 +111,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("NonPublicContributionDiagnosticSkippedForContributionProviders.kt")
+    public void testNonPublicContributionDiagnosticSkippedForContributionProviders() {
+      run("NonPublicContributionDiagnosticSkippedForContributionProviders.kt");
+    }
+
+    @Test
     @TestMetadata("NonPublicContributionError.kt")
     public void testNonPublicContributionError() {
       run("NonPublicContributionError.kt");

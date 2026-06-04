@@ -1,0 +1,3 @@
+/NonPublicContributionDiagnosticSkippedForContributionProviders.kt:20:1: error: `@ContributesBinding`-annotated class InternalExposedImplContribution is internal but contributes to a public scope `AppScope`. Consider making the class public or using a non-public scope.
+
+/NonPublicContributionDiagnosticSkippedForContributionProviders.kt:24:1: error: `@ContributesTo`-annotated class InternalContributedGraph is internal but contributes to a public scope `AppScope`. Consider making the class public or using a non-public scope.
