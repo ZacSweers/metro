@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
+import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
@@ -372,13 +373,13 @@ internal class ContributionIrTransformer(
               this.modality = Modality.ABSTRACT
             }
             .apply {
-              annotations += buildAnnotations()
+              addAnnotationsCompat(buildAnnotations())
               setDispatchReceiver(parentAsClass.thisReceiver?.copyTo(this))
               addValueParameter(Symbols.Names.instance, annotatedType.defaultType).apply {
                 // TODO any qualifiers? What if we want to qualify the instance type but not the
                 //  bound type?
               }
-              qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
+              qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
               // TODO can we remove this and just rely on the copy in BindsMirrorTransformer?
               if (this@BindingContribution is ContributesIntoMapBinding) {
                 mapKey?.let { mk ->
@@ -386,7 +387,7 @@ internal class ContributionIrTransformer(
                   if (isImplicitClassKeySentinel(copied)) {
                     populateImplicitClassKey(copied, annotatedType.defaultType)
                   }
-                  annotations += copied
+                  addAnnotationCompat(copied)
                 }
               }
               metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
@@ -447,7 +448,7 @@ internal class ContributionIrTransformer(
     val contributesIntoSetAnnotations = metroSymbols.classIds.contributesIntoSetAnnotations
     val contributesIntoMapAnnotations = metroSymbols.classIds.contributesIntoMapAnnotations
     val contributions = mutableSetOf<Contribution>()
-    for (annotation in contributingSymbol.annotations) {
+    for (annotation in contributingSymbol.annotationsCompat()) {
       val annotationClassId = annotation.annotationClass.classId ?: continue
       when (annotationClassId) {
         in contributesToAnnotations -> {

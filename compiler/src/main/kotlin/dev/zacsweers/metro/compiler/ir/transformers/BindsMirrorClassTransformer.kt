@@ -15,10 +15,12 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
+import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
+import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.withPopulatedImplicitClassKey
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
@@ -105,7 +107,7 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
 
   // Annotate the mirror class with @ComptimeOnly
   comptimeOnlyConstructor?.let { ctor ->
-    mirrorClass.annotations += buildAnnotation(mirrorClass.symbol, ctor)
+    mirrorClass.addAnnotationCompat(buildAnnotation(mirrorClass.symbol, ctor))
   }
 
   fun processFunction(declaration: IrSimpleFunction) {
@@ -146,7 +148,9 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
             if (origin == Origins.FirstParty.DEFAULT_PROPERTY_ACCESSOR) {
               origin = Origins.Default
             }
-            comptimeOnlyConstructor?.let { ctor -> annotations += buildAnnotation(symbol, ctor) }
+            comptimeOnlyConstructor?.let { ctor ->
+              addAnnotationCompat(buildAnnotation(symbol, ctor))
+            }
           }
         }
 
@@ -216,7 +220,7 @@ private fun generateMirrorFunction(
       }
       .apply {
         copyParametersFrom(targetFunction.ir)
-        this.annotations = annotations.mirrorIrConstructorCalls(symbol)
+        replaceAnnotationsCompat(annotations.mirrorIrConstructorCalls(symbol))
       }
 
   val callableMetadata =
@@ -243,7 +247,7 @@ private fun generateMirrorFunction(
       }
     }
 
-  mirrorFunction.annotations += callableMetadata
+  mirrorFunction.addAnnotationCompat(callableMetadata)
 
   // Register as metadata visible
   context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(mirrorFunction)

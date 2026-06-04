@@ -1085,8 +1085,9 @@ internal class BindingContainerTransformer(
     val factoryClass = providerFactory.factoryClass
     // TODO the if check here is if/when we move factory gen totally to IR
     if (!factoryClass.hasAnnotation(Symbols.ClassIds.ComptimeOnly)) {
-      factoryClass.annotations +=
+      factoryClass.addAnnotationCompat(
         buildAnnotation(factoryClass.symbol, metroSymbols.comptimeOnlyAnnotationConstructor)
+      )
     }
   }
 

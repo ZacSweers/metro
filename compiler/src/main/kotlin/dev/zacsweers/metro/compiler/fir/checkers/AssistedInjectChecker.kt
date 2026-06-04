@@ -29,7 +29,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
-import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.resolve.firClassLike
@@ -270,7 +269,11 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             paramName
           } else {
             assistedAnnotation
-              ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
+              ?.let {
+                with(session.compatContext) {
+                  it.getStringArgumentCompat(StandardNames.DEFAULT_VALUE_PARAMETER, session)
+                }
+              }
               ?.takeUnless { it.isBlank() } ?: paramName
           }
 

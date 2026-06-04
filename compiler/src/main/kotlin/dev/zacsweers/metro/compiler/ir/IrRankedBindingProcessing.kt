@@ -12,7 +12,6 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.Fir2IrComponents
 import org.jetbrains.kotlin.fir.backend.toIrType
-import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -123,7 +122,9 @@ internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundT
     if (scope !in allScopes) return null
 
     val ignoreQualifier =
-      annotation.getBooleanArgument(Symbols.Names.ignoreQualifier, session) ?: false
+      with(context) {
+        annotation.getBooleanArgumentCompat(Symbols.Names.ignoreQualifier, session)
+      } ?: false
 
     val explicitBindingType =
       annotation.resolvedBindingArgument(session)?.coneTypeOrNull?.let {

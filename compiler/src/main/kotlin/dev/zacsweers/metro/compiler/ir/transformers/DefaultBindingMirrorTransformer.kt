@@ -139,7 +139,7 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
           origin = Origins.Default,
         )
         .apply {
-          qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
+          qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
           // Register as metadata visible
           metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
         }

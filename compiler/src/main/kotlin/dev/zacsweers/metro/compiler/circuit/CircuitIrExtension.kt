@@ -542,12 +542,11 @@ private class CircuitIrTransformer(
           parent = createFunction
 
           // @Composable annotation so Compose compiler transforms this lambda
-          annotations =
-            listOf(
-              pluginContext.createIrBuilder(symbol).run {
-                irAnnotationCompat(symbols.composableAnnotationCtor, typeArguments = emptyList())
-              }
-            )
+          addAnnotationCompat(
+            pluginContext.createIrBuilder(symbol).run {
+              irAnnotationCompat(symbols.composableAnnotationCtor, typeArguments = emptyList())
+            }
+          )
 
           for ((paramName, paramType) in lambdaParamTypes) {
             addValueParameter(paramName.asString(), paramType)
