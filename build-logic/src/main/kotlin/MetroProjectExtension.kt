@@ -24,7 +24,7 @@ constructor(private val project: Project, objects: ObjectFactory) {
   val progressiveMode: Property<Boolean> =
     objects
       .property(Boolean::class.java)
-      .convention(languageVersion.map { it < KotlinVersion.DEFAULT })
+      .convention(languageVersion.map { it >= KotlinVersion.DEFAULT })
 
   /*
    * Here's the main hierarchy of variants. Any `expect` functions in one level of the tree are
