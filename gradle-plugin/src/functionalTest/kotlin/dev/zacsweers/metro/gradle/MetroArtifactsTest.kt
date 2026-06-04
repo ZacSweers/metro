@@ -166,7 +166,7 @@ class MetroArtifactsTest {
                 "customOriginAnnotations": [],
                 "customOptionalBindingAnnotations": [],
                 "contributesAsInject": true,
-                "enableKlibParamsCheck": false,
+                "enableKlibParamsCheck": ${!topLevelFirGenEnabled},
                 "patchKlibParams": ${!topLevelFirGenEnabled},
                 "forceEnableFirInIde": false,
                 "pluginOrderSet": true,
