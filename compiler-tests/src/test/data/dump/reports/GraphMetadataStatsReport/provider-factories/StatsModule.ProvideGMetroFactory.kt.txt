@@ -17,7 +17,7 @@ class ProvideGMetroFactory : Factory<G> {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(f: Provider<F>): Factory<G> {
+    fun create(f: Provider<F>): ProvideGMetroFactory {
       return ProvideGMetroFactory(f = f)
     }
 
@@ -56,3 +56,4 @@ class ProvideGMetroFactory : Factory<G> {
   }
 
 }
+
