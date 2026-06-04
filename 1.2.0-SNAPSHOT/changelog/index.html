@@ -6656,6 +6656,7 @@
 <li><strong>[IR]</strong> Propagate <code>inline</code> modifiers from <code>@Provides</code> functions to factory <code>newInstance()</code> functions.</li>
 <li><strong>[IR]</strong> Preserve concrete generated provider factory return types where possible instead of widening to <code>Factory&lt;T&gt;</code>. In the future, Metro may generate these as value classes and this will allow better compiler optimization in those scenarios.</li>
 <li><strong>[IR/IC]</strong> Optimize IC tracking by buffering lookup and expect/actual records during IR and flushing them once after graph validation, avoiding per-write synchronization on the hot path. This is enabled by default but can be disabled via the <code>buffered-ic-tracking</code> compiler option if it causes any issues.</li>
+<li><strong>[IR/IC]</strong> Use newer compiler <code>DeclarationFinder</code> APIs on Kotlin <code>2.3.20</code>+. These have more granular search scopes plus automatic IC tracking.</li>
 <li><strong>[IR/runtime]</strong> Add internal primitive instance factories and use them where possible for primitive graph inputs and inlined providers.</li>
 <li><strong>[Gradle]</strong> Add a <code>metroEnv</code> task that writes human-readable Metro/Kotlin/Gradle environment reports for bug reports.</li>
 <li><strong>[Reporting]</strong> Add compiler stats to reporting.</li>
