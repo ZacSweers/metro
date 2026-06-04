@@ -27,6 +27,7 @@ Changelog
 - **[IR/runtime]** Add internal primitive instance factories and use them where possible for primitive graph inputs and inlined providers.
 - **[Gradle]** Add a `metroEnv` task that writes human-readable Metro/Kotlin/Gradle environment reports for bug reports.
 - **[Reporting]** Add compiler stats to reporting.
+- **[runtime/native]** Add bounded backoff to the native `Lock` implementation so contention yields instead of spinning continuously.
 
 ### Fixes
 

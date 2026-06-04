@@ -1,5 +1,7 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+@file:OptIn(ExperimentalAtomicApi::class)
+
 package dev.zacsweers.metro.internal
 
 import kotlin.concurrent.atomics.AtomicInt
@@ -8,45 +10,56 @@ import kotlin.concurrent.atomics.decrementAndFetch
 import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.concurrent.ThreadLocal
+import platform.posix.usleep
+
+private val monotonicThreadIdCounter = AtomicInt(1)
 
 @ThreadLocal
 private object CurrentThread {
-  val id = Any()
+  val id = monotonicThreadIdCounter.incrementAndFetch()
 }
 
-@OptIn(ExperimentalNativeApi::class, ExperimentalAtomicApi::class)
-internal actual class Lock {
-  private val locker_ = AtomicInt(0)
-  private val reenterCount_ = AtomicInt(0)
+private const val SPINS_BEFORE_SLEEP = 64
+private const val MAX_SLEEP_MICROS = 1_000u
 
-  // TODO: make it properly reschedule instead of spinning.
+internal actual class Lock {
+  private val locker = AtomicInt(0)
+  private val reenterCount = AtomicInt(0)
+
   actual fun lock() {
-    val lockData = CurrentThread.id.hashCode()
-    loop@ do {
-      val old = locker_.compareAndExchange(0, lockData)
+    val id = CurrentThread.id
+    var attempts = 0
+    var sleepMicros = 1u
+    while (true) {
+      val old = locker.compareAndExchange(0, id)
       when (old) {
-        lockData -> {
-          // Was locked by us already.
-          /* val _ = */ reenterCount_.incrementAndFetch()
-          break@loop
+        id -> {
+          // Was locked by us already
+          reenterCount.incrementAndFetch()
+          break
         }
         0 -> {
-          // We just got the lock.
-          assert(reenterCount_.load() == 0)
-          break@loop
+          // We just got the lock
+          @OptIn(ExperimentalNativeApi::class) assert(reenterCount.load() == 0)
+          break
         }
       }
-    } while (true)
+      if (++attempts >= SPINS_BEFORE_SLEEP) {
+        attempts = 0
+        usleep(sleepMicros)
+        sleepMicros = (sleepMicros * 2u).coerceAtMost(MAX_SLEEP_MICROS)
+      }
+    }
   }
 
-  @OptIn(ExperimentalStdlibApi::class)
   actual fun unlock() {
-    if (reenterCount_.load() > 0) {
-      /* val _ = */ reenterCount_.decrementAndFetch()
+    val id = CurrentThread.id
+    check(locker.load() == id) { "thread does not own lock" }
+    if (reenterCount.load() > 0) {
+      reenterCount.decrementAndFetch()
     } else {
-      val lockData = CurrentThread.id.hashCode()
-      val old = locker_.compareAndExchange(lockData, 0)
-      assert(old == lockData)
+      val old = locker.compareAndExchange(id, 0)
+      @OptIn(ExperimentalNativeApi::class) assert(old == id)
     }
   }
 }
