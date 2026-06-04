@@ -15,14 +15,14 @@ import dev.zacsweers.metrox.viewmodel.ViewModelKey
 @ViewModelKey
 @Inject
 class CounterViewModel : ViewModel() {
-  private val _count = MutableLiveData(0)
-  val count: LiveData<Int> = _count
+  val count: LiveData<Int>
+    field: MutableLiveData<Int> = MutableLiveData(0)
 
   fun increment() {
-    _count.value = (_count.value ?: 0) + 1
+    count.value = (count.value ?: 0) + 1
   }
 
   fun decrement() {
-    _count.value = (_count.value ?: 0) - 1
+    count.value = (count.value ?: 0) - 1
   }
 }
