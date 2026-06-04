@@ -6657,6 +6657,8 @@
 <li><strong>[IR]</strong> Preserve concrete generated provider factory return types where possible instead of widening to <code>Factory&lt;T&gt;</code>. In the future, Metro may generate these as value classes and this will allow better compiler optimization in those scenarios.</li>
 <li><strong>[IR/IC]</strong> Optimize IC tracking by buffering lookup and expect/actual records during IR and flushing them once after graph validation, avoiding per-write synchronization on the hot path. This is enabled by default but can be disabled via the <code>buffered-ic-tracking</code> compiler option if it causes any issues.</li>
 <li><strong>[IR/runtime]</strong> Add internal primitive instance factories and use them where possible for primitive graph inputs and inlined providers.</li>
+<li><strong>[Gradle]</strong> Add a <code>metroEnv</code> task that writes human-readable Metro/Kotlin/Gradle environment reports for bug reports.</li>
+<li><strong>[Reporting]</strong> Add compiler stats to reporting.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
@@ -6667,6 +6669,7 @@
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[Gradle]</strong> Add missing experimental annotations to the Gradle plugin&rsquo;s analysis APIs. Sorry these were not meant to be stabilized yet!</li>
 <li>Build against Kotlin <code>2.4.0</code>. Note the runtime artifacts still target Kotlin <code>2.3.0</code> and Metro supports a wide range of compiler versions. See the <a href="https://zacsweers.github.io/metro/latest/compatibility/">compatibility docs</a> for a full table of compatible versions.</li>
 <li>No longer test Kotlin <code>2.4.0</code> pre-release builds. Kotlin <code>2.4.0-dev-2124</code> <em>is</em> still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.</li>
 </ul>
