@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.43">
+      <meta name="generator" content="zensical-0.0.44">
     
     
       
@@ -1552,6 +1552,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#our-codebase-is-large-and-modular-so-we-basically-always-want-contributions-to-be-public-and-exposed-to-downstream-compilations-how-can-i-enforce-this" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <strong>Our codebase is large and modular, so we basically always want contributions to be public and exposed to downstream compilations. How can I enforce this?</strong>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#im-seeing-a-reservedstackaccess-stack-overflow-warning-from-the-jvm-at-runtime" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1987,6 +1998,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#our-codebase-is-large-and-modular-so-we-basically-always-want-contributions-to-be-public-and-exposed-to-downstream-compilations-how-can-i-enforce-this" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <strong>Our codebase is large and modular, so we basically always want contributions to be public and exposed to downstream compilations. How can I enforce this?</strong>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#im-seeing-a-reservedstackaccess-stack-overflow-warning-from-the-jvm-at-runtime" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2157,6 +2179,8 @@
 <li>They are harder to find (no &ldquo;find usages&rdquo; support from your assisted type).</li>
 <li>They are harder to read (they are nameless).</li>
 </ul>
+<h3 id="our-codebase-is-large-and-modular-so-we-basically-always-want-contributions-to-be-public-and-exposed-to-downstream-compilations-how-can-i-enforce-this"><strong>Our codebase is large and modular, so we basically always want contributions to be public and exposed to downstream compilations. How can I enforce this?</strong><a class="headerlink" href="#our-codebase-is-large-and-modular-so-we-basically-always-want-contributions-to-be-public-and-exposed-to-downstream-compilations-how-can-i-enforce-this" title="Permanent link">&para;</a></h3>
+<p>Set <code>nonPublicContributionSeverity</code> to <code>ERROR</code>. Note this diagnostic only fires for internal <code>@ExposeImplBinding</code>-annotated types if you enable <code>generateContributionProviders</code>.</p>
 <h3 id="im-seeing-a-reservedstackaccess-stack-overflow-warning-from-the-jvm-at-runtime"><strong>I&rsquo;m seeing a <code>ReservedStackAccess</code> stack overflow warning from the JVM at runtime?</strong><a class="headerlink" href="#im-seeing-a-reservedstackaccess-stack-overflow-warning-from-the-jvm-at-runtime" title="Permanent link">&para;</a></h3>
 <p>This is a spurious JVM warning related to <code>ReentrantLock</code> (used internally by Metro&rsquo;s <code>DoubleCheck</code> for scoped bindings). It is not an actual stack overflow and can be safely ignored. You can suppress it by increasing the thread stack size with (i.e., <code>-Xss1m</code>) in your JVM args.</p>
 <h3 id="would-you-consider-putting-metro-into-a-foundation-my-team-has-concerns-about-solo-maintainers"><strong>Would you consider putting Metro into a foundation? My team has concerns about solo maintainers</strong><a class="headerlink" href="#would-you-consider-putting-metro-into-a-foundation-my-team-has-concerns-about-solo-maintainers" title="Permanent link">&para;</a></h3>
