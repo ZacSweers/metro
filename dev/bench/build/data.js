@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780598221257,
+  "lastUpdate": 1780602579557,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -16072,6 +16072,62 @@ window.BENCHMARK_DATA = {
             "value": 31241.132,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.89%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1ba0d688~1",
+          "message": "[before] Add bounded backoff to the native Lock (#2391)",
+          "timestamp": "2026-06-04T15:12:30-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1ba0d6884295e40bf8c897187954dd8532998c9d"
+        },
+        "date": 1780602579557,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31491.048,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1ba0d6884295e40bf8c897187954dd8532998c9d",
+          "message": "[after] Add bounded backoff to the native Lock (#2391)",
+          "timestamp": "2026-06-04T15:12:30-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1ba0d6884295e40bf8c897187954dd8532998c9d"
+        },
+        "date": 1780602579558,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 28954.214,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -8.06%"
           }
         ]
       }
