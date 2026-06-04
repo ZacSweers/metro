@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780603770955,
+  "lastUpdate": 1780606401446,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -16184,6 +16184,62 @@ window.BENCHMARK_DATA = {
             "value": 30088.685999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.07%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2c2e33e7~1",
+          "message": "[before] Add config for new native lock (#2394)",
+          "timestamp": "2026-06-04T20:15:23Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2c2e33e7031db1460bf6a14a3fbbfa757ce44665"
+        },
+        "date": 1780606401446,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31596.821999999996,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2c2e33e7031db1460bf6a14a3fbbfa757ce44665",
+          "message": "[after] Add config for new native lock (#2394)",
+          "timestamp": "2026-06-04T20:15:23Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2c2e33e7031db1460bf6a14a3fbbfa757ce44665"
+        },
+        "date": 1780606401447,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 30529.3,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.38%"
           }
         ]
       }
