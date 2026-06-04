@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780548126888,
+  "lastUpdate": 1780551446813,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -15904,6 +15904,62 @@ window.BENCHMARK_DATA = {
             "value": 32879.978,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -5.56%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1949a4f9~1",
+          "message": "[before] Use backing fields in a few places (#2382)",
+          "timestamp": "2026-06-04T04:52:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1949a4f94e7c47e8fe54677e85150d60e01724d3"
+        },
+        "date": 1780551446813,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 32361.640000000003,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1949a4f94e7c47e8fe54677e85150d60e01724d3",
+          "message": "[after] Use backing fields in a few places (#2382)",
+          "timestamp": "2026-06-04T04:52:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1949a4f94e7c47e8fe54677e85150d60e01724d3"
+        },
+        "date": 1780551446814,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 29852.624,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -7.75%"
           }
         ]
       }
