@@ -41,6 +41,7 @@ Changelog
 - Build against Kotlin `2.4.0`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
 - No longer test Kotlin `2.4.0` pre-release builds. Kotlin `2.4.0-dev-2124` _is_ still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.
 - Test Android Studio Quail 1 stable (`2026.1.1.8`).
+- Test Android Studio Quail 2 canaries (`2026.1.2.4`).
 - Test IntelliJ `2026.1.2`.
 - Test IntelliJ `2026.1.3`.
 
