@@ -56,7 +56,12 @@ class MetroArtifactsTest {
   @Test
   fun `generateMetroGraphMetadata task creates aggregated JSON output`() {
     val testCompilerVersion = getTestCompilerToolingVersion()
-    val topLevelFirGenEnabled = testCompilerVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)
+    val topLevelFirGenEnabled =
+      if (testCompilerVersion.isDev) {
+        testCompilerVersion >= KotlinToolingVersion("2.3.20-dev-6204")
+      } else {
+        testCompilerVersion >= KotlinToolingVersion("2.3.20-Beta1")
+      }
     val enableKlibParamsCheck =
       testCompilerVersion >= KotlinToolingVersion("2.3.0") &&
         testCompilerVersion < KotlinToolingVersion("2.3.20-Beta2")
