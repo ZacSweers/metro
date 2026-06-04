@@ -55,8 +55,12 @@ class MetroArtifactsTest {
 
   @Test
   fun `generateMetroGraphMetadata task creates aggregated JSON output`() {
-    val topLevelFirGenEnabled =
-      getTestCompilerVersion().toKotlinVersion() >= KotlinVersion(2, 3, 20)
+    val testCompilerVersion = getTestCompilerToolingVersion()
+    val topLevelFirGenEnabled = testCompilerVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)
+    val enableKlibParamsCheck =
+      testCompilerVersion >= KotlinToolingVersion("2.3.0") &&
+        testCompilerVersion < KotlinToolingVersion("2.3.20-Beta2")
+    val patchKlibParams = true
 
     val fixture =
       object : MetroProject(multiplatform = false) {
@@ -166,8 +170,8 @@ class MetroArtifactsTest {
                 "customOriginAnnotations": [],
                 "customOptionalBindingAnnotations": [],
                 "contributesAsInject": true,
-                "enableKlibParamsCheck": ${!topLevelFirGenEnabled},
-                "patchKlibParams": ${!topLevelFirGenEnabled},
+                "enableKlibParamsCheck": $enableKlibParamsCheck,
+                "patchKlibParams": $patchKlibParams,
                 "forceEnableFirInIde": false,
                 "pluginOrderSet": true,
                 "compilerVersionAliases": {},
