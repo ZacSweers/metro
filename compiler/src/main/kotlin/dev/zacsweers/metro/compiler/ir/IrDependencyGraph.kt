@@ -140,8 +140,17 @@ internal interface IrDependencyGraph {
 
   @Provides
   @SingleIn(IrScope::class)
+  fun provideBuiltinsFinder(
+    pluginContext: IrPluginContext,
+    compatContext: CompatContext,
+  ): CompatContext.DeclarationFinderCompat =
+    with(compatContext) { pluginContext.finderForBuiltinsCompat() }
+
+  @Provides
+  @SingleIn(IrScope::class)
   fun provideIrContributionExtensions(
     pluginContext: IrPluginContext,
+    compatContext: CompatContext,
     options: MetroOptions,
   ): List<MetroIrContributionExtension> {
     return ServiceLoader.load(
@@ -150,7 +159,7 @@ internal interface IrDependencyGraph {
       )
       .mapNotNull { factory ->
         try {
-          factory.create(pluginContext, options)
+          factory.create(pluginContext, compatContext, options)
         } catch (e: Exception) {
           if (options.debug) {
             System.err.println(

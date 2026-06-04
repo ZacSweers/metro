@@ -116,7 +116,9 @@ import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrScriptSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.DescriptorlessExternalPackageFragmentSymbol
@@ -176,6 +178,7 @@ import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.library.KOTLIN_JS_STDLIB_NAME
 import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -2017,8 +2020,9 @@ internal fun IrBuilderWithScope.instanceFactory(
 
   val primitiveFactoryCidOrNull = primitiveFactoryClassId(type, arg)
   if (primitiveFactoryCidOrNull == Symbols.ClassIds.BooleanFactory) {
-    context.pluginContext
-      .referenceClass(Symbols.ClassIds.BooleanFactory)
+    context
+      .builtinsFinderCompat()
+      .findClass(Symbols.ClassIds.BooleanFactory)
       ?.owner
       ?.companionObject()
       ?.let { companionObject ->
@@ -2032,7 +2036,7 @@ internal fun IrBuilderWithScope.instanceFactory(
 
   primitiveFactoryCidOrNull?.let { primitiveFactoryClassId ->
     val constructor =
-      context.pluginContext.referenceClass(primitiveFactoryClassId)?.owner?.primaryConstructor
+      context.builtinsFinderCompat().findClass(primitiveFactoryClassId)?.owner?.primaryConstructor
     if (constructor != null) {
       return irCallConstructor(constructor.symbol, emptyList()).apply { arguments[0] = arg }
     }
@@ -2312,6 +2316,34 @@ internal fun <T : Any> IrPluginContext.withIrBuilder(
   block: DeclarationIrBuilder.() -> T,
 ): T {
   return createIrBuilder(symbol).run(block)
+}
+
+context(compatContext: CompatContext)
+internal fun IrPluginContext.finderFor(from: IrDeclaration): CompatContext.DeclarationFinderCompat {
+  return with(compatContext) {
+    from.fileOrNull?.let { finderForSourceCompat(it) } ?: finderForBuiltinsCompat()
+  }
+}
+
+internal fun IrMetroContext.builtinsFinderCompat(): CompatContext.DeclarationFinderCompat {
+  return finderForBuiltinsCompat()
+}
+
+context(context: IrMetroContext)
+internal fun IrDeclaration.lookupClass(classId: ClassId): IrClassSymbol? {
+  return with(context) { pluginContext.finderFor(this@lookupClass).findClass(classId) }
+}
+
+context(context: IrMetroContext)
+internal fun IrDeclaration.lookupFunctions(
+  callableId: CallableId
+): Collection<IrSimpleFunctionSymbol> {
+  return with(context) { pluginContext.finderFor(this@lookupFunctions).findFunctions(callableId) }
+}
+
+context(context: IrMetroContext)
+internal fun IrDeclaration.lookupProperties(callableId: CallableId): Collection<IrPropertySymbol> {
+  return with(context) { pluginContext.finderFor(this@lookupProperties).findProperties(callableId) }
 }
 
 internal fun IrBuilderWithScope.irGetProperty(

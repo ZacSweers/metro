@@ -134,8 +134,9 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
     override fun materialize(type: IrType): IrExpression {
+      val scopeOwner = scope.scope.scopeOwnerSymbol.owner as IrDeclaration
       val symbol =
-        context.pluginContext.referenceClass(classId)
+        scopeOwner.lookupClass(classId)
           ?: reportCompilerBug("Could not resolve object class $classId")
       return scope.irGetObject(symbol)
     }
@@ -150,8 +151,9 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
     override fun materialize(type: IrType): IrExpression {
+      val scopeOwner = scope.scope.scopeOwnerSymbol.owner as IrDeclaration
       val enumClass =
-        context.pluginContext.referenceClass(enumClassId)?.owner
+        scopeOwner.lookupClass(enumClassId)?.owner
           ?: reportCompilerBug("Could not resolve enum class $enumClassId")
       val enumEntry =
         enumClass.declarations.filterIsInstance<IrEnumEntry>().singleOrNull {
@@ -168,8 +170,9 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
     override fun materialize(type: IrType): IrExpression {
+      val scopeOwner = scope.scope.scopeOwnerSymbol.owner as IrDeclaration
       val symbol =
-        context.pluginContext.referenceClass(classId)
+        scopeOwner.lookupClass(classId)
           ?: reportCompilerBug("Could not resolve class literal $classId")
       return scope.kClassReference(symbol)
     }

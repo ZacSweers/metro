@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -397,7 +398,7 @@ private constructor(
         }
 
         is MembersInjected -> {
-          val injectedClass = referenceClass(binding.targetClassId)!!.owner
+          val injectedClass = node.metroGraphOrFail.lookupClass(binding.targetClassId)!!.owner
           val injectedType = injectedClass.defaultType
 
           // When looking for an injector, try the current class.

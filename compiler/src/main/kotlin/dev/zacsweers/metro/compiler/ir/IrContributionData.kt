@@ -152,7 +152,8 @@ internal class IrContributionData(
       }
     }
 
-    val functionsInPackage = metroContext.referenceFunctions(scopeHintFor(scope))
+    val functionsInPackage =
+      context(metroContext) { callingDeclaration.lookupFunctions(scopeHintFor(scope)) }
 
     context(metroContext) {
       writeDiagnostic("discovered-hints-ir", "${scope.asFqNameString()}.txt") {

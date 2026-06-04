@@ -49,6 +49,7 @@ import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
@@ -877,8 +878,8 @@ internal class BindingContainerTransformer(
                 // Try both with and without the declaration's `@JvmName` (if present). Dagger
                 // doesn't seem to read this in KSP but would implicitly in KAPT
                 val factoryClass =
-                  referenceClass(daggerFactoryClassIdOf(decl, useJvmName = false))
-                    ?: referenceClass(daggerFactoryClassIdOf(decl, useJvmName = true))
+                  declaration.lookupClass(daggerFactoryClassIdOf(decl, useJvmName = false))
+                    ?: declaration.lookupClass(daggerFactoryClassIdOf(decl, useJvmName = true))
 
                 if (factoryClass == null) {
                   reportCompat(
@@ -973,7 +974,7 @@ internal class BindingContainerTransformer(
               providerFactory.callableId to providerFactory
             } else {
               trace("External factory ${classId.shortClassName}") {
-                val factoryClass = pluginContext.referenceClass(classId)!!.owner
+                val factoryClass = declaration.lookupClass(classId)!!.owner
                 val providerFactory = externalProviderFactoryFor(factoryClass, entry)
                 providerFactory.callableId to providerFactory
               }
@@ -1058,7 +1059,7 @@ internal class BindingContainerTransformer(
         .annotationsIn(metroSymbols.classIds.originAnnotations)
         .firstOrNull()
         ?.originOrNull()
-        ?.let { pluginContext.referenceClass(it)?.owner }
+        ?.let { container.lookupClass(it)?.owner }
 
     return ProviderFactory(
       contextKey = IrContextualTypeKey.from(mirrorFunction),

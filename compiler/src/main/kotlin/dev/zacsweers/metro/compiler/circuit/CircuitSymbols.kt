@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.circuit
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
@@ -109,69 +109,68 @@ internal sealed interface CircuitSymbols {
     fun isCircuitContextType(classId: ClassId): Boolean = classId == CircuitClassIds.CircuitContext
   }
 
-  class Ir(private val pluginContext: IrPluginContext) : CircuitSymbols {
+  class Ir(private val builtinsFinder: CompatContext.DeclarationFinderCompat) : CircuitSymbols {
 
     val screen: IrClassSymbol by lazy {
-      pluginContext.referenceClass(CircuitClassIds.Screen)
+      builtinsFinder.findClass(CircuitClassIds.Screen)
         ?: error("Could not find ${CircuitClassIds.Screen}")
     }
 
     val navigator: IrClassSymbol by lazy {
-      pluginContext.referenceClass(CircuitClassIds.Navigator)
+      builtinsFinder.findClass(CircuitClassIds.Navigator)
         ?: error("Could not find ${CircuitClassIds.Navigator}")
     }
 
     val circuitContext: IrClassSymbol by lazy {
-      pluginContext.referenceClass(CircuitClassIds.CircuitContext)
+      builtinsFinder.findClass(CircuitClassIds.CircuitContext)
         ?: error("Could not find ${CircuitClassIds.CircuitContext}")
     }
 
     val circuitUiState: IrClassSymbol by lazy {
-      pluginContext.referenceClass(CircuitClassIds.CircuitUiState)
+      builtinsFinder.findClass(CircuitClassIds.CircuitUiState)
         ?: error("Could not find ${CircuitClassIds.CircuitUiState}")
     }
 
     val ui: IrClassSymbol by lazy {
-      pluginContext.referenceClass(CircuitClassIds.Ui)
-        ?: error("Could not find ${CircuitClassIds.Ui}")
+      builtinsFinder.findClass(CircuitClassIds.Ui) ?: error("Could not find ${CircuitClassIds.Ui}")
     }
 
     val uiFactory: IrClassSymbol by lazy {
-      pluginContext.referenceClass(CircuitClassIds.UiFactory)
+      builtinsFinder.findClass(CircuitClassIds.UiFactory)
         ?: error("Could not find ${CircuitClassIds.UiFactory}")
     }
 
     val presenter: IrClassSymbol by lazy {
-      pluginContext.referenceClass(CircuitClassIds.Presenter)
+      builtinsFinder.findClass(CircuitClassIds.Presenter)
         ?: error("Could not find ${CircuitClassIds.Presenter}")
     }
 
     val presenterFactory: IrClassSymbol by lazy {
-      pluginContext.referenceClass(CircuitClassIds.PresenterFactory)
+      builtinsFinder.findClass(CircuitClassIds.PresenterFactory)
         ?: error("Could not find ${CircuitClassIds.PresenterFactory}")
     }
 
     val modifier: IrClassSymbol by lazy {
-      pluginContext.referenceClass(CircuitClassIds.Modifier)
+      builtinsFinder.findClass(CircuitClassIds.Modifier)
         ?: error("Could not find ${CircuitClassIds.Modifier}")
     }
 
     val composableAnnotationCtor: IrConstructorSymbol by lazy {
-      pluginContext.referenceClass(Symbols.ClassIds.Composable)!!.constructors.first()
+      builtinsFinder.findClass(Symbols.ClassIds.Composable)!!.constructors.first()
     }
 
     val presenterOfFun: IrSimpleFunctionSymbol by lazy {
-      pluginContext.referenceFunctions(CircuitCallableIds.presenterOf).singleOrNull()
+      builtinsFinder.findFunctions(CircuitCallableIds.presenterOf).singleOrNull()
         ?: error("Could not find ${CircuitCallableIds.presenterOf}")
     }
 
     val uiFun: IrSimpleFunctionSymbol by lazy {
-      pluginContext.referenceFunctions(CircuitCallableIds.ui).singleOrNull()
+      builtinsFinder.findFunctions(CircuitCallableIds.ui).singleOrNull()
         ?: error("Could not find ${CircuitCallableIds.ui}")
     }
 
     val originAnnotationCtor: IrConstructorSymbol by lazy {
-      pluginContext.referenceClass(Symbols.ClassIds.metroOrigin)!!.constructors.first()
+      builtinsFinder.findClass(Symbols.ClassIds.metroOrigin)!!.constructors.first()
     }
   }
 }

@@ -27,6 +27,7 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isStaticIsh
+import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
@@ -144,7 +145,7 @@ internal class AssistedFactoryTransformer(
         // Fall back to Dagger (if enabled) and Metro impl not found
         // Don't gate on Java source because Anvil may have generated this in Kotlin too
         val daggerImplClassId = classId.generatedClass("_Impl")
-        val daggerImplClass = pluginContext.referenceClass(daggerImplClassId)?.owner
+        val daggerImplClass = declaration.lookupClass(daggerImplClassId)?.owner
         if (daggerImplClass != null) {
           val daggerImpl = AssistedFactoryImpl.Dagger(daggerImplClass)
           implsCache[classId] = daggerImpl
@@ -196,7 +197,7 @@ internal class AssistedFactoryTransformer(
           .apply {
             val factoryClassId =
               targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)
-            val factoryParamType = pluginContext.referenceClass(factoryClassId)!!.defaultType
+            val factoryParamType = declaration.lookupClass(factoryClassId)!!.defaultType
             addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
             body = generateDefaultConstructorBody()
           }
@@ -299,7 +300,7 @@ internal class AssistedFactoryTransformer(
 
           val factoryClassId =
             targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)
-          val factoryParamType = pluginContext.referenceClass(factoryClassId)!!.defaultType
+          val factoryParamType = this.lookupClass(factoryClassId)!!.defaultType
           addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
 
           addStaticAnnotations(this)

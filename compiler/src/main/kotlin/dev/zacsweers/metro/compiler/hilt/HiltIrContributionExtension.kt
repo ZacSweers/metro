@@ -4,6 +4,8 @@ package dev.zacsweers.metro.compiler.hilt
 
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
+import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.ir.finderFor
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.fir.backend.Fir2IrComponents
@@ -22,8 +24,10 @@ import org.jetbrains.kotlin.name.ClassId
  * `IrPluginContext` cannot enumerate package classifiers, so this uses the FIR session available
  * from `Fir2IrComponents` to read Hilt aggregated-deps markers.
  */
-public class HiltIrContributionExtension(private val pluginContext: IrPluginContext) :
-  MetroIrContributionExtension {
+public class HiltIrContributionExtension(
+  private val pluginContext: IrPluginContext,
+  private val compatContext: CompatContext,
+) : MetroIrContributionExtension {
 
   /**
    * Lazily resolved on first scan. Null if Hilt isn't on the classpath or the K2 IR bridge isn't
@@ -31,8 +35,10 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
    */
   private val bridge: Bridge? by memoize {
     val anyHiltClass =
-      @Suppress("DEPRECATION") pluginContext.referenceClass(HiltSymbols.InstallIn)?.owner
-        ?: return@memoize null
+      with(compatContext) {
+          pluginContext.finderForBuiltinsCompat().findClass(HiltSymbols.InstallIn)
+        }
+        ?.owner ?: return@memoize null
     val components = anyHiltClass as? Fir2IrComponents ?: return@memoize null
     val session = components.session
     Bridge(
@@ -63,7 +69,10 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
       if (dep.components.none { bridge.componentScopes.resolveScope(it) == scope }) continue
       for (moduleClassId in dep.modules) {
         val irClass =
-          @Suppress("DEPRECATION") pluginContext.referenceClass(moduleClassId)?.owner ?: continue
+          with(compatContext) {
+              pluginContext.finderFor(callingDeclaration).findClass(moduleClassId)
+            }
+            ?.owner ?: continue
         result += irClass
       }
     }
@@ -72,7 +81,10 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
       if (!installIn.isModule) continue
       if (scope !in installIn.resolvedScopes(bridge.componentScopes)) continue
       val irClass =
-        @Suppress("DEPRECATION") pluginContext.referenceClass(installIn.classId)?.owner ?: continue
+        with(compatContext) {
+            pluginContext.finderFor(callingDeclaration).findClass(installIn.classId)
+          }
+          ?.owner ?: continue
       result += irClass
     }
 
@@ -93,8 +105,10 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
       if (dep.components.none { bridge.componentScopes.resolveScope(it) == scope }) continue
       for (entryPointClassId in dep.entryPoints) {
         val irClass =
-          @Suppress("DEPRECATION") pluginContext.referenceClass(entryPointClassId)?.owner
-            ?: continue
+          with(compatContext) {
+              pluginContext.finderFor(callingDeclaration).findClass(entryPointClassId)
+            }
+            ?.owner ?: continue
         result += irClass.defaultType
       }
     }
@@ -104,7 +118,10 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
       if (!installIn.isEntryPoint) continue
       if (scope !in installIn.resolvedScopes(bridge.componentScopes)) continue
       val irClass =
-        @Suppress("DEPRECATION") pluginContext.referenceClass(installIn.classId)?.owner ?: continue
+        with(compatContext) {
+            pluginContext.finderFor(callingDeclaration).findClass(installIn.classId)
+          }
+          ?.owner ?: continue
       result += irClass.defaultType
     }
 
@@ -114,10 +131,11 @@ public class HiltIrContributionExtension(private val pluginContext: IrPluginCont
   public class Factory : MetroIrContributionExtension.Factory {
     override fun create(
       pluginContext: IrPluginContext,
+      compatContext: CompatContext,
       options: MetroOptions,
     ): MetroIrContributionExtension? {
       if (!options.enableHiltInterop) return null
-      return HiltIrContributionExtension(pluginContext)
+      return HiltIrContributionExtension(pluginContext, compatContext)
     }
   }
 }

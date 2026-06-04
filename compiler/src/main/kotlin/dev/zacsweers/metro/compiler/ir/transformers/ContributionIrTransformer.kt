@@ -14,7 +14,6 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
-import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
@@ -27,6 +26,7 @@ import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isImplicitClassKeySentinel
 import dev.zacsweers.metro.compiler.ir.isKiaIntoMultibinding
+import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.ir.originClassId
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -219,7 +219,7 @@ internal class ContributionIrTransformer(
 
     // @Origin is on the nested contribution interface itself
     val originClassId = declaration.originClassId() ?: return
-    val originClass = context.referenceClass(originClassId)?.owner ?: return
+    val originClass = declaration.lookupClass(originClassId)?.owner ?: return
 
     // Find the primary constructor of the origin class
     val injectConstructor by memoize {

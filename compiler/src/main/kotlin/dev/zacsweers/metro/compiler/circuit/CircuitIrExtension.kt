@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.abstractFunctions
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.finderFor
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.kClassReference
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -80,7 +81,7 @@ import org.jetbrains.kotlin.name.Name
  */
 public class CircuitIrExtension(private val compatContext: CompatContext) : IrGenerationExtension {
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
-    val symbols = CircuitSymbols.Ir(pluginContext)
+    val symbols = CircuitSymbols.Ir(with(compatContext) { pluginContext.finderForBuiltinsCompat() })
     moduleFragment.transformChildrenVoid(
       CircuitIrTransformer(pluginContext, symbols, compatContext)
     )
@@ -92,6 +93,9 @@ private class CircuitIrTransformer(
   private val symbols: CircuitSymbols.Ir,
   private val compatContext: CompatContext,
 ) : IrElementTransformerVoid(), CompatContext by compatContext {
+  private val builtinsFinder by lazy {
+    with(compatContext) { pluginContext.finderForBuiltinsCompat() }
+  }
 
   private val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat by lazy {
     compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
@@ -99,7 +103,7 @@ private class CircuitIrTransformer(
 
   /** Cached invoke() symbol for metro's Provider type. */
   private val providerInvokeFunction: IrSimpleFunctionSymbol by lazy {
-    pluginContext.referenceClass(Symbols.ClassIds.metroProvider)!!.functions.first {
+    builtinsFinder.findClass(Symbols.ClassIds.metroProvider)!!.functions.first {
       it.owner.name.asString() == "invoke"
     }
   }
@@ -111,7 +115,10 @@ private class CircuitIrTransformer(
     ) {
       // Find the target info from the factory class annotations
       val circuitTargetInfo = declaration.circuitFactoryTargetData!!
-      val screenClass = pluginContext.referenceClass(circuitTargetInfo.screenType)!!
+      val screenClass =
+        with(compatContext) {
+          pluginContext.finderFor(declaration).findClass(circuitTargetInfo.screenType)
+        }!!
 
       // Add an @Origin annotation, because we can't add this in FIR safely due to phase issues
       circuitTargetInfo.originClassId?.let { originClassId ->
@@ -119,7 +126,12 @@ private class CircuitIrTransformer(
           declaration,
           context(pluginContext) {
             buildAnnotation(declaration.symbol, symbols.originAnnotationCtor) {
-              it.arguments[0] = kClassReference(pluginContext.referenceClass(originClassId)!!)
+              it.arguments[0] =
+                kClassReference(
+                  with(compatContext) {
+                    pluginContext.finderFor(declaration).findClass(originClassId)
+                  }!!
+                )
             }
           },
         )
@@ -234,7 +246,7 @@ private class CircuitIrTransformer(
     val targetClassId =
       circuitTargetInfo.originClassId ?: error("Class-based factory missing origin class ID")
     val targetClass =
-      pluginContext.referenceClass(targetClassId)
+      with(compatContext) { pluginContext.finderFor(factoryClass).findClass(targetClassId) }
         ?: error("Could not find target class: $targetClassId")
     val constructor = targetClass.constructors.first()
     val ctorParams = constructor.owner.regularParameters
@@ -407,9 +419,12 @@ private class CircuitIrTransformer(
     // Look up the IR function by matching against the FIR symbol stored in the target.
     // We filter out `expect` declarations in FIR, so we should only see actual functions here.
     val originalFunctionSymbol =
-      pluginContext.referenceFunctions(firFunctionSymbol.callableId).first { irSymbol ->
-        (irSymbol.owner.metadata as? FirMetadataSource.Function)?.fir?.symbol == firFunctionSymbol
-      }
+      with(compatContext) {
+          pluginContext.finderFor(createFunction).findFunctions(firFunctionSymbol.callableId)
+        }
+        .first { irSymbol ->
+          (irSymbol.owner.metadata as? FirMetadataSource.Function)?.fir?.symbol == firFunctionSymbol
+        }
 
     val originalFunction = originalFunctionSymbol.owner
     // Build parameter mapping from create() params

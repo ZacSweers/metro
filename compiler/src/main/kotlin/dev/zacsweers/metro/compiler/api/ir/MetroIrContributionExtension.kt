@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.api.ir
 
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -65,6 +66,7 @@ public interface MetroIrContributionExtension {
      */
     public fun create(
       pluginContext: IrPluginContext,
+      compatContext: CompatContext,
       options: MetroOptions,
     ): MetroIrContributionExtension?
   }

@@ -29,6 +29,7 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isStaticIsh
+import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -221,9 +222,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       if (lazyClassMetadata.value == null) {
         if (options.enableDaggerRuntimeInterop) {
           val daggerInjector =
-            pluginContext.referenceClass(
-              declaration.classIdOrFail.generatedClass("_MembersInjector")
-            )
+            declaration.lookupClass(declaration.classIdOrFail.generatedClass("_MembersInjector"))
           if (daggerInjector != null) {
             return computeMemberInjectClass(daggerInjector.owner, isDagger = true).also {
               generatedInjectors[injectedClassId] = Optional.of(it)
@@ -379,7 +378,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
             // This is what generates supertypes lazily as needed
             val functions =
-              requireInjector(pluginContext.referenceClass(classId)!!.owner).declaredInjectFunctions
+              requireInjector(memberInjectClass.sourceClass.lookupClass(classId)!!.owner)
+                .declaredInjectFunctions
 
             putAll(functions)
           }
@@ -480,8 +480,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     nameAllocator: NameAllocator
   ): List<Parameters>? {
     val injectorClass =
-      pluginContext.referenceClass(classIdOrFail.generatedClass("_MembersInjector"))?.owner
-        ?: return null
+      lookupClass(classIdOrFail.generatedClass("_MembersInjector"))?.owner ?: return null
 
     // Compute source member parameters for qualifier lookup
     // For Dagger, only include properties with setter injection (narrower scope)
