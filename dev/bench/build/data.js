@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780665313266,
+  "lastUpdate": 1780679818133,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -16352,6 +16352,62 @@ window.BENCHMARK_DATA = {
             "value": 29498.624,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.59%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Eliezer Graber",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Eliezer Graber",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "9f7674cd~1",
+          "message": "[before] Read @IntoSet/@IntoMap/@MapKey from external Dagge",
+          "timestamp": "2026-06-05T16:38:07Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/9f7674cd8d03809a4ef5878a7d317bcdbd336b3c"
+        },
+        "date": 1780679818133,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 31788.252,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Eliezer Graber",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Eliezer Graber",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "9f7674cd8d03809a4ef5878a7d317bcdbd336b3c",
+          "message": "[after] Read @IntoSet/@IntoMap/@MapKey from external Dagge",
+          "timestamp": "2026-06-05T16:38:07Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/9f7674cd8d03809a4ef5878a7d317bcdbd336b3c"
+        },
+        "date": 1780679818134,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 28227.296000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -11.20%"
           }
         ]
       }
