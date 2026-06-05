@@ -72,6 +72,9 @@ public interface CompatContext {
      * 1. First, look for dev track factories and compare only within the dev track
      * 2. If no dev factory matches, fall back to non-dev factories
      *
+     * IDE versions like 2.4.0-ij261-64 use IntelliJ build numbers that are not comparable with
+     * Kotlin dev build numbers, so unmapped IDE builds choose the earliest same-base factory.
+     *
      * This ensures that a dev build like 2.3.20-dev-7791 doesn't incorrectly match a 2.3.20-Beta1
      * factory just because beta > dev in maturity ordering.
      */
@@ -113,6 +116,12 @@ public interface CompatContext {
       currentVersion: KotlinToolingVersion,
       factoryDataList: List<FactoryData>,
     ): Factory? {
+      if (currentVersion.isIdeBuild) {
+        findLowestSameBaseFactory(currentVersion, factoryDataList)?.let {
+          return it
+        }
+      }
+
       // If current version is DEV, try DEV track factories first
       if (currentVersion.isDev) {
         val devFactories = factoryDataList.filter {
@@ -155,6 +164,18 @@ public interface CompatContext {
       return factoryDataList
         .filter { (_, factory) -> currentVersion >= KotlinToolingVersion(factory.minVersion) }
         .maxByOrNull { (_, factory) -> KotlinToolingVersion(factory.minVersion) }
+        ?.factory
+    }
+
+    private fun findLowestSameBaseFactory(
+      currentVersion: KotlinToolingVersion,
+      factoryDataList: List<FactoryData>,
+    ): Factory? {
+      return factoryDataList
+        .filter { (_, factory) ->
+          KotlinToolingVersion(factory.minVersion).hasSameBaseVersionAs(currentVersion)
+        }
+        .minByOrNull { (_, factory) -> KotlinToolingVersion(factory.minVersion) }
         ?.factory
     }
 

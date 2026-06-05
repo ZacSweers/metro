@@ -235,6 +235,22 @@ class CompatContextTest {
   }
 
   @Test
+  fun `unmapped IJ version selects lowest same-base factory`() {
+    val factoryDev =
+      FakeFactory(minVersion = "2.4.0-dev-2124", reportedCurrentVersion = "2.4.0-ij261-64")
+    val factoryBeta1 =
+      FakeFactory(minVersion = "2.4.0-Beta1", reportedCurrentVersion = "2.4.0-ij261-64")
+    val factoryBeta2 =
+      FakeFactory(minVersion = "2.4.0-Beta2", reportedCurrentVersion = "2.4.0-ij261-64")
+    val factoryRc = FakeFactory(minVersion = "2.4.0-RC", reportedCurrentVersion = "2.4.0-ij261-64")
+
+    val factories = sequenceOf(factoryDev, factoryBeta1, factoryBeta2, factoryRc)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.4.0-ij261-64")
+
+    assertThat(resolved.minVersion).isEqualTo("2.4.0-dev-2124")
+  }
+
+  @Test
   fun `Beta version does not select dev factory`() {
     val factoryStable = FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-Beta1")
     val factoryDev =

@@ -16,6 +16,7 @@ Changelog
 
 ### Enhancements
 
+- **[compat]** Improve IDE kotlinc version resolution. IntelliJ uses custom tags like `2.4.0-ij261-64` that are a little tricky to decipher.
 - **[FIR]** Add diagnostic guidance around `inline` `@Provides` declarations. TL;DR, they only make sense for public providers.
 - **[FIR/IR]** Inline _constant_ `@Provides` bindings directly into generated graph implementations when possible, avoiding generated factory calls for literals, nulls, object singletons, enum entries, class literals, and `const` property reads. This is enabled by default and can be disabled with the `enable-provider-inlining` compiler flag if you see any issues.
 - **[IR]** Add a `member-naming-strategy` compiler option for shortening generated member names in generated code. Accepts `DESCRIPTIVE` (default), `TYPED` (`provider*`/`instance*`/`factory*`), or `MINIMAL` (single collapsed `provider*` naming). See [docs/performance.md](https://zacsweers.github.io/metro/performance/#shortening-generated-member-names) for guidance.

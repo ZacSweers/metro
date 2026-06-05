@@ -61,7 +61,8 @@ This file defines which IDE versions to test. Format:
 
 - **product**: `IU` (IntelliJ Ultimate) or `AS` (Android Studio)
 - **version**: The IDE version/build number
-- **filename_prefix**: (Optional) Required only for AS prerelease builds
+- **filename_prefix**: (Optional) Android Studio download filename prefix. Use this whenever
+  `list-android-studio-versions.sh` reports one.
 
 ---
 
@@ -112,12 +113,12 @@ This file defines which IDE versions to test. Format:
 
 2. Copy the `ide-versions.txt:` line for the version you want and add it to `ide-versions.txt`.
 
-3. **For preview builds** (RC, Beta, Canary), you must pre-download:
+3. Pre-download when you want faster local or CI runs:
    ```bash
    ./download-ides.sh
    ```
-
-   This is required because preview builds have non-standard filenames that the IDE Starter can't resolve automatically.
+   The test harness can also download Android Studio directly from the filename prefix in
+   `ide-versions.txt`, so pre-downloading is an optimization rather than a correctness requirement.
 
 4. Run the test:
    ```bash
@@ -163,8 +164,8 @@ The test also fails on any `ERROR`-severity highlight that isn't covered by a `M
 ## Troubleshooting
 
 **404 errors downloading Android Studio:**
-- For preview builds, ensure you have the filename prefix in `ide-versions.txt`
-- Run `./download-ides.sh` before running tests
+- Ensure the `ide-versions.txt` line includes the filename prefix reported by
+  `./list-android-studio-versions.sh`
 
 **Slow downloads:**
 - Install aria2 for 16x parallel connections: `brew install aria2`
