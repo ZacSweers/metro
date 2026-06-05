@@ -6669,6 +6669,7 @@
 <li><strong>[IR]</strong> Fix dynamic graphs (<code>createDynamicGraph</code>/<code>createDynamicGraphFactory</code>) sharing a single generated impl across call sites in different files. The shared impl was a <code>private</code> (on the JVM, package-private) nested class placed under one call site, so call sites in other packages failed at runtime with <code>IllegalAccessError</code>, and removing the owning file caused <code>NoClassDefFoundError</code>. Generated impls are now cached per-file.</li>
 <li><strong>[IR]</strong> Fix IR graph nodes eagerly resolving supertypes.</li>
 <li><strong>[IR]</strong> Don&rsquo;t reserve an <code>InstanceFactory</code> field for graph inputs unless it&rsquo;s needed.</li>
+<li><strong>[interop]</strong> Read <code>@IntoSet</code>/<code>@IntoMap</code>/<code>@MapKey</code> multibinding annotations from external Dagger modules.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
