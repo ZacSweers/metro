@@ -2560,6 +2560,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("MultibindingsFromExternalDaggerModule.kt")
+      public void testMultibindingsFromExternalDaggerModule() {
+        run("MultibindingsFromExternalDaggerModule.kt");
+      }
+
+      @Test
       @TestMetadata("NamedAnnotationArgumentClassRef.kt")
       public void testNamedAnnotationArgumentClassRef() {
         run("NamedAnnotationArgumentClassRef.kt");
