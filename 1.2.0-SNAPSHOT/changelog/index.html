@@ -6649,6 +6649,7 @@
 </ul>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[compat]</strong> Improve IDE kotlinc version resolution. IntelliJ uses custom tags like <code>2.4.0-ij261-64</code> that are a little tricky to decipher.</li>
 <li><strong>[FIR]</strong> Add diagnostic guidance around <code>inline</code> <code>@Provides</code> declarations. TL;DR, they only make sense for public providers.</li>
 <li><strong>[FIR/IR]</strong> Inline <em>constant</em> <code>@Provides</code> bindings directly into generated graph implementations when possible, avoiding generated factory calls for literals, nulls, object singletons, enum entries, class literals, and <code>const</code> property reads. This is enabled by default and can be disabled with the <code>enable-provider-inlining</code> compiler flag if you see any issues.</li>
 <li><strong>[IR]</strong> Add a <code>member-naming-strategy</code> compiler option for shortening generated member names in generated code. Accepts <code>DESCRIPTIVE</code> (default), <code>TYPED</code> (<code>provider*</code>/<code>instance*</code>/<code>factory*</code>), or <code>MINIMAL</code> (single collapsed <code>provider*</code> naming). See <a href="https://zacsweers.github.io/metro/performance/#shortening-generated-member-names">docs/performance.md</a> for guidance.</li>
