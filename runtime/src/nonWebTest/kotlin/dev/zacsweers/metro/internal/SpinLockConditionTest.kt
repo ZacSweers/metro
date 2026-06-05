@@ -57,13 +57,4 @@ class SpinLockConditionTest {
     assertTrue(lock.tryLock(), "The final reentrant unlock should release the lock")
     lock.unlock()
   }
-
-  private fun spinLock(): SpinLock {
-    return SpinLock(
-      currentThreadId = { threadId },
-      useBackoff = false,
-      sleep = {},
-      assert = ::check,
-    )
-  }
 }
