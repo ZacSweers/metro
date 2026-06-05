@@ -43,7 +43,8 @@ internal actual class Lock {
   @OptIn(ExperimentalNativeApi::class)
   private val spinLock =
     SpinLock(
-      currentThreadId = CurrentThread::id,
+      // Keep this as a lambda so the @ThreadLocal object is read on the calling thread.
+      currentThreadId = { CurrentThread.id },
       useBackoff = useBackoff,
       sleep = ::usleep,
       assert = ::assert,
