@@ -16,13 +16,23 @@ import kotlin.concurrent.atomics.incrementAndFetch
 private const val SPINS_BEFORE_SLEEP = 64
 private const val MAX_SLEEP_MICROS = 1_000u
 
+/**
+ * A reentrant spin lock for platforms that do not have a (small enough) runtime lock primitive
+ * available. `coroutines-core` has some stuff, but we'd have to pull all that in. Doing true posix
+ * locking would also be a pretty big lift.
+ *
+ * Reentrancy matches the JVM actual's behavior and lets [BaseDoubleCheck] report recursive
+ * providers through [reentrantCheck] instead of deadlocking.
+ */
 internal class SpinLock(
   private val currentThreadId: () -> Int,
   private val useBackoff: Boolean,
   private val sleep: (micros: UInt) -> Unit,
   private val assert: (Boolean) -> Unit,
 ) {
+  // Stores 0 when unlocked, otherwise the non-zero id of the owning thread
   private val locker = AtomicInt(0)
+  // Counts additional reentrant acquisitions by the owning thread
   private val reenterCount = AtomicInt(0)
 
   fun lock() {
