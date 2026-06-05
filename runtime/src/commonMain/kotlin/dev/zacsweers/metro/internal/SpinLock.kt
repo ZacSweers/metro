@@ -1,0 +1,64 @@
+/*
+ * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * that can be found in the LICENSE file.
+ */
+// Copyright (C) 2026 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
+@file:OptIn(ExperimentalAtomicApi::class)
+
+package dev.zacsweers.metro.internal
+
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.decrementAndFetch
+import kotlin.concurrent.atomics.incrementAndFetch
+
+private const val SPINS_BEFORE_SLEEP = 64
+private const val MAX_SLEEP_MICROS = 1_000u
+
+internal class SpinLock(
+  private val currentThreadId: () -> Int,
+  private val useBackoff: Boolean,
+  private val sleep: (micros: UInt) -> Unit,
+  private val assert: (Boolean) -> Unit,
+) {
+  private val locker = AtomicInt(0)
+  private val reenterCount = AtomicInt(0)
+
+  fun lock() {
+    val id = currentThreadId()
+    var attempts = 0
+    var sleepMicros = 1u
+    while (true) {
+      val old = locker.compareAndExchange(0, id)
+      when (old) {
+        id -> {
+          // Was locked by us already
+          reenterCount.incrementAndFetch()
+          break
+        }
+        0 -> {
+          // We just got the lock
+          assert(reenterCount.load() == 0)
+          break
+        }
+      }
+      if (useBackoff && ++attempts >= SPINS_BEFORE_SLEEP) {
+        attempts = 0
+        sleep(sleepMicros)
+        sleepMicros = (sleepMicros * 2u).coerceAtMost(MAX_SLEEP_MICROS)
+      }
+    }
+  }
+
+  fun unlock() {
+    val id = currentThreadId()
+    check(locker.load() == id) { "thread does not own lock" }
+    if (reenterCount.load() > 0) {
+      reenterCount.decrementAndFetch()
+    } else {
+      val old = locker.compareAndExchange(id, 0)
+      assert(old == id)
+    }
+  }
+}
