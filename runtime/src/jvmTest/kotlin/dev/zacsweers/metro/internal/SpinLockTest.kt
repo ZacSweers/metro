@@ -7,6 +7,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -76,6 +77,64 @@ class SpinLockTest {
 
     assertTrue(acquired.get())
     assertEquals(1u, sleeps.first())
+  }
+
+  @Test
+  fun highContention() {
+    val workerCount = 32
+    val iterations = 2_000
+    val backoffs = AtomicInteger(0)
+    val lock =
+      spinLock(
+        sleep = {
+          backoffs.incrementAndGet()
+          Thread.yield()
+        }
+      )
+    val ready = CountDownLatch(workerCount)
+    val start = CountDownLatch(1)
+    val activeInCriticalSection = AtomicInteger(0)
+    val counter = AtomicInteger(0)
+    val failure = AtomicReference<Throwable?>(null)
+
+    val workers =
+      List(workerCount) {
+        thread {
+          ready.countDown()
+          start.await()
+          repeat(iterations) {
+            lock.lock()
+            var enteredCriticalSection = false
+            try {
+              enteredCriticalSection = activeInCriticalSection.incrementAndGet() == 1
+              check(enteredCriticalSection)
+              repeat(4) {
+                Thread.yield()
+              }
+              counter.incrementAndGet()
+            } catch (t: Throwable) {
+              failure.compareAndSet(null, t)
+            } finally {
+              if (enteredCriticalSection) {
+                activeInCriticalSection.decrementAndGet()
+              }
+              lock.unlock()
+            }
+          }
+        }
+      }
+
+    assertTrue(ready.await(5, SECONDS))
+    start.countDown()
+    workers.forEach {
+      it.join(30_000)
+      assertFalse(it.isAlive)
+    }
+
+    failure.get()?.let { throw it }
+    assertEquals(0, activeInCriticalSection.get())
+    assertTrue(backoffs.get() > 0)
+    assertEquals(workerCount * iterations, counter.get())
   }
 
   private fun spinLock(
