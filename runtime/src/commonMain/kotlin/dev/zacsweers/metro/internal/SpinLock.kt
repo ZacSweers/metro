@@ -36,27 +36,33 @@ internal class SpinLock(
   private val reenterCount = AtomicInt(0)
 
   fun lock() {
-    val id = currentThreadId()
     var attempts = 0
     var sleepMicros = 1u
-    while (true) {
-      val old = locker.compareAndExchange(0, id)
-      when (old) {
-        id -> {
-          // Was locked by us already
-          reenterCount.incrementAndFetch()
-          break
-        }
-        0 -> {
-          // We just got the lock
-          assert(reenterCount.load() == 0)
-          break
-        }
-      }
+    while (!tryLock()) {
       if (useBackoff && ++attempts >= SPINS_BEFORE_SLEEP) {
         attempts = 0
         sleep(sleepMicros)
         sleepMicros = (sleepMicros * 2u).coerceAtMost(MAX_SLEEP_MICROS)
+      }
+    }
+  }
+
+  fun tryLock(): Boolean {
+    val id = currentThreadId()
+    val old = locker.compareAndExchange(0, id)
+    when (old) {
+      id -> {
+        // Was locked by us already
+        reenterCount.incrementAndFetch()
+        return true
+      }
+      0 -> {
+        // We just got the lock
+        assert(reenterCount.load() == 0)
+        return true
+      }
+      else -> {
+        return false
       }
     }
   }
