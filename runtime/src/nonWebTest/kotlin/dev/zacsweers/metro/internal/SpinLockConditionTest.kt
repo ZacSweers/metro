@@ -19,10 +19,10 @@ class SpinLockConditionTest {
 
   @Test
   fun tryLockReturnsFalseWhenOwnedByAnotherThread() {
-    assertTrue(lock.tryLock())
+    assertTrue(lock.tryLock(), "Initial tryLock should acquire an unlocked lock")
 
     threadId = 2
-    assertFalse(lock.tryLock())
+    assertFalse(lock.tryLock(), "tryLock should fail while another thread owns the lock")
   }
 
   @Test
@@ -42,19 +42,19 @@ class SpinLockConditionTest {
     lock.lock()
 
     threadId = 2
-    assertFalse(lock.tryLock())
+    assertFalse(lock.tryLock(), "tryLock should fail while another thread owns the reentrant lock")
 
     threadId = 1
     lock.unlock()
 
     threadId = 2
-    assertFalse(lock.tryLock())
+    assertFalse(lock.tryLock(), "A partial reentrant unlock should not release the lock")
 
     threadId = 1
     lock.unlock()
 
     threadId = 2
-    assertTrue(lock.tryLock())
+    assertTrue(lock.tryLock(), "The final reentrant unlock should release the lock")
     lock.unlock()
   }
 
