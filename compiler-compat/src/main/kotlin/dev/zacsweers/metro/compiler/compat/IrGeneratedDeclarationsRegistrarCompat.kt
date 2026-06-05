@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.compat
 
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -31,6 +32,10 @@ public interface IrGeneratedDeclarationsRegistrarCompat {
   public fun registerFunctionAsMetadataVisible(irFunction: IrSimpleFunction)
 
   public fun registerConstructorAsMetadataVisible(irConstructor: IrConstructor)
+
+  public fun registerClassAsMetadataVisible(irClass: IrClass) {
+    error("registerClassAsMetadataVisible is not supported by this Kotlin compiler version.")
+  }
 
   // TODO: KT-63881
   // public fun registerPropertyAsMetadataVisible(irProperty: IrProperty)
