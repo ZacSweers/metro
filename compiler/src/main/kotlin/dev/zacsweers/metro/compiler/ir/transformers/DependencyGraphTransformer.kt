@@ -23,12 +23,14 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.UsedKeyCollector
+import dev.zacsweers.metro.compiler.ir.addMetadataVisibleDefaultConstructor
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.betterDumpKotlinLike
 import dev.zacsweers.metro.compiler.ir.chunkSupertypesIfNeeded
 import dev.zacsweers.metro.compiler.ir.computePromotedParents
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.BindingLookupCache
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
@@ -47,6 +49,7 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
+import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
@@ -76,6 +79,9 @@ import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
 import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
+import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -831,7 +837,13 @@ internal class DependencyGraphTransformer(
 
       // Implement the factory's `Impl` class if present
       val factoryImpl =
-        factoryCreator.type.requireNestedClass(Symbols.Names.Impl).apply(implementFactoryFunction)
+        (factoryCreator.type.nestedClassOrNull(Symbols.Names.Impl)
+            ?: if (options.generateClassesInIr) {
+              factoryCreator.type.createGraphFactoryImplShell()
+            } else {
+              factoryCreator.type.requireNestedClass(Symbols.Names.Impl)
+            })
+          .apply(implementFactoryFunction)
 
       if (
         factoryCreator.type.isInterface &&
@@ -873,6 +885,23 @@ internal class DependencyGraphTransformer(
     }
 
     companionObject.dumpToMetroLog()
+  }
+
+  private fun IrClass.createGraphFactoryImplShell(): IrClass {
+    return getOrCreateMetadataVisibleHiddenNestedClass(
+        name = Symbols.Names.Impl,
+        origin = Origins.GraphFactoryImplClassDeclaration,
+        markAsMetroImpl = true,
+        superTypesProvider = {
+          listOf(
+            this@createGraphFactoryImplShell.symbol.typeWith(typeParameters.map { it.defaultType })
+          )
+        },
+      )
+      .apply {
+        addMetadataVisibleDefaultConstructor()
+        addFakeOverrides(irTypeSystemContext)
+      }
   }
 }
 

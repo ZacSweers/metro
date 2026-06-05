@@ -110,6 +110,7 @@ abstract class MetroCompilerTest {
                   entry.raw.cliOption,
                   this@toPluginOptions.generateContributionHintsInFir,
                 )
+              GENERATE_CLASSES_IN_IR -> processor.option(entry.raw.cliOption, generateClassesInIr)
               SHRINK_UNUSED_BINDINGS -> processor.option(entry.raw.cliOption, shrinkUnusedBindings)
               STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
               ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)

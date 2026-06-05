@@ -14,9 +14,13 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
+import dev.zacsweers.metro.compiler.ir.addMetadataVisibleDefaultConstructor
+import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
+import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
@@ -29,6 +33,7 @@ import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.getAnnotationStringValue
+import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -240,13 +245,22 @@ internal class InjectedClassTransformer(
 
     checkNotLocked()
 
+    val isAssistedInject =
+      listOf(declaration, targetConstructor).any {
+        it.isAnnotatedWithAny(metroSymbols.classIds.assistedInjectAnnotations)
+      }
+
     val factoryCls =
       declaration.nestedClasses.singleOrNull {
         it.origin == Origins.InjectConstructorFactoryClassDeclaration
       }
-        ?: reportCompilerBug(
-          "No expected FIR-generated factory class found for '${declaration.kotlinFqName}'."
-        )
+        ?: if (options.generateClassesInIr) {
+          createInjectConstructorFactoryShell(declaration, isAssistedInject)
+        } else {
+          reportCompilerBug(
+            "No expected FIR-generated factory class found for '${declaration.kotlinFqName}'."
+          )
+        }
 
     /*
     Implement a simple Factory class that takes all injected values as providers
@@ -262,11 +276,6 @@ internal class InjectedClassTransformer(
     val memberInjectParameters = injectors.flatMap { it.requiredParametersByClass.values.flatten() }
 
     val constructorParameters = targetConstructor.parameters()
-
-    val isAssistedInject =
-      listOf(declaration, targetConstructor).any {
-        it.isAnnotatedWithAny(metroSymbols.classIds.assistedInjectAnnotations)
-      }
 
     if (!isAssistedInject) {
       // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to read
@@ -412,6 +421,24 @@ internal class InjectedClassTransformer(
 
     generatedFactories[injectedClassId] = Optional.of(wrapper)
     return wrapper
+  }
+
+  private fun createInjectConstructorFactoryShell(
+    declaration: IrClass,
+    isAssistedInject: Boolean,
+  ): IrClass {
+    return declaration
+      .getOrCreateMetadataVisibleHiddenNestedClass(
+        name = Symbols.Names.MetroFactory,
+        origin = Origins.InjectConstructorFactoryClassDeclaration,
+      )
+      .apply {
+        if (isAssistedInject) {
+          addAnnotationCompat(buildAnnotation(symbol, metroSymbols.assistedMarkerConstructor))
+        }
+        addMetadataVisibleDefaultConstructor()
+        addMetadataVisibleHiddenCompanionObject()
+      }
   }
 
   private fun cacheFactoryInMetadata(declaration: IrClass, classFactory: ClassFactory) {

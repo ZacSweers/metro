@@ -188,6 +188,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  GENERATE_CLASSES_IN_IR(
+    RawMetroOption.boolean(
+      name = "generate-classes-in-ir",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable generation of metadata-visible hidden classes in IR instead of FIR.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   SHRINK_UNUSED_BINDINGS(
     RawMetroOption.boolean(
       name = "shrink-unused-bindings",
@@ -1000,6 +1011,8 @@ public data class MetroOptions(
     MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
   public val generateContributionHintsInFir: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
+  public val generateClassesInIr: Boolean =
+    MetroOption.GENERATE_CLASSES_IN_IR.raw.defaultValue.expectAs(),
   public val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
   public val statementsPerInitFun: Int =
@@ -1193,6 +1206,7 @@ public data class MetroOptions(
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
     public var generateContributionHints: Boolean = base.generateContributionHints
     public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
+    public var generateClassesInIr: Boolean = base.generateClassesInIr
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
@@ -1416,6 +1430,7 @@ public data class MetroOptions(
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
         generateContributionHints = generateContributionHints,
         generateContributionHintsInFir = generateContributionHintsInFir,
+        generateClassesInIr = generateClassesInIr,
         shrinkUnusedBindings = shrinkUnusedBindings,
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
@@ -1515,8 +1530,18 @@ public data class MetroOptions(
       valid = false
     }
 
+    if (generateClassesInIr && !supportsIrClassGeneration(compilerVersion)) {
+      onError(
+        "generateClassesInIr requires Kotlin 2.4.20-dev-5625 or later, but this build uses '$compilerVersion'."
+      )
+      valid = false
+    }
+
     val contributionProvidersAreEnabledWithoutFirHintGen =
-      generateContributionProviders && generateContributionHints && !generateContributionHintsInFir
+      generateContributionProviders &&
+        generateContributionHints &&
+        !generateContributionHintsInFir &&
+        !generateClassesInIr
     if (contributionProvidersAreEnabledWithoutFirHintGen) {
       onError(
         "generateContributionProviders with generateContributionHints requires " +
@@ -1577,6 +1602,12 @@ public data class MetroOptions(
   }
 
   public companion object {
+    private val MIN_KOTLIN_IR_CLASS_GENERATION = KotlinToolingVersion("2.4.20-dev-5625")
+
+    internal fun supportsIrClassGeneration(version: KotlinToolingVersion): Boolean {
+      return version >= MIN_KOTLIN_IR_CLASS_GENERATION
+    }
+
     /** Minimum Kotlin version on the 2.3.x line that supports JS IC with top-level declarations. */
     private val MIN_KOTLIN_2_3_JS_IC = KotlinToolingVersion("2.3.21-RC")
 
@@ -1638,6 +1669,8 @@ public data class MetroOptions(
 
           GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
             generateContributionHintsInFir = configuration.getAsBoolean(entry)
+
+          GENERATE_CLASSES_IN_IR -> generateClassesInIr = configuration.getAsBoolean(entry)
 
           SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = configuration.getAsBoolean(entry)
 

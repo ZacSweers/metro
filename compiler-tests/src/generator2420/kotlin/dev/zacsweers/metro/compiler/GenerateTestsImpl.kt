@@ -10,6 +10,7 @@ inline fun <
   reified Box,
   reified FastInitBox,
   reified ContributionProvidersBox,
+  reified IrOnlyClassesBox,
   reified Diagnostic,
   reified FirDump,
   reified IrDump,
@@ -26,6 +27,7 @@ inline fun <
       testClass<Box> { commonModel("box") }
       testClass<FastInitBox> { commonModel("box") }
       testClass<ContributionProvidersBox> { commonModel("box") }
+      testClass<IrOnlyClassesBox> { commonModel("box") }
       testClass<Diagnostic> { commonModel("diagnostic") }
       testClass<FirDump> { commonModel("dump/fir") }
       testClass<IrDump> { commonModel("dump/ir") }

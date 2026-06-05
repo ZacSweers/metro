@@ -464,6 +464,10 @@ internal class Symbols(
     builtinsFinder.findClass(ClassIds.HiddenFromObjC)?.constructors?.first()
   }
 
+  val metroImplMarkerConstructor: IrConstructorSymbol by lazy {
+    builtinsFinder.findClass(ClassIds.metroImplMarker)!!.constructors.first()
+  }
+
   val jvmStaticAnnotationConstructor: IrConstructorSymbol? by lazy {
     builtinsFinder.findClass(ClassIds.JvmStatic)?.constructors?.first()
   }
@@ -675,6 +679,10 @@ internal class Symbols(
       .findClass(ClassId(metroRuntime.packageFqName, StringNames.ASSISTED.asName()))!!
       .constructors
       .single()
+  }
+
+  val assistedMarkerConstructor by lazy {
+    builtinsFinder.findClass(ClassIds.metroAssistedMarker)!!.constructors.single()
   }
 
   val bindsOptionalConstructor by lazy {

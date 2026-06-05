@@ -927,8 +927,10 @@ internal class ContributionsFirGenerator(
             )
             // @BindingContainer
             add(buildBindingContainerAnnotation())
-            // @IROnlyFactories — provider factories are generated in IR, not FIR
-            add(buildIROnlyFactoriesAnnotation())
+            if (!session.metroFirBuiltIns.options.generateClassesInIr) {
+              // Legacy path: provider factories are generated in IR, not FIR.
+              add(buildIROnlyFactoriesAnnotation())
+            }
             // @ContributesTo(scope) — replaces are resolved from @Origin in IR via the
             // original contributing class's @ContributesBinding annotations
             add(buildContributesToAnnotation(scopeArg))

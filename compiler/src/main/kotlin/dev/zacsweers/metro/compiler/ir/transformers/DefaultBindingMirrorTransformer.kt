@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.findAnnotations
+import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
@@ -76,7 +77,17 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
 
         val mirrorClass =
           declaration.nestedClassOrNull(Symbols.Names.DefaultBindingMirrorClass)
-            ?: return@getOrPut Optional.empty()
+            ?: if (options.generateClassesInIr) {
+              declaration
+                .getOrCreateMetadataVisibleHiddenNestedClass(
+                  name = Symbols.Names.DefaultBindingMirrorClass,
+                  origin = Origins.DefaultBindingMirrorClassDeclaration,
+                  copyTypeParameters = false,
+                )
+                .apply { modality = Modality.ABSTRACT }
+            } else {
+              return@getOrPut Optional.empty()
+            }
 
         val defaultBindingType =
           resolveDefaultBindingType(caller, mirrorClass, defaultBindingAnnotation)

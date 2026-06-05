@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
@@ -24,6 +25,8 @@ import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
+import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
+import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -59,7 +62,9 @@ import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
+import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irSetField
@@ -71,6 +76,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -253,12 +259,23 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
             return null
           }
       } else {
-        declaration.nestedClasses
-          .singleOrNull { it.origin == Origins.MembersInjectorClassDeclaration }
-          .escapeIfNull {
-            // For in-compilation classes, assume no members to inject
-            generatedInjectors[injectedClassId] = Optional.empty()
-            return null
+        declaration.nestedClasses.singleOrNull {
+          it.origin == Origins.MembersInjectorClassDeclaration
+        }
+          ?: run {
+            if (options.generateClassesInIr) {
+              val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters(false)
+              if (injectedMembersByClass.values.all { it.isEmpty() }) {
+                // For in-compilation classes, assume no members to inject
+                generatedInjectors[injectedClassId] = Optional.empty()
+                return null
+              }
+              createMembersInjectorShell(declaration, injectedMembersByClass)
+            } else {
+              // For in-compilation classes, assume no members to inject
+              generatedInjectors[injectedClassId] = Optional.empty()
+              return null
+            }
           }
       }
 
@@ -411,6 +428,35 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     trace("Write injector metadata") { declaration.writeMetadata(memberInjectClass) }
 
     return memberInjectClass.also { generatedInjectors[injectedClassId] = Optional.of(it) }
+  }
+
+  private fun createMembersInjectorShell(
+    declaration: IrClass,
+    injectedMembersByClass: Map<ClassId, List<Parameters>>,
+  ): IrClass {
+    val allParameters =
+      injectedMembersByClass.values.flatMap { it.flatMap(Parameters::regularParameters) }
+
+    return declaration
+      .getOrCreateMetadataVisibleHiddenNestedClass(
+        name = Symbols.Names.MetroMembersInjector,
+        origin = Origins.MembersInjectorClassDeclaration,
+        superTypesProvider = {
+          listOf(metroSymbols.metroMembersInjector.typeWith(declaration.defaultType))
+        },
+      )
+      .apply {
+        addConstructor {
+            visibility = DescriptorVisibilities.PRIVATE
+            isPrimary = true
+          }
+          .apply {
+            addParameters(allParameters, wrapInProvider = true, copyQualifiers = true)
+            body = generateDefaultConstructorBody()
+            metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
+          }
+        addMetadataVisibleHiddenCompanionObject()
+      }
   }
 
   private fun IrClass.getOrComputeMemberInjectParameters(

@@ -120,6 +120,7 @@ class MetroExtensionRegistrarConfigurator(
         module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
       generateContributionHintsInFir =
         MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
+      generateClassesInIr = MetroDirectives.GENERATE_CLASSES_IN_IR in module.directives
       module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
         publicScopedProviderSeverity = it
       }

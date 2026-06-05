@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
+import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
@@ -58,7 +59,19 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
   fun getOrComputeBindsMirror(declaration: IrClass): BindsMirror? {
     return cache
       .getOrPut(declaration.classIdOrFail) {
-        val mirrorClass = declaration.nestedClassOrNull(Symbols.Names.BindsMirrorClass)
+        val mirrorClass =
+          declaration.nestedClassOrNull(Symbols.Names.BindsMirrorClass)
+            ?: if (options.generateClassesInIr && declaration.hasBindingMirrorMembers()) {
+              declaration
+                .getOrCreateMetadataVisibleHiddenNestedClass(
+                  name = Symbols.Names.BindsMirrorClass,
+                  origin = Origins.BindingMirrorClassDeclaration,
+                  copyTypeParameters = false,
+                )
+                .apply { modality = Modality.ABSTRACT }
+            } else {
+              null
+            }
         val mirror =
           if (mirrorClass == null) {
             // If there's no mirror class, there's no bindings
@@ -74,6 +87,19 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
         Optional.ofNullable(mirror)
       }
       .getOrNull()
+  }
+
+  private fun IrClass.hasBindingMirrorMembers(): Boolean {
+    return declarations.any { declaration ->
+      val function =
+        when (declaration) {
+          is IrProperty -> declaration.getter
+          is IrSimpleFunction -> declaration
+          else -> null
+        } ?: return@any false
+      val annotations = metroFunctionOf(function).annotations
+      annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
+    }
   }
 }
 

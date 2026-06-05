@@ -126,6 +126,16 @@ constructor(
       )
 
   /**
+   * Enables generating Metro's hidden metadata-visible classes in IR instead of FIR when supported
+   * by the Kotlin compiler.
+   */
+  @ExperimentalMetroGradleApi
+  public val generateClassesInIr: Property<Boolean> =
+    objects
+      .booleanProperty("metro.generateClassesInIr", false)
+      .convention(compilerVersion.map { KotlinVersions.supportsIrClassGeneration(it) })
+
+  /**
    * Sets the platforms for which contribution hints will be generated. If not set, defaults are
    * computed per-platform and per Kotlin version based on known compatible combinations.
    *

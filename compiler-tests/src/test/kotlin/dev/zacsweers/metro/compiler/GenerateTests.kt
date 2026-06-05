@@ -23,6 +23,7 @@ fun main() {
     AbstractBoxTest,
     AbstractFastInitBoxTest,
     AbstractContributionProvidersBoxTest,
+    AbstractIrOnlyClassesBoxTest,
     AbstractDiagnosticTest,
     AbstractFirDumpTest,
     AbstractIrDumpTest,

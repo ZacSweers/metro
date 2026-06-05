@@ -128,7 +128,6 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
@@ -347,10 +346,8 @@ internal class BindingContainerTransformer(
             it.classIdOrFail == generatedClassId
         }
           ?: run {
-            // For @IROnlyFactories-annotated containers, factory classes are not generated in FIR.
-            // Create the factory class entirely in IR.
             val parentClass = reference.parent.owner
-            if (parentClass.hasAnnotation(Symbols.ClassIds.irOnlyFactories)) {
+            if (parentClass.shouldGenerateProviderFactoryInIr()) {
               createContributionProviderFactory(parentClass, generatedClassId, reference)
             } else {
               reportCompilerBug(
@@ -420,20 +417,12 @@ internal class BindingContainerTransformer(
       // If it's got no parameters we'll generate it in FIR as an object
       ctor = factoryCls.primaryConstructor!!
     } else {
-      // For @IROnlyFactories containers, the factory stub already has a no-arg primary
-      // constructor shell. Reuse it. For FIR-generated factories, add a new constructor.
-      val isIROnlyFactory =
-        factoryCls.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) == true
-
       ctor =
-        if (isIROnlyFactory) {
-          factoryCls.primaryConstructor!!
-        } else {
-          factoryCls.addConstructor {
+        factoryCls.primaryConstructor
+          ?: factoryCls.addConstructor {
             visibility = DescriptorVisibilities.PRIVATE
             isPrimary = true
           }
-        }
 
       trace("Build factory constructor") {
         ctor.apply {
@@ -1159,8 +1148,15 @@ internal class BindingContainerTransformer(
   ): IrClass {
     val isObject = reference.parameters.allParameters.isEmpty()
     return createContributionProviderFactoryStub(parentClass, generatedClassId, isObject).also {
+      if (options.generateClassesInIr) {
+        metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(it)
+      }
       parentClass.declarations.add(it)
     }
+  }
+
+  private fun IrClass.shouldGenerateProviderFactoryInIr(): Boolean {
+    return options.generateClassesInIr || hasAnnotation(Symbols.ClassIds.irOnlyFactories)
   }
 
   /**

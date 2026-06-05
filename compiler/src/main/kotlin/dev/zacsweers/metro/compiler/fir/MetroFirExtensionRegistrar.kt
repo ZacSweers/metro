@@ -106,9 +106,13 @@ public class MetroFirExtensionRegistrar(
 
       // Load external extensions via ServiceLoader
       val externalExtensions =
-        loadExternalDeclarationExtensions(session, options, compatContext)
-          // If we're running in the IDE, only enable extensions that opt-in to that.
-          .letIf(!isCli) { extensions -> extensions.filter { it.enableFirInIde } }
+        if (options.generateClassesInIr) {
+          emptyList()
+        } else {
+          loadExternalDeclarationExtensions(session, options, compatContext)
+            // If we're running in the IDE, only enable extensions that opt-in to that.
+            .letIf(!isCli) { extensions -> extensions.filter { it.enableFirInIde } }
+        }
 
       // Build list of native Metro generators
       val nativeExtensions = buildList {
@@ -134,21 +138,29 @@ public class MetroFirExtensionRegistrar(
         )
 
         if (isCli) {
-          add(
-            wrapNativeGenerator("FirGen - ProvidesFactory", true, ::ProvidesFactoryFirGenerator)(
-              session
+          if (!options.generateClassesInIr) {
+            add(
+              wrapNativeGenerator("FirGen - ProvidesFactory", true, ::ProvidesFactoryFirGenerator)(
+                session
+              )
             )
-          )
+          }
 
-          add(
-            wrapNativeGenerator(
-              "FirGen - BindingMirrorClass",
-              true,
-              ::BindingMirrorClassFirGenerator,
-            )(session)
-          )
+          if (!options.generateClassesInIr) {
+            add(
+              wrapNativeGenerator(
+                "FirGen - BindingMirrorClass",
+                true,
+                ::BindingMirrorClassFirGenerator,
+              )(session)
+            )
+          }
 
-          if (options.generateContributionHints && options.generateContributionHintsInFir) {
+          if (
+            options.generateContributionHints &&
+              options.generateContributionHintsInFir &&
+              !options.generateClassesInIr
+          ) {
             add(
               wrapNativeGenerator("FirGen - ContributionHints", true) { session, compatContext ->
                 ContributionHintFirGenerator(session, compatContext, externalExtensions)

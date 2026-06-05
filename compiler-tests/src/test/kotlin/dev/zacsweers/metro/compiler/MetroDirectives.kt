@@ -23,6 +23,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Enable/disable generation of contribution hint generation.") { it.toBoolean() }
   val GENERATE_CONTRIBUTION_HINTS_IN_FIR by
     directive("Enable/disable generation of contribution hint generation in FIR.")
+  val GENERATE_CLASSES_IN_IR by
+    directive("Enable generation of metadata-visible hidden classes in IR.")
   val PUBLIC_SCOPED_PROVIDER_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of public scoped providers."
