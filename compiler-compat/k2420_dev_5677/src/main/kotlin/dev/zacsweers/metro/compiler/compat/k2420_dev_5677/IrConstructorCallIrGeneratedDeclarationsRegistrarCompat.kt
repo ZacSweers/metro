@@ -7,6 +7,7 @@ import org.jetbrains.kotlin.backend.common.extensions.IrGeneratedDeclarationsReg
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrAnnotation
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -28,18 +29,19 @@ internal value class IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
   ) = delegate.addMetadataVisibleAnnotationsToElement(declaration, annotations.mapToIrAnnotation())
 
   override fun registerFunctionAsMetadataVisible(irFunction: IrSimpleFunction) =
-    delegate.registerFunctionAsMetadataVisible(
-      irFunction.apply { this.annotations = annotationsCompat().mapToIrAnnotation() }
-    )
+    delegate.registerFunctionAsMetadataVisible(irFunction.apply { convertFunctionAnnotations() })
 
   override fun registerConstructorAsMetadataVisible(irConstructor: IrConstructor) =
     delegate.registerConstructorAsMetadataVisible(
-      irConstructor.apply { this.annotations = annotationsCompat().mapToIrAnnotation() }
+      irConstructor.apply { convertFunctionAnnotations() }
     )
 
   override fun registerClassAsMetadataVisible(irClass: IrClass) =
     delegate.registerClassAsMetadataVisible(
-      irClass.apply { this.annotations = annotationsCompat().mapToIrAnnotation() }
+      irClass.apply {
+        convertAnnotations()
+        typeParameters.forEach { it.convertAnnotations() }
+      }
     )
 
   override fun addCustomMetadataExtension(
@@ -57,6 +59,16 @@ internal value class IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
 
   private fun IrDeclaration.annotationsCompat(): List<IrConstructorCall> {
     return (annotations as List<*>).map { it as IrConstructorCall }
+  }
+
+  private fun IrFunction.convertFunctionAnnotations() {
+    convertAnnotations()
+    parameters.forEach { it.convertAnnotations() }
+    typeParameters.forEach { it.convertAnnotations() }
+  }
+
+  private fun IrDeclaration.convertAnnotations() {
+    annotations = annotationsCompat().mapToIrAnnotation()
   }
 
   private fun IrConstructorCall.toIrAnnotation(): IrAnnotation {
