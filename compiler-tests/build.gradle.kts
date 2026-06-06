@@ -150,11 +150,13 @@ dependencies {
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta2"
   )
   "generator240CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.4.0-Beta2")
-  // 2.4.20-dev-835 renamed `commonConfigurationForJvmTest` to `setupJvmPipelineSteps`.
+  // 2.4.20-dev-835 renamed `commonConfigurationForJvmTest` to `setupJvmPipelineSteps`. Compile
+  // this helper against the same 2.4.20 artifact set used at test runtime so its erased builder
+  // receiver ABI matches the fallback artifacts.
   "generator2420CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$kotlin2420Dev835Version"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$kotlinArtifactsVersion"
   )
-  "generator2420CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:$kotlin2420Dev835Version")
+  "generator2420CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:$kotlinArtifactsVersion")
 
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
   testImplementation(

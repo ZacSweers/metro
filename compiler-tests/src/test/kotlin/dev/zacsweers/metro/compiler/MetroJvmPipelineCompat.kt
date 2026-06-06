@@ -3,11 +3,8 @@
 package dev.zacsweers.metro.compiler
 
 import org.jetbrains.kotlin.test.FirParser
+import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 
-internal fun Any.setupMetroJvmPipelineCompat(parser: FirParser) {
-  val method =
-    Class.forName("dev.zacsweers.metro.compiler.MetroJvmPipelineKt").methods.single {
-      it.name == "setupMetroJvmPipeline" && it.parameterTypes.size == 2
-    }
-  method.invoke(null, this, parser)
+internal fun TestConfigurationBuilder.setupMetroJvmPipelineCompat(parser: FirParser) {
+  setupMetroJvmPipeline(parser)
 }
