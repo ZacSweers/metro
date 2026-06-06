@@ -7,7 +7,7 @@ import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import java.nio.file.Files
+import java.io.File
 import java.nio.file.Path
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -142,22 +142,13 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   }
 
   private fun metroRuntimeJar(): Path {
-    System.getProperty("metro.runtime.jar")?.let {
-      return Path.of(it)
-    }
-
-    val repoRoot =
-      generateSequence(Path.of(System.getProperty("user.dir")).toAbsolutePath()) { it.parent }
-        .first { Files.exists(it.resolve("settings.gradle.kts")) }
-    return Files.list(repoRoot.resolve("runtime/build/libs")).use { files ->
-      files
-        .filter {
-          val fileName = it.fileName.toString()
-          fileName.startsWith("runtime-jvm-") && fileName.endsWith(".jar")
-        }
-        .findFirst()
-        .orElseThrow()
-    }
+    return System.getProperty("metroRuntime.classpath")
+      ?.split(File.pathSeparator)
+      ?.map { Path.of(it) }
+      ?.single {
+        val fileName = it.fileName.toString()
+        fileName.startsWith("runtime-jvm-") && fileName.endsWith(".jar")
+      } ?: error("Unable to get a valid classpath from 'metroRuntime.classpath' property")
   }
 }
 

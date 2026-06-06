@@ -1,6 +1,8 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-import java.util.Properties
+import foundry.gradle.properties.PropertyResolver
+import foundry.gradle.properties.StartParameterProperties
+import foundry.gradle.properties.createPropertiesProvider
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
@@ -12,14 +14,38 @@ plugins {
   id("metro.base")
 }
 
-val metroRootProperties =
-  Properties().apply {
-    layout.projectDirectory.file("../gradle.properties").asFile.inputStream().use(::load)
+val startParameterProperties =
+  providers.of(StartParameterProperties::class.java) {
+    parameters.properties.set(gradle.startParameter.projectProperties)
   }
 
-group = metroRootProperties.getProperty("GROUP")
+val metroRootLocalProperties = createPropertiesProvider("../local.properties")
 
-version = metroRootProperties.getProperty("VERSION_NAME")
+val metroRootGradleProperties = createPropertiesProvider("../gradle.properties")
+
+val metroRootLocalProperty: (String) -> Provider<String> = { key ->
+  metroRootLocalProperties.map { it.getProperty(key) }
+}
+
+val metroRootGradleProperty: (String) -> Provider<String> = { key ->
+  metroRootGradleProperties.map { it.getProperty(key) }.orElse(providers.gradleProperty(key))
+}
+
+val propertyResolver =
+  PropertyResolver(
+    project,
+    startParameterProperty = { key ->
+      startParameterProperties.map { it[key] }
+    },
+    globalLocalProperty = metroRootLocalProperty,
+    globalGradleLocalProperty = metroRootGradleProperty,
+  )
+
+val metroBootstrapVersion = propertyResolver.requiredStringProvider("METRO_BOOTSTRAP_VERSION").get()
+
+group = propertyResolver.requiredStringProvider("GROUP").get()
+
+version = propertyResolver.requiredStringProvider("VERSION_NAME").get()
 
 metroProject { jvmTarget.set(libs.versions.ideaJvmTarget) }
 
@@ -42,6 +68,11 @@ buildConfig {
   buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
 }
 
+val metroRuntimeClasspath: Configuration by configurations.creating {
+  isTransitive = false
+  resolutionStrategy.useGlobalDependencySubstitutionRules = false
+}
+
 dependencies {
   intellijPlatform {
     intellijIdeaUltimate("2026.1.3")
@@ -49,19 +80,33 @@ dependencies {
     testFramework(TestFrameworkType.Platform)
   }
 
-  testImplementation("dev.zacsweers.metro:runtime:$version")
+  metroRuntimeClasspath("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
 }
 
 intellijPlatform {
   pluginConfiguration {
-    name = "Metro"
-    version = project.version.toString()
+    id.set("dev.zacsweers.metro.idea")
+    name.set("Metro")
+    version.set(providers.provider { project.version.toString() })
+    description.set("Additional IDE support and features for projects using Metro.")
 
     ideaVersion {
-      sinceBuild = "261"
+      sinceBuild.set("261")
     }
+  }
+
+  signing {
+    keyStore.set(
+      layout.file(propertyResolver.optionalStringProvider("signing.secretKeyRingFile").map(::file))
+    )
+    keyStorePassword.set(propertyResolver.optionalStringProvider("signing.password"))
+    keyStoreKeyAlias.set(propertyResolver.optionalStringProvider("signing.keyId"))
+  }
+
+  publishing {
+    token.set(propertyResolver.optionalStringProvider("intellijPlatformPublishingToken"))
   }
 
   pluginVerification {
@@ -78,12 +123,6 @@ tasks.withType<VerifyPluginTask>().configureEach {
 }
 
 tasks.test {
-  dependsOn(gradle.includedBuild("metro").task(":runtime:jvmJar"))
-  systemProperty(
-    "metro.runtime.jar",
-    layout.projectDirectory
-      .file("../runtime/build/libs/runtime-jvm-$version.jar")
-      .asFile
-      .absolutePath,
-  )
+  dependsOn(metroRuntimeClasspath)
+  systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
 }
