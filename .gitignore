@@ -4,11 +4,12 @@ plans/
 **/.idea/*
 !.idea/externalDependencies.xml
 !.idea/kotlinTestDataPluginTestDataPaths.xml
-.gradle
-.kotlin/
-.iml
-.project
 .classpath
+.gradle
+.intellijPlatform/
+.iml
+.kotlin/
+.project
 *.iml
 local.properties
 .DS_Store
