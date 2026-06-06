@@ -33,6 +33,7 @@ Changelog
 ### Fixes
 
 - **[FIR]** Loosen `nonPublicContributionSeverity` if `generateContributionProviders` is enabled. Note it will still fire on internal `@ExposeImplBinding`-annotated types.
+- **[FIR]** Fix compatibility with IntelliJ `2026.1.3`.
 - **[IR]** Fix graph extensions inheriting a farther ancestor's contribution-provider binding when a closer parent graph already owns a scoped binding for the same key.
 - **[IR]** Fix dynamic graphs (`createDynamicGraph`/`createDynamicGraphFactory`) sharing a single generated impl across call sites in different files. The shared impl was a `private` (on the JVM, package-private) nested class placed under one call site, so call sites in other packages failed at runtime with `IllegalAccessError`, and removing the owning file caused `NoClassDefFoundError`. Generated impls are now cached per-file.
 - **[IR]** Fix IR graph nodes eagerly resolving supertypes.
@@ -43,7 +44,7 @@ Changelog
 
 - **[Gradle]** Add missing experimental annotations to the Gradle plugin's analysis APIs. Sorry these were not meant to be stabilized yet!
 - Build against Kotlin `2.4.0`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
-- No longer test Kotlin `2.4.0` pre-release builds. Kotlin `2.4.0-dev-2124` _is_ still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.
+- No longer test most Kotlin `2.4.0` pre-release builds. Kotlin `2.4.0-dev-2124` _is_ still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.
 - Test Android Studio Quail 1 stable (`2026.1.1.8`).
 - Test Android Studio Quail 2 canaries (`2026.1.2.4`).
 - Test IntelliJ `2026.1.2`.

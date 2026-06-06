@@ -55,6 +55,10 @@ get_latest_version() {
     grep -m 2 -o '^[0-9]\+\.[0-9]\+\.[0-9]\+' "$changelog_file" | tail -n 1
 }
 
+is_stable_version() {
+    [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+}
+
 # Updates the VERSION_NAME prop in all gradle.properties files to a new value
 # usage: update_gradle_properties $new_version
 update_gradle_properties() {
@@ -115,7 +119,11 @@ NEXT_SNAPSHOT_VERSION="$(increment_version "$NEW_VERSION" --minor)-SNAPSHOT"
 
 if $DRY_RUN; then
     echo "Dry run — would perform the following steps:"
-    echo "  1. Update gradle.properties and quickstart.md to $NEW_VERSION"
+    if is_stable_version "$NEW_VERSION"; then
+        echo "  1. Update gradle.properties and quickstart.md to $NEW_VERSION"
+    else
+        echo "  1. Update gradle.properties to $NEW_VERSION"
+    fi
     echo "  2. Run ./metrow regen"
     echo "  3. Run ./scripts/update-compatibility-docs.sh"
     echo "  4. Commit: 'Prepare for release $NEW_VERSION.'"
@@ -132,7 +140,9 @@ echo "Publishing $NEW_VERSION"
 
 # Prepare release
 update_gradle_properties "$NEW_VERSION"
-update_quickstart_version "$NEW_VERSION"
+if is_stable_version "$NEW_VERSION"; then
+    update_quickstart_version "$NEW_VERSION"
+fi
 
 ./metrow regen
 
