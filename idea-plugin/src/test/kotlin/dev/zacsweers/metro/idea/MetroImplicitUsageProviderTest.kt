@@ -38,6 +38,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertTrue(declarations.parameter("providedInstance").isMetroImplicitUsage())
     assertTrue(declarations.klass("InjectedService").isMetroImplicitUsage())
     assertTrue(declarations.klass("InjectedService").primaryConstructor!!.isMetroImplicitUsage())
+    assertTrue(declarations.function("functionInject").isMetroImplicitUsage())
   }
 
   fun testDoesNotMarkUnsupportedDeclarationsAsImplicitlyUsed() {
@@ -46,7 +47,6 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertFalse(declarations.function("unusedFunction").isMetroImplicitUsage())
     assertFalse(declarations.klass("ClassAnnotatedInject").isMetroImplicitUsage())
     assertFalse(declarations.property("memberInject").isMetroImplicitUsage())
-    assertFalse(declarations.function("functionInject").isMetroImplicitUsage())
   }
 
   fun testUnusedDeclarationHighlightingRespectsMetroImplicitUsage() {
@@ -68,6 +68,9 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     }
     assertFalse("InjectedService should not be reported as unused:\n$warningText") {
       warningDescriptions.contains("""Class "InjectedService" is never used""")
+    }
+    assertFalse("functionInject should not be reported as unused:\n$warningText") {
+      warningDescriptions.contains("""Function "functionInject" is never used""")
     }
     assertTrue("unusedFunction should still be reported as unused:\n$warningText") {
       warningDescriptions.contains("""Function "unusedFunction" is never used""")

@@ -26,6 +26,7 @@ private val MULTIBINDS = FqName("dev.zacsweers.metro.Multibinds")
 private val INJECT = FqName("dev.zacsweers.metro.Inject")
 private val METRO_PACKAGE = FqName("dev.zacsweers.metro")
 private val MODULE_DECLARATION_ANNOTATIONS = setOf(BINDS, PROVIDES, MULTIBINDS)
+private val FUNCTION_DECLARATION_ANNOTATIONS = MODULE_DECLARATION_ANNOTATIONS + INJECT
 private val PROVIDES_ANNOTATION = setOf(PROVIDES)
 
 /**
@@ -54,7 +55,7 @@ internal fun PsiElement.isMetroImplicitUsage(): Boolean {
   return when (declaration) {
     is KtClass -> declaration.hasInjectConstructor()
     is KtConstructor<*> -> declaration.hasMetroAnnotation(INJECT)
-    is KtNamedFunction -> declaration.hasAnyMetroAnnotation(MODULE_DECLARATION_ANNOTATIONS)
+    is KtNamedFunction -> declaration.hasAnyMetroAnnotation(FUNCTION_DECLARATION_ANNOTATIONS)
     is KtProperty -> declaration.hasAnyMetroAnnotationOnPropertyOrGetter()
     is KtPropertyAccessor ->
       declaration.isGetter && declaration.hasAnyMetroAnnotation(MODULE_DECLARATION_ANNOTATIONS)
