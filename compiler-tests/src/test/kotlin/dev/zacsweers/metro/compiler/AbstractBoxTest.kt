@@ -100,7 +100,7 @@ open class AbstractIrOnlyClassesBoxTest : AbstractBoxTest() {
     with(builder) {
       defaultDirectives {
         MetroDirectives.MIN_COMPILER_VERSION.with("2.4.20-dev-5625")
-        +MetroDirectives.GENERATE_CLASSES_IN_IR
+        MetroDirectives.GENERATE_CLASSES_IN_IR.with(true)
       }
     }
   }

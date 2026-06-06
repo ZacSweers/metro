@@ -23,6 +23,16 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     }
 
     val directives = testServices.moduleStructure.allDirectives
+    val generateClassesInIr =
+      directives[MetroDirectives.GENERATE_CLASSES_IN_IR].lastOrNull()?.toString()?.toBoolean() ==
+        true
+    if (
+      (MetroDirectives.ENABLE_CIRCUIT in directives ||
+        MetroDirectives.ENABLE_HILT_INTEROP in directives ||
+        MetroDirectives.ENABLE_HILT_KSP in directives) && generateClassesInIr
+    ) {
+      return true
+    }
     return shouldSkipForCompilerVersion(
       compilerVersion = COMPILER_VERSION,
       targetVersion = directives[MetroDirectives.COMPILER_VERSION].firstOrNull(),

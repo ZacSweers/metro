@@ -35,10 +35,12 @@ import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import kotlin.io.path.Path
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
+import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.config.messageCollector
+import org.jetbrains.kotlin.config.CompilerConfigurationKey
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
@@ -120,7 +122,11 @@ class MetroExtensionRegistrarConfigurator(
         module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
       generateContributionHintsInFir =
         MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
-      generateClassesInIr = MetroDirectives.GENERATE_CLASSES_IN_IR in module.directives
+      generateClassesInIr =
+        module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
+          .lastOrNull()
+          ?.toString()
+          ?.toBoolean() ?: false
       module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
         publicScopedProviderSeverity = it
       }
@@ -292,7 +298,7 @@ class MetroExtensionRegistrarConfigurator(
     IrGenerationExtension.registerExtension(GenerateProvidersInGraphIrExtension())
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
-        messageCollector = configuration.messageCollector,
+        messageCollector = configuration.metroMessageCollector,
         classIds = classIds,
         options = options,
         // TODO ever support this in tests?
@@ -309,3 +315,12 @@ class MetroExtensionRegistrarConfigurator(
     }
   }
 }
+
+private val CompilerConfiguration.metroMessageCollector: MessageCollector
+  @Suppress("UNCHECKED_CAST")
+  get() {
+    val key =
+      CommonConfigurationKeys::class.java.getField("MESSAGE_COLLECTOR_KEY").get(null)
+        as CompilerConfigurationKey<MessageCollector>
+    return get(key, MessageCollector.NONE)
+  }
