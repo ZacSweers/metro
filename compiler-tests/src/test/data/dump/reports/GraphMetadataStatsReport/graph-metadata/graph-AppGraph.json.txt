@@ -43,6 +43,7 @@
     "enableTopLevelFunctionInjection": false,
     "generateContributionHints": true,
     "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
     "shrinkUnusedBindings": true,
     "statementsPerInitFun": 2,
     "enableGraphSharding": true,
