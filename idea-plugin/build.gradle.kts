@@ -10,7 +10,9 @@ plugins {
   id("metro.base")
 }
 
-metroProject { jvmTarget.set("21") }
+metroProject { jvmTarget.set(libs.versions.ideaJvmTarget) }
+
+java { toolchain { languageVersion.set(libs.versions.ideaJvmTarget.map(JavaLanguageVersion::of)) } }
 
 repositories {
   mavenCentral()
@@ -49,7 +51,7 @@ intellijPlatform {
 }
 
 tasks.withType<VerifyPluginTask>().configureEach {
-  setJvmArgs(jvmArgs.orEmpty().filterNot { it == "--sun-misc-unsafe-memory-access=allow" })
+  setJvmArgs(jvmArgs.filterNot { it == "--sun-misc-unsafe-memory-access=allow" })
 }
 
 tasks.test {
