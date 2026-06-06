@@ -6,6 +6,7 @@ import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.buildConfig)
   alias(libs.plugins.intellijPlatform)
   id("metro.base")
 }
@@ -17,6 +18,18 @@ java { toolchain { languageVersion.set(libs.versions.ideaJvmTarget.map(JavaLangu
 repositories {
   mavenCentral()
   intellijPlatform { defaultRepositories() }
+}
+
+buildConfig {
+  generateAtSync = true
+  packageName("dev.zacsweers.metro.idea")
+  kotlin {
+    useKotlinOutput {
+      internalVisibility = true
+      topLevelConstants = true
+    }
+  }
+  buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
 }
 
 dependencies {
