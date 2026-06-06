@@ -17,4 +17,3 @@ Incompatible return types: 'kotlin.Int' vs 'kotlin.String'
   OverridesAreTypeChecked.kt:22:3
     fun fooFunction(): kotlin.String (defined in 'StringProvider')
                        ~~~~~~~~~~~~~
-
