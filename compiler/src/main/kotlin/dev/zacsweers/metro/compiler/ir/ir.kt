@@ -2224,6 +2224,24 @@ internal fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Bool
   )
 }
 
+internal fun IrDeclarationWithVisibility.isVisibleAsInternalTo(
+  declaration: IrDeclaration
+): Boolean {
+  declaration.fileOrNull?.let {
+    return isVisibleAsInternal(it)
+  }
+
+  val referencedDeclarationPackageFragment = getPackageFragment()
+  if (referencedDeclarationPackageFragment.symbol is DescriptorlessExternalPackageFragmentSymbol) {
+    return false
+  }
+
+  val callingDeclarationPackageFragment = declaration.getPackageFragment()
+  return callingDeclarationPackageFragment.moduleDescriptor.shouldSeeInternalsOf(
+    referencedDeclarationPackageFragment.moduleDescriptor
+  )
+}
+
 private fun IrDeclarationWithVisibility.isPackagePrivateIsh(): Boolean {
   if (isFromJava()) {
     when (visibility) {
