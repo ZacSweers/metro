@@ -1421,6 +1421,7 @@ public data class MetroOptions(
       if (debug) {
         enabledLoggers += MetroLogger.Type.entries
       }
+      val generateContributionHintsInFir = generateContributionHintsInFir && !generateClassesInIr
       return MetroOptions(
         debug = debug,
         enabled = enabled,
