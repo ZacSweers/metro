@@ -6666,6 +6666,7 @@
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR]</strong> Loosen <code>nonPublicContributionSeverity</code> if <code>generateContributionProviders</code> is enabled. Note it will still fire on internal <code>@ExposeImplBinding</code>-annotated types.</li>
+<li><strong>[FIR]</strong> Fix compatibility with IntelliJ <code>2026.1.3</code>.</li>
 <li><strong>[IR]</strong> Fix graph extensions inheriting a farther ancestor&rsquo;s contribution-provider binding when a closer parent graph already owns a scoped binding for the same key.</li>
 <li><strong>[IR]</strong> Fix dynamic graphs (<code>createDynamicGraph</code>/<code>createDynamicGraphFactory</code>) sharing a single generated impl across call sites in different files. The shared impl was a <code>private</code> (on the JVM, package-private) nested class placed under one call site, so call sites in other packages failed at runtime with <code>IllegalAccessError</code>, and removing the owning file caused <code>NoClassDefFoundError</code>. Generated impls are now cached per-file.</li>
 <li><strong>[IR]</strong> Fix IR graph nodes eagerly resolving supertypes.</li>
@@ -6676,7 +6677,7 @@
 <ul>
 <li><strong>[Gradle]</strong> Add missing experimental annotations to the Gradle plugin&rsquo;s analysis APIs. Sorry these were not meant to be stabilized yet!</li>
 <li>Build against Kotlin <code>2.4.0</code>. Note the runtime artifacts still target Kotlin <code>2.3.0</code> and Metro supports a wide range of compiler versions. See the <a href="https://zacsweers.github.io/metro/latest/compatibility/">compatibility docs</a> for a full table of compatible versions.</li>
-<li>No longer test Kotlin <code>2.4.0</code> pre-release builds. Kotlin <code>2.4.0-dev-2124</code> <em>is</em> still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.</li>
+<li>No longer test most Kotlin <code>2.4.0</code> pre-release builds. Kotlin <code>2.4.0-dev-2124</code> <em>is</em> still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.</li>
 <li>Test Android Studio Quail 1 stable (<code>2026.1.1.8</code>).</li>
 <li>Test Android Studio Quail 2 canaries (<code>2026.1.2.4</code>).</li>
 <li>Test IntelliJ <code>2026.1.2</code>.</li>
