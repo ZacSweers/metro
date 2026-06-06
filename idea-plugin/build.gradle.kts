@@ -1,5 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import java.util.Properties
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
@@ -10,6 +11,15 @@ plugins {
   alias(libs.plugins.intellijPlatform)
   id("metro.base")
 }
+
+val metroRootProperties =
+  Properties().apply {
+    layout.projectDirectory.file("../gradle.properties").asFile.inputStream().use(::load)
+  }
+
+group = metroRootProperties.getProperty("GROUP")
+
+version = metroRootProperties.getProperty("VERSION_NAME")
 
 metroProject { jvmTarget.set(libs.versions.ideaJvmTarget) }
 
@@ -39,7 +49,7 @@ dependencies {
     testFramework(TestFrameworkType.Platform)
   }
 
-  testImplementation(project(":runtime"))
+  testImplementation("dev.zacsweers.metro:runtime:$version")
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
 }
@@ -68,14 +78,11 @@ tasks.withType<VerifyPluginTask>().configureEach {
 }
 
 tasks.test {
-  dependsOn(":runtime:jvmJar")
+  dependsOn(gradle.includedBuild("metro").task(":runtime:jvmJar"))
   systemProperty(
     "metro.runtime.jar",
-    project(":runtime")
-      .layout
-      .buildDirectory
-      .file("libs/runtime-jvm-${project.version}.jar")
-      .get()
+    layout.projectDirectory
+      .file("../runtime/build/libs/runtime-jvm-$version.jar")
       .asFile
       .absolutePath,
   )

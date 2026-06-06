@@ -41,7 +41,6 @@ apiValidation {
     add("compiler")
     add("compiler-tests")
     add("compiler-compat")
-    add("idea-plugin")
     layout.projectDirectory.dir("compiler-compat").asFile.listFiles()!!.forEach {
       if (it.isDirectory && it.name.startsWith("k") && File(it, "version.txt").exists()) {
         add(it.name)

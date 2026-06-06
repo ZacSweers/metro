@@ -1,7 +1,7 @@
-// Copyright (C) 2024 Zac Sweers
+// Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 pluginManagement {
-  includeBuild("build-logic")
+  includeBuild("../build-logic")
   repositories {
     mavenCentral()
     google()
@@ -16,6 +16,7 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
+  versionCatalogs { maybeCreate("libs").apply { from(files("../gradle/libs.versions.toml")) } }
   repositories {
     mavenCentral()
     google()
@@ -29,31 +30,9 @@ dependencyResolutionManagement {
 
 plugins { id("com.gradle.develocity") }
 
-rootProject.name = "metro"
+rootProject.name = "metro-idea-plugin"
 
-include(
-  ":compiler",
-  ":compiler-compat",
-  ":compiler-tests",
-  ":gradle-plugin",
-  ":interop-dagger",
-  ":interop-javax",
-  ":interop-jakarta",
-  ":interop-guice",
-  ":metrox-android",
-  ":metrox-viewmodel",
-  ":metrox-viewmodel-compose",
-  ":runtime",
-)
-
-// Include compiler-compat versions
-rootProject.projectDir.resolve("compiler-compat").listFiles()!!.forEach {
-  if (it.isDirectory && it.name.startsWith("k") && File(it, "version.txt").exists()) {
-    include(":compiler-compat:${it.name}")
-  }
-}
-
-val VERSION_NAME: String by extra.properties
+includeBuild("..")
 
 develocity {
   buildScan {
@@ -61,7 +40,6 @@ develocity {
     termsOfUseAgree = "yes"
 
     tag(if (System.getenv("CI").isNullOrBlank()) "Local" else "CI")
-    tag(VERSION_NAME)
 
     obfuscation {
       username { "Redacted" }

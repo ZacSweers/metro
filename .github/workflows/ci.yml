@@ -217,7 +217,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Test idea-plugin
-        run: ./gradlew :idea-plugin:test --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+        run: ./gradlew -p idea-plugin test --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()
@@ -231,7 +231,7 @@ jobs:
         uses: mikepenz/action-junit-report@v6
         if: failure()
         with:
-          report_paths: '**/build/test-results/**/TEST-*.xml'
+          report_paths: 'idea-plugin/**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - idea-plugin'
 
   # Run multiplatform tests on main only to reduce PR time
