@@ -127,7 +127,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
     val isAssisted
-      get() = classFactory.isAssistedInject
+      get() =
+        classFactory.isAssistedInject || parameters.nonDispatchParameters.any { it.isAssisted }
 
     override val dependencies: List<IrContextualTypeKey> by memoize {
       parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey } +
@@ -152,7 +153,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      * We can't use direct invocation if there are injected members because the factory handles
      * member injection
      */
-    fun canBypassFactory(): Boolean = !classFactory.isAssistedInject && injectedMembers.isEmpty()
+    fun canBypassFactory(): Boolean = !isAssisted && injectedMembers.isEmpty()
 
     fun parameterFor(typeKey: IrTypeKey) =
       classFactory.function.regularParameters.getOrNull(

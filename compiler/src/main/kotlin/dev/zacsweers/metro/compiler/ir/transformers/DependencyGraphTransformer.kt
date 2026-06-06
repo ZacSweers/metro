@@ -23,14 +23,12 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.UsedKeyCollector
-import dev.zacsweers.metro.compiler.ir.addMetadataVisibleDefaultConstructor
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.betterDumpKotlinLike
 import dev.zacsweers.metro.compiler.ir.chunkSupertypesIfNeeded
 import dev.zacsweers.metro.compiler.ir.computePromotedParents
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
-import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
+import dev.zacsweers.metro.compiler.ir.getOrCreateGraphFactoryImplShell
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.BindingLookupCache
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
@@ -48,6 +46,7 @@ import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.metroDumpKotlinLike
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
@@ -79,9 +78,6 @@ import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
 import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
-import org.jetbrains.kotlin.ir.types.defaultType
-import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -162,15 +158,22 @@ internal class DependencyGraphTransformer(
 
   /**
    * For graphs annotated with `@MergeContributionsInIr`, FIR skipped the contribution-supertype
-   * merge entirely. Run the merger here in IR and append the merged supertypes onto the generated
-   * `$$Impl` so the binding graph builder picks them up via `allSupertypesSequence`.
+   * merge entirely. IR-only class generation also skips FIR-hidden contribution markers so metadata
+   * does not reference classes generated later. Run the merger here in IR and append the merged
+   * supertypes onto the generated `$$Impl` so the binding graph builder picks them up via
+   * `allSupertypesSequence`.
    */
   private fun applyIrContributionMergeIfNeeded(
     graphDeclaration: IrClass,
     graphAnnotation: IrConstructorCall,
     metroGraph: IrClass,
   ) {
-    if (!graphDeclaration.hasAnnotation(Symbols.ClassIds.mergeContributionsInIr)) return
+    if (
+      !options.generateClassesInIr &&
+        !graphDeclaration.hasAnnotation(Symbols.ClassIds.mergeContributionsInIr)
+    ) {
+      return
+    }
 
     val contributions =
       contributionMerger.computeContributions(graphAnnotation, graphDeclaration) ?: return
@@ -801,7 +804,7 @@ internal class DependencyGraphTransformer(
       "graph-dumpKotlin",
       { "${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt" },
     ) {
-      metroGraph.betterDumpKotlinLike()
+      metroGraph.metroDumpKotlinLike()
     }
   }
 
@@ -839,7 +842,7 @@ internal class DependencyGraphTransformer(
       val factoryImpl =
         (factoryCreator.type.nestedClassOrNull(Symbols.Names.Impl)
             ?: if (options.generateClassesInIr) {
-              factoryCreator.type.createGraphFactoryImplShell()
+              factoryCreator.type.getOrCreateGraphFactoryImplShell()
             } else {
               factoryCreator.type.requireNestedClass(Symbols.Names.Impl)
             })
@@ -885,23 +888,6 @@ internal class DependencyGraphTransformer(
     }
 
     companionObject.dumpToMetroLog()
-  }
-
-  private fun IrClass.createGraphFactoryImplShell(): IrClass {
-    return getOrCreateMetadataVisibleHiddenNestedClass(
-        name = Symbols.Names.Impl,
-        origin = Origins.GraphFactoryImplClassDeclaration,
-        markAsMetroImpl = true,
-        superTypesProvider = {
-          listOf(
-            this@createGraphFactoryImplShell.symbol.typeWith(typeParameters.map { it.defaultType })
-          )
-        },
-      )
-      .apply {
-        addMetadataVisibleDefaultConstructor()
-        addFakeOverrides(irTypeSystemContext)
-      }
   }
 }
 

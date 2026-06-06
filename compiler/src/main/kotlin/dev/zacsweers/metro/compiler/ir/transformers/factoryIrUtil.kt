@@ -62,6 +62,7 @@ import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -90,6 +91,7 @@ internal fun generateStaticCreateFunction(
   sourceFunction: IrFunction?,
   patchCreationParams: Boolean = true,
   isAssistedInject: Boolean = false,
+  stubDefaults: Boolean = true,
 ): IrSimpleFunction {
   val createFunction =
     objectClassToGenerateIn
@@ -115,11 +117,14 @@ internal fun generateStaticCreateFunction(
           parameters.allParameters.filterNot { it.isAssisted },
           wrapInProvider = true,
           copyQualifiers = true,
+          stubDefaults = stubDefaults,
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
         addHiddenFromObjCAnnotation(this)
         addStaticAnnotations(this)
-        context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
+        if (factoryClass.shouldRegisterGeneratedFactoryMembersAsMetadataVisible()) {
+          context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
+        }
       }
   transformStaticCreateFunction(
     factoryClass = factoryClass,
@@ -232,6 +237,7 @@ private fun transformStaticCreateFunction(
 context(context: IrMetroContext)
 internal fun generateStaticNewInstanceFunction(
   parentClass: IrClass,
+  factoryClass: IrClass = parentClass,
   sourceTypeParameters: IrClass,
   returnTypeProvider: (List<IrTypeParameter>) -> IrType,
   sourceMetroParameters: Parameters,
@@ -265,7 +271,9 @@ internal fun generateStaticNewInstanceFunction(
         )
         addHiddenFromObjCAnnotation(this)
         addStaticAnnotations(this)
-        context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
+        if (factoryClass.shouldRegisterGeneratedFactoryMembersAsMetadataVisible()) {
+          context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
+        }
       }
   transformStaticNewInstanceFunction(
     sourceMetroParameters = sourceMetroParameters,
@@ -388,6 +396,12 @@ internal fun generateMetadataVisibleMirrorFunction(
   return function
 }
 
+context(context: IrMetroContext)
+private fun IrClass.shouldRegisterGeneratedFactoryMembersAsMetadataVisible(): Boolean {
+  return context.options.generateClassesInIr ||
+    !parentAsClass.hasAnnotation(Symbols.ClassIds.irOnlyFactories)
+}
+
 /**
  * Adds stub `create()` and named creator functions to a factory class for cross-module invisible
  * factory stubs. These are phantom functions that the consuming module can reference, at runtime
@@ -405,7 +419,7 @@ internal fun generateStubCreatorFunctions(
 ) {
   val creatorClass = factoryClass.requireStaticIshDeclarationContainer()
 
-  val params = sourceFunction.parameters().regularParameters
+  val params = sourceFunction.parameters().allParameters
 
   // create() function, parameters are Provider-wrapped
   creatorClass.addFunction(Symbols.StringNames.CREATE, factoryClass.defaultType).apply {

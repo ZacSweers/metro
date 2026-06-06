@@ -2,19 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
+import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
-import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
-import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
@@ -31,7 +35,6 @@ internal fun IrClass.getOrCreateMetadataVisibleHiddenNestedClass(
   superTypesProvider: IrClass.() -> List<IrType> = { emptyList() },
   copyTypeParameters: Boolean = true,
   isCompanion: Boolean = false,
-  markAsMetroImpl: Boolean = false,
 ): IrClass {
   return nestedClasses.firstOrNull { it.origin == origin && it.name == name }
     ?: createMetadataVisibleHiddenNestedClass(
@@ -41,7 +44,6 @@ internal fun IrClass.getOrCreateMetadataVisibleHiddenNestedClass(
       superTypesProvider = superTypesProvider,
       copyTypeParameters = copyTypeParameters,
       isCompanion = isCompanion,
-      markAsMetroImpl = markAsMetroImpl,
     )
 }
 
@@ -53,7 +55,6 @@ internal fun IrClass.createMetadataVisibleHiddenNestedClass(
   superTypesProvider: IrClass.() -> List<IrType> = { emptyList() },
   copyTypeParameters: Boolean = true,
   isCompanion: Boolean = false,
-  markAsMetroImpl: Boolean = false,
 ): IrClass {
   val parentClass = this
   return context.irFactory
@@ -72,11 +73,83 @@ internal fun IrClass.createMetadataVisibleHiddenNestedClass(
       createThisReceiverParameter()
       superTypes += superTypesProvider()
       addDeprecatedHiddenAnnotation()
-      if (markAsMetroImpl) {
-        addMetroImplMarkerAnnotation()
-      }
       parentClass.addChild(this)
       context.metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(this)
+    }
+}
+
+context(context: IrMetroContext)
+internal fun IrClass.getOrCreateGraphImplClassShell(): IrClass {
+  nestedClassOrNull(Origins.GraphImplClassDeclaration)?.let {
+    return it
+  }
+
+  val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+  for (nested in nestedClasses) {
+    nameAllocator.reserveName(nested.name.asString())
+  }
+  val creatorFunction =
+    nestedClasses
+      .singleOrNull {
+        it.isAnnotatedWithAny(context.metroSymbols.dependencyGraphFactoryAnnotations)
+      }
+      ?.singleAbstractFunction()
+
+  val parentClass = this
+  return context.irFactory
+    .buildClass {
+      name = nameAllocator.newName(Symbols.Names.Impl.asString()).asName()
+      origin = Origins.GraphImplClassDeclaration
+      kind = ClassKind.CLASS
+      visibility = DescriptorVisibilities.PUBLIC
+      modality = Modality.FINAL
+    }
+    .apply {
+      typeParameters = copyTypeParametersFrom(parentClass)
+      createThisReceiverParameter()
+      superTypes += parentClass.symbol.typeWith(typeParameters.map { it.defaultType })
+      addDeprecatedHiddenAnnotation()
+      addMetroImplMarkerAnnotation()
+      parentClass.addChild(this)
+      context.metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(this)
+      if (primaryConstructor == null) {
+        addConstructor {
+            visibility = DescriptorVisibilities.PRIVATE
+            isPrimary = true
+            origin = Origins.Default
+          }
+          .apply {
+            creatorFunction?.let {
+              for (param in it.regularParameters) {
+                addValueParameter(param.name, param.type).apply {
+                  replaceAnnotationsCompat(param.annotationsCompat())
+                }
+              }
+            }
+            body = generateDefaultConstructorBody()
+            context.metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
+          }
+      }
+    }
+}
+
+context(context: IrMetroContext)
+internal fun IrClass.getOrCreateGraphFactoryImplShell(): IrClass {
+  return getOrCreateMetadataVisibleHiddenNestedClass(
+      name = Symbols.Names.Impl,
+      origin = Origins.GraphFactoryImplClassDeclaration,
+      superTypesProvider = {
+        listOf(
+          this@getOrCreateGraphFactoryImplShell.symbol.typeWith(
+            typeParameters.map { it.defaultType }
+          )
+        )
+      },
+    )
+    .apply {
+      addMetroImplMarkerAnnotation()
+      addMetadataVisibleDefaultConstructor()
+      addFakeOverrides(context.irTypeSystemContext)
     }
 }
 
@@ -108,25 +181,4 @@ internal fun IrClass.addMetadataVisibleDefaultConstructor() {
       visibility = DescriptorVisibilities.PRIVATE
       context.metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
     }
-}
-
-context(context: IrMetroContext)
-private fun IrClass.addDeprecatedHiddenAnnotation() {
-  addAnnotationCompat(
-    buildAnnotation(symbol, context.metroSymbols.deprecatedAnnotationConstructor) { annotation ->
-      annotation.arguments[0] = irString("This synthesized declaration should not be used directly")
-      annotation.arguments[2] =
-        IrGetEnumValueImpl(
-          SYNTHETIC_OFFSET,
-          SYNTHETIC_OFFSET,
-          context.metroSymbols.deprecationLevel.defaultType,
-          context.metroSymbols.hiddenDeprecationLevel,
-        )
-    }
-  )
-}
-
-context(context: IrMetroContext)
-private fun IrClass.addMetroImplMarkerAnnotation() {
-  addAnnotationCompat(buildAnnotation(symbol, context.metroSymbols.metroImplMarkerConstructor))
 }

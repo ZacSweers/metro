@@ -51,7 +51,6 @@ import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
-import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -1666,10 +1665,6 @@ internal class IrGraphGenerator(
 
                 +irInvoke(
                   callee = function.symbol,
-                  typeArgs =
-                    targetParam.type.requireSimpleType(targetParam).arguments.map {
-                      it.typeOrNullableAny
-                    },
                   args = args,
                 )
               }

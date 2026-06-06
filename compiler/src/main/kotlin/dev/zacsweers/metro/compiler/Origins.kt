@@ -37,6 +37,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.InjectConstructorFactoryClassDeclaration)
   val MembersInjectorClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MembersInjectorClassDeclaration)
+  val MembersInjectorStaticInjectFunction: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.MembersInjectorStaticInjectFunction)
   val FactoryCreateFunction: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.FactoryCreateFunction)
   val FactoryNewInstanceFunction: IrDeclarationOrigin =

@@ -136,7 +136,8 @@ private fun createGraphProto(
         .map { factory ->
           val factoryClass = factory.factoryClass
           val isInvisible =
-            factoryClass.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) == true
+            factoryClass.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) ==
+              true || !factoryClass.hasAnnotation(Symbols.ClassIds.CallableMetadata)
           ProviderFactoryProto(
             class_id = factoryClass.classIdOrFail.protoString,
             invisible = isInvisible,

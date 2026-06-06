@@ -4,46 +4,31 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.GraphToProcess
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.allScopes
-import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
-import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
-import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.getOrCreateGraphImplClassShell
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
-import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
-import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ScopeWithIr
 import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrStatement
-import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
-import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.types.defaultType
-import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.visitors.IrTransformer
 
 /**
@@ -104,7 +89,7 @@ internal class CoreTransformers(
     get() = currentDeclarationParent
 
   override fun visitCall(expression: IrCall): IrExpression {
-    return createGraphTransformer.visitCall(expression)
+    return with(this) { createGraphTransformer.visitCall(expression) }
       ?: AsContributionTransformer.visitCall(expression, metroContext)
       // Optimization: skip intermediate visit methods (visitFunctionAccessExpression, etc.)
       // since we don't override them. Call visitExpression directly to save stack frames.
@@ -182,7 +167,7 @@ internal class CoreTransformers(
       } else {
         declaration.nestedClassOrNull(Origins.GraphImplClassDeclaration)
           ?: if (options.generateClassesInIr) {
-            createGraphImplShell(declaration)
+            declaration.getOrCreateGraphImplClassShell()
           } else {
             reportCompilerBug(
               "Expected generated dependency graph for ${declaration.classIdOrFail}"
@@ -194,44 +179,5 @@ internal class CoreTransformers(
       GraphToProcess(declaration, dependencyGraphAnno, graphImpl, dependencyGraphAnno.allScopes())
 
     return
-  }
-
-  private fun createGraphImplShell(declaration: IrClass): IrClass {
-    val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
-    for (nested in declaration.nestedClasses) {
-      nameAllocator.reserveName(nested.name.asString())
-    }
-    val creatorFunction =
-      declaration.nestedClasses
-        .singleOrNull { it.isAnnotatedWithAny(metroSymbols.dependencyGraphFactoryAnnotations) }
-        ?.singleAbstractFunction()
-
-    return declaration
-      .getOrCreateMetadataVisibleHiddenNestedClass(
-        name = nameAllocator.newName(Symbols.Names.Impl.asString()).asName(),
-        origin = Origins.GraphImplClassDeclaration,
-        markAsMetroImpl = true,
-        superTypesProvider = {
-          listOf(declaration.symbol.typeWith(typeParameters.map { it.defaultType }))
-        },
-      )
-      .apply {
-        addConstructor {
-            visibility = DescriptorVisibilities.PRIVATE
-            isPrimary = true
-            origin = Origins.Default
-          }
-          .apply {
-            creatorFunction?.let {
-              for (param in it.regularParameters) {
-                addValueParameter(param.name, param.type).apply {
-                  replaceAnnotationsCompat(param.annotationsCompat())
-                }
-              }
-            }
-            body = generateDefaultConstructorBody()
-            metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
-          }
-      }
   }
 }

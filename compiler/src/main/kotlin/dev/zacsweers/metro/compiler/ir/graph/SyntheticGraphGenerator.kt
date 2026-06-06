@@ -266,6 +266,9 @@ internal class SyntheticGraphGenerator(
 
       // Must be added to the container before we generate a factory impl
       containerToAddTo.addChild(this)
+      if (options.generateClassesInIr) {
+        metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(this)
+      }
     }
 
     val ctor =
@@ -302,6 +305,11 @@ internal class SyntheticGraphGenerator(
           }
 
           body = generateDefaultConstructorBody()
+        }
+        .also {
+          if (options.generateClassesInIr) {
+            metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(it)
+          }
         }
 
     // If there's an extension, generate it into this impl

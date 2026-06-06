@@ -17,7 +17,6 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
-import dev.zacsweers.metro.compiler.ir.addMetadataVisibleDefaultConstructor
 import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
@@ -436,7 +435,6 @@ internal class InjectedClassTransformer(
         if (isAssistedInject) {
           addAnnotationCompat(buildAnnotation(symbol, metroSymbols.assistedMarkerConstructor))
         }
-        addMetadataVisibleDefaultConstructor()
         addMetadataVisibleHiddenCompanionObject()
       }
   }
@@ -527,14 +525,12 @@ internal class InjectedClassTransformer(
           val instance = createAndAddTemporaryVariable(newInstance)
           for (injector in injectors) {
             val injectorClass = injector.injectorClass ?: continue
-            val typeArgs = injectorClass.parentAsClass.typeParameters.map { it.defaultType }
             for ((function, parameters) in injector.declaredInjectFunctions) {
               // Record for IC
               trackFunctionCall(invokeFunction, function)
               +irInvoke(
                 dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                 callee = function.symbol,
-                typeArgs = typeArgs,
                 args =
                   buildList {
                     add(irGet(instance))
@@ -569,8 +565,17 @@ internal class InjectedClassTransformer(
         }
 
       // Assign fields
+      val constructorFields =
+        assignConstructorParamsToFields(
+          declaration.primaryConstructor!!,
+          declaration,
+          namer = memberNamer,
+        )
       val constructorParametersToFields =
-        assignConstructorParamsToFields(constructorParameters, declaration, namer = memberNamer)
+        constructorFields.entries.withIndex().associate { (index, pair) ->
+          val (_, field) = pair
+          constructorParameters.regularParameters[index] to field
+        }
 
       val invokeFunction =
         declaration.functions.first { it.origin == Origins.TopLevelInjectFunctionClassFunction }

@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
+import dev.zacsweers.metro.compiler.ir.getOrCreateGraphImplClassShell
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
@@ -298,9 +299,13 @@ internal class ContributionIrTransformer(
     if (!declaration.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)) {
       // Only DependencyGraph classes have an FIR-generated graph impl. Contributed GraphExtensions
       // will get implemented later in IR
-      declaration
-        .requireNestedClass(Origins.GraphImplClassDeclaration)
-        .addFakeOverrides(irTypeSystemContext)
+      val graphImpl =
+        if (options.generateClassesInIr) {
+          declaration.getOrCreateGraphImplClassShell()
+        } else {
+          declaration.requireNestedClass(Origins.GraphImplClassDeclaration)
+        }
+      graphImpl.addFakeOverrides(irTypeSystemContext)
     }
     declaration.dumpToMetroLog()
   }

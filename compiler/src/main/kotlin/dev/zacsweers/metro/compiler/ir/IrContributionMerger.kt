@@ -273,12 +273,22 @@ internal class IrContributionMerger(
               mutableContributedBindingContainers.remove(contributionId)
             }
 
+            val nestedContributions =
+              (mutableAllContributions.keys + mutableContributedBindingContainers.keys).filter {
+                it.parentClassId == excludedClassId
+              }
+            nestedContributions.forEach { contributionId ->
+              mutableAllContributions.remove(contributionId)
+              mutableContributedBindingContainers.remove(contributionId)
+            }
+
             // Track unmatched if nothing was removed
             if (
               removedContainer == null &&
                 removedContribution == null &&
                 removedExternalSupertype == null &&
-                originContributions == null
+                originContributions == null &&
+                nestedContributions.isEmpty()
             ) {
               unmatchedExclusions += excludedClassId
             }

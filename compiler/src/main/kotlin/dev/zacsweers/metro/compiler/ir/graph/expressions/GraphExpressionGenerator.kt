@@ -156,7 +156,7 @@ private constructor(
       return when (binding) {
         is ConstructorInjected -> {
           val classFactory = binding.classFactory
-          val isAssistedInject = classFactory.isAssistedInject
+          val isAssistedInject = binding.isAssisted
           // Optimization: Skip factory instantiation when possible
           val canBypassFactory = accessType == AccessType.INSTANCE && binding.canBypassFactory()
 
@@ -711,7 +711,14 @@ private constructor(
         }
       }
 
-      return params.allParameters.mapIndexed { i, param ->
+      val paramsForCall =
+        if (params.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject == true) {
+          params.nonDispatchParameters
+        } else {
+          params.allParameters
+        }
+
+      return paramsForCall.mapIndexed { i, param ->
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
         val accessType =
           if (param.contextualTypeKey.requiresProviderInstance) {

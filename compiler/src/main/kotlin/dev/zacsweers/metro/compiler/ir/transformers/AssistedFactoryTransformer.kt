@@ -195,9 +195,11 @@ internal class AssistedFactoryTransformer(
             isPrimary = true
           }
           .apply {
-            val factoryClassId =
-              targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)
-            val factoryParamType = declaration.lookupClass(factoryClassId)!!.defaultType
+            val factoryParamType =
+              injectedClassTransformer
+                .getOrGenerateFactory(targetType, null, doNotErrorOnMissing = false)!!
+                .factoryClass
+                .defaultType
             addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
             body = generateDefaultConstructorBody()
           }
@@ -298,9 +300,11 @@ internal class AssistedFactoryTransformer(
           setDispatchReceiver(companionReceiver.copyTo(this))
           typeParameters = copyTypeParametersFrom(samFunction)
 
-          val factoryClassId =
-            targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)
-          val factoryParamType = this.lookupClass(factoryClassId)!!.defaultType
+          val factoryParamType =
+            injectedClassTransformer
+              .getOrGenerateFactory(targetType, null, doNotErrorOnMissing = false)!!
+              .factoryClass
+              .defaultType
           addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
 
           addStaticAnnotations(this)
