@@ -23,11 +23,13 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isPropertyField
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.Name
 
@@ -335,7 +337,7 @@ internal fun IrOverridableDeclaration<*>.renderLocationDiagnostic(
   short: Boolean = false,
 ): LocationDiagnostic {
   val location =
-    (this as IrDeclaration).renderSourceLocation(short = shortLocation)
+    sourceDeclarationForDiagnostic().renderSourceLocation(short = shortLocation)
       ?: parentAsClass.kotlinFqName.asString()
   val description = buildString {
     renderForDiagnostic(
@@ -345,6 +347,27 @@ internal fun IrOverridableDeclaration<*>.renderLocationDiagnostic(
     )
   }
   return LocationDiagnostic(location, description)
+}
+
+private fun IrOverridableDeclaration<*>.sourceDeclarationForDiagnostic(): IrDeclaration {
+  val parentClass = parentAsClass
+  if (!parentClass.hasAnnotation(Symbols.FqNames.MetroContribution)) return this as IrDeclaration
+
+  val sourceClass = parentClass.parent as? IrClass ?: return this as IrDeclaration
+  return when (this) {
+    is IrProperty -> sourceClass.properties.firstOrNull { it.name == name }
+    is IrSimpleFunction -> {
+      val property = propertyIfAccessor.expectAsOrNull<IrProperty>()
+      if (property != null) {
+        sourceClass.properties.firstOrNull { it.name == property.name }
+      } else {
+        sourceClass.functions.firstOrNull {
+          it.name == name && it.regularParameters.size == regularParameters.size
+        }
+      }
+    }
+    else -> null
+  } ?: this as IrDeclaration
 }
 
 private fun StringBuilder.renderAnnotations(

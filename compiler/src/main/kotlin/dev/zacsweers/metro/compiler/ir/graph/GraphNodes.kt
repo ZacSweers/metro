@@ -842,7 +842,7 @@ internal class GraphNodes(
                         "this inject function"
                       }
                     metroContext.reportCompat(
-                      originalDeclaration.takeUnless { isExternal } ?: declaration,
+                      originalDeclaration.takeUnless { isExternal } ?: graphDeclaration,
                       MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION,
                       "Injected class '${declaration.regularParameters[0].type.classFqName!!.asString()}' is constructor-injected and can be instantiated by Metro directly, so $middle is unnecessary.",
                     )

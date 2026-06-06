@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
 import dev.zacsweers.metro.compiler.exitProcessing
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -74,7 +73,6 @@ import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
-import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.irVararg
 import org.jetbrains.kotlin.ir.builders.parent
@@ -941,6 +939,7 @@ internal fun IrValueParameter.addBackingFieldTo(
 ): IrField {
   return clazz.addField(name, type, DescriptorVisibilities.PRIVATE).apply {
     isFinal = true
+    initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(this@addBackingFieldTo)) }
   }
 }
 
@@ -953,20 +952,12 @@ internal fun assignConstructorParamsToFields(
   kind: MemberNamer.Kind = MemberNamer.Kind.PROVIDER,
 ): Map<IrValueParameter, IrField> {
   val allocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
-  val parametersToFields = buildMap {
+  return buildMap {
     for (irParameter in constructor.regularParameters) {
       val fieldName = allocator.allocateName(namer, kind) { irParameter.name.asString() }
       put(irParameter, irParameter.addBackingFieldTo(clazz, fieldName))
     }
   }
-  (constructor.body as? IrBlockBody)?.let { body ->
-    val thisReceiver = constructor.dispatchReceiverParameter ?: clazz.thisReceiverOrFail
-    val builder = context.createIrBuilder(constructor.symbol)
-    for ((parameter, field) in parametersToFields) {
-      body.statements += builder.run { irSetField(irGet(thisReceiver), field, irGet(parameter)) }
-    }
-  }
-  return parametersToFields
 }
 
 context(context: IrMetroContext)
@@ -2212,24 +2203,7 @@ public fun IrConstructor.generateDefaultConstructorBody(
       parentClass.symbol,
       returnType,
     )
-    initializeConstructorFields(parentClass)
     body()
-  }
-}
-
-private fun IrBlockBodyBuilder.initializeConstructorFields(parentClass: IrClass) {
-  val constructor = scope.scopeOwnerSymbol.owner.expectAs<IrConstructor>()
-  val thisReceiver = constructor.dispatchReceiverParameter ?: parentClass.thisReceiverOrFail
-  val fields = parentClass.declarations.filterIsInstance<IrField>().filterNot { it.isStatic }
-  val fieldsByName = fields.associateBy { it.name.asString() }
-  val assignedFields = mutableSetOf<IrField>()
-  for (parameter in constructor.regularParameters) {
-    val field =
-      fieldsByName[parameter.name.asString()]?.takeUnless { it in assignedFields }
-        ?: fields.firstOrNull { it !in assignedFields && it.type == parameter.type }
-        ?: continue
-    assignedFields += field
-    +irSetField(irGet(thisReceiver), field, irGet(parameter))
   }
 }
 
