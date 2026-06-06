@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
+import dev.zacsweers.metro.compiler.test.COMPILER_TOOLING_VERSION
 import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
 import org.jetbrains.kotlin.test.builders.RegisteredDirectivesBuilder
 import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.OPT_IN
@@ -23,9 +25,28 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     }
 
     val directives = testServices.moduleStructure.allDirectives
+    val generateClassesInIrDirectives = directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
+    if (
+      generateClassesInIrDirectives.any { it.toString().toBoolean() } &&
+        generateClassesInIrDirectives.any { !it.toString().toBoolean() }
+    ) {
+      return true
+    }
     val generateClassesInIr =
-      directives[MetroDirectives.GENERATE_CLASSES_IN_IR].lastOrNull()?.toString()?.toBoolean() ==
-        true
+      generateClassesInIrDirectives.lastOrNull()?.toString()?.toBoolean() == true
+    val irOnlyClassesSuite =
+      testServices.testInfo.className.substringAfterLast('.').substringBefore('$') ==
+        "IrOnlyClassesBoxTestGenerated"
+    if (
+      irOnlyClassesSuite &&
+        shouldSkipForCompilerVersion(
+          compilerVersion = COMPILER_VERSION,
+          compilerToolingVersion = KotlinToolingVersion(COMPILER_TOOLING_VERSION),
+          minVersion = MIN_IR_ONLY_CLASSES_COMPILER_VERSION,
+        )
+    ) {
+      return true
+    }
     if (
       (MetroDirectives.ENABLE_CIRCUIT in directives ||
         MetroDirectives.ENABLE_HILT_INTEROP in directives ||
@@ -35,6 +56,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     }
     return shouldSkipForCompilerVersion(
       compilerVersion = COMPILER_VERSION,
+      compilerToolingVersion = KotlinToolingVersion(COMPILER_TOOLING_VERSION),
       targetVersion = directives[MetroDirectives.COMPILER_VERSION].firstOrNull(),
       minVersion = directives[MetroDirectives.MIN_COMPILER_VERSION].firstOrNull(),
       maxVersion = directives[MetroDirectives.MAX_COMPILER_VERSION].firstOrNull(),
@@ -42,34 +64,41 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
   }
 
   companion object {
+    private const val MIN_IR_ONLY_CLASSES_COMPILER_VERSION = "2.4.20-dev-5625"
+
     /**
      * Determines whether a test should be skipped based on compiler version directives.
      *
      * [targetVersion] (from `COMPILER_VERSION`) supersedes [minVersion]/[maxVersion] — if set, the
      * min/max directives are ignored.
      *
-     * Version comparisons use [KotlinVersion] which compares only major.minor.patch numerically,
-     * ignoring classifiers. This means dev builds like "2.4.0-dev-1234" are treated as equal to
-     * "2.4.0" for comparison purposes, so `MIN_COMPILER_VERSION: 2.4` correctly includes dev
-     * builds.
+     * Version comparisons use [KotlinToolingVersion] so dev build thresholds like `2.4.20-dev-5625`
+     * compare against their classifier/build number instead of collapsing to `2.4.20`.
      */
     fun shouldSkipForCompilerVersion(
       compilerVersion: KotlinVersion,
+      compilerToolingVersion: KotlinToolingVersion =
+        KotlinToolingVersion(
+          compilerVersion.major,
+          compilerVersion.minor,
+          compilerVersion.patch,
+          classifier = null,
+        ),
       targetVersion: String? = null,
       minVersion: String? = null,
       maxVersion: String? = null,
     ): Boolean {
       // COMPILER_VERSION supersedes MIN/MAX_COMPILER_VERSION
       if (targetVersion != null) {
-        val (target, requiresFullMatch) = KotlinVersion.parse(targetVersion)
-        return !versionMatches(target, requiresFullMatch, compilerVersion)
+        val (target, requiresFullMatch) = toolingVersionDirective(targetVersion)
+        return !versionMatches(target, requiresFullMatch, compilerToolingVersion)
       }
 
-      val min = minVersion?.let { KotlinVersion.parse(it).first }
-      if (min != null && compilerVersion < min) return true
+      val min = minVersion?.let { toolingVersionDirective(it).first }
+      if (min != null && compilerToolingVersion < min) return true
 
-      val max = maxVersion?.let { KotlinVersion.parse(it).first }
-      if (max != null && compilerVersion > max) return true
+      val max = maxVersion?.let { toolingVersionDirective(it).first }
+      if (max != null && compilerToolingVersion > max) return true
 
       return false
     }
@@ -90,12 +119,22 @@ fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
  * @param actualVersion The actual compiler version
  */
 private fun versionMatches(
-  targetVersion: KotlinVersion,
+  targetVersion: KotlinToolingVersion,
   requiresFullMatch: Boolean,
-  actualVersion: KotlinVersion,
+  actualVersion: KotlinToolingVersion,
 ): Boolean {
   if (targetVersion.major != actualVersion.major) return false
   if (targetVersion.minor != actualVersion.minor) return false
   if (requiresFullMatch && targetVersion.patch != actualVersion.patch) return false
+  if (requiresFullMatch && targetVersion.classifier != null) {
+    return targetVersion.classifier.equals(actualVersion.classifier, ignoreCase = true)
+  }
   return true
+}
+
+private fun toolingVersionDirective(versionString: String): Pair<KotlinToolingVersion, Boolean> {
+  val versionPart = versionString.substringBefore('-')
+  val parts = versionPart.split('.')
+  val requiresFullMatch = parts.size == 3
+  return KotlinToolingVersion(versionString) to requiresFullMatch
 }
