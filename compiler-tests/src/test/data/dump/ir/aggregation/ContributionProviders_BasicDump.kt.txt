@@ -46,6 +46,7 @@ abstract class ImplContributions {
   @IROnlyFactories
   @ContributesTo(scope = AppScope::class)
   object ToAppScope {
+    @CallableMetadata(callableName = "provideImplAsBase", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideImplAsBase")
     class ProvideImplAsBaseMetroFactory : Factory<Base> {
       private /* final field */ val string: Provider<String> = string
       private /* final field */ val longProvider: Provider<Long> = longProvider

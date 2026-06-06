@@ -51,6 +51,7 @@ abstract class ImplContributions {
   @IROnlyFactories
   @ContributesTo(scope = AppScope::class)
   object ToAppScope {
+    @CallableMetadata(callableName = "provideImplAsBar", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideImplAsBar")
     class ProvideImplAsBarMetroFactory : Factory<Bar> {
       private /* final field */ val instance: Provider<Any?> = instance
       companion object Companion {
@@ -96,6 +97,7 @@ abstract class ImplContributions {
 
     }
 
+    @CallableMetadata(callableName = "provideImplAsFoo", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideImplAsFoo")
     class ProvideImplAsFooMetroFactory : Factory<Foo> {
       private /* final field */ val instance: Provider<Any?> = instance
       companion object Companion {
@@ -141,6 +143,7 @@ abstract class ImplContributions {
 
     }
 
+    @CallableMetadata(callableName = "provideScopedInstanceImpl", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideScopedInstanceImpl")
     class ProvideScopedInstanceImplMetroFactory : Factory<Any?> {
       private /* final field */ val string: Provider<String> = string
       private /* final field */ val longProvider: Provider<Long> = longProvider
