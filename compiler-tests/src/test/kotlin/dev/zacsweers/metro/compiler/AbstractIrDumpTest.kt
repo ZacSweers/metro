@@ -45,7 +45,7 @@ open class AbstractIrDumpTest : AbstractKotlinCompilerWithTargetBackendTest(Targ
 
   override fun configure(builder: TestConfigurationBuilder) =
     with(builder) {
-      setupMetroJvmPipeline(FirParser.LightTree)
+      setupMetroJvmPipelineCompat(FirParser.LightTree)
       commonHandlersForCodegenTest()
       additionalK2ConfigurationForIrTextTest(FirParser.LightTree)
 
@@ -62,7 +62,7 @@ open class AbstractIrDumpTest : AbstractKotlinCompilerWithTargetBackendTest(Targ
         )
       }
 
-      useAfterAnalysisCheckers(
+      useFailureSuppressors(
         ::BlackBoxCodegenSuppressor,
         ::PhasedPipelineChecker.bind(TestPhase.BACKEND),
       )

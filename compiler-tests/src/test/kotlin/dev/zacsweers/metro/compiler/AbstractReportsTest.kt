@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.test.directives.CodegenTestDirectives.IGNORE_DEXING
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.FULL_JDK
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.JVM_TARGET
-import org.jetbrains.kotlin.test.runners.AbstractFirLightTreeDiagnosticsTestWithJvmIrBackend
+import org.jetbrains.kotlin.test.runners.AbstractPhasedJvmDiagnosticLightTreeTest
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
 /**
@@ -29,7 +29,7 @@ import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
  * Expected files should be named `<testFile>/<diagnosticKey>/<path>/<reportName>.txt` alongside the
  * test data.
  */
-open class AbstractReportsTest : AbstractFirLightTreeDiagnosticsTestWithJvmIrBackend() {
+open class AbstractReportsTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
     return ClasspathBasedStandardLibrariesPathProvider
   }

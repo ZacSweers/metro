@@ -81,7 +81,7 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
         LANGUAGE + "+EnableDfaWarningsInK2"
       }
 
-      setupMetroJvmPipeline(FirParser.LightTree)
+      setupMetroJvmPipelineCompat(FirParser.LightTree)
       configureFirParser(FirParser.LightTree)
       configureCommonDiagnosticTestPaths()
 
@@ -111,14 +111,11 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
       useMetaInfoProcessors(::PsiLightTreeMetaInfoProcessor)
       val tagsAfter = tagsGeneratorCheckerAfterAnalysis
       if (tagsAfter != null) {
-        useAfterAnalysisCheckers(
-          ::PhasedPipelineChecker,
-          ::NonSourceErrorMessagesHandler,
-          tagsAfter,
-        )
+        useAfterAnalysisCheckers(::NonSourceErrorMessagesHandler, tagsAfter)
       } else {
-        useAfterAnalysisCheckers(::PhasedPipelineChecker, ::NonSourceErrorMessagesHandler)
+        useAfterAnalysisCheckers(::NonSourceErrorMessagesHandler)
       }
+      useFailureSuppressors(::PhasedPipelineChecker)
       enableMetaInfoHandler()
       useAdditionalService<SuppressionChecker>(suppressionCheckerCtor)
     }

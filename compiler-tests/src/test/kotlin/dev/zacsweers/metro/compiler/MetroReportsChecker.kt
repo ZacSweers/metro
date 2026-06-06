@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler
 
 import java.io.File
-import org.jetbrains.kotlin.test.WrappedException
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
@@ -53,8 +52,8 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
   override val directiveContainers: List<DirectivesContainer>
     get() = listOf(MetroDirectives)
 
-  override fun check(failedAssertions: List<WrappedException>) {
-    if (failedAssertions.isNotEmpty()) return
+  override fun check(thereWereFailures: Boolean) {
+    if (thereWereFailures) return
 
     val allDirectives = testServices.moduleStructure.allDirectives
 
