@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.internal
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -55,6 +56,32 @@ class SpinLockConditionTest {
 
     threadId = 2
     assertTrue(lock.tryLock(), "The final reentrant unlock should release the lock")
+    lock.unlock()
+  }
+
+  @Test
+  fun lockBacksOffBeforeRetrying() {
+    val sleeps = mutableListOf<UInt>()
+    lateinit var lock: SpinLock
+    lock =
+      SpinLock(
+        currentThreadId = { threadId },
+        useBackoff = true,
+        sleep = {
+          sleeps += it
+          threadId = 1
+          lock.unlock()
+          threadId = 2
+        },
+        assert = ::check,
+      )
+
+    lock.lock()
+    threadId = 2
+
+    lock.lock()
+
+    assertEquals(listOf(1u), sleeps, "lock should back off once before retrying")
     lock.unlock()
   }
 }

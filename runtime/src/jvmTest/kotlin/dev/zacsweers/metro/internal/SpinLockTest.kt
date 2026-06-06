@@ -42,7 +42,14 @@ class SpinLockTest {
   @Test
   fun contendedLockBacksOffBeforeAcquire() {
     val sleeps = CopyOnWriteArrayList<UInt>()
-    val lock = spinLock(sleep = sleeps::add)
+    val backedOff = CountDownLatch(1)
+    val lock =
+      spinLock(
+        sleep = {
+          sleeps.add(it)
+          backedOff.countDown()
+        }
+      )
     val locked = CountDownLatch(1)
     val release = CountDownLatch(1)
     val acquired = AtomicBoolean(false)
@@ -68,7 +75,7 @@ class SpinLockTest {
       }
     }
 
-    eventually { sleeps.isNotEmpty() }
+    assertTrue(backedOff.await(5, SECONDS), "Waiter did not back off while the lock was held")
     assertFalse(acquired.get(), "Waiter acquired the lock before the holder released it")
 
     release.countDown()
@@ -145,7 +152,6 @@ class SpinLockTest {
       activeInCriticalSection.get(),
       "No worker should remain in the critical section after completion",
     )
-    assertTrue(backoffs.get() > 0, "High contention should trigger at least one backoff")
     assertEquals(
       workerCount * iterations,
       counter.get(),
@@ -163,13 +169,5 @@ class SpinLockTest {
       sleep = sleep,
       assert = ::check,
     )
-  }
-
-  private fun eventually(condition: () -> Boolean) {
-    val timeoutAt = System.nanoTime() + SECONDS.toNanos(5)
-    while (!condition()) {
-      check(System.nanoTime() < timeoutAt) { "condition was not met before timeout" }
-      Thread.yield()
-    }
   }
 }
