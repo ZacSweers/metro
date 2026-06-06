@@ -6,13 +6,17 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.test.Constructor
+import org.jetbrains.kotlin.test.backend.BlackBoxCodegenSuppressor
 import org.jetbrains.kotlin.test.backend.BlackBoxCodegenSuppressor.SuppressionChecker
 import org.jetbrains.kotlin.test.backend.handlers.NoIrCompilationErrorsHandler
 import org.jetbrains.kotlin.test.backend.ir.IrBackendInput
+import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.frontend.fir.FirOutputArtifact
 import org.jetbrains.kotlin.test.model.AfterAnalysisChecker
 import org.jetbrains.kotlin.test.model.AnalysisHandler
 import org.jetbrains.kotlin.test.model.TestFile
+import org.jetbrains.kotlin.test.services.PhasedPipelineChecker
+import org.jetbrains.kotlin.test.services.TestPhase
 import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.utils.bind
 
@@ -41,3 +45,23 @@ val suppressionCheckerCtor: Constructor<SuppressionChecker> = ::SuppressionCheck
 val tagsGeneratorCheckerHandler: Constructor<AnalysisHandler<FirOutputArtifact>>? = null
 
 val tagsGeneratorCheckerAfterAnalysis: Constructor<AfterAnalysisChecker>? = null
+
+fun TestConfigurationBuilder.useIrDumpFailureSuppressorsCompat() {
+  useFailureSuppressors(
+    ::BlackBoxCodegenSuppressor,
+    ::PhasedPipelineChecker.bind(TestPhase.BACKEND),
+  )
+}
+
+fun TestConfigurationBuilder.usePhasedPipelineFailureSuppressorCompat() {
+  useFailureSuppressors(::PhasedPipelineChecker)
+}
+
+abstract class MetroReportsCheckerCompat(testServices: TestServices) :
+  AfterAnalysisChecker(testServices) {
+  final override fun check(thereWereFailures: Boolean) {
+    checkMetroReports(thereWereFailures)
+  }
+
+  abstract fun checkMetroReports(thereWereFailures: Boolean)
+}

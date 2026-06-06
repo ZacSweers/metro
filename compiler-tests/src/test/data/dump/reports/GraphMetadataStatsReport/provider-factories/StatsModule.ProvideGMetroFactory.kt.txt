@@ -1,5 +1,5 @@
 @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-@CallableMetadata(callableName = "provideG", propertyName = "", startOffset = 897, endOffset = 935, newInstanceName = "provideG")
+@CallableMetadata(callableName = "provideG", propertyName = "", startOffset = 927, endOffset = 965, newInstanceName = "provideG")
 class ProvideGMetroFactory : Factory<G> {
   companion object Companion {
     private constructor() /* primary */ {

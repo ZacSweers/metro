@@ -6,7 +6,6 @@ import java.io.File
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
-import org.jetbrains.kotlin.test.model.AfterAnalysisChecker
 import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.assertions
 import org.jetbrains.kotlin.test.services.moduleStructure
@@ -42,7 +41,7 @@ import org.opentest4j.AssertionFailedError
  * `<id>-(fir|ir)-<moduleName>.perfetto-trace`, all files share the same `<id>` prefix, and both
  * phases are represented.
  */
-class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(testServices) {
+class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompat(testServices) {
   companion object {
     const val DEFAULT_REPORTS_DIR = "metro/reports"
     const val DEFAULT_TRACES_DIR = "metro/traces"
@@ -52,7 +51,7 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
   override val directiveContainers: List<DirectivesContainer>
     get() = listOf(MetroDirectives)
 
-  override fun check(thereWereFailures: Boolean) {
+  override fun checkMetroReports(thereWereFailures: Boolean) {
     if (thereWereFailures) return
 
     val allDirectives = testServices.moduleStructure.allDirectives

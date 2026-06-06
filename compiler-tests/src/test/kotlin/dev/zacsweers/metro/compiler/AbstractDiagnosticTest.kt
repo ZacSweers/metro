@@ -31,7 +31,6 @@ import org.jetbrains.kotlin.test.frontend.fir.handlers.NonSourceErrorMessagesHan
 import org.jetbrains.kotlin.test.frontend.fir.handlers.PsiLightTreeMetaInfoProcessor
 import org.jetbrains.kotlin.test.runners.AbstractPhasedJvmDiagnosticLightTreeTest
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
-import org.jetbrains.kotlin.test.services.PhasedPipelineChecker
 import org.jetbrains.kotlin.test.services.TestPhase
 
 open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
@@ -115,7 +114,7 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
       } else {
         useAfterAnalysisCheckers(::NonSourceErrorMessagesHandler)
       }
-      useFailureSuppressors(::PhasedPipelineChecker)
+      usePhasedPipelineFailureSuppressorCompat()
       enableMetaInfoHandler()
       useAdditionalService<SuppressionChecker>(suppressionCheckerCtor)
     }
