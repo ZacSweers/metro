@@ -200,6 +200,40 @@ jobs:
           report_paths: 'samples/**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - samples'
 
+  idea-plugin:
+    name: idea-plugin
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Test idea-plugin
+        run: ./gradlew :idea-plugin:test --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: (Fail-only) Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-idea-plugin
+          path: |
+            **/build/reports/**
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v6
+        if: failure()
+        with:
+          report_paths: '**/build/test-results/**/TEST-*.xml'
+          check_name: 'Test Report - idea-plugin'
+
   # Run multiplatform tests on main only to reduce PR time
   # Note: We use step-level conditions instead of job-level to ensure matrix expands and shows nice names
   multiplatform-tests:
@@ -299,6 +333,7 @@ jobs:
       - core
       - kmp-functional
       - benchmarks
+      - idea-plugin
       - samples
     steps:
       - name: Check
