@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -95,7 +96,8 @@ import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
-import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irInt
+import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
@@ -701,9 +703,7 @@ internal class BindingContainerTransformer(
 
         val dispatchReceiver =
           if (reference.isInObject) {
-            // Static graph call
-            // ExampleGraph.$callableName$arguments
-            irGetObject(reference.parent)
+            null
           } else {
             // Instance graph call
             // exampleGraph.$callableName$arguments
@@ -1229,11 +1229,35 @@ internal class BindingContainerTransformer(
   ): IrClass {
     val isObject = reference.parameters.allParameters.isEmpty()
     return createContributionProviderFactoryStub(parentClass, generatedClassId, isObject).also {
+      it.addCallableMetadataAnnotation(reference)
       if (options.generateClassesInIr) {
         metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(it)
       }
       parentClass.declarations.add(it)
     }
+  }
+
+  private fun IrClass.addCallableMetadataAnnotation(reference: CallableReference) {
+    val target = reference.callee?.owner?.propertyIfAccessor ?: reference.backingField
+    val callableMetadata =
+      buildAnnotation(symbol, metroSymbols.callableMetadataAnnotationConstructor) { annotation ->
+        with(pluginContext.createIrBuilder(symbol)) {
+          annotation.arguments[0] = irString(reference.callableId.callableName.asString())
+          annotation.arguments[1] =
+            irString(
+              reference.callee
+                ?.owner
+                ?.propertyIfAccessor
+                ?.expectAsOrNull<IrProperty>()
+                ?.name
+                ?.asString() ?: ""
+            )
+          annotation.arguments[2] = irInt(target?.startOffset ?: startOffset)
+          annotation.arguments[3] = irInt(target?.endOffset ?: endOffset)
+          annotation.arguments[4] = irString(reference.name.asString())
+        }
+      }
+    addAnnotationCompat(callableMetadata)
   }
 
   private fun IrClass.shouldGenerateProviderFactoryInIr(): Boolean {
