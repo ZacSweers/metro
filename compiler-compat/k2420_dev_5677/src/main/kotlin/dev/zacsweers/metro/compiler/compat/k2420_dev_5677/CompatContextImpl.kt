@@ -5,14 +5,46 @@ package dev.zacsweers.metro.compiler.compat.k2420_dev_5677
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import dev.zacsweers.metro.compiler.compat.k2420_dev_835.CompatContextImpl as DelegateType
+import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
+import org.jetbrains.kotlin.ir.util.CustomKotlinLikeDumpStrategy
+import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 public class CompatContextImpl : CompatContext by DelegateType() {
+  override val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
+    get() = KtFakeSourceElementKind.PluginGenerated.Default
+
   override fun createIrGeneratedDeclarationsRegistrar(
     pluginContext: IrPluginContext
   ): IrGeneratedDeclarationsRegistrarCompat {
     return IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
       pluginContext.metadataDeclarationRegistrar
+    )
+  }
+
+  override fun IrElement.dumpKotlinLikeCompat(
+    options: KotlinLikeDumpOptions,
+    classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
+    fallback: () -> String,
+  ): String {
+    val customDumpStrategy = options.customDumpStrategy
+    return dumpKotlinLike(
+      options =
+        options.copy(
+          customDumpStrategy =
+            object : CustomKotlinLikeDumpStrategy by customDumpStrategy {
+              override fun nameOf(
+                container: IrDeclaration?,
+                declaration: IrDeclarationWithName,
+              ): String {
+                return classNameTransformer(container, declaration)
+              }
+            }
+        )
     )
   }
 

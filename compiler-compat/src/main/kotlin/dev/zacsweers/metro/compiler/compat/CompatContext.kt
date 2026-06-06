@@ -43,6 +43,7 @@ import org.jetbrains.kotlin.ir.builders.IrBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -53,6 +54,7 @@ import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -291,6 +293,9 @@ public interface CompatContext {
     endOffset: Int = -1,
   ): KtSourceElement
 
+  public val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
+    get() = KtFakeSourceElementKind.PluginGenerated
+
   @CompatApi(
     since = "2.3.20",
     reason = CompatApi.Reason.COMPAT,
@@ -462,6 +467,19 @@ public interface CompatContext {
     callee: IrConstructorSymbol,
     typeArguments: List<IrType>,
   ): IrConstructorCall
+
+  @CompatApi(
+    since = "2.4.20-dev-5677",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4.20-dev-5677 upstreamed custom Kotlin-like IR name rendering",
+  )
+  public fun IrElement.dumpKotlinLikeCompat(
+    options: KotlinLikeDumpOptions,
+    classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
+    fallback: () -> String,
+  ): String {
+    return fallback()
+  }
 
   @CompatApi(
     since = "2.4.0",
