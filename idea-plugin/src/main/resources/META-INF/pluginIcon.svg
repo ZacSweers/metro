@@ -1,0 +1,15 @@
+<!--
+  ~ Copyright (C) 2026 Zac Sweers
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <rect width="40" height="40" rx="8" fill="#FFFFFF" stroke="#0B3D4D"/>
+  <circle cx="20" cy="20" r="15" fill="#0B3D4D"/>
+  <text
+      x="20"
+      y="25"
+      fill="#FFFFFF"
+      font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif"
+      font-size="22"
+      text-anchor="middle">&#x1F687;</text>
+</svg>

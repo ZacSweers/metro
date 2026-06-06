@@ -1,0 +1,34 @@
+<!--
+  ~ Copyright (C) 2026 Zac Sweers
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<idea-plugin>
+  <id>dev.zacsweers.metro.idea</id>
+  <name>Metro</name>
+  <vendor url="https://github.com/ZacSweers/metro">Zac Sweers</vendor>
+  <description><![CDATA[
+Metro IDE support for Kotlin dependency injection projects.
+  ]]></description>
+
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.modules.java</depends>
+  <depends>org.jetbrains.kotlin</depends>
+
+  <extensions defaultExtensionNs="org.jetbrains.kotlin">
+    <supportsKotlinPluginMode supportsK2="true"/>
+    <firCompilerPluginConfigurationProvider
+        implementation="dev.zacsweers.metro.idea.MetroFirCompilerPluginConfigurationProvider"/>
+  </extensions>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <implicitUsageProvider implementation="dev.zacsweers.metro.idea.MetroImplicitUsageProvider"/>
+    <lang.inspectionSuppressor
+        language="kotlin"
+        implementationClass="dev.zacsweers.metro.idea.MetroUnusedDeclarationInspectionSuppressor"
+        order="first"/>
+    <lang.inspectionSuppressor
+        language="JAVA"
+        implementationClass="dev.zacsweers.metro.idea.MetroUnusedDeclarationInspectionSuppressor"
+        order="first"/>
+  </extensions>
+</idea-plugin>
