@@ -279,7 +279,10 @@ internal class BindingContainerTransformer(
     if (shouldGenerateMetadata) {
       trace("Generate metadata") {
         checkNotLocked()
-        val metroMetadata = createMetroMetadata(dependency_graph = container.toProto())
+        val metroMetadata =
+          createMetroMetadata(
+            dependency_graph = container.toProto(generateClassesInIr = options.generateClassesInIr)
+          )
         declaration.metroMetadata = metroMetadata
       }
     }
@@ -1007,6 +1010,16 @@ internal class BindingContainerTransformer(
           .mapNotNull { entry ->
             val classId = ClassId.fromString(entry.class_id)
             if (entry.invisible) {
+              if (options.generateClassesInIr) {
+                reportCompat(
+                  declaration,
+                  MetroDiagnostics.METRO_ERROR,
+                  "Invisible provider factory metadata for $classId is not supported when " +
+                    "generateClassesInIr is enabled. Recompile upstream modules with the same " +
+                    "Metro compiler options.",
+                )
+                return@mapNotNull null
+              }
               val providerFactory =
                 trace("Load invisible factory ${classId.shortClassName}") {
                   loadInvisibleProviderFactory(declaration, classId, entry)

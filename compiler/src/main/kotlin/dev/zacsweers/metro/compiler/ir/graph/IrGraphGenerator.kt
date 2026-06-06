@@ -354,7 +354,11 @@ internal class IrGraphGenerator(
               .orEmpty()
               .toSet()
           val graphProto =
-            node.toProto(bindingGraph = bindingGraph, ownProviderFactories = ownProviderFactories)
+            node.toProto(
+              bindingGraph = bindingGraph,
+              ownProviderFactories = ownProviderFactories,
+              generateClassesInIr = options.generateClassesInIr,
+            )
           graphMetadataReporter.write(
             node,
             bindingGraph,
