@@ -66,7 +66,6 @@ class MetroArtifactsTest {
       testCompilerVersion >= KotlinToolingVersion("2.3.0") &&
         testCompilerVersion < KotlinToolingVersion("2.3.20-Beta2")
     val generateClassesInIrEnabled = testCompilerVersion >= KotlinToolingVersion("2.4.20-dev-5625")
-    val patchKlibParams = true
 
     val fixture =
       object : MetroProject(multiplatform = false) {
@@ -178,7 +177,7 @@ class MetroArtifactsTest {
                 "customOptionalBindingAnnotations": [],
                 "contributesAsInject": true,
                 "enableKlibParamsCheck": $enableKlibParamsCheck,
-                "patchKlibParams": $patchKlibParams,
+                "patchKlibParams": true,
                 "forceEnableFirInIde": false,
                 "pluginOrderSet": true,
                 "compilerVersionAliases": {},
