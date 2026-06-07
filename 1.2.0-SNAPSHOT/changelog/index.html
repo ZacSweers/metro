@@ -6667,6 +6667,7 @@
 <ul>
 <li><strong>[FIR]</strong> Loosen <code>nonPublicContributionSeverity</code> if <code>generateContributionProviders</code> is enabled. Note it will still fire on internal <code>@ExposeImplBinding</code>-annotated types.</li>
 <li><strong>[FIR]</strong> Fix compatibility with IntelliJ <code>2026.1.3</code>.</li>
+<li><strong>[FIR]</strong> Don&rsquo;t merge generated binding containers from <code>@ContributesInto*</code> declarations as supertypes when aggregating contributions.</li>
 <li><strong>[IR]</strong> Fix graph extensions inheriting a farther ancestor&rsquo;s contribution-provider binding when a closer parent graph already owns a scoped binding for the same key.</li>
 <li><strong>[IR]</strong> Fix dynamic graphs (<code>createDynamicGraph</code>/<code>createDynamicGraphFactory</code>) sharing a single generated impl across call sites in different files. The shared impl was a <code>private</code> (on the JVM, package-private) nested class placed under one call site, so call sites in other packages failed at runtime with <code>IllegalAccessError</code>, and removing the owning file caused <code>NoClassDefFoundError</code>. Generated impls are now cached per-file.</li>
 <li><strong>[IR]</strong> Fix IR graph nodes eagerly resolving supertypes.</li>
