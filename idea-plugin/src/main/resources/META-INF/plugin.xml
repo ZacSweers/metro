@@ -16,8 +16,6 @@ Metro IDE support for Kotlin dependency injection projects.
 
   <extensions defaultExtensionNs="org.jetbrains.kotlin">
     <supportsKotlinPluginMode supportsK2="true"/>
-    <firCompilerPluginConfigurationProvider
-        implementation="dev.zacsweers.metro.idea.MetroFirCompilerPluginConfigurationProvider"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">

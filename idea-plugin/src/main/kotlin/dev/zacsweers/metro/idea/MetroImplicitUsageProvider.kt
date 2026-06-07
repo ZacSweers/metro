@@ -3,7 +3,9 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.idea.references.mainReference
@@ -14,20 +16,12 @@ import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtDeclaration
-import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPropertyAccessor
-
-private val BINDS = FqName("dev.zacsweers.metro.Binds")
-private val PROVIDES = FqName("dev.zacsweers.metro.Provides")
-private val MULTIBINDS = FqName("dev.zacsweers.metro.Multibinds")
-private val INJECT = FqName("dev.zacsweers.metro.Inject")
-private val METRO_PACKAGE = FqName("dev.zacsweers.metro")
-private val MODULE_DECLARATION_ANNOTATIONS = setOf(BINDS, PROVIDES, MULTIBINDS)
-private val FUNCTION_DECLARATION_ANNOTATIONS = MODULE_DECLARATION_ANNOTATIONS + INJECT
-private val PROVIDES_ANNOTATION = setOf(PROVIDES)
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.toUElement
 
 /**
  * Marks Metro framework entry points as implicitly used for IntelliJ's general dead-code analysis.
@@ -51,17 +45,20 @@ class MetroImplicitUsageProvider : ImplicitUsageProvider {
 }
 
 internal fun PsiElement.isMetroImplicitUsage(): Boolean {
-  if (!isMetroEnabled()) return false
+  val options = metroIdeOptions()
+  if (!options.enabled) return false
 
   val declaration = ownerDeclaration() ?: return false
   return when (declaration) {
-    is KtClass -> declaration.hasInjectConstructor()
-    is KtConstructor<*> -> declaration.hasMetroAnnotation(INJECT)
-    is KtNamedFunction -> declaration.hasAnyMetroAnnotation(FUNCTION_DECLARATION_ANNOTATIONS)
-    is KtProperty -> declaration.hasAnyMetroAnnotationOnPropertyOrGetter()
+    is KtClass -> declaration.hasGeneratedInjectionEntryPoint(options)
+    is KtConstructor<*> ->
+      declaration.hasAnyMetroAnnotation(options.constructorInjectionAnnotations)
+    is KtNamedFunction -> declaration.hasAnyMetroAnnotation(options.functionDeclarationAnnotations)
+    is KtProperty -> declaration.hasAnyMetroAnnotationOnPropertyOrGetter(options)
     is KtPropertyAccessor ->
-      declaration.isGetter && declaration.hasAnyMetroAnnotation(MODULE_DECLARATION_ANNOTATIONS)
-    is KtParameter -> declaration.hasAnyMetroAnnotation(PROVIDES_ANNOTATION)
+      declaration.isGetter &&
+        declaration.hasAnyMetroAnnotation(options.moduleDeclarationAnnotations)
+    is KtParameter -> declaration.hasAnyMetroAnnotation(options.providesAnnotations)
     else -> false
   }
 }
@@ -83,18 +80,15 @@ private fun PsiElement.ownerDeclaration(): KtDeclaration? {
   }
 }
 
-private fun KtClass.hasInjectConstructor(): Boolean {
-  return primaryConstructor.hasMetroAnnotation(INJECT) ||
-    secondaryConstructors.any { it.hasMetroAnnotation(INJECT) }
+private fun KtClass.hasGeneratedInjectionEntryPoint(options: MetroIdeOptions): Boolean {
+  return hasAnyMetroAnnotation(options.assistedInjectAnnotations) ||
+    primaryConstructor.hasAnyMetroAnnotation(options.constructorInjectionAnnotations) ||
+    secondaryConstructors.any { it.hasAnyMetroAnnotation(options.constructorInjectionAnnotations) }
 }
 
-private fun KtAnnotated?.hasMetroAnnotation(fqName: FqName): Boolean {
-  return hasAnyMetroAnnotation(setOf(fqName))
-}
-
-private fun KtProperty.hasAnyMetroAnnotationOnPropertyOrGetter(): Boolean {
-  return hasAnyMetroAnnotation(MODULE_DECLARATION_ANNOTATIONS) ||
-    getter.hasAnyMetroAnnotation(MODULE_DECLARATION_ANNOTATIONS)
+private fun KtProperty.hasAnyMetroAnnotationOnPropertyOrGetter(options: MetroIdeOptions): Boolean {
+  return hasAnyMetroAnnotation(options.moduleDeclarationAnnotations) ||
+    getter.hasAnyMetroAnnotation(options.moduleDeclarationAnnotations)
 }
 
 private fun KtAnnotated?.hasAnyMetroAnnotation(fqNames: Set<FqName>): Boolean {
@@ -102,28 +96,17 @@ private fun KtAnnotated?.hasAnyMetroAnnotation(fqNames: Set<FqName>): Boolean {
 }
 
 private fun KtAnnotationEntry.isAnyMetroAnnotation(fqNames: Set<FqName>): Boolean {
-  val shortName = shortName?.asString() ?: return false
-  val candidates = fqNames.filter { it.shortName().asString() == shortName }
-  if (candidates.isEmpty()) return false
-
-  val text = typeReference?.text
-  if (candidates.any { text == it.asString() }) return true
-
-  val ktFile = containingKtFile()
-  if (
-    ktFile.importDirectives.any { import ->
-      val importedFqName = import.importedFqName
-      importedFqName in candidates || (import.isAllUnder && importedFqName == METRO_PACKAGE)
-    }
-  ) {
-    return true
+  toUElement(UAnnotation::class.java)?.qualifiedName?.let { fqName ->
+    if (FqName(fqName) in fqNames) return true
   }
 
-  return (calleeExpression?.constructorReferenceExpression?.mainReference?.resolve()
-      as? KtClassOrObject)
-    ?.fqName in candidates
-}
-
-private fun KtAnnotationEntry.containingKtFile(): KtFile {
-  return containingFile as KtFile
+  val annotationClass = calleeExpression?.constructorReferenceExpression?.mainReference?.resolve()
+  val annotationFqName =
+    when (annotationClass) {
+      is KtClassOrObject -> annotationClass.fqName
+      is PsiClass -> annotationClass.qualifiedName?.let(::FqName)
+      is PsiMember -> annotationClass.containingClass?.qualifiedName?.let(::FqName)
+      else -> null
+    }
+  return annotationFqName in fqNames
 }

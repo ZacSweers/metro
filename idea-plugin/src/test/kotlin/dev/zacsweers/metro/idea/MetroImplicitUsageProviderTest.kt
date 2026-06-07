@@ -41,6 +41,119 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertTrue(declarations.klass("InjectedService").isMetroImplicitUsage())
     assertTrue(declarations.klass("InjectedService").primaryConstructor!!.isMetroImplicitUsage())
     assertTrue(declarations.function("functionInject").isMetroImplicitUsage())
+    assertTrue(declarations.klass("AssistedInjectedService").isMetroImplicitUsage())
+    assertTrue(
+      declarations
+        .klass("ConstructorAssistedInjectedService")
+        .primaryConstructor!!
+        .isMetroImplicitUsage()
+    )
+  }
+
+  fun testMarksCustomMetroDeclarationsAsImplicitlyUsedWhenConfigured() {
+    setMetroOptions(
+      "custom-binds" to "test/CustomBinds",
+      "custom-provides" to "test/CustomProvides",
+      "custom-multibinds" to "test/CustomMultibinds",
+      "custom-inject" to "test/CustomInject",
+      "custom-assisted-inject" to "test/CustomAssistedInject",
+    )
+
+    val declarations = kotlinFileDeclarations()
+
+    assertTrue(declarations.function("customBindService").isMetroImplicitUsage())
+    assertTrue(declarations.function("customProvideService").isMetroImplicitUsage())
+    assertTrue(declarations.property("customProvidedProperty").isMetroImplicitUsage())
+    assertTrue(declarations.property("customGetterProvidedProperty").isMetroImplicitUsage())
+    assertTrue(declarations.function("customMultibindsServices").isMetroImplicitUsage())
+    assertTrue(declarations.parameter("customProvidedInstance").isMetroImplicitUsage())
+    assertTrue(declarations.klass("CustomInjectedService").isMetroImplicitUsage())
+    assertTrue(
+      declarations.klass("CustomInjectedService").primaryConstructor!!.isMetroImplicitUsage()
+    )
+    assertTrue(declarations.function("customFunctionInject").isMetroImplicitUsage())
+    assertTrue(declarations.klass("CustomAssistedInjectedService").isMetroImplicitUsage())
+    assertTrue(
+      declarations
+        .klass("CustomConstructorAssistedInjectedService")
+        .primaryConstructor!!
+        .isMetroImplicitUsage()
+    )
+  }
+
+  fun testDoesNotMarkCustomMetroDeclarationsAsImplicitlyUsedWithoutOptions() {
+    val declarations = kotlinFileDeclarations()
+
+    assertFalse(declarations.function("customBindService").isMetroImplicitUsage())
+    assertFalse(declarations.function("customProvideService").isMetroImplicitUsage())
+    assertFalse(declarations.function("customMultibindsServices").isMetroImplicitUsage())
+    assertFalse(declarations.klass("CustomInjectedService").isMetroImplicitUsage())
+    assertFalse(declarations.function("customFunctionInject").isMetroImplicitUsage())
+    assertFalse(declarations.klass("CustomAssistedInjectedService").isMetroImplicitUsage())
+  }
+
+  fun testMarksDaggerInteropDeclarationsAsImplicitlyUsedWhenConfigured() {
+    setMetroOptions("interop-include-dagger-annotations" to "true")
+    myFixture.addFileToProject(
+      "dagger/Annotations.kt",
+      """
+      package dagger
+
+      annotation class Binds
+      annotation class BindsInstance
+      annotation class Provides
+      """
+        .trimIndent(),
+    )
+    myFixture.addFileToProject(
+      "dagger/assisted/Annotations.kt",
+      """
+      package dagger.assisted
+
+      annotation class AssistedInject
+      """
+        .trimIndent(),
+    )
+    myFixture.addFileToProject(
+      "dagger/multibindings/Annotations.kt",
+      """
+      package dagger.multibindings
+
+      annotation class Multibinds
+      """
+        .trimIndent(),
+    )
+
+    val file =
+      myFixture.configureByText(
+        "DaggerTest.kt",
+        """
+        package test
+
+        import dagger.Binds
+        import dagger.Provides
+        import dagger.assisted.AssistedInject
+        import dagger.multibindings.Multibinds
+
+        interface Service
+        class ServiceImpl : Service
+
+        interface DaggerModule {
+          @Binds fun daggerBindService(impl: ServiceImpl): Service
+          @Provides fun daggerProvideService(): Service = ServiceImpl()
+          @Multibinds fun daggerMultibindsServices(): Set<Service>
+        }
+
+        class DaggerAssistedInjectedService @AssistedInject constructor(service: Service)
+        """
+          .trimIndent(),
+      ) as KtFile
+    val declarations = file.declarationsIncludingNested()
+
+    assertTrue(declarations.function("daggerBindService").isMetroImplicitUsage())
+    assertTrue(declarations.function("daggerProvideService").isMetroImplicitUsage())
+    assertTrue(declarations.function("daggerMultibindsServices").isMetroImplicitUsage())
+    assertTrue(declarations.klass("DaggerAssistedInjectedService").isMetroImplicitUsage())
   }
 
   fun testDoesNotMarkUnsupportedDeclarationsAsImplicitlyUsed() {
@@ -104,18 +217,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   }
 
   private fun kotlinFileDeclarations(): List<KtDeclaration> {
-    val file = configureMetroFile()
-
-    val declarations = mutableListOf<KtDeclaration>()
-    file.accept(
-      object : KtTreeVisitorVoid() {
-        override fun visitDeclaration(dcl: KtDeclaration) {
-          declarations += dcl
-          super.visitDeclaration(dcl)
-        }
-      }
-    )
-    return declarations
+    return configureMetroFile().declarationsIncludingNested()
   }
 
   private fun configureMetroFile(): KtFile {
@@ -128,7 +230,13 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       import dev.zacsweers.metro.Inject
       import dev.zacsweers.metro.Multibinds
       import dev.zacsweers.metro.Provides
+      import dev.zacsweers.metro.AssistedInject
 
+      annotation class CustomAssistedInject
+      annotation class CustomBinds
+      annotation class CustomInject
+      annotation class CustomMultibinds
+      annotation class CustomProvides
       interface Service
       class ServiceImpl : Service
 
@@ -146,12 +254,37 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       }
 
       class InjectedService @Inject constructor(service: Service)
+      @AssistedInject class AssistedInjectedService(service: Service)
+      class ConstructorAssistedInjectedService @AssistedInject constructor(service: Service)
 
       @Inject class ClassAnnotatedInject(service: Service)
 
       class MemberInjectedService {
         @Inject lateinit var memberInject: Service
         @Inject fun functionInject(service: Service) = Unit
+      }
+
+      interface CustomModule {
+        @CustomBinds fun customBindService(impl: ServiceImpl): Service
+        @CustomProvides fun customProvideService(): Service = ServiceImpl()
+        @CustomProvides val customProvidedProperty: Service get() = ServiceImpl()
+        val customGetterProvidedProperty: Service
+          @CustomProvides get() = ServiceImpl()
+        @CustomMultibinds fun customMultibindsServices(): Set<Service>
+      }
+
+      interface CustomFactory {
+        fun create(@CustomProvides customProvidedInstance: Service): Service
+      }
+
+      class CustomInjectedService @CustomInject constructor(service: Service)
+      @CustomAssistedInject class CustomAssistedInjectedService(service: Service)
+      class CustomConstructorAssistedInjectedService @CustomAssistedInject constructor(
+        service: Service
+      )
+
+      class CustomMemberInjectedService {
+        @CustomInject fun customFunctionInject(service: Service) = Unit
       }
 
       fun unusedFunction() = Unit
@@ -181,10 +314,35 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   }
 
   private fun setMetroEnabled(enabled: Boolean?) {
-    KotlinCommonCompilerArgumentsHolder.getInstance(project).update {
-      pluginOptions = enabled?.let { arrayOf("plugin:$PLUGIN_ID:enabled=$it") }
+    if (enabled == null) {
+      setMetroOptions()
+    } else {
+      setMetroOptions("enabled" to enabled.toString())
     }
   }
+
+  private fun setMetroOptions(vararg options: Pair<String, String>) {
+    KotlinCommonCompilerArgumentsHolder.getInstance(project).update {
+      pluginOptions =
+        options
+          .map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }
+          .toTypedArray()
+          .takeUnless { it.isEmpty() }
+    }
+  }
+}
+
+private fun KtFile.declarationsIncludingNested(): List<KtDeclaration> {
+  val declarations = mutableListOf<KtDeclaration>()
+  accept(
+    object : KtTreeVisitorVoid() {
+      override fun visitDeclaration(dcl: KtDeclaration) {
+        declarations += dcl
+        super.visitDeclaration(dcl)
+      }
+    }
+  )
+  return declarations
 }
 
 private fun List<KtDeclaration>.function(name: String): KtNamedFunction {
