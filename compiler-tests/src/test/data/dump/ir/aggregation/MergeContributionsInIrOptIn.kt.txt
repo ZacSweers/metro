@@ -1,47 +1,16 @@
 // FILE: MergeContributionsInIrOptIn.kt
 
-class A {
-  constructor() /* primary */ {
-    super/*Any*/()
-    /* <init>() */
-
-  }
-
-}
-
-class B {
-  constructor() /* primary */ {
-    super/*Any*/()
-    /* <init>() */
-
-  }
-
-}
-
 @MergeContributionsInIr
 @DependencyGraph(scope = AppScope::class)
 interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph, ContributedA, ContributedA.MetroContributionToAppScope, ContributedB, ContributedB.MetroContributionToAppScope {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
-
-    override val a: A
-      override get(): A {
-        return <this>.#thisGraphInstance.provideA()
-      }
-
-    override val b: B
-      override get(): B {
-        return <this>.#thisGraphInstance.provideB()
-      }
 
   }
 
@@ -62,8 +31,8 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideA", propertyName = "", startOffset = 270, endOffset = 303, newInstanceName = "provideA")
-  class ProvideAMetroFactory : Factory<A> {
+  @CallableMetadata(callableName = "provideA", propertyName = "", startOffset = 262, endOffset = 300, newInstanceName = "provideA")
+  class ProvideAMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
       private constructor() /* primary */ {
@@ -82,7 +51,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun provideA(instance: AppGraph): A {
+      fun provideA(instance: AppGraph): String {
         return instance.provideA()
       }
 
@@ -96,21 +65,21 @@ interface AppGraph {
     }
 
     @HiddenFromObjC
-    override operator fun invoke(): A {
+    override operator fun invoke(): String {
       return ProvideAMetroFactory/* companion */.provideA(instance = <this>.#instance)
     }
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): A {
+    fun mirrorFunction(): String {
       return error(message = "Never called")
     }
 
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideB", propertyName = "", startOffset = 306, endOffset = 339, newInstanceName = "provideB")
-  class ProvideBMetroFactory : Factory<B> {
+  @CallableMetadata(callableName = "provideB", propertyName = "", startOffset = 303, endOffset = 341, newInstanceName = "provideB")
+  class ProvideBMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
       private constructor() /* primary */ {
@@ -129,7 +98,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun provideB(instance: AppGraph): B {
+      fun provideB(instance: AppGraph): String {
         return instance.provideB()
       }
 
@@ -143,26 +112,26 @@ interface AppGraph {
     }
 
     @HiddenFromObjC
-    override operator fun invoke(): B {
+    override operator fun invoke(): String {
       return ProvideBMetroFactory/* companion */.provideB(instance = <this>.#instance)
     }
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): B {
+    fun mirrorFunction(): String {
       return error(message = "Never called")
     }
 
   }
 
   @Provides
-  fun provideA(): A {
-    return A()
+  fun provideA(): String {
+    return "a"
   }
 
   @Provides
-  fun provideB(): B {
-    return B()
+  fun provideB(): String {
+    return "b"
   }
 
 }
@@ -174,7 +143,7 @@ interface ContributedA {
   interface MetroContributionToAppScope : ContributedA {
   }
 
-  abstract val a: A
+  abstract val a: String
     abstract get
 
 }
@@ -186,7 +155,7 @@ interface ContributedB {
   interface MetroContributionToAppScope : ContributedB {
   }
 
-  abstract val b: B
+  abstract val b: String
     abstract get
 
 }
