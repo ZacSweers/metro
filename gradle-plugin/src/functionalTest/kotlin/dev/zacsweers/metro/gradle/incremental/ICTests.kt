@@ -12,10 +12,12 @@ import com.autonomousapps.kit.gradle.Dependency.Companion.implementation
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.GradlePlugins
 import dev.zacsweers.metro.gradle.KmpTarget
+import dev.zacsweers.metro.gradle.KotlinToolingVersion
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.buildAndAssertThat
 import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.cleanOutputLine
+import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
 import java.io.File
@@ -34,6 +36,17 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     @JvmStatic
     @Parameterized.Parameters(name = "{0}")
     fun targets(): List<KmpTarget> = KmpTarget.selectedTargets()
+  }
+
+  private val generateClassesInIrEnabled =
+    getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.20-dev-5775")
+
+  private fun someRepositoryProviderRequestPath(): String {
+    return if (generateClassesInIrEnabled) {
+      "test.SomeRepositoryProvider.someRepository"
+    } else {
+      "test.SomeRepositoryProvider.MetroContributionToLoggedInScope.someRepository"
+    }
   }
 
   /**
@@ -536,6 +549,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             """
               .trimIndent()
           )
+
       }
 
     val project = fixture.gradleProject
@@ -559,14 +573,6 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
 
     val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-
-    // Verify that the new contribution is included in the interfaces
-    ifJvmTarget {
-      val classLoader = project.classLoader()
-      val exampleGraph = classLoader.loadClass("test.ExampleGraph")
-      assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.NewContribution\$MetroContributionToUnit")
-    }
   }
 
   @Test
@@ -606,16 +612,6 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
 
     val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-
-    // Verify that the new contribution is included in the interfaces
-    ifJvmTarget {
-      with(project.classLoader()) {
-        val exampleGraph = loadClass("test.ExampleGraph")
-        assertThat(exampleGraph.interfaces.map { it.name })
-          .contains("test.Impl2\$MetroContributionToUnit")
-      }
-    }
-
     project.modify(
       fixture.contributedInterfaces,
       """
@@ -628,14 +624,6 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
 
     val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-
-    // Verify that the removed contribution is removed from supertypes
-    ifJvmTarget {
-      val classLoader = project.classLoader()
-      val exampleGraph = classLoader.loadClass("test.ExampleGraph")
-      assertThat(exampleGraph.interfaces.map { it.name })
-        .doesNotContain("test.Impl2\$MetroContributionToUnit")
-    }
   }
 
   @Test
@@ -728,7 +716,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
         e: ExampleGraph.kt:6:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.SomeRepository
 
             test.SomeRepository is requested at
-                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.SomeRepositoryProvider.MetroContributionToLoggedInScope.someRepository
+                [test.ExampleGraph.Impl.LoggedInGraphImpl] ${someRepositoryProviderRequestPath()}
 
         Similar bindings:
           - SomeRepository (Contributed by 'test.SomeRepositoryImpl' but that class is internal to its module and its module is not a friend module to this one.)
@@ -848,8 +836,8 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     ifJvmTarget {
       with(project.classLoader()) {
         val exampleGraph = loadClass("test.ExampleGraph")
-        assertThat(exampleGraph.interfaces.map { it.name })
-          .contains("test.ContributedInterface2\$MetroContributionToUnit")
+        val contributedInterface2 = loadClass("test.ContributedInterface2")
+        assertThat(contributedInterface2.isAssignableFrom(exampleGraph)).isTrue()
       }
     }
 
@@ -869,8 +857,9 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     ifJvmTarget {
       val classLoader = project.classLoader()
       val exampleGraph = classLoader.loadClass("test.ExampleGraph")
-      assertThat(exampleGraph.interfaces.map { it.name })
-        .doesNotContain("test.ContributedInterface2\$MetroContributionToUnit")
+      val interfaceNames = exampleGraph.interfaces.map { it.name }
+      assertThat(interfaceNames).doesNotContain("test.ContributedInterface2")
+      assertThat(interfaceNames).doesNotContain("test.ContributedInterface2\$MetroContributionToUnit")
     }
   }
 

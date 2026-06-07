@@ -466,7 +466,7 @@ class QuxB {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : BazImpl.MetroContributionToAppScope, FooImpl.MetroContributionToAppScope {
+interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @ComptimeOnly
   abstract class BindsMirror {
