@@ -35,12 +35,12 @@ val kotlin24Beta1 = KotlinToolingVersion(KotlinVersion(2, 4), "Beta1")
 // infix. Anything < this still uses the legacy names + helper.
 val kotlin2420Dev835Version = "2.4.20-dev-835"
 val kotlin2420Dev835 = KotlinToolingVersion(kotlin2420Dev835Version)
-val kotlin2420Dev5677Version = "2.4.20-dev-5677"
+val kotlin2420Dev5775Version = "2.4.20-dev-5775"
 val useKotlin2420DevFallbackArtifacts =
   testKotlinVersion.toKotlinVersion() == KotlinVersion(2, 4, 20) && testKotlinVersion.isDev
 val kotlinArtifactsVersion =
   if (useKotlin2420DevFallbackArtifacts) {
-    kotlin2420Dev5677Version
+    kotlin2420Dev5775Version
   } else {
     testCompilerVersion
   }
@@ -117,7 +117,7 @@ if (testKotlinVersion >= kotlin23) {
     }
   compilerTestFrameworkVersion =
     if (useKotlin2420DevFallbackArtifacts) {
-      kotlin2420Dev5677Version
+      kotlin2420Dev5775Version
     } else {
       testCompilerVersion
     }
@@ -125,7 +125,7 @@ if (testKotlinVersion >= kotlin23) {
     if (testKotlinVersion.minor == 3 && testKotlinVersion.isDev) {
       "2.3.20"
     } else if (useKotlin2420DevFallbackArtifacts) {
-      kotlin2420Dev5677Version
+      kotlin2420Dev5775Version
     } else {
       testCompilerVersion
     }

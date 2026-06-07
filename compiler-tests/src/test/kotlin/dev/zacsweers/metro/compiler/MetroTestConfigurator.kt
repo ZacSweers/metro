@@ -64,7 +64,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
   }
 
   companion object {
-    private const val MIN_IR_ONLY_CLASSES_COMPILER_VERSION = "2.4.20-dev-5625"
+    private const val MIN_IR_ONLY_CLASSES_COMPILER_VERSION = "2.4.20-dev-5775"
 
     /**
      * Determines whether a test should be skipped based on compiler version directives.
@@ -72,7 +72,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
      * [targetVersion] (from `COMPILER_VERSION`) supersedes [minVersion]/[maxVersion] — if set, the
      * min/max directives are ignored.
      *
-     * Version comparisons use [KotlinToolingVersion] so dev build thresholds like `2.4.20-dev-5625`
+     * Version comparisons use [KotlinToolingVersion] so dev build thresholds like `2.4.20-dev-5775`
      * compare against their classifier/build number instead of collapsing to `2.4.20`.
      */
     fun shouldSkipForCompilerVersion(
