@@ -81,7 +81,7 @@ class IntHolderImpl : IntHolder {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : IntHolderImpl.MetroContributionToAppScope {
+interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {

@@ -117,7 +117,7 @@ class Base1Impl : Base1, Base2, Base3 {
 // FILE: file2.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : Base1Impl.MetroContributionToAppScope {
+interface ExampleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : ExampleGraph {

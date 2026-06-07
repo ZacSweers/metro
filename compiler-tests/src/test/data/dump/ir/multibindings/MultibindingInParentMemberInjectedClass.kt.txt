@@ -658,7 +658,7 @@ class ViewModelFactory {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : AFragmentInjector.MetroContributionToAppScope, AViewModel.MetroContributionToAppScope, BFragmentInjector.MetroContributionToAppScope, BViewModel.MetroContributionToAppScope {
+interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {

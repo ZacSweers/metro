@@ -226,6 +226,18 @@ internal class ContributedInterfaceSupertypeGenerator(
           continue
         }
 
+        if (
+          session.metroFirBuiltIns.options.bindingContributionsAsContainers &&
+            originClass.hasBindingContribution() &&
+            !originClass.hasDirectContributesTo()
+        ) {
+          // Pure binding contributions are consumed as binding containers, not graph supertypes.
+          // Do not depend on FIR-generated nested marker classes for this path. Non-Metro
+          // extension contributions, such as Hilt entry points, do not carry binding-contribution
+          // annotations and still use their generated markers in legacy FIR mode.
+          continue
+        }
+
         val classDeclarationContainer =
           originClass.declaredMemberScope(session, memberRequiredPhase = null)
 
@@ -248,6 +260,25 @@ internal class ContributedInterfaceSupertypeGenerator(
         }
       }
     }
+  }
+
+  private fun FirRegularClassSymbol.hasDirectContributesTo(): Boolean {
+    return annotationsIn(session, session.classIds.contributesToAnnotations).any()
+  }
+
+  private fun FirRegularClassSymbol.hasBindingContribution(): Boolean {
+    return annotationsIn(session, session.classIds.contributesBindingLikeAnnotationsWithContainers)
+      .any()
+  }
+
+  private fun FirRegularClassSymbol.directlyContributesTo(
+    scopeClassId: ClassId,
+    typeResolver: TypeResolveService,
+  ): Boolean {
+    return classKind.isInterface &&
+      annotationsIn(session, session.classIds.contributesToAnnotations).any {
+        it.resolvedScopeClassId(session, typeResolver) == scopeClassId
+      }
   }
 
   /**
