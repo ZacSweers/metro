@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780710783842,
+  "lastUpdate": 1780869680847,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -16576,6 +16576,62 @@ window.BENCHMARK_DATA = {
             "value": 31493.77,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.97%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "02d6b4c3~1",
+          "message": "[before] Avoid merging binding containers as supertypes (#2",
+          "timestamp": "2026-06-07T21:28:44Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/02d6b4c376b7b1fb3da514cf27803073a283e7dc"
+        },
+        "date": 1780869680847,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 24425.739999999998,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "02d6b4c376b7b1fb3da514cf27803073a283e7dc",
+          "message": "[after] Avoid merging binding containers as supertypes (#2",
+          "timestamp": "2026-06-07T21:28:44Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/02d6b4c376b7b1fb3da514cf27803073a283e7dc"
+        },
+        "date": 1780869680848,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14942.966,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -38.82%"
           }
         ]
       }
