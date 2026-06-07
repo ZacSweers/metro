@@ -11,6 +11,7 @@ import java.io.File
 import java.nio.file.Path
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 import org.jetbrains.kotlin.idea.k2.codeinsight.inspections.UnusedSymbolInspection
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDeclaration
@@ -24,6 +25,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
 
   override fun setUp() {
     super.setUp()
+    setMetroEnabled(null)
     addMetroRuntimeLibrary()
   }
 
@@ -47,6 +49,30 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertFalse(declarations.function("unusedFunction").isMetroImplicitUsage())
     assertFalse(declarations.klass("ClassAnnotatedInject").isMetroImplicitUsage())
     assertFalse(declarations.property("memberInject").isMetroImplicitUsage())
+  }
+
+  fun testDoesNotMarkMetroDeclarationsAsImplicitlyUsedWhenMetroIsDisabled() {
+    setMetroEnabled(false)
+
+    val declarations = kotlinFileDeclarations()
+
+    assertFalse(declarations.function("bindService").isMetroImplicitUsage())
+    assertFalse(declarations.function("provideService").isMetroImplicitUsage())
+    assertFalse(declarations.function("multibindsServices").isMetroImplicitUsage())
+    assertFalse(declarations.klass("InjectedService").isMetroImplicitUsage())
+    assertFalse(declarations.function("functionInject").isMetroImplicitUsage())
+  }
+
+  fun testUnusedDeclarationSuppressorRespectsMetroEnabledState() {
+    val declarations = kotlinFileDeclarations()
+    val suppressor = MetroUnusedDeclarationInspectionSuppressor()
+    val bindService = declarations.function("bindService")
+
+    assertTrue(suppressor.isSuppressedFor(bindService, "unused"))
+
+    setMetroEnabled(false)
+
+    assertFalse(suppressor.isSuppressedFor(bindService, "unused"))
   }
 
   fun testUnusedDeclarationHighlightingRespectsMetroImplicitUsage() {
@@ -152,6 +178,12 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
         val fileName = it.fileName.toString()
         fileName.startsWith("runtime-jvm-") && fileName.endsWith(".jar")
       } ?: error("Unable to get a valid classpath from 'metroRuntime.classpath' property")
+  }
+
+  private fun setMetroEnabled(enabled: Boolean?) {
+    KotlinCommonCompilerArgumentsHolder.getInstance(project).update {
+      pluginOptions = enabled?.let { arrayOf("plugin:$PLUGIN_ID:enabled=$it") }
+    }
   }
 }
 

@@ -51,6 +51,8 @@ class MetroImplicitUsageProvider : ImplicitUsageProvider {
 }
 
 internal fun PsiElement.isMetroImplicitUsage(): Boolean {
+  if (!isMetroEnabled()) return false
+
   val declaration = ownerDeclaration() ?: return false
   return when (declaration) {
     is KtClass -> declaration.hasInjectConstructor()
