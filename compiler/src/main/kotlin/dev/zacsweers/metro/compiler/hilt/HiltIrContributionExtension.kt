@@ -19,7 +19,8 @@ import org.jetbrains.kotlin.name.ClassId
  * Contributes Hilt modules and entry points to IR-only graph merging.
  *
  * The FIR contribution pipeline handles regular graph merging. This extension feeds the paths that
- * merge contributions in IR, such as `@MergeContributionsInIr` graphs and graph extensions.
+ * merge contributions in IR, such as `@MergeContributionsInIr` graphs, graph extensions, and
+ * IR-only generated graph classes.
  *
  * `IrPluginContext` cannot enumerate package classifiers, so this uses the FIR session available
  * from `Fir2IrComponents` to read Hilt aggregated-deps markers.
@@ -68,11 +69,7 @@ public class HiltIrContributionExtension(
       if (dep.modules.isEmpty()) continue
       if (dep.components.none { bridge.componentScopes.resolveScope(it) == scope }) continue
       for (moduleClassId in dep.modules) {
-        val irClass =
-          with(compatContext) {
-              pluginContext.finderFor(callingDeclaration).findClass(moduleClassId)
-            }
-            ?.owner ?: continue
+        val irClass = findClass(moduleClassId, callingDeclaration) ?: continue
         result += irClass
       }
     }
@@ -80,11 +77,7 @@ public class HiltIrContributionExtension(
     for (installIn in bridge.inRoundInstallIns) {
       if (!installIn.isModule) continue
       if (scope !in installIn.resolvedScopes(bridge.componentScopes)) continue
-      val irClass =
-        with(compatContext) {
-            pluginContext.finderFor(callingDeclaration).findClass(installIn.classId)
-          }
-          ?.owner ?: continue
+      val irClass = findClass(installIn.classId, callingDeclaration) ?: continue
       result += irClass
     }
 
@@ -104,11 +97,7 @@ public class HiltIrContributionExtension(
       if (dep.entryPoints.isEmpty()) continue
       if (dep.components.none { bridge.componentScopes.resolveScope(it) == scope }) continue
       for (entryPointClassId in dep.entryPoints) {
-        val irClass =
-          with(compatContext) {
-              pluginContext.finderFor(callingDeclaration).findClass(entryPointClassId)
-            }
-            ?.owner ?: continue
+        val irClass = findClass(entryPointClassId, callingDeclaration) ?: continue
         result += irClass.defaultType
       }
     }
@@ -117,15 +106,18 @@ public class HiltIrContributionExtension(
     for (installIn in bridge.inRoundInstallIns) {
       if (!installIn.isEntryPoint) continue
       if (scope !in installIn.resolvedScopes(bridge.componentScopes)) continue
-      val irClass =
-        with(compatContext) {
-            pluginContext.finderFor(callingDeclaration).findClass(installIn.classId)
-          }
-          ?.owner ?: continue
+      val irClass = findClass(installIn.classId, callingDeclaration) ?: continue
       result += irClass.defaultType
     }
 
     return result
+  }
+
+  private fun findClass(classId: ClassId, callingDeclaration: IrDeclaration): IrClass? {
+    return with(compatContext) {
+        pluginContext.finderFor(callingDeclaration).findClass(classId)
+      }
+      ?.owner
   }
 
   public class Factory : MetroIrContributionExtension.Factory {

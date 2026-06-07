@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesInGraphExtension
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
@@ -260,7 +261,34 @@ class MetroExtensionRegistrarConfigurator(
               add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
             }
             if (options.enableHiltInterop) {
-              add(HiltFirDeclarationExtension.Factory().create(session, options, compatContext)!!)
+              HiltFirDeclarationExtension.Factory()
+                .create(session, options, compatContext)
+                ?.let(::add)
+            }
+          }
+        },
+        loadExternalContributionHintExtensions = { session, options, compatContext ->
+          buildList {
+            addAll(
+              listOfNotNull(
+                GenerateProvidesContributionExtension.Factory()
+                  .create(session, options, compatContext) as? MetroContributionHintExtension,
+                GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
+                  as? MetroContributionHintExtension,
+                GenerateGraphExtensionExtension.Factory().create(session, options, compatContext)
+                  as? MetroContributionHintExtension,
+              )
+            )
+            if (options.enableCircuitCodegen && !options.generateClassesInIr) {
+              add(
+                CircuitFirExtension.Factory().create(session, options, compatContext)!!
+                  as MetroContributionHintExtension
+              )
+            }
+            if (options.enableHiltInterop) {
+              HiltFirDeclarationExtension.HintFactory()
+                .create(session, options, compatContext)
+                ?.let(::add)
             }
           }
         },
@@ -279,11 +307,13 @@ class MetroExtensionRegistrarConfigurator(
               GenerateGraphExtensionContributionExtension.Factory()
                 .create(session, options, compatContext)
             )
-            if (options.enableCircuitCodegen) {
+            if (options.enableCircuitCodegen && !options.generateClassesInIr) {
               add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
             }
             if (options.enableHiltInterop) {
-              add(HiltContributionExtension.Factory().create(session, options, compatContext)!!)
+              HiltContributionExtension.Factory()
+                .create(session, options, compatContext)
+                ?.let(::add)
             }
           }
         },
@@ -291,7 +321,7 @@ class MetroExtensionRegistrarConfigurator(
     )
     if (options.enableCircuitCodegen) {
       FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
-      IrGenerationExtension.registerExtension(CircuitIrExtension(compatContext))
+      IrGenerationExtension.registerExtension(CircuitIrExtension(options, classIds, compatContext))
     }
     IrGenerationExtension.registerExtension(GenerateImplIrExtension())
     IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())

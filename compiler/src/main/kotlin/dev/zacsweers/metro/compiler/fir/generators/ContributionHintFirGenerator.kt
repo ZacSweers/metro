@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
-import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
@@ -47,7 +47,7 @@ import org.jetbrains.kotlin.name.FqName
 internal class ContributionHintFirGenerator(
   session: FirSession,
   compatContext: CompatContext,
-  private val externalExtensions: List<MetroFirDeclarationGenerationExtension>,
+  private val externalHintExtensions: List<MetroContributionHintExtension>,
 ) : FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   private fun contributedClassSymbols(): List<FirClassSymbol<*>> {
@@ -134,7 +134,7 @@ internal class ContributionHintFirGenerator(
       }
 
       // Collect hints from external extensions
-      externalExtensions
+      externalHintExtensions
         .flatMap { it.getContributionHints() }
         .forEach { hint ->
           val classSymbol =
@@ -154,6 +154,9 @@ internal class ContributionHintFirGenerator(
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.contributesAnnotationPredicate)
     register(session.predicates.injectAnnotationPredicate)
+    for (extension in externalHintExtensions) {
+      with(extension) { registerPredicates() }
+    }
   }
 
   @ExperimentalTopLevelDeclarationsGenerationApi

@@ -62,10 +62,6 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     ) {
       options = options.copy(generateClassesInIr = true)
     }
-    if (options.generateClassesInIr && options.generateContributionHintsInFir) {
-      options = options.copy(generateContributionHintsInFir = false)
-    }
-
     val enableFir = version != null || (isIde && options.forceEnableFirInIde)
 
     if (!enableFir) {
@@ -163,7 +159,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       with(compatContext) {
         // Register Circuit IR extension if enabled first
         if (options.enableCircuitCodegen) {
-          registerIrExtensionCompat(CircuitIrExtension(compatContext))
+          registerIrExtensionCompat(CircuitIrExtension(options, classIds, compatContext))
         }
         registerIrExtensionCompat(
           MetroIrGenerationExtension(

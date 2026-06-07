@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler.hilt
 
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension.ContributionHint
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
@@ -32,8 +34,14 @@ import org.jetbrains.kotlin.name.ClassId
  * [ContributionsFirGenerator] can generate the same nested contribution interface used for
  * `@ContributesTo`.
  */
-public class HiltFirDeclarationExtension(session: FirSession, compatContext: CompatContext) :
-  MetroFirDeclarationGenerationExtension(session), CompatContext by compatContext {
+public class HiltFirDeclarationExtension(
+  session: FirSession,
+  private val options: MetroOptions,
+  compatContext: CompatContext,
+) :
+  MetroFirDeclarationGenerationExtension(session),
+  MetroContributionHintExtension,
+  CompatContext by compatContext {
 
   private val scanner by memoize { HiltAggregatedDepsScanner(session) }
 
@@ -71,6 +79,8 @@ public class HiltFirDeclarationExtension(session: FirSession, compatContext: Com
   }
 
   override fun getContributionTargets(): List<ContributionTarget> {
+    if (options.generateClassesInIr) return emptyList()
+
     val targets = mutableListOf<ContributionTarget>()
     for (installIn in componentScopes.inRoundInstallIns) {
       if (!installIn.isEntryPoint) continue
@@ -87,8 +97,19 @@ public class HiltFirDeclarationExtension(session: FirSession, compatContext: Com
       options: MetroOptions,
       compatContext: CompatContext,
     ): MetroFirDeclarationGenerationExtension? {
+      if (!options.enableHiltInterop || options.generateClassesInIr) return null
+      return HiltFirDeclarationExtension(session, options, compatContext)
+    }
+  }
+
+  public class HintFactory : MetroContributionHintExtension.Factory {
+    override fun create(
+      session: FirSession,
+      options: MetroOptions,
+      compatContext: CompatContext,
+    ): MetroContributionHintExtension? {
       if (!options.enableHiltInterop) return null
-      return HiltFirDeclarationExtension(session, compatContext)
+      return HiltFirDeclarationExtension(session, options, compatContext)
     }
   }
 }
