@@ -165,8 +165,7 @@ public class CircuitContributionExtension(
       options: MetroOptions,
       compatContext: CompatContext,
     ): MetroContributionExtension? {
-      if (!options.enableCircuitCodegen) return null
-      if (options.generateClassesInIr) return null
+      if (!options.enableCircuitCodegen || options.generateClassesInIr) return null
       return CircuitContributionExtension(session, compatContext)
     }
   }
