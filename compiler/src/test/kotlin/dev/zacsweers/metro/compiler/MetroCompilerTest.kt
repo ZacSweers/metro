@@ -73,8 +73,7 @@ abstract class MetroCompilerTest {
       sources = sourceFiles.asList()
       verbose = false
       jvmTarget = JVM_TARGET
-      kotlincArguments +=
-        listOf("-jvm-default=no-compatibility", "-Xverify-ir=error", "-Xverify-ir-visibility")
+      kotlincArguments += listOf("-jvm-default=no-compatibility", "-Xverify-ir=error")
 
       if (previousCompilationResult != null) {
         addPreviousResultToClasspath(previousCompilationResult)
