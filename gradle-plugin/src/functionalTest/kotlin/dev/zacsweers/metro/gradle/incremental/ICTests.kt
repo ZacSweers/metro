@@ -549,7 +549,6 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             """
               .trimIndent()
           )
-
       }
 
     val project = fixture.gradleProject
@@ -859,7 +858,8 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
       val exampleGraph = classLoader.loadClass("test.ExampleGraph")
       val interfaceNames = exampleGraph.interfaces.map { it.name }
       assertThat(interfaceNames).doesNotContain("test.ContributedInterface2")
-      assertThat(interfaceNames).doesNotContain("test.ContributedInterface2\$MetroContributionToUnit")
+      assertThat(interfaceNames)
+        .doesNotContain("test.ContributedInterface2\$MetroContributionToUnit")
     }
   }
 
