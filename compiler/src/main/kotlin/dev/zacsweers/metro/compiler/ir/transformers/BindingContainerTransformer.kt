@@ -866,6 +866,10 @@ internal class BindingContainerTransformer(
                     MetroAnnotations.Kind.Binds,
                     MetroAnnotations.Kind.Multibinds,
                     MetroAnnotations.Kind.BindsOptionalOf,
+                    MetroAnnotations.Kind.IntoSet,
+                    MetroAnnotations.Kind.ElementsIntoSet,
+                    MetroAnnotations.Kind.IntoMap,
+                    MetroAnnotations.Kind.MapKey,
                   ),
               )
             if (

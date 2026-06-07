@@ -63,7 +63,7 @@ constructor(private val project: Project, objects: ObjectFactory) {
     project.pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
       with(project.kotlinExtension as KotlinMultiplatformExtension) {
         jvm()
-        js(IR) {
+        js {
           outputModuleName.set("$jsModuleName-js")
           compilations.configureEach {
             compileTaskProvider.configure {

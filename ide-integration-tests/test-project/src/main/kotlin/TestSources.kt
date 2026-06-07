@@ -46,6 +46,11 @@ enum class ByKey {
 
 @Inject class Holder(@By(ByKey.One) private val one: Int, @By(ByKey.Two) private val two: Int)
 
+@Suppress("DEPRECATION_ERROR")
+fun useGeneratedInjectFactory(factory: Holder.MetroFactory) {
+  factory.hashCode()
+}
+
 @DependencyGraph(AppScope::class)
 interface EnumQualifierGraph {
   val holder: Holder

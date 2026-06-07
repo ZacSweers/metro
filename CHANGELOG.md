@@ -16,6 +16,7 @@ Changelog
 
 ### Enhancements
 
+- **[compat]** Improve IDE kotlinc version resolution. IntelliJ uses custom tags like `2.4.0-ij261-64` that are a little tricky to decipher.
 - **[FIR]** Add diagnostic guidance around `inline` `@Provides` declarations. TL;DR, they only make sense for public providers.
 - **[FIR/IR]** Inline _constant_ `@Provides` bindings directly into generated graph implementations when possible, avoiding generated factory calls for literals, nulls, object singletons, enum entries, class literals, and `const` property reads. This is enabled by default and can be disabled with the `enable-provider-inlining` compiler flag if you see any issues.
 - **[IR]** Add a `member-naming-strategy` compiler option for shortening generated member names in generated code. Accepts `DESCRIPTIVE` (default), `TYPED` (`provider*`/`instance*`/`factory*`), or `MINIMAL` (single collapsed `provider*` naming). See [docs/performance.md](https://zacsweers.github.io/metro/performance/#shortening-generated-member-names) for guidance.
@@ -32,16 +33,19 @@ Changelog
 ### Fixes
 
 - **[FIR]** Loosen `nonPublicContributionSeverity` if `generateContributionProviders` is enabled. Note it will still fire on internal `@ExposeImplBinding`-annotated types.
+- **[FIR]** Fix compatibility with IntelliJ `2026.1.3`.
+- **[FIR]** Don't merge generated binding containers from `@ContributesInto*` declarations as supertypes when aggregating contributions.
 - **[IR]** Fix graph extensions inheriting a farther ancestor's contribution-provider binding when a closer parent graph already owns a scoped binding for the same key.
 - **[IR]** Fix dynamic graphs (`createDynamicGraph`/`createDynamicGraphFactory`) sharing a single generated impl across call sites in different files. The shared impl was a `private` (on the JVM, package-private) nested class placed under one call site, so call sites in other packages failed at runtime with `IllegalAccessError`, and removing the owning file caused `NoClassDefFoundError`. Generated impls are now cached per-file.
 - **[IR]** Fix IR graph nodes eagerly resolving supertypes.
 - **[IR]** Don't reserve an `InstanceFactory` field for graph inputs unless it's needed.
+- **[interop]** Read `@IntoSet`/`@IntoMap`/`@MapKey` multibinding annotations from external Dagger modules.
 
 ### Changes
 
 - **[Gradle]** Add missing experimental annotations to the Gradle plugin's analysis APIs. Sorry these were not meant to be stabilized yet!
 - Build against Kotlin `2.4.0`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
-- No longer test Kotlin `2.4.0` pre-release builds. Kotlin `2.4.0-dev-2124` _is_ still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.
+- No longer test most Kotlin `2.4.0` pre-release builds. Kotlin `2.4.0-dev-2124` _is_ still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.
 - Test Android Studio Quail 1 stable (`2026.1.1.8`).
 - Test Android Studio Quail 2 canaries (`2026.1.2.4`).
 - Test IntelliJ `2026.1.2`.
@@ -51,7 +55,11 @@ Changelog
 
 Special thanks to the following contributors for contributing to this release!
 
+- [@eygraber](https://github.com/eygraber)
 - [@jonamireh](https://github.com/jonamireh)
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@SimonMarquis](https://github.com/SimonMarquis)
+- [@WhosNickDoglio](https://github.com/WhosNickDoglio)
 
 1.1.1
 -----

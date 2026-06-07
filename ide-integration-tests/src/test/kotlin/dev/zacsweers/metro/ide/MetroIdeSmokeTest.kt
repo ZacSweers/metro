@@ -50,6 +50,32 @@ private interface InlayModelWithBlocks {
  */
 private val METRO_ERROR_PATTERNS = listOf("metro", "dev.zacsweers.metro", "Metro")
 
+private fun androidStudioDownloadUri(version: String, filenamePrefix: String): URI {
+  val (pathType, platformSuffix) =
+    when {
+      System.getProperty("os.name").startsWith("Mac", ignoreCase = true) -> {
+        val suffix =
+          if (System.getProperty("os.arch") == "aarch64") {
+            "mac_arm.dmg"
+          } else {
+            "mac.dmg"
+          }
+        "install" to suffix
+      }
+      System.getProperty("os.name").startsWith("Linux", ignoreCase = true) -> {
+        "ide-zips" to "linux.tar.gz"
+      }
+      System.getProperty("os.name").startsWith("Windows", ignoreCase = true) -> {
+        "install" to "windows.exe"
+      }
+      else -> error("Unsupported OS: ${System.getProperty("os.name")}")
+    }
+
+  return URI(
+    "https://dl.google.com/android/studio/$pathType/$version/$filenamePrefix-$platformSuffix"
+  )
+}
+
 private data class ExpectedDiagnostic(
   val diagnosticId: String,
   val severity: String,
@@ -124,7 +150,7 @@ class MetroIdeSmokeTest {
   fun check(product: String, version: String, extra: String) {
     // IU stable uses marketing version (e.g., "2025.3.2")
     // IU prereleases use build number (e.g., "261.22158.182") + type (rc, eap)
-    // AS uses build number (e.g., "2024.2.1.11") directly
+    // AS uses build number (e.g., "2025.3.4.7") plus filename prefix when needed
     // NOTE: Run ./download-ides.sh first
     val ideProduct =
       when (product) {
@@ -149,7 +175,17 @@ class MetroIdeSmokeTest {
             IdeProductProvider.IU.copy(version = version, buildType = BuildType.RELEASE.type)
           }
         }
-        "AS" -> IdeProductProvider.AI.copy(buildNumber = version)
+        "AS" -> {
+          if (extra.isNotBlank()) {
+            IdeProductProvider.AI.copy(
+              buildNumber = version,
+              downloadURI = androidStudioDownloadUri(version, extra),
+              getInstaller = { StandardInstaller(IdeByLinkDownloader) },
+            )
+          } else {
+            IdeProductProvider.AI.copy(buildNumber = version)
+          }
+        }
         else -> error("Unknown product: $product")
       }
 
@@ -261,6 +297,8 @@ class MetroIdeSmokeTest {
           analysisException = e
           return@useDriverAndCloseIde
         }
+
+        waitForIndicators(3.minutes)
 
         val project = singleProject()
         val editor = service<FileEditorManager>(project).getSelectedTextEditor()

@@ -185,6 +185,13 @@ internal val KotlinToolingVersion.isSnapshot: Boolean
 internal val KotlinToolingVersion.isDev: Boolean
   get() = this.maturity == KotlinToolingVersion.Maturity.DEV
 
+internal val KotlinToolingVersion.isIdeBuild: Boolean
+  get() = classifier?.startsWith("ij", ignoreCase = true) == true
+
+internal fun KotlinToolingVersion.hasSameBaseVersionAs(other: KotlinToolingVersion): Boolean {
+  return major == other.major && minor == other.minor && patch == other.patch
+}
+
 internal val KotlinToolingVersion.isMilestone: Boolean
   get() = this.maturity == KotlinToolingVersion.Maturity.MILESTONE
 
