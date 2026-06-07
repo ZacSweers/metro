@@ -469,9 +469,9 @@ public interface CompatContext {
   ): IrConstructorCall
 
   @CompatApi(
-    since = "2.4.20-dev-5677",
+    since = "2.4.20-dev-5775",
     reason = CompatApi.Reason.ABI_CHANGE,
-    message = "2.4.20-dev-5677 upstreamed custom Kotlin-like IR name rendering",
+    message = "2.4.20-dev-5775 upstreamed custom Kotlin-like IR name rendering",
   )
   public fun IrElement.dumpKotlinLikeCompat(
     options: KotlinLikeDumpOptions,

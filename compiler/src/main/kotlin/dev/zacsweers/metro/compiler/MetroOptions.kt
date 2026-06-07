@@ -1532,7 +1532,7 @@ public data class MetroOptions(
 
     if (generateClassesInIr && !supportsIrClassGeneration(compilerVersion)) {
       onError(
-        "generateClassesInIr requires Kotlin 2.4.20-dev-5625 or later, but this build uses '$compilerVersion'."
+        "generateClassesInIr requires Kotlin 2.4.20-dev-5775 or later, but this build uses '$compilerVersion'."
       )
       valid = false
     }
@@ -1602,7 +1602,7 @@ public data class MetroOptions(
   }
 
   public companion object {
-    private val MIN_KOTLIN_IR_CLASS_GENERATION = KotlinToolingVersion("2.4.20-dev-5625")
+    private val MIN_KOTLIN_IR_CLASS_GENERATION = KotlinToolingVersion("2.4.20-dev-5775")
 
     internal fun supportsIrClassGeneration(version: KotlinToolingVersion): Boolean {
       return version >= MIN_KOTLIN_IR_CLASS_GENERATION
