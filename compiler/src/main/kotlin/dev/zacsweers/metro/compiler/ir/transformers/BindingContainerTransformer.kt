@@ -912,9 +912,11 @@ internal class BindingContainerTransformer(
                   declaration.lookupClass(daggerFactoryClassIdOf(decl, useJvmName = false))
                 val factoryClassWithJvmName =
                   declaration.lookupClass(daggerFactoryClassIdOf(decl, useJvmName = true))
+
                 val factoryClass = factoryClassWithoutJvmName ?: factoryClassWithJvmName
                 val factoryClassUsesJvmName =
                   factoryClassWithoutJvmName == null && factoryClassWithJvmName != null
+
                 val newInstanceNameFromFactory =
                   factoryClass?.owner?.daggerProviderNewInstanceNameOrNull()
                 val newInstanceName =
