@@ -38,7 +38,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     get() = true
 
   override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
-    var options = MetroOptions.load(configuration)
+    val options = MetroOptions.load(configuration)
 
     if (!options.enabled) return
 
@@ -55,13 +55,6 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             }
         }
 
-    if (
-      version != null &&
-        configuration[MetroOption.GENERATE_CLASSES_IN_IR.raw.key] == null &&
-        MetroOptions.supportsIrClassGeneration(version)
-    ) {
-      options = options.copy(generateClassesInIr = true)
-    }
     val enableFir = version != null || (isIde && options.forceEnableFirInIde)
 
     if (!enableFir) {

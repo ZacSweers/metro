@@ -1530,13 +1530,6 @@ public data class MetroOptions(
       valid = false
     }
 
-    if (generateClassesInIr && !supportsIrClassGeneration(compilerVersion)) {
-      onError(
-        "generateClassesInIr requires Kotlin 2.4.20-dev-5775 or later, but this build uses '$compilerVersion'."
-      )
-      valid = false
-    }
-
     val contributionProvidersAreEnabledWithoutFirHintGen =
       generateContributionProviders &&
         generateContributionHints &&
@@ -1602,12 +1595,6 @@ public data class MetroOptions(
   }
 
   public companion object {
-    private val MIN_KOTLIN_IR_CLASS_GENERATION = KotlinToolingVersion("2.4.20-dev-5775")
-
-    internal fun supportsIrClassGeneration(version: KotlinToolingVersion): Boolean {
-      return version >= MIN_KOTLIN_IR_CLASS_GENERATION
-    }
-
     /** Minimum Kotlin version on the 2.3.x line that supports JS IC with top-level declarations. */
     private val MIN_KOTLIN_2_3_JS_IC = KotlinToolingVersion("2.3.21-RC")
 
