@@ -17,11 +17,17 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 
 private const val ENABLED_OPTION_NAME = "enabled"
+private const val CONTRIBUTES_AS_INJECT_OPTION_NAME = "contributes-as-inject"
 private const val CUSTOM_ASSISTED_INJECT_OPTION_NAME = "custom-assisted-inject"
 private const val CUSTOM_BINDS_OPTION_NAME = "custom-binds"
+private const val CUSTOM_CONTRIBUTES_BINDING_OPTION_NAME = "custom-contributes-binding"
+private const val CUSTOM_CONTRIBUTES_INTO_SET_OPTION_NAME = "custom-contributes-into-set"
+private const val CUSTOM_ELEMENTS_INTO_SET_OPTION_NAME = "custom-elements-into-set"
 private const val CUSTOM_INJECT_OPTION_NAME = "custom-inject"
+private const val CUSTOM_INTO_MAP_OPTION_NAME = "custom-into-map"
 private const val CUSTOM_MULTIBINDS_OPTION_NAME = "custom-multibinds"
 private const val CUSTOM_PROVIDES_OPTION_NAME = "custom-provides"
+private const val GENERATE_CONTRIBUTION_PROVIDERS_OPTION_NAME = "generate-contribution-providers"
 private const val INTEROP_INCLUDE_ANVIL_ANNOTATIONS_OPTION_NAME =
   "interop-include-anvil-annotations"
 private const val INTEROP_INCLUDE_DAGGER_ANNOTATIONS_OPTION_NAME =
@@ -44,6 +50,13 @@ private val METRO_PROVIDES_ANNOTATIONS = setOf(METRO_PACKAGE.child("Provides"))
 private val METRO_MULTIBINDS_ANNOTATIONS = setOf(METRO_PACKAGE.child("Multibinds"))
 private val METRO_INJECT_ANNOTATIONS = setOf(METRO_PACKAGE.child("Inject"))
 private val METRO_ASSISTED_INJECT_ANNOTATIONS = setOf(METRO_PACKAGE.child("AssistedInject"))
+private val METRO_CONTRIBUTES_BINDING_ANNOTATIONS = setOf(METRO_PACKAGE.child("ContributesBinding"))
+private val METRO_CONTRIBUTES_INTO_SET_ANNOTATIONS =
+  setOf(METRO_PACKAGE.child("ContributesIntoSet"))
+private val METRO_CONTRIBUTES_INTO_MAP_ANNOTATIONS =
+  setOf(METRO_PACKAGE.child("ContributesIntoMap"))
+private val METRO_CONTRIBUTION_PROVIDER_EXCLUSION_ANNOTATIONS =
+  setOf(METRO_PACKAGE.child("ExposeImplBinding"))
 private val DAGGER_BINDS_ANNOTATIONS = setOf(FqName("dagger.Binds"))
 private val DAGGER_PROVIDES_ANNOTATIONS =
   setOf(FqName("dagger.Provides"), FqName("dagger.BindsInstance"))
@@ -58,33 +71,53 @@ private val GUICE_INJECT_ANNOTATIONS = setOf(FqName("com.google.inject.Inject"))
 private val GUICE_PROVIDES_ANNOTATIONS = setOf(FqName("com.google.inject.Provides"))
 private val GUICE_ASSISTED_INJECT_ANNOTATIONS =
   setOf(FqName("com.google.inject.assistedinject.AssistedInject"))
+private val ANVIL_CONTRIBUTES_BINDING_ANNOTATIONS =
+  setOf(FqName("com.squareup.anvil.annotations.ContributesBinding"))
+private val ANVIL_CONTRIBUTES_INTO_SET_ANNOTATIONS =
+  setOf(FqName("com.squareup.anvil.annotations.ContributesMultibinding"))
+private val KOTLIN_INJECT_ANVIL_CONTRIBUTES_BINDING_ANNOTATIONS =
+  setOf(FqName("software.amazon.lastmile.kotlin.inject.anvil.ContributesBinding"))
 
 /**
  * Metro compiler options understood by the IDE plugin without loading Metro's compiler artifact.
  */
 internal data class MetroIdeOptions(
   val enabled: Boolean = true,
+  val contributesAsInject: Boolean = true,
+  val generateContributionProviders: Boolean = false,
   val bindsAnnotations: Set<FqName> = METRO_BINDS_ANNOTATIONS,
   val providesAnnotations: Set<FqName> = METRO_PROVIDES_ANNOTATIONS,
   val multibindsAnnotations: Set<FqName> = METRO_MULTIBINDS_ANNOTATIONS,
   val injectAnnotations: Set<FqName> = METRO_INJECT_ANNOTATIONS,
   val assistedInjectAnnotations: Set<FqName> = METRO_ASSISTED_INJECT_ANNOTATIONS,
+  val contributesBindingAnnotations: Set<FqName> = METRO_CONTRIBUTES_BINDING_ANNOTATIONS,
+  val contributesIntoSetAnnotations: Set<FqName> = METRO_CONTRIBUTES_INTO_SET_ANNOTATIONS,
+  val contributesIntoMapAnnotations: Set<FqName> = METRO_CONTRIBUTES_INTO_MAP_ANNOTATIONS,
+  val contributionProviderExclusionAnnotations: Set<FqName> =
+    METRO_CONTRIBUTION_PROVIDER_EXCLUSION_ANNOTATIONS,
 ) {
   val moduleDeclarationAnnotations: Set<FqName> =
     bindsAnnotations + providesAnnotations + multibindsAnnotations
   val functionDeclarationAnnotations: Set<FqName> = moduleDeclarationAnnotations + injectAnnotations
   val constructorInjectionAnnotations: Set<FqName> = injectAnnotations + assistedInjectAnnotations
+  val bindingContributionAnnotations: Set<FqName> =
+    contributesBindingAnnotations + contributesIntoSetAnnotations + contributesIntoMapAnnotations
+  val classLevelInjectionAnnotations: Set<FqName> =
+    assistedInjectAnnotations + bindingContributionAnnotations.emptyUnless(contributesAsInject)
 
   companion object {
     fun load(module: Module): MetroIdeOptions {
       val options = module.metroPluginOptions()
+      val includeAnvil = options.boolean(INTEROP_INCLUDE_ANVIL_ANNOTATIONS_OPTION_NAME)
       val includeDagger =
         options.boolean(INTEROP_INCLUDE_DAGGER_ANNOTATIONS_OPTION_NAME) ||
-          options.boolean(INTEROP_INCLUDE_ANVIL_ANNOTATIONS_OPTION_NAME) ||
+          includeAnvil ||
           options.boolean(INTEROP_INCLUDE_HILT_ANNOTATIONS_OPTION_NAME)
       val includeKotlinInject =
         options.boolean(INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS_OPTION_NAME) ||
           options.boolean(INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS_OPTION_NAME)
+      val includeKotlinInjectAnvil =
+        options.boolean(INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS_OPTION_NAME)
       val includeGuice = options.boolean(INTEROP_INCLUDE_GUICE_ANNOTATIONS_OPTION_NAME)
       val includeJakarta =
         options.boolean(INTEROP_INCLUDE_JAKARTA_ANNOTATIONS_OPTION_NAME) ||
@@ -94,6 +127,10 @@ internal data class MetroIdeOptions(
         options.boolean(INTEROP_INCLUDE_JAVAX_ANNOTATIONS_OPTION_NAME) || includeDagger
       return MetroIdeOptions(
         enabled = options.boolean(ENABLED_OPTION_NAME, defaultValue = true),
+        contributesAsInject =
+          options.boolean(CONTRIBUTES_AS_INJECT_OPTION_NAME, defaultValue = true),
+        generateContributionProviders =
+          options.boolean(GENERATE_CONTRIBUTION_PROVIDERS_OPTION_NAME),
         bindsAnnotations =
           METRO_BINDS_ANNOTATIONS +
             options.fqNames(CUSTOM_BINDS_OPTION_NAME) +
@@ -120,6 +157,20 @@ internal data class MetroIdeOptions(
             options.fqNames(CUSTOM_ASSISTED_INJECT_OPTION_NAME) +
             DAGGER_ASSISTED_INJECT_ANNOTATIONS.emptyUnless(includeDagger) +
             GUICE_ASSISTED_INJECT_ANNOTATIONS.emptyUnless(includeGuice),
+        contributesBindingAnnotations =
+          METRO_CONTRIBUTES_BINDING_ANNOTATIONS +
+            options.fqNames(CUSTOM_CONTRIBUTES_BINDING_OPTION_NAME) +
+            ANVIL_CONTRIBUTES_BINDING_ANNOTATIONS.emptyUnless(includeAnvil) +
+            KOTLIN_INJECT_ANVIL_CONTRIBUTES_BINDING_ANNOTATIONS.emptyUnless(
+              includeKotlinInjectAnvil
+            ),
+        contributesIntoSetAnnotations =
+          METRO_CONTRIBUTES_INTO_SET_ANNOTATIONS +
+            options.fqNames(CUSTOM_ELEMENTS_INTO_SET_OPTION_NAME) +
+            options.fqNames(CUSTOM_CONTRIBUTES_INTO_SET_OPTION_NAME) +
+            ANVIL_CONTRIBUTES_INTO_SET_ANNOTATIONS.emptyUnless(includeAnvil),
+        contributesIntoMapAnnotations =
+          METRO_CONTRIBUTES_INTO_MAP_ANNOTATIONS + options.fqNames(CUSTOM_INTO_MAP_OPTION_NAME),
       )
     }
   }

@@ -81,9 +81,16 @@ private fun PsiElement.ownerDeclaration(): KtDeclaration? {
 }
 
 private fun KtClass.hasGeneratedInjectionEntryPoint(options: MetroIdeOptions): Boolean {
-  return hasAnyMetroAnnotation(options.assistedInjectAnnotations) ||
+  return hasAnyMetroAnnotation(options.classLevelInjectionAnnotations) ||
+    hasContributionProviderGeneratedUsage(options) ||
     primaryConstructor.hasAnyMetroAnnotation(options.constructorInjectionAnnotations) ||
     secondaryConstructors.any { it.hasAnyMetroAnnotation(options.constructorInjectionAnnotations) }
+}
+
+private fun KtClass.hasContributionProviderGeneratedUsage(options: MetroIdeOptions): Boolean {
+  return options.generateContributionProviders &&
+    hasAnyMetroAnnotation(options.bindingContributionAnnotations) &&
+    !hasAnyMetroAnnotation(options.contributionProviderExclusionAnnotations)
 }
 
 private fun KtProperty.hasAnyMetroAnnotationOnPropertyOrGetter(options: MetroIdeOptions): Boolean {

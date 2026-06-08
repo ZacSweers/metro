@@ -42,6 +42,9 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertTrue(declarations.klass("InjectedService").primaryConstructor!!.isMetroImplicitUsage())
     assertTrue(declarations.function("functionInject").isMetroImplicitUsage())
     assertTrue(declarations.klass("AssistedInjectedService").isMetroImplicitUsage())
+    assertTrue(declarations.klass("ContributedBindingService").isMetroImplicitUsage())
+    assertTrue(declarations.klass("ContributedSetService").isMetroImplicitUsage())
+    assertTrue(declarations.klass("ContributedMapService").isMetroImplicitUsage())
     assertTrue(
       declarations
         .klass("ConstructorAssistedInjectedService")
@@ -53,7 +56,11 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   fun testMarksCustomMetroDeclarationsAsImplicitlyUsedWhenConfigured() {
     setMetroOptions(
       "custom-binds" to "test/CustomBinds",
+      "custom-contributes-binding" to "test/CustomContributesBinding",
+      "custom-contributes-into-set" to "test/CustomContributesIntoCollection",
+      "custom-elements-into-set" to "test/CustomContributesIntoSet",
       "custom-provides" to "test/CustomProvides",
+      "custom-into-map" to "test/CustomContributesIntoMap",
       "custom-multibinds" to "test/CustomMultibinds",
       "custom-inject" to "test/CustomInject",
       "custom-assisted-inject" to "test/CustomAssistedInject",
@@ -73,6 +80,10 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     )
     assertTrue(declarations.function("customFunctionInject").isMetroImplicitUsage())
     assertTrue(declarations.klass("CustomAssistedInjectedService").isMetroImplicitUsage())
+    assertTrue(declarations.klass("CustomContributedBindingService").isMetroImplicitUsage())
+    assertTrue(declarations.klass("CustomContributedSetService").isMetroImplicitUsage())
+    assertTrue(declarations.klass("CustomContributedMapService").isMetroImplicitUsage())
+    assertTrue(declarations.klass("CustomContributedCollectionService").isMetroImplicitUsage())
     assertTrue(
       declarations
         .klass("CustomConstructorAssistedInjectedService")
@@ -90,6 +101,21 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertFalse(declarations.klass("CustomInjectedService").isMetroImplicitUsage())
     assertFalse(declarations.function("customFunctionInject").isMetroImplicitUsage())
     assertFalse(declarations.klass("CustomAssistedInjectedService").isMetroImplicitUsage())
+    assertFalse(declarations.klass("CustomContributedBindingService").isMetroImplicitUsage())
+  }
+
+  fun testMarksContributionProviderDeclarationsAsImplicitlyUsedWhenConfigured() {
+    setMetroOptions(
+      "contributes-as-inject" to "false",
+      "generate-contribution-providers" to "true",
+    )
+
+    val declarations = kotlinFileDeclarations()
+
+    assertTrue(declarations.klass("ContributedBindingService").isMetroImplicitUsage())
+    assertTrue(declarations.klass("ContributedSetService").isMetroImplicitUsage())
+    assertTrue(declarations.klass("ContributedMapService").isMetroImplicitUsage())
+    assertFalse(declarations.klass("ExposedContributedBindingService").isMetroImplicitUsage())
   }
 
   fun testMarksDaggerInteropDeclarationsAsImplicitlyUsedWhenConfigured() {
@@ -174,6 +200,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertFalse(declarations.function("multibindsServices").isMetroImplicitUsage())
     assertFalse(declarations.klass("InjectedService").isMetroImplicitUsage())
     assertFalse(declarations.function("functionInject").isMetroImplicitUsage())
+    assertFalse(declarations.klass("ContributedBindingService").isMetroImplicitUsage())
   }
 
   fun testUnusedDeclarationSuppressorRespectsMetroEnabledState() {
@@ -231,12 +258,22 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       import dev.zacsweers.metro.Multibinds
       import dev.zacsweers.metro.Provides
       import dev.zacsweers.metro.AssistedInject
+      import dev.zacsweers.metro.ContributesBinding
+      import dev.zacsweers.metro.ContributesIntoMap
+      import dev.zacsweers.metro.ContributesIntoSet
+      import dev.zacsweers.metro.ExperimentalMetroApi
+      import dev.zacsweers.metro.ExposeImplBinding
 
       annotation class CustomAssistedInject
       annotation class CustomBinds
+      annotation class CustomContributesBinding
+      annotation class CustomContributesIntoCollection
+      annotation class CustomContributesIntoMap
+      annotation class CustomContributesIntoSet
       annotation class CustomInject
       annotation class CustomMultibinds
       annotation class CustomProvides
+      object AppScope
       interface Service
       class ServiceImpl : Service
 
@@ -256,6 +293,13 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       class InjectedService @Inject constructor(service: Service)
       @AssistedInject class AssistedInjectedService(service: Service)
       class ConstructorAssistedInjectedService @AssistedInject constructor(service: Service)
+      @ContributesBinding(AppScope::class) class ContributedBindingService : Service
+      @ContributesIntoSet(AppScope::class) class ContributedSetService : Service
+      @ContributesIntoMap(AppScope::class) class ContributedMapService : Service
+      @OptIn(ExperimentalMetroApi::class)
+      @ExposeImplBinding
+      @ContributesBinding(AppScope::class)
+      class ExposedContributedBindingService : Service
 
       @Inject class ClassAnnotatedInject(service: Service)
 
@@ -282,6 +326,10 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       class CustomConstructorAssistedInjectedService @CustomAssistedInject constructor(
         service: Service
       )
+      @CustomContributesBinding class CustomContributedBindingService : Service
+      @CustomContributesIntoSet class CustomContributedSetService : Service
+      @CustomContributesIntoMap class CustomContributedMapService : Service
+      @CustomContributesIntoCollection class CustomContributedCollectionService : Service
 
       class CustomMemberInjectedService {
         @CustomInject fun customFunctionInject(service: Service) = Unit
