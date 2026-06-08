@@ -888,14 +888,7 @@ internal class DependencyGraphTransformer(
       }
 
       // Implement the factory's `Impl` class if present
-      val factoryImpl =
-        (factoryCreator.type.nestedClassOrNull(Symbols.Names.Impl)
-            ?: if (options.generateClassesInIr) {
-              factoryCreator.type.getOrCreateGraphFactoryImplShell()
-            } else {
-              factoryCreator.type.requireNestedClass(Symbols.Names.Impl)
-            })
-          .apply(implementFactoryFunction)
+      val factoryImpl = factoryCreator.type.graphFactoryImplClass().apply(implementFactoryFunction)
 
       if (
         factoryCreator.type.isInterface &&
@@ -937,6 +930,18 @@ internal class DependencyGraphTransformer(
     }
 
     companionObject.dumpToMetroLog()
+  }
+
+  private fun IrClass.graphFactoryImplClass(): IrClass {
+    nestedClassOrNull(Symbols.Names.Impl)?.let {
+      return it
+    }
+
+    return if (options.generateClassesInIr) {
+      getOrCreateGraphFactoryImplShell()
+    } else {
+      requireNestedClass(Symbols.Names.Impl)
+    }
   }
 }
 
