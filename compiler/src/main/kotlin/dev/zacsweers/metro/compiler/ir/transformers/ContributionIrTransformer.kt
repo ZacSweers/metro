@@ -750,8 +750,7 @@ internal class ContributionIrTransformer(
     function: IrSimpleFunction,
   ): IrExpression {
     // A contributed assisted factory binds the factory interface, not the assisted target. Reuse
-    // the
-    // target factory and then wrap it in the generated assisted-factory impl provider.
+    // the target factory and then wrap it in the generated assisted-factory impl provider.
     val targetClass = originClass.singleAbstractFunction().returnType.rawType()
     val targetParameters =
       targetConstructor
