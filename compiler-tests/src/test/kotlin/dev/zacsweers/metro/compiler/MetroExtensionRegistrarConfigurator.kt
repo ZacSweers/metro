@@ -318,7 +318,13 @@ class MetroExtensionRegistrarConfigurator(
     )
     if (options.enableCircuitCodegen) {
       FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
-      IrGenerationExtension.registerExtension(CircuitIrExtension(options, classIds, compatContext))
+      IrGenerationExtension.registerExtension(
+        CircuitIrExtension.create(
+          generateClassesInIr = options.generateClassesInIr,
+          classIds = classIds,
+          compatContext = compatContext,
+        )
+      )
     }
     IrGenerationExtension.registerExtension(GenerateImplIrExtension())
     IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())

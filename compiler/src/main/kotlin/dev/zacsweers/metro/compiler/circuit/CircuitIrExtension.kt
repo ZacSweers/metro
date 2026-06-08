@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.circuit
 
 import dev.zacsweers.metro.compiler.ClassIds
-import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -111,14 +110,44 @@ import org.jetbrains.kotlin.name.StandardClassIds
  * This extension should run after the Compose compiler IR plugin.
  */
 public class CircuitIrExtension(
-  private val options: MetroOptions,
-  private val classIds: ClassIds,
+  private val generateClassesInIr: Boolean,
+  private val assistedFactoryAnnotations: Set<ClassId>,
+  private val injectAnnotations: Set<ClassId>,
+  private val qualifierAnnotations: Set<ClassId>,
   private val compatContext: CompatContext,
 ) : IrGenerationExtension {
+  public companion object {
+    public fun create(
+      generateClassesInIr: Boolean,
+      classIds: ClassIds,
+      compatContext: CompatContext,
+    ): CircuitIrExtension {
+      return CircuitIrExtension(
+        generateClassesInIr = generateClassesInIr,
+        assistedFactoryAnnotations = classIds.assistedFactoryAnnotations,
+        injectAnnotations = classIds.allInjectAnnotations,
+        qualifierAnnotations = classIds.qualifierAnnotations,
+        compatContext = compatContext,
+      )
+    }
+  }
+
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
+    // Circuit runs as a separate IR extension before Metro's main IR pipeline, so it cannot use
+    // the DI-provided Symbols instance. Keep this local helper Circuit-focused and pass only the
+    // Metro configuration bits this extension actually needs.
     val symbols = CircuitSymbols.Ir(with(compatContext) { pluginContext.finderForBuiltinsCompat() })
-    val transformer = CircuitIrTransformer(pluginContext, symbols, options, classIds, compatContext)
-    if (options.generateClassesInIr) {
+    val transformer =
+      CircuitIrTransformer(
+        pluginContext = pluginContext,
+        symbols = symbols,
+        generateClassesInIr = generateClassesInIr,
+        assistedFactoryAnnotations = assistedFactoryAnnotations,
+        injectAnnotations = injectAnnotations,
+        qualifierAnnotations = qualifierAnnotations,
+        compatContext = compatContext,
+      )
+    if (generateClassesInIr) {
       // Metro's main IR transformer expects contributed classes to already exist. Create Circuit
       // factories before the normal visitor pass so they look like FIR-generated factories by the
       // time their bodies and Metro contribution classes are generated.
@@ -131,8 +160,10 @@ public class CircuitIrExtension(
 private class CircuitIrTransformer(
   private val pluginContext: IrPluginContext,
   private val symbols: CircuitSymbols.Ir,
-  private val options: MetroOptions,
-  private val classIds: ClassIds,
+  private val generateClassesInIr: Boolean,
+  private val assistedFactoryAnnotations: Set<ClassId>,
+  private val injectAnnotations: Set<ClassId>,
+  private val qualifierAnnotations: Set<ClassId>,
   private val compatContext: CompatContext,
 ) : IrElementTransformerVoid(), CompatContext by compatContext {
   private val builtinsFinder by lazy {
@@ -155,6 +186,14 @@ private class CircuitIrTransformer(
 
   private val contributesIntoSetAnnotationCtor by lazy {
     builtinsFinder.findClass(CONTRIBUTES_INTO_SET_CLASS_ID)!!.constructors.first()
+  }
+
+  private val composableAnnotationCtor by lazy {
+    builtinsFinder.findClass(Symbols.ClassIds.Composable)!!.constructors.first()
+  }
+
+  private val originAnnotationCtor by lazy {
+    builtinsFinder.findClass(Symbols.ClassIds.metroOrigin)!!.constructors.first()
   }
 
   private val deprecatedAnnotationCtor by lazy {
@@ -206,14 +245,14 @@ private class CircuitIrTransformer(
           pluginContext.finderFor(declaration).findClass(circuitTargetInfo.screenType)
         }!!
 
-      if (!options.generateClassesInIr) {
+      if (!generateClassesInIr) {
         // Legacy FIR-generated Circuit factories could not safely receive @Origin in FIR, so keep
         // adding it here. IR-generated factories already get it as part of shell creation.
         circuitTargetInfo.originClassId?.let { originClassId ->
           metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
             declaration,
             context(pluginContext) {
-              buildAnnotation(declaration.symbol, symbols.originAnnotationCtor) {
+              buildAnnotation(declaration.symbol, originAnnotationCtor) {
                 it.arguments[0] =
                   kClassReference(
                     with(compatContext) {
@@ -362,7 +401,7 @@ private class CircuitIrTransformer(
     target.originClassId?.let { originClassId ->
       addAnnotationCompat(
         context(pluginContext) {
-          buildAnnotation(symbol, symbols.originAnnotationCtor) { annotation ->
+          buildAnnotation(symbol, originAnnotationCtor) { annotation ->
             annotation.arguments[0] =
               kClassReference(
                 with(compatContext) {
@@ -389,7 +428,7 @@ private class CircuitIrTransformer(
     val factoryClassId = classIdOrFail.createNestedClassId(CircuitNames.Factory)
     val factoryType = determineFactoryTypeForTarget(this) ?: return null
     val constructorParams =
-      if (isAnnotatedWithAny(classIds.assistedFactoryAnnotations)) {
+      if (isAnnotatedWithAny(assistedFactoryAnnotations)) {
         // For assisted factories, Metro injects the assisted factory itself. The create() body will
         // delegate to that field instead of directly constructing the target Presenter/Ui.
         listOf(CircuitIrConstructorParam(CircuitNames.factoryField, defaultType))
@@ -397,7 +436,7 @@ private class CircuitIrTransformer(
         val constructor =
           findInjectableConstructor(
             onlyUsePrimaryConstructor = true,
-            injectAnnotations = classIds.allInjectAnnotations,
+            injectAnnotations = injectAnnotations,
           )
         constructor
           ?.regularParameters
@@ -546,7 +585,7 @@ private class CircuitIrTransformer(
 
   private fun IrAnnotationContainer.qualifierAnnotation(): IrConstructorCall? {
     return annotationsCompat().firstOrNull { annotation ->
-      annotation.symbol.owner.parentAsClass.isAnnotatedWithAny(classIds.qualifierAnnotations)
+      annotation.symbol.owner.parentAsClass.isAnnotatedWithAny(qualifierAnnotations)
     }
   }
 
@@ -1033,7 +1072,7 @@ private class CircuitIrTransformer(
           // @Composable annotation so Compose compiler transforms this lambda
           addAnnotationCompat(
             pluginContext.createIrBuilder(symbol).run {
-              irAnnotationCompat(symbols.composableAnnotationCtor, typeArguments = emptyList())
+              irAnnotationCompat(composableAnnotationCtor, typeArguments = emptyList())
             }
           )
 

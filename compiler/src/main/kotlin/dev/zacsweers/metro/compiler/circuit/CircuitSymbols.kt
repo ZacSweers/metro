@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.circuit
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.implements
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
@@ -12,9 +11,7 @@ import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderCont
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
-import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
-import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.name.ClassId
 
 internal sealed interface CircuitSymbols {
@@ -155,10 +152,6 @@ internal sealed interface CircuitSymbols {
         ?: error("Could not find ${CircuitClassIds.Modifier}")
     }
 
-    val composableAnnotationCtor: IrConstructorSymbol by lazy {
-      builtinsFinder.findClass(Symbols.ClassIds.Composable)!!.constructors.first()
-    }
-
     val presenterOfFun: IrSimpleFunctionSymbol by lazy {
       builtinsFinder.findFunctions(CircuitCallableIds.presenterOf).singleOrNull()
         ?: error("Could not find ${CircuitCallableIds.presenterOf}")
@@ -167,10 +160,6 @@ internal sealed interface CircuitSymbols {
     val uiFun: IrSimpleFunctionSymbol by lazy {
       builtinsFinder.findFunctions(CircuitCallableIds.ui).singleOrNull()
         ?: error("Could not find ${CircuitCallableIds.ui}")
-    }
-
-    val originAnnotationCtor: IrConstructorSymbol by lazy {
-      builtinsFinder.findClass(Symbols.ClassIds.metroOrigin)!!.constructors.first()
     }
   }
 }
