@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
+import dev.zacsweers.metro.compiler.calculateInitialCapacity
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.expectAs
@@ -37,7 +38,6 @@ import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceCategories
 import dev.zacsweers.metro.compiler.tracing.trace
-import java.util.TreeMap
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.descriptors.isInterface
@@ -428,22 +428,22 @@ internal class ContributedInterfaceSupertypeGenerator(
         classId.constructClassLikeType(emptyArray())
       }
 
-    // Stable sort
     val contributions =
-      TreeMap<ClassId, ConeKotlinType>(compareBy(ClassId::asString)).apply {
-        for (contribution in contributionClassLikes) {
-          val contributionClassId = contribution.expectAs<ConeKotlinType>().classId ?: continue
-          val classId =
-            if (generateClassesInIr) {
-              // FIR only sees the original @ContributesTo interface in this mode.
-              contributionClassId
-            } else {
-              // This is always the `MetroContribution`, the contribution is its parent
-              contributionClassId.parentClassId ?: continue
-            }
-          put(classId, contribution)
+      HashMap<ClassId, ConeKotlinType>(calculateInitialCapacity(contributionClassLikes.size))
+        .apply {
+          for (contribution in contributionClassLikes) {
+            val contributionClassId = contribution.expectAs<ConeKotlinType>().classId ?: continue
+            val classId =
+              if (generateClassesInIr) {
+                // FIR only sees the original @ContributesTo interface in this mode.
+                contributionClassId
+              } else {
+                // This is always the `MetroContribution`, the contribution is its parent
+                contributionClassId.parentClassId ?: continue
+              }
+            put(classId, contribution)
+          }
         }
-      }
 
     // Gather contributions from external extensions
     // These provide supertypes directly along with replacement/origin metadata
@@ -779,6 +779,7 @@ internal class ContributedInterfaceSupertypeGenerator(
         // Deduplicate by classId. The same contribution type can appear under different keys
         // when discovered via both hint-based and external extension paths.
         .distinctBy { it.classId }
+        .sortedBy { it.classId?.asString() }
     }
   }
 
