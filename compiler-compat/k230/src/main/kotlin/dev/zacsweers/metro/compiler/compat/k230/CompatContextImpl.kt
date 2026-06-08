@@ -12,7 +12,12 @@ import org.jetbrains.kotlin.KtSourceElementOffsetStrategy
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
+import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
+import org.jetbrains.kotlin.config.CommonConfigurationKeys
+import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -317,6 +322,11 @@ public class CompatContextImpl : CompatContext {
     init: FirValueParameterBuilder.() -> Unit,
   ): FirValueParameter {
     return buildValueParameterCopy(original, init)
+  }
+
+  override fun CompilerConfiguration.messageCollectorCompat(): MessageCollector {
+    return get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY)
+      ?: PrintingMessageCollector(System.err, MessageRenderer.PLAIN_FULL_PATHS, false)
   }
 
   public class Factory : CompatContext.Factory {

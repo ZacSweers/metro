@@ -36,12 +36,9 @@ import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import kotlin.io.path.Path
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
-import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
-import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.config.CompilerConfigurationKey
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
@@ -328,7 +325,7 @@ class MetroExtensionRegistrarConfigurator(
     IrGenerationExtension.registerExtension(GenerateProvidersInGraphIrExtension())
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
-        messageCollector = configuration.metroMessageCollector,
+        messageCollector = with(compatContext) { configuration.messageCollectorCompat() },
         classIds = classIds,
         options = options,
         // TODO ever support this in tests?
@@ -345,12 +342,3 @@ class MetroExtensionRegistrarConfigurator(
     }
   }
 }
-
-private val CompilerConfiguration.metroMessageCollector: MessageCollector
-  @Suppress("UNCHECKED_CAST")
-  get() {
-    val key =
-      CommonConfigurationKeys::class.java.getField("MESSAGE_COLLECTOR_KEY").get(null)
-        as CompilerConfigurationKey<MessageCollector>
-    return get(key, MessageCollector.NONE)
-  }

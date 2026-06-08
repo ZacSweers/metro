@@ -85,12 +85,12 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     val classIds = ClassIds.fromOptions(options)
 
-    val realMessageCollector = configuration.messageCollector
+    val realMessageCollector = with(compatContext) { configuration.messageCollectorCompat() }
     val messageCollector =
       if (options.debug) {
         DebugMessageCollector(realMessageCollector)
       } else {
-        configuration.messageCollector
+        realMessageCollector
       }
 
     if (options.debug) {
@@ -163,7 +163,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         }
         registerIrExtensionCompat(
           MetroIrGenerationExtension(
-            messageCollector = configuration.messageCollector,
+            messageCollector = messageCollector,
             classIds = classIds,
             options = options,
             lookupTracker = lookupTracker,
@@ -176,9 +176,6 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     }
   }
 }
-
-internal val CompilerConfiguration.messageCollector: MessageCollector
-  get() = get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.NONE)
 
 private class DebugMessageCollector(private val delegate: MessageCollector) : MessageCollector {
   override fun clear() {

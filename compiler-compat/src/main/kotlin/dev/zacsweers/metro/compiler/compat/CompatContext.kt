@@ -9,7 +9,9 @@ import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
+import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
@@ -613,6 +615,18 @@ public interface CompatContext {
     original: FirValueParameter,
     init: FirValueParameterBuilder.() -> Unit,
   ): FirValueParameter
+
+  /**
+   * Returns the compiler's configured [MessageCollector], or a non-silent fallback if no collector
+   * was installed. Metro still needs a message sink before an IR/FIR diagnostic reporter exists,
+   * such as while validating plugin options or reporting registrar-level debug output.
+   */
+  @CompatApi(
+    since = "2.4.20",
+    reason = CompatApi.Reason.COMPAT,
+    message = "MessageCollector access is being phased out in favor of diagnostic reporters",
+  )
+  public fun CompilerConfiguration.messageCollectorCompat(): MessageCollector
 }
 
 private data class FactoryData(
