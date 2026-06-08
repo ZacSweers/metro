@@ -59,19 +59,7 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
   fun getOrComputeBindsMirror(declaration: IrClass): BindsMirror? {
     return cache
       .getOrPut(declaration.classIdOrFail) {
-        val mirrorClass =
-          declaration.nestedClassOrNull(Symbols.Names.BindsMirrorClass)
-            ?: if (options.generateClassesInIr) {
-              declaration
-                .getOrCreateMetadataVisibleHiddenNestedClass(
-                  name = Symbols.Names.BindsMirrorClass,
-                  origin = Origins.BindingMirrorClassDeclaration,
-                  copyTypeParameters = false,
-                )
-                .apply { modality = Modality.ABSTRACT }
-            } else {
-              null
-            }
+        val mirrorClass = declaration.getOrCreateBindsMirrorClass()
         val mirror =
           if (mirrorClass == null) {
             // If there's no mirror class, there's no bindings
@@ -87,6 +75,21 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
         Optional.ofNullable(mirror)
       }
       .getOrNull()
+  }
+
+  private fun IrClass.getOrCreateBindsMirrorClass(): IrClass? {
+    nestedClassOrNull(Symbols.Names.BindsMirrorClass)?.let {
+      return it
+    }
+
+    if (!options.generateClassesInIr) return null
+
+    return getOrCreateMetadataVisibleHiddenNestedClass(
+        name = Symbols.Names.BindsMirrorClass,
+        origin = Origins.BindingMirrorClassDeclaration,
+        copyTypeParameters = false,
+      )
+      .apply { modality = Modality.ABSTRACT }
   }
 }
 
