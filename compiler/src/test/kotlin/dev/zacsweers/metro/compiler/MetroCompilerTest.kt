@@ -17,7 +17,7 @@ import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 import okio.Buffer
 import org.intellij.lang.annotations.Language
-import org.jetbrains.kotlin.compiler.plugin.CliOption
+import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
@@ -58,11 +58,15 @@ abstract class MetroCompilerTest {
     generateAssistedFactories: Boolean =
       MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: MetroOptions =
-      metroOptions.copy(debug = debug, generateAssistedFactories = generateAssistedFactories),
+      metroOptions
+        .toBuilder()
+        .debug(debug)
+        .generateAssistedFactories(generateAssistedFactories)
+        .build(),
     previousCompilationResult: JvmCompilationResult? = null,
     compilationName: String = "compilation${compilationCount++}",
   ): KotlinCompilation {
-    val finalOptions = options.copy(debug = debug || options.debug)
+    val finalOptions = options.toBuilder().debug(debug || options.debug).build()
     return KotlinCompilation().apply {
       workingDir = temporaryFolder.newFolder(compilationName)
       compilerPluginRegistrars = listOf(MetroCompilerPluginRegistrar())
@@ -391,7 +395,7 @@ abstract class MetroCompilerTest {
       .toList()
   }
 
-  protected fun CommandLineProcessor.option(key: CliOption, value: Any?): PluginOption {
+  protected fun CommandLineProcessor.option(key: AbstractCliOption, value: Any?): PluginOption {
     return PluginOption(pluginId, key.optionName, value.toString())
   }
 
@@ -469,11 +473,12 @@ abstract class MetroCompilerTest {
     generateAssistedFactories: Boolean =
       MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: MetroOptions =
-      metroOptions.copy(
-        enabled = metroEnabled,
-        debug = debug,
-        generateAssistedFactories = generateAssistedFactories,
-      ),
+      metroOptions
+        .toBuilder()
+        .enabled(metroEnabled)
+        .debug(debug)
+        .generateAssistedFactories(generateAssistedFactories)
+        .build(),
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
     compilationBlock: KotlinCompilation.() -> Unit = {},
     previousCompilationResult: JvmCompilationResult? = null,

@@ -355,7 +355,9 @@ class AnvilInteropTest : MetroCompilerTest() {
       options =
         metroOptions
           .withAnvilInterop()
-          .copy(customQualifierAnnotations = setOf(ClassId.fromString("test/ThirdPartyQualifier"))),
+          .toBuilder()
+          .customQualifierAnnotations(setOf(ClassId.fromString("test/ThirdPartyQualifier")))
+          .build(),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -460,11 +462,13 @@ class AnvilInteropTest : MetroCompilerTest() {
           .trimIndent()
       ),
       options =
-        metroOptions.copy(
-          customContributesBindingAnnotations =
-            setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding")),
-          enableDaggerAnvilInterop = false,
-        ),
+        metroOptions
+          .toBuilder()
+          .customContributesBindingAnnotations(
+            setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding"))
+          )
+          .enableDaggerAnvilInterop(false)
+          .build(),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
@@ -548,12 +552,14 @@ class AnvilInteropTest : MetroCompilerTest() {
   }
 
   private fun MetroOptions.withAnvilInterop(): MetroOptions {
-    return copy(
-      customContributesBindingAnnotations =
-        setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding")),
-      customGraphExtensionAnnotations =
-        setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent")),
-      enableDaggerAnvilInterop = true,
-    )
+    return toBuilder()
+      .customContributesBindingAnnotations(
+        setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding"))
+      )
+      .customGraphExtensionAnnotations(
+        setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent"))
+      )
+      .enableDaggerAnvilInterop(true)
+      .build()
   }
 }

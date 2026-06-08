@@ -390,7 +390,7 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
-      options = metroOptions.copy(enableDaggerRuntimeInterop = true),
+      options = metroOptions.toBuilder().enableDaggerRuntimeInterop(true).build(),
       previousCompilationResult = previousResult,
     ) {
       assertDiagnostics(

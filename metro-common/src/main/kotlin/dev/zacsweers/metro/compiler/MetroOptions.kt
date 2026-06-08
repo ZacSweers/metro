@@ -4,6 +4,7 @@
 
 package dev.zacsweers.metro.compiler
 
+import dev.drewhamilton.poko.Poko
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Locale
@@ -1007,7 +1008,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
 }
 
 @Serializable
-public data class MetroOptions(
+@Poko
+public class MetroOptions(
   public val debug: Boolean = MetroOption.DEBUG.raw.defaultValue.expectAs(),
   public val enabled: Boolean = MetroOption.ENABLED.raw.defaultValue.expectAs(),
   @Transient
@@ -1172,7 +1174,7 @@ public data class MetroOptions(
     MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP.raw.defaultValue.expectAs(),
   public val generateContributionProviders: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_PROVIDERS.raw.defaultValue.expectAs(),
-  val enableCircuitCodegen: Boolean =
+  public val enableCircuitCodegen: Boolean =
     MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
   public val enableHiltInterop: Boolean =
     MetroOption.INTEROP_INCLUDE_HILT_ANNOTATIONS.raw.defaultValue.expectAs(),
@@ -1480,6 +1482,99 @@ public data class MetroOptions(
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
     public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
     public var memberNamingStrategy: MemberNamingStrategy = base.memberNamingStrategy
+
+    public fun debug(debug: Boolean): Builder = apply {
+      this.debug = debug
+    }
+
+    public fun enabled(enabled: Boolean): Builder = apply {
+      this.enabled = enabled
+    }
+
+    public fun reportsDestination(reportsDestination: Path?): Builder = apply {
+      this.reportsDestination = reportsDestination
+    }
+
+    public fun generateAssistedFactories(generateAssistedFactories: Boolean): Builder = apply {
+      this.generateAssistedFactories = generateAssistedFactories
+    }
+
+    public fun enableTopLevelFunctionInjection(enableTopLevelFunctionInjection: Boolean): Builder =
+      apply {
+        this.enableTopLevelFunctionInjection = enableTopLevelFunctionInjection
+      }
+
+    public fun warnOnInjectAnnotationPlacement(warnOnInjectAnnotationPlacement: Boolean): Builder =
+      apply {
+        this.warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement
+      }
+
+    public fun enableDaggerRuntimeInterop(enableDaggerRuntimeInterop: Boolean): Builder = apply {
+      this.enableDaggerRuntimeInterop = enableDaggerRuntimeInterop
+    }
+
+    public fun enableFullBindingGraphValidation(
+      enableFullBindingGraphValidation: Boolean
+    ): Builder = apply {
+      this.enableFullBindingGraphValidation = enableFullBindingGraphValidation
+    }
+
+    public fun enableFunctionProviders(enableFunctionProviders: Boolean): Builder = apply {
+      this.enableFunctionProviders = enableFunctionProviders
+    }
+
+    public fun unusedGraphInputsSeverity(unusedGraphInputsSeverity: DiagnosticSeverity): Builder =
+      apply {
+        this.unusedGraphInputsSeverity = unusedGraphInputsSeverity
+      }
+
+    public fun contributesAsInject(contributesAsInject: Boolean): Builder = apply {
+      this.contributesAsInject = contributesAsInject
+    }
+
+    public fun enableKlibParamsCheck(enableKlibParamsCheck: Boolean): Builder = apply {
+      this.enableKlibParamsCheck = enableKlibParamsCheck
+    }
+
+    public fun keysPerGraphShard(keysPerGraphShard: Int): Builder = apply {
+      this.keysPerGraphShard = keysPerGraphShard
+    }
+
+    public fun desugaredProviderSeverity(desugaredProviderSeverity: DiagnosticSeverity): Builder =
+      apply {
+        this.desugaredProviderSeverity = desugaredProviderSeverity
+      }
+
+    public fun customQualifierAnnotations(customQualifierAnnotations: Set<ClassId>): Builder =
+      apply {
+        this.customQualifierAnnotations.clear()
+        this.customQualifierAnnotations.addAll(customQualifierAnnotations)
+      }
+
+    public fun customContributesBindingAnnotations(
+      customContributesBindingAnnotations: Set<ClassId>
+    ): Builder = apply {
+      this.customContributesBindingAnnotations.clear()
+      this.customContributesBindingAnnotations.addAll(customContributesBindingAnnotations)
+    }
+
+    public fun customBindingContainerAnnotations(
+      customBindingContainerAnnotations: Set<ClassId>
+    ): Builder = apply {
+      this.customBindingContainerAnnotations.clear()
+      this.customBindingContainerAnnotations.addAll(customBindingContainerAnnotations)
+    }
+
+    public fun customGraphExtensionAnnotations(
+      customGraphExtensionAnnotations: Set<ClassId>
+    ): Builder = apply {
+      this.customGraphExtensionAnnotations.clear()
+      this.customGraphExtensionAnnotations.addAll(customGraphExtensionAnnotations)
+    }
+
+    public fun enableDaggerAnvilInterop(enableDaggerAnvilInterop: Boolean): Builder = apply {
+      this.enableDaggerAnvilInterop = enableDaggerAnvilInterop
+    }
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1852,6 +1947,8 @@ public data class MetroOptions(
   }
 
   public companion object {
+    public fun builder(): Builder = Builder()
+
     public fun buildOptions(body: Builder.() -> Unit): MetroOptions {
       return Builder().apply(body).build()
     }
