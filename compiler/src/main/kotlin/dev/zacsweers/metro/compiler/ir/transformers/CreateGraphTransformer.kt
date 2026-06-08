@@ -218,6 +218,15 @@ internal class CreateGraphTransformer(
   }
 
   context(context: TransformerContextAccess)
+  /**
+   * Returns the dispatch receiver for calls to functions on [companion].
+   *
+   * Most rewritten `createGraph*()` calls happen outside the target graph companion, so the call
+   * needs an object access receiver. When the intrinsic appears inside that same companion though,
+   * the current dispatch receiver is already the companion instance. Reusing `this` keeps the
+   * rewritten call scoped like a normal companion member call instead of manufacturing a new object
+   * access inside the companion body.
+   */
   private fun IrBuilderWithScope.companionReceiver(companion: IrClass): IrExpression {
     val currentClass = context.currentClassAccess?.irElement as? IrClass
     val currentFunction = context.currentFunctionAccess?.irElement as? IrFunction
