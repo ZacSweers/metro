@@ -57,7 +57,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     if (
       version != null &&
-        configuration.get(MetroOption.GENERATE_CLASSES_IN_IR.raw.key) == null &&
+        configuration[MetroOption.GENERATE_CLASSES_IN_IR.raw.key] == null &&
         MetroOptions.supportsIrClassGeneration(version)
     ) {
       options = options.copy(generateClassesInIr = true)
@@ -150,12 +150,9 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     }
 
     if (!isIde) {
-      val lookupTracker = configuration.get(CommonConfigurationKeys.LOOKUP_TRACKER)
+      val lookupTracker = configuration[CommonConfigurationKeys.LOOKUP_TRACKER]
       val expectActualTracker: ExpectActualTracker =
-        configuration.get(
-          CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER,
-          ExpectActualTracker.DoNothing,
-        )
+        configuration[CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER, ExpectActualTracker.DoNothing]
       with(compatContext) {
         // Register Circuit IR extension if enabled first
         if (options.enableCircuitCodegen) {
