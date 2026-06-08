@@ -39,6 +39,7 @@ if (file(".git").exists()) {
 apiValidation {
   ignoredProjects += buildList {
     add("compiler")
+    add("metro-common")
     add("compiler-tests")
     add("compiler-compat")
     layout.projectDirectory.dir("compiler-compat").asFile.listFiles()!!.forEach {

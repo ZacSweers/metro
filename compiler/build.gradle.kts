@@ -178,6 +178,7 @@ dependencies {
   compileOnly(libs.poko.annotations)
   compileOnly(libs.androidx.collection)
 
+  add(embedded.name, project(":metro-common"))
   add(embedded.name, project(":runtime"))
   add(embedded.name, libs.androidx.collection)
   add(embedded.name, libs.androidx.tracing.wire)
