@@ -316,14 +316,6 @@ public interface CompatContext {
     endOffset: Int = -1,
   ): KtSourceElement
 
-  /**
-   * Version-safe access to Kotlin's plugin-generated fake source kind. Kotlin 2.4.20 split
-   * `PluginGenerated` into nested variants such as `PluginGenerated.Default`, and direct constant
-   * references can be inlined into Metro code that runs on older compilers.
-   */
-  public val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
-    get() = KtFakeSourceElementKind.PluginGenerated
-
   @CompatApi(
     since = "2.3.20",
     reason = CompatApi.Reason.COMPAT,
@@ -607,6 +599,19 @@ public interface CompatContext {
     original: FirValueParameter,
     init: FirValueParameterBuilder.() -> Unit,
   ): FirValueParameter
+
+  /**
+   * Version-safe access to Kotlin's plugin-generated fake source kind. Kotlin 2.4.20 split
+   * `PluginGenerated` into nested variants such as `PluginGenerated.Default`, and direct constant
+   * references can be inlined into Metro code that runs on older compilers.
+   */
+  @CompatApi(
+    since = "2.4.20-dev-5775",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4.20-dev-5775 split PluginGenerated into nested source element kinds",
+  )
+  public val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
+    get() = KtFakeSourceElementKind.PluginGenerated
 
   @CompatApi(
     since = "2.4.20-dev-5775",
