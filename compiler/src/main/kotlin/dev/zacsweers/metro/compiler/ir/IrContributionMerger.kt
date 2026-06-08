@@ -303,14 +303,15 @@ internal class IrContributionMerger(
               mutableExternalSupertypes.remove(contributionId)
             }
 
-            // Track unmatched if nothing was removed
-            if (
-              removedContainer == null &&
-                removedContribution == null &&
-                removedExternalSupertype == null &&
-                originContributions == null &&
-                nestedContributions.isEmpty()
-            ) {
+            val removedDirectContribution =
+              removedContainer != null ||
+                removedContribution != null ||
+                removedExternalSupertype != null
+            val removedOriginContribution = originContributions != null
+            val removedNestedContribution = nestedContributions.isNotEmpty()
+            val wasNotMatched =
+              !removedDirectContribution && !removedOriginContribution && !removedNestedContribution
+            if (wasNotMatched) {
               unmatchedExclusions += excludedClassId
             }
           }
@@ -384,13 +385,13 @@ internal class IrContributionMerger(
               mutableExternalSupertypes.remove(contributionId)
             }
 
-            // Track unmatched if nothing was removed
-            if (
-              removedContribution == null &&
-                removedContainer == null &&
-                removedExternalSupertype == null &&
-                originContributions == null
-            ) {
+            val removedDirectContribution =
+              removedContribution != null ||
+                removedContainer != null ||
+                removedExternalSupertype != null
+            val removedOriginContribution = originContributions != null
+            val wasNotMatched = !removedDirectContribution && !removedOriginContribution
+            if (wasNotMatched) {
               unmatchedReplacements += replacedClassId
             }
           }
@@ -423,17 +424,19 @@ internal class IrContributionMerger(
             val removedExternalSupertype = mutableExternalSupertypes.remove(replacedClassId)
 
             // Also remove contributions that have @Origin pointing to the replaced class
-            originToContributions[replacedClassId]?.forEach { contributionId ->
+            val originContributions = originToContributions[replacedClassId]
+            originContributions?.forEach { contributionId ->
               mutableAllContributions.remove(contributionId)
               mutableContributedBindingContainers.remove(contributionId)
               mutableExternalSupertypes.remove(contributionId)
             }
 
-            val wasNotMatched =
-              removedContribution == null &&
-                removedContainer == null &&
-                removedExternalSupertype == null &&
-                originToContributions[replacedClassId] == null
+            val removedDirectContribution =
+              removedContribution != null ||
+                removedContainer != null ||
+                removedExternalSupertype != null
+            val removedOriginContribution = originContributions != null
+            val wasNotMatched = !removedDirectContribution && !removedOriginContribution
             if (wasNotMatched) {
               unmatchedRankReplacements += replacedClassId
             }
