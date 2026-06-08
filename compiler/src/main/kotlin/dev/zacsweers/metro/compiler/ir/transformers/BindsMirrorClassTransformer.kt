@@ -59,25 +59,23 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
   fun getOrComputeBindsMirror(declaration: IrClass): BindsMirror? {
     return cache
       .getOrPut(declaration.classIdOrFail) {
-        val mirrorClass = declaration.getOrCreateBindsMirrorClass()
-        val mirror =
-          if (mirrorClass == null) {
-            // If there's no mirror class, there's no bindings
+        val mirrorClass =
+          declaration.bindsMirrorClassOrNull()
+            // If there's no mirror class, there's no bindings.
             // TODO what if they forgot to run the metro compiler? Should we put something in
             //  metadata?
-            return@getOrPut Optional.empty()
-          } else {
-            if (!declaration.isExternalParent) {
-              checkNotLocked()
-            }
-            transformBindingMirrorClass(declaration, mirrorClass)
-          }
+            ?: return@getOrPut Optional.empty()
+
+        if (!declaration.isExternalParent) {
+          checkNotLocked()
+        }
+        val mirror = transformBindingMirrorClass(declaration, mirrorClass)
         Optional.ofNullable(mirror)
       }
       .getOrNull()
   }
 
-  private fun IrClass.getOrCreateBindsMirrorClass(): IrClass? {
+  private fun IrClass.bindsMirrorClassOrNull(): IrClass? {
     nestedClassOrNull(Symbols.Names.BindsMirrorClass)?.let {
       return it
     }
