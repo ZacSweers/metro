@@ -73,6 +73,8 @@ val metroRuntimeClasspath: Configuration by configurations.creating {
   resolutionStrategy.useGlobalDependencySubstitutionRules = false
 }
 
+val shaded: Configuration by configurations.creating
+
 dependencies {
   intellijPlatform {
     intellijIdeaUltimate("2026.1.3")
@@ -81,8 +83,17 @@ dependencies {
   }
 
   metroRuntimeClasspath("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
+  compileOnly("dev.zacsweers.metro:metro-common")
+  shaded("dev.zacsweers.metro:metro-common")
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
+  testImplementation("dev.zacsweers.metro:metro-common")
+}
+
+tasks.jar {
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+  from(shaded.elements.map { files -> files.map { zipTree(it.asFile) } })
+  exclude("META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.SF")
 }
 
 intellijPlatform {
