@@ -55,7 +55,7 @@ internal sealed interface IrMetroFactory {
     val expr =
       invokeCreatorExpression(
         typeKey = typeKey,
-        functionNameForError = Symbols.Names.create,
+        expectedCreatorDescription = Symbols.Names.create.asString(),
         functionPredicate = { it.name in createFunctionNames },
         computeArgs = computeArgs,
       )
@@ -90,7 +90,7 @@ internal sealed interface IrMetroFactory {
     val propertyProviderName = name.asString().removeSurrounding("<get-", ">")
     return invokeCreatorExpression(
       typeKey = typeKey,
-      functionNameForError = name,
+      expectedCreatorDescription = name.asString(),
       functionPredicate = { it.name == name || it.name.asString() == propertyProviderName },
       computeArgs = computeArgs,
     )
@@ -99,7 +99,7 @@ internal sealed interface IrMetroFactory {
   context(context: IrMetroContext, scope: IrBuilderWithScope)
   private fun invokeCreatorExpression(
     typeKey: IrTypeKey,
-    functionNameForError: Name,
+    expectedCreatorDescription: String,
     functionPredicate: (IrFunction) -> Boolean,
     computeArgs:
       IrBuilderWithScope.(targetFunction: IrSimpleFunction, parameters: Parameters) -> List<
@@ -112,7 +112,7 @@ internal sealed interface IrMetroFactory {
       val createFunction =
         creatorClass.simpleFunctions().firstOrNull(functionPredicate)
           ?: reportCompilerBug(
-            "No matching creator function '$functionNameForError' found for ${factoryClass.classId} with typeKey $typeKey. Available are ${creatorClass.simpleFunctions().joinToString { it.name.asString() }}"
+            "No matching creator function for '$expectedCreatorDescription' found in ${factoryClass.classId} with typeKey $typeKey. Available are ${creatorClass.simpleFunctions().joinToString { it.name.asString() }}"
           )
 
       val remapper = createFunction.typeRemapperFor(typeKey.type)

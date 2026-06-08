@@ -199,12 +199,14 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     fun computeMemberInjectClass(injectorClass: IrClass, isDagger: Boolean): MemberInjectClass {
       // Use cached member inject parameters if available, otherwise fall back to fresh lookup
       val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters(isDagger)
-      val parameterGroupsForClass = injectedMembersByClass[injectedClassId].orEmpty()
+      // This map is sparse: classes with no direct injected members are omitted, even if inherited
+      // members still require an injector for this class.
+      val directInjectedMembers = injectedMembersByClass[injectedClassId].orEmpty()
 
       val creatorsClass = injectorClass.staticIshDeclarationContainerOrNull()
       val declaredInjectFunctions =
         if (creatorsClass != null) {
-          parameterGroupsForClass.associateBy { params ->
+          directInjectedMembers.associateBy { params ->
             val name =
               if (params.isProperty) {
                 params.irProperty!!.name
@@ -369,6 +371,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     // Static create()
     trace("Generate static create()") {
       @Suppress("RETURN_VALUE_NOT_USED")
+      // MembersInjector params are synthetic, so there are no source defaults to patch.
       if (
         options.generateClassesInIr &&
           companionObject.functions.none { it.origin == Origins.FactoryCreateFunction }
@@ -385,7 +388,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           targetConstructor = ctor.symbol,
           parameters = createParameters,
           sourceFunction = null,
-          patchCreationParams = false, // TODO when we support absent
+          patchCreationParams = false,
           stubDefaults = false,
         )
       } else {
@@ -395,7 +398,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           targetConstructor = ctor.symbol,
           parameters = createParameters,
           providerFunction = null,
-          patchCreationParams = false, // TODO when we support absent
+          patchCreationParams = false,
           copyQualifiers = true,
         )
       }
