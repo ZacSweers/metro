@@ -726,6 +726,9 @@ internal class ContributedInterfaceSupertypeGenerator(
             if (contributionClassId in existingSupertypeClassIds) {
               return@flatMap emptyList()
             }
+
+            // Hidden MetroContributionTo<Scope> markers are generated in IR only, so FIR must not
+            // reference them as supertypes before their class shells exist.
             val contributionSymbol = contributionClassId.toSymbol(session)
             val isContributedInterface =
               contributionSymbol is FirRegularClassSymbol &&
@@ -733,8 +736,9 @@ internal class ContributedInterfaceSupertypeGenerator(
             if (!isContributedInterface) {
               return@flatMap emptyList()
             }
-            // The hidden marker is generated in IR, so FIR only attaches the user-visible
-            // @ContributesTo interface to preserve IDE-visible supertypes.
+
+            // The original @ContributesTo interface is user-authored and visible in FIR. Keep that
+            // direct supertype so graph extension relationships remain visible in the IDE.
             return@flatMap listOf(metroContribution)
           }
 
