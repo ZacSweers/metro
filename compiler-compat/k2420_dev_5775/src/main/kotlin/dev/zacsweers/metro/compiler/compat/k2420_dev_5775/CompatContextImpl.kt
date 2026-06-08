@@ -15,9 +15,6 @@ import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 public class CompatContextImpl : CompatContext by DelegateType() {
-  override val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
-    get() = KtFakeSourceElementKind.PluginGenerated.Default
-
   override fun createIrGeneratedDeclarationsRegistrar(
     pluginContext: IrPluginContext
   ): IrGeneratedDeclarationsRegistrarCompat {
@@ -25,6 +22,9 @@ public class CompatContextImpl : CompatContext by DelegateType() {
       pluginContext.metadataDeclarationRegistrar
     )
   }
+
+  override val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
+    get() = KtFakeSourceElementKind.PluginGenerated.Default
 
   override fun IrElement.dumpKotlinLikeCompat(
     options: KotlinLikeDumpOptions,

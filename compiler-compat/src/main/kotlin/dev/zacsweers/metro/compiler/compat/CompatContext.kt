@@ -492,19 +492,6 @@ public interface CompatContext {
   ): IrConstructorCall
 
   @CompatApi(
-    since = "2.4.20-dev-5775",
-    reason = CompatApi.Reason.ABI_CHANGE,
-    message = "2.4.20-dev-5775 upstreamed custom Kotlin-like IR name rendering",
-  )
-  public fun IrElement.dumpKotlinLikeCompat(
-    options: KotlinLikeDumpOptions,
-    classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
-    fallback: () -> String,
-  ): String {
-    return fallback()
-  }
-
-  @CompatApi(
     since = "2.4.0",
     reason = CompatApi.Reason.ABI_CHANGE,
     message =
@@ -615,6 +602,19 @@ public interface CompatContext {
     original: FirValueParameter,
     init: FirValueParameterBuilder.() -> Unit,
   ): FirValueParameter
+
+  @CompatApi(
+    since = "2.4.20-dev-5775",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4.20-dev-5775 upstreamed custom Kotlin-like IR name rendering",
+  )
+  public fun IrElement.dumpKotlinLikeCompat(
+    options: KotlinLikeDumpOptions,
+    classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
+    fallback: () -> String,
+  ): String {
+    return fallback()
+  }
 
   /**
    * Returns the compiler's configured [MessageCollector], or a non-silent fallback if no collector
