@@ -913,20 +913,16 @@ internal class BindingContainerTransformer(
                 val factoryClassWithJvmName =
                   declaration.lookupClass(daggerFactoryClassIdOf(decl, useJvmName = true))
                 val factoryClass = factoryClassWithoutJvmName ?: factoryClassWithJvmName
+                val factoryClassUsesJvmName =
+                  factoryClassWithoutJvmName == null && factoryClassWithJvmName != null
+                val newInstanceNameFromFactory =
+                  factoryClass?.owner?.daggerProviderNewInstanceNameOrNull()
                 val newInstanceName =
-                  factoryClass
-                    ?.owner
-                    ?.simpleFunctions()
-                    ?.singleOrNull { function ->
-                      function.name !in
-                        setOf(Symbols.Names.create, Symbols.Names.createFactoryProvider)
-                    }
-                    ?.name
-                    ?: daggerProviderFunctionNameOf(
-                      decl,
-                      useJvmName =
-                        factoryClassWithoutJvmName == null && factoryClassWithJvmName != null,
-                    )
+                  if (newInstanceNameFromFactory != null) {
+                    newInstanceNameFromFactory
+                  } else {
+                    daggerProviderFunctionNameOf(decl, useJvmName = factoryClassUsesJvmName)
+                  }
 
                 if (factoryClass == null) {
                   reportCompat(
@@ -1082,17 +1078,18 @@ internal class BindingContainerTransformer(
         ?: createContributionProviderFactoryStub(container, classId, isObject = entry.is_object)
 
     val mirrorFunction =
-      existingFactory?.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION)?.owner
-        ?: run {
-          val target = providesFunction ?: return null
-          generateMetadataVisibleMirrorFunction(
-            factoryClass = stub,
-            target = target,
-            backingField = null,
-            annotations = target.metroAnnotations(metroSymbols.classIds),
-            registerAsMetadataVisible = false,
-          )
-        }
+      if (existingFactory != null) {
+        existingFactory.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
+      } else {
+        val target = providesFunction ?: return null
+        generateMetadataVisibleMirrorFunction(
+          factoryClass = stub,
+          target = target,
+          backingField = null,
+          annotations = target.metroAnnotations(metroSymbols.classIds),
+          registerAsMetadataVisible = false,
+        )
+      }
 
     val sourceFunction =
       providesFunction
@@ -1377,6 +1374,14 @@ private fun daggerProviderFunctionNameOf(
       declaration.daggerProviderSourceName()
     }
   )
+}
+
+private fun IrClass.daggerProviderNewInstanceNameOrNull(): Name? {
+  val newInstanceFunction =
+    simpleFunctions().singleOrNull { function ->
+      function.name != Symbols.Names.create && function.name != Symbols.Names.createFactoryProvider
+    }
+  return newInstanceFunction?.name
 }
 
 private fun IrOverridableDeclaration<*>.isDaggerPropertyProvider(): Boolean {
