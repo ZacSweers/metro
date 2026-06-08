@@ -61,7 +61,7 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
       .getOrPut(declaration.classIdOrFail) {
         val mirrorClass =
           declaration.nestedClassOrNull(Symbols.Names.BindsMirrorClass)
-            ?: if (options.generateClassesInIr && declaration.hasBindingMirrorMembers()) {
+            ?: if (options.generateClassesInIr) {
               declaration
                 .getOrCreateMetadataVisibleHiddenNestedClass(
                   name = Symbols.Names.BindsMirrorClass,
@@ -87,19 +87,6 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
         Optional.ofNullable(mirror)
       }
       .getOrNull()
-  }
-
-  private fun IrClass.hasBindingMirrorMembers(): Boolean {
-    return declarations.any { declaration ->
-      val function =
-        when (declaration) {
-          is IrProperty -> declaration.getter
-          is IrSimpleFunction -> declaration
-          else -> null
-        } ?: return@any false
-      val annotations = metroFunctionOf(function).annotations
-      annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
-    }
   }
 }
 
