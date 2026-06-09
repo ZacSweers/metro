@@ -74,6 +74,23 @@ class DoubleCheckTest {
   }
 
   @Test
+  fun `provider exception releases the guard and a later call can initialize`() {
+    val obj = Any()
+    val doubleCheck =
+      DoubleCheck.provider(
+        Provider {
+          if (invocationCount.incrementAndFetch() == 1) {
+            throw UnsupportedOperationException("first init fails")
+          }
+          obj
+        }
+      )
+    assertFailsWith<UnsupportedOperationException> { doubleCheck() }
+    assertSame(obj, doubleCheck())
+    assertEquals(2, invocationCount.load())
+  }
+
+  @Test
   fun `instance factory as lazy does not wrap`() {
     val factory = InstanceFactory(Any())
     // We use toString() here because on JVM the boxed type is used

@@ -26,9 +26,15 @@ Changelog
 - **[IR/IC]** Optimize IC tracking by buffering lookup and expect/actual records during IR and flushing them once after graph validation, avoiding per-write synchronization on the hot path. This is enabled by default but can be disabled via the `buffered-ic-tracking` compiler option if it causes any issues.
 - **[IR/IC]** Use newer compiler `DeclarationFinder` APIs on Kotlin `2.3.20`+. These have more granular search scopes plus automatic IC tracking.
 - **[IR/runtime]** Add internal primitive instance factories and use them where possible for primitive graph inputs and inlined providers.
-- **[Gradle]** Add a `metroEnv` task that writes human-readable Metro/Kotlin/Gradle environment reports for bug reports.
-- **[Reporting]** Add compiler stats to reporting.
-- **[runtime/native]** Add bounded backoff to the native `Lock` implementation so contention yields instead of spinning continuously.
+- **[gradle]** Add a `metroEnv` task that writes human-readable Metro/Kotlin/Gradle environment reports for bug reports.
+- **[reporting]** Add compiler stats to reporting.
+- **[runtime]** Rework `DoubleCheck` synchronization on JVM and native targets.
+  - On JVM, scoped bindings now synchronize on the `DoubleCheck` instance's own monitor (like Dagger) instead of allocating a `ReentrantLock` per instance, which also eliminates the spurious `ReservedStackAccess` JVM warning.
+  - On native targets, the previous spinlock impl is replaced with a reentrant init guard whose contended callers park on a process-wide condition variable instead of busy-waiting.
+    - On Apple platforms, parked waiters additionally donate their [QoS](https://developer.apple.com/library/archive/documentation/Performance/Conceptual/EnergyGuide-iOS/PrioritizeWorkWithQoS.html) class to the initializing thread to avoid priority inversion.
+  - Notes for virtual thread (i.e. Project Loom):
+    - JDK 21–23: `synchronized` can pin a virtual thread to its carrier if a scoped provider blocks during its one-time init ([JEP 444](https://openjdk.org/jeps/444)).
+    - JDK 24+ removes monitor pinning ([JEP 491](https://openjdk.org/jeps/491)).
 
 ### Fixes
 
