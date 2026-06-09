@@ -195,9 +195,12 @@ internal class AssistedFactoryTransformer(
             isPrimary = true
           }
           .apply {
-            val factoryClassId =
-              targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)
-            val factoryParamType = declaration.lookupClass(factoryClassId)!!.defaultType
+            val factoryParamType =
+              targetType.metroFactoryType(
+                samFunction.returnType.targetTypeArguments(
+                  remapper = declaration.typeParameterRemapperTo(implClass)
+                )
+              )
             addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
             body = generateDefaultConstructorBody()
           }
@@ -298,9 +301,12 @@ internal class AssistedFactoryTransformer(
           setDispatchReceiver(companionReceiver.copyTo(this))
           typeParameters = copyTypeParametersFrom(samFunction)
 
-          val factoryClassId =
-            targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)
-          val factoryParamType = this.lookupClass(factoryClassId)!!.defaultType
+          val factoryParamType =
+            targetType.metroFactoryType(
+              samFunction.returnType.targetTypeArguments(
+                remapper = samFunction.typeParameterRemapperTo(this)
+              )
+            )
           addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
 
           addStaticAnnotations(this)
@@ -308,6 +314,42 @@ internal class AssistedFactoryTransformer(
         }
 
     return ImplCompanionDeclarations(companion, createFunction)
+  }
+
+  private fun IrClass.metroFactoryType(typeArguments: List<IrType>): IrType {
+    val factoryClassId = classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)
+    val factoryClass =
+      lookupClass(factoryClassId)?.owner
+        ?: reportCompilerBug("Could not find generated Metro factory $factoryClassId")
+    return factoryClass.typeWith(*typeArguments.toTypedArray())
+  }
+
+  private fun IrClass.typeParameterRemapperTo(targetClass: IrClass): TypeRemapper {
+    return typeRemapperFor(
+      typeParameters.zip(targetClass.typeParameters).associate { (source, target) ->
+        source.symbol to target.defaultType
+      }
+    )
+  }
+
+  private fun IrSimpleFunction.typeParameterRemapperTo(
+    targetFunction: IrSimpleFunction
+  ): TypeRemapper {
+    return typeRemapperFor(
+      typeParameters.zip(targetFunction.typeParameters).associate { (source, target) ->
+        source.symbol to target.defaultType
+      }
+    )
+  }
+
+  private fun IrType.targetTypeArguments(remapper: TypeRemapper): List<IrType> {
+    if (this !is IrSimpleType) return emptyList()
+    return arguments.map { argument ->
+      val typeProjection =
+        argument as? IrTypeProjection
+          ?: reportCompilerBug("Expected type projection in assisted factory return type $this")
+      remapper.remapType(typeProjection.type)
+    }
   }
 
   private fun implementImplClass(
