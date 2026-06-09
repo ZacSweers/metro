@@ -1,4 +1,5 @@
 import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.incrementAndFetch
 
 @DependencyGraph(AppScope::class)
@@ -7,9 +8,10 @@ interface App {
   val int: Int
 }
 
+@OptIn(ExperimentalAtomicApi::class)
 val counter = AtomicInt(0)
 
-@OptIn(kotlin.concurrent.atomics.ExperimentalAtomicApi::class)
+@OptIn(ExperimentalAtomicApi::class)
 @ContributesTo(AppScope::class)
 interface Providers {
   // due to SingleIn this should only be called once and return `1`
