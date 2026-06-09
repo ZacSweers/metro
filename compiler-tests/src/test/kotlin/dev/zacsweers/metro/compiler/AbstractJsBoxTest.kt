@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler
 import org.jetbrains.kotlin.js.test.runners.AbstractJsTest
 import org.jetbrains.kotlin.test.FirParser
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
+import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
 open class AbstractJsBoxTest :
@@ -27,7 +28,10 @@ open class AbstractJsBoxTest :
 
       useMetaTestConfigurators(::MetroTestConfigurator)
 
-      defaultDirectives { commonMetroTestDirectives() }
+      defaultDirectives {
+        commonMetroTestDirectives()
+        +WITH_STDLIB
+      }
     }
   }
 }

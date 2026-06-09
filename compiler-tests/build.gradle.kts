@@ -2,9 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 @file:OptIn(ExperimentalWasmDsl::class)
 
+import org.gradle.api.attributes.Category
+import org.gradle.api.attributes.Usage
 import org.gradle.kotlin.dsl.sourceSets
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinUsages
+import org.jetbrains.kotlin.gradle.targets.js.KotlinJsCompilerAttribute
 import org.jetbrains.kotlin.gradle.targets.wasm.d8.D8EnvSpec
 import org.jetbrains.kotlin.gradle.targets.wasm.d8.D8Plugin
 import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
@@ -59,6 +63,7 @@ buildConfig {
       "\"${testCompilerVersionProvider.isPresent}\"",
     )
     buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })
+    buildConfigField("String", "TEST_COMPILER_VERSION", "\"$testCompilerVersion\"")
     buildConfigField(
       "kotlin.KotlinVersion",
       "COMPILER_VERSION",
@@ -68,6 +73,15 @@ buildConfig {
 }
 
 val metroRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
+val metroRuntimeKlibClasspath: Configuration by configurations.creating {
+  isTransitive = false
+  attributes {
+    attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
+    attribute(Usage.USAGE_ATTRIBUTE, objects.named(KotlinUsages.KOTLIN_RUNTIME))
+    attribute(KotlinPlatformType.attribute, KotlinPlatformType.js)
+    attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
+  }
+}
 val anvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 val kiAnvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 // include transitive in this case to grab compose and circuit runtimes
@@ -166,6 +180,7 @@ dependencies {
   testImplementation(libs.hilt.core)
 
   metroRuntimeClasspath(project(":runtime"))
+  metroRuntimeKlibClasspath(project(path = ":runtime", configuration = "jsRuntimeElements"))
   daggerInteropClasspath(project(":interop-dagger"))
   guiceClasspath(project(":interop-guice"))
   guiceClasspath(libs.guice)
@@ -190,6 +205,7 @@ dependencies {
   // Dependencies required to run the internal test framework.
   // Use the test compiler version because 2.3.20+ uses new APIs from here
   testRuntimeOnly("org.jetbrains.kotlin:kotlin-reflect:$reflectVersion")
+  testRuntimeOnly(libs.junit)
   testRuntimeOnly(libs.kotlin.test)
   testRuntimeOnly(libs.kotlin.scriptRuntime)
   testRuntimeOnly(libs.kotlin.annotationsJvm)
@@ -236,6 +252,7 @@ tasks.withType<Test> {
   )
 
   dependsOn(metroRuntimeClasspath)
+  dependsOn(metroRuntimeKlibClasspath)
   dependsOn(daggerInteropClasspath)
   dependsOn(hiltCoreClasspath)
   dependsOn(guiceClasspath)
@@ -323,6 +340,7 @@ tasks.withType<Test> {
   systemProperty("metro.shortLocations", "true")
 
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
+  systemProperty("metroRuntime.klibClasspath", metroRuntimeKlibClasspath.asPath)
   systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
   systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)
   systemProperty("daggerRuntime.classpath", daggerRuntimeClasspath.asPath)
