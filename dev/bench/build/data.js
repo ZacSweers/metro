@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780977830465,
+  "lastUpdate": 1781040848403,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -16688,6 +16688,62 @@ window.BENCHMARK_DATA = {
             "value": 21096.138,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +10.77%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "43fd570c~1",
+          "message": "[before] Rework DoubleCheck (#2417)",
+          "timestamp": "2026-06-09T16:58:24-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/43fd570c1cb97a749881ca2cffe645b533f5423a"
+        },
+        "date": 1781040848403,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19925.0,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "43fd570c1cb97a749881ca2cffe645b533f5423a",
+          "message": "[after] Rework DoubleCheck (#2417)",
+          "timestamp": "2026-06-09T16:58:24-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/43fd570c1cb97a749881ca2cffe645b533f5423a"
+        },
+        "date": 1781040848404,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22483.982,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +12.84%"
           }
         ]
       }
