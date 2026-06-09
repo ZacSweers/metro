@@ -43,7 +43,6 @@ package dev.zacsweers.metro
  * @see <a href="https://github.com/ZacSweers/metro/discussions/1769">MEEP-1769</a> for details and
  *   feedback
  */
-@ExperimentalMetroApi
 @Target(
   AnnotationTarget.FUNCTION,
   AnnotationTarget.PROPERTY_GETTER,

@@ -49,6 +49,7 @@ Changelog
 
 ### Changes
 
+- Promote `@GraphPrivate` to stable.
 - Promote `@DefaultBinding` to stable.
 - Promote `generateContributionProviders` (and `@ExposeImplBinding`) to stable.
 - **[gradle]** Add missing experimental annotations to the Gradle plugin's analysis APIs. Sorry these were not meant to be stabilized yet!
