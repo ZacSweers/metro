@@ -1,5 +1,3 @@
-@file:OptIn(kotlin.concurrent.atomics.ExperimentalAtomicApi::class)
-
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.incrementAndFetch
 
@@ -11,6 +9,7 @@ interface App {
 
 val counter = AtomicInt(0)
 
+@OptIn(kotlin.concurrent.atomics.ExperimentalAtomicApi::class)
 @ContributesTo(AppScope::class)
 interface Providers {
   // due to SingleIn this should only be called once and return `1`
