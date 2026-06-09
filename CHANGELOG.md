@@ -35,6 +35,7 @@ Changelog
 - **[FIR]** Loosen `nonPublicContributionSeverity` if `generateContributionProviders` is enabled. Note it will still fire on internal `@ExposeImplBinding`-annotated types.
 - **[FIR]** Fix compatibility with IntelliJ `2026.1.3`.
 - **[FIR]** Don't merge generated binding containers from `@ContributesInto*` declarations as supertypes when aggregating contributions.
+- **[FIR/JS/Wasm]** Fix cross-module contributed graph extension factories on KLIB backends. Nested `@GraphExtension.Factory @ContributesTo(...)` factories are now emitted as contribution hints and promoted as direct supertypes where needed, avoiding unresolved downstream calls such as `createGraph<AppGraph>().createChildGraph()` on JS/Wasm.
 - **[IR]** Fix graph extensions inheriting a farther ancestor's contribution-provider binding when a closer parent graph already owns a scoped binding for the same key.
 - **[IR]** Fix dynamic graphs (`createDynamicGraph`/`createDynamicGraphFactory`) sharing a single generated impl across call sites in different files. The shared impl was a `private` (on the JVM, package-private) nested class placed under one call site, so call sites in other packages failed at runtime with `IllegalAccessError`, and removing the owning file caused `NoClassDefFoundError`. Generated impls are now cached per-file.
 - **[IR]** Fix IR graph nodes eagerly resolving supertypes.
