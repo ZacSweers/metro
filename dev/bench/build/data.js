@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781040848403,
+  "lastUpdate": 1781049038786,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -16744,6 +16744,62 @@ window.BENCHMARK_DATA = {
             "value": 22483.982,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +12.84%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8038cde3~1",
+          "message": "[before] Promote defaultbinding and ExposeImplBinding to st",
+          "timestamp": "2026-06-09T23:16:56Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8038cde32124de2ffef8ae0a6f62461439e491f9"
+        },
+        "date": 1781049038786,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19287.34,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8038cde32124de2ffef8ae0a6f62461439e491f9",
+          "message": "[after] Promote defaultbinding and ExposeImplBinding to st",
+          "timestamp": "2026-06-09T23:16:56Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8038cde32124de2ffef8ae0a6f62461439e491f9"
+        },
+        "date": 1781049038787,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19391.392,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.54%"
           }
         ]
       }
