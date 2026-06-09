@@ -7,6 +7,10 @@
 // - Show declarations: true
 
 // Library unique name: <dev.zacsweers.metro:runtime>
+open annotation class <#A: kotlin/Any?> dev.zacsweers.metro/DefaultBinding : kotlin/Annotation { // dev.zacsweers.metro/DefaultBinding|null[0]
+    constructor <init>() // dev.zacsweers.metro/DefaultBinding.<init>|<init>(){}[0]
+}
+
 open annotation class <#A: kotlin/Any?> dev.zacsweers.metro/binding : kotlin/Annotation { // dev.zacsweers.metro/binding|null[0]
     constructor <init>() // dev.zacsweers.metro/binding.<init>|<init>(){}[0]
 }
@@ -110,6 +114,10 @@ open annotation class dev.zacsweers.metro/ElementsIntoSet : kotlin/Annotation { 
 
 open annotation class dev.zacsweers.metro/ExperimentalMetroApi : kotlin/Annotation { // dev.zacsweers.metro/ExperimentalMetroApi|null[0]
     constructor <init>() // dev.zacsweers.metro/ExperimentalMetroApi.<init>|<init>(){}[0]
+}
+
+open annotation class dev.zacsweers.metro/ExposeImplBinding : kotlin/Annotation { // dev.zacsweers.metro/ExposeImplBinding|null[0]
+    constructor <init>() // dev.zacsweers.metro/ExposeImplBinding.<init>|<init>(){}[0]
 }
 
 open annotation class dev.zacsweers.metro/ForScope : kotlin/Annotation { // dev.zacsweers.metro/ForScope|null[0]
