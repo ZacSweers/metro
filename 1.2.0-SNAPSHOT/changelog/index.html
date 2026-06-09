@@ -6659,9 +6659,19 @@
 <li><strong>[IR/IC]</strong> Optimize IC tracking by buffering lookup and expect/actual records during IR and flushing them once after graph validation, avoiding per-write synchronization on the hot path. This is enabled by default but can be disabled via the <code>buffered-ic-tracking</code> compiler option if it causes any issues.</li>
 <li><strong>[IR/IC]</strong> Use newer compiler <code>DeclarationFinder</code> APIs on Kotlin <code>2.3.20</code>+. These have more granular search scopes plus automatic IC tracking.</li>
 <li><strong>[IR/runtime]</strong> Add internal primitive instance factories and use them where possible for primitive graph inputs and inlined providers.</li>
-<li><strong>[Gradle]</strong> Add a <code>metroEnv</code> task that writes human-readable Metro/Kotlin/Gradle environment reports for bug reports.</li>
-<li><strong>[Reporting]</strong> Add compiler stats to reporting.</li>
-<li><strong>[runtime/native]</strong> Add bounded backoff to the native <code>Lock</code> implementation so contention yields instead of spinning continuously.</li>
+<li><strong>[gradle]</strong> Add a <code>metroEnv</code> task that writes human-readable Metro/Kotlin/Gradle environment reports for bug reports.</li>
+<li><strong>[reporting]</strong> Add compiler stats to reporting.</li>
+<li><strong>[runtime]</strong> Rework <code>DoubleCheck</code> synchronization on JVM and native targets.</li>
+<li>On JVM, scoped bindings now synchronize on the <code>DoubleCheck</code> instance&rsquo;s own monitor (like Dagger) instead of allocating a <code>ReentrantLock</code> per instance, which also eliminates the spurious <code>ReservedStackAccess</code> JVM warning.</li>
+<li>On native targets, the previous spinlock impl is replaced with a reentrant init guard whose contended callers park on a process-wide condition variable instead of busy-waiting.<ul>
+<li>On Apple platforms, parked waiters additionally donate their <a href="https://developer.apple.com/library/archive/documentation/Performance/Conceptual/EnergyGuide-iOS/PrioritizeWorkWithQoS.html">QoS</a> class to the initializing thread to avoid priority inversion.</li>
+</ul>
+</li>
+<li>Notes for virtual thread (i.e. Project Loom):<ul>
+<li>JDK 21–23: <code>synchronized</code> can pin a virtual thread to its carrier if a scoped provider blocks during its one-time init (<a href="https://openjdk.org/jeps/444">JEP 444</a>).</li>
+<li>JDK 24+ removes monitor pinning (<a href="https://openjdk.org/jeps/491">JEP 491</a>).</li>
+</ul>
+</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>

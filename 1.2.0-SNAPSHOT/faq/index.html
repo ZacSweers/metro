@@ -1563,10 +1563,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#im-seeing-a-reservedstackaccess-stack-overflow-warning-from-the-jvm-at-runtime" class="md-nav__link">
+  <a href="#i-use-virtual-threads-on-the-jvm-project-loom-can-metro-pin-my-carrier-threads" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        <strong>I&rsquo;m seeing a <code>ReservedStackAccess</code> stack overflow warning from the JVM at runtime?</strong>
+        <strong>I use virtual threads on the JVM (Project Loom). Can Metro pin my carrier threads?</strong>
       </span>
     </span>
   </a>
@@ -2009,10 +2009,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#im-seeing-a-reservedstackaccess-stack-overflow-warning-from-the-jvm-at-runtime" class="md-nav__link">
+  <a href="#i-use-virtual-threads-on-the-jvm-project-loom-can-metro-pin-my-carrier-threads" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        <strong>I&rsquo;m seeing a <code>ReservedStackAccess</code> stack overflow warning from the JVM at runtime?</strong>
+        <strong>I use virtual threads on the JVM (Project Loom). Can Metro pin my carrier threads?</strong>
       </span>
     </span>
   </a>
@@ -2181,8 +2181,11 @@
 </ul>
 <h3 id="our-codebase-is-large-and-modular-so-we-basically-always-want-contributions-to-be-public-and-exposed-to-downstream-compilations-how-can-i-enforce-this"><strong>Our codebase is large and modular, so we basically always want contributions to be public and exposed to downstream compilations. How can I enforce this?</strong><a class="headerlink" href="#our-codebase-is-large-and-modular-so-we-basically-always-want-contributions-to-be-public-and-exposed-to-downstream-compilations-how-can-i-enforce-this" title="Permanent link">&para;</a></h3>
 <p>Set <code>nonPublicContributionSeverity</code> to <code>ERROR</code>. Note this diagnostic only fires for internal <code>@ExposeImplBinding</code>-annotated types if you enable <code>generateContributionProviders</code>.</p>
-<h3 id="im-seeing-a-reservedstackaccess-stack-overflow-warning-from-the-jvm-at-runtime"><strong>I&rsquo;m seeing a <code>ReservedStackAccess</code> stack overflow warning from the JVM at runtime?</strong><a class="headerlink" href="#im-seeing-a-reservedstackaccess-stack-overflow-warning-from-the-jvm-at-runtime" title="Permanent link">&para;</a></h3>
-<p>This is a spurious JVM warning related to <code>ReentrantLock</code> (used internally by Metro&rsquo;s <code>DoubleCheck</code> for scoped bindings). It is not an actual stack overflow and can be safely ignored. You can suppress it by increasing the thread stack size with (i.e., <code>-Xss1m</code>) in your JVM args.</p>
+<h3 id="i-use-virtual-threads-on-the-jvm-project-loom-can-metro-pin-my-carrier-threads"><strong>I use virtual threads on the JVM (Project Loom). Can Metro pin my carrier threads?</strong><a class="headerlink" href="#i-use-virtual-threads-on-the-jvm-project-loom-can-metro-pin-my-carrier-threads" title="Permanent link">&para;</a></h3>
+<p>Metro&rsquo;s <code>DoubleCheck</code> (used for scoped bindings) synchronizes on the instance&rsquo;s own monitor, like Dagger.</p>
+<p>On JDK 21–23, <code>synchronized</code> can pin a virtual thread to its carrier if the thread blocks while holding or acquiring the monitor (<a href="https://openjdk.org/jeps/444">JEP 444</a>). For Metro this can only happen during a scoped binding&rsquo;s <em>one-time</em> initialization, and only if the provider does blocking work — after initialization, reads never touch the monitor.</p>
+<p>JDK 24+ removes monitor pinning entirely (<a href="https://openjdk.org/jeps/491">JEP 491</a>).</p>
+<p>If you&rsquo;re on JDK 21–23 with virtual-thread-heavy workloads, avoid blocking I/O in scoped providers (good advice in general) or initialize those bindings during startup.</p>
 <h3 id="would-you-consider-putting-metro-into-a-foundation-my-team-has-concerns-about-solo-maintainers"><strong>Would you consider putting Metro into a foundation? My team has concerns about solo maintainers</strong><a class="headerlink" href="#would-you-consider-putting-metro-into-a-foundation-my-team-has-concerns-about-solo-maintainers" title="Permanent link">&para;</a></h3>
 <p>I would only do this if it makes sense for the project, not for optics. Most open source software is maintained by one person. This probably includes many libraries your team already uses.</p>
 <p>This usually comes up in comparison to Dagger. Dagger is also usually only maintained by one or two people at Google. That level of backing is a luxury, not the standard.</p>
