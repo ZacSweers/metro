@@ -1,13 +1,9 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-@file:OptIn(ExperimentalForeignApi::class, ExperimentalAtomicApi::class)
+@file:OptIn(ExperimentalForeignApi::class)
 
 package dev.zacsweers.metro.internal
 
-import kotlin.concurrent.atomics.AtomicLong
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
-import kotlin.concurrent.atomics.incrementAndFetch
-import kotlin.native.concurrent.ThreadLocal
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.alloc
@@ -22,18 +18,12 @@ import platform.posix.pthread_mutex_lock
 import platform.posix.pthread_mutex_tVar
 import platform.posix.pthread_mutex_unlock
 
-private val threadIdCounter = AtomicLong(0)
+internal actual fun currentThreadId(): Long = syntheticThreadId()
 
-@ThreadLocal
-private object CurrentThread {
-  val id: Long = threadIdCounter.incrementAndFetch()
-}
-
-internal actual fun currentThreadId(): Long = CurrentThread.id
-
-// Allocated once for the lifetime of the process, intentionally never destroyed. Note that
-// mingw's winpthreads maps pthread_mutex_t/pthread_cond_t to pointer-sized typedefs, hence the
-// *Var types here.
+// Shared parker state for contended waiters. This is not the per-instance guard; each guard has its
+// own owner field, and provider code does not run while this mutex is held. Allocated once for the
+// lifetime of the process and intentionally never destroyed. Note that mingw's winpthreads maps
+// pthread_mutex_t/pthread_cond_t to pointer-sized typedefs, hence the *Var types here.
 private val parkerMutex: CPointer<pthread_mutex_tVar> = run {
   val mutex = nativeHeap.alloc<pthread_mutex_tVar>().ptr
   check(pthread_mutex_init(mutex, null) == 0) { "pthread_mutex_init failed" }

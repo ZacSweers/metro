@@ -12,16 +12,27 @@ import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.native.concurrent.ThreadLocal
+
+private val syntheticThreadIdCounter = AtomicLong(0)
+
+@ThreadLocal
+private object SyntheticThread {
+  val id: Long = syntheticThreadIdCounter.incrementAndFetch()
+}
+
+/** Stable non-zero thread id for platforms that do not need the native thread handle. */
+internal fun syntheticThreadId(): Long = SyntheticThread.id
 
 /**
  * A reentrant initialization guard. Not a general-purpose lock: it protects the one-time
  * initialization in [BaseDoubleCheck], so the contended path is rare (a first-read race per
  * instance) and the uncontended fast path never touches any process-wide state.
  *
- * The only per-instance state is [owner]. Contended callers park on a single process-wide pthread
- * mutex/condvar pair (see [awaitGuardRelease]) rather than spinning, so waiters consume no CPU
- * while blocked. On Apple platforms, waiters additionally donate their QoS class to the
- * initializing thread while parked.
+ * Each guard has its own [owner] field, so unrelated [BaseDoubleCheck] instances can initialize at
+ * the same time. Contended callers share a process-wide parker (see [awaitGuardRelease]) only while
+ * they go to sleep or are woken; provider code never runs under that shared parker. On Apple
+ * platforms, waiters additionally donate their QoS class to the initializing thread while parked.
  */
 public actual open class DoubleCheckInitGuard actual constructor() {
   /** 0 when unowned, otherwise the [currentThreadId] of the thread currently initializing. */
@@ -51,10 +62,15 @@ internal actual inline fun <T> DoubleCheckInitGuard.guarded(block: () -> T): T {
   }
 }
 
-/** Number of threads currently parked in [awaitGuardRelease], across all guards. */
+/** Number of threads currently parked in the shared parker, across all guards. */
 private val guardWaiters = AtomicInt(0)
 
-/** Parks the current thread until [guard] is released. May wake spuriously; callers loop. */
+/**
+ * Parks the current thread until [guard] is released.
+ *
+ * The parker is shared across all guards, so a wakeup can come from an unrelated guard. Callers
+ * loop and recheck their own guard's [DoubleCheckInitGuard.owner] before proceeding.
+ */
 internal fun awaitGuardRelease(guard: DoubleCheckInitGuard) {
   parkerLock()
   guardWaiters.incrementAndFetch()
@@ -70,7 +86,7 @@ internal fun awaitGuardRelease(guard: DoubleCheckInitGuard) {
   }
 }
 
-/** Wakes all threads parked in [awaitGuardRelease]; each rechecks its own guard. */
+/** Wakes all threads in the shared parker; each waiter rechecks its own guard. */
 internal fun wakeGuardWaiters() {
   // Skip the parker entirely when nothing is waiting (the common case). This unsynchronized
   // read is safe: waiters increment guardWaiters before reading owner under the parker mutex,
@@ -88,7 +104,7 @@ internal fun wakeGuardWaiters() {
  */
 internal expect fun currentThreadId(): Long
 
-/** Locks the process-wide parker mutex. */
+/** Locks the process-wide parker mutex. This does not acquire any [DoubleCheckInitGuard]. */
 internal expect fun parkerLock()
 
 /** Unlocks the process-wide parker mutex. */

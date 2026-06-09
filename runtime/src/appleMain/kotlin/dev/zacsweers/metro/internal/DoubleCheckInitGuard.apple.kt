@@ -35,10 +35,12 @@ import platform.posix.pthread_override_t
 import platform.posix.pthread_self
 import platform.posix.qos_class_self
 
-// The owner word doubles as the owning thread's pthread_t for QoS donation in parkerWait().
+// The owner value doubles as the owning thread's pthread_t for QoS donation in parkerWait().
 internal actual fun currentThreadId(): Long = pthread_self().toLong()
 
-// Allocated once for the lifetime of the process, intentionally never destroyed.
+// Shared parker state for contended waiters. This is not the per-instance guard; each guard has its
+// own owner field, and provider code does not run while this mutex is held. Allocated once for the
+// lifetime of the process and intentionally never destroyed.
 private val parkerMutex: CPointer<pthread_mutex_t> = run {
   val mutex = nativeHeap.alloc<pthread_mutex_t>().ptr
   check(pthread_mutex_init(mutex, null) == 0) { "pthread_mutex_init failed" }
