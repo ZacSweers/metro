@@ -148,7 +148,7 @@ dependencies {
 
   testImplementation(project(":compiler"))
   testImplementation(project(":compiler-compat"))
-  testImplementation(project(":metro-common"))
+  testCompileOnly(project(":metro-common"))
 
   testImplementation(libs.kotlin.testJunit5)
 
