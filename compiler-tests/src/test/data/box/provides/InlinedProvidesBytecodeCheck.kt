@@ -1,5 +1,3 @@
-// IGNORE_BACKEND: JS_IR
-
 import kotlin.reflect.KClass
 
 const val CONST_STRING = "const-prop-read"
