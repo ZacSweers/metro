@@ -2257,6 +2257,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("MemberInjectWithJvmFieldProperties.kt")
+    public void testMemberInjectWithJvmFieldProperties() {
+      run("MemberInjectWithJvmFieldProperties.kt");
+    }
+
+    @Test
     @TestMetadata("MemberInjectWithNullableMutableProperties.kt")
     public void testMemberInjectWithNullableMutableProperties() {
       run("MemberInjectWithNullableMutableProperties.kt");
@@ -2492,6 +2498,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("JvmFieldProvidersAreRespected.kt")
     public void testJvmFieldProvidersAreRespected() {
       run("JvmFieldProvidersAreRespected.kt");
+    }
+
+    @Test
+    @TestMetadata("PropertyProvidersAreRespected.kt")
+    public void testPropertyProvidersAreRespected() {
+      run("PropertyProvidersAreRespected.kt");
     }
 
     @Test
