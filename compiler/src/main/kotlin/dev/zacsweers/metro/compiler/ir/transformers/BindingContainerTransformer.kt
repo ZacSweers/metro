@@ -693,11 +693,18 @@ internal class BindingContainerTransformer(
           irGetField(dispatchReceiver, reference.backingField)
         } else {
           // Function call case
-          val args = parameters.filter { it.origin == Origins.RegularParameter }.map { irGet(it) }
+          val callParameters = parameters.filter { it.origin == Origins.RegularParameter }
+          var index = 0
+          val extensionReceiver =
+            reference.parameters.extensionReceiverParameter?.let { irGet(callParameters[index++]) }
+          val contextArgs =
+            reference.parameters.contextParameters.map { irGet(callParameters[index++]) }
+          val args = reference.parameters.regularParameters.map { irGet(callParameters[index++]) }
           irInvoke(
             dispatchReceiver = dispatchReceiver,
-            extensionReceiver = null,
+            extensionReceiver = extensionReceiver,
             callee = reference.callee!!,
+            contextArgs = contextArgs,
             args = args,
           )
         }
