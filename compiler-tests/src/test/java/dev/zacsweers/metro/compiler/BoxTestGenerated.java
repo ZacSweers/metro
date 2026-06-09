@@ -2885,6 +2885,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("MemberInjectWithJvmFieldProperties.kt")
+    public void testMemberInjectWithJvmFieldProperties() {
+      run("MemberInjectWithJvmFieldProperties.kt");
+    }
+
+    @Test
     @TestMetadata("MemberInjectWithNullableMutableProperties.kt")
     public void testMemberInjectWithNullableMutableProperties() {
       run("MemberInjectWithNullableMutableProperties.kt");
@@ -3120,6 +3126,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("JvmFieldProvidersAreRespected.kt")
     public void testJvmFieldProvidersAreRespected() {
       run("JvmFieldProvidersAreRespected.kt");
+    }
+
+    @Test
+    @TestMetadata("PropertyProvidersAreRespected.kt")
+    public void testPropertyProvidersAreRespected() {
+      run("PropertyProvidersAreRespected.kt");
     }
 
     @Test
