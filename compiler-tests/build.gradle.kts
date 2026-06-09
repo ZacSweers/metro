@@ -1,7 +1,12 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+@file:OptIn(ExperimentalWasmDsl::class)
+
 import org.gradle.kotlin.dsl.sourceSets
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import org.jetbrains.kotlin.gradle.targets.wasm.d8.D8EnvSpec
+import org.jetbrains.kotlin.gradle.targets.wasm.d8.D8Plugin
 import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 import org.jetbrains.kotlin.tooling.core.isDev
 import org.jetbrains.kotlin.tooling.core.toKotlinVersion
@@ -11,6 +16,8 @@ plugins {
   alias(libs.plugins.buildConfig)
   java
 }
+
+project.plugins.apply(D8Plugin::class.java)
 
 sourceSets {
   register("generator220")
@@ -80,11 +87,9 @@ val hiltCoreClasspath: Configuration by configurations.creating { isTransitive =
 val guiceClasspath: Configuration by configurations.creating {}
 val javaxInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 val jakartaInteropClasspath: Configuration by configurations.creating { isTransitive = false }
-val wasmKlibClasspath: Configuration by configurations.creating {
+val jsKlibClasspath: Configuration by configurations.creating {
   isTransitive = false
-  attributes {
-    attribute(Attribute.of("org.jetbrains.kotlin.platform.type", String::class.java), "wasm")
-  }
+  attributes { attribute(KotlinPlatformType.attribute, KotlinPlatformType.js) }
 }
 
 // IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
@@ -175,11 +180,8 @@ dependencies {
   circuitRuntimeClasspath(libs.circuit.runtime.presenter)
   circuitRuntimeClasspath(libs.circuit.runtime.ui)
   circuitRuntimeClasspath(libs.circuit.codegenAnnotations)
-
-  wasmKlibClasspath("org.jetbrains.kotlin:kotlin-stdlib-wasm-js:$testCompilerVersion")
-  wasmKlibClasspath("org.jetbrains.kotlin:kotlin-stdlib-wasm-wasi:$testCompilerVersion")
-  wasmKlibClasspath("org.jetbrains.kotlin:kotlin-test-wasm-js:$testCompilerVersion")
-  wasmKlibClasspath("org.jetbrains.kotlin:kotlin-test-wasm-wasi:$testCompilerVersion")
+  jsKlibClasspath("org.jetbrains.kotlin:kotlin-stdlib-js:$testCompilerVersion")
+  jsKlibClasspath("org.jetbrains.kotlin:kotlin-test-js:$testCompilerVersion")
 
   // Anvil KSP processors, only needs to be on the classpath at runtime since they're loaded via
   // ServiceLoader
@@ -239,7 +241,7 @@ tasks.withType<Test> {
   dependsOn(guiceClasspath)
   dependsOn(javaxInteropClasspath)
   dependsOn(jakartaInteropClasspath)
-  dependsOn(wasmKlibClasspath)
+  dependsOn(jsKlibClasspath)
   inputs
     .dir(layout.projectDirectory.dir("src/test/data"))
     .withPropertyName("testData")
@@ -299,8 +301,8 @@ tasks.withType<Test> {
     "jar",
     testRuntimeClasspath,
   )
-  setLibraryProperty("kotlin.js.stdlib.path", "kotlin-stdlib-js", "jar", testRuntimeClasspath)
-  setLibraryProperty("kotlin.js.test.path", "kotlin-test-js", "jar", testRuntimeClasspath)
+  setLibraryProperty("kotlin.js.stdlib.path", "kotlin-stdlib-js", "klib", jsKlibClasspath)
+  setLibraryProperty("kotlin.js.test.path", "kotlin-test-js", "klib", jsKlibClasspath)
   setLibraryProperty(
     "kotlin.common.stdlib.path",
     "kotlin-common-stdlib",
@@ -308,29 +310,14 @@ tasks.withType<Test> {
     testRuntimeClasspath,
   )
   setLibraryProperty("kotlin.web.stdlib.path", "kotlin-stdlib-web", "jar", testRuntimeClasspath)
-  setLibraryProperty(
-    "kotlin.wasm.stdlib.wasm-js.path",
-    "kotlin-stdlib-wasm-js",
-    "klib",
-    wasmKlibClasspath,
-  )
-  setLibraryProperty(
-    "kotlin.wasm.stdlib.wasm-wasi.path",
-    "kotlin-stdlib-wasm-wasi",
-    "klib",
-    wasmKlibClasspath,
-  )
-  setLibraryProperty(
-    "kotlin.wasm.test.wasm-js.path",
-    "kotlin-test-wasm-js",
-    "klib",
-    wasmKlibClasspath,
-  )
-  setLibraryProperty(
-    "kotlin.wasm.test.wasm-wasi.path",
-    "kotlin-test-wasm-wasi",
-    "klib",
-    wasmKlibClasspath,
+
+  val d8EnvSpec = project.the<D8EnvSpec>()
+  dependsOn(d8EnvSpec.run { project.d8SetupTaskProvider })
+  systemProperty("javascript.engine.path.V8", d8EnvSpec.executable.get())
+  systemProperty("javascript.engine.path.repl", layout.projectDirectory.file("repl.js").asFile)
+  systemProperty(
+    "kotlin.js.test.root.out.dir",
+    layout.buildDirectory.dir("js-test-output").get().asFile.absolutePath,
   )
 
   systemProperty("metro.shortLocations", "true")
