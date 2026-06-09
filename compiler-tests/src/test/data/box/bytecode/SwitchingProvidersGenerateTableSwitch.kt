@@ -1,4 +1,5 @@
 // ENABLE_SWITCHING_PROVIDERS: true
+// IGNORE_BACKEND: JS_IR
 
 @SingleIn(AppScope::class)
 @Inject

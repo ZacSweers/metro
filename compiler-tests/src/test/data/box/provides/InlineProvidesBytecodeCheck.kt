@@ -1,3 +1,5 @@
+// IGNORE_BACKEND: JS_IR
+
 @BindingContainer
 object Bindings {
   @Provides inline fun provideInt(): Int = 3
