@@ -1,3 +1,4 @@
+// IGNORE_BACKEND: JS_IR
 // https://github.com/ZacSweers/metro/issues/2021
 // MODULE: lib
 class HttpClient(val name: String)
@@ -32,7 +33,7 @@ interface ActivityGraph {
 // MODULE: main(lib)
 @BindingContainer
 object TestBindingContainer {
-  @Provides @SingleIn(AppScope::class) fun httpClient(): HttpClient = HttpClient("fake")
+  @Provides @SingleIn(AppScope::class) @JvmStatic fun httpClient(): HttpClient = HttpClient("fake")
 }
 
 fun box(): String {

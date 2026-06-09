@@ -1380,6 +1380,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DynamicGraphCanReplaceScopedBindingsWithJvmStatic.kt")
+      public void testDynamicGraphCanReplaceScopedBindingsWithJvmStatic() {
+        run("DynamicGraphCanReplaceScopedBindingsWithJvmStatic.kt");
+      }
+
+      @Test
       @TestMetadata("DynamicGraphFactoryAcrossPackages.kt")
       public void testDynamicGraphFactoryAcrossPackages() {
         run("DynamicGraphFactoryAcrossPackages.kt");
