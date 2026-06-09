@@ -20,7 +20,7 @@ private val metroRuntimeKlibClasspath =
   System.getProperty("metroRuntime.klibClasspath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'metroRuntime.klibClasspath' property")
 
-private fun TestServices.isJsBackend(): Boolean {
+internal fun TestServices.isJsBackend(): Boolean {
   val targetBackend = defaultsProvider.targetBackend
   return targetBackend == TargetBackend.JS_IR || targetBackend == TargetBackend.JS_IR_ES6
 }

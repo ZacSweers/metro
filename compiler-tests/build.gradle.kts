@@ -92,6 +92,15 @@ val circuitRuntimeClasspath: Configuration by configurations.creating {
     attribute(KotlinPlatformType.attribute, KotlinPlatformType.jvm)
   }
 }
+val circuitRuntimeKlibClasspath: Configuration by configurations.creating {
+  exclude(group = "org.jetbrains.kotlin")
+  attributes {
+    attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
+    attribute(Usage.USAGE_ATTRIBUTE, objects.named(KotlinUsages.KOTLIN_RUNTIME))
+    attribute(KotlinPlatformType.attribute, KotlinPlatformType.js)
+    attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
+  }
+}
 
 // include transitive in this case to grab jakarta and javax
 val daggerRuntimeClasspath: Configuration by configurations.creating {}
@@ -181,20 +190,34 @@ dependencies {
 
   metroRuntimeClasspath(project(":runtime"))
   metroRuntimeKlibClasspath(project(path = ":runtime", configuration = "jsRuntimeElements"))
+
   daggerInteropClasspath(project(":interop-dagger"))
+
   guiceClasspath(project(":interop-guice"))
   guiceClasspath(libs.guice)
+
   javaxInteropClasspath(project(":interop-javax"))
   jakartaInteropClasspath(project(":interop-jakarta"))
+
   anvilRuntimeClasspath(libs.anvil.annotations)
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
+
   daggerRuntimeClasspath(libs.dagger.runtime)
+
   hiltCoreClasspath(libs.hilt.core)
+
   kiAnvilRuntimeClasspath(libs.kotlinInject.anvil.runtime)
   kiAnvilRuntimeClasspath(libs.kotlinInject.runtime)
+
   circuitRuntimeClasspath(libs.circuit.runtime.presenter)
   circuitRuntimeClasspath(libs.circuit.runtime.ui)
   circuitRuntimeClasspath(libs.circuit.codegenAnnotations)
+  circuitRuntimeKlibClasspath(libs.circuit.runtime.presenter)
+  circuitRuntimeKlibClasspath(libs.circuit.codegenAnnotations)
+  circuitRuntimeKlibClasspath(libs.kotlinInject.anvil.runtime.optional)
+  circuitRuntimeKlibClasspath(libs.kotlinInject.runtime)
+  circuitRuntimeKlibClasspath(libs.kotlinx.browser)
+
   jsKlibClasspath("org.jetbrains.kotlin:kotlin-stdlib-js:$testCompilerVersion")
   jsKlibClasspath("org.jetbrains.kotlin:kotlin-test-js:$testCompilerVersion")
 
@@ -258,6 +281,8 @@ tasks.withType<Test> {
   dependsOn(guiceClasspath)
   dependsOn(javaxInteropClasspath)
   dependsOn(jakartaInteropClasspath)
+  dependsOn(circuitRuntimeClasspath)
+  dependsOn(circuitRuntimeKlibClasspath)
   dependsOn(jsKlibClasspath)
   inputs
     .dir(layout.projectDirectory.dir("src/test/data"))
@@ -350,6 +375,7 @@ tasks.withType<Test> {
   systemProperty("javaxInterop.classpath", javaxInteropClasspath.asPath)
   systemProperty("jakartaInterop.classpath", jakartaInteropClasspath.asPath)
   systemProperty("circuit.classpath", circuitRuntimeClasspath.asPath)
+  systemProperty("circuit.klibClasspath", circuitRuntimeKlibClasspath.asPath)
   systemProperty("ksp.testRuntimeClasspath", configurations.testRuntimeClasspath.get().asPath)
 
   // Properties required to run the internal test framework.
