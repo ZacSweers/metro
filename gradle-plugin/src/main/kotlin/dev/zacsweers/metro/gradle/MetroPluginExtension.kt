@@ -386,13 +386,17 @@ constructor(
 
   /**
    * When enabled, generates top-level contribution provider classes with `@Provides` functions
-   * instead of nested `@Binds` interfaces for `@ContributesBinding`, `@ContributesIntoSet`, and
-   * `@ContributesIntoMap`. This allows implementation classes to remain `internal` since the
-   * generated provider directly constructs them (which in turn allows for finer grained IC).
+   * instead of nested binding containers with `@Binds` callables for `@ContributesBinding`,
+   * `@ContributesIntoSet`, and `@ContributesIntoMap`.
+   *
+   * This works by wholly encapsulating the injected class behind a `@Provides` declaration, which
+   * hides it from the graph and only exposes the bound type.
+   *
+   * A side benefit of this is that this allows implementation classes to remain `internal` since
+   * the generated provider directly constructs them (which in turn allows for finer-grained IC).
    *
    * Disabled by default.
    */
-  @ExperimentalMetroGradleApi
   public val generateContributionProviders: Property<Boolean> =
     objects.booleanProperty("metro.generateContributionProviders", false)
 
