@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780869680847,
+  "lastUpdate": 1780977830465,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -16632,6 +16632,62 @@ window.BENCHMARK_DATA = {
             "value": 14942.966,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -38.82%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7265f922~1",
+          "message": "[before] Refactor out metro-common and metro options for re",
+          "timestamp": "2026-06-09T03:28:04Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7265f922a2a80235a5c0a30d4e7cb254596b7f93"
+        },
+        "date": 1780977830465,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19044.4,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7265f922a2a80235a5c0a30d4e7cb254596b7f93",
+          "message": "[after] Refactor out metro-common and metro options for re",
+          "timestamp": "2026-06-09T03:28:04Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7265f922a2a80235a5c0a30d4e7cb254596b7f93"
+        },
+        "date": 1780977830466,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21096.138,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +10.77%"
           }
         ]
       }
