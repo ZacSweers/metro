@@ -31,6 +31,14 @@
       depNameTemplate: 'java',
       extractVersionTemplate: '^(?<version>\\d+)',
     },
+    // Keep the Metro compiler bootstrap version in sync with the Metro Gradle plugin version.
+    {
+      customType: 'regex',
+      fileMatch: ['(^|/)gradle\\.properties$'],
+      matchStrings: ['^METRO_BOOTSTRAP_VERSION=(?<currentValue>[^\\s]+)$'],
+      datasourceTemplate: 'maven',
+      depNameTemplate: 'dev.zacsweers.metro:compiler',
+    },
     // Track ktfmt version pinned in .kempt.toml.
     // The `[^\\[]*?` lookahead keeps the match within the [ktfmt] section.
     {
@@ -70,6 +78,20 @@
         'com.android.lint',
         'com.android.settings',
         'com.android.test',
+      ],
+    },
+    {
+      groupName: 'Metro bootstrap',
+      matchPackageNames: [
+        'dev.zacsweers.metro:compiler',
+        'dev.zacsweers.metro:dev.zacsweers.metro.gradle.plugin',
+      ],
+    },
+    {
+      groupName: 'Metro bootstrap',
+      matchDepNames: [
+        'dev.zacsweers.metro',
+        'dev.zacsweers.metro:compiler',
       ],
     },
     {
