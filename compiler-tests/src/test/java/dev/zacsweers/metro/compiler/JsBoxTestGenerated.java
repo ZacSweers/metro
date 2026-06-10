@@ -1105,6 +1105,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("NullabilityInFunInterfaceContributions.kt")
+    public void testNullabilityInFunInterfaceContributions() {
+      run("NullabilityInFunInterfaceContributions.kt");
+    }
+
+    @Test
     @TestMetadata("OpenAccessorsInClasses.kt")
     public void testOpenAccessorsInClasses() {
       run("OpenAccessorsInClasses.kt");
@@ -1524,9 +1530,21 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       }
 
       @Test
+      @TestMetadata("IncludesAcrossIntermediateUnpackingExplicitFactory.kt")
+      public void testIncludesAcrossIntermediateUnpackingExplicitFactory() {
+        run("IncludesAcrossIntermediateUnpackingExplicitFactory.kt");
+      }
+
+      @Test
       @TestMetadata("IncludesTypesCanBeAccessibleAsProviders.kt")
       public void testIncludesTypesCanBeAccessibleAsProviders() {
         run("IncludesTypesCanBeAccessibleAsProviders.kt");
+      }
+
+      @Test
+      @TestMetadata("IncludesTypesCanBeAccessibleAsProvidersExplicitFactory.kt")
+      public void testIncludesTypesCanBeAccessibleAsProvidersExplicitFactory() {
+        run("IncludesTypesCanBeAccessibleAsProvidersExplicitFactory.kt");
       }
 
       @Test
