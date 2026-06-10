@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
@@ -24,8 +25,10 @@ import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.withPopulatedImplicitClassKey
+import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import java.util.EnumSet
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -39,6 +42,7 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
+import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
@@ -82,12 +86,37 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
 
     if (!options.generateClassesInIr) return null
 
+    // Match FIR generation (BindingMirrorClassFirGenerator): only create a mirror class when the
+    // class actually declares binding callables. Besides avoiding empty mirror noise, this keeps
+    // us from generating mirrors inside Metro's own IR-generated classes (e.g. assisted factory
+    // impls and their companions), which aren't metadata-visible themselves and so can't be
+    // resolved back to FIR when registering the mirror.
+    if (!hasBindingCallables()) return null
+
     return getOrCreateMetadataVisibleHiddenNestedClass(
         name = Symbols.Names.BindsMirrorClass,
         origin = Origins.BindingMirrorClassDeclaration,
         copyTypeParameters = false,
       )
       .apply { modality = Modality.ABSTRACT }
+  }
+
+  private fun IrClass.hasBindingCallables(): Boolean {
+    return declarations.any { declaration ->
+      if (declaration !is IrSimpleFunction && declaration !is IrProperty) return@any false
+      if (declaration.isFakeOverride) return@any false
+      val annotations =
+        declaration.metroAnnotations(
+          metroSymbols.classIds,
+          kinds =
+            EnumSet.of(
+              MetroAnnotations.Kind.Binds,
+              MetroAnnotations.Kind.Multibinds,
+              MetroAnnotations.Kind.BindsOptionalOf,
+            ),
+        )
+      annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
+    }
   }
 }
 
