@@ -1,4 +1,3 @@
-// IGNORE_BACKEND: JS_IR
 // https://github.com/ZacSweers/metro/issues/1093
 
 class ValueHolder {
@@ -17,18 +16,27 @@ interface AGraph {
 
 @GraphExtension
 interface BGraph {
-  val bString: String
-
-  @Provides
-  private fun string(valueHolder: ValueHolder): String = valueHolder.aString + "Nested"
+  val cGraph: CGraph.Factory
 
   @GraphExtension.Factory
-  interface Factory : () -> BGraph
+  interface Factory {
+    fun create(): BGraph
+  }
+}
+
+@GraphExtension
+interface CGraph {
+  val aString: String
+
+  @GraphExtension.Factory
+  interface Factory {
+    fun create(): CGraph
+  }
 }
 
 fun box(): String {
   val aGraph = createGraphFactory<AGraph.Factory>().create(ValueHolder())
-  val bGraph = aGraph.bGraphFactory()
-  assertEquals("HelloNested", bGraph.bString)
+  val bGraph = aGraph.bGraphFactory.create()
+  assertEquals("Hello", bGraph.cGraph.create().aString)
   return "OK"
 }

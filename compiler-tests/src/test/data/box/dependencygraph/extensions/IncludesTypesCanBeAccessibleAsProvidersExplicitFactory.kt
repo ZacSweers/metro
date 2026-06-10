@@ -1,4 +1,3 @@
-// IGNORE_BACKEND: JS_IR
 // https://github.com/ZacSweers/metro/issues/1093
 
 class ValueHolder {
@@ -23,12 +22,14 @@ interface BGraph {
   private fun string(valueHolder: ValueHolder): String = valueHolder.aString + "Nested"
 
   @GraphExtension.Factory
-  interface Factory : () -> BGraph
+  interface Factory {
+    fun create(): BGraph
+  }
 }
 
 fun box(): String {
   val aGraph = createGraphFactory<AGraph.Factory>().create(ValueHolder())
-  val bGraph = aGraph.bGraphFactory()
+  val bGraph = aGraph.bGraphFactory.create()
   assertEquals("HelloNested", bGraph.bString)
   return "OK"
 }

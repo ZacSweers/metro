@@ -1,4 +1,3 @@
-// IGNORE_BACKEND: JS_IR
 // Regression test for https://github.com/ZacSweers/metro/issues/1097
 
 @DependencyGraph(AppScope::class)
@@ -7,7 +6,9 @@ interface ParameterizedGraph {
   val parameterizedMyProvider: ParameterizedMyProvider<Bitmap>?
 }
 
-interface ParameterizedMyProvider<T> : () -> T
+fun interface ParameterizedMyProvider<T> {
+  operator fun invoke(): T
+}
 fun interface BitmapMyProvider {
   operator fun invoke(): Bitmap?
 }
