@@ -74,8 +74,16 @@
     // Global configuration
     const METRO_CONFIG = {
       basePath: "/metro",
+
+      // NOTE: The 'latest' alias is tagged by Mike from "Deploy Release Docs with mike" workflow step
+      // https://github.com/ZacSweers/metro/blob/main/.github/workflows/docs-site.yml#L139-L141
       latestAlias: "latest",
+
+      // This is managed by Mike for docs site versioning
+      // Source: https://github.com/ZacSweers/metro/blob/gh-pages/versions.json
+      // GitHub Pages: https://zacsweers.github.io/metro/versions.json
       versionsEndpoint: "/metro/versions.json",
+
       get fallbackUrl() {
         return `${this.basePath}/${this.latestAlias}/`;
       },
