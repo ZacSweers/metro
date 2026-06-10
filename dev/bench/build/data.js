@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781070667567,
+  "lastUpdate": 1781102583846,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -16856,6 +16856,62 @@ window.BENCHMARK_DATA = {
             "value": 18446.068,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.34%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "a35b2fe7~1",
+          "message": "[before] Allow inline provider materialization to fail (#24",
+          "timestamp": "2026-06-10T14:08:07Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/a35b2fe700a2255fa1714fdd52d287a3a12a2e20"
+        },
+        "date": 1781102583846,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20230.53,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "a35b2fe700a2255fa1714fdd52d287a3a12a2e20",
+          "message": "[after] Allow inline provider materialization to fail (#24",
+          "timestamp": "2026-06-10T14:08:07Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/a35b2fe700a2255fa1714fdd52d287a3a12a2e20"
+        },
+        "date": 1781102583847,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20090.456,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.69%"
           }
         ]
       }
