@@ -8,8 +8,10 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.util.PsiTreeUtil
+import dev.zacsweers.metro.compiler.MetroOptions
+import org.jetbrains.kotlin.analysis.utils.classId
 import org.jetbrains.kotlin.idea.references.mainReference
-import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotated
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtClass
@@ -45,20 +47,22 @@ class MetroImplicitUsageProvider : ImplicitUsageProvider {
 }
 
 internal fun PsiElement.isMetroImplicitUsage(): Boolean {
-  val options = metroIdeOptions()
+  val state = metroIdeState()
+  val options = state.options
   if (!options.enabled) return false
+  val annotationClassIds = state.annotationClassIds
 
   val declaration = ownerDeclaration() ?: return false
   return when (declaration) {
-    is KtClass -> declaration.hasGeneratedInjectionEntryPoint(options)
+    is KtClass -> declaration.hasGeneratedInjectionEntryPoint(options, annotationClassIds)
     is KtConstructor<*> ->
-      declaration.hasAnyMetroAnnotation(options.constructorInjectionAnnotations)
-    is KtNamedFunction -> declaration.hasAnyMetroAnnotation(options.functionDeclarationAnnotations)
-    is KtProperty -> declaration.hasAnyMetroAnnotationOnPropertyOrGetter(options)
+      declaration.hasAnyMetroAnnotation(annotationClassIds.constructorInjectionAnnotations)
+    is KtNamedFunction -> declaration.hasAnyMetroAnnotation(annotationClassIds.functionAnnotations)
+    is KtProperty -> declaration.hasAnyMetroAnnotationOnPropertyOrGetter(annotationClassIds)
     is KtPropertyAccessor ->
       declaration.isGetter &&
-        declaration.hasAnyMetroAnnotation(options.moduleDeclarationAnnotations)
-    is KtParameter -> declaration.hasAnyMetroAnnotation(options.providesAnnotations)
+        declaration.hasAnyMetroAnnotation(annotationClassIds.bindingContainerCallableAnnotations)
+    is KtParameter -> declaration.hasAnyMetroAnnotation(annotationClassIds.providesAnnotations)
     else -> false
   }
 }
@@ -80,33 +84,52 @@ private fun PsiElement.ownerDeclaration(): KtDeclaration? {
   }
 }
 
-private fun KtClass.hasGeneratedInjectionEntryPoint(options: MetroIdeOptions): Boolean {
-  return hasAnyMetroAnnotation(options.assistedInjectAnnotations) ||
-    primaryConstructor.hasAnyMetroAnnotation(options.constructorInjectionAnnotations) ||
-    secondaryConstructors.any { it.hasAnyMetroAnnotation(options.constructorInjectionAnnotations) }
+private fun KtClass.hasGeneratedInjectionEntryPoint(
+  options: MetroOptions,
+  annotationClassIds: MetroIdeAnnotationClassIds,
+): Boolean {
+  if (hasAnyMetroAnnotation(annotationClassIds.classLevelInjectionAnnotations)) return true
+  if (hasContributionProviderGeneratedUsage(options, annotationClassIds)) return true
+
+  return hasInjectAnnotatedConstructor(annotationClassIds.constructorInjectionAnnotations)
 }
 
-private fun KtProperty.hasAnyMetroAnnotationOnPropertyOrGetter(options: MetroIdeOptions): Boolean {
-  return hasAnyMetroAnnotation(options.moduleDeclarationAnnotations) ||
-    getter.hasAnyMetroAnnotation(options.moduleDeclarationAnnotations)
+private fun KtClass.hasInjectAnnotatedConstructor(constructorAnnotations: Set<ClassId>): Boolean {
+  return primaryConstructor.hasAnyMetroAnnotation(constructorAnnotations) ||
+    secondaryConstructors.any { it.hasAnyMetroAnnotation(constructorAnnotations) }
 }
 
-private fun KtAnnotated?.hasAnyMetroAnnotation(fqNames: Set<FqName>): Boolean {
-  return this != null && annotationEntries.any { it.isAnyMetroAnnotation(fqNames) }
+private fun KtClass.hasContributionProviderGeneratedUsage(
+  options: MetroOptions,
+  annotationClassIds: MetroIdeAnnotationClassIds,
+): Boolean {
+  return options.generateContributionProviders &&
+    hasAnyMetroAnnotation(annotationClassIds.bindingContributionAnnotations) &&
+    !hasAnyMetroAnnotation(annotationClassIds.contributionProviderExclusionAnnotations)
 }
 
-private fun KtAnnotationEntry.isAnyMetroAnnotation(fqNames: Set<FqName>): Boolean {
-  toUElement(UAnnotation::class.java)?.qualifiedName?.let { fqName ->
-    if (FqName(fqName) in fqNames) return true
-  }
+private fun KtProperty.hasAnyMetroAnnotationOnPropertyOrGetter(
+  annotationClassIds: MetroIdeAnnotationClassIds
+): Boolean {
+  return hasAnyMetroAnnotation(annotationClassIds.bindingContainerCallableAnnotations) ||
+    getter.hasAnyMetroAnnotation(annotationClassIds.bindingContainerCallableAnnotations)
+}
 
-  val annotationClass = calleeExpression?.constructorReferenceExpression?.mainReference?.resolve()
-  val annotationFqName =
-    when (annotationClass) {
-      is KtClassOrObject -> annotationClass.fqName
-      is PsiClass -> annotationClass.qualifiedName?.let(::FqName)
-      is PsiMember -> annotationClass.containingClass?.qualifiedName?.let(::FqName)
+private fun KtAnnotated?.hasAnyMetroAnnotation(classIds: Set<ClassId>): Boolean {
+  return this != null && annotationEntries.any { it.isAnyMetroAnnotation(classIds) }
+}
+
+private fun KtAnnotationEntry.isAnyMetroAnnotation(classIds: Set<ClassId>): Boolean {
+  val annotationClassId =
+    when (val annotationClass = typeReference?.mainReference?.resolve()) {
+      is KtClassOrObject -> annotationClass.fqName?.let(ClassId::topLevel)
+      is PsiClass -> annotationClass.classId
+      is PsiMember -> annotationClass.containingClass?.classId
       else -> null
     }
-  return annotationFqName in fqNames
+
+  if (annotationClassId in classIds) return true
+
+  val uastClassId = toUElement(UAnnotation::class.java)?.resolve()?.classId
+  return uastClassId in classIds
 }

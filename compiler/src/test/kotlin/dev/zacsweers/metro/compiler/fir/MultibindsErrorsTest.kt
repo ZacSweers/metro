@@ -56,7 +56,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
-      options = metroOptions.copy(),
+      options = metroOptions,
     ) {
       assertDiagnostics(
         """
@@ -428,7 +428,11 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
-      options = metroOptions.copy(desugaredProviderSeverity = MetroOptions.DiagnosticSeverity.NONE),
+      options =
+        metroOptions
+          .toBuilder()
+          .desugaredProviderSeverity(MetroOptions.DiagnosticSeverity.NONE)
+          .build(),
     ) {
       assertDiagnostics(
         """

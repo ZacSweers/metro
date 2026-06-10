@@ -4,7 +4,7 @@
 
 package dev.zacsweers.metro.compiler
 
-import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
+import dev.drewhamilton.poko.Poko
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Locale
@@ -21,56 +21,87 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import org.jetbrains.kotlin.compiler.plugin.CliOption
-import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.config.CompilerConfigurationKey
-import org.jetbrains.kotlin.js.config.jsIncrementalCompilationEnabled
-import org.jetbrains.kotlin.js.config.wasmCompilation
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.StandardClassIds
 
 // Borrowed from Dagger
 // https://github.com/google/dagger/blob/b39cf2d0640e4b24338dd290cb1cb2e923d38cb3/dagger-compiler/main/java/dagger/internal/codegen/writing/ComponentImplementation.java#L263
-internal const val DEFAULT_STATEMENTS_PER_INIT_FUN = 25
+public const val DEFAULT_STATEMENTS_PER_INIT_FUN: Int = 25
 
 // Default is lower than Dagger's 3500 to be more aggressive with sharding since Kotlin classes
 // reach JVM limits earlier than Java ones.
 // https://github.com/google/dagger/blob/master/dagger-compiler/main/java/dagger/internal/codegen/compileroption/CompilerOptions.java#L142
-internal const val DEFAULT_KEYS_PER_GRAPH_SHARD = 2000
+public const val DEFAULT_KEYS_PER_GRAPH_SHARD: Int = 2000
 
-internal data class RawMetroOption<T : Any>(
-  val name: String,
-  val defaultValue: T,
-  val description: String,
-  val valueDescription: String,
-  val required: Boolean = false,
-  val allowMultipleOccurrences: Boolean = false,
-  val valueMapper: (String) -> T,
+private fun FqName.classId(simpleName: String): ClassId {
+  return ClassId(this, Name.identifier(simpleName))
+}
+
+private fun ClassId.nested(simpleName: String): ClassId {
+  return createNestedClassId(Name.identifier(simpleName))
+}
+
+private fun ClassId.withCustom(customClassIds: Set<ClassId>): Set<ClassId> {
+  return setOf(this) + customClassIds
+}
+
+public object MetroClassIds {
+  public val metroRuntimePackage: FqName = FqName("dev.zacsweers.metro")
+
+  public val dependencyGraph: ClassId = metroRuntimePackage.classId("DependencyGraph")
+  public val dependencyGraphFactory: ClassId = dependencyGraph.nested("Factory")
+  public val assisted: ClassId = metroRuntimePackage.classId("Assisted")
+  public val assistedFactory: ClassId = metroRuntimePackage.classId("AssistedFactory")
+  public val assistedInject: ClassId = metroRuntimePackage.classId("AssistedInject")
+  public val inject: ClassId = metroRuntimePackage.classId("Inject")
+  public val qualifier: ClassId = metroRuntimePackage.classId("Qualifier")
+  public val scope: ClassId = metroRuntimePackage.classId("Scope")
+  public val bindingContainer: ClassId = metroRuntimePackage.classId("BindingContainer")
+  public val origin: ClassId = metroRuntimePackage.classId("Origin")
+  public val defaultBinding: ClassId = metroRuntimePackage.classId("DefaultBinding")
+  public val graphPrivate: ClassId = metroRuntimePackage.classId("GraphPrivate")
+  public val exposeImplBinding: ClassId = metroRuntimePackage.classId("ExposeImplBinding")
+  public val optionalBinding: ClassId = metroRuntimePackage.classId("OptionalBinding")
+  public val optionalDependency: ClassId = metroRuntimePackage.classId("OptionalDependency")
+  public val binds: ClassId = metroRuntimePackage.classId("Binds")
+  public val provides: ClassId = metroRuntimePackage.classId("Provides")
+  public val intoSet: ClassId = metroRuntimePackage.classId("IntoSet")
+  public val elementsIntoSet: ClassId = metroRuntimePackage.classId("ElementsIntoSet")
+  public val mapKey: ClassId = metroRuntimePackage.classId("MapKey")
+  public val intoMap: ClassId = metroRuntimePackage.classId("IntoMap")
+  public val multibinds: ClassId = metroRuntimePackage.classId("Multibinds")
+  public val contributesTo: ClassId = metroRuntimePackage.classId("ContributesTo")
+  public val contributesBinding: ClassId = metroRuntimePackage.classId("ContributesBinding")
+  public val contributesIntoSet: ClassId = metroRuntimePackage.classId("ContributesIntoSet")
+  public val contributesIntoMap: ClassId = metroRuntimePackage.classId("ContributesIntoMap")
+  public val graphExtension: ClassId = metroRuntimePackage.classId("GraphExtension")
+  public val graphExtensionFactory: ClassId = graphExtension.nested("Factory")
+  public val provider: ClassId = metroRuntimePackage.classId("Provider")
+  public val includes: ClassId = metroRuntimePackage.classId("Includes")
+  public val lazy: ClassId = StandardClassIds.byName("Lazy")
+  public val function0: ClassId = StandardClassIds.FunctionN(0)
+}
+
+public data class RawMetroOption<T : Any>(
+  public val name: String,
+  public val defaultValue: T,
+  public val description: String,
+  public val valueDescription: String,
+  public val required: Boolean = false,
+  public val allowMultipleOccurrences: Boolean = false,
+  public val valueMapper: (String) -> T,
 ) {
-  val key: CompilerConfigurationKey<T> = CompilerConfigurationKey(name)
-  val cliOption =
-    CliOption(
-      optionName = name,
-      valueDescription = valueDescription,
-      description = description,
-      required = required,
-      allowMultipleOccurrences = allowMultipleOccurrences,
-    )
-
-  fun CompilerConfiguration.put(value: String) {
-    put(key, valueMapper(value))
-  }
-
-  companion object {
-    fun boolean(
+  public companion object {
+    public fun boolean(
       name: String,
       defaultValue: Boolean,
       description: String,
       valueDescription: String,
       required: Boolean = false,
       allowMultipleOccurrences: Boolean = false,
-    ) =
+    ): RawMetroOption<Boolean> =
       RawMetroOption(
         name,
         defaultValue,
@@ -83,7 +114,7 @@ internal data class RawMetroOption<T : Any>(
   }
 }
 
-internal enum class MetroOption(val raw: RawMetroOption<*>) {
+public enum class MetroOption(public val raw: RawMetroOption<*>) {
   DEBUG(
     RawMetroOption.boolean(
       name = "debug",
@@ -982,13 +1013,14 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
     )
   );
 
-  companion object {
-    val entriesByOptionName = entries.associateBy { it.raw.name }
+  public companion object {
+    public val entriesByOptionName: Map<String, MetroOption> = entries.associateBy { it.raw.name }
   }
 }
 
 @Serializable
-public data class MetroOptions(
+@Poko
+public class MetroOptions(
   public val debug: Boolean = MetroOption.DEBUG.raw.defaultValue.expectAs(),
   public val enabled: Boolean = MetroOption.ENABLED.raw.defaultValue.expectAs(),
   @Transient
@@ -1155,7 +1187,7 @@ public data class MetroOptions(
     MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP.raw.defaultValue.expectAs(),
   public val generateContributionProviders: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_PROVIDERS.raw.defaultValue.expectAs(),
-  val enableCircuitCodegen: Boolean =
+  public val enableCircuitCodegen: Boolean =
     MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
   public val enableHiltInterop: Boolean =
     MetroOption.INTEROP_INCLUDE_HILT_ANNOTATIONS.raw.defaultValue.expectAs(),
@@ -1169,6 +1201,174 @@ public data class MetroOptions(
       MemberNamingStrategy.valueOf(it.uppercase(Locale.US))
     },
 ) {
+  @Transient
+  public val providerTypes: Set<ClassId> = buildSet {
+    add(MetroClassIds.provider)
+    addAll(customProviderTypes)
+    if (enableFunctionProviders) {
+      add(MetroClassIds.function0)
+    }
+  }
+
+  @Transient public val lazyTypes: Set<ClassId> = MetroClassIds.lazy.withCustom(customLazyTypes)
+
+  @Transient
+  public val dependencyGraphAnnotations: Set<ClassId> =
+    MetroClassIds.dependencyGraph.withCustom(customGraphAnnotations)
+
+  @Transient
+  public val dependencyGraphFactoryAnnotations: Set<ClassId> =
+    MetroClassIds.dependencyGraphFactory.withCustom(customGraphFactoryAnnotations)
+
+  @Transient
+  public val assistedInjectAnnotations: Set<ClassId> =
+    MetroClassIds.assistedInject.withCustom(customAssistedInjectAnnotations)
+
+  @Transient
+  public val assistedAnnotations: Set<ClassId> =
+    MetroClassIds.assisted.withCustom(customAssistedAnnotations)
+
+  @Transient
+  public val assistedFactoryAnnotations: Set<ClassId> =
+    MetroClassIds.assistedFactory.withCustom(customAssistedFactoryAnnotations)
+
+  @Transient
+  public val injectAnnotations: Set<ClassId> =
+    MetroClassIds.inject.withCustom(customInjectAnnotations)
+
+  @Transient
+  public val allInjectAnnotations: Set<ClassId> = injectAnnotations + assistedInjectAnnotations
+
+  @Transient
+  public val qualifierAnnotations: Set<ClassId> =
+    MetroClassIds.qualifier.withCustom(customQualifierAnnotations)
+
+  @Transient
+  public val scopeAnnotations: Set<ClassId> = MetroClassIds.scope.withCustom(customScopeAnnotations)
+
+  @Transient
+  public val bindingContainerAnnotations: Set<ClassId> =
+    MetroClassIds.bindingContainer.withCustom(customBindingContainerAnnotations)
+
+  @Transient
+  public val originAnnotations: Set<ClassId> =
+    MetroClassIds.origin.withCustom(customOriginAnnotations)
+
+  @Transient
+  public val contributionProviderExclusionAnnotations: Set<ClassId> =
+    setOf(MetroClassIds.exposeImplBinding) + assistedFactoryAnnotations
+
+  @Transient
+  public val optionalBindingAnnotations: Set<ClassId> =
+    setOf(MetroClassIds.optionalBinding, MetroClassIds.optionalDependency) +
+      customOptionalBindingAnnotations
+
+  @Transient
+  public val bindsAnnotations: Set<ClassId> = MetroClassIds.binds.withCustom(customBindsAnnotations)
+
+  @Transient
+  public val providesAnnotations: Set<ClassId> =
+    MetroClassIds.provides.withCustom(customProvidesAnnotations)
+
+  @Transient
+  public val intoSetAnnotations: Set<ClassId> =
+    MetroClassIds.intoSet.withCustom(customIntoSetAnnotations)
+
+  @Transient
+  public val elementsIntoSetAnnotations: Set<ClassId> =
+    MetroClassIds.elementsIntoSet.withCustom(customElementsIntoSetAnnotations)
+
+  @Transient
+  public val mapKeyAnnotations: Set<ClassId> =
+    MetroClassIds.mapKey.withCustom(customMapKeyAnnotations)
+
+  @Transient
+  public val intoMapAnnotations: Set<ClassId> =
+    MetroClassIds.intoMap.withCustom(customIntoMapAnnotations)
+
+  @Transient
+  public val multibindsAnnotations: Set<ClassId> =
+    MetroClassIds.multibinds.withCustom(customMultibindsAnnotations)
+
+  @Transient
+  public val contributesToAnnotations: Set<ClassId> =
+    MetroClassIds.contributesTo.withCustom(customContributesToAnnotations)
+
+  @Transient
+  public val contributesBindingAnnotations: Set<ClassId> =
+    MetroClassIds.contributesBinding.withCustom(customContributesBindingAnnotations)
+
+  @Transient
+  public val contributesIntoSetAnnotations: Set<ClassId> =
+    MetroClassIds.contributesIntoSet.withCustom(customElementsIntoSetAnnotations)
+
+  @Transient
+  public val contributesIntoMapAnnotations: Set<ClassId> =
+    MetroClassIds.contributesIntoMap.withCustom(customIntoMapAnnotations)
+
+  @Transient
+  public val graphExtensionAnnotations: Set<ClassId> =
+    MetroClassIds.graphExtension.withCustom(customGraphExtensionAnnotations)
+
+  @Transient
+  public val graphExtensionFactoryAnnotations: Set<ClassId> =
+    MetroClassIds.graphExtensionFactory.withCustom(customGraphExtensionFactoryAnnotations)
+
+  @Transient
+  public val allContributesAnnotations: Set<ClassId> =
+    contributesToAnnotations +
+      contributesBindingAnnotations +
+      contributesIntoSetAnnotations +
+      contributesIntoMapAnnotations +
+      customContributesIntoSetAnnotations
+
+  @Transient
+  public val contributesBindingLikeAnnotations: Set<ClassId> =
+    contributesBindingAnnotations +
+      contributesIntoSetAnnotations +
+      contributesIntoMapAnnotations +
+      customContributesIntoSetAnnotations
+
+  @Transient
+  public val injectLikeAnnotations: Set<ClassId> =
+    if (contributesAsInject) {
+      injectAnnotations +
+        assistedInjectAnnotations +
+        contributesBindingAnnotations +
+        contributesIntoSetAnnotations +
+        contributesIntoMapAnnotations
+    } else {
+      injectAnnotations + assistedInjectAnnotations
+    }
+
+  @Transient
+  public val allCustomClassIds: Set<ClassId> = buildSet {
+    addAll(customLazyTypes)
+    addAll(customProviderTypes)
+    addAll(customAssistedAnnotations)
+    addAll(customAssistedFactoryAnnotations)
+    addAll(customAssistedInjectAnnotations)
+    addAll(customBindsAnnotations)
+    addAll(customContributesToAnnotations)
+    addAll(customContributesBindingAnnotations)
+    addAll(customContributesIntoSetAnnotations)
+    addAll(customGraphExtensionAnnotations)
+    addAll(customGraphExtensionFactoryAnnotations)
+    addAll(customElementsIntoSetAnnotations)
+    addAll(customGraphAnnotations)
+    addAll(customGraphFactoryAnnotations)
+    addAll(customInjectAnnotations)
+    addAll(customIntoMapAnnotations)
+    addAll(customIntoSetAnnotations)
+    addAll(customMapKeyAnnotations)
+    addAll(customMultibindsAnnotations)
+    addAll(customProvidesAnnotations)
+    addAll(customQualifierAnnotations)
+    addAll(customScopeAnnotations)
+    addAll(customBindingContainerAnnotations)
+    addAll(customOriginAnnotations)
+    addAll(customOptionalBindingAnnotations)
+  }
 
   public val reportsEnabled: Boolean
     get() = rawReportsDestination != null
@@ -1297,6 +1497,99 @@ public data class MetroOptions(
     public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
     public var memberNamingStrategy: MemberNamingStrategy = base.memberNamingStrategy
 
+    public fun debug(debug: Boolean): Builder = apply {
+      this.debug = debug
+    }
+
+    public fun enabled(enabled: Boolean): Builder = apply {
+      this.enabled = enabled
+    }
+
+    public fun reportsDestination(reportsDestination: Path?): Builder = apply {
+      this.reportsDestination = reportsDestination
+    }
+
+    public fun generateAssistedFactories(generateAssistedFactories: Boolean): Builder = apply {
+      this.generateAssistedFactories = generateAssistedFactories
+    }
+
+    public fun enableTopLevelFunctionInjection(enableTopLevelFunctionInjection: Boolean): Builder =
+      apply {
+        this.enableTopLevelFunctionInjection = enableTopLevelFunctionInjection
+      }
+
+    public fun warnOnInjectAnnotationPlacement(warnOnInjectAnnotationPlacement: Boolean): Builder =
+      apply {
+        this.warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement
+      }
+
+    public fun enableDaggerRuntimeInterop(enableDaggerRuntimeInterop: Boolean): Builder = apply {
+      this.enableDaggerRuntimeInterop = enableDaggerRuntimeInterop
+    }
+
+    public fun enableFullBindingGraphValidation(
+      enableFullBindingGraphValidation: Boolean
+    ): Builder = apply {
+      this.enableFullBindingGraphValidation = enableFullBindingGraphValidation
+    }
+
+    public fun enableFunctionProviders(enableFunctionProviders: Boolean): Builder = apply {
+      this.enableFunctionProviders = enableFunctionProviders
+    }
+
+    public fun unusedGraphInputsSeverity(unusedGraphInputsSeverity: DiagnosticSeverity): Builder =
+      apply {
+        this.unusedGraphInputsSeverity = unusedGraphInputsSeverity
+      }
+
+    public fun contributesAsInject(contributesAsInject: Boolean): Builder = apply {
+      this.contributesAsInject = contributesAsInject
+    }
+
+    public fun enableKlibParamsCheck(enableKlibParamsCheck: Boolean): Builder = apply {
+      this.enableKlibParamsCheck = enableKlibParamsCheck
+    }
+
+    public fun keysPerGraphShard(keysPerGraphShard: Int): Builder = apply {
+      this.keysPerGraphShard = keysPerGraphShard
+    }
+
+    public fun desugaredProviderSeverity(desugaredProviderSeverity: DiagnosticSeverity): Builder =
+      apply {
+        this.desugaredProviderSeverity = desugaredProviderSeverity
+      }
+
+    public fun customQualifierAnnotations(customQualifierAnnotations: Set<ClassId>): Builder =
+      apply {
+        this.customQualifierAnnotations.clear()
+        this.customQualifierAnnotations.addAll(customQualifierAnnotations)
+      }
+
+    public fun customContributesBindingAnnotations(
+      customContributesBindingAnnotations: Set<ClassId>
+    ): Builder = apply {
+      this.customContributesBindingAnnotations.clear()
+      this.customContributesBindingAnnotations.addAll(customContributesBindingAnnotations)
+    }
+
+    public fun customBindingContainerAnnotations(
+      customBindingContainerAnnotations: Set<ClassId>
+    ): Builder = apply {
+      this.customBindingContainerAnnotations.clear()
+      this.customBindingContainerAnnotations.addAll(customBindingContainerAnnotations)
+    }
+
+    public fun customGraphExtensionAnnotations(
+      customGraphExtensionAnnotations: Set<ClassId>
+    ): Builder = apply {
+      this.customGraphExtensionAnnotations.clear()
+      this.customGraphExtensionAnnotations.addAll(customGraphExtensionAnnotations)
+    }
+
+    public fun enableDaggerAnvilInterop(enableDaggerAnvilInterop: Boolean): Builder = apply {
+      this.enableDaggerAnvilInterop = enableDaggerAnvilInterop
+    }
+
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
     }
@@ -1417,6 +1710,150 @@ public data class MetroOptions(
       includeJakartaAnnotations()
     }
 
+    public fun applyRawOptions(optionsByName: Map<String, String>) {
+      for (option in MetroOption.entries) {
+        optionsByName[option.raw.name]?.let { value ->
+          applyOptionValue(option, option.raw.valueMapper(value))
+        }
+      }
+    }
+
+    public fun applyRawOption(optionName: String, value: String) {
+      val option = MetroOption.entriesByOptionName[optionName] ?: return
+      applyOptionValue(option, option.raw.valueMapper(value))
+    }
+
+    public fun applyOptionValue(option: MetroOption, value: Any) {
+      when (option) {
+        MetroOption.DEBUG -> debug = value.expectAs()
+        MetroOption.ENABLED -> enabled = value.expectAs()
+        MetroOption.REPORTS_DESTINATION ->
+          reportsDestination = value.expectAs<String>().takeUnless(String::isBlank)?.let(Paths::get)
+        MetroOption.TRACE_DESTINATION ->
+          traceDestination = value.expectAs<String>().takeUnless(String::isBlank)?.let(Paths::get)
+        MetroOption.GENERATE_ASSISTED_FACTORIES -> generateAssistedFactories = value.expectAs()
+        MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
+          enableTopLevelFunctionInjection = value.expectAs()
+        MetroOption.GENERATE_CONTRIBUTION_HINTS -> generateContributionHints = value.expectAs()
+        MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
+          generateContributionHintsInFir = value.expectAs()
+        MetroOption.GENERATE_CLASSES_IN_IR -> generateClassesInIr = value.expectAs()
+        MetroOption.SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = value.expectAs()
+        MetroOption.STATEMENTS_PER_INIT_FUN -> statementsPerInitFun = value.expectAs()
+        MetroOption.ENABLE_GRAPH_SHARDING -> enableGraphSharding = value.expectAs()
+        MetroOption.KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = value.expectAs()
+        MetroOption.MERGED_SUPERTYPE_CHUNK_SIZE -> mergedSupertypeChunkSize = value.expectAs()
+        MetroOption.ENABLE_SWITCHING_PROVIDERS -> enableSwitchingProviders = value.expectAs()
+        MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY ->
+          publicScopedProviderSeverity = value.diagnosticSeverity()
+        MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY ->
+          nonPublicContributionSeverity = value.diagnosticSeverity()
+        MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
+          warnOnInjectAnnotationPlacement = value.expectAs()
+        MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
+          interopAnnotationsNamedArgSeverity = value.diagnosticSeverity()
+        MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY ->
+          unusedGraphInputsSeverity = value.diagnosticSeverity()
+        MetroOption.LOGGING -> enabledLoggers += value.expectAs<Set<MetroLogger.Type>>()
+        MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP -> enableDaggerRuntimeInterop = value.expectAs()
+        MetroOption.ENABLE_GUICE_RUNTIME_INTEROP -> enableGuiceRuntimeInterop = value.expectAs()
+        MetroOption.MAX_IR_ERRORS_COUNT -> maxIrErrorsCount = value.expectAs()
+        MetroOption.CUSTOM_PROVIDER -> customProviderTypes.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_LAZY -> customLazyTypes.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_ASSISTED ->
+          customAssistedAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_ASSISTED_FACTORY ->
+          customAssistedFactoryAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_ASSISTED_INJECT ->
+          customAssistedInjectAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_BINDS -> customBindsAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_CONTRIBUTES_TO ->
+          customContributesToAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_CONTRIBUTES_BINDING ->
+          customContributesBindingAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_GRAPH_EXTENSION ->
+          customGraphExtensionAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY ->
+          customGraphExtensionFactoryAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_ELEMENTS_INTO_SET ->
+          customElementsIntoSetAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_DEPENDENCY_GRAPH ->
+          customGraphAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_DEPENDENCY_GRAPH_FACTORY ->
+          customGraphFactoryAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_INJECT -> customInjectAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_INTO_MAP ->
+          customIntoMapAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_INTO_SET ->
+          customIntoSetAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_MAP_KEY -> customMapKeyAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_MULTIBINDS ->
+          customMultibindsAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_PROVIDES ->
+          customProvidesAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_QUALIFIER ->
+          customQualifierAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_SCOPE -> customScopeAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_BINDING_CONTAINER ->
+          customBindingContainerAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> enableDaggerAnvilInterop = value.expectAs()
+        MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION ->
+          enableFullBindingGraphValidation = value.expectAs()
+        MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE ->
+          enableGraphImplClassAsReturnType = value.expectAs()
+        MetroOption.CUSTOM_ORIGIN -> customOriginAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.CUSTOM_OPTIONAL_BINDING ->
+          customOptionalBindingAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.OPTIONAL_BINDING_BEHAVIOR ->
+          optionalBindingBehavior =
+            OptionalBindingBehavior.valueOf(value.expectAs<String>().uppercase(Locale.US))
+        MetroOption.CONTRIBUTES_AS_INJECT -> contributesAsInject = value.expectAs()
+        MetroOption.ENABLE_KLIB_PARAMS_CHECK -> enableKlibParamsCheck = value.expectAs()
+        MetroOption.PATCH_KLIB_PARAMS -> patchKlibParams = value.expectAs()
+        MetroOption.INTEROP_INCLUDE_JAVAX_ANNOTATIONS ->
+          if (value.expectAs<Boolean>()) includeJavaxAnnotations()
+        MetroOption.INTEROP_INCLUDE_JAKARTA_ANNOTATIONS ->
+          if (value.expectAs<Boolean>()) includeJakartaAnnotations()
+        MetroOption.INTEROP_INCLUDE_DAGGER_ANNOTATIONS ->
+          if (value.expectAs<Boolean>()) includeDaggerAnnotations()
+        MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS ->
+          if (value.expectAs<Boolean>()) includeKotlinInjectAnnotations()
+        MetroOption.INTEROP_INCLUDE_ANVIL_ANNOTATIONS ->
+          if (value.expectAs<Boolean>()) includeAnvilAnnotations()
+        MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS ->
+          if (value.expectAs<Boolean>()) includeKotlinInjectAnvilAnnotations()
+        MetroOption.INTEROP_INCLUDE_HILT_ANNOTATIONS ->
+          if (value.expectAs<Boolean>()) includeHiltAnnotations()
+        MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS ->
+          if (value.expectAs<Boolean>()) includeGuiceAnnotations()
+        MetroOption.FORCE_ENABLE_FIR_IN_IDE -> forceEnableFirInIde = value.expectAs()
+        MetroOption.PLUGIN_ORDER_SET ->
+          pluginOrderSet = value.expectAs<String>().takeUnless(String::isBlank)?.toBooleanStrict()
+        MetroOption.COMPILER_VERSION ->
+          compilerVersion = value.expectAs<String>().takeUnless(String::isBlank)
+        MetroOption.COMPILER_VERSION_ALIASES -> compilerVersionAliases = value.expectAs()
+        MetroOption.PARALLEL_THREADS -> parallelThreads = value.expectAs()
+        MetroOption.BUFFERED_IC_TRACKING -> bufferedIcTracking = value.expectAs()
+        MetroOption.ENABLE_PROVIDER_INLINING -> enableProviderInlining = value.expectAs()
+        MetroOption.ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = value.expectAs()
+        MetroOption.DESUGARED_PROVIDER_SEVERITY ->
+          desugaredProviderSeverity = value.diagnosticSeverity()
+        MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP -> enableKClassToClassInterop = value.expectAs()
+        MetroOption.GENERATE_CONTRIBUTION_PROVIDERS ->
+          generateContributionProviders = value.expectAs()
+        MetroOption.ENABLE_CIRCUIT_CODEGEN -> enableCircuitCodegen = value.expectAs()
+        MetroOption.RICH_DIAGNOSTICS -> richDiagnostics = value.expectAs()
+        MetroOption.GENERATE_STATIC_ANNOTATIONS -> generateStaticAnnotations = value.expectAs()
+        MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS ->
+          bindingContributionsAsContainers = value.expectAs()
+        MetroOption.MEMBER_NAMING_STRATEGY ->
+          memberNamingStrategy =
+            MemberNamingStrategy.valueOf(value.expectAs<String>().uppercase(Locale.US))
+        MetroOption.CUSTOM_CONTRIBUTES_INTO_SET ->
+          customContributesIntoSetAnnotations.addAll(value.expectAs<Set<ClassId>>())
+      }
+    }
+
     public fun build(): MetroOptions {
       if (debug) {
         enabledLoggers += MetroLogger.Type.entries
@@ -1520,345 +1957,16 @@ public data class MetroOptions(
     }
   }
 
-  internal fun validate(
-    compilerVersion: KotlinToolingVersion,
-    configuration: CompilerConfiguration,
-    onError: (String) -> Unit,
-  ): Boolean {
-    var valid = true
-    if (!validateKotlinJsIC(compilerVersion, configuration, onError)) {
-      valid = false
-    }
-
-    val contributionProvidersAreEnabledWithoutFirHintGen =
-      generateContributionProviders &&
-        generateContributionHints &&
-        !generateContributionHintsInFir &&
-        !generateClassesInIr
-    if (contributionProvidersAreEnabledWithoutFirHintGen) {
-      onError(
-        "generateContributionProviders with generateContributionHints requires " +
-          "generateContributionHintsInFir to also be enabled."
-      )
-      valid = false
-    }
-
-    if (unusedGraphInputsSeverity.isIdeOnly) {
-      onError(
-        "unusedGraphInputsSeverity (set to ${unusedGraphInputsSeverity.name}) does not support IDE_WARN/IDE_ERROR " +
-          "because the underlying check only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead."
-      )
-      valid = false
-    }
-    return valid
-  }
-
-  private fun validateKotlinJsIC(
-    compilerVersion: KotlinToolingVersion,
-    configuration: CompilerConfiguration,
-    onError: (String) -> Unit,
-  ): Boolean {
-    val supportJsIc =
-      !configuration.jsIncrementalCompilationEnabled ||
-        configuration.wasmCompilation ||
-        kotlinVersionSupportsJsIC(compilerVersion)
-    if (supportJsIc) {
-      return true
-    }
-
-    val jsICOptions = buildList {
-      if (enableTopLevelFunctionInjection) {
-        add("enableTopLevelFunctionInjection")
-      }
-      if (generateContributionHints) {
-        add("generateContributionHints")
-      }
-      if (generateContributionHintsInFir) {
-        add("generateContributionHintsInFir")
-      }
-    }
-
-    if (jsICOptions.isNotEmpty()) {
-      onError(
-        "Kotlin/JS does not support generating top-level declarations with incremental compilation enabled. " +
-          "See https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989. " +
-          "Either disable ${jsICOptions.joinToString()} for JS targets or disable JS IC."
-      )
-      return false
-    }
-    return true
-  }
-
   public object SystemProperties {
     public val SHORTEN_LOCATIONS: Boolean =
       System.getProperty("metro.shortLocations", "false").toBoolean()
   }
 
   public companion object {
-    /** Minimum Kotlin version on the 2.3.x line that supports JS IC with top-level declarations. */
-    private val MIN_KOTLIN_2_3_JS_IC = KotlinToolingVersion("2.3.21-RC")
-
-    /**
-     * Minimum Kotlin dev version on the 2.4.x line that supports JS IC with top-level declarations.
-     */
-    private val MIN_KOTLIN_2_4_DEV_JS_IC = KotlinToolingVersion("2.4.0-dev-8064")
-
-    /**
-     * Minimum Kotlin non-dev version on the 2.4.x line that supports JS IC with top-level
-     * declarations.
-     */
-    private val MIN_KOTLIN_2_4_JS_IC = KotlinToolingVersion("2.4.0-Beta2")
-
-    private fun kotlinVersionSupportsJsIC(version: KotlinToolingVersion): Boolean {
-      if (version.major > 2) return true // ... if K3 ever happens
-      return when (version.minor) {
-        in 0..2 -> false
-        3 -> version >= MIN_KOTLIN_2_3_JS_IC
-        4 ->
-          if (version.maturity == KotlinToolingVersion.Maturity.DEV) {
-            version >= MIN_KOTLIN_2_4_DEV_JS_IC
-          } else {
-            version >= MIN_KOTLIN_2_4_JS_IC
-          }
-        else -> true // 2.5+
-      }
-    }
+    public fun builder(): Builder = Builder()
 
     public fun buildOptions(body: Builder.() -> Unit): MetroOptions {
       return Builder().apply(body).build()
-    }
-
-    internal fun load(configuration: CompilerConfiguration): MetroOptions = buildOptions {
-      for (entry in MetroOption.entries) {
-        when (entry) {
-          DEBUG -> debug = configuration.getAsBoolean(entry)
-
-          ENABLED -> enabled = configuration.getAsBoolean(entry)
-
-          REPORTS_DESTINATION -> {
-            reportsDestination =
-              configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
-          }
-
-          TRACE_DESTINATION -> {
-            traceDestination =
-              configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
-          }
-
-          GENERATE_ASSISTED_FACTORIES ->
-            generateAssistedFactories = configuration.getAsBoolean(entry)
-
-          ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
-            enableTopLevelFunctionInjection = configuration.getAsBoolean(entry)
-
-          GENERATE_CONTRIBUTION_HINTS ->
-            generateContributionHints = configuration.getAsBoolean(entry)
-
-          GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
-            generateContributionHintsInFir = configuration.getAsBoolean(entry)
-
-          GENERATE_CLASSES_IN_IR -> generateClassesInIr = configuration.getAsBoolean(entry)
-
-          SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = configuration.getAsBoolean(entry)
-
-          STATEMENTS_PER_INIT_FUN -> statementsPerInitFun = configuration.getAsInt(entry)
-
-          ENABLE_GRAPH_SHARDING -> enableGraphSharding = configuration.getAsBoolean(entry)
-
-          KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = configuration.getAsInt(entry)
-
-          MERGED_SUPERTYPE_CHUNK_SIZE -> mergedSupertypeChunkSize = configuration.getAsInt(entry)
-
-          ENABLE_SWITCHING_PROVIDERS -> enableSwitchingProviders = configuration.getAsBoolean(entry)
-
-          PUBLIC_SCOPED_PROVIDER_SEVERITY ->
-            publicScopedProviderSeverity =
-              configuration.getAsString(entry).let {
-                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
-              }
-
-          NON_PUBLIC_CONTRIBUTION_SEVERITY ->
-            nonPublicContributionSeverity =
-              configuration.getAsString(entry).let {
-                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
-              }
-
-          WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
-            warnOnInjectAnnotationPlacement = configuration.getAsBoolean(entry)
-
-          INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
-            interopAnnotationsNamedArgSeverity =
-              configuration.getAsString(entry).let {
-                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
-              }
-
-          UNUSED_GRAPH_INPUTS_SEVERITY ->
-            unusedGraphInputsSeverity =
-              configuration.getAsString(entry).let {
-                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
-              }
-
-          LOGGING -> {
-            enabledLoggers +=
-              configuration.get(entry.raw.key)?.expectAs<Set<MetroLogger.Type>>().orEmpty()
-          }
-
-          ENABLE_DAGGER_RUNTIME_INTEROP ->
-            enableDaggerRuntimeInterop = configuration.getAsBoolean(entry)
-
-          ENABLE_GUICE_RUNTIME_INTEROP ->
-            enableGuiceRuntimeInterop = configuration.getAsBoolean(entry)
-
-          MAX_IR_ERRORS_COUNT -> maxIrErrorsCount = configuration.getAsInt(entry)
-
-          // Intrinsics
-          CUSTOM_PROVIDER -> customProviderTypes.addAll(configuration.getAsSet(entry))
-          CUSTOM_LAZY -> customLazyTypes.addAll(configuration.getAsSet(entry))
-
-          // Custom annotations
-          CUSTOM_ASSISTED -> customAssistedAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_ASSISTED_FACTORY ->
-            customAssistedFactoryAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_ASSISTED_INJECT ->
-            customAssistedInjectAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_BINDS -> customBindsAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_CONTRIBUTES_TO ->
-            customContributesToAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_CONTRIBUTES_BINDING ->
-            customContributesBindingAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_GRAPH_EXTENSION ->
-            customGraphExtensionAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_GRAPH_EXTENSION_FACTORY ->
-            customGraphExtensionFactoryAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_ELEMENTS_INTO_SET ->
-            customElementsIntoSetAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_DEPENDENCY_GRAPH -> customGraphAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_DEPENDENCY_GRAPH_FACTORY ->
-            customGraphFactoryAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_INJECT -> customInjectAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_INTO_MAP -> customIntoMapAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_INTO_SET -> customIntoSetAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_MAP_KEY -> customMapKeyAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_MULTIBINDS -> customMultibindsAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_PROVIDES -> customProvidesAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_QUALIFIER -> customQualifierAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_SCOPE -> customScopeAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_BINDING_CONTAINER ->
-            customBindingContainerAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_CONTRIBUTES_INTO_SET ->
-            customContributesIntoSetAnnotations.addAll(configuration.getAsSet(entry))
-
-          ENABLE_DAGGER_ANVIL_INTEROP ->
-            enableDaggerAnvilInterop = configuration.getAsBoolean(entry)
-
-          ENABLE_FULL_BINDING_GRAPH_VALIDATION ->
-            enableFullBindingGraphValidation = configuration.getAsBoolean(entry)
-
-          ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE ->
-            enableGraphImplClassAsReturnType = configuration.getAsBoolean(entry)
-
-          CUSTOM_ORIGIN -> customOriginAnnotations.addAll(configuration.getAsSet(entry))
-          CUSTOM_OPTIONAL_BINDING ->
-            customOptionalBindingAnnotations.addAll(configuration.getAsSet(entry))
-          OPTIONAL_BINDING_BEHAVIOR ->
-            optionalBindingBehavior =
-              configuration.getAsString(entry).let {
-                OptionalBindingBehavior.valueOf(it.uppercase(Locale.US))
-              }
-
-          CONTRIBUTES_AS_INJECT -> contributesAsInject = configuration.getAsBoolean(entry)
-
-          ENABLE_KLIB_PARAMS_CHECK -> enableKlibParamsCheck = configuration.getAsBoolean(entry)
-
-          PATCH_KLIB_PARAMS -> patchKlibParams = configuration.getAsBoolean(entry)
-
-          INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
-            if (configuration.getAsBoolean(entry)) includeJavaxAnnotations()
-          }
-          INTEROP_INCLUDE_JAKARTA_ANNOTATIONS -> {
-            if (configuration.getAsBoolean(entry)) includeJakartaAnnotations()
-          }
-          INTEROP_INCLUDE_DAGGER_ANNOTATIONS -> {
-            if (configuration.getAsBoolean(entry)) includeDaggerAnnotations()
-          }
-          INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS -> {
-            if (configuration.getAsBoolean(entry)) includeKotlinInjectAnnotations()
-          }
-          INTEROP_INCLUDE_ANVIL_ANNOTATIONS -> {
-            if (configuration.getAsBoolean(entry)) includeAnvilAnnotations()
-          }
-          INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
-            if (configuration.getAsBoolean(entry)) includeKotlinInjectAnvilAnnotations()
-          }
-          INTEROP_INCLUDE_HILT_ANNOTATIONS -> {
-            if (configuration.getAsBoolean(entry)) includeHiltAnnotations()
-          }
-          INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
-            if (configuration.getAsBoolean(entry)) includeGuiceAnnotations()
-          }
-          FORCE_ENABLE_FIR_IN_IDE -> forceEnableFirInIde = configuration.getAsBoolean(entry)
-          PLUGIN_ORDER_SET -> {
-            pluginOrderSet =
-              configuration.getAsString(entry).takeUnless(String::isBlank)?.toBooleanStrict()
-          }
-          COMPILER_VERSION -> {
-            compilerVersion = configuration.getAsString(entry).takeUnless(String::isBlank)
-          }
-          COMPILER_VERSION_ALIASES -> {
-            compilerVersionAliases = configuration.getAsMap(entry)
-          }
-          PARALLEL_THREADS -> parallelThreads = configuration.getAsInt(entry)
-          BUFFERED_IC_TRACKING -> bufferedIcTracking = configuration.getAsBoolean(entry)
-          ENABLE_PROVIDER_INLINING -> enableProviderInlining = configuration.getAsBoolean(entry)
-          ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = configuration.getAsBoolean(entry)
-          DESUGARED_PROVIDER_SEVERITY ->
-            desugaredProviderSeverity =
-              configuration.getAsString(entry).let {
-                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
-              }
-          ENABLE_KCLASS_TO_CLASS_INTEROP ->
-            enableKClassToClassInterop = configuration.getAsBoolean(entry)
-          GENERATE_CONTRIBUTION_PROVIDERS ->
-            generateContributionProviders = configuration.getAsBoolean(entry)
-          MetroOption.ENABLE_CIRCUIT_CODEGEN ->
-            enableCircuitCodegen = configuration.getAsBoolean(entry)
-          RICH_DIAGNOSTICS -> richDiagnostics = configuration.getAsBoolean(entry)
-          GENERATE_STATIC_ANNOTATIONS ->
-            generateStaticAnnotations = configuration.getAsBoolean(entry)
-          BINDING_CONTRIBUTIONS_AS_CONTAINERS ->
-            bindingContributionsAsContainers = configuration.getAsBoolean(entry)
-          MEMBER_NAMING_STRATEGY ->
-            memberNamingStrategy =
-              configuration.getAsString(entry).let {
-                MemberNamingStrategy.valueOf(it.uppercase(Locale.US))
-              }
-        }
-      }
-    }
-
-    private fun CompilerConfiguration.getAsString(option: MetroOption): String {
-      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<String>
-      return get(typed.key, typed.defaultValue)
-    }
-
-    private fun CompilerConfiguration.getAsBoolean(option: MetroOption): Boolean {
-      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Boolean>
-      return get(typed.key, typed.defaultValue)
-    }
-
-    private fun CompilerConfiguration.getAsInt(option: MetroOption): Int {
-      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Int>
-      return get(typed.key, typed.defaultValue)
-    }
-
-    private fun <E> CompilerConfiguration.getAsSet(option: MetroOption): Set<E> {
-      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Set<E>>
-      return get(typed.key, typed.defaultValue)
-    }
-
-    private fun <K, V> CompilerConfiguration.getAsMap(option: MetroOption): Map<K, V> {
-      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Map<K, V>>
-      return get(typed.key, typed.defaultValue)
     }
   }
 
@@ -1918,4 +2026,16 @@ internal object ClassIdSerializer : KSerializer<ClassId> {
   override fun deserialize(decoder: Decoder): ClassId {
     return ClassId.fromString(decoder.decodeString(), false)
   }
+}
+
+private inline fun <reified T : Any> Any.expectAs(): T {
+  return this as? T ?: error("Expected $this to be of type ${T::class.qualifiedName}")
+}
+
+private fun Any.diagnosticSeverity(): MetroOptions.DiagnosticSeverity {
+  return MetroOptions.DiagnosticSeverity.valueOf(expectAs<String>().uppercase(Locale.US))
+}
+
+private fun <T, R> Sequence<T>.mapToSet(transform: (T) -> R): Set<R> {
+  return mapTo(mutableSetOf(), transform)
 }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
+import dev.zacsweers.metro.compiler.MetroOption
 import java.io.File
 import org.gradle.api.Project
 import org.gradle.api.file.Directory
@@ -30,13 +31,13 @@ internal fun Project.metroCompilerPluginOptions(
   isJvmTarget: Boolean,
 ): Provider<List<MetroCompilerPluginOption>> = provider {
   buildList {
-    add(metroOption("enabled", extension.enabled))
-    add(metroOption("max-ir-errors-count", extension.maxIrErrors))
-    add(metroOption("debug", extension.debug))
-    add(metroOption("generate-assisted-factories", extension.generateAssistedFactories))
+    add(metroOption(MetroOption.ENABLED, extension.enabled))
+    add(metroOption(MetroOption.MAX_IR_ERRORS_COUNT, extension.maxIrErrors))
+    add(metroOption(MetroOption.DEBUG, extension.debug))
+    add(metroOption(MetroOption.GENERATE_ASSISTED_FACTORIES, extension.generateAssistedFactories))
     add(
       metroOption(
-        "generate-contribution-hints",
+        MetroOption.GENERATE_CONTRIBUTION_HINTS,
         extension.generateContributionHints.orElse(
           provider { kotlinCompilation.platformType }
             .zip(extension.supportedHintContributionPlatforms) { platformType, supportedPlatforms ->
@@ -47,7 +48,7 @@ internal fun Project.metroCompilerPluginOptions(
     )
     add(
       metroOption(
-        "generate-contribution-hints-in-fir",
+        MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR,
         extension.generateContributionHintsInFir.zip(extension.generateClassesInIr) {
           generateContributionHintsInFir,
           generateClassesInIr ->
@@ -56,28 +57,38 @@ internal fun Project.metroCompilerPluginOptions(
       )
     )
     add(metroOption("generate-classes-in-ir", extension.generateClassesInIr))
-    add(metroOption("statements-per-init-fun", extension.statementsPerInitFun))
-    add(metroOption("enable-graph-sharding", extension.enableGraphSharding))
-    add(metroOption("keys-per-graph-shard", extension.keysPerGraphShard))
-    add(metroOption("enable-switching-providers", extension.enableSwitchingProviders))
-    add(metroOption("optional-binding-behavior", extension.optionalBindingBehavior))
-    add(metroOption("public-scoped-provider-severity", extension.publicScopedProviderSeverity))
-    add(metroOption("non-public-contribution-severity", extension.nonPublicContributionSeverity))
+    add(metroOption(MetroOption.STATEMENTS_PER_INIT_FUN, extension.statementsPerInitFun))
+    add(metroOption(MetroOption.ENABLE_GRAPH_SHARDING, extension.enableGraphSharding))
+    add(metroOption(MetroOption.KEYS_PER_GRAPH_SHARD, extension.keysPerGraphShard))
+    add(metroOption(MetroOption.ENABLE_SWITCHING_PROVIDERS, extension.enableSwitchingProviders))
+    add(metroOption(MetroOption.OPTIONAL_BINDING_BEHAVIOR, extension.optionalBindingBehavior))
     add(
       metroOption(
-        "warn-on-inject-annotation-placement",
+        MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY,
+        extension.publicScopedProviderSeverity,
+      )
+    )
+    add(
+      metroOption(
+        MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY,
+        extension.nonPublicContributionSeverity,
+      )
+    )
+    add(
+      metroOption(
+        MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT,
         extension.warnOnInjectAnnotationPlacement,
       )
     )
     add(
       metroOption(
-        "interop-annotations-named-arg-severity",
+        MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY,
         extension.interopAnnotationsNamedArgSeverity,
       )
     )
     add(
       metroOption(
-        "unused-graph-inputs-severity",
+        MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY,
         extension.unusedGraphInputsSeverity.map { severity ->
           check(!severity.isIdeOnly) {
             "metro.unusedGraphInputsSeverity (set to ${severity.name}) does not support ${severity.name} " +
@@ -89,47 +100,67 @@ internal fun Project.metroCompilerPluginOptions(
     )
     add(
       metroOption(
-        "enable-top-level-function-injection",
+        MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION,
         extension.enableTopLevelFunctionInjection,
       )
     )
-    add(metroOption("contributes-as-inject", extension.contributesAsInject))
-    add(metroOption("enable-klib-params-check", extension.enableKlibParamsCheck))
-    add(metroOption("patch-klib-params", extension.patchKlibParams))
-    add(metroOption("force-enable-fir-in-ide", extension.forceEnableFirInIde))
-    add(metroOption("compiler-version", extension.compilerVersion))
+    add(metroOption(MetroOption.CONTRIBUTES_AS_INJECT, extension.contributesAsInject))
+    add(metroOption(MetroOption.ENABLE_KLIB_PARAMS_CHECK, extension.enableKlibParamsCheck))
+    add(metroOption(MetroOption.PATCH_KLIB_PARAMS, extension.patchKlibParams))
+    add(metroOption(MetroOption.FORCE_ENABLE_FIR_IN_IDE, extension.forceEnableFirInIde))
+    add(metroOption(MetroOption.COMPILER_VERSION, extension.compilerVersion))
     add(
       metroOption(
-        "compiler-version-aliases",
+        MetroOption.COMPILER_VERSION_ALIASES,
         extension.compilerVersionAliases.map { map ->
           map.entries.joinToString(":") { "${it.key}=${it.value}" }
         },
       )
     )
-    add(metroOption("enable-function-providers", extension.enableFunctionProviders))
-    add(metroOption("desugared-provider-severity", extension.desugaredProviderSeverity))
-    add(metroOption("generate-contribution-providers", extension.generateContributionProviders))
-    add(metroOption("enable-circuit-codegen", extension.enableCircuitCodegen))
-    add(MetroCompilerPluginOption("plugin-order-set", orderComposePlugin.toString()))
+    add(metroOption(MetroOption.ENABLE_FUNCTION_PROVIDERS, extension.enableFunctionProviders))
+    add(metroOption(MetroOption.DESUGARED_PROVIDER_SEVERITY, extension.desugaredProviderSeverity))
+    add(
+      metroOption(
+        MetroOption.GENERATE_CONTRIBUTION_PROVIDERS,
+        extension.generateContributionProviders,
+      )
+    )
+    add(metroOption(MetroOption.ENABLE_CIRCUIT_CODEGEN, extension.enableCircuitCodegen))
+    add(
+      MetroCompilerPluginOption(
+        MetroOption.PLUGIN_ORDER_SET.raw.name,
+        orderComposePlugin.toString(),
+      )
+    )
     reportsDir.orNull
       ?.let {
-        MetroCompilerPluginOption("reports-destination", it.asFile.path, isFileOption = true)
+        MetroCompilerPluginOption(
+          MetroOption.REPORTS_DESTINATION.raw.name,
+          it.asFile.path,
+          isFileOption = true,
+        )
       }
       ?.let(::add)
     traceDir.orNull
-      ?.let { MetroCompilerPluginOption("trace-destination", it.asFile.path, isFileOption = true) }
+      ?.let {
+        MetroCompilerPluginOption(
+          MetroOption.TRACE_DESTINATION.raw.name,
+          it.asFile.path,
+          isFileOption = true,
+        )
+      }
       ?.let(::add)
 
     if (isJvmTarget) {
       add(
         MetroCompilerPluginOption(
-          "enable-dagger-runtime-interop",
+          MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP.raw.name,
           extension.interop.enableDaggerRuntimeInterop.getOrElse(false).toString(),
         )
       )
       add(
         metroOption(
-          "enable-kclass-to-class-interop",
+          MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP,
           extension.enableKClassToClassMapKeyInterop,
         )
       )
@@ -142,85 +173,99 @@ internal fun Project.metroCompilerPluginOptions(
     }
 
     with(extension.interop) {
-      addCustomOption("custom-provider", provider)
-      addCustomOption("custom-lazy", lazy)
-      addCustomOption("custom-assisted", assisted)
-      addCustomOption("custom-assisted-factory", assistedFactory)
-      addCustomOption("custom-assisted-inject", assistedInject)
-      addCustomOption("custom-binds", binds)
-      addCustomOption("custom-contributes-to", contributesTo)
-      addCustomOption("custom-contributes-binding", contributesBinding)
-      addCustomOption("custom-contributes-into-set", contributesIntoSet)
-      addCustomOption("custom-graph-extension", graphExtension)
-      addCustomOption("custom-graph-extension-factory", graphExtensionFactory)
-      addCustomOption("custom-elements-into-set", elementsIntoSet)
-      addCustomOption("custom-dependency-graph", dependencyGraph)
-      addCustomOption("custom-dependency-graph-factory", dependencyGraphFactory)
-      addCustomOption("custom-inject", inject)
-      addCustomOption("custom-into-map", intoMap)
-      addCustomOption("custom-into-set", intoSet)
-      addCustomOption("custom-map-key", mapKey)
-      addCustomOption("custom-multibinds", multibinds)
-      addCustomOption("custom-provides", provides)
-      addCustomOption("custom-qualifier", qualifier)
-      addCustomOption("custom-scope", scope)
-      addCustomOption("custom-binding-container", bindingContainer)
-      addCustomOption("custom-origin", origin)
-      addCustomOption("custom-optional-binding", optionalBinding)
-      add(metroOption("interop-include-javax-annotations", includeJavaxAnnotations))
-      add(metroOption("interop-include-jakarta-annotations", includeJakartaAnnotations))
-      add(metroOption("interop-include-dagger-annotations", includeDaggerAnnotations))
-      add(metroOption("interop-include-kotlin-inject-annotations", includeKotlinInjectAnnotations))
-      add(metroOption("interop-include-anvil-annotations", includeAnvilAnnotations))
+      addCustomOption(MetroOption.CUSTOM_PROVIDER, provider)
+      addCustomOption(MetroOption.CUSTOM_LAZY, lazy)
+      addCustomOption(MetroOption.CUSTOM_ASSISTED, assisted)
+      addCustomOption(MetroOption.CUSTOM_ASSISTED_FACTORY, assistedFactory)
+      addCustomOption(MetroOption.CUSTOM_ASSISTED_INJECT, assistedInject)
+      addCustomOption(MetroOption.CUSTOM_BINDS, binds)
+      addCustomOption(MetroOption.CUSTOM_CONTRIBUTES_TO, contributesTo)
+      addCustomOption(MetroOption.CUSTOM_CONTRIBUTES_BINDING, contributesBinding)
+      addCustomOption(MetroOption.CUSTOM_CONTRIBUTES_INTO_SET, contributesIntoSet)
+      addCustomOption(MetroOption.CUSTOM_GRAPH_EXTENSION, graphExtension)
+      addCustomOption(MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY, graphExtensionFactory)
+      addCustomOption(MetroOption.CUSTOM_ELEMENTS_INTO_SET, elementsIntoSet)
+      addCustomOption(MetroOption.CUSTOM_DEPENDENCY_GRAPH, dependencyGraph)
+      addCustomOption(MetroOption.CUSTOM_DEPENDENCY_GRAPH_FACTORY, dependencyGraphFactory)
+      addCustomOption(MetroOption.CUSTOM_INJECT, inject)
+      addCustomOption(MetroOption.CUSTOM_INTO_MAP, intoMap)
+      addCustomOption(MetroOption.CUSTOM_INTO_SET, intoSet)
+      addCustomOption(MetroOption.CUSTOM_MAP_KEY, mapKey)
+      addCustomOption(MetroOption.CUSTOM_MULTIBINDS, multibinds)
+      addCustomOption(MetroOption.CUSTOM_PROVIDES, provides)
+      addCustomOption(MetroOption.CUSTOM_QUALIFIER, qualifier)
+      addCustomOption(MetroOption.CUSTOM_SCOPE, scope)
+      addCustomOption(MetroOption.CUSTOM_BINDING_CONTAINER, bindingContainer)
+      addCustomOption(MetroOption.CUSTOM_ORIGIN, origin)
+      addCustomOption(MetroOption.CUSTOM_OPTIONAL_BINDING, optionalBinding)
+      add(metroOption(MetroOption.INTEROP_INCLUDE_JAVAX_ANNOTATIONS, includeJavaxAnnotations))
+      add(metroOption(MetroOption.INTEROP_INCLUDE_JAKARTA_ANNOTATIONS, includeJakartaAnnotations))
+      add(metroOption(MetroOption.INTEROP_INCLUDE_DAGGER_ANNOTATIONS, includeDaggerAnnotations))
       add(
         metroOption(
-          "interop-include-kotlin-inject-anvil-annotations",
+          MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS,
+          includeKotlinInjectAnnotations,
+        )
+      )
+      add(metroOption(MetroOption.INTEROP_INCLUDE_ANVIL_ANNOTATIONS, includeAnvilAnnotations))
+      add(
+        metroOption(
+          MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS,
           includeKotlinInjectAnvilAnnotations,
         )
       )
       add(
         MetroCompilerPluginOption(
-          "enable-dagger-anvil-interop",
+          MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.name,
           enableDaggerAnvilInterop.getOrElse(false).toString(),
         )
       )
-      add(metroOption("interop-include-guice-annotations", includeGuiceAnnotations))
+      add(metroOption(MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS, includeGuiceAnnotations))
       add(
         MetroCompilerPluginOption(
-          "enable-guice-runtime-interop",
+          MetroOption.ENABLE_GUICE_RUNTIME_INTEROP.raw.name,
           enableGuiceRuntimeInterop.getOrElse(false).toString(),
         )
       )
-      add(metroOption("interop-include-hilt-annotations", includeHiltAnnotations))
+      add(metroOption(MetroOption.INTEROP_INCLUDE_HILT_ANNOTATIONS, includeHiltAnnotations))
     }
   }
 }
 
 private fun MutableList<MetroCompilerPluginOption>.addCustomOption(
-  key: String,
+  option: MetroOption,
   value: Provider<Set<String>>,
 ) {
   value
     .getOrElse(emptySet())
     .takeUnless { it.isEmpty() }
-    ?.let { MetroCompilerPluginOption(key, value = it.joinToString(":")) }
+    ?.let { MetroCompilerPluginOption(option.raw.name, value = it.joinToString(":")) }
     ?.let(::add)
 }
+
+@JvmName("booleanPluginOptionOf")
+private fun metroOption(option: MetroOption, value: Provider<Boolean>): MetroCompilerPluginOption =
+  metroOption(option, value.map { it.toString() })
+
+@JvmName("intPluginOptionOf")
+private fun metroOption(option: MetroOption, value: Provider<Int>): MetroCompilerPluginOption =
+  metroOption(option, value.map { it.toString() })
+
+@JvmName("enumPluginOptionOf")
+private fun <T : Enum<T>> metroOption(
+  option: MetroOption,
+  value: Provider<T>,
+): MetroCompilerPluginOption = metroOption(option, value.map { it.name })
 
 @JvmName("booleanPluginOptionOf")
 private fun metroOption(key: String, value: Provider<Boolean>): MetroCompilerPluginOption =
   metroOption(key, value.map { it.toString() })
 
-@JvmName("intPluginOptionOf")
-private fun metroOption(key: String, value: Provider<Int>): MetroCompilerPluginOption =
-  metroOption(key, value.map { it.toString() })
-
-@JvmName("enumPluginOptionOf")
-private fun <T : Enum<T>> metroOption(key: String, value: Provider<T>): MetroCompilerPluginOption =
-  metroOption(key, value.map { it.name })
-
 private fun metroOption(key: String, value: Provider<String>): MetroCompilerPluginOption =
   MetroCompilerPluginOption(key, value.get())
+
+private fun metroOption(option: MetroOption, value: Provider<String>): MetroCompilerPluginOption =
+  MetroCompilerPluginOption(option.raw.name, value.get())
 
 internal fun MetroCompilerPluginOption.toSubpluginOption(): SubpluginOption =
   if (isFileOption) {

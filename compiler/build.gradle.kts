@@ -145,6 +145,11 @@ val shadowJar =
     // Relocate the metro runtime while excluding the compiler's own package
     relocate("dev.zacsweers.metro", "dev.zacsweers.metro.compiler.shaded.metro") {
       exclude("dev.zacsweers.metro.compiler.**")
+      // Metro's annotation lookup still uses string-built runtime package names. Relocate classes,
+      // but keep those string constants pointed at the public runtime package so the shaded
+      // compiler
+      // can run without an unshaded metro-common copy on the same classpath.
+      skipStringConstants = true
     }
   }
 
@@ -178,6 +183,7 @@ dependencies {
   compileOnly(libs.poko.annotations)
   compileOnly(libs.androidx.collection)
 
+  add(embedded.name, project(":metro-common"))
   add(embedded.name, project(":runtime"))
   add(embedded.name, libs.androidx.collection)
   add(embedded.name, libs.androidx.tracing.wire)

@@ -40,6 +40,7 @@ include(
   ":interop-javax",
   ":interop-jakarta",
   ":interop-guice",
+  ":metro-common",
   ":metrox-android",
   ":metrox-viewmodel",
   ":metrox-viewmodel-compose",

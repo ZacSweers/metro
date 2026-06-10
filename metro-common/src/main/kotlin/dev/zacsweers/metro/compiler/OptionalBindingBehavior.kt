@@ -8,6 +8,6 @@ public enum class OptionalBindingBehavior {
   DEFAULT,
   REQUIRE_OPTIONAL_BINDING;
 
-  internal val requiresAnnotatedParameters: Boolean
+  public val requiresAnnotatedParameters: Boolean
     get() = this == REQUIRE_OPTIONAL_BINDING
 }

@@ -124,6 +124,7 @@ dependencies {
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
   compileOnly(libs.kotlin.stdlib)
+  implementation(project(":metro-common"))
   implementation(libs.kotlinx.serialization.json)
 
   add(embedded.name, libs.graphSupport)

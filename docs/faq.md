@@ -48,9 +48,15 @@ There's a few reasons! Mainly, this is harder to maintain in codebases.
 
 Set `nonPublicContributionSeverity` to `ERROR`. Note this diagnostic only fires for internal `@ExposeImplBinding`-annotated types if you enable `generateContributionProviders`.
 
-### **I'm seeing a `ReservedStackAccess` stack overflow warning from the JVM at runtime?**
+### **I use virtual threads on the JVM (Project Loom). Can Metro pin my carrier threads?**
 
-This is a spurious JVM warning related to `ReentrantLock` (used internally by Metro's `DoubleCheck` for scoped bindings). It is not an actual stack overflow and can be safely ignored. You can suppress it by increasing the thread stack size with (i.e., `-Xss1m`) in your JVM args.
+Metro's `DoubleCheck` (used for scoped bindings) synchronizes on the instance's own monitor, like Dagger.
+
+On JDK 21–23, `synchronized` can pin a virtual thread to its carrier if the thread blocks while holding or acquiring the monitor ([JEP 444](https://openjdk.org/jeps/444)). For Metro this can only happen during a scoped binding's _one-time_ initialization, and only if the provider does blocking work — after initialization, reads never touch the monitor.
+
+JDK 24+ removes monitor pinning entirely ([JEP 491](https://openjdk.org/jeps/491)).
+
+If you're on JDK 21–23 with virtual-thread-heavy workloads, avoid blocking I/O in scoped providers (good advice in general) or initialize those bindings during startup.
 
 ### **Would you consider putting Metro into a foundation? My team has concerns about solo maintainers**
 

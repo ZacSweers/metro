@@ -5,9 +5,9 @@ package dev.zacsweers.metro.compiler
 public interface MetroLogger {
   public val type: Type
 
-  @IgnorableReturnValue public fun indent(): MetroLogger
+  public fun indent(): MetroLogger
 
-  @IgnorableReturnValue public fun unindent(): MetroLogger
+  public fun unindent(): MetroLogger
 
   public fun log(message: String) {
     log { message }
@@ -64,7 +64,7 @@ internal class MetroLoggerImpl(
 
   override fun unindent() = apply {
     indent--
-    if (indent < 0) reportCompilerBug("Unindented too much!")
+    check(indent >= 0) { "Unindented too much!" }
   }
 
   override fun log(message: () -> String) {
