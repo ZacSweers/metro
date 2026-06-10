@@ -11,10 +11,9 @@ import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.KtSourceElementOffsetStrategy
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
-import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
-import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -325,8 +324,34 @@ public class CompatContextImpl : CompatContext {
   }
 
   override fun CompilerConfiguration.messageCollectorCompat(): MessageCollector {
-    return get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY)
-      ?: PrintingMessageCollector(System.err, MessageRenderer.PLAIN_FULL_PATHS, false)
+    // Do not fall back to PrintingMessageCollector here. It (and MessageRenderer) are CLI-only
+    // classes that IDE kotlinc distributions don't ship, so referencing them throws
+    // NoClassDefFoundError when the IDE's KtCompilerPluginsCache loads Metro's registrar and
+    // no collector is configured (the IDE never configures one).
+    return get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY) ?: SystemErrMessageCollector()
+  }
+
+  /** A non-silent fallback collector that avoids CLI-only printing classes. */
+  private class SystemErrMessageCollector : MessageCollector {
+    private var hasErrors = false
+
+    override fun clear() {
+      hasErrors = false
+    }
+
+    override fun report(
+      severity: CompilerMessageSeverity,
+      message: String,
+      location: CompilerMessageSourceLocation?,
+    ) {
+      if (severity.isError) {
+        hasErrors = true
+      }
+      val renderedLocation = location?.let { " ($it)" }.orEmpty()
+      System.err.println("${severity.presentableName}: $message$renderedLocation")
+    }
+
+    override fun hasErrors(): Boolean = hasErrors
   }
 
   public class Factory : CompatContext.Factory {

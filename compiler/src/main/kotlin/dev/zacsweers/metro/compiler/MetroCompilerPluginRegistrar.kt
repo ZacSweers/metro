@@ -12,7 +12,6 @@ import dev.zacsweers.metro.compiler.tracing.TraceContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
-import org.jetbrains.kotlin.cli.common.messages.MessageRenderer.PLAIN_FULL_PATHS
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -185,8 +184,15 @@ private class DebugMessageCollector(private val delegate: MessageCollector) : Me
     message: String,
     location: CompilerMessageSourceLocation?,
   ) {
-    println(PLAIN_FULL_PATHS.render(severity, message, location))
-    println("${severity.presentableName}: $message")
+    // Render manually rather than with MessageRenderer, which is a CLI-only class that IDE
+    // kotlinc distributions don't ship.
+    val renderedLocation = location?.let { " ($it)" }.orEmpty()
+    val message = "${severity.presentableName}: $message$renderedLocation"
+    if (severity.isError) {
+      System.err.println(message)
+    } else {
+      println(message)
+    }
     delegate.report(severity, message, location)
   }
 
