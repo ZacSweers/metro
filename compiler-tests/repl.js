@@ -35,9 +35,20 @@ https://github.com/WebKit/webkit/blob/master/Source/JavaScriptCore/jsc.cpp
  */
 let currentRealmIndex = Realm.current();
 
+const skikoStub = `
+globalThis['./skiko.mjs'] = {
+    skikoApi: {
+        _createLocalCallbackScope: function() {},
+        _releaseLocalCallbackScope: function() {},
+        _registerCallback: function(callback) { return callback; },
+    },
+};
+`;
+
 function resetRealm() {
     if (currentRealmIndex !== 0) Realm.dispose(currentRealmIndex);
-    currentRealmIndex = Realm.createAllowCrossRealmAccess()
+    currentRealmIndex = Realm.createAllowCrossRealmAccess();
+    Realm.eval(currentRealmIndex, skikoStub);
 }
 
 /**

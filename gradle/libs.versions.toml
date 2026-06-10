@@ -124,6 +124,7 @@ compose-materialIcons = { module = "org.jetbrains.compose.material:material-icon
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version = "1.9.0" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-jb" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-jb" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-jb" }
 compose-ui-test = { module = "org.jetbrains.compose.ui:ui-test", version.ref = "compose-jb" }
 compose-ui-test-junit4 = { module = "org.jetbrains.compose.ui:ui-test-junit4", version.ref = "compose-jb" }
 
