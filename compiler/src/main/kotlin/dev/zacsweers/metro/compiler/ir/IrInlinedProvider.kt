@@ -219,10 +219,19 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
     private fun IrExpression.toInlinedProviderValue(): Value? {
       return when (this) {
         is IrConst -> toInlinedProviderValue()
+        // Class-referencing values are materialized as direct references at consuming graph sites,
+        // possibly in other modules, so the referenced class must be effectively public
         is IrClassReference ->
-          ClassLiteralValue(classType.classOrNull?.owner?.classIdOrFail ?: return null)
-        is IrGetObjectValue -> ObjectValue(symbol.owner.classIdOrFail)
-        is IrGetEnumValue -> EnumValue(symbol.owner.parentAsClass.classIdOrFail, symbol.owner.name)
+          classType.classOrNull
+            ?.owner
+            ?.takeIf { it.isEffectivelyPublic() }
+            ?.let { ClassLiteralValue(it.classIdOrFail) }
+        is IrGetObjectValue ->
+          symbol.owner.takeIf { it.isEffectivelyPublic() }?.let { ObjectValue(it.classIdOrFail) }
+        is IrGetEnumValue ->
+          symbol.owner.parentAsClass
+            .takeIf { it.isEffectivelyPublic() }
+            ?.let { EnumValue(it.classIdOrFail, symbol.owner.name) }
         is IrGetField -> constPropertyInitializerValue()
         is IrCall -> constPropertyInitializerValue()
         else -> null

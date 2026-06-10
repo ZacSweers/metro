@@ -3111,6 +3111,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("InlinedProvidersWithNonPublicValues.kt")
+    public void testInlinedProvidersWithNonPublicValues() {
+      run("InlinedProvidersWithNonPublicValues.kt");
+    }
+
+    @Test
     @TestMetadata("InlinedProvidesBytecodeCheck.kt")
     public void testInlinedProvidesBytecodeCheck() {
       run("InlinedProvidesBytecodeCheck.kt");

@@ -33,6 +33,13 @@ inlined only when it:
 The last condition is intentionally narrow. Metro only records values that can be materialized
 without running user code.
 
+Values that reference a class — object singletons, enum entries, and class literals — are only
+recorded when the referenced class is effectively public. Inlined values are materialized as direct
+references at consuming graph sites, possibly in other modules, and inlined factories are marked
+`@ComptimeOnly` (strippable by R8), so there is no safe fallback once a value is recorded in
+metadata. A private or internal class (e.g. a file-private `NoOp` object provided as its public
+supertype) would otherwise produce inaccessible references and fail IR validation.
+
 Scoped constant providers are excluded because scope annotations imply identity and caching
 semantics. When provider inlining is enabled, FIR reports a warning recommending that the user
 remove the scope annotation if they want the provider to be inlined.
