@@ -4,6 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+1.2.0
+-----
+
+_2026-06-10_
+
 ### New
 
 - **[interop]** This release introduces experimental support for Hilt `@InstallIn` and `@EntryPoint` interop.
@@ -12,7 +17,7 @@ Changelog
     - The eight standard Android Hilt components map to their canonical scopes out of the box.
     - User-declared `@DefineComponent` interfaces are resolved on demand by looking for an annotation on the same interface whose annotation class is itself annotated with `@Scope` (Hilt's own convention).
   - Both consuming Hilt-generated aggregation deps and also treating `@InstallIn` + `@EntryPoint`/`@Module` as interop are supported.
-  - See [the docs](https://zacsweers.github.io/metro/interop/#hilt) for the details and current limitations.
+  - See [the docs](https://zacsweers.github.io/metro/latest/interop/#hilt) for the details and current limitations.
 
 ### Enhancements
 
@@ -69,6 +74,7 @@ Special thanks to the following contributors for contributing to this release!
 - [@jonamireh](https://github.com/jonamireh)
 - [@kevinguitar](https://github.com/kevinguitar)
 - [@SimonMarquis](https://github.com/SimonMarquis)
+- [@shenghaiyang](https://github.com/shenghaiyang)
 - [@WhosNickDoglio](https://github.com/WhosNickDoglio)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)

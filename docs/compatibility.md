@@ -73,9 +73,7 @@ The following Kotlin versions are tested via CI:
 |----------------|
 | 2.4.20-dev-835 |
 | 2.4.0-dev-2124 |
-| 2.4.0-RC       |
-| 2.4.0-Beta2    |
-| 2.4.0-Beta1    |
+| 2.4.0          |
 | 2.3.21         |
 | 2.3.20         |
 | 2.3.10         |
@@ -94,9 +92,10 @@ The following IDE versions are tested via IDE integration tests:
 |---------------|-------------------------------|
 | 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1)  |
 | 2026.1.1      | 2025.3.2.6 (Panda 2)          |
-|               | 2025.3.3.6 (Panda 3)          |
-|               | 2025.3.4.7 (Panda 4 Patch 1)  |
-|               | 2026.1.1.4 (Quail 1 Canary 4) |
+| 2026.1.2      | 2025.3.3.6 (Panda 3)          |
+| 2026.1.3      | 2025.3.4.7 (Panda 4 Patch 1)  |
+|               | 2026.1.1.8 (Quail 1)          |
+|               | 2026.1.2.4 (Quail 2 Canary 4) |
 
 ## Runtime Compatibility
 

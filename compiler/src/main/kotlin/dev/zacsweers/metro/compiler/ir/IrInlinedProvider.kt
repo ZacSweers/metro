@@ -7,7 +7,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.proto.EnumEntryProto
 import dev.zacsweers.metro.compiler.proto.InlinedProviderProto
 import dev.zacsweers.metro.compiler.proto.InlinedValueProto
-import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -39,14 +38,19 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
 
   fun toProto(): InlinedProviderProto = InlinedProviderProto(value_ = value.toProto())
 
+  /**
+   * Returns the materialized value expression or null if the value references a class that cannot
+   * be resolved in the current compilation, e.g. an object class from an implementation dependency
+   * of the providing module. Callers must fall back to the provider factory in that case.
+   */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  fun materialize(type: IrType): IrExpression = value.materialize(type)
+  fun materialize(type: IrType): IrExpression? = value.materialize(type)
 
   private sealed interface Value {
     fun toProto(): InlinedValueProto
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
-    fun materialize(type: IrType): IrExpression
+    fun materialize(type: IrType): IrExpression?
   }
 
   @JvmInline
@@ -133,11 +137,9 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
       InlinedValueProto(object_class_id = classId.asString())
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
-    override fun materialize(type: IrType): IrExpression {
+    override fun materialize(type: IrType): IrExpression? {
       val scopeOwner = scope.scope.scopeOwnerSymbol.owner as IrDeclaration
-      val symbol =
-        scopeOwner.lookupClass(classId)
-          ?: reportCompilerBug("Could not resolve object class $classId")
+      val symbol = scopeOwner.lookupClass(classId) ?: return null
       return scope.irGetObject(symbol)
     }
   }
@@ -150,15 +152,13 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
       )
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
-    override fun materialize(type: IrType): IrExpression {
+    override fun materialize(type: IrType): IrExpression? {
       val scopeOwner = scope.scope.scopeOwnerSymbol.owner as IrDeclaration
-      val enumClass =
-        scopeOwner.lookupClass(enumClassId)?.owner
-          ?: reportCompilerBug("Could not resolve enum class $enumClassId")
+      val enumClass = scopeOwner.lookupClass(enumClassId)?.owner ?: return null
       val enumEntry =
         enumClass.declarations.filterIsInstance<IrEnumEntry>().singleOrNull {
           it.name == entryName
-        } ?: reportCompilerBug("Could not resolve enum entry $enumClassId.$entryName")
+        } ?: return null
       return IrGetEnumValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, enumEntry.symbol)
     }
   }
@@ -169,11 +169,9 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
       InlinedValueProto(class_literal_class_id = classId.asString())
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
-    override fun materialize(type: IrType): IrExpression {
+    override fun materialize(type: IrType): IrExpression? {
       val scopeOwner = scope.scope.scopeOwnerSymbol.owner as IrDeclaration
-      val symbol =
-        scopeOwner.lookupClass(classId)
-          ?: reportCompilerBug("Could not resolve class literal $classId")
+      val symbol = scopeOwner.lookupClass(classId) ?: return null
       return scope.kClassReference(symbol)
     }
   }
@@ -219,10 +217,19 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
     private fun IrExpression.toInlinedProviderValue(): Value? {
       return when (this) {
         is IrConst -> toInlinedProviderValue()
+        // Class-referencing values are materialized as direct references at consuming graph sites,
+        // possibly in other modules, so the referenced class must be effectively public
         is IrClassReference ->
-          ClassLiteralValue(classType.classOrNull?.owner?.classIdOrFail ?: return null)
-        is IrGetObjectValue -> ObjectValue(symbol.owner.classIdOrFail)
-        is IrGetEnumValue -> EnumValue(symbol.owner.parentAsClass.classIdOrFail, symbol.owner.name)
+          classType.classOrNull
+            ?.owner
+            ?.takeIf { it.isEffectivelyPublic() }
+            ?.let { ClassLiteralValue(it.classIdOrFail) }
+        is IrGetObjectValue ->
+          symbol.owner.takeIf { it.isEffectivelyPublic() }?.let { ObjectValue(it.classIdOrFail) }
+        is IrGetEnumValue ->
+          symbol.owner.parentAsClass
+            .takeIf { it.isEffectivelyPublic() }
+            ?.let { EnumValue(it.classIdOrFail, symbol.owner.name) }
         is IrGetField -> constPropertyInitializerValue()
         is IrCall -> constPropertyInitializerValue()
         else -> null
