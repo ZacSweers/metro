@@ -24,7 +24,6 @@ plugins {
 project.plugins.apply(D8Plugin::class.java)
 
 sourceSets {
-  register("generator220")
   register("generator230")
   register("generator2320")
   register("generator240")
@@ -121,34 +120,32 @@ var compilerTestFrameworkVersion: String
 var reflectVersion: String
 var generatorConfigToUse: String
 
-if (testKotlinVersion >= kotlin23) {
-  generatorConfigToUse =
-    if (testKotlinVersion >= kotlin2420Dev835) {
-      "generator2420"
-    } else if (testKotlinVersion >= kotlin24Beta1) {
-      "generator240"
-    } else if (testKotlinVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)) {
-      "generator2320"
-    } else {
-      "generator230"
-    }
-  compilerTestFrameworkVersion = testCompilerVersion
-  reflectVersion =
-    if (testKotlinVersion.minor == 3 && testKotlinVersion.isDev) {
-      "2.3.20"
-    } else {
-      testCompilerVersion
-    }
-} else {
-  generatorConfigToUse = "generator220"
-  compilerTestFrameworkVersion = "2.2.20"
-  reflectVersion = "2.2.20"
+check(testKotlinVersion >= kotlin23) {
+  "compiler-tests requires Kotlin 2.3.0 or newer, but metro.testCompilerVersion=$testCompilerVersion"
 }
+
+generatorConfigToUse =
+  if (testKotlinVersion >= kotlin2420Dev835) {
+    "generator2420"
+  } else if (testKotlinVersion >= kotlin24Beta1) {
+    "generator240"
+  } else if (testKotlinVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)) {
+    "generator2320"
+  } else {
+    "generator230"
+  }
+
+compilerTestFrameworkVersion = testCompilerVersion
+
+reflectVersion =
+  if (testKotlinVersion.minor == 3 && testKotlinVersion.isDev) {
+    "2.3.20"
+  } else {
+    testCompilerVersion
+  }
 
 dependencies {
   // 2.3.0 changed the test gen APIs around into different packages
-  "generator220CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.2.20")
-  "generator220CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.2.20")
   "generator230CompileOnly"(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
   )

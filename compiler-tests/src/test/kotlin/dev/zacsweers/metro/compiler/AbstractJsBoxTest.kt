@@ -2,18 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
-import org.jetbrains.kotlin.js.test.runners.AbstractJsTest
-import org.jetbrains.kotlin.test.FirParser
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
-open class AbstractJsBoxTest :
-  AbstractJsTest(
-    pathToTestDir = "compiler-tests/src/test/data/box",
-    testGroupOutputDirPrefix = "box/js/",
-    parser = FirParser.LightTree,
-  ) {
+open class AbstractJsBoxTest : KotlinJsBoxTestBase() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
     return ClasspathBasedStandardLibrariesPathProvider
   }
