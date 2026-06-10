@@ -25,4 +25,4 @@ import kotlin.annotation.AnnotationTarget.CLASS
  *
  * This annotation has no effect when `generateContributionProviders` is not enabled.
  */
-@ExperimentalMetroApi @Target(CLASS) public annotation class ExposeImplBinding
+@Target(CLASS) public annotation class ExposeImplBinding

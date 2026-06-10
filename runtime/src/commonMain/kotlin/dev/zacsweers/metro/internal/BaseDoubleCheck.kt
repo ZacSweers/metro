@@ -24,15 +24,15 @@ internal val UNINITIALIZED = Any()
  * A [Lazy] and [Provider] implementation that memoizes the value returned from a delegate
  * [Provider]. The provider instance is released after it's called.
  *
- * Platform-specific synchronization is provided by the [Lock] superclass (`ReentrantLock` on JVM,
- * reentrant spinlock on native, no-op on JS/Wasm).
+ * Platform-specific synchronization is provided by the [DoubleCheckInitGuard] superclass (the
+ * instance's own monitor on JVM, a parking init guard on native, no-op on JS/Wasm).
  *
  * Ported from Dagger's `DoubleCheck` with modifications for KMP support.
  */
-public abstract class BaseDoubleCheck<T>(provider: Provider<T>) : Provider<T>, Lazy<T> {
+public abstract class BaseDoubleCheck<T>(provider: Provider<T>) :
+  DoubleCheckInitGuard(), Provider<T>, Lazy<T> {
   private var provider: Provider<T>? = provider
   @Volatile private var _value: Any? = UNINITIALIZED
-  private val lock = Lock()
 
   override val value: T
     get() {
@@ -42,7 +42,7 @@ public abstract class BaseDoubleCheck<T>(provider: Provider<T>) : Provider<T>, L
         return result1 as T
       }
 
-      return lock.withLock {
+      return guarded {
         val result2 = _value
         if (result2 !== UNINITIALIZED) {
           @Suppress("UNCHECKED_CAST") (result2 as T)

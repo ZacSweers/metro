@@ -26,9 +26,15 @@ Changelog
 - **[IR/IC]** Optimize IC tracking by buffering lookup and expect/actual records during IR and flushing them once after graph validation, avoiding per-write synchronization on the hot path. This is enabled by default but can be disabled via the `buffered-ic-tracking` compiler option if it causes any issues.
 - **[IR/IC]** Use newer compiler `DeclarationFinder` APIs on Kotlin `2.3.20`+. These have more granular search scopes plus automatic IC tracking.
 - **[IR/runtime]** Add internal primitive instance factories and use them where possible for primitive graph inputs and inlined providers.
-- **[Gradle]** Add a `metroEnv` task that writes human-readable Metro/Kotlin/Gradle environment reports for bug reports.
-- **[Reporting]** Add compiler stats to reporting.
-- **[runtime/native]** Add bounded backoff to the native `Lock` implementation so contention yields instead of spinning continuously.
+- **[gradle]** Add a `metroEnv` task that writes human-readable Metro/Kotlin/Gradle environment reports for bug reports.
+- **[reporting]** Add compiler stats to reporting.
+- **[runtime]** Rework `DoubleCheck` synchronization on JVM and native targets.
+  - On JVM, scoped bindings now synchronize on the `DoubleCheck` instance's own monitor (like Dagger) instead of allocating a `ReentrantLock` per instance, which also eliminates the spurious `ReservedStackAccess` JVM warning.
+  - On native targets, the previous spinlock impl is replaced with a reentrant init guard whose contended callers park on a process-wide condition variable instead of busy-waiting.
+    - On Apple platforms, parked waiters additionally donate their [QoS](https://developer.apple.com/library/archive/documentation/Performance/Conceptual/EnergyGuide-iOS/PrioritizeWorkWithQoS.html) class to the initializing thread to avoid priority inversion.
+  - Notes for virtual thread (i.e. Project Loom):
+    - JDK 21–23: `synchronized` can pin a virtual thread to its carrier if a scoped provider blocks during its one-time init ([JEP 444](https://openjdk.org/jeps/444)).
+    - JDK 24+ removes monitor pinning ([JEP 491](https://openjdk.org/jeps/491)).
 
 ### Fixes
 
@@ -44,8 +50,10 @@ Changelog
 
 ### Changes
 
-- **[Gradle]** Promote `generateContributionProviders` to stable.
-- **[Gradle]** Add missing experimental annotations to the Gradle plugin's analysis APIs. Sorry these were not meant to be stabilized yet!
+- Promote `@GraphPrivate` to stable.
+- Promote `@DefaultBinding` to stable.
+- Promote `generateContributionProviders` (and `@ExposeImplBinding`) to stable.
+- **[gradle]** Add missing experimental annotations to the Gradle plugin's analysis APIs. Sorry these were not meant to be stabilized yet!
 - Build against Kotlin `2.4.0`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
 - No longer test most Kotlin `2.4.0` pre-release builds. Kotlin `2.4.0-dev-2124` _is_ still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.
 - Test Android Studio Quail 1 stable (`2026.1.1.8`).
@@ -62,6 +70,10 @@ Special thanks to the following contributors for contributing to this release!
 - [@kevinguitar](https://github.com/kevinguitar)
 - [@SimonMarquis](https://github.com/SimonMarquis)
 - [@WhosNickDoglio](https://github.com/WhosNickDoglio)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+Go Knicks!
 
 1.1.1
 -----

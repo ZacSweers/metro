@@ -7,6 +7,10 @@
 // - Show declarations: true
 
 // Library unique name: <dev.zacsweers.metro:runtime>
+open annotation class <#A: kotlin/Any?> dev.zacsweers.metro/DefaultBinding : kotlin/Annotation { // dev.zacsweers.metro/DefaultBinding|null[0]
+    constructor <init>() // dev.zacsweers.metro/DefaultBinding.<init>|<init>(){}[0]
+}
+
 open annotation class <#A: kotlin/Any?> dev.zacsweers.metro/binding : kotlin/Annotation { // dev.zacsweers.metro/binding|null[0]
     constructor <init>() // dev.zacsweers.metro/binding.<init>|<init>(){}[0]
 }
@@ -112,6 +116,10 @@ open annotation class dev.zacsweers.metro/ExperimentalMetroApi : kotlin/Annotati
     constructor <init>() // dev.zacsweers.metro/ExperimentalMetroApi.<init>|<init>(){}[0]
 }
 
+open annotation class dev.zacsweers.metro/ExposeImplBinding : kotlin/Annotation { // dev.zacsweers.metro/ExposeImplBinding|null[0]
+    constructor <init>() // dev.zacsweers.metro/ExposeImplBinding.<init>|<init>(){}[0]
+}
+
 open annotation class dev.zacsweers.metro/ForScope : kotlin/Annotation { // dev.zacsweers.metro/ForScope|null[0]
     constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/ForScope.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
 
@@ -134,6 +142,10 @@ open annotation class dev.zacsweers.metro/GraphExtension : kotlin/Annotation { /
     open annotation class Factory : kotlin/Annotation { // dev.zacsweers.metro/GraphExtension.Factory|null[0]
         constructor <init>() // dev.zacsweers.metro/GraphExtension.Factory.<init>|<init>(){}[0]
     }
+}
+
+open annotation class dev.zacsweers.metro/GraphPrivate : kotlin/Annotation { // dev.zacsweers.metro/GraphPrivate|null[0]
+    constructor <init>() // dev.zacsweers.metro/GraphPrivate.<init>|<init>(){}[0]
 }
 
 open annotation class dev.zacsweers.metro/HasMemberInjections : kotlin/Annotation { // dev.zacsweers.metro/HasMemberInjections|null[0]
