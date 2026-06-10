@@ -47,7 +47,6 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
-import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -901,7 +900,7 @@ internal class IrGraphGenerator(
             .apply {
               addBackingFieldCompat {
                 type = shard.shardClass.typeWith()
-                visibility = DescriptorVisibilities.INTERNAL
+                visibility = DescriptorVisibilities.PRIVATE
               }
             }
         result[shard.index] = shardField
@@ -1692,18 +1691,16 @@ internal class IrGraphGenerator(
           if (declarationToFinalize.isFakeOverride) {
             declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
           }
-          body =
-            if (function.annotations.isBinds) {
-              val sourceParameter =
-                extensionReceiverParameterCompat
-                  ?: regularParameters.singleOrNull()
-                  ?: reportCompilerBug(
-                    "No source parameter found for @Binds function $kotlinFqName"
-                  )
-              createIrBuilder(symbol).run { irExprBodySafe(irGet(sourceParameter)) }
-            } else {
-              stubExpressionBody()
-            }
+          // This override is the graph impl's concrete implementation of the inherited @Binds
+          // member. @Binds is an identity conversion from the source parameter to the declared
+          // return type, so emit that body directly rather than a placeholder stub. KLIB backends
+          // deserialize and validate these inherited members before later Metro mirror code can
+          // cover for them.
+          val sourceParameter =
+            extensionReceiverParameterCompat
+              ?: regularParameters.singleOrNull()
+              ?: reportCompilerBug("No source parameter found for @Binds function $kotlinFqName")
+          body = createIrBuilder(symbol).run { irExprBodySafe(irGet(sourceParameter)) }
         }
       }
     }
