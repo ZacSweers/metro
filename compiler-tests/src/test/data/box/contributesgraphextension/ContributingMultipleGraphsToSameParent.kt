@@ -43,7 +43,8 @@ fun box(): String {
   val graph = createGraph<ExampleGraph>()
   val loggedInGraph1 = graph.createLoggedInGraph()
   val loggedInGraph2 = graph.createLoggedInGraph2()
-  assertNotEquals(loggedInGraph1::class, loggedInGraph2::class)
+  assertIs<LoggedInGraph>(loggedInGraph1)
+  assertIs<test2.LoggedInGraph>(loggedInGraph2)
   assertEquals(graph.dependency, loggedInGraph1.dependency)
   assertEquals(graph.dependency, loggedInGraph2.dependency)
   return "OK"

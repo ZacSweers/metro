@@ -13,6 +13,6 @@ fun box(): String {
   val graph = createGraph<ExampleGraph>()
   val contributedInterface = graph.contributedInterface
   assertNotNull(contributedInterface)
-  assertEquals(contributedInterface::class.qualifiedName, "Impl")
+  assertEquals("Impl", contributedInterface::class.simpleName)
   return "OK"
 }
