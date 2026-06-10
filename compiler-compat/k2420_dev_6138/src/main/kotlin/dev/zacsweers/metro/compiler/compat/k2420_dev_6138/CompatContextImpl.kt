@@ -4,47 +4,15 @@ package dev.zacsweers.metro.compiler.compat.k2420_dev_6138
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
-import dev.zacsweers.metro.compiler.compat.k240.CompatContextImpl as DelegateType
-import org.jetbrains.kotlin.KtFakeSourceElementKind
+import dev.zacsweers.metro.compiler.compat.k2420_dev_3583.CompatContextImpl as DelegateType
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.ir.IrElement
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
-import org.jetbrains.kotlin.ir.util.CustomKotlinLikeDumpStrategy
-import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 public class CompatContextImpl : CompatContext by DelegateType() {
   override fun createIrGeneratedDeclarationsRegistrar(
     pluginContext: IrPluginContext
   ): IrGeneratedDeclarationsRegistrarCompat {
-    return IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
+    return RegisterClassIrGeneratedDeclarationsRegistrarCompat(
       pluginContext.metadataDeclarationRegistrar
-    )
-  }
-
-  override val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
-    get() = KtFakeSourceElementKind.PluginGenerated.Default
-
-  override fun IrElement.dumpKotlinLikeCompat(
-    options: KotlinLikeDumpOptions,
-    classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
-    fallback: () -> String,
-  ): String {
-    val customDumpStrategy = options.customDumpStrategy
-    return dumpKotlinLike(
-      options =
-        options.copy(
-          customDumpStrategy =
-            object : CustomKotlinLikeDumpStrategy by customDumpStrategy {
-              override fun nameOf(
-                container: IrDeclaration?,
-                declaration: IrDeclarationWithName,
-              ): String {
-                return classNameTransformer(container, declaration)
-              }
-            }
-        )
     )
   }
 

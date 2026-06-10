@@ -382,6 +382,40 @@ class CompatContextTest {
   }
 
   @Test
+  fun `real factory matrix resolves reasonably for IDE-bundled compiler versions`() {
+    // Mirrors the actual shipped compat modules. Keep in sync when adding/removing modules.
+    val realMinVersions =
+      listOf("2.3.0", "2.3.20", "2.4.0-dev-2124", "2.4.0", "2.4.20-dev-3583", "2.4.20-dev-6138")
+
+    // currentVersion -> expected factory minVersion. Current versions are the (aliased) kotlinc
+    // versions bundled by IDEs we test in ide-integration-tests, plus the dev track itself.
+    val expectations =
+      mapOf(
+        // IJ 2025.3.x / AS Panda (2.3.20-ij253-*, 2.3.255-dev-255 -> 2.3.0-dev-9992)
+        "2.3.0-dev-9992" to "2.3.0",
+        // IJ 2026.1.1 (2.4.0-ij261-32 -> 2.4.0-dev-2124)
+        "2.4.0-dev-2124" to "2.4.0-dev-2124",
+        // IJ 2026.1.2/.3 / AS Quail (2.4.0-ij261-50/-64, 2.4.255-dev-255 -> 2.4.0-dev-2633)
+        "2.4.0-dev-2633" to "2.4.0-dev-2124",
+        // IJ 2026.2 (2.4.20-dev-4439)
+        "2.4.20-dev-4439" to "2.4.20-dev-3583",
+        // Current dev track
+        "2.4.20-dev-6138" to "2.4.20-dev-6138",
+        // Unmapped future IDE build picks the lowest same-base factory
+        "2.4.20-ij262-1" to "2.4.20-dev-3583",
+      )
+
+    for ((currentVersion, expectedMinVersion) in expectations) {
+      val factories = realMinVersions.map {
+        FakeFactory(minVersion = it, reportedCurrentVersion = currentVersion)
+      }
+      val resolved =
+        CompatContext.resolveFactory(factories.asSequence(), testVersionString = currentVersion)
+      assertThat(resolved.minVersion).isEqualTo(expectedMinVersion)
+    }
+  }
+
+  @Test
   fun `factory resolution works with aliased version`() {
     // Simulate an IDE reporting a fake version like 2.3.255-dev-255
     // After aliasing to 2.3.20-Beta2, factory resolution should pick the right factory

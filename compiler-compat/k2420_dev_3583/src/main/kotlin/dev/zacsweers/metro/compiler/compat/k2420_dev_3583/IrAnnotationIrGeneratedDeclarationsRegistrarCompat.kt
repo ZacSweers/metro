@@ -1,10 +1,9 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.compat.k2420_dev_6138
+package dev.zacsweers.metro.compiler.compat.k2420_dev_3583
 
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import org.jetbrains.kotlin.backend.common.extensions.IrGeneratedDeclarationsRegistrar
-import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -13,9 +12,13 @@ import org.jetbrains.kotlin.ir.expressions.IrAnnotation
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.impl.IrAnnotationImpl
 
-@JvmInline
-internal value class IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
-  private val delegate: IrGeneratedDeclarationsRegistrar
+/**
+ * Registrar compat for the `IrAnnotation`-based [IrGeneratedDeclarationsRegistrar] API.
+ * `registerClassAsMetadataVisible` is intentionally not overridden here — it doesn't exist until
+ * `2.4.20-dev-6138`, where a subclass adds it.
+ */
+public open class IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
+  protected val delegate: IrGeneratedDeclarationsRegistrar
 ) : IrGeneratedDeclarationsRegistrarCompat {
   @Suppress("UNCHECKED_CAST")
   override fun getMetadataVisibleAnnotationsForElement(
@@ -26,52 +29,52 @@ internal value class IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
   override fun addMetadataVisibleAnnotationsToElement(
     declaration: IrDeclaration,
     annotations: List<IrConstructorCall>,
-  ) = delegate.addMetadataVisibleAnnotationsToElement(declaration, annotations.mapToIrAnnotation())
+  ) {
+    delegate.addMetadataVisibleAnnotationsToElement(declaration, annotations.mapToIrAnnotation())
+  }
 
-  override fun registerFunctionAsMetadataVisible(irFunction: IrSimpleFunction) =
+  override fun registerFunctionAsMetadataVisible(irFunction: IrSimpleFunction) {
     delegate.registerFunctionAsMetadataVisible(irFunction.apply { convertFunctionAnnotations() })
+  }
 
-  override fun registerConstructorAsMetadataVisible(irConstructor: IrConstructor) =
+  override fun registerConstructorAsMetadataVisible(irConstructor: IrConstructor) {
     delegate.registerConstructorAsMetadataVisible(
       irConstructor.apply { convertFunctionAnnotations() }
     )
-
-  override fun registerClassAsMetadataVisible(irClass: IrClass) =
-    delegate.registerClassAsMetadataVisible(
-      irClass.apply {
-        convertAnnotations()
-        typeParameters.forEach { it.convertAnnotations() }
-      }
-    )
+  }
 
   override fun addCustomMetadataExtension(
     irDeclaration: IrDeclaration,
     pluginId: String,
     data: ByteArray,
-  ) = delegate.addCustomMetadataExtension(irDeclaration, pluginId, data)
+  ) {
+    delegate.addCustomMetadataExtension(irDeclaration, pluginId, data)
+  }
 
-  override fun getCustomMetadataExtension(irDeclaration: IrDeclaration, pluginId: String) =
-    delegate.getCustomMetadataExtension(irDeclaration, pluginId)
+  override fun getCustomMetadataExtension(
+    irDeclaration: IrDeclaration,
+    pluginId: String,
+  ): ByteArray? = delegate.getCustomMetadataExtension(irDeclaration, pluginId)
 
-  private fun List<IrConstructorCall>.mapToIrAnnotation(): List<IrAnnotation> {
+  protected fun List<IrConstructorCall>.mapToIrAnnotation(): List<IrAnnotation> {
     return map { it.toIrAnnotation() }
   }
 
-  private fun IrDeclaration.annotationsCompat(): List<IrConstructorCall> {
+  protected fun IrDeclaration.annotationsCompat(): List<IrConstructorCall> {
     return (annotations as List<*>).map { it as IrConstructorCall }
   }
 
-  private fun IrFunction.convertFunctionAnnotations() {
+  protected fun IrFunction.convertFunctionAnnotations() {
     convertAnnotations()
     parameters.forEach { it.convertAnnotations() }
     typeParameters.forEach { it.convertAnnotations() }
   }
 
-  private fun IrDeclaration.convertAnnotations() {
+  protected fun IrDeclaration.convertAnnotations() {
     annotations = annotationsCompat().mapToIrAnnotation()
   }
 
-  private fun IrConstructorCall.toIrAnnotation(): IrAnnotation {
+  protected fun IrConstructorCall.toIrAnnotation(): IrAnnotation {
     if (this is IrAnnotation) return this
     val call = this
     return IrAnnotationImpl(
