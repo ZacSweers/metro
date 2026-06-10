@@ -3111,6 +3111,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("InlinedProviderValueNotOnConsumerClasspath.kt")
+    public void testInlinedProviderValueNotOnConsumerClasspath() {
+      run("InlinedProviderValueNotOnConsumerClasspath.kt");
+    }
+
+    @Test
     @TestMetadata("InlinedProvidersWithNonPublicValues.kt")
     public void testInlinedProvidersWithNonPublicValues() {
       run("InlinedProvidersWithNonPublicValues.kt");

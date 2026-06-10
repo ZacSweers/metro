@@ -33,12 +33,10 @@ inlined only when it:
 The last condition is intentionally narrow. Metro only records values that can be materialized
 without running user code.
 
-Values that reference a class — object singletons, enum entries, and class literals — are only
-recorded when the referenced class is effectively public. Inlined values are materialized as direct
-references at consuming graph sites, possibly in other modules, and inlined factories are marked
-`@ComptimeOnly` (strippable by R8), so there is no safe fallback once a value is recorded in
-metadata. A private or internal class (e.g. a file-private `NoOp` object provided as its public
-supertype) would otherwise produce inaccessible references and fail IR validation.
+Class-referencing values (objects, enum entries, class literals) are only recorded when the
+referenced class is effectively public. They materialize as direct references at consuming graph
+sites, possibly in other modules, where a non-public class would be an inaccessible reference that
+fails IR validation.
 
 Scoped constant providers are excluded because scope annotations imply identity and caching
 semantics. When provider inlining is enabled, FIR reports a warning recommending that the user
@@ -78,6 +76,12 @@ Materialization happens per value kind:
 The materialized expression is then adapted to the requested access type. For normal graph
 accessors this means returning the scalar value directly. For provider access, Metro wraps
 the materialized value in the appropriate factory.
+
+Materialization can still fail for class-referencing values: the class may not be resolvable in
+the consuming compilation (e.g. an object behind an implementation dependency of the providing
+module). `materialize(...)` returns null in that case and the generator falls back to the factory
+paths. The fallback factory survives R8 despite `@ComptimeOnly` because `-assumenosideeffects`
+only removes calls whose results are unused.
 
 ## Provider Wrappers
 
