@@ -21,7 +21,6 @@ import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
-import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.withPopulatedImplicitClassKey
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
@@ -226,11 +225,11 @@ private fun generateMirrorFunction(
         visibility = DescriptorVisibilities.PUBLIC
         returnType = targetFunction.ir.returnType
         origin = Origins.Default
-        modality = Modality.ABSTRACT
+        modality = Modality.FINAL
       }
       .apply {
         copyParametersFrom(targetFunction.ir)
-        setDispatchReceiver(null)
+        body = stubExpressionBody()
         replaceAnnotationsCompat(annotations.mirrorIrConstructorCalls(symbol))
       }
 

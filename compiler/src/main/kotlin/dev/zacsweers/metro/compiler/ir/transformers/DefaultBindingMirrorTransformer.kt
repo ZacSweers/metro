@@ -17,12 +17,12 @@ import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
+import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
-import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -135,10 +135,10 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
         .addFunction(
           Symbols.Names.defaultBindingFunction.asString(),
           returnType = finalType,
-          modality = Modality.ABSTRACT,
           origin = Origins.Default,
         )
         .apply {
+          body = stubExpressionBody()
           qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
           // Register as metadata visible
           metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
