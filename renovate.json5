@@ -31,14 +31,6 @@
       depNameTemplate: 'java',
       extractVersionTemplate: '^(?<version>\\d+)',
     },
-    // Keep the Metro compiler bootstrap version in sync with the Metro Gradle plugin version.
-    {
-      customType: 'regex',
-      fileMatch: ['(^|/)gradle\\.properties$'],
-      matchStrings: ['^METRO_BOOTSTRAP_VERSION=(?<currentValue>[^\\s]+)$'],
-      datasourceTemplate: 'maven',
-      depNameTemplate: 'dev.zacsweers.metro:compiler',
-    },
     // Track ktfmt version pinned in .kempt.toml.
     // The `[^\\[]*?` lookahead keeps the match within the [ktfmt] section.
     {
@@ -81,18 +73,15 @@
       ],
     },
     {
+      description: 'Keep the Metro Gradle plugin and compiler bootstrap versions in lockstep',
       groupName: 'Metro bootstrap',
-      matchPackageNames: [
-        'dev.zacsweers.metro:compiler',
-        'dev.zacsweers.metro:dev.zacsweers.metro.gradle.plugin',
-      ],
-    },
-    {
-      groupName: 'Metro bootstrap',
+      groupSlug: 'metro-bootstrap',
       matchDepNames: [
         'dev.zacsweers.metro',
         'dev.zacsweers.metro:compiler',
       ],
+      matchDatasources: ['maven'],
+      minimumGroupSize: 2,
     },
     {
       description: 'Disable Kotlin updates - manually managed due to compiler plugin compatibility',
