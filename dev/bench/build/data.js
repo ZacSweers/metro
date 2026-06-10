@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781049038786,
+  "lastUpdate": 1781070667567,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -16800,6 +16800,62 @@ window.BENCHMARK_DATA = {
             "value": 19391.392,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.54%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1fa25a57~1",
+          "message": "[before] Fix inlined access to non-visible class types (#24",
+          "timestamp": "2026-06-10T05:13:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1fa25a57e294782ecc2c7b13c5885e7277ce9495"
+        },
+        "date": 1781070667567,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18202.19,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1fa25a57e294782ecc2c7b13c5885e7277ce9495",
+          "message": "[after] Fix inlined access to non-visible class types (#24",
+          "timestamp": "2026-06-10T05:13:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1fa25a57e294782ecc2c7b13c5885e7277ce9495"
+        },
+        "date": 1781070667568,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18446.068,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.34%"
           }
         ]
       }

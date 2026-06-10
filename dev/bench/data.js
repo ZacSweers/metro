@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781049038643,
+  "lastUpdate": 1781070667409,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -16800,6 +16800,62 @@ window.BENCHMARK_DATA = {
             "value": 0.17300102004603252,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.08%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1fa25a57~1",
+          "message": "[before] Fix inlined access to non-visible class types (#24",
+          "timestamp": "2026-06-10T05:13:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1fa25a57e294782ecc2c7b13c5885e7277ce9495"
+        },
+        "date": 1781070667409,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2211644268317774,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1fa25a57e294782ecc2c7b13c5885e7277ce9495",
+          "message": "[after] Fix inlined access to non-visible class types (#24",
+          "timestamp": "2026-06-10T05:13:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1fa25a57e294782ecc2c7b13c5885e7277ce9495"
+        },
+        "date": 1781070667410,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22235066393686181,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.54%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
