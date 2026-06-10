@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781108872543,
+  "lastUpdate": 1781124881503,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -16968,6 +16968,62 @@ window.BENCHMARK_DATA = {
             "value": 18621.284,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.49%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bfceeabf~1",
+          "message": "[before] Kotlin 2.4.20-dev-6138 compat (#2407)",
+          "timestamp": "2026-06-10T16:14:13-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bfceeabfb0218694b54a866bc97c88912f309a76"
+        },
+        "date": 1781124881503,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19611.47,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bfceeabfb0218694b54a866bc97c88912f309a76",
+          "message": "[after] Kotlin 2.4.20-dev-6138 compat (#2407)",
+          "timestamp": "2026-06-10T16:14:13-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bfceeabfb0218694b54a866bc97c88912f309a76"
+        },
+        "date": 1781124881504,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19965.742,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.81%"
           }
         ]
       }
