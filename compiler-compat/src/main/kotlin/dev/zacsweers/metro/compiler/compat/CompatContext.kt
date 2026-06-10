@@ -606,17 +606,17 @@ public interface CompatContext {
    * references can be inlined into Metro code that runs on older compilers.
    */
   @CompatApi(
-    since = "2.4.20-dev-5775",
+    since = "2.4.20-dev-6138",
     reason = CompatApi.Reason.ABI_CHANGE,
-    message = "2.4.20-dev-5775 split PluginGenerated into nested source element kinds",
+    message = "2.4.20-dev-6138 split PluginGenerated into nested source element kinds",
   )
   public val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
     get() = KtFakeSourceElementKind.PluginGenerated
 
   @CompatApi(
-    since = "2.4.20-dev-5775",
+    since = "2.4.20-dev-6138",
     reason = CompatApi.Reason.ABI_CHANGE,
-    message = "2.4.20-dev-5775 upstreamed custom Kotlin-like IR name rendering",
+    message = "2.4.20-dev-6138 upstreamed custom Kotlin-like IR name rendering",
   )
   public fun IrElement.dumpKotlinLikeCompat(
     options: KotlinLikeDumpOptions,

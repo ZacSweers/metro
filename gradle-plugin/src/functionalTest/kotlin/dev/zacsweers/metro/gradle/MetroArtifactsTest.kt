@@ -65,7 +65,7 @@ class MetroArtifactsTest {
     val enableKlibParamsCheck =
       testCompilerVersion >= KotlinToolingVersion("2.3.0") &&
         testCompilerVersion < KotlinToolingVersion("2.3.20-Beta2")
-    val generateClassesInIrEnabled = testCompilerVersion >= KotlinToolingVersion("2.4.20-dev-5775")
+    val generateClassesInIrEnabled = testCompilerVersion >= KotlinToolingVersion("2.4.20-dev-6138")
 
     val fixture =
       object : MetroProject(multiplatform = false) {

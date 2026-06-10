@@ -128,13 +128,13 @@ class MetroTestConfiguratorTest {
 
   @Test
   fun `min version - below exact dev build minimum`() {
-    assertTrue(shouldSkip("2.3.0", minVersion = "2.4.20-dev-5775"))
-    assertTrue(shouldSkip("2.4.20-dev-5624", minVersion = "2.4.20-dev-5775"))
+    assertTrue(shouldSkip("2.3.0", minVersion = "2.4.20-dev-6138"))
+    assertTrue(shouldSkip("2.4.20-dev-5624", minVersion = "2.4.20-dev-6138"))
   }
 
   @Test
   fun `min version - at exact dev build minimum`() {
-    assertFalse(shouldSkip("2.4.20-dev-5775", minVersion = "2.4.20-dev-5775"))
+    assertFalse(shouldSkip("2.4.20-dev-6138", minVersion = "2.4.20-dev-6138"))
   }
 
   @Test

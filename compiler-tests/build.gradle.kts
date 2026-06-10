@@ -30,17 +30,17 @@ val kotlin23 = KotlinToolingVersion(KotlinVersion(2, 3))
 
 val kotlin24Beta1 = KotlinToolingVersion(KotlinVersion(2, 4), "Beta1")
 
-// First 2.4.20 dev build that ships KT-85292: `commonConfigurationForJvmTest` was renamed to
-// `setupJvmPipelineSteps`, and the diagnostic / IR dump golden file extensions lost their `.fir.`
-// infix. Anything < this still uses the legacy names + helper.
-val kotlin2420Dev835Version = "2.4.20-dev-835"
-val kotlin2420Dev835 = KotlinToolingVersion(kotlin2420Dev835Version)
-val kotlin2420Dev5775Version = "2.4.20-dev-5775"
+// Minimum supported 2.4.20 dev build. 2.4.20 dev builds ship KT-85292:
+// `commonConfigurationForJvmTest` was renamed to `setupJvmPipelineSteps`, and the diagnostic / IR
+// dump golden file extensions lost their `.fir.` infix. Anything < this still uses the legacy
+// names + helper.
+val kotlin2420Dev6138Version = "2.4.20-dev-6138"
+val kotlin2420Dev6138 = KotlinToolingVersion(kotlin2420Dev6138Version)
 val useKotlin2420DevFallbackArtifacts =
   testKotlinVersion.toKotlinVersion() == KotlinVersion(2, 4, 20) && testKotlinVersion.isDev
 val kotlinArtifactsVersion =
   if (useKotlin2420DevFallbackArtifacts) {
-    kotlin2420Dev5775Version
+    kotlin2420Dev6138Version
   } else {
     testCompilerVersion
   }
@@ -106,7 +106,7 @@ var generatorConfigToUse: String
 
 if (testKotlinVersion >= kotlin23) {
   generatorConfigToUse =
-    if (testKotlinVersion >= kotlin2420Dev835) {
+    if (testKotlinVersion >= kotlin2420Dev6138) {
       "generator2420"
     } else if (testKotlinVersion >= kotlin24Beta1) {
       "generator240"
@@ -117,7 +117,7 @@ if (testKotlinVersion >= kotlin23) {
     }
   compilerTestFrameworkVersion =
     if (useKotlin2420DevFallbackArtifacts) {
-      kotlin2420Dev5775Version
+      kotlin2420Dev6138Version
     } else {
       testCompilerVersion
     }
@@ -125,7 +125,7 @@ if (testKotlinVersion >= kotlin23) {
     if (testKotlinVersion.minor == 3 && testKotlinVersion.isDev) {
       "2.3.20"
     } else if (useKotlin2420DevFallbackArtifacts) {
-      kotlin2420Dev5775Version
+      kotlin2420Dev6138Version
     } else {
       testCompilerVersion
     }
@@ -151,7 +151,7 @@ dependencies {
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta2"
   )
   "generator240CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.4.0-Beta2")
-  // 2.4.20-dev-835 renamed `commonConfigurationForJvmTest` to `setupJvmPipelineSteps`. Compile
+  // 2.4.20 dev builds renamed `commonConfigurationForJvmTest` to `setupJvmPipelineSteps`. Compile
   // this helper against the same 2.4.20 artifact set used at test runtime so its erased builder
   // receiver ABI matches the fallback artifacts.
   "generator2420CompileOnly"(
