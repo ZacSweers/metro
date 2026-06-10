@@ -62,6 +62,7 @@ buildConfig {
       "\"${testCompilerVersionProvider.isPresent}\"",
     )
     buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })
+    buildConfigField("String", "BUILD_COMPILER_VERSION", libs.versions.kotlin.map { "\"$it\"" })
     buildConfigField("String", "TEST_COMPILER_VERSION", "\"$testCompilerVersion\"")
     buildConfigField(
       "kotlin.KotlinVersion",

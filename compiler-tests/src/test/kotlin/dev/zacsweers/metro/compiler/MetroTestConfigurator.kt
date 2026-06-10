@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
+import dev.zacsweers.metro.compiler.test.BUILD_COMPILER_VERSION
 import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
+import dev.zacsweers.metro.compiler.test.TEST_COMPILER_VERSION
 import org.jetbrains.kotlin.test.builders.RegisteredDirectivesBuilder
 import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.OPT_IN
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
@@ -17,6 +20,14 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
 
   override fun shouldSkipTest(): Boolean {
     if (MetroDirectives.METRO_IGNORE in testServices.moduleStructure.allDirectives) return true
+
+    if (
+      testServices.isJsBackend() && TEST_COMPILER_TOOLING_VERSION != BUILD_COMPILER_TOOLING_VERSION
+    ) {
+      // JS box tests compile against Metro's runtime KLIB. KLIB compatibility depends on the
+      // producing compiler, so only run these tests against the compiler version that built it.
+      return true
+    }
 
     System.getProperty("metro.singleTestName")?.let { singleTest ->
       return testServices.testInfo.methodName != singleTest
@@ -65,6 +76,9 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     }
   }
 }
+
+private val BUILD_COMPILER_TOOLING_VERSION = KotlinToolingVersion(BUILD_COMPILER_VERSION)
+private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_VERSION)
 
 fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
   OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroApi")
