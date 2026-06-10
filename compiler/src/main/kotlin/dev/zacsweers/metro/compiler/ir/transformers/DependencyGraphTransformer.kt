@@ -83,6 +83,7 @@ import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.getAllSuperclasses
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isInterface
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -811,10 +812,11 @@ internal class DependencyGraphTransformer(
     if (factoryCreator != null) {
       // TODO would be nice if we could just class delegate to the `Impl` object
       val implementFactoryFunction: IrClass.() -> Unit = {
+        val ownerClass = this
         val samName = factoryCreator.function.name.asString()
         requireSimpleFunction(samName).owner.apply {
           if (isFakeOverride) {
-            finalizeFakeOverride(metroGraph.thisReceiverOrFail)
+            finalizeFakeOverride(ownerClass.thisReceiverOrFail)
           }
           val createFunction = this
           body =
@@ -845,12 +847,16 @@ internal class DependencyGraphTransformer(
           requireSimpleFunction(Symbols.StringNames.FACTORY).owner.apply {
             if (origin == Origins.MetroGraphFactoryCompanionGetter) {
               if (isFakeOverride) {
-                finalizeFakeOverride(metroGraph.thisReceiverOrFail)
+                finalizeFakeOverride(companionObject.thisReceiverOrFail)
               }
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBodySafe(
-                    irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList())
+                    if (factoryImpl.isObject) {
+                      irGetObject(factoryImpl.symbol)
+                    } else {
+                      irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList())
+                    }
                   )
                 }
             }
@@ -862,7 +868,7 @@ internal class DependencyGraphTransformer(
       companionObject.apply {
         requireSimpleFunction(Symbols.StringNames.INVOKE).owner.apply {
           if (isFakeOverride) {
-            finalizeFakeOverride(metroGraph.thisReceiverOrFail)
+            finalizeFakeOverride(companionObject.thisReceiverOrFail)
           }
           body =
             pluginContext.createIrBuilder(symbol).run {
