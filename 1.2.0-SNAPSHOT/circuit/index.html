@@ -2035,7 +2035,7 @@
 
 
 <h1 id="circuit-integration">Circuit Integration<a class="headerlink" href="#circuit-integration" title="Permanent link">&para;</a></h1>
-<p>Metro includes built-in support for <a href="https://slackhq.github.io/circuit/">Circuit</a>, a Compose-first architecture for building kotlin apps. This integration generates <code>Presenter.Factory</code> and <code>Ui.Factory</code> implementations from <code>@CircuitInject</code>-annotated classes and functions, similar to Circuit&rsquo;s existing KSP code generator but running entirely within Metro&rsquo;s compiler plugin. These factories then contribute into <code>Set&lt;Presenter.Factory&gt;</code> and <code>Set&lt;Presenter.Factory&gt;</code> multibindings.</p>
+<p>Metro includes built-in support for <a href="https://slackhq.github.io/circuit/">Circuit</a>, a Compose-first architecture for building kotlin apps. This integration generates <code>Presenter.Factory</code> and <code>Ui.Factory</code> implementations from <code>@CircuitInject</code>-annotated classes and functions, similar to Circuit&rsquo;s existing KSP code generator but running entirely within Metro&rsquo;s compiler plugin. These factories then contribute into <code>Set&lt;Presenter.Factory&gt;</code> and <code>Set&lt;Ui.Factory&gt;</code> multibindings.</p>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
 <p>Enable Circuit codegen in your Gradle build:</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
