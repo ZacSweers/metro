@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
+import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.withPopulatedImplicitClassKey
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
@@ -39,6 +40,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
+import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -96,6 +98,10 @@ context(context: IrMetroContext)
 private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrClass): BindsMirror {
   val isExternal = mirrorClass.isExternalParent
   val collector = BindsMirrorCollector(isInterop = false)
+
+  if (!isExternal) {
+    mirrorClass.patchDeclarationParents(parentClass)
+  }
 
   // On JVM, annotate with @ComptimeOnly so R8 can remove these
   val comptimeOnlyConstructor =
@@ -189,7 +195,11 @@ private fun generateMirrorFunction(
   val annotations = targetFunction.annotations
   val mirrorFunctionName =
     buildString {
-        append(targetFunction.ir.propertyIfAccessor.expectAs<IrDeclarationWithName>().name)
+        val sourceDeclaration = targetFunction.ir.propertyIfAccessor
+        append(sourceDeclaration.expectAs<IrDeclarationWithName>().name)
+        if (sourceDeclaration is IrProperty) {
+          append("_property")
+        }
         annotations.qualifier?.hashCode()?.toUInt()?.let(::append)
         annotations.mapKey?.hashCode()?.toUInt()?.let(::append)
         annotations.multibinds?.hashCode()?.toUInt()?.let(::append)
@@ -220,6 +230,7 @@ private fun generateMirrorFunction(
       }
       .apply {
         copyParametersFrom(targetFunction.ir)
+        setDispatchReceiver(null)
         replaceAnnotationsCompat(annotations.mirrorIrConstructorCalls(symbol))
       }
 
