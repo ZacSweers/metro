@@ -27,7 +27,11 @@ inline fun <
         model(name, excludedPattern = exclusionPattern)
       }
       val nonJvmModel: TestGroup.TestClass.(name: String) -> Unit = { name ->
-        model(name, excludedPattern = exclusionPattern, excludeDirsRecursively = listOf("interop"))
+        model(
+          name,
+          excludedPattern = exclusionPattern,
+          excludeDirsRecursively = listOf("interop", "circuit"),
+        )
       }
       testClass<Box> { commonModel("box") }
       testClass<FastInitBox> { commonModel("box") }

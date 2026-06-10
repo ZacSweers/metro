@@ -22,7 +22,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
   @Test
   public void testAllFilesPresentInBox() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
   }
 
   @Nested
@@ -35,7 +35,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInAggregation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
@@ -312,7 +312,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
       @Test
       public void testAllFilesPresentInContributionproviders() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/contributionproviders"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/contributionproviders"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
       }
 
       @Test
@@ -429,7 +429,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInApi() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
@@ -479,170 +479,6 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     public void testProvidesInGeneratedContributesTo_SeparateCompilation() {
       run("ProvidesInGeneratedContributesTo_SeparateCompilation.kt");
     }
-
-    @Nested
-    @TestMetadata("compiler-tests/src/test/data/box/api/circuit")
-    @TestDataPath("$PROJECT_ROOT")
-    public class Circuit {
-      private void run(String fileName) {
-        runTest("compiler-tests/src/test/data/box/api/circuit/" + fileName);
-      }
-
-      @Test
-      public void testAllFilesPresentInCircuit() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api/circuit"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
-      }
-
-      @Test
-      @TestMetadata("CircuitFactoryInvocationWithInjection.kt")
-      public void testCircuitFactoryInvocationWithInjection() {
-        run("CircuitFactoryInvocationWithInjection.kt");
-      }
-
-      @Test
-      @TestMetadata("CircuitFactoryInvocationWithSubtypeScreen.kt")
-      public void testCircuitFactoryInvocationWithSubtypeScreen() {
-        run("CircuitFactoryInvocationWithSubtypeScreen.kt");
-      }
-
-      @Test
-      @TestMetadata("ParameterOrderDoesNotMatter.kt")
-      public void testParameterOrderDoesNotMatter() {
-        run("ParameterOrderDoesNotMatter.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterClassAssistedInjection.kt")
-      public void testPresenterClassAssistedInjection() {
-        run("PresenterClassAssistedInjection.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterClassAssistedInjectionWithComplexSupertype.kt")
-      public void testPresenterClassAssistedInjectionWithComplexSupertype() {
-        run("PresenterClassAssistedInjectionWithComplexSupertype.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterClassAssistedInjectionWithSupertype.kt")
-      public void testPresenterClassAssistedInjectionWithSupertype() {
-        run("PresenterClassAssistedInjectionWithSupertype.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterClassMultiModule.kt")
-      public void testPresenterClassMultiModule() {
-        run("PresenterClassMultiModule.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterClassNoInjection.kt")
-      public void testPresenterClassNoInjection() {
-        run("PresenterClassNoInjection.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterClassNoInjectionWithCircuitParams.kt")
-      public void testPresenterClassNoInjectionWithCircuitParams() {
-        run("PresenterClassNoInjectionWithCircuitParams.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterClassQualifiedClass.kt")
-      public void testPresenterClassQualifiedClass() {
-        run("PresenterClassQualifiedClass.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterClassQualifiedInjection.kt")
-      public void testPresenterClassQualifiedInjection() {
-        run("PresenterClassQualifiedInjection.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterClassSimpleInjection.kt")
-      public void testPresenterClassSimpleInjection() {
-        run("PresenterClassSimpleInjection.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterClassWithContributionProviders.kt")
-      public void testPresenterClassWithContributionProviders() {
-        run("PresenterClassWithContributionProviders.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterFunctionClassScreen.kt")
-      public void testPresenterFunctionClassScreen() {
-        run("PresenterFunctionClassScreen.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterFunctionInjectedScreen.kt")
-      public void testPresenterFunctionInjectedScreen() {
-        run("PresenterFunctionInjectedScreen.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterFunctionObjectScreen.kt")
-      public void testPresenterFunctionObjectScreen() {
-        run("PresenterFunctionObjectScreen.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterFunctionQualifiedFunction.kt")
-      public void testPresenterFunctionQualifiedFunction() {
-        run("PresenterFunctionQualifiedFunction.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterFunctionQualifiedInjection.kt")
-      public void testPresenterFunctionQualifiedInjection() {
-        run("PresenterFunctionQualifiedInjection.kt");
-      }
-
-      @Test
-      @TestMetadata("PresenterFunctionWithContributionProviders.kt")
-      public void testPresenterFunctionWithContributionProviders() {
-        run("PresenterFunctionWithContributionProviders.kt");
-      }
-
-      @Test
-      @TestMetadata("UiClassNoInjection.kt")
-      public void testUiClassNoInjection() {
-        run("UiClassNoInjection.kt");
-      }
-
-      @Test
-      @TestMetadata("UiClassSimpleInjection.kt")
-      public void testUiClassSimpleInjection() {
-        run("UiClassSimpleInjection.kt");
-      }
-
-      @Test
-      @TestMetadata("UiFunctionClassScreenWithState.kt")
-      public void testUiFunctionClassScreenWithState() {
-        run("UiFunctionClassScreenWithState.kt");
-      }
-
-      @Test
-      @TestMetadata("UiFunctionInjectedScreen.kt")
-      public void testUiFunctionInjectedScreen() {
-        run("UiFunctionInjectedScreen.kt");
-      }
-
-      @Test
-      @TestMetadata("UiFunctionObjectScreenNoState.kt")
-      public void testUiFunctionObjectScreenNoState() {
-        run("UiFunctionObjectScreenNoState.kt");
-      }
-
-      @Test
-      @TestMetadata("UiFunctionObjectScreenWithState.kt")
-      public void testUiFunctionObjectScreenWithState() {
-        run("UiFunctionObjectScreenWithState.kt");
-      }
-    }
   }
 
   @Nested
@@ -655,7 +491,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInBindingcontainers() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
@@ -759,7 +595,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInBytecode() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bytecode"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bytecode"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
@@ -779,7 +615,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInContributesgraphextension() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/contributesgraphextension"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/contributesgraphextension"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
@@ -877,7 +713,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInCycles() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/cycles"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/cycles"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
@@ -957,7 +793,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInDependencygraph() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
@@ -1198,7 +1034,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
       @Test
       public void testAllFilesPresentInBindingcontainers() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
       }
 
       @Test
@@ -1278,7 +1114,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
       @Test
       public void testAllFilesPresentInDynamic() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
       }
 
       @Test
@@ -1382,7 +1218,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
       @Test
       public void testAllFilesPresentInExtensions() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/extensions"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/extensions"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
       }
 
       @Test
@@ -1666,7 +1502,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
       @Test
       public void testAllFilesPresentInLeniency() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
       }
 
       @Test
@@ -1698,7 +1534,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
       @Test
       public void testAllFilesPresentInOptional() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/optional"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/optional"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
       }
 
       @Test
@@ -1742,7 +1578,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
       @Test
       public void testAllFilesPresentInParallel() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/parallel"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/parallel"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
       }
 
       @Test
@@ -1780,7 +1616,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
       @Test
       public void testAllFilesPresentInSharding() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
       }
 
       @Test
@@ -1873,7 +1709,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInInject() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
@@ -1940,7 +1776,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
       @Test
       public void testAllFilesPresentInAssisted() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
       }
 
       @Test
@@ -2080,7 +1916,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
       @Test
       public void testAllFilesPresentInFunction() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/function"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/function"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
       }
 
       @Test
@@ -2130,7 +1966,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
       @Test
       public void testAllFilesPresentInMember() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
       }
 
       @Test
@@ -2241,7 +2077,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInMember() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/member"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/member"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
@@ -2339,7 +2175,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInMultibindings() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
@@ -2425,7 +2261,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInProvides() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/provides"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/provides"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
@@ -2595,7 +2431,7 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
 
     @Test
     public void testAllFilesPresentInReports() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/reports"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/reports"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
 
     @Test
