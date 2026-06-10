@@ -173,7 +173,9 @@ class BazImpl : BazMiddle {
 
       @Binds
       @CallableMetadata(callableName = "bindsAsBazMiddle", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsBazMiddle(instance: BazImpl): BazMiddle
+      fun bindsAsBazMiddle(instance: BazImpl): BazMiddle {
+        return error(message = "Never called")
+      }
 
     }
 
@@ -248,7 +250,9 @@ class FooImpl : Foo {
 
       @Binds
       @CallableMetadata(callableName = "bindsAsFoo", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsFoo(instance: FooImpl): Foo
+      fun bindsAsFoo(instance: FooImpl): Foo {
+        return error(message = "Never called")
+      }
 
     }
 
@@ -478,7 +482,9 @@ interface AppGraph {
 
     @Binds
     @CallableMetadata(callableName = "bindBaz", propertyName = "", startOffset = 784, endOffset = 817)
-    abstract fun bindBaz(impl: BazMiddle): Baz
+    fun bindBaz(impl: BazMiddle): Baz {
+      return error(message = "Never called")
+    }
 
   }
 

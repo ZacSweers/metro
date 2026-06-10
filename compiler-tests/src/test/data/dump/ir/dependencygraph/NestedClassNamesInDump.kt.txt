@@ -56,7 +56,9 @@ interface ExampleGraph {
 
       @Binds
       @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 231, endOffset = 260)
-      abstract fun String.bind(): CharSequence
+      fun String.bind_property(): CharSequence {
+        return error(message = "Never called")
+      }
 
     }
 
