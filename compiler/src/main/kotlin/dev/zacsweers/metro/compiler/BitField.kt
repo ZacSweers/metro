@@ -123,6 +123,7 @@ internal class BitFieldBuilder {
   private var words: IntArray = IntArray(1)
   private var size: Int = 0
 
+  @IgnorableReturnValue
   fun set(index: Int): BitFieldBuilder = apply {
     require(index >= 0) { "index must be >= 0" }
     val wordIndex = index / 32

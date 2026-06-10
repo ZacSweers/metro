@@ -279,10 +279,14 @@ private constructor(
               )
 
           if (options.enableProviderInlining) {
-            providerFactory.inlinedValue?.let { value ->
-              return value
-                .materialize(binding.typeKey.type)
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+            // Materialization can fail if the value references a class that isn't resolvable in
+            // this compilation (e.g. an object from an implementation dependency of the providing
+            // module). In that case, fall through to the standard factory paths below.
+            providerFactory.inlinedValue?.materialize(binding.typeKey.type)?.let { materialized ->
+              return materialized.toTargetType(
+                actual = AccessType.INSTANCE,
+                contextualTypeKey = contextualTypeKey,
+              )
             }
           }
 

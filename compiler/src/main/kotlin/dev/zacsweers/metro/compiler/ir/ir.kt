@@ -1700,7 +1700,7 @@ internal fun IrTypeParametersContainer.buildSubstitutionMapFor(
       typeParameters.zip(type.arguments).forEach { (param, arg) ->
         when (arg) {
           is IrTypeProjection -> put(param.symbol, arg.type)
-          else -> null
+          else -> {}
         }
       }
     }
