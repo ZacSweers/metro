@@ -126,37 +126,9 @@
 
         const currentPath = window.location.pathname;
         const fallbackUrl = METRO_CONFIG.fallbackUrl;
+        const hashFragment = window.location.hash;
 
-        // Parse the current URL to extract version and page path
-        const pathMatch = currentPath.match(new RegExp(`^${METRO_CONFIG.basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\/([^\\/]+)\\/(.*)$`));
-        if (!pathMatch) {
-          // If URL doesn't match expected pattern, fallback to latest
-          console.log('❌ URL pattern not recognized, falling back to latest');
-          window.location.replace(fallbackUrl);
-          return;
-        }
-
-        const [, requestedVersion, pagePath] = pathMatch;
-        const hashFragment = window.location.hash; // Preserve anchor/fragment
-        console.log(`📍 Requested: ${requestedVersion}/${pagePath}${hashFragment}`);
-
-        // Normalize HTML-based URLs to directory-based URLs
-        // e.g., "compatibility.html" -> "compatibility/"
-        let normalizedPagePath = pagePath;
-        if (pagePath.endsWith('.html')) {
-          // Remove .html extension and add trailing slash for directory-style URLs
-          const pathWithoutExtension = pagePath.slice(0, -5); // Remove '.html'
-          if (pathWithoutExtension && pathWithoutExtension !== 'index') {
-            normalizedPagePath = pathWithoutExtension + '/';
-            console.log(`🔄 Normalized HTML URL: ${pagePath} -> ${normalizedPagePath}`);
-          } else if (pathWithoutExtension === 'index') {
-            // index.html maps to root directory
-            normalizedPagePath = '';
-            console.log(`🔄 Normalized index.html to root directory`);
-          }
-        }
-
-        // Fetch versions.json to get current version information
+        // Fetch versions.json first so we know what versions exist
         const versionsFetchStart = performance.now();
         console.log('📡 Fetching versions.json...');
 
@@ -168,6 +140,53 @@
         const versions = await versionsResponse.json();
         const versionsFetchEnd = performance.now();
         console.log(`✅ versions.json fetched in ${(versionsFetchEnd - versionsFetchStart).toFixed(2)}ms`);
+
+        // Build set of known versions and aliases to determine URL structure
+        const knownVersions = new Set(versions.flatMap(v => [v.version, ...(v.aliases || [])]));
+
+        // Extract path after basePath (e.g., "1.2.0/interop/" or "interop/")
+        const basePathEscaped = METRO_CONFIG.basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pathAfterBase = currentPath.replace(new RegExp(`^${basePathEscaped}/?`), '');
+
+        // Parse URL structure
+        const segments = pathAfterBase.split('/').filter(Boolean);
+        console.log(`🔧 Raw path after base: "${pathAfterBase}", segments: [${segments.join(', ')}]`);
+
+        let isVersioned, requestedVersion, pagePath;
+
+        if (segments.length >= 2) {
+          // URL has 2+ segments: /metro/X/Y/... → always versioned (old behavior)
+          isVersioned = true;
+          requestedVersion = segments[0];
+          pagePath = segments.slice(1).join('/');
+        } else if (segments.length === 1) {
+          // URL has 1 segment: /metro/X/ → versioned only if known version/alias
+          const potentialVersion = segments[0];
+          isVersioned = knownVersions.has(potentialVersion);
+          requestedVersion = isVersioned ? potentialVersion : null;
+          pagePath = isVersioned ? '' : potentialVersion;
+        } else {
+          // /metro/ root
+          isVersioned = false;
+          requestedVersion = null;
+          pagePath = '';
+        }
+
+        console.log(`📍 URL type: ${isVersioned ? 'versioned' : 'non-versioned'}, version: ${requestedVersion}, page: ${pagePath}${hashFragment}`);
+
+        // Normalize HTML-based URLs to directory-based URLs
+        // NOTE: This exists because the 📽️ talk at DroidKaigi as leaked '.html' based paths in the slide decks
+        let normalizedPagePath = pagePath;
+        if (normalizedPagePath.endsWith('.html')) {
+          const withoutExt = normalizedPagePath.slice(0, -5);
+          if (withoutExt && withoutExt !== 'index') {
+            normalizedPagePath = withoutExt + '/';
+            console.log(`🔄 Normalized HTML URL: ${pagePath} -> ${normalizedPagePath}`);
+          } else {
+            normalizedPagePath = '';
+            console.log(`🔄 Normalized index.html to root directory`);
+          }
+        }
 
         // Find the latest version (the one with "latest" alias)
         const latestVersion = versions.find(v => v.aliases && v.aliases.includes(METRO_CONFIG.latestAlias));
