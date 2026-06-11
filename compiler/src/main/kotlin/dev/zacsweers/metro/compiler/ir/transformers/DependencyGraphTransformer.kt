@@ -7,9 +7,15 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.buildText
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -50,8 +56,10 @@ import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroDumpKotlinLike
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
+import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -615,7 +623,7 @@ internal class DependencyGraphTransformer(
             reportCompat(
               irDeclarations = sequenceOf(declaration, dependencyGraphDeclaration),
               factory = factory,
-              a = combinedMessage,
+              a = combinedMessage.padForConsole(),
             )
           }
       }
@@ -673,10 +681,10 @@ internal class DependencyGraphTransformer(
 
     if (unusedKeys.isEmpty()) return
 
-    val diagnosticFactory =
+    val (diagnosticFactory, metroSeverity) =
       when (severity) {
-        WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
-        ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
+        WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING to MetroSeverity.WARNING
+        ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR to MetroSeverity.ERROR
         // Already checked above, but for exhaustive when
         else -> return
       }
@@ -691,9 +699,7 @@ internal class DependencyGraphTransformer(
     )
 
     val reports = unusedGraphInputs.map { unusedBinding ->
-      val message = buildString {
-        appendLine("Graph input '${unusedBinding.typeKey}' is unused and can be removed.")
-
+      val notes = buildList {
         // Show a hint of what direct node is including this, if any
         unusedBinding.typeKey.type.rawTypeOrNull()?.let { containerClass ->
           // Efficient to call here as it should be already cached
@@ -702,16 +708,39 @@ internal class DependencyGraphTransformer(
           val transitivelyUsed =
             sortedKeys.intersect(transitivelyIncluded).minus(unusedBinding.typeKey)
           if (transitivelyUsed.isNotEmpty()) {
-            appendLine()
-            appendLine("(Hint)")
-            appendLine(
-              "The following binding containers *are* used and transitively included by '${unusedBinding.typeKey}'. Consider including them directly instead"
+            add(
+              Note.help(
+                buildText {
+                  append("the following binding containers are used and transitively included by ")
+                  append(unusedBinding.typeKey.toText())
+                  append(", consider including them directly instead: ")
+                  transitivelyUsed.sorted().forEachIndexed { index, key ->
+                    if (index > 0) append(", ")
+                    append(key.toText())
+                  }
+                }
+              )
             )
-            transitivelyUsed.sorted().joinTo(this, separator = "\n", postfix = "\n") { "- $it" }
           }
         }
       }
-      UnusedInputReport(message, unusedBinding.irElement, unusedBinding.reportableDeclaration)
+      val diagnostic =
+        MetroDiagnostic(
+          id = MetroDiagnosticId.UNUSED_GRAPH_INPUTS,
+          severity = metroSeverity,
+          title =
+            buildText {
+              append("Graph input ")
+              append(unusedBinding.typeKey.toText())
+              append(" is unused and can be removed")
+            },
+          notes = notes,
+        )
+      UnusedInputReport(
+        render(diagnostic).padForConsole(),
+        unusedBinding.irElement,
+        unusedBinding.reportableDeclaration,
+      )
     }
 
     // Partition: reports with irElement can be reported directly (unique per element)
