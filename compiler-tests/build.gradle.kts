@@ -291,6 +291,7 @@ val generateTests =
   }
 
 val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
+val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
 
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
@@ -358,6 +359,13 @@ tasks.withType<Test> {
     filter { includeTestsMatching("*StressTest*") }
   } else {
     filter { excludeTestsMatching("*StressTest*") }
+  }
+  if (excludeJsBoxTests) {
+    filter {
+      excludeTestsMatching("dev.zacsweers.metro.compiler.JsBoxTestGenerated*")
+      excludeTestsMatching("dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*")
+      excludeTestsMatching("dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*")
+    }
   }
 
   val testRuntimeClasspath = project.configurations.testRuntimeClasspath.get()
