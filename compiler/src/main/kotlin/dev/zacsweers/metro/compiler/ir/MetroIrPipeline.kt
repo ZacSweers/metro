@@ -99,6 +99,10 @@ internal class MetroIrPipeline(
       trace("Flush IC tracking") { flushIcTracking() }
     } catch (_: ExitProcessingException) {
       // Reported internally
+    } finally {
+      // Write machine-readable diagnostic reports (JSON/SARIF) for anything recorded during IR
+      // processing. No-op when reports are disabled or nothing was recorded.
+      writeDiagnosticReports()
     }
   }
 }
