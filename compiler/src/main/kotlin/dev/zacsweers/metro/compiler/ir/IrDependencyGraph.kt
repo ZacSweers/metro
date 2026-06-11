@@ -9,11 +9,14 @@ import dev.zacsweers.metro.Qualifier
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MemberNamingStrategy
-import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
+import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
+import dev.zacsweers.metro.compiler.diagnostics.render.SourceFileCache
+import dev.zacsweers.metro.compiler.diagnostics.render.renderProfileFor
+import dev.zacsweers.metro.compiler.diagnostics.render.resolveConsoleMode
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.nio.file.Path
@@ -69,8 +72,14 @@ internal interface IrDependencyGraph {
 
   @Provides
   @SingleIn(IrScope::class)
-  fun provideMessageRenderer(options: MetroOptions): MessageRenderer =
-    MessageRenderer(MessageRenderer.resolveRichOutput(options.richDiagnostics))
+  fun provideDiagnosticRenderer(
+    options: MetroOptions,
+    sourceFileCache: SourceFileCache,
+  ): DiagnosticRenderer =
+    DiagnosticRenderer(
+      renderProfileFor(options.resolveConsoleMode()),
+      sourceLines = sourceFileCache::linesFor,
+    )
 
   @Provides
   @SingleIn(IrScope::class)
