@@ -664,7 +664,7 @@ constructor(
     defaultValue: T,
   ): Property<T> {
     return property(T::class.java).propertyNameConventionImpl(name, defaultValue) { value ->
-      enumValues<T>().find { it.name.equals(defaultValue.name, ignoreCase = true) }
+      enumValues<T>().find { it.name.equals(value, ignoreCase = true) }
         ?: error(
           "Value '$value' is not a valid input for metro.$name. Allowed values: ${enumValues<T>().joinToString { it.name }}"
         )
