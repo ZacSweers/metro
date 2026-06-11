@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 @file:OptIn(ExperimentalWasmDsl::class)
 
-import org.gradle.api.attributes.Category
 import org.gradle.api.attributes.Attribute
+import org.gradle.api.attributes.Category
 import org.gradle.api.attributes.Usage
 import org.gradle.kotlin.dsl.sourceSets
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
