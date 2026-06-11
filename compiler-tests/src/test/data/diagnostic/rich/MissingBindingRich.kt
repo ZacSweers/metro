@@ -14,7 +14,9 @@ class RepositoryImpl(<!MISSING_BINDING!>dep: Dependency<!>) : Repository
 
 interface Dependency
 
-@Inject class NamedDependency(@Named("prod") val dep: String) : Dependency
+@Suppress("ANNOTATION_WILL_BE_APPLIED_ALSO_TO_PROPERTY_OR_FIELD")
+@Inject
+class NamedDependency(@Named("prod") val dep: String) : Dependency
 
 @DependencyGraph
 interface AppGraph {
