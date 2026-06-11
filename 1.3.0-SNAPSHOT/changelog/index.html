@@ -6781,7 +6781,8 @@
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>[IR]</strong> Add support for generating metadata-visible classes entirely in IR, allowing Metro to move much of its current FIR code gen entirely to IR. This is enabled by default on Kotlin <code>2.4.20-dev-6138</code> or newer and can be configured via the <code>generateClassesInIr</code> option.</li>
+<li><strong>[IR]</strong> Add support for generating metadata-visible classes entirely in IR, allowing Metro to move much of its current FIR code gen entirely to IR.</li>
+<li>This is enabled by default (and only possible) on Kotlin <code>2.4.20-dev-6138</code> or newer and can be configured via the <code>generateClassesInIr</code> option. Do not try to enable this on older versions, your builds will fail and you will be sad.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
