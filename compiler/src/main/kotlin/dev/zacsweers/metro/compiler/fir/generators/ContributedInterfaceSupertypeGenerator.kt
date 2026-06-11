@@ -450,7 +450,11 @@ internal class ContributedInterfaceSupertypeGenerator(
     val externalContributions = mutableListOf<MetroContributionExtension.Contribution>()
     for (scopeClassId in scopes) {
       for (extension in externalContributionExtensions) {
-        externalContributions.addAll(extension.getContributions(scopeClassId, typeResolverFactory))
+        val contributions = extension.getContributions(scopeClassId, typeResolverFactory)
+        for (contribution in contributions) {
+          validateExternalContribution(extension, contribution)
+        }
+        externalContributions.addAll(contributions)
       }
     }
 
@@ -781,6 +785,36 @@ internal class ContributedInterfaceSupertypeGenerator(
         .distinctBy { it.classId }
         .sortedBy { it.classId?.asString() }
     }
+  }
+
+  private fun validateExternalContribution(
+    extension: MetroContributionExtension,
+    contribution: MetroContributionExtension.Contribution,
+  ) {
+    val supertypeClassId = contribution.supertype.classId ?: return
+    val supertypeSymbol =
+      supertypeClassId.toSymbol(session)?.expectAsOrNull<FirClassLikeSymbol<*>>() ?: return
+    val bindingContainerClassId = supertypeSymbol.bindingContainerClassIdOrNull() ?: return
+
+    val extensionName = extension::class.qualifiedName ?: extension::class.toString()
+    error(
+      "MetroContributionExtension $extensionName returned @BindingContainer " +
+        "$bindingContainerClassId as graph supertype contribution $supertypeClassId. " +
+        "Binding containers must be contributed through contribution hints or " +
+        "MetroIrContributionExtension.contributeBindingContainers()."
+    )
+  }
+
+  private fun FirClassLikeSymbol<*>.bindingContainerClassIdOrNull(): ClassId? {
+    var current: FirClassLikeSymbol<*>? = this
+    while (current != null) {
+      val regularClass = current as? FirRegularClassSymbol
+      if (regularClass != null && regularClass.isBindingContainer(session)) {
+        return regularClass.classId
+      }
+      current = current.getContainingClassSymbol()
+    }
+    return null
   }
 
   /**
