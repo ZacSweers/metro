@@ -1,3 +1,5 @@
+// Regression test for https://github.com/ZacSweers/metro/pull/2434
+
 interface Base {
   val value: String
 }

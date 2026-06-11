@@ -157,6 +157,8 @@ internal class IrContributionData(
 
   private fun IrClass.isDirectContributedInterface(scope: Scope): Boolean {
     if (kind != ClassKind.INTERFACE) return false
+    val irClass = this
+    if (with(metroContext) { irClass.isBindingContainer() }) return false
     if (isAnnotatedWithAny(metroContext.metroSymbols.classIds.graphExtensionFactoryAnnotations)) {
       return false
     }
