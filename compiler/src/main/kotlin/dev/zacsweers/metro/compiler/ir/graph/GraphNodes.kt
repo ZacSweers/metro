@@ -453,7 +453,7 @@ internal class GraphNodes(
           )
         metroContext.reportCompat(
           graphDeclaration,
-          MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE,
+          diagnostic.id.factory,
           metroContext.render(diagnostic).padForConsole(),
         )
         // In this case, we exit early as we have a self-cycle in the graph that deferring would
@@ -578,7 +578,7 @@ internal class GraphNodes(
         }
       reportCompat(
         sequenceOf(graphDeclaration.sourceGraphIfMetroGraph),
-        MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH,
+        diagnostic.id.factory,
         render(diagnostic).padForConsole(),
       )
       qualifierMismatches.clear()

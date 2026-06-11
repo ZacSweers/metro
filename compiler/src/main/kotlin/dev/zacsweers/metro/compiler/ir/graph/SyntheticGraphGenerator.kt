@@ -4,9 +4,19 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
+import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.Style
+import dev.zacsweers.metro.compiler.diagnostics.Text
+import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
@@ -26,11 +36,11 @@ import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.kClassReference
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
+import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
-import dev.zacsweers.metro.compiler.ir.renderDiagnostic
 import dev.zacsweers.metro.compiler.ir.renderLocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.reportCompat
@@ -356,12 +366,22 @@ internal class SyntheticGraphGenerator(
     val factoryImpl: IrClass?,
   )
 
+  /**
+   * One override clash for [validateOverrides] reporting. [summary] is the one-line headline (used
+   * as the diagnostic title for a single clash, or a section header when multiple clash); [section]
+   * carries the clashing declarations' locations and signatures.
+   */
+  private data class OverrideClash(
+    val summary: Text,
+    val section: DiagnosticSection.Locations,
+  )
+
   /** Validates that fake overrides in this class are compatible across supertypes. */
   // https://github.com/ZacSweers/metro/issues/904
   private fun IrClass.validateOverrides() {
     val sourceGraphName = superTypes.firstOrNull()?.rawTypeOrNull()?.kotlinFqName
-    val typeClashes = mutableListOf<String>()
-    val annotationClashes = mutableListOf<String>()
+    val typeClashes = mutableListOf<OverrideClash>()
+    val annotationClashes = mutableListOf<OverrideClash>()
 
     // Check all fake override properties
     for (property in properties) {
@@ -377,42 +397,70 @@ internal class SyntheticGraphGenerator(
 
     // Flush collected clashes
     if (typeClashes.isNotEmpty()) {
-      val message =
-        if (typeClashes.size == 1) {
-          typeClashes[0]
-        } else {
-          renderDiagnostic {
-            appendLine(
-              "[Metro/IncompatibleReturnTypes] ${bold("${typeClashes.size}")} incompatible return type clashes found:"
-            )
-            for (clash in typeClashes) {
-              appendLine()
-              appendLine(clash)
-            }
-          }
-        }
+      val diagnostic =
+        MetroDiagnostic(
+          id = MetroDiagnosticId.INCOMPATIBLE_RETURN_TYPES,
+          severity = MetroSeverity.ERROR,
+          title =
+            if (typeClashes.size == 1) {
+              typeClashes[0].summary
+            } else {
+              buildText {
+                append("${typeClashes.size}", Style.EMPHASIS)
+                append(" incompatible return type clashes found")
+              }
+            },
+          sections =
+            if (typeClashes.size == 1) {
+              listOf(typeClashes[0].section)
+            } else {
+              typeClashes.map { it.section.copy(header = it.summary) }
+            },
+        )
       metroContext.reportCompat(
         originDeclaration,
-        MetroDiagnostics.INCOMPATIBLE_RETURN_TYPES,
-        message,
+        diagnostic.id.factory,
+        render(diagnostic).padForConsole(),
       )
     }
     if (annotationClashes.isNotEmpty()) {
-      val message =
-        if (annotationClashes.size == 1) {
-          annotationClashes[0]
-        } else {
-          renderDiagnostic {
-            appendLine(
-              "[Metro/IncompatibleOverrides] ${bold("${annotationClashes.size}")} annotation clashes found:"
-            )
-            for (clash in annotationClashes) {
-              appendLine()
-              appendLine(clash)
-            }
-          }
-        }
-      metroContext.reportCompat(originDeclaration, MetroDiagnostics.INCOMPATIBLE_OVERRIDES, message)
+      val diagnostic =
+        MetroDiagnostic(
+          id = MetroDiagnosticId.INCOMPATIBLE_OVERRIDES,
+          severity = MetroSeverity.ERROR,
+          title =
+            if (annotationClashes.size == 1) {
+              annotationClashes[0].summary
+            } else {
+              buildText {
+                append("${annotationClashes.size}", Style.EMPHASIS)
+                append(" annotation clashes found")
+              }
+            },
+          sections =
+            if (annotationClashes.size == 1) {
+              listOf(annotationClashes[0].section)
+            } else {
+              annotationClashes.map { it.section.copy(header = it.summary) }
+            },
+          notes =
+            listOf(
+              Note.note(
+                "declarations with the same name and compatible return types must have compatible " +
+                  "DI annotations too, otherwise these can lead to ambiguous/undefined behavior " +
+                  "at runtime"
+              ),
+              Note.help(
+                "either align these annotations if they are meant to represent the same thing or " +
+                  "rename one of the declarations to disambiguate them"
+              ),
+            ),
+        )
+      metroContext.reportCompat(
+        originDeclaration,
+        diagnostic.id.factory,
+        render(diagnostic).padForConsole(),
+      )
     }
   }
 
@@ -441,8 +489,8 @@ internal class SyntheticGraphGenerator(
   // https://github.com/ZacSweers/metro/pull/1810
   private fun <S : IrSymbol> IrOverridableDeclaration<S>.checkOverrideCompatibility(
     sourceGraphName: FqName?,
-    typeClashes: MutableList<String>,
-    annotationClashes: MutableList<String>,
+    typeClashes: MutableList<OverrideClash>,
+    annotationClashes: MutableList<OverrideClash>,
   ) {
     val overriddenSymbols = overriddenSymbols.toList()
     if (overriddenSymbols.size < 2) return
@@ -518,7 +566,7 @@ internal class SyntheticGraphGenerator(
     anno1: MetroAnnotations<IrAnnotation>,
     decl2: IrOverridableDeclaration<*>,
     anno2: MetroAnnotations<IrAnnotation>,
-  ): String {
+  ): OverrideClash {
     val loc1 = decl1.renderLocationDiagnostic(annotations = anno1)
     val loc2 = decl2.renderLocationDiagnostic(annotations = anno2)
     val parent1 = decl1.parentAsClass.originIfContribution.kotlinFqName
@@ -526,23 +574,31 @@ internal class SyntheticGraphGenerator(
 
     val graphName = sourceGraphName ?: "graph"
 
-    return renderDiagnostic {
-      appendLine(
-        "The following declarations clash with each other when merging supertypes into a generated ${bold("`$graphName`")} graph impl class:"
-      )
-      appendLine()
-      appendLine("  ${loc1.location}")
-      loc1.description?.let { appendLine("    $it (defined in ${dim("'$parent1'")})") }
-      appendLine("  ${loc2.location}")
-      loc2.description?.let { appendLine("    $it (defined in ${dim("'$parent2'")})") }
-      appendLine()
-      append(
-        "Declarations with the same name and compatible return types must have compatible DI annotations too. " +
-          "Otherwise, these can lead to ambiguous/undefined behavior at runtime. To fix this, either align these " +
-          "annotations if they are meant to represent the same thing or rename one of the declarations to " +
-          "disambiguate them."
-      )
-    }
+    return OverrideClash(
+      summary =
+        buildText {
+          append(
+            "The following declarations clash with each other when merging supertypes into a generated "
+          )
+          appendCode("$graphName")
+          append(" graph impl class")
+        },
+      section =
+        DiagnosticSection.Locations(
+          header = null,
+          items =
+            listOf(
+              LocatedItem(
+                location = loc1.location,
+                code = loc1.description?.let { "$it (defined in '$parent1')" },
+              ),
+              LocatedItem(
+                location = loc2.location,
+                code = loc2.description?.let { "$it (defined in '$parent2')" },
+              ),
+            ),
+        ),
+    )
   }
 
   private fun formatTypeClash(
@@ -550,7 +606,7 @@ internal class SyntheticGraphGenerator(
     type1: IrType,
     decl2: IrOverridableDeclaration<*>,
     type2: IrType,
-  ): String {
+  ): OverrideClash {
     val loc1 = decl1.renderLocationDiagnostic()
     val loc2 = decl2.renderLocationDiagnostic()
     val parent1 = decl1.parentAsClass.originIfContribution.kotlinFqName
@@ -558,25 +614,41 @@ internal class SyntheticGraphGenerator(
     val type1Str = type1.render(short = false)
     val type2Str = type2.render(short = false)
 
-    return renderDiagnostic {
-      appendLine("Incompatible return types: ${bold("'$type1Str'")} vs ${bold("'$type2Str'")}")
-      appendLine()
-      appendLine("  ${loc1.location}")
-      loc1.description?.let {
+    // Bake the type underline into the preformatted signature excerpt
+    fun underlinedCode(loc: LocationDiagnostic, parent: FqName, typeStr: String): String? {
+      val description = loc.description ?: return null
+      return buildString {
         appendLineWithUnderlinedContent(
-          content = "    $it (defined in ${dim("'$parent1'")})",
-          target = type1Str,
-        )
-      }
-      appendLine()
-      appendLine("  ${loc2.location}")
-      loc2.description?.let {
-        appendLineWithUnderlinedContent(
-          content = "    $it (defined in ${dim("'$parent2'")})",
-          target = type2Str,
+          content = "$description (defined in '$parent')",
+          target = typeStr,
         )
       }
     }
+
+    return OverrideClash(
+      summary =
+        buildText {
+          append("Incompatible return types: ")
+          appendType(fqName = type1Str, simpleRender = type1.render(short = true))
+          append(" vs ")
+          appendType(fqName = type2Str, simpleRender = type2.render(short = true))
+        },
+      section =
+        DiagnosticSection.Locations(
+          header = null,
+          items =
+            listOf(
+              LocatedItem(
+                location = loc1.location,
+                code = underlinedCode(loc1, parent1, type1Str),
+              ),
+              LocatedItem(
+                location = loc2.location,
+                code = underlinedCode(loc2, parent2, type2Str),
+              ),
+            ),
+        ),
+    )
   }
 
   private val IrClass.originIfContribution: IrClass
