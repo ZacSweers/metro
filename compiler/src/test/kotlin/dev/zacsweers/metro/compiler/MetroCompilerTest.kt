@@ -370,8 +370,8 @@ abstract class MetroCompilerTest {
               INTEROP_INCLUDE_HILT_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, enableHiltInterop)
               }
-              RICH_DIAGNOSTICS -> {
-                processor.option(entry.raw.cliOption, richDiagnostics)
+              DIAGNOSTICS_CONSOLE -> {
+                processor.option(entry.raw.cliOption, diagnosticsConsole)
               }
               GENERATE_STATIC_ANNOTATIONS -> {
                 processor.option(
