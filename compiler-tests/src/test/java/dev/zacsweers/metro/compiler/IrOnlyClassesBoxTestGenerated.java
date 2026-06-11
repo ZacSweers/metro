@@ -51,6 +51,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("BindingReplacesProvider.kt")
+    public void testBindingReplacesProvider() {
+      run("BindingReplacesProvider.kt");
+    }
+
+    @Test
     @TestMetadata("ChunkMergedSupertypesBasic.kt")
     public void testChunkMergedSupertypesBasic() {
       run("ChunkMergedSupertypesBasic.kt");
@@ -3108,6 +3114,18 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("InlineProvidesBytecodeCheck.kt")
     public void testInlineProvidesBytecodeCheck() {
       run("InlineProvidesBytecodeCheck.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedProviderValueNotOnConsumerClasspath.kt")
+    public void testInlinedProviderValueNotOnConsumerClasspath() {
+      run("InlinedProviderValueNotOnConsumerClasspath.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedProvidersWithNonPublicValues.kt")
+    public void testInlinedProvidersWithNonPublicValues() {
+      run("InlinedProvidersWithNonPublicValues.kt");
     }
 
     @Test
