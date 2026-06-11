@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOption
 import java.io.File
 import org.gradle.api.Project
 import org.gradle.api.file.Directory
+import org.gradle.api.logging.configuration.ConsoleOutput
 import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.InternalSubpluginOption
@@ -72,6 +73,16 @@ internal fun Project.metroCompilerPluginOptions(
     add(metroOption(MetroOption.KEYS_PER_GRAPH_SHARD, extension.keysPerGraphShard))
     add(metroOption(MetroOption.ENABLE_SWITCHING_PROVIDERS, extension.enableSwitchingProviders))
     add(metroOption(MetroOption.OPTIONAL_BINDING_BEHAVIOR, extension.optionalBindingBehavior))
+    add(
+      // Internal as console mode is presentation-only and environment-dependent
+      // (IDE, CLI, CI, etc.). Snapshotting it would otherwise invalidate compilation and split
+      // build caches between environments.
+      MetroCompilerPluginOption(
+        MetroOption.DIAGNOSTICS_CONSOLE.raw.name,
+        resolveConsoleMode(extension.diagnosticsConsole).get().name,
+        isInternal = true,
+      )
+    )
     add(
       metroOption(
         MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY,
@@ -238,6 +249,38 @@ internal fun Project.metroCompilerPluginOptions(
         )
       )
       add(metroOption(MetroOption.INTEROP_INCLUDE_HILT_ANNOTATIONS, includeHiltAnnotations))
+    }
+  }
+}
+
+/**
+ * Resolves [ConsoleMode.AUTO] to a concrete mode at configuration time. The compiler runs in a
+ * daemon with no terminal information, so console detection must happen here: the `NO_COLOR` or
+ * `CI` environment variables, `--console=plain`, or an IDE-invoked build (IntelliJ/Android Studio
+ * pass `-Didea.active=true`; IDE build output windows do not interpret ANSI escape codes) force
+ * [ConsoleMode.PLAIN]; otherwise AUTO resolves to [ConsoleMode.RICH].
+ */
+@OptIn(ExperimentalMetroGradleApi::class)
+private fun Project.resolveConsoleMode(requested: Provider<ConsoleMode>): Provider<ConsoleMode> {
+  val noColor = providers.environmentVariable("NO_COLOR")
+  val ci = providers.environmentVariable("CI")
+  val ideaActive = providers.systemProperty("idea.active")
+  return requested.map { mode ->
+    when (mode) {
+      ConsoleMode.PLAIN,
+      ConsoleMode.RICH -> mode
+      ConsoleMode.AUTO -> {
+        val noColorSet = !noColor.orNull.isNullOrEmpty()
+        val ciValue = ci.orNull
+        val ciSet = !ciValue.isNullOrEmpty() && !ciValue.equals("false", ignoreCase = true)
+        val plainConsole = gradle.startParameter.consoleOutput == ConsoleOutput.Plain
+        val ideInvoked = ideaActive.orNull?.toBoolean() == true
+        if (noColorSet || ciSet || plainConsole || ideInvoked) {
+          ConsoleMode.PLAIN
+        } else {
+          ConsoleMode.RICH
+        }
+      }
     }
   }
 }

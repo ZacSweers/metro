@@ -380,6 +380,16 @@ constructor(
     objects.enumProperty<DiagnosticSeverity>("desugaredProviderSeverity", DiagnosticSeverity.WARN)
 
   /**
+   * Console mode for Metro's rendered diagnostics. See the docs on [ConsoleMode] for details.
+   *
+   * The compiler only ever receives a concrete `PLAIN`/`RICH` value, [ConsoleMode.AUTO] resolves to
+   * one of them.
+   */
+  @ExperimentalMetroGradleApi
+  public val diagnosticsConsole: Property<ConsoleMode> =
+    objects.enumProperty<ConsoleMode>("diagnosticsConsole", ConsoleMode.AUTO)
+
+  /**
    * Enable/disable [kotlin.reflect.KClass]/[Class] interop for multibinding map keys. When enabled,
    * `java.lang.Class` and `kotlin.reflect.KClass` are treated as interchangeable in map key types,
    * matching Kotlin's own annotation compilation behavior. This only applies to map keys because
