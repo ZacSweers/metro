@@ -138,7 +138,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     val secondBuildResult = project.compileKotlinAndFail()
 
     // Verify that the build failed with the expected error message
-    assertThat(secondBuildResult.output)
+    assertThat(secondBuildResult.output.cleanOutputLine())
       .contains(
         """
         FeatureScreen.kt:7:18
@@ -149,6 +149,10 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
           trace (in test.FeatureGraph):
               Dependency is injected at test.FeatureScreen.dependency
               FeatureScreen is injected at test.FeatureGraph.inject()
+
+          help: ensure Dependency has an @Inject constructor or is provided by an @Provides or @Binds
+                declaration visible to FeatureGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -718,7 +722,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     // Asserted in pieces: the trace line wraps (or not) at 100 columns depending on the
     // version-dependent request path length.
     val output = firstBuildResult.output.cleanOutputLine()
-    assertThat(output).contains("e: ExampleGraph.kt:6:11 ")
+    assertThat(output).contains("e: ExampleGraph.kt:6:11")
     assertThat(output).contains("[Metro/MissingBinding] No binding found for SomeRepository")
     assertThat(output).contains("trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):")
     assertThat(output).contains("SomeRepository is requested at")
@@ -1117,6 +1121,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               ExampleClass is requested at test.LoggedInGraph.exampleClass
 
           note: LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings
         """
           .trimIndent()
       )
@@ -1400,7 +1405,11 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
         [Metro/MissingBinding] No binding found for Foo
 
           trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):
-              Foo is requested at test.LoggedInGraph.childDependenc
+              Foo is requested at test.LoggedInGraph.childDependency
+
+          help: ensure Foo has an @Inject constructor or is provided by an @Provides or @Binds declaration
+                visible to LoggedInGraphImpl
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )

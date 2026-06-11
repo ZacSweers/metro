@@ -10,6 +10,7 @@ import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.assertOutputContains
+import dev.zacsweers.metro.gradle.cleanOutputLine
 import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.toKotlinVersion
@@ -1569,7 +1570,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
 
     // First build should fail - Set<String> is not available
     val firstBuildResult = project.compileKotlinAndFail()
-    assertThat(firstBuildResult.output)
+    assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
         Target.kt:6:14
@@ -1580,6 +1581,10 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
           trace (in test.AppGraph):
               Set<String> is injected at test.Target(…, strings)
               Target is requested at test.AppGraph.target
+
+          help: ensure Set<String> has an @Inject constructor or is provided by an @Provides or @Binds
+                declaration visible to AppGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -1738,7 +1743,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
 
     // Second build should fail - Set is now empty and not allowed
     val secondBuildResult = project.compileKotlinAndFail()
-    assertThat(secondBuildResult.output)
+    assertThat(secondBuildResult.output.cleanOutputLine())
       .contains(
         """
         MyBindingContainer.kt:8:3
@@ -1746,6 +1751,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
 
           help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
                 empty
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
           .trimIndent()
       )
