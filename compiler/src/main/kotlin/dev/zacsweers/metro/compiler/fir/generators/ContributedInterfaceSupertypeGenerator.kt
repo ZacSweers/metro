@@ -229,11 +229,14 @@ internal class ContributedInterfaceSupertypeGenerator(
         val generateClassesInIr = session.metroFirBuiltIns.options.generateClassesInIr
         if (generateClassesInIr) {
           // In IR-only mode MetroContribution marker classes are not generated in FIR. Keep only
-          // source interfaces that directly contribute a user-visible supertype; IR generates the
-          // hidden marker classes and binding containers later.
+          // source interfaces that directly contribute a user-visible supertype. Binding-like
+          // contributions are still tracked for replacement/rank logic, but filtered out when
+          // building supertypes.
           val contributesDirectly = originClass.directlyContributesTo(scopeClassId, typeResolver)
           if (contributesDirectly) {
             put(originClass.classId, false)
+          } else if (originClass.bindingLikeContributionMatchesScope(scopeClassId, typeResolver)) {
+            put(originClass.classId, true)
           }
           continue
         }
@@ -273,6 +276,14 @@ internal class ContributedInterfaceSupertypeGenerator(
       annotationsIn(session, session.classIds.contributesToAnnotations).any {
         it.resolvedScopeClassId(session, typeResolver) == scopeClassId
       }
+  }
+
+  private fun FirRegularClassSymbol.bindingLikeContributionMatchesScope(
+    scopeClassId: ClassId,
+    typeResolver: TypeResolveService,
+  ): Boolean {
+    return annotationsIn(session, session.classIds.contributesBindingLikeAnnotationsWithContainers)
+      .any { it.resolvedScopeClassId(session, typeResolver) == scopeClassId }
   }
 
   /**

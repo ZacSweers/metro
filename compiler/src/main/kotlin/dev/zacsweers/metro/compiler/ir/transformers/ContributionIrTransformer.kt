@@ -247,13 +247,15 @@ internal class ContributionIrTransformer(
 
     val contributionsByScope = contributions.groupBy { it.annotation.requireScope() }
     for ((scope, scopedContributions) in contributionsByScope) {
-      if (declaration.shouldContributeDirectSupertype(scopedContributions)) {
+      val container = bindingContainerTransformer.findContainer(declaration)
+      val contributesDirectSupertype =
+        declaration.shouldContributeDirectSupertype(scopedContributions, container != null)
+      if (contributesDirectSupertype) {
         // Preserve user-visible @ContributesTo interface supertypes in FIR/IDE. Hidden
         // MetroContribution markers are generated below only for metadata and replacement logic.
         data.addDirectSupertypeContribution(scope, declaration)
-        if (bindingContainerTransformer.findContainer(declaration) != null) {
-          data.addBindingContainerContribution(scope, declaration)
-        }
+      } else if (container != null) {
+        data.addBindingContainerContribution(scope, declaration)
       }
 
       val bindingContributions =
@@ -292,10 +294,11 @@ internal class ContributionIrTransformer(
   }
 
   private fun IrClass.shouldContributeDirectSupertype(
-    scopedContributions: List<Contribution>
+    scopedContributions: List<Contribution>,
+    isBindingContainer: Boolean,
   ): Boolean {
     if (kind != ClassKind.INTERFACE) return false
-    if (isBindingContainer()) return false
+    if (isBindingContainer) return false
     if (isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)) return false
     return scopedContributions.any { it is Contribution.ContributesTo }
   }
