@@ -6,7 +6,7 @@ package dev.zacsweers.metro.compiler.diagnostics
  * A structured Metro diagnostic.
  *
  * This is the renderer-independent model for one problem Metro wants to report. Detection code
- * builds the model; console, JSON, and SARIF output render or serialize it later.
+ * builds the model; the configured console renderer renders it later.
  */
 internal data class MetroDiagnostic(
   val id: MetroDiagnosticId,

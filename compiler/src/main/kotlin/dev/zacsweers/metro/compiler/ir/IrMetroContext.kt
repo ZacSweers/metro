@@ -16,7 +16,6 @@ import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticBatch
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
-import dev.zacsweers.metro.compiler.diagnostics.serialization.MetroDiagnosticsCollector
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.cache.IrCache
@@ -71,9 +70,6 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   fun flushIcTracking()
 
   val diagnosticRenderer: DiagnosticRenderer
-
-  /** Accumulates structured diagnostics for machine-readable reports (JSON/SARIF). */
-  val diagnosticsCollector: MetroDiagnosticsCollector
 
   val irTypeSystemContext: IrTypeSystemContext
 
@@ -180,7 +176,6 @@ internal class IrMetroContextImpl(
   rawExpectActualTracker: ExpectActualTracker,
   override val traceDriver: AbstractTraceDriver,
   override val diagnosticRenderer: DiagnosticRenderer,
-  override val diagnosticsCollector: MetroDiagnosticsCollector,
   override val irTypeSystemContext: IrTypeSystemContext,
   override val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat,
   @ReportFile("log.txt") logFile: Lazy<Path?>,
@@ -261,12 +256,8 @@ internal class IrMetroContextImpl(
 /**
  * Renders a single structured [MetroDiagnostic] with the context's configured console mode. For
  * call sites that report immediately rather than through a batched pending-diagnostics queue.
- *
- * Also records the diagnostic in [IrMetroContext.diagnosticsCollector] so it lands in the
- * machine-readable diagnostic reports.
  */
 internal fun IrMetroContext.render(diagnostic: MetroDiagnostic): String {
-  diagnosticsCollector.record(diagnostic)
   val prepared = DiagnosticBatch.prepare(listOf(diagnostic)).single()
   return diagnosticRenderer.render(prepared.diagnostic, prepared.renderContext)
 }
@@ -278,17 +269,6 @@ internal fun IrMetroContext.render(diagnostic: MetroDiagnostic): String {
  * message is handed to the diagnostic reporter — never in machine-readable outputs.
  */
 internal fun String.padForConsole(): String = "\n$this\n"
-
-/**
- * Writes machine-readable diagnostic reports (`diagnostics/diagnostics.json` +
- * `diagnostics/diagnostics.sarif`) under [IrMetroContext.reportsDir]. No-op when reports are
- * disabled or no structured diagnostics were recorded. Idempotent — overwrites both files with the
- * full current contents on each call.
- */
-internal fun IrMetroContext.writeDiagnosticReports() {
-  val reportsDir = reportsDir ?: return
-  diagnosticsCollector.writeTo(reportsDir)
-}
 
 /** See the other [writeDiagnostic] */
 context(context: IrMetroContext)

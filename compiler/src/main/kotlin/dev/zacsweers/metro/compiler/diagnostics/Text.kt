@@ -59,7 +59,7 @@ internal class Text(internal val spans: List<Span>) {
   val typeSpans: List<Span.Type>
     get() = spans.filterIsInstance<Span.Type>()
 
-  /** Unstyled rendering with simple type names. For tests, JSON output, and fallbacks. */
+  /** Unstyled rendering with simple type names. For tests and fallbacks. */
   override fun toString(): String =
     spans.joinToString("") { span ->
       when (span) {

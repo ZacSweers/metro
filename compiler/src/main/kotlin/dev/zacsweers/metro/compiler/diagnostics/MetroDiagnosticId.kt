@@ -8,8 +8,8 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 /**
  * Registry of Metro's common diagnostic IDs.
  *
- * @property fullId the user-visible tag, such as `[Metro/MissingBinding]`, and the SARIF rule id.
- * @property brief used in generated docs and SARIF rule metadata.
+ * @property fullId the user-visible tag, such as `[Metro/MissingBinding]`.
+ * @property brief used in generated docs metadata.
  * @property explanation the Markdown body for the generated diagnostics reference page.
  * @property factory the default [MetroDiagnostics] factory that transports the rendered message
  *   through kotlinc's diagnostic reporting. Call sites with severity-dependent factories (e.g.

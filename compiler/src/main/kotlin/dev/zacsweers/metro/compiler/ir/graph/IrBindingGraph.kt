@@ -57,7 +57,6 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
-import dev.zacsweers.metro.compiler.ir.writeDiagnosticReports
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.safePathString
@@ -139,7 +138,6 @@ internal class IrBindingGraph(
 
   private fun collectDiagnostic(diagnostic: MetroDiagnostic, declaration: IrDeclaration) {
     hasErrors = true
-    diagnosticsCollector.record(diagnostic, declaration.toDiagnosticSpan())
     pendingDiagnostics +=
       PendingDiagnostic.Structured(diagnostic.id.factory, declaration, diagnostic)
   }
@@ -159,11 +157,9 @@ internal class IrBindingGraph(
         } else {
           diagnostic
         }
-      diagnosticsCollector.record(enriched, element.toDiagnosticSpan())
       pendingDiagnostics += PendingDiagnostic.Structured(enriched.id.factory, element, enriched)
     } else {
       // Rare non-declaration anchor — report immediately (no batch passes to share with).
-      diagnosticsCollector.record(diagnostic)
       val prepared = DiagnosticBatch.prepare(listOf(diagnostic)).single()
       with(metroContext) {
         diagnosticReporter.reportAt(
@@ -191,17 +187,6 @@ internal class IrBindingGraph(
    * trace dedup) before rendering with the context's configured console mode.
    */
   override fun flush() {
-    try {
-      flushPendingDiagnostics()
-    } finally {
-      // Keep the machine-readable reports current. This runs before exitProcessing() on the
-      // fatal path (reportFatal calls flush() first), so the files exist even when processing
-      // aborts. Writes are idempotent full-file overwrites and no-op when nothing was recorded.
-      writeDiagnosticReports()
-    }
-  }
-
-  private fun flushPendingDiagnostics() {
     if (pendingDiagnostics.isEmpty()) return
     val structured = pendingDiagnostics.filterIsInstance<PendingDiagnostic.Structured>()
     val prepared = DiagnosticBatch.prepare(structured.map { it.diagnostic })
