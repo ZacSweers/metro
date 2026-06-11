@@ -8,6 +8,7 @@ import org.gradle.api.Project
 import org.gradle.api.file.Directory
 import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
+import org.jetbrains.kotlin.gradle.plugin.InternalSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 
@@ -15,6 +16,15 @@ internal data class MetroCompilerPluginOption(
   val key: String,
   val value: String,
   val isFileOption: Boolean = false,
+  /**
+   * Internal options are passed to the compiler but excluded from Gradle's task input snapshot (via
+   * [InternalSubpluginOption]).
+   *
+   * Use for presentation-only options whose value never affects compilation outputs — otherwise
+   * environment-dependent values (like [ConsoleMode]) would spuriously invalidate compile tasks and
+   * break build-cache sharing between environments.
+   */
+  val isInternal: Boolean = false,
 )
 
 @OptIn(
@@ -268,10 +278,10 @@ private fun metroOption(option: MetroOption, value: Provider<String>): MetroComp
   MetroCompilerPluginOption(option.raw.name, value.get())
 
 internal fun MetroCompilerPluginOption.toSubpluginOption(): SubpluginOption =
-  if (isFileOption) {
-    FilesSubpluginOption(key, listOf(File(value)))
-  } else {
-    SubpluginOption(key, value)
+  when {
+    isFileOption -> FilesSubpluginOption(key, listOf(File(value)))
+    isInternal -> InternalSubpluginOption(key, value)
+    else -> SubpluginOption(key, value)
   }
 
 internal fun Collection<MetroCompilerPluginOption>.renderForReport(): List<String> = map {
