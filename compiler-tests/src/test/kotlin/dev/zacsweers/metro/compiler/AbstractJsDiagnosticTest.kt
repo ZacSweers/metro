@@ -16,7 +16,6 @@ import org.jetbrains.kotlin.test.builders.klibArtifactsHandlersStep
 import org.jetbrains.kotlin.test.configuration.setupHandlersForDiagnosticTest
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
 import org.jetbrains.kotlin.test.directives.FirDiagnosticsDirectives.DISABLE_GENERATED_FIR_TAGS
-import org.jetbrains.kotlin.test.directives.FirDiagnosticsDirectives.FIR_IDENTICAL
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.LATEST_PHASE_IN_PIPELINE
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.RUN_PIPELINE_TILL
 import org.jetbrains.kotlin.test.directives.configureFirParser
@@ -42,7 +41,7 @@ open class AbstractJsDiagnosticTest : AbstractKotlinCompilerTest() {
 
       defaultDirectives {
         +WITH_STDLIB
-        +FIR_IDENTICAL
+        firIdenticalCompat()
         +DISABLE_GENERATED_FIR_TAGS
         commonMetroTestDirectives()
 
