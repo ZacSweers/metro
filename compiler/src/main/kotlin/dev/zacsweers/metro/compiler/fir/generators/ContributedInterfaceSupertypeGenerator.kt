@@ -10,11 +10,13 @@ import dev.zacsweers.metro.compiler.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
+import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.caching
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -791,30 +793,78 @@ internal class ContributedInterfaceSupertypeGenerator(
     extension: MetroContributionExtension,
     contribution: MetroContributionExtension.Contribution,
   ) {
-    val supertypeClassId = contribution.supertype.classId ?: return
-    val supertypeSymbol =
-      supertypeClassId.toSymbol(session)?.expectAsOrNull<FirClassLikeSymbol<*>>() ?: return
-    val bindingContainerClassId = supertypeSymbol.bindingContainerClassIdOrNull() ?: return
+    val originSymbol = contribution.originClassId.classLikeSymbolOrNull()
+    val supertypeSymbol = contribution.supertype.classId?.classLikeSymbolOrNull()
+
+    val directOriginBindingContainer =
+      originSymbol?.nonMetroContributionBindingContainerClassIdOrNull()
+    val annotatedOriginBindingContainer = originSymbol?.originBindingContainerClassIdOrNull()
+    val directSupertypeBindingContainer =
+      supertypeSymbol?.nonMetroContributionBindingContainerClassIdOrNull()
+    val annotatedSupertypeBindingContainer = supertypeSymbol?.originBindingContainerClassIdOrNull()
+
+    val bindingContainerClassId =
+      listOfNotNull(
+          directOriginBindingContainer,
+          annotatedOriginBindingContainer,
+          directSupertypeBindingContainer,
+          annotatedSupertypeBindingContainer,
+        )
+        .firstOrNull() ?: return
 
     val extensionName = extension::class.qualifiedName ?: extension::class.toString()
     error(
-      "MetroContributionExtension $extensionName returned @BindingContainer " +
-        "$bindingContainerClassId as graph supertype contribution $supertypeClassId. " +
+      "MetroContributionExtension $extensionName returned graph supertype contribution " +
+        "${contribution.supertype} that resolves to @BindingContainer $bindingContainerClassId. " +
         "Binding containers must be contributed through contribution hints or " +
         "MetroIrContributionExtension.contributeBindingContainers()."
     )
   }
 
+  private fun ClassId.classLikeSymbolOrNull(): FirClassLikeSymbol<*>? {
+    return toSymbol(session)?.expectAsOrNull<FirClassLikeSymbol<*>>()
+  }
+
   private fun FirClassLikeSymbol<*>.bindingContainerClassIdOrNull(): ClassId? {
-    var current: FirClassLikeSymbol<*>? = this
-    while (current != null) {
+    for (current in classAndContainingSymbols()) {
       val regularClass = current as? FirRegularClassSymbol
       if (regularClass != null && regularClass.isBindingContainer(session)) {
         return regularClass.classId
       }
-      current = current.getContainingClassSymbol()
     }
     return null
+  }
+
+  private fun FirClassLikeSymbol<*>.nonMetroContributionBindingContainerClassIdOrNull(): ClassId? {
+    for (current in classAndContainingSymbols()) {
+      val regularClass = current as? FirRegularClassSymbol
+      if (
+        regularClass != null &&
+          regularClass.isBindingContainer(session) &&
+          !regularClass.hasOrigin(Keys.MetroContributionClassDeclaration)
+      ) {
+        return regularClass.classId
+      }
+    }
+    return null
+  }
+
+  private fun FirClassLikeSymbol<*>.originBindingContainerClassIdOrNull(): ClassId? {
+    for (current in classAndContainingSymbols()) {
+      val classSymbol = current as? FirClassSymbol<*> ?: continue
+      val typeResolver = typeResolverFactory.create(current) ?: continue
+      val originClassId = classSymbol.originClassId(session, typeResolver) ?: continue
+      val originSymbol =
+        originClassId.toSymbol(session)?.expectAsOrNull<FirClassLikeSymbol<*>>() ?: continue
+      originSymbol.bindingContainerClassIdOrNull()?.let {
+        return it
+      }
+    }
+    return null
+  }
+
+  private fun FirClassLikeSymbol<*>.classAndContainingSymbols(): Sequence<FirClassLikeSymbol<*>> {
+    return generateSequence(this) { it.getContainingClassSymbol() }
   }
 
   /**
