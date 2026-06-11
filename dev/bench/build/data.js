@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781124881503,
+  "lastUpdate": 1781212382073,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -17024,6 +17024,62 @@ window.BENCHMARK_DATA = {
             "value": 19965.742,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.81%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5b68b603~1",
+          "message": "[before] Fix supertype merging not handling replaces from c",
+          "timestamp": "2026-06-11T20:38:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5b68b603abc86823abfaebee0a0af6c8fc93dc36"
+        },
+        "date": 1781212382073,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19569.266,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5b68b603abc86823abfaebee0a0af6c8fc93dc36",
+          "message": "[after] Fix supertype merging not handling replaces from c",
+          "timestamp": "2026-06-11T20:38:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5b68b603abc86823abfaebee0a0af6c8fc93dc36"
+        },
+        "date": 1781212382074,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20034.046,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.38%"
           }
         ]
       }

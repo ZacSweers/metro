@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781124881362,
+  "lastUpdate": 1781212381907,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -17024,6 +17024,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2647110554195598,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.83%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5b68b603~1",
+          "message": "[before] Fix supertype merging not handling replaces from c",
+          "timestamp": "2026-06-11T20:38:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5b68b603abc86823abfaebee0a0af6c8fc93dc36"
+        },
+        "date": 1781212381907,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2166079982168167,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5b68b603abc86823abfaebee0a0af6c8fc93dc36",
+          "message": "[after] Fix supertype merging not handling replaces from c",
+          "timestamp": "2026-06-11T20:38:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5b68b603abc86823abfaebee0a0af6c8fc93dc36"
+        },
+        "date": 1781212381908,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22347230761206277,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +3.17%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
