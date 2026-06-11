@@ -2349,6 +2349,18 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("InlinedProviderValueNotOnConsumerClasspath.kt")
+    public void testInlinedProviderValueNotOnConsumerClasspath() {
+      run("InlinedProviderValueNotOnConsumerClasspath.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedProvidersWithNonPublicValues.kt")
+    public void testInlinedProvidersWithNonPublicValues() {
+      run("InlinedProvidersWithNonPublicValues.kt");
+    }
+
+    @Test
     @TestMetadata("InlinedProvidesBytecodeCheck.kt")
     public void testInlinedProvidesBytecodeCheck() {
       run("InlinedProvidesBytecodeCheck.kt");

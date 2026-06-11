@@ -28,6 +28,7 @@ fun main() {
     AbstractJsContributionProvidersBoxTest,
     AbstractIrOnlyClassesBoxTest,
     AbstractDiagnosticTest,
+    AbstractJsDiagnosticTest,
     AbstractFirDumpTest,
     AbstractIrDumpTest,
     AbstractReportsTest,

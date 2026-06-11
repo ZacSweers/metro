@@ -1203,6 +1203,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("NullabilityInFunInterfaceContributions.kt")
+    public void testNullabilityInFunInterfaceContributions() {
+      run("NullabilityInFunInterfaceContributions.kt");
+    }
+
+    @Test
     @TestMetadata("OpenAccessorsInClasses.kt")
     public void testOpenAccessorsInClasses() {
       run("OpenAccessorsInClasses.kt");
@@ -1377,6 +1383,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       @TestMetadata("DynamicGraphCanReplaceScopedBindings.kt")
       public void testDynamicGraphCanReplaceScopedBindings() {
         run("DynamicGraphCanReplaceScopedBindings.kt");
+      }
+
+      @Test
+      @TestMetadata("DynamicGraphCanReplaceScopedBindingsWithJvmStatic.kt")
+      public void testDynamicGraphCanReplaceScopedBindingsWithJvmStatic() {
+        run("DynamicGraphCanReplaceScopedBindingsWithJvmStatic.kt");
       }
 
       @Test
@@ -1616,9 +1628,21 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("IncludesAcrossIntermediateUnpackingExplicitFactory.kt")
+      public void testIncludesAcrossIntermediateUnpackingExplicitFactory() {
+        run("IncludesAcrossIntermediateUnpackingExplicitFactory.kt");
+      }
+
+      @Test
       @TestMetadata("IncludesTypesCanBeAccessibleAsProviders.kt")
       public void testIncludesTypesCanBeAccessibleAsProviders() {
         run("IncludesTypesCanBeAccessibleAsProviders.kt");
+      }
+
+      @Test
+      @TestMetadata("IncludesTypesCanBeAccessibleAsProvidersExplicitFactory.kt")
+      public void testIncludesTypesCanBeAccessibleAsProvidersExplicitFactory() {
+        run("IncludesTypesCanBeAccessibleAsProvidersExplicitFactory.kt");
       }
 
       @Test
@@ -2885,6 +2909,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("MemberInjectWithJvmFieldProperties.kt")
+    public void testMemberInjectWithJvmFieldProperties() {
+      run("MemberInjectWithJvmFieldProperties.kt");
+    }
+
+    @Test
     @TestMetadata("MemberInjectWithNullableMutableProperties.kt")
     public void testMemberInjectWithNullableMutableProperties() {
       run("MemberInjectWithNullableMutableProperties.kt");
@@ -3111,6 +3141,18 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("InlinedProviderValueNotOnConsumerClasspath.kt")
+    public void testInlinedProviderValueNotOnConsumerClasspath() {
+      run("InlinedProviderValueNotOnConsumerClasspath.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedProvidersWithNonPublicValues.kt")
+    public void testInlinedProvidersWithNonPublicValues() {
+      run("InlinedProvidersWithNonPublicValues.kt");
+    }
+
+    @Test
     @TestMetadata("InlinedProvidesBytecodeCheck.kt")
     public void testInlinedProvidesBytecodeCheck() {
       run("InlinedProvidesBytecodeCheck.kt");
@@ -3120,6 +3162,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("JvmFieldProvidersAreRespected.kt")
     public void testJvmFieldProvidersAreRespected() {
       run("JvmFieldProvidersAreRespected.kt");
+    }
+
+    @Test
+    @TestMetadata("PropertyProvidersAreRespected.kt")
+    public void testPropertyProvidersAreRespected() {
+      run("PropertyProvidersAreRespected.kt");
     }
 
     @Test
