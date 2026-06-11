@@ -2,17 +2,25 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.diagnostics
 
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
+
 /**
  * Registry of Metro's common diagnostic IDs.
  *
  * @property fullId the user-visible tag, such as `[Metro/MissingBinding]`, and the SARIF rule id.
  * @property brief used in generated docs and SARIF rule metadata.
  * @property explanation the Markdown body for the generated diagnostics reference page.
+ * @property factory the default [MetroDiagnostics] factory that transports the rendered message
+ *   through kotlinc's diagnostic reporting. Call sites with severity-dependent factories (e.g.
+ *   [UNUSED_GRAPH_INPUTS], which maps a configured severity to warning/error variants) select their
+ *   own instead.
  */
 internal enum class MetroDiagnosticId(
   val fullId: String,
   val brief: String,
   val explanation: String,
+  val factory: KtDiagnosticFactory1<String>,
 ) {
   MISSING_BINDING(
     "Metro/MissingBinding",
@@ -26,6 +34,7 @@ internal enum class MetroDiagnosticId(
     Add an `@Inject` constructor, an `@Provides` function, or a `@Binds`/contributed binding visible
     to the graph that requests the type.
     """,
+    MetroDiagnostics.MISSING_BINDING,
   ),
   DUPLICATE_BINDING(
     "Metro/DuplicateBinding",
@@ -35,6 +44,7 @@ internal enum class MetroDiagnosticId(
     listed with its location. Remove all but one, give them distinct qualifiers, or annotate them
     with `@IntoSet`/`@IntoMap` if the bindings are meant to contribute to a collection.
     """,
+    MetroDiagnostics.DUPLICATE_BINDING,
   ),
   DEPENDENCY_CYCLE(
     "Metro/DependencyCycle",
@@ -45,6 +55,7 @@ internal enum class MetroDiagnosticId(
     construction until first use. If the cycle is between graphs that extend or depend on each
     other, restructure the graph relationship instead.
     """,
+    MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE,
   ),
   DUPLICATE_MAP_KEYS(
     "Metro/DuplicateMapKeys",
@@ -53,6 +64,7 @@ internal enum class MetroDiagnosticId(
     Two `@IntoMap` contributions declare the same key for the same map binding. Each map key may
     only be contributed once. Change one key or remove the duplicate contribution.
     """,
+    MetroDiagnostics.DUPLICATE_MAP_KEY,
   ),
   EMPTY_MULTIBINDING(
     "Metro/EmptyMultibinding",
@@ -63,6 +75,7 @@ internal enum class MetroDiagnosticId(
     the intended contributions target the same collection type, qualifier, and graph scope. When
     Metro finds a near match, the report lists it as a similar multibinding.
     """,
+    MetroDiagnostics.EMPTY_MULTIBINDING,
   ),
   SUSPICIOUS_UNUSED_MULTIBINDING(
     "Metro/SuspiciousUnusedMultibinding",
@@ -72,6 +85,7 @@ internal enum class MetroDiagnosticId(
     the contributions target the wrong collection type, qualifier, or graph scope. The report lists
     the unused contributions and any child graph scopes where the multibinding is requested.
     """,
+    MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING,
   ),
   INCOMPATIBLY_SCOPED_BINDINGS(
     "Metro/IncompatiblyScopedBindings",
@@ -81,6 +95,7 @@ internal enum class MetroDiagnosticId(
     references a scoped binding. Add the binding's scope to the graph's `@SingleIn`/scope
     annotations, move the binding to a graph that declares the scope, or remove the binding's scope.
     """,
+    MetroDiagnostics.INCOMPATIBLE_SCOPE,
   ),
   INCOMPATIBLE_RETURN_TYPES(
     "Metro/IncompatibleReturnTypes",
@@ -90,6 +105,7 @@ internal enum class MetroDiagnosticId(
     happen with members inherited from contributed supertypes. Make the return types compatible or
     rename one of the members so they no longer override each other.
     """,
+    MetroDiagnostics.INCOMPATIBLE_RETURN_TYPES,
   ),
   INCOMPATIBLE_OVERRIDES(
     "Metro/IncompatibleOverrides",
@@ -99,6 +115,7 @@ internal enum class MetroDiagnosticId(
     binding roles. For example, one declaration may be an accessor while another is an `@Provides`
     function. Align the declarations or rename one of the members.
     """,
+    MetroDiagnostics.INCOMPATIBLE_OVERRIDES,
   ),
   QUALIFIER_OVERRIDE_MISMATCH(
     "Metro/QualifierOverrideMismatch",
@@ -108,6 +125,7 @@ internal enum class MetroDiagnosticId(
     resolves a different binding than the declaration it overrides. Declare the same qualifiers on
     the override and the overridden declaration.
     """,
+    MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH,
   ),
   INVALID_BINDING(
     "Metro/InvalidBinding",
@@ -117,6 +135,7 @@ internal enum class MetroDiagnosticId(
     injecting an assisted-injected class directly. Inject its `@AssistedFactory` instead and call the
     factory's `create()` function.
     """,
+    MetroDiagnostics.INVALID_ASSISTED_BINDING,
   ),
   UNUSED_GRAPH_INPUTS(
     "Metro/UnusedGraphInputs",
@@ -127,6 +146,7 @@ internal enum class MetroDiagnosticId(
     the used containers directly. Configure this diagnostic with the `unusedGraphInputsSeverity`
     Gradle option.
     """,
+    MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING,
   ),
   GENERIC(
     "Metro/Error",
@@ -135,6 +155,7 @@ internal enum class MetroDiagnosticId(
     Metro reported a graph validation error that does not have a dedicated diagnostic ID. The
     diagnostic message contains the specific failure and any available fix guidance.
     """,
+    MetroDiagnostics.METRO_ERROR,
   );
 
   /** Anchor on the generated diagnostics reference page. */
