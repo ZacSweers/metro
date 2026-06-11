@@ -110,7 +110,9 @@ import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImplWithShape
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
@@ -629,7 +631,20 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
   source: IrSimpleFunction,
   constructor: IrConstructorSymbol,
 ): IrConstructorCall {
-  return irCall(constructor)
+  val constructedClass = constructor.owner.parentAsClass
+  return IrConstructorCallImplWithShape(
+      startOffset = startOffset,
+      endOffset = endOffset,
+      type = constructor.owner.returnType,
+      symbol = constructor,
+      typeArgumentsCount =
+        constructor.owner.typeParameters.size + constructedClass.typeParameters.size,
+      constructorTypeArgumentsCount = constructor.owner.typeParameters.size,
+      valueArgumentsCount = source.nonDispatchParameters.size,
+      contextParameterCount = 0,
+      hasDispatchReceiver = false,
+      hasExtensionReceiver = false,
+    )
     .apply {
       for ((i, parameter) in source.nonDispatchParameters.withIndex()) {
         arguments[i] = irGet(parameter)
@@ -1476,6 +1491,27 @@ internal fun addHiddenFromObjCAnnotation(function: IrFunction) {
   function.addAnnotationCompat(buildAnnotation(function.symbol, ctor))
 }
 
+context(context: IrMetroContext)
+internal fun IrClass.addDeprecatedHiddenAnnotation() {
+  addAnnotationCompat(
+    buildAnnotation(symbol, context.metroSymbols.deprecatedAnnotationConstructor) { annotation ->
+      annotation.arguments[0] = irString("This synthesized declaration should not be used directly")
+      annotation.arguments[2] =
+        IrGetEnumValueImpl(
+          SYNTHETIC_OFFSET,
+          SYNTHETIC_OFFSET,
+          context.metroSymbols.deprecationLevel.defaultType,
+          context.metroSymbols.hiddenDeprecationLevel,
+        )
+    }
+  )
+}
+
+context(context: IrMetroContext)
+internal fun IrClass.addMetroImplMarkerAnnotation() {
+  addAnnotationCompat(buildAnnotation(symbol, context.metroSymbols.metroImplMarkerConstructor))
+}
+
 /**
  * Adds `@JvmStatic` and `@JsStatic` to [function] when [MetroOptions.generateStaticAnnotations] is
  * enabled and the annotations are available on the current classpath.
@@ -2186,6 +2222,24 @@ internal fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Bool
     return module.name.asString() == "<$KOTLIN_JS_STDLIB_NAME>"
   }
   return module.descriptor.shouldSeeInternalsOf(
+    referencedDeclarationPackageFragment.moduleDescriptor
+  )
+}
+
+internal fun IrDeclarationWithVisibility.isVisibleAsInternalTo(
+  declaration: IrDeclaration
+): Boolean {
+  declaration.fileOrNull?.let {
+    return isVisibleAsInternal(it)
+  }
+
+  val referencedDeclarationPackageFragment = getPackageFragment()
+  if (referencedDeclarationPackageFragment.symbol is DescriptorlessExternalPackageFragmentSymbol) {
+    return false
+  }
+
+  val callingDeclarationPackageFragment = declaration.getPackageFragment()
+  return callingDeclarationPackageFragment.moduleDescriptor.shouldSeeInternalsOf(
     referencedDeclarationPackageFragment.moduleDescriptor
   )
 }

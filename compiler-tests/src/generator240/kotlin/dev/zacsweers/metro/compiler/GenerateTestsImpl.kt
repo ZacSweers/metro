@@ -13,6 +13,7 @@ inline fun <
   reified JsBox,
   reified JsFastInitBox,
   reified JsContributionProvidersBox,
+  reified IrOnlyClassesBox,
   reified Diagnostic,
   reified FirDump,
   reified IrDump,
@@ -39,6 +40,7 @@ inline fun <
       testClass<JsBox> { nonJvmModel("box") }
       testClass<JsFastInitBox> { nonJvmModel("box") }
       testClass<JsContributionProvidersBox> { nonJvmModel("box") }
+      testClass<IrOnlyClassesBox> { commonModel("box") }
       testClass<Diagnostic> { commonModel("diagnostic") }
       testClass<FirDump> { commonModel("dump/fir") }
       testClass<IrDump> { commonModel("dump/ir") }

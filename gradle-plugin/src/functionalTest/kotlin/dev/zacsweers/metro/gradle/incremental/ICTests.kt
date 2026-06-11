@@ -39,7 +39,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
   }
 
   private val generateClassesInIrEnabled =
-    getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.20-dev-5775")
+    getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.20-dev-6138")
 
   private fun someRepositoryProviderRequestPath(): String {
     return if (generateClassesInIrEnabled) {

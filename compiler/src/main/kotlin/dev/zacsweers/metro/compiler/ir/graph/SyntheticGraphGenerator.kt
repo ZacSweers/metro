@@ -86,6 +86,16 @@ internal data class SyntheticGraphParameter(
   val origin: IrDeclarationOrigin = Origins.Default,
 )
 
+/**
+ * Generates graph impl classes for graphs that are synthesized in IR.
+ *
+ * [originDeclaration] is the source-bearing declaration used for diagnostics. For graph extensions
+ * this is usually the parent graph, because the generated impl has no source of its own.
+ *
+ * [parentExclusionDeclaration] is the graph whose inherited `excludes` should be applied during
+ * contribution merging. Graph-extension impls are generated under their parent graph, so they need
+ * the parent exclusion chain even when their annotation comes from the extension source.
+ */
 internal class SyntheticGraphGenerator(
   metroContext: IrMetroContext,
   private val contributionMerger: IrContributionMerger,
@@ -93,12 +103,21 @@ internal class SyntheticGraphGenerator(
   private val sourceAnnotation: IrConstructorCall?,
   private val parentGraph: IrClass?,
   private val originDeclaration: IrDeclaration,
+  private val parentExclusionDeclaration: IrDeclaration = originDeclaration,
   private val containerToAddTo: IrDeclarationContainer,
   private val traceScope: TraceScope,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
 
+  // Graph-extension impls merge contributions in the parent graph's context. The extension source
+  // may live in another compilation, but the generated impl is nested in the parent graph.
+  private val contributionLookupDeclaration = parentGraph ?: originDeclaration
+
   val contributions = sourceAnnotation?.let {
-    contributionMerger.computeContributions(it, originDeclaration)
+    contributionMerger.computeContributions(
+      it,
+      contributionLookupDeclaration,
+      parentExclusionDeclaration,
+    )
   }
 
   /** Generates a factory implementation class that implements a factory interface. */
@@ -266,6 +285,9 @@ internal class SyntheticGraphGenerator(
 
       // Must be added to the container before we generate a factory impl
       containerToAddTo.addChild(this)
+      if (options.generateClassesInIr) {
+        metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(this)
+      }
     }
 
     val ctor =
@@ -302,6 +324,11 @@ internal class SyntheticGraphGenerator(
           }
 
           body = generateDefaultConstructorBody()
+        }
+        .also {
+          if (options.generateClassesInIr) {
+            metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(it)
+          }
         }
 
     // If there's an extension, generate it into this impl

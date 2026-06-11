@@ -739,10 +739,11 @@ internal class GraphNodes(
 
               if (isInjector && !declaration.returnType.isUnit()) {
                 // FIR checks this in explicit graphs but need to account for inherited functions
-                // from
-                // supertypes
+                // from supertypes. This branch is looking at a generated graph-impl override, so
+                // prefer the source graph for diagnostics. The override may have a synthetic
+                // location that is technically reportable but points at the start of the file.
                 reportCompat(
-                  sequenceOf(declaration, graphDeclaration.sourceGraphIfMetroGraph),
+                  sequenceOf(graphDeclaration.sourceGraphIfMetroGraph, declaration),
                   MetroDiagnostics.METRO_ERROR,
                   "Injector function ${declaration.kotlinFqName} must return Unit. Or, if it's not an injector, remove its parameter.",
                 )
@@ -842,7 +843,7 @@ internal class GraphNodes(
                         "this inject function"
                       }
                     metroContext.reportCompat(
-                      originalDeclaration.takeUnless { isExternal } ?: declaration,
+                      originalDeclaration.takeUnless { isExternal } ?: graphDeclaration,
                       MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION,
                       "Injected class '${declaration.regularParameters[0].type.classFqName!!.asString()}' is constructor-injected and can be instantiated by Metro directly, so $middle is unnecessary.",
                     )

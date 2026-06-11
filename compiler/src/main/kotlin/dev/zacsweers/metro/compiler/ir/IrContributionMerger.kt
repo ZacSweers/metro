@@ -46,7 +46,8 @@ internal class IrContributionMerger(
 
   // Cache for scope-based contributions (before exclusions/replacements).
   // Thread-safe for concurrent access during parallel graph validation.
-  private val scopeContributionsCache = ConcurrentHashMap<Set<ClassId>, ScopedContributions>()
+  private val scopeContributionsCache =
+    ConcurrentHashMap<ScopedContributionsCacheKey, ScopedContributions>()
 
   // Cache for fully processed contributions (after exclusions/replacements).
   // Thread-safe for concurrent access during parallel graph validation.
@@ -65,16 +66,23 @@ internal class IrContributionMerger(
     val originToContributions: Map<ClassId, Set<ClassId>>,
   )
 
+  private data class ScopedContributionsCacheKey(val allScopes: Set<ClassId>, val caller: ClassId?)
+
   private data class ContributionsCacheKey(
     val primaryScope: ClassId,
     val allScopes: Set<ClassId>,
     val excluded: Set<ClassId>,
+    val caller: ClassId?,
   )
+
+  private fun callerCacheKey(callingDeclaration: IrDeclaration): ClassId? =
+    (callingDeclaration as? IrClass)?.classId
 
   context(traceScope: TraceScope)
   fun computeContributions(
     graphLikeAnnotation: IrConstructorCall,
     callingDeclaration: IrDeclaration,
+    parentExclusionDeclaration: IrDeclaration = callingDeclaration,
   ): IrContributions? {
     val sourceScope = graphLikeAnnotation.scopeClassOrNull()
     val scope = sourceScope?.classId
@@ -95,7 +103,7 @@ internal class IrContributionMerger(
       return computeContributions(
         scope,
         allScopes,
-        excluded + parentExcluded(callingDeclaration),
+        excluded + parentExcluded(parentExclusionDeclaration),
         callingDeclaration,
       )
     } else {
@@ -169,14 +177,15 @@ internal class IrContributionMerger(
       }
 
       // Layer 2: Check if we have a fully processed result cached
-      val cacheKey = ContributionsCacheKey(primaryScope, allScopes, excluded)
+      val callerKey = callerCacheKey(callingDeclaration)
+      val cacheKey = ContributionsCacheKey(primaryScope, allScopes, excluded, callerKey)
       mergedContributionsCache[cacheKey]?.let {
         return@trace it
       }
 
       // Layer 1: Get or compute scoped contributions (before exclusions/replacements)
       val scopedContributions =
-        scopeContributionsCache.getOrPut(allScopes) {
+        scopeContributionsCache.getOrPut(ScopedContributionsCacheKey(allScopes, callerKey)) {
           trace("Compute contributions for $allScopes") {
             // Get all contributions and binding containers
             val allContributions =
@@ -234,6 +243,15 @@ internal class IrContributionMerger(
               }
             }
 
+            // Also check direct supertype contributions. In IR-only mode, @ContributesTo
+            // interfaces can be added both as direct graph supertypes and as binding containers.
+            // Replacements/exclusions need to prune both views of the same source interface.
+            for ((externalClassId, externalClass) in externalSupertypes) {
+              externalClass.originClassId()?.let { originClassId ->
+                originToContributions.getAndAdd(originClassId, externalClassId)
+              }
+            }
+
             ScopedContributions(
               allContributions,
               bindingContainers,
@@ -271,15 +289,29 @@ internal class IrContributionMerger(
             originContributions?.forEach { contributionId ->
               mutableAllContributions.remove(contributionId)
               mutableContributedBindingContainers.remove(contributionId)
+              mutableExternalSupertypes.remove(contributionId)
             }
 
-            // Track unmatched if nothing was removed
-            if (
-              removedContainer == null &&
-                removedContribution == null &&
-                removedExternalSupertype == null &&
-                originContributions == null
-            ) {
+            val nestedContributions =
+              (mutableAllContributions.keys +
+                  mutableContributedBindingContainers.keys +
+                  mutableExternalSupertypes.keys)
+                .filter { it.parentClassId == excludedClassId }
+            nestedContributions.forEach { contributionId ->
+              mutableAllContributions.remove(contributionId)
+              mutableContributedBindingContainers.remove(contributionId)
+              mutableExternalSupertypes.remove(contributionId)
+            }
+
+            val removedDirectContribution =
+              removedContainer != null ||
+                removedContribution != null ||
+                removedExternalSupertype != null
+            val removedOriginContribution = originContributions != null
+            val removedNestedContribution = nestedContributions.isNotEmpty()
+            val wasNotMatched =
+              !removedDirectContribution && !removedOriginContribution && !removedNestedContribution
+            if (wasNotMatched) {
               unmatchedExclusions += excludedClassId
             }
           }
@@ -343,18 +375,23 @@ internal class IrContributionMerger(
           for (replacedClassId in classesToReplace) {
             val removedContribution = mutableAllContributions.remove(replacedClassId)
             val removedContainer = mutableContributedBindingContainers.remove(replacedClassId)
+            val removedExternalSupertype = mutableExternalSupertypes.remove(replacedClassId)
 
             // Remove contributions that have @Origin annotation pointing to the replaced class
             val originContributions = originToContributions[replacedClassId]
             originContributions?.forEach { contributionId ->
               mutableAllContributions.remove(contributionId)
               mutableContributedBindingContainers.remove(contributionId)
+              mutableExternalSupertypes.remove(contributionId)
             }
 
-            // Track unmatched if nothing was removed
-            if (
-              removedContribution == null && removedContainer == null && originContributions == null
-            ) {
+            val removedDirectContribution =
+              removedContribution != null ||
+                removedContainer != null ||
+                removedExternalSupertype != null
+            val removedOriginContribution = originContributions != null
+            val wasNotMatched = !removedDirectContribution && !removedOriginContribution
+            if (wasNotMatched) {
               unmatchedReplacements += replacedClassId
             }
           }
@@ -384,17 +421,22 @@ internal class IrContributionMerger(
           for (replacedClassId in rankReplacements) {
             val removedContribution = mutableAllContributions.remove(replacedClassId)
             val removedContainer = mutableContributedBindingContainers.remove(replacedClassId)
+            val removedExternalSupertype = mutableExternalSupertypes.remove(replacedClassId)
 
             // Also remove contributions that have @Origin pointing to the replaced class
-            originToContributions[replacedClassId]?.forEach { contributionId ->
+            val originContributions = originToContributions[replacedClassId]
+            originContributions?.forEach { contributionId ->
               mutableAllContributions.remove(contributionId)
               mutableContributedBindingContainers.remove(contributionId)
+              mutableExternalSupertypes.remove(contributionId)
             }
 
-            val wasNotMatched =
-              removedContribution == null &&
-                removedContainer == null &&
-                originToContributions[replacedClassId] == null
+            val removedDirectContribution =
+              removedContribution != null ||
+                removedContainer != null ||
+                removedExternalSupertype != null
+            val removedOriginContribution = originContributions != null
+            val wasNotMatched = !removedDirectContribution && !removedOriginContribution
             if (wasNotMatched) {
               unmatchedRankReplacements += replacedClassId
             }

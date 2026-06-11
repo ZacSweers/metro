@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
@@ -49,8 +48,7 @@ private class NonAcceptingFirAnnotationCall(
   override val containingDeclarationSymbol: FirBasedSymbol<*>,
 ) : FirAnnotationCall() {
   override val source: KtSourceElement?
-    get() =
-      with(compatContext) { delegate.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated) }
+    get() = with(compatContext) { delegate.source?.fakeElement(pluginGeneratedSourceElementKind) }
 
   @UnresolvedExpressionTypeAccess
   override val coneTypeOrNull: ConeKotlinType?

@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- Add support for generating metadata-visible classes entirely in IR, allowing Metro to move much of its current FIR code gen entirely to IR. This is enabled by default on Kotlin `2.4.20-dev-6138` or newer and can be configured via the `generateClassesInIr` option.
+
 ### Fixes
 
 - **[IR]** Preserve substituted generic type arguments when generating assisted factory delegate parameters and dynamic graph container inputs.
@@ -16,7 +20,9 @@ Changelog
 
 ### Changes
 
-- Metro now runs much of its functional compiler unit tests on JS too.
+- Add JS box-test suite generation for Metro's functional compiler tests.
+- Test Kotlin `2.4.20-dev-6138`.
+- Test IntelliJ `2026.2` EAPs.
 
 1.2.0
 -----
@@ -72,6 +78,7 @@ _2026-06-10_
 - Promote `@GraphPrivate` to stable.
 - Promote `@DefaultBinding` to stable.
 - Promote `generateContributionProviders` (and `@ExposeImplBinding`) to stable.
+- **[compat]** Rework compat factory resolution for `dev` compiler versions. Dev builds now only prefer dev-track factories that share the same base version (i.e. the same trunk lineage, like a `2.4.20-dev-*` factory for a `2.4.20-dev-*` compiler). When crossing base versions, lower-base dev factories and stable factories now compete on version and the highest wins, so a `2.4.20-dev-*` compiler picks a `2.4.0` stable factory over a stale `2.4.0-dev-*` one.
 - **[gradle]** Add missing experimental annotations to the Gradle plugin's analysis APIs. Sorry these were not meant to be stabilized yet!
 - Build against Kotlin `2.4.0`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
 - No longer test most Kotlin `2.4.0` pre-release builds. Kotlin `2.4.0-dev-2124` _is_ still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.

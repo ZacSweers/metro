@@ -2,19 +2,18 @@
 
 Incompatible return types: 'kotlin.Int' vs 'kotlin.String'
 
-  OverridesAreTypeChecked.kt:28:1
+  OverridesAreTypeChecked.kt:30:3
     val fooProperty: kotlin.Int (defined in 'IntProvider')
                      ~~~~~~~~~~
-  OverridesAreTypeChecked.kt:19:1
+  OverridesAreTypeChecked.kt:21:3
     val fooProperty: kotlin.String (defined in 'StringProvider')
                      ~~~~~~~~~~~~~
 
 Incompatible return types: 'kotlin.Int' vs 'kotlin.String'
 
-  OverridesAreTypeChecked.kt:28:1
+  OverridesAreTypeChecked.kt:31:3
     fun fooFunction(): kotlin.Int (defined in 'IntProvider')
                        ~~~~~~~~~~
-  OverridesAreTypeChecked.kt:19:1
+  OverridesAreTypeChecked.kt:22:3
     fun fooFunction(): kotlin.String (defined in 'StringProvider')
                        ~~~~~~~~~~~~~
-

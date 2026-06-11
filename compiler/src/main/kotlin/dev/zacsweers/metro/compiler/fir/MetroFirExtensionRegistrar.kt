@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitDiagnostics
 import dev.zacsweers.metro.compiler.circuit.CircuitFactorySupertypeGenerator
@@ -48,6 +49,9 @@ public class MetroFirExtensionRegistrar(
   private val loadExternalDeclarationExtensions:
     (FirSession, MetroOptions, CompatContext) -> List<MetroFirDeclarationGenerationExtension> =
     ::loadExternalDeclarationExtensions,
+  private val loadExternalContributionHintExtensions:
+    (FirSession, MetroOptions, CompatContext) -> List<MetroContributionHintExtension> =
+    ::loadExternalContributionHintExtensions,
   private val loadExternalContributionExtensions:
     (FirSession, MetroOptions, CompatContext) -> List<MetroContributionExtension> =
     ::loadExternalContributionExtensions,
@@ -71,7 +75,7 @@ public class MetroFirExtensionRegistrar(
     // These are types
     if (!isIde) {
       +{ session: FirSession -> FirAccessorOverrideStatusTransformer(session, compatContext) }
-      if (options.enableCircuitCodegen) {
+      if (options.enableCircuitCodegen && !options.generateClassesInIr) {
         +supertypeGenerator(
           "Supertypes - circuit factories",
           { session, compatContext -> CircuitFactorySupertypeGenerator(session, compatContext) },
@@ -106,9 +110,23 @@ public class MetroFirExtensionRegistrar(
 
       // Load external extensions via ServiceLoader
       val externalExtensions =
-        loadExternalDeclarationExtensions(session, options, compatContext)
-          // If we're running in the IDE, only enable extensions that opt-in to that.
-          .letIf(!isCli) { extensions -> extensions.filter { it.enableFirInIde } }
+        if (options.generateClassesInIr) {
+          emptyList()
+        } else {
+          loadExternalDeclarationExtensions(session, options, compatContext)
+            // If we're running in the IDE, only enable extensions that opt-in to that.
+            .letIf(!isCli) { extensions -> extensions.filter { it.enableFirInIde } }
+        }
+
+      val externalHintExtensions =
+        (loadExternalContributionHintExtensions(session, options, compatContext) +
+            externalExtensions.filterIsInstance<MetroContributionHintExtension>())
+          .distinct()
+          .letIf(!isCli) {
+            // Contribution hints are only generated on the CLI. Keep this empty in the IDE so hint
+            // providers do not trigger unnecessary FIR predicate work.
+            emptyList()
+          }
 
       // Build list of native Metro generators
       val nativeExtensions = buildList {
@@ -126,32 +144,38 @@ public class MetroFirExtensionRegistrar(
           )
         }
 
-        // These need to run in the IDE for supertype merging inlays to be visible
-        add(
-          wrapNativeGenerator("FirGen - ContributionsGenerator", true) { session, compatContext ->
-            ContributionsFirGenerator(session, compatContext, externalExtensions)
-          }(session)
-        )
+        if (!options.generateClassesInIr) {
+          // These need to run in the IDE for supertype merging inlays to be visible
+          add(
+            wrapNativeGenerator("FirGen - ContributionsGenerator", true) { session, compatContext ->
+              ContributionsFirGenerator(session, compatContext, externalExtensions)
+            }(session)
+          )
+        }
 
         if (isCli) {
-          add(
-            wrapNativeGenerator("FirGen - ProvidesFactory", true, ::ProvidesFactoryFirGenerator)(
-              session
+          if (!options.generateClassesInIr) {
+            add(
+              wrapNativeGenerator("FirGen - ProvidesFactory", true, ::ProvidesFactoryFirGenerator)(
+                session
+              )
             )
-          )
+          }
 
-          add(
-            wrapNativeGenerator(
-              "FirGen - BindingMirrorClass",
-              true,
-              ::BindingMirrorClassFirGenerator,
-            )(session)
-          )
+          if (!options.generateClassesInIr) {
+            add(
+              wrapNativeGenerator(
+                "FirGen - BindingMirrorClass",
+                true,
+                ::BindingMirrorClassFirGenerator,
+              )(session)
+            )
+          }
 
           if (options.generateContributionHints && options.generateContributionHintsInFir) {
             add(
               wrapNativeGenerator("FirGen - ContributionHints", true) { session, compatContext ->
-                ContributionHintFirGenerator(session, compatContext, externalExtensions)
+                ContributionHintFirGenerator(session, compatContext, externalHintExtensions)
               }(session)
             )
           }
@@ -268,6 +292,30 @@ private fun loadExternalDeclarationExtensions(
         if (options.debug) {
           System.err.println(
             "[Metro] Failed to load external FIR extension from ${factory::class}: ${e.message}"
+          )
+        }
+        null
+      }
+    }
+}
+
+/** Loads external [MetroContributionHintExtension] implementations via ServiceLoader. */
+private fun loadExternalContributionHintExtensions(
+  session: FirSession,
+  options: MetroOptions,
+  compatContext: CompatContext,
+): List<MetroContributionHintExtension> {
+  return ServiceLoader.load(
+      MetroContributionHintExtension.Factory::class.java,
+      MetroContributionHintExtension.Factory::class.java.classLoader,
+    )
+    .mapNotNull { factory ->
+      try {
+        factory.create(session, options, compatContext)
+      } catch (e: Exception) {
+        if (options.debug) {
+          System.err.println(
+            "[Metro] Failed to load external contribution hint extension from ${factory::class}: ${e.message}"
           )
         }
         null

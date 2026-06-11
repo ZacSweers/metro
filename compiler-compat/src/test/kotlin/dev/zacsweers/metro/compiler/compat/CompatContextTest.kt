@@ -313,6 +313,49 @@ class CompatContextTest {
   }
 
   @Test
+  fun `dev version crossing base versions prefers stable over lower-base dev factory`() {
+    // Scenario: 2.4.20-dev-835 has no same-base dev factory (only 2.4.20-dev-6138, which is
+    // newer). It should fall back to the 2.4.0 stable factory, not the stale 2.4.0-dev-2124
+    // factory, because lower-base dev factories are just older snapshots of trunk.
+    val factoryOldDev =
+      FakeFactory(minVersion = "2.4.0-dev-2124", reportedCurrentVersion = "2.4.20-dev-835")
+    val factoryStable = FakeFactory(minVersion = "2.4.0", reportedCurrentVersion = "2.4.20-dev-835")
+    val factoryNewDev =
+      FakeFactory(minVersion = "2.4.20-dev-6138", reportedCurrentVersion = "2.4.20-dev-835")
+
+    val factories = sequenceOf(factoryOldDev, factoryStable, factoryNewDev)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.4.20-dev-835")
+
+    assertThat(resolved.minVersion).isEqualTo("2.4.0")
+  }
+
+  @Test
+  fun `dev version crossing base versions prefers higher-base dev over lower stable`() {
+    val factoryStable = FakeFactory(minVersion = "2.4.0", reportedCurrentVersion = "2.4.20-dev-835")
+    val factoryMidDev =
+      FakeFactory(minVersion = "2.4.10-dev-50", reportedCurrentVersion = "2.4.20-dev-835")
+
+    val factories = sequenceOf(factoryStable, factoryMidDev)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.4.20-dev-835")
+
+    // 2.4.10-dev-50 has a higher base version than 2.4.0, so it's the nearest snapshot of trunk
+    assertThat(resolved.minVersion).isEqualTo("2.4.10-dev-50")
+  }
+
+  @Test
+  fun `dev version prefers same-base dev factory over newer-looking stable fallback`() {
+    val factorySameBaseDev =
+      FakeFactory(minVersion = "2.4.20-dev-100", reportedCurrentVersion = "2.4.20-dev-835")
+    val factoryStable = FakeFactory(minVersion = "2.4.0", reportedCurrentVersion = "2.4.20-dev-835")
+
+    val factories = sequenceOf(factorySameBaseDev, factoryStable)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.4.20-dev-835")
+
+    // Same-base dev factories share the current version's trunk lineage and win outright
+    assertThat(resolved.minVersion).isEqualTo("2.4.20-dev-100")
+  }
+
+  @Test
   fun `dev version with only non-dev factories available`() {
     val factoryStable =
       FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-dev-5437")
@@ -336,6 +379,40 @@ class CompatContextTest {
 
     // 2.2.20-dev-5812 is a dev build OF 2.2.20, should match the 2.2.20 factory
     assertThat(resolved.minVersion).isEqualTo("2.2.20")
+  }
+
+  @Test
+  fun `real factory matrix resolves reasonably for IDE-bundled compiler versions`() {
+    // Mirrors the actual shipped compat modules. Keep in sync when adding/removing modules.
+    val realMinVersions =
+      listOf("2.3.0", "2.3.20", "2.4.0-dev-2124", "2.4.0", "2.4.20-dev-3583", "2.4.20-dev-6138")
+
+    // currentVersion -> expected factory minVersion. Current versions are the (aliased) kotlinc
+    // versions bundled by IDEs we test in ide-integration-tests, plus the dev track itself.
+    val expectations =
+      mapOf(
+        // IJ 2025.3.x / AS Panda (2.3.20-ij253-*, 2.3.255-dev-255 -> 2.3.0-dev-9992)
+        "2.3.0-dev-9992" to "2.3.0",
+        // IJ 2026.1.1 (2.4.0-ij261-32 -> 2.4.0-dev-2124)
+        "2.4.0-dev-2124" to "2.4.0-dev-2124",
+        // IJ 2026.1.2/.3 / AS Quail (2.4.0-ij261-50/-64, 2.4.255-dev-255 -> 2.4.0-dev-2633)
+        "2.4.0-dev-2633" to "2.4.0-dev-2124",
+        // IJ 2026.2 (2.4.20-dev-4439)
+        "2.4.20-dev-4439" to "2.4.20-dev-3583",
+        // Current dev track
+        "2.4.20-dev-6138" to "2.4.20-dev-6138",
+        // Unmapped future IDE build picks the lowest same-base factory
+        "2.4.20-ij262-1" to "2.4.20-dev-3583",
+      )
+
+    for ((currentVersion, expectedMinVersion) in expectations) {
+      val factories = realMinVersions.map {
+        FakeFactory(minVersion = it, reportedCurrentVersion = currentVersion)
+      }
+      val resolved =
+        CompatContext.resolveFactory(factories.asSequence(), testVersionString = currentVersion)
+      assertThat(resolved.minVersion).isEqualTo(expectedMinVersion)
+    }
   }
 
   @Test

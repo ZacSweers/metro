@@ -146,7 +146,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   fun IrElement.dumpToMetroLog(name: String) {
     loggerFor(MetroLogger.Type.GeneratedFactories).log {
-      val irSrc = betterDumpKotlinLike()
+      val irSrc = metroDumpKotlinLike()
       buildString {
         append("IR source dump for ")
         appendLine(name)

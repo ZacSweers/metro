@@ -71,7 +71,7 @@ public class HiltContributionExtension(
       options: MetroOptions,
       compatContext: CompatContext,
     ): MetroContributionExtension? {
-      if (!options.enableHiltInterop) return null
+      if (!options.enableHiltInterop || options.generateClassesInIr) return null
       return HiltContributionExtension(session, compatContext)
     }
   }

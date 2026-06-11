@@ -14,9 +14,12 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
+import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
+import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
@@ -29,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.getAnnotationStringValue
+import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -108,7 +112,10 @@ internal class InjectedClassTransformer(
     // Skip factory generation when generateContributionProviders is enabled and the class
     // has binding contributions — the contribution provider handles construction.
     // @ExposeImplBinding opts out of this skip.
-    if (declaration.usesContributionProviderPath(options, metroSymbols.classIds)) {
+    if (
+      !options.generateClassesInIr &&
+        declaration.usesContributionProviderPath(options, metroSymbols.classIds)
+    ) {
       // Cache absence so later lookups (e.g., from BindingLookup) return null instead of
       // attempting to generate after locking.
       generatedFactories[declaration.classIdOrFail] = Optional.empty()
@@ -240,13 +247,22 @@ internal class InjectedClassTransformer(
 
     checkNotLocked()
 
+    val isAssistedInject =
+      listOf(declaration, targetConstructor).any {
+        it.isAnnotatedWithAny(metroSymbols.classIds.assistedInjectAnnotations)
+      }
+
     val factoryCls =
       declaration.nestedClasses.singleOrNull {
         it.origin == Origins.InjectConstructorFactoryClassDeclaration
       }
-        ?: reportCompilerBug(
-          "No expected FIR-generated factory class found for '${declaration.kotlinFqName}'."
-        )
+        ?: if (options.generateClassesInIr) {
+          createInjectConstructorFactoryShell(declaration, isAssistedInject)
+        } else {
+          reportCompilerBug(
+            "No expected FIR-generated factory class found for '${declaration.kotlinFqName}'."
+          )
+        }
 
     /*
     Implement a simple Factory class that takes all injected values as providers
@@ -262,11 +278,6 @@ internal class InjectedClassTransformer(
     val memberInjectParameters = injectors.flatMap { it.requiredParametersByClass.values.flatten() }
 
     val constructorParameters = targetConstructor.parameters()
-
-    val isAssistedInject =
-      listOf(declaration, targetConstructor).any {
-        it.isAnnotatedWithAny(metroSymbols.classIds.assistedInjectAnnotations)
-      }
 
     if (!isAssistedInject) {
       // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to read
@@ -414,6 +425,23 @@ internal class InjectedClassTransformer(
     return wrapper
   }
 
+  private fun createInjectConstructorFactoryShell(
+    declaration: IrClass,
+    isAssistedInject: Boolean,
+  ): IrClass {
+    return declaration
+      .getOrCreateMetadataVisibleHiddenNestedClass(
+        name = Symbols.Names.MetroFactory,
+        origin = Origins.InjectConstructorFactoryClassDeclaration,
+      )
+      .apply {
+        if (isAssistedInject) {
+          addAnnotationCompat(buildAnnotation(symbol, metroSymbols.assistedMarkerConstructor))
+        }
+        addMetadataVisibleHiddenCompanionObject()
+      }
+  }
+
   private fun cacheFactoryInMetadata(declaration: IrClass, classFactory: ClassFactory) {
     if (classFactory.factoryClass.isExternalParent) {
       return
@@ -500,14 +528,12 @@ internal class InjectedClassTransformer(
           val instance = createAndAddTemporaryVariable(newInstance)
           for (injector in injectors) {
             val injectorClass = injector.injectorClass ?: continue
-            val typeArgs = injectorClass.parentAsClass.typeParameters.map { it.defaultType }
             for ((function, parameters) in injector.declaredInjectFunctions) {
               // Record for IC
               trackFunctionCall(invokeFunction, function)
               +irInvoke(
                 dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                 callee = function.symbol,
-                typeArgs = typeArgs,
                 args =
                   buildList {
                     add(irGet(instance))
@@ -542,8 +568,17 @@ internal class InjectedClassTransformer(
         }
 
       // Assign fields
+      val constructorFields =
+        assignConstructorParamsToFields(
+          declaration.primaryConstructor!!,
+          declaration,
+          namer = memberNamer,
+        )
       val constructorParametersToFields =
-        assignConstructorParamsToFields(constructorParameters, declaration, namer = memberNamer)
+        constructorFields.entries.withIndex().associate { (index, pair) ->
+          val (_, field) = pair
+          constructorParameters.regularParameters[index] to field
+        }
 
       val invokeFunction =
         declaration.functions.first { it.origin == Origins.TopLevelInjectFunctionClassFunction }

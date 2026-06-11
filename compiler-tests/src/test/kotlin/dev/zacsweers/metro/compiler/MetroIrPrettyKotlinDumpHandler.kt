@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.ir.betterDumpKotlinLike
+import dev.zacsweers.metro.compiler.ir.metroDumpKotlinLike
 import org.jetbrains.kotlin.ir.util.FakeOverridesStrategy
 import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.test.backend.handlers.AbstractIrHandler
@@ -66,7 +66,7 @@ class MetroIrPrettyKotlinDumpHandler(
     val printFileName = filteredIrFiles.size > 1 || allModules.size > 1
     val modifiedOptions = options.copy(printFileName = printFileName)
     for (irFile in filteredIrFiles) {
-      builder.append(irFile.betterDumpKotlinLike(modifiedOptions))
+      builder.append(irFile.metroDumpKotlinLike(modifiedOptions))
     }
   }
 

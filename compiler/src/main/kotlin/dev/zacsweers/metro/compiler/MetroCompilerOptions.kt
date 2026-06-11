@@ -54,7 +54,10 @@ internal fun MetroOptions.validate(
   }
 
   val contributionProvidersAreEnabledWithoutFirHintGen =
-    generateContributionProviders && generateContributionHints && !generateContributionHintsInFir
+    generateContributionProviders &&
+      generateContributionHints &&
+      !generateContributionHintsInFir &&
+      !generateClassesInIr
   if (contributionProvidersAreEnabledWithoutFirHintGen) {
     onError(
       "generateContributionProviders with generateContributionHints requires " +

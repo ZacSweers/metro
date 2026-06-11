@@ -43,6 +43,7 @@
     "enableTopLevelFunctionInjection": false,
     "generateContributionHints": true,
     "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
     "shrinkUnusedBindings": true,
     "statementsPerInitFun": 2,
     "enableGraphSharding": true,
@@ -149,7 +150,7 @@
       "nameHint": "A",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "GraphMetadataStatsReport.kt:24:1",
+      "origin": "GraphMetadataStatsReport.kt:25:1",
       "declaration": "A"
     },
     {
@@ -165,7 +166,7 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "GraphMetadataStatsReport.kt:26:1",
+      "origin": "GraphMetadataStatsReport.kt:27:1",
       "declaration": "B"
     },
     {
@@ -181,7 +182,7 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "GraphMetadataStatsReport.kt:28:1",
+      "origin": "GraphMetadataStatsReport.kt:29:1",
       "declaration": "C"
     },
     {
@@ -197,7 +198,7 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "GraphMetadataStatsReport.kt:30:1",
+      "origin": "GraphMetadataStatsReport.kt:31:1",
       "declaration": "D"
     },
     {
@@ -213,7 +214,7 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "GraphMetadataStatsReport.kt:32:1",
+      "origin": "GraphMetadataStatsReport.kt:33:1",
       "declaration": "E"
     },
     {
@@ -229,7 +230,7 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "GraphMetadataStatsReport.kt:34:1",
+      "origin": "GraphMetadataStatsReport.kt:35:1",
       "declaration": "F"
     },
     {
@@ -244,7 +245,7 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "GraphMetadataStatsReport.kt:41:13",
+      "origin": "GraphMetadataStatsReport.kt:42:13",
       "declaration": "provideG"
     }
   ]

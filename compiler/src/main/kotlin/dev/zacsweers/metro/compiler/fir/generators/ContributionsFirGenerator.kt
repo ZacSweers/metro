@@ -47,7 +47,6 @@ import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -532,8 +531,7 @@ internal class ContributionsFirGenerator(
             if (!added) {
               add(
                 buildAnnotationCallCopy(mapKeyFirAnnotation) {
-                  source =
-                    mapKeyFirAnnotation.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                  source = mapKeyFirAnnotation.source?.fakeElement(pluginGeneratedSourceElementKind)
                   containingDeclarationSymbol = function.symbol
                 }
               )
@@ -553,7 +551,7 @@ internal class ContributionsFirGenerator(
           ?.let {
             add(
               buildAnnotationCallCopy(it) {
-                source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                source = it.source?.fakeElement(pluginGeneratedSourceElementKind)
                 containingDeclarationSymbol = function.symbol
               }
             )
@@ -571,13 +569,13 @@ internal class ContributionsFirGenerator(
           val anno =
             if (it is FirAnnotationCall) {
               buildAnnotationCallCopy(it) {
-                source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                source = it.source?.fakeElement(pluginGeneratedSourceElementKind)
                 containingDeclarationSymbol = function.symbol
               }
             } else {
               // External decl we're copying from
               buildAnnotationCopy(it) {
-                source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                source = it.source?.fakeElement(pluginGeneratedSourceElementKind)
               }
             }
           add(anno)
@@ -633,7 +631,7 @@ internal class ContributionsFirGenerator(
         ?.let {
           add(
             buildAnnotationCallCopy(it) {
-              source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+              source = it.source?.fakeElement(pluginGeneratedSourceElementKind)
               containingDeclarationSymbol = function.symbol
             }
           )
@@ -927,8 +925,10 @@ internal class ContributionsFirGenerator(
             )
             // @BindingContainer
             add(buildBindingContainerAnnotation())
-            // @IROnlyFactories — provider factories are generated in IR, not FIR
-            add(buildIROnlyFactoriesAnnotation())
+            if (!session.metroFirBuiltIns.options.generateClassesInIr) {
+              // Legacy path: provider factories are generated in IR, not FIR.
+              add(buildIROnlyFactoriesAnnotation())
+            }
             // @ContributesTo(scope) — replaces are resolved from @Origin in IR via the
             // original contributing class's @ContributesBinding annotations
             add(buildContributesToAnnotation(scopeArg))

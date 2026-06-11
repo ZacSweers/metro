@@ -1,3 +1,5 @@
+// GENERATE_CLASSES_IN_IR: false
+
 package test
 
 import kotlin.reflect.KClass

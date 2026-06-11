@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
+import dev.zacsweers.metro.compiler.calculateInitialCapacity
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.expectAs
@@ -37,7 +38,6 @@ import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceCategories
 import dev.zacsweers.metro.compiler.tracing.trace
-import java.util.TreeMap
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.descriptors.isInterface
@@ -228,6 +228,18 @@ internal class ContributedInterfaceSupertypeGenerator(
           continue
         }
 
+        val generateClassesInIr = session.metroFirBuiltIns.options.generateClassesInIr
+        if (generateClassesInIr) {
+          // In IR-only mode MetroContribution marker classes are not generated in FIR. Keep only
+          // source interfaces that directly contribute a user-visible supertype; IR generates the
+          // hidden marker classes and binding containers later.
+          val contributesDirectly = originClass.directlyContributesTo(scopeClassId, typeResolver)
+          if (contributesDirectly) {
+            put(originClass.classId, false)
+          }
+          continue
+        }
+
         if (
           session.metroFirBuiltIns.options.bindingContributionsAsContainers &&
             originClass.hasBindingContribution() &&
@@ -411,20 +423,29 @@ internal class ContributedInterfaceSupertypeGenerator(
         }
       }
 
+    val generateClassesInIr = session.metroFirBuiltIns.options.generateClassesInIr
+
     val contributionClassLikes =
       contributionMappingsByClassId.keys.map { classId ->
         classId.constructClassLikeType(emptyArray())
       }
 
-    // Stable sort
     val contributions =
-      TreeMap<ClassId, ConeKotlinType>(compareBy(ClassId::asString)).apply {
-        for (contribution in contributionClassLikes) {
-          // This is always the `MetroContribution`, the contribution is its parent
-          val classId = contribution.expectAs<ConeKotlinType>().classId?.parentClassId ?: continue
-          put(classId, contribution)
+      HashMap<ClassId, ConeKotlinType>(calculateInitialCapacity(contributionClassLikes.size))
+        .apply {
+          for (contribution in contributionClassLikes) {
+            val contributionClassId = contribution.expectAs<ConeKotlinType>().classId ?: continue
+            val classId =
+              if (generateClassesInIr) {
+                // FIR only sees the original @ContributesTo interface in this mode.
+                contributionClassId
+              } else {
+                // This is always the `MetroContribution`, the contribution is its parent
+                contributionClassId.parentClassId ?: continue
+              }
+            put(classId, contribution)
+          }
         }
-      }
 
     // Gather contributions from external extensions
     // These provide supertypes directly along with replacement/origin metadata
@@ -572,8 +593,12 @@ internal class ContributedInterfaceSupertypeGenerator(
         .mapNotNull {
           val symbol = it.toClassSymbol(session)
           // TODO remove expectAs in 2.3.20
-          if (contributionMappingsByClassId[it.expectAs<ConeKotlinType>().classId] == true) {
+          val contributionClassId = it.expectAs<ConeKotlinType>().classId
+          if (contributionMappingsByClassId[contributionClassId] == true) {
             // It's a binding container, use as-is
+            symbol
+          } else if (generateClassesInIr) {
+            // IR-only mode tracks direct source interfaces, not nested MetroContribution markers.
             symbol
           } else {
             // It's a contribution, get its original parent
@@ -688,6 +713,7 @@ internal class ContributedInterfaceSupertypeGenerator(
           if (metroContribution in externalSupertypes) {
             return@flatMap listOf(metroContribution)
           }
+
           // Filter out binding containers and self-references — they participate in replacements
           // but not in supertypes
           if (
@@ -695,6 +721,27 @@ internal class ContributedInterfaceSupertypeGenerator(
               contributionMappingsByClassId[metroContribution.classId] == true
           ) {
             return@flatMap emptyList()
+          }
+
+          if (generateClassesInIr) {
+            val contributionClassId = metroContribution.classId ?: return@flatMap emptyList()
+            if (contributionClassId in existingSupertypeClassIds) {
+              return@flatMap emptyList()
+            }
+
+            // Hidden MetroContributionTo<Scope> markers are generated in IR only, so FIR must not
+            // reference them as supertypes before their class shells exist.
+            val contributionSymbol = contributionClassId.toSymbol(session)
+            val isContributedInterface =
+              contributionSymbol is FirRegularClassSymbol &&
+                contributionSymbol.classKind.isInterface
+            if (!isContributedInterface) {
+              return@flatMap emptyList()
+            }
+
+            // The original @ContributesTo interface is user-authored and visible in FIR. Keep that
+            // direct supertype so graph extension relationships remain visible in the IDE.
+            return@flatMap listOf(metroContribution)
           }
 
           // For @ContributesTo interfaces, also emit the parent contributing interface directly
@@ -743,6 +790,7 @@ internal class ContributedInterfaceSupertypeGenerator(
         // Deduplicate by classId. The same contribution type can appear under different keys
         // when discovered via both hint-based and external extension paths.
         .distinctBy { it.classId }
+        .sortedBy { it.classId?.asString() }
     }
   }
 

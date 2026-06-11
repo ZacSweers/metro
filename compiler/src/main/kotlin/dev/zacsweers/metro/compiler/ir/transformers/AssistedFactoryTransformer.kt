@@ -195,12 +195,16 @@ internal class AssistedFactoryTransformer(
             isPrimary = true
           }
           .apply {
-            val factoryParamType =
-              targetType.metroFactoryType(
-                samFunction.returnType.targetTypeArguments(
-                  remapper = declaration.typeParameterRemapperTo(implClass)
-                )
+            injectedClassTransformer.getOrGenerateFactory(
+              targetType,
+              null,
+              doNotErrorOnMissing = false,
+            )
+            val factoryTypeArguments =
+              samFunction.returnType.targetTypeArguments(
+                remapper = declaration.typeParameterRemapperTo(implClass)
               )
+            val factoryParamType = targetType.metroFactoryType(factoryTypeArguments)
             addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
             body = generateDefaultConstructorBody()
           }
@@ -301,12 +305,16 @@ internal class AssistedFactoryTransformer(
           setDispatchReceiver(companionReceiver.copyTo(this))
           typeParameters = copyTypeParametersFrom(samFunction)
 
-          val factoryParamType =
-            targetType.metroFactoryType(
-              samFunction.returnType.targetTypeArguments(
-                remapper = samFunction.typeParameterRemapperTo(this)
-              )
+          injectedClassTransformer.getOrGenerateFactory(
+            targetType,
+            null,
+            doNotErrorOnMissing = false,
+          )
+          val factoryTypeArguments =
+            samFunction.returnType.targetTypeArguments(
+              remapper = samFunction.typeParameterRemapperTo(this)
             )
+          val factoryParamType = targetType.metroFactoryType(factoryTypeArguments)
           addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
 
           addStaticAnnotations(this)

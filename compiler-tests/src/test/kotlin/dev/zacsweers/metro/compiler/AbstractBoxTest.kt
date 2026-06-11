@@ -87,3 +87,16 @@ open class AbstractContributionProvidersBoxTest : AbstractBoxTest() {
     }
   }
 }
+
+open class AbstractIrOnlyClassesBoxTest : AbstractBoxTest() {
+  override fun configure(builder: TestConfigurationBuilder) {
+    super.configure(builder)
+
+    with(builder) {
+      defaultDirectives {
+        MetroDirectives.MIN_COMPILER_VERSION.with("2.4.20-dev-6138")
+        MetroDirectives.GENERATE_CLASSES_IN_IR.with(true)
+      }
+    }
+  }
+}

@@ -21,7 +21,7 @@ Generally you should run with `--quiet` to reduce noise. Failures would be repor
 
 ### Documentation
 
-- `./gradlew dokkaHtml` - Generate API documentation
+- `./gradlew dokkaGenerateHtml` - Generate API documentation
 - `docs/` - Contains all Markdown documentation
 
 ### Benchmarks
@@ -121,3 +121,5 @@ Never run tests yourself without asking me first. You are not usually able to de
 - Explain your plan BEFORE making edits, especially for non-trivial changes. Do not jump straight to editing files. Wait for my approval of the approach.
 - Do not make changes beyond what I asked for. No 'while I'm here' improvements, no proactive additions to other files, no scope creep. If you think something adjacent should also change, mention it but don't do it.
 - When I explicitly tell you to skip something, leave something commented out, or not touch a specific thing - respect that completely. Do not revisit, re-enable, or re-suggest it.
+- Avoid dense expression chains with trailing Elvis fallbacks or `?: run { ... }` blocks. Prefer named local values, early returns, or small helpers when fallback logic has multiple steps.
+- Avoid large stacked boolean conditions in if statements. Split them into named boolean values that describe the actual state being checked.

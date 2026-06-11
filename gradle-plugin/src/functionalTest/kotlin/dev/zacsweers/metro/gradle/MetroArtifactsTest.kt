@@ -65,7 +65,7 @@ class MetroArtifactsTest {
     val enableKlibParamsCheck =
       testCompilerVersion >= KotlinToolingVersion("2.3.0") &&
         testCompilerVersion < KotlinToolingVersion("2.3.20-Beta2")
-    val patchKlibParams = true
+    val generateClassesInIrEnabled = testCompilerVersion >= KotlinToolingVersion("2.4.20-dev-6138")
 
     val fixture =
       object : MetroProject(multiplatform = false) {
@@ -129,7 +129,8 @@ class MetroArtifactsTest {
                 "generateAssistedFactories": false,
                 "enableTopLevelFunctionInjection": $topLevelFirGenEnabled,
                 "generateContributionHints": true,
-                "generateContributionHintsInFir": $topLevelFirGenEnabled,
+                "generateContributionHintsInFir": ${topLevelFirGenEnabled && !generateClassesInIrEnabled},
+                "generateClassesInIr": $generateClassesInIrEnabled,
                 "shrinkUnusedBindings": true,
                 "statementsPerInitFun": 25,
                 "enableGraphSharding": true,
@@ -176,7 +177,7 @@ class MetroArtifactsTest {
                 "customOptionalBindingAnnotations": [],
                 "contributesAsInject": true,
                 "enableKlibParamsCheck": $enableKlibParamsCheck,
-                "patchKlibParams": $patchKlibParams,
+                "patchKlibParams": true,
                 "forceEnableFirInIde": false,
                 "pluginOrderSet": true,
                 "compilerVersionAliases": {},

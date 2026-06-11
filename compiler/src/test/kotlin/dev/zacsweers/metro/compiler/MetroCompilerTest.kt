@@ -77,8 +77,7 @@ abstract class MetroCompilerTest {
       sources = sourceFiles.asList()
       verbose = false
       jvmTarget = JVM_TARGET
-      kotlincArguments +=
-        listOf("-jvm-default=no-compatibility", "-Xverify-ir=error", "-Xverify-ir-visibility")
+      kotlincArguments += listOf("-jvm-default=no-compatibility", "-Xverify-ir=error")
 
       if (previousCompilationResult != null) {
         addPreviousResultToClasspath(previousCompilationResult)
@@ -114,6 +113,7 @@ abstract class MetroCompilerTest {
                   entry.raw.cliOption,
                   this@toPluginOptions.generateContributionHintsInFir,
                 )
+              GENERATE_CLASSES_IN_IR -> processor.option(entry.raw.cliOption, generateClassesInIr)
               SHRINK_UNUSED_BINDINGS -> processor.option(entry.raw.cliOption, shrinkUnusedBindings)
               STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
               ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)

@@ -219,6 +219,17 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  GENERATE_CLASSES_IN_IR(
+    RawMetroOption.boolean(
+      name = "generate-classes-in-ir",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable generation of metadata-visible hidden classes in IR instead of FIR.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   SHRINK_UNUSED_BINDINGS(
     RawMetroOption.boolean(
       name = "shrink-unused-bindings",
@@ -1032,6 +1043,8 @@ public class MetroOptions(
     MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
   public val generateContributionHintsInFir: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
+  public val generateClassesInIr: Boolean =
+    MetroOption.GENERATE_CLASSES_IN_IR.raw.defaultValue.expectAs(),
   public val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
   public val statementsPerInitFun: Int =
@@ -1393,6 +1406,7 @@ public class MetroOptions(
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
     public var generateContributionHints: Boolean = base.generateContributionHints
     public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
+    public var generateClassesInIr: Boolean = base.generateClassesInIr
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
@@ -1723,6 +1737,7 @@ public class MetroOptions(
         MetroOption.GENERATE_CONTRIBUTION_HINTS -> generateContributionHints = value.expectAs()
         MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
           generateContributionHintsInFir = value.expectAs()
+        MetroOption.GENERATE_CLASSES_IN_IR -> generateClassesInIr = value.expectAs()
         MetroOption.SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = value.expectAs()
         MetroOption.STATEMENTS_PER_INIT_FUN -> statementsPerInitFun = value.expectAs()
         MetroOption.ENABLE_GRAPH_SHARDING -> enableGraphSharding = value.expectAs()
@@ -1852,6 +1867,7 @@ public class MetroOptions(
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
         generateContributionHints = generateContributionHints,
         generateContributionHintsInFir = generateContributionHintsInFir,
+        generateClassesInIr = generateClassesInIr,
         shrinkUnusedBindings = shrinkUnusedBindings,
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,

@@ -125,6 +125,7 @@ internal class IrGraphExtensionGenerator(
         sourceAnnotation = extensionAnno,
         parentGraph = parentGraph,
         originDeclaration = parentGraph,
+        parentExclusionDeclaration = parentGraph,
         containerToAddTo = parentGraph,
         traceScope = traceScope,
       )

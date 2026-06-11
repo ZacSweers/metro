@@ -2970,7 +2970,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Thing.kt:14:1 Injector function test.AppGraph.Impl.injectThing must return Unit. Or, if it's not an injector, remove its parameter.
+        e: Thing.kt:14:28 Injector function test.AppGraph.Impl.injectThing must return Unit. Or, if it's not an injector, remove its parameter.
         """
           .trimIndent()
       )

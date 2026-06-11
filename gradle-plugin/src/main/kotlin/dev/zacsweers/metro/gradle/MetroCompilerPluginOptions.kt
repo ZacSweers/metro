@@ -49,9 +49,14 @@ internal fun Project.metroCompilerPluginOptions(
     add(
       metroOption(
         MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR,
-        extension.generateContributionHintsInFir,
+        extension.generateContributionHintsInFir.zip(extension.generateClassesInIr) {
+          generateContributionHintsInFir,
+          generateClassesInIr ->
+          generateContributionHintsInFir && !generateClassesInIr
+        },
       )
     )
+    add(metroOption("generate-classes-in-ir", extension.generateClassesInIr))
     add(metroOption(MetroOption.STATEMENTS_PER_INIT_FUN, extension.statementsPerInitFun))
     add(metroOption(MetroOption.ENABLE_GRAPH_SHARDING, extension.enableGraphSharding))
     add(metroOption(MetroOption.KEYS_PER_GRAPH_SHARD, extension.keysPerGraphShard))

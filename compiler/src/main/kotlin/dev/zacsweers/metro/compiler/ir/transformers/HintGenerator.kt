@@ -70,7 +70,14 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
   IrMetroContext by context {
 
   @IgnorableReturnValue
-  fun generateHint(sourceClass: IrClass, hintName: Name): IrSimpleFunction {
+  fun generateHint(
+    sourceClass: IrClass,
+    hintName: Name,
+    // IR-only contribution-provider containers are generated after FIR, so they do not have a
+    // usable FirMetadataSource. Use the original source class for synthetic file metadata while the
+    // hint parameter still points at the generated class that downstream lookups should load.
+    metadataSourceClass: IrClass = sourceClass,
+  ): IrSimpleFunction {
     val function =
       pluginContext.irFactory
         .buildFun {
@@ -92,15 +99,15 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     val fileName = hintFileName(sourceClass.classIdOrFail, hintName)
 
     val firFile = buildFile {
-      val metadataSource = sourceClass.metadata as? FirMetadataSource.Class
+      val metadataSource = metadataSourceClass.metadata as? FirMetadataSource.Class
       if (metadataSource == null) {
         reportCompat(
-          sourceClass,
+          metadataSourceClass,
           MetroDiagnostics.METRO_ERROR,
-          "Class ${sourceClass.classId} does not have a valid metadata source. Found ${sourceClass.metadata?.javaClass?.canonicalName}.",
+          "Class ${metadataSourceClass.classId} does not have a valid metadata source. Found ${metadataSourceClass.metadata?.javaClass?.canonicalName}.",
         )
       }
-      moduleData = (sourceClass.metadata as FirMetadataSource.Class).fir.moduleData
+      moduleData = (metadataSourceClass.metadata as FirMetadataSource.Class).fir.moduleData
       origin = FirDeclarationOrigin.Synthetic.PluginFile
       packageDirective = buildPackageDirective { packageFqName = Symbols.FqNames.metroHintsPackage }
       name = fileName

@@ -9,7 +9,9 @@ import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
+import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
@@ -43,6 +45,7 @@ import org.jetbrains.kotlin.ir.builders.IrBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -53,6 +56,7 @@ import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -69,8 +73,10 @@ public interface CompatContext {
      * `dev` track versions are special-cased to avoid issues with divergent release tracks.
      *
      * When the current version is a dev build:
-     * 1. First, look for dev track factories and compare only within the dev track
-     * 2. If no dev factory matches, fall back to non-dev factories
+     * 1. First, look for dev track factories with the same base version (the same trunk lineage)
+     *    and compare by build number
+     * 2. If none match, cross base versions: lower-base dev factories and non-dev factories
+     *    compete, highest minVersion wins
      *
      * IDE versions like 2.4.0-ij261-64 use IntelliJ build numbers that are not comparable with
      * Kotlin dev build numbers, so unmapped IDE builds choose the earliest same-base factory.
@@ -122,24 +128,27 @@ public interface CompatContext {
         }
       }
 
-      // If current version is DEV, try DEV track factories first
+      // If current version is DEV, try same-base DEV track factories first. Only same-base dev
+      // factories share the current version's trunk lineage; a dev factory for an older base
+      // version is just an older snapshot of trunk and shouldn't outrank a newer stable factory.
       if (currentVersion.isDev) {
-        val devFactories = factoryDataList.filter {
-          KotlinToolingVersion(it.factory.minVersion).isDev
-        }
-        val devMatch = findHighestCompatibleFactory(currentVersion, devFactories)
-        if (devMatch != null) {
-          return devMatch
+        val sameBaseDevFactories = factoryDataList.filter {
+          val minVersion = KotlinToolingVersion(it.factory.minVersion)
+          minVersion.isDev && minVersion.hasSameBaseVersionAs(currentVersion)
         }
 
-        // Fall back to non-DEV factories.
-        // Use the base version (strip dev classifier) for comparison, because
-        // 2.2.20-dev-5812 is a dev build OF 2.2.20 and should match the 2.2.20 factory,
+        val sameBaseDevMatch = findHighestCompatibleFactory(currentVersion, sameBaseDevFactories)
+        if (sameBaseDevMatch != null) {
+          return sameBaseDevMatch
+        }
+
+        // Crossing base versions: lower-base dev factories and non-dev factories compete,
+        // highest minVersion wins (e.g. a 2.4.0 stable factory outranks 2.4.0-dev-2124, and a
+        // 2.4.10-dev factory would outrank both).
+        // Non-dev factories are compared against the base version (dev classifier stripped),
+        // because 2.2.20-dev-5812 is a dev build OF 2.2.20 and should match the 2.2.20 factory,
         // but KotlinToolingVersion ordering puts DEV < STABLE so the comparison would
         // otherwise exclude it.
-        val nonDevFactories = factoryDataList.filter {
-          !KotlinToolingVersion(it.factory.minVersion).isDev
-        }
         val baseVersion =
           KotlinToolingVersion(
             currentVersion.major,
@@ -147,7 +156,17 @@ public interface CompatContext {
             currentVersion.patch,
             null,
           )
-        return findHighestCompatibleFactory(baseVersion, nonDevFactories)
+        return factoryDataList
+          .filter {
+            val minVersion = KotlinToolingVersion(it.factory.minVersion)
+            if (minVersion.isDev) {
+              currentVersion >= minVersion
+            } else {
+              baseVersion >= minVersion
+            }
+          }
+          .maxByOrNull { KotlinToolingVersion(it.factory.minVersion) }
+          ?.factory
       }
 
       // For non-DEV versions, only consider non-DEV factories
@@ -595,6 +614,44 @@ public interface CompatContext {
     original: FirValueParameter,
     init: FirValueParameterBuilder.() -> Unit,
   ): FirValueParameter
+
+  /**
+   * Version-safe access to Kotlin's plugin-generated fake source kind. Kotlin 2.4.20 split
+   * `PluginGenerated` into nested variants such as `PluginGenerated.Default`, and direct constant
+   * references can be inlined into Metro code that runs on older compilers.
+   */
+  @CompatApi(
+    since = "2.4.20-dev-3583",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4.20-dev-3583 split PluginGenerated into nested source element kinds",
+  )
+  public val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
+    get() = KtFakeSourceElementKind.PluginGenerated
+
+  @CompatApi(
+    since = "2.4.20-dev-3583",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.4.20-dev-3583 upstreamed custom Kotlin-like IR name rendering",
+  )
+  public fun IrElement.dumpKotlinLikeCompat(
+    options: KotlinLikeDumpOptions,
+    classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
+    fallback: () -> String,
+  ): String {
+    return fallback()
+  }
+
+  /**
+   * Returns the compiler's configured [MessageCollector], or a non-silent fallback if no collector
+   * was installed. Metro still needs a message sink before an IR/FIR diagnostic reporter exists,
+   * such as while validating plugin options or reporting registrar-level debug output.
+   */
+  @CompatApi(
+    since = "2.4.20",
+    reason = CompatApi.Reason.COMPAT,
+    message = "MessageCollector access is being phased out in favor of diagnostic reporters",
+  )
+  public fun CompilerConfiguration.messageCollectorCompat(): MessageCollector
 }
 
 private data class FactoryData(

@@ -73,6 +73,17 @@
       ],
     },
     {
+      description: 'Keep the Metro Gradle plugin and compiler bootstrap versions in lockstep',
+      groupName: 'Metro bootstrap',
+      groupSlug: 'metro-bootstrap',
+      matchDepNames: [
+        'dev.zacsweers.metro',
+        'dev.zacsweers.metro:compiler',
+      ],
+      matchDatasources: ['maven'],
+      minimumGroupSize: 2,
+    },
+    {
       description: 'Disable Kotlin updates - manually managed due to compiler plugin compatibility',
       enabled: false,
       matchPackageNames: [

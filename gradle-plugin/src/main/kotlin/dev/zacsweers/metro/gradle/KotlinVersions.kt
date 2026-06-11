@@ -11,6 +11,7 @@ internal object KotlinVersions {
   val kotlin2320Beta1 = KotlinToolingVersion("2.3.20-Beta1")
   val kotlin2320Beta2 = KotlinToolingVersion("2.3.20-Beta2")
   val kotlin2320Dev6204 = KotlinToolingVersion("2.3.20-dev-6204")
+  val kotlin2420Dev6138 = KotlinToolingVersion("2.4.20-dev-6138")
 
   fun supportsTopLevelFirGen(version: KotlinToolingVersion): Boolean {
     return if (version.isDev) {
@@ -18,5 +19,9 @@ internal object KotlinVersions {
     } else {
       version >= kotlin2320Beta1
     }
+  }
+
+  fun supportsIrClassGeneration(version: KotlinToolingVersion): Boolean {
+    return version >= kotlin2420Dev6138
   }
 }
