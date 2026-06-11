@@ -6,10 +6,71 @@ Changelog
 
 ### New
 
-- Add support for generating metadata-visible classes entirely in IR, allowing Metro to move much of its current FIR code gen entirely to IR. This is enabled by default on Kotlin `2.4.20-dev-6138` or newer and can be configured via the `generateClassesInIr` option.
+- **[IR]** Add support for generating metadata-visible classes entirely in IR, allowing Metro to move much of its current FIR code gen to IR. Enabled by default on Kotlin `2.4.20-dev-6138` or newer and configurable via the `generateClassesInIr` option.
+- **[IR]** Revamp graph-validation diagnostics with structured output. Taking some inspiration from Rust error messages.
+  - Stable diagnostic IDs
+  - Compact dependency chains
+  - Aligned binding traces
+  - Source snippets
+  - `help:`/`note:` guidance in messages (replaces the previous `(hint)` sections)
+  - Per-diagnostic docs links
+  - Diagnostics now wrap to 100 columns and start on their own line after the compiler location prefix
+
+Example plain output
+```
+ExampleGraph.kt:7:11: error: 
+[Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
+
+  cycle:
+      +-> Double -> String -> Int --+
+      +-----------------------------+
+
+  trace (in test.ExampleGraph):
+      Double is injected at test.ExampleGraph.provideInt(…, double)
+      String is injected at test.ExampleGraph.provideDouble(…, string)
+      Int is injected at test.ExampleGraph.provideString(…, int)
+      Double is injected at test.ExampleGraph.provideInt(…, double)
+      ...
+
+  help: break the cycle by injecting a deferred type at one edge, e.g. `() -> Double` or
+        `Lazy<Double>`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+```
+
+Example rich output (note that in rich terminals this would have color and markup too!)
+```
+[Metro/MissingBinding] No binding found for String
+
+    ╭─[ /Users/zacsweers/dev/android/personal/FieldSpottr/shared/src/commonMain/kotlin/dev/zacsweers/example/ExampleGraph.kt:9:3 ]
+  9 │   val a: String
+    │   ─────────────
+    ╰─
+
+  trace (in dev.zacsweers.example.ExampleGraph):
+      String is requested at dev.zacsweers.example.ExampleGraph.a
+
+  similar bindings:
+      • CharSequence (Supertype. Type: Provided) — ExampleGraph.kt:12:3
+
+  help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+```
+
+- **[gradle]** Add a `diagnosticsConsole` Gradle option (`AUTO`/`PLAIN`/`RICH`) for diagnostic rendering.
+  - `AUTO` defaults to rich output only for terminal builds and falls back to plain output for CI, `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
+  - The resolved mode is passed as a non-input compiler option, so console changes do not invalidate compilation or poison build caches.
+- **[docs]** Add a generated [Diagnostics Reference](https://zacsweers.github.io/metro/latest/diagnostics/) docs page for Metro's common graph validation diagnostics.
+
+### Enhancements
+
+- **[IR]** Add cycle-breaking `help:` guidance for dependency cycle errors, suggesting deferred types such as `() -> T` or `Lazy<T>`.
+- **[IR/reporting]** Collapse sibling missing-binding errors with identical trace tails to a `... same as for X` continuation, and fully qualify type names only when two distinct types in one diagnostic share a simple name.
 
 ### Changes
 
+- **[gradle]** Replace the `rich-diagnostics` compiler option and `metro.richDiagnostics` system property with `diagnostics-console` and `metro.diagnosticsConsole`.
 - Test Kotlin `2.4.20-dev-6138`.
 - Test IntelliJ `2026.2` EAPs.
 
