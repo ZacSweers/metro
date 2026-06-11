@@ -82,8 +82,38 @@ buildConfig {
 tasks.test {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
-  systemProperty("metro.richDiagnostics", "false")
+  systemProperty("metro.diagnosticsConsole", "PLAIN")
 }
+
+val diagnosticsDocsFile = rootProject.layout.projectDirectory.file("docs/diagnostics.md")
+
+// The compiler module's stdlib is compileOnly (kotlinc provides it at runtime), so the doc
+// generator needs it added back for plain JavaExec.
+val diagnosticsDocsRuntime: Configuration by configurations.creating {
+  isCanBeConsumed = false
+}
+
+dependencies { diagnosticsDocsRuntime(libs.kotlin.stdlib) }
+
+val generateDiagnosticsDocs =
+  tasks.register<JavaExec>("generateDiagnosticsDocs") {
+    group = "documentation"
+    description = "Generates docs/diagnostics.md from the MetroErrorCode registry."
+    classpath = sourceSets.main.get().runtimeClasspath + diagnosticsDocsRuntime
+    mainClass.set("dev.zacsweers.metro.compiler.diagnostics.DiagnosticsDocGenerator")
+    args(diagnosticsDocsFile.asFile.absolutePath)
+  }
+
+val checkDiagnosticsDocs =
+  tasks.register<JavaExec>("checkDiagnosticsDocs") {
+    group = "verification"
+    description = "Verifies docs/diagnostics.md is up to date with the MetroErrorCode registry."
+    classpath = sourceSets.main.get().runtimeClasspath + diagnosticsDocsRuntime
+    mainClass.set("dev.zacsweers.metro.compiler.diagnostics.DiagnosticsDocGenerator")
+    args(diagnosticsDocsFile.asFile.absolutePath, "--check")
+  }
+
+tasks.named("check") { dependsOn(checkDiagnosticsDocs) }
 
 wire { kotlin { javaInterop = false } }
 

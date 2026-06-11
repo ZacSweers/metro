@@ -2,6 +2,8 @@
 
 Common programmer/usage errors are implemented in FIR. This should allow errors to appear directly in the IDE, offering the best and fastest feedback loop for developers writing their code.
 
+See the [Diagnostics Reference](diagnostics.md) for a generated index of Metro's diagnostic IDs. Console rendering is controlled by the `diagnosticsConsole` Gradle option — `RICH` renders Unicode structure, ANSI styling, and source frames in terminals, while `PLAIN` keeps ASCII-only output. The default (`AUTO`) picks `RICH` only for terminal builds; CI, `NO_COLOR`, `--console=plain`, and IDE-invoked builds all resolve to `PLAIN`.
+
 TODO IDE screenshot example
 
 Dependency graph validation is performed at the per-graph level. Metro seeks to report binding validation errors at least on par with Dagger, if not better.
