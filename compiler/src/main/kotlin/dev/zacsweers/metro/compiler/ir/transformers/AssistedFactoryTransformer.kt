@@ -79,6 +79,7 @@ import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.simpleFunctions
@@ -305,16 +306,24 @@ internal class AssistedFactoryTransformer(
           setDispatchReceiver(companionReceiver.copyTo(this))
           typeParameters = copyTypeParametersFrom(samFunction)
 
-          injectedClassTransformer.getOrGenerateFactory(
-            targetType,
-            null,
-            doNotErrorOnMissing = false,
-          )
+          val targetFactory =
+            injectedClassTransformer.getOrGenerateFactory(
+              targetType,
+              null,
+              doNotErrorOnMissing = false,
+            )
+              ?: reportCompilerBug(
+                "Could not find generated Metro factory ${targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)}"
+              )
+
           val factoryTypeArguments =
             samFunction.returnType.targetTypeArguments(
               remapper = samFunction.typeParameterRemapperTo(this)
             )
-          val factoryParamType = targetType.metroFactoryType(factoryTypeArguments)
+
+          val factoryParamType =
+            targetFactory.factoryClass.typeWith(*factoryTypeArguments.toTypedArray())
+
           addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
 
           addStaticAnnotations(this)
@@ -327,7 +336,8 @@ internal class AssistedFactoryTransformer(
   private fun IrClass.metroFactoryType(typeArguments: List<IrType>): IrType {
     val factoryClassId = classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)
     val factoryClass =
-      lookupClass(factoryClassId)?.owner
+      nestedClasses.singleOrNull { it.name == Symbols.Names.MetroFactory }
+        ?: lookupClass(factoryClassId)?.owner
         ?: reportCompilerBug("Could not find generated Metro factory $factoryClassId")
     return factoryClass.typeWith(*typeArguments.toTypedArray())
   }
