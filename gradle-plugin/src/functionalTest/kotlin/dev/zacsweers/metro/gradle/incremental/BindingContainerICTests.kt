@@ -213,12 +213,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
+        [Metro/MissingBinding] No binding found for InterfaceB
 
-            test.InterfaceB is injected at
-                [test.AppGraph] test.Target(…, b)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> InterfaceB
+
+          trace (in test.AppGraph):
+              InterfaceB is injected at test.Target(…, b)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -306,12 +307,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] No binding found for InterfaceA
 
-            test.InterfaceA is injected at
-                [test.AppGraph] test.Target(…, a)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> InterfaceA
+
+          trace (in test.AppGraph):
+              InterfaceA is injected at test.Target(…, a)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -374,7 +376,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
 
     // First build should fail - no binding for InterfaceA
     val firstBuildResult = project.compileKotlinAndFail()
-    assertThat(firstBuildResult.output).contains("Cannot find an @Inject constructor")
+    assertThat(firstBuildResult.output).contains("[Metro/MissingBinding] No binding found for")
 
     // Add the binding container to the graph
     project.modify(
@@ -460,12 +462,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] No binding found for InterfaceA
 
-            test.InterfaceA is injected at
-                [test.AppGraph] test.Target(…, a)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> InterfaceA
+
+          trace (in test.AppGraph):
+              InterfaceA is injected at test.Target(…, a)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -614,7 +617,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
 
     // Second build should fail
     val secondBuildResult = project.compileKotlinAndFail()
-    assertThat(secondBuildResult.output).contains("Cannot find an @Inject constructor")
+    assertThat(secondBuildResult.output).contains("[Metro/MissingBinding] No binding found for")
   }
 
   @Test
@@ -718,12 +721,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] No binding found for InterfaceA
 
-            test.InterfaceA is injected at
-                [test.AppGraph.Impl.FeatureGraphImpl] test.Target(…, a)
-            test.Target is requested at
-                [test.AppGraph.Impl.FeatureGraphImpl] test.FeatureGraph.target
+          test.FeatureGraph.target -> Target -> InterfaceA
+
+          trace (in test.AppGraph.Impl.FeatureGraphImpl):
+              InterfaceA is injected at test.Target(…, a)
+              Target is requested at test.FeatureGraph.target
         """
           .trimIndent()
       )
@@ -818,12 +822,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] No binding found for InterfaceA
 
-            test.InterfaceA is injected at
-                [test.AppGraph] test.Target(…, a)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> InterfaceA
+
+          trace (in test.AppGraph):
+              InterfaceA is injected at test.Target(…, a)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -917,12 +922,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        [Metro/MissingBinding] No binding found for String
 
-            kotlin.String is injected at
-                [test.AppGraph] test.Target(…, string)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> String
+
+          trace (in test.AppGraph):
+              String is injected at test.Target(…, string)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1033,12 +1039,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(thirdBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] No binding found for InterfaceA
 
-            test.InterfaceA is injected at
-                [test.AppGraph] test.Target(…, a)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> InterfaceA
+
+          trace (in test.AppGraph):
+              InterfaceA is injected at test.Target(…, a)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1168,12 +1175,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(thirdBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] No binding found for InterfaceA
 
-            test.InterfaceA is injected at
-                [test.AppGraph] test.Target(…, a)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> InterfaceA
+
+          trace (in test.AppGraph):
+              InterfaceA is injected at test.Target(…, a)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1265,7 +1273,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
 
     // First build should fail - no containers included
     val firstBuildResult = project.compileKotlinAndFail()
-    assertThat(firstBuildResult.output).contains("Cannot find an @Inject constructor")
+    assertThat(firstBuildResult.output).contains("[Metro/MissingBinding] No binding found for")
 
     // Add multiple containers at once
     project.modify(
@@ -1300,12 +1308,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(thirdBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
+        [Metro/MissingBinding] No binding found for InterfaceB
 
-            test.InterfaceB is injected at
-                [test.AppGraph] test.Target(…, b)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> InterfaceB
+
+          trace (in test.AppGraph):
+              InterfaceB is injected at test.Target(…, b)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1417,12 +1426,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceC
+        [Metro/MissingBinding] No binding found for InterfaceC
 
-            test.InterfaceC is injected at
-                [test.AppGraph] test.Target(…, c)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> InterfaceC
+
+          trace (in test.AppGraph):
+              InterfaceC is injected at test.Target(…, c)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1506,12 +1516,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+        [Metro/MissingBinding] No binding found for Set<String>
 
-            kotlin.collections.Set<kotlin.String> is injected at
-                [test.AppGraph] test.Target(…, strings)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> Set<String>
+
+          trace (in test.AppGraph):
+              Set<String> is injected at test.Target(…, strings)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1561,12 +1572,14 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(firstBuildResult.output)
       .contains(
         """
-        Target.kt:6:14 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+        Target.kt:6:14
+        [Metro/MissingBinding] No binding found for Set<String>
 
-            kotlin.collections.Set<kotlin.String> is injected at
-                [test.AppGraph] test.Target(…, strings)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> Set<String>
+
+          trace (in test.AppGraph):
+              Set<String> is injected at test.Target(…, strings)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1653,12 +1666,13 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+        [Metro/MissingBinding] No binding found for Set<String>
 
-            kotlin.collections.Set<kotlin.String> is injected at
-                [test.AppGraph] test.Target(…, strings)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> Set<String>
+
+          trace (in test.AppGraph):
+              Set<String> is injected at test.Target(…, strings)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1727,9 +1741,11 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(secondBuildResult.output)
       .contains(
         """
-        MyBindingContainer.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+        MyBindingContainer.kt:8:3
+        [Metro/EmptyMultibinding] Multibinding Set<String> was unexpectedly empty
 
-        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+          help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+                empty
         """
           .trimIndent()
       )
@@ -1934,14 +1950,15 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
 
     thirdBuildResult.assertOutputContains(
       """
-      [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
+      [Metro/DuplicateBinding] Multiple bindings found for String
 
-        BindingContainerA.kt:8:3
-          @Provides fun provideString(): kotlin.String
-                                         ~~~~~~~~~~~~~
-        BindingContainerB.kt:8:3
-          @Provides fun provideString(): kotlin.String
-                                         ~~~~~~~~~~~~~
+            BindingContainerA.kt:8:3
+              @Provides fun provideString(): kotlin.String
+                                             ~~~~~~~~~~~~~
+
+            BindingContainerB.kt:8:3
+              @Provides fun provideString(): kotlin.String
+                                             ~~~~~~~~~~~~~
       """
         .trimIndent()
     )

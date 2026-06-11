@@ -1,7 +1,15 @@
-/MissingBindingFunctionType.kt:13:7: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+/MissingBindingFunctionType.kt:13:7: error: 
+[Metro/MissingBinding] No binding found for String
 
-    kotlin.String is requested at
-        [AppGraph] AppGraph.initializer
+  trace (in AppGraph):
+      String is requested at AppGraph.initializer
 
-(Hint)
-`() -> String` is treated as a provider for `String` when `enableFunctionProviders` is enabled (desugared: `Provider<String>`). As a result, Metro treats them as an intrinsic and unwraps them when resolving bindings. If the binding itself was meant to be the literal `() -> String` function type, you need to migrate it to a named type. For example: `fun interface SomeType : () -> String`
+  help: `() -> String` is treated as a provider for `String` when `enableFunctionProviders` is
+        enabled (desugared: `Provider<String>`). As a result, Metro treats them as an intrinsic and
+        unwraps them when resolving bindings. If the binding itself was meant to be the literal `()
+        -> String` function type, you need to migrate it to a named type. For example: `fun
+        interface SomeType : () -> String`
+  help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

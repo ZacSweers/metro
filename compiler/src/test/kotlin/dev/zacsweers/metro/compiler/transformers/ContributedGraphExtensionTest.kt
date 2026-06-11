@@ -1822,9 +1822,11 @@ class ContributedGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: MainGraph.kt [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.reflect.KClass<*>, kotlin.Any>' was unexpectedly empty.
+        e: MainGraph.kt [Metro/EmptyMultibinding] Multibinding Map<KClass<*>, Any> was unexpectedly empty
 
-        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+          help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+                empty
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
           .trimIndent()
       )

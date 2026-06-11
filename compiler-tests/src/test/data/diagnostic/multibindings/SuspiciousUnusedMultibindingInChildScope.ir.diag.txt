@@ -1,14 +1,17 @@
-/SuspiciousUnusedMultibindingInChildScope.kt:8:11: warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding kotlin.collections.Set<Base> is unused but has 2 source binding(s). Did you possibly bind them to the wrong type or contribute them to the wrong scope?
+/SuspiciousUnusedMultibindingInChildScope.kt:8:11: warning: 
+[Metro/SuspiciousUnusedMultibinding] Synthetic multibinding Set<Base> is unused but has 2 source
+    binding(s)
 
-  SuspiciousUnusedMultibindingInChildScope.kt:14:1
-    Impl1 contributes a binding of Base
-                                   ~~~~
-  SuspiciousUnusedMultibindingInChildScope.kt:18:1
-    Impl2 contributes a binding of Base
-                                   ~~~~
+      SuspiciousUnusedMultibindingInChildScope.kt:14:1
+        Impl1 contributes a binding of Base
+                                       ~~~~
 
-(Hint)
-Set<Base> _is_ used in the following child graph scope(s):
-  - ChildScope
-These bindings may need to be contributed to one of those scopes instead.
+      SuspiciousUnusedMultibindingInChildScope.kt:18:1
+        Impl2 contributes a binding of Base
+                                       ~~~~
+
+  help: did you possibly bind them to the wrong type or contribute them to the wrong scope?
+  note: Set<Base> is used in the following child graph scope(s): ChildScope. These bindings may need
+        to be contributed to one of those scopes instead.
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#suspiciousunusedmultibinding
 

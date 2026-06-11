@@ -1,9 +1,15 @@
-/DuplicateBindingsInDynamicGraphReportTheCallLocation.kt:19:3: error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
+/DuplicateBindingsInDynamicGraphReportTheCallLocation.kt:19:3: error: 
+[Metro/DuplicateBinding] Multiple bindings found for String
 
-  DuplicateBindingsInDynamicGraphReportTheCallLocation.kt:13:13
-    @Provides fun provideString(): kotlin.String
-                                   ~~~~~~~~~~~~~
-  DuplicateBindingsInDynamicGraphReportTheCallLocation.kt:15:13
-    @Provides fun provideString2(): kotlin.String
-                                    ~~~~~~~~~~~~~
+      DuplicateBindingsInDynamicGraphReportTheCallLocation.kt:13:13
+        @Provides fun provideString(): kotlin.String
+                                       ~~~~~~~~~~~~~
+
+      DuplicateBindingsInDynamicGraphReportTheCallLocation.kt:15:13
+        @Provides fun provideString2(): kotlin.String
+                                        ~~~~~~~~~~~~~
+
+  help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+        @IntoSet/@IntoMap if you intended a multibinding
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
 

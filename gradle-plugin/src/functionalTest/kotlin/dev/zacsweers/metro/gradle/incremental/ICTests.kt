@@ -141,12 +141,14 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        FeatureScreen.kt:7:18 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
+        FeatureScreen.kt:7:18
+        [Metro/MissingBinding] No binding found for Dependency
 
-            test.Dependency is injected at
-                [test.FeatureGraph] test.FeatureScreen.dependency
-            test.FeatureScreen is injected at
-                [test.FeatureGraph] test.FeatureGraph.inject()
+          FeatureScreen -> Dependency
+
+          trace (in test.FeatureGraph):
+              Dependency is injected at test.FeatureScreen.dependency
+              FeatureScreen is injected at test.FeatureGraph.inject()
         """
           .trimIndent()
       )
@@ -206,12 +208,13 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        [Metro/MissingBinding] No binding found for String
 
-            kotlin.String is injected at
-                [test.BaseGraph] test.Target(…, string)
-            test.Target is requested at
-                [test.BaseGraph] test.BaseGraph.target
+          test.BaseGraph.target -> Target -> String
+
+          trace (in test.BaseGraph):
+              String is injected at test.Target(…, string)
+              Target is requested at test.BaseGraph.target
         """
           .trimIndent()
       )
@@ -276,12 +279,13 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        [Metro/MissingBinding] No binding found for String
 
-            kotlin.String is injected at
-                [test.AppGraph.Impl.ChildGraphImpl] test.Target(…, string)
-            test.Target is requested at
-                [test.AppGraph.Impl.ChildGraphImpl] test.ChildGraph.target
+          test.ChildGraph.target -> Target -> String
+
+          trace (in test.AppGraph.Impl.ChildGraphImpl):
+              String is injected at test.Target(…, string)
+              Target is requested at test.ChildGraph.target
         """
           .trimIndent()
       )
@@ -339,12 +343,13 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        [Metro/MissingBinding] No binding found for String
 
-            kotlin.String is injected at
-                [test.AppGraph] test.Target(…, string)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> String
+
+          trace (in test.AppGraph):
+              String is injected at test.Target(…, string)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -423,7 +428,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     val libProject = project.subprojects.first { it.name == "lib" }
     val failureMessage =
       """
-      [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
+      [Metro/MissingBinding] No binding found for Dependency
       """
         .trimIndent()
 
@@ -511,12 +516,13 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        [Metro/MissingBinding] No binding found for String
 
-            kotlin.String is injected at
-                [test.AppGraph] test.Target(…, string)
-            test.Target is requested at
-                [test.AppGraph] test.AppGraph.target
+          test.AppGraph.target -> Target -> String
+
+          trace (in test.AppGraph):
+              String is injected at test.Target(…, string)
+              Target is requested at test.AppGraph.target
         """
           .trimIndent()
       )
@@ -709,18 +715,18 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
 
     val firstBuildResult = project.compileKotlinAndFail()
 
-    assertThat(firstBuildResult.output.cleanOutputLine())
+    // Asserted in pieces: the trace line wraps (or not) at 100 columns depending on the
+    // version-dependent request path length.
+    val output = firstBuildResult.output.cleanOutputLine()
+    assertThat(output).contains("e: ExampleGraph.kt:6:11 ")
+    assertThat(output).contains("[Metro/MissingBinding] No binding found for SomeRepository")
+    assertThat(output).contains("trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):")
+    assertThat(output).contains("SomeRepository is requested at")
+    assertThat(output).contains(someRepositoryProviderRequestPath())
+    assertThat(output).contains("similar bindings:")
+    assertThat(output)
       .contains(
-        """
-        e: ExampleGraph.kt:6:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.SomeRepository
-
-            test.SomeRepository is requested at
-                [test.ExampleGraph.Impl.LoggedInGraphImpl] ${someRepositoryProviderRequestPath()}
-
-        Similar bindings:
-          - SomeRepository (Contributed by 'test.SomeRepositoryImpl' but that class is internal to its module and its module is not a friend module to this one.)
-        """
-          .trimIndent()
+        "- SomeRepository (Contributed by 'test.SomeRepositoryImpl' but that class is internal to its"
       )
   }
 
@@ -1102,14 +1108,15 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-        e: LoggedInScope.kt:8:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
-            test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
-            test.ExampleClass is requested at
-                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
+        e: LoggedInScope.kt:8:11
+        [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes
+            '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes
 
+          trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):
+              ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
+              ExampleClass is requested at test.LoggedInGraph.exampleClass
 
-        (Hint)
-        LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
+          note: LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'
         """
           .trimIndent()
       )
@@ -1166,14 +1173,14 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(fourthBuildResult.output.cleanOutputLine())
       .contains(
         """
-        [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
-            test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
-            test.ExampleClass is requested at
-                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
+        [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes
+            '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes
 
+          trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):
+              ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
+              ExampleClass is requested at test.LoggedInGraph.exampleClass
 
-        (Hint)
-        LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
+          note: LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'
         """
           .trimIndent()
       )
@@ -1389,10 +1396,11 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-        e: LoggedInScope.kt:9:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+        e: LoggedInScope.kt:9:7
+        [Metro/MissingBinding] No binding found for Foo
 
-            test.Foo is requested at
-                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.childDependenc
+          trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):
+              Foo is requested at test.LoggedInGraph.childDependenc
         """
           .trimIndent()
       )
@@ -1436,10 +1444,10 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
       // there
       .contains(
         """
-        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+        [Metro/MissingBinding] No binding found for Foo
 
-            test.Foo is requested at
-                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.childDependency
+          trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):
+              Foo is requested at test.LoggedInGraph.childDependency
         """
           .trimIndent()
       )

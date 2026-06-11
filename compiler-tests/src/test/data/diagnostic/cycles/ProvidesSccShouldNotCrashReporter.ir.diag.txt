@@ -1,13 +1,16 @@
-/ProvidesSccShouldNotCrashReporter.kt:12:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
-Cycle:
-    B --> A --> B
+/ProvidesSccShouldNotCrashReporter.kt:12:11: error: 
+[Metro/DependencyCycle] Found a dependency cycle while processing AppGraph
 
-Trace:
-    B is injected at
-        [AppGraph] AppGraph.provideA(…, b)
-    A is injected at
-        [AppGraph] AppGraph.provideB(…, a)
-    B is injected at
-        [AppGraph] AppGraph.provideA(…, b)
-    ...
+  cycle:
+      +-> B -> A --+
+      +------------+
+
+  trace (in AppGraph):
+      B is injected at AppGraph.provideA(…, b)
+      A is injected at AppGraph.provideB(…, a)
+      B is injected at AppGraph.provideA(…, b)
+      ...
+
+  help: break the cycle by injecting a deferred type at one edge, e.g. `() -> B` or `Lazy<B>`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
 

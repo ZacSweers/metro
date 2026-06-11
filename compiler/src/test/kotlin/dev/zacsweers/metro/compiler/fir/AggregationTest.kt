@@ -1805,13 +1805,17 @@ class AggregationTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: AltScope.kt:24:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
+        e: AltScope.kt:24:7 [Metro/MissingBinding] No binding found for ContributedInterface
 
-            test.ContributedInterface is requested at
-                [test.AltGraph] test.AltGraph.contributedInterface
+          trace (in test.AltGraph):
+              ContributedInterface is requested at test.AltGraph.contributedInterface
 
-        Similar bindings:
-          - Impl (Subtype). Type: ConstructorInjected. Source: AltScope.kt:12:1
+          similar bindings:
+              - Impl (Subtype. Type: ConstructorInjected) - AltScope.kt:12:1
+
+          help: ensure ContributedInterface has an @Inject constructor or is provided by an @Provides or
+                @Binds declaration visible to AltGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )

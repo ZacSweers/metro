@@ -1,10 +1,16 @@
-/ExampleGraph.kt:31:11: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @javax.inject.Named("qualified") Dependency
+/ExampleGraph.kt:31:11: error: 
+[Metro/MissingBinding] No binding found for @Named("qualified") Dependency
 
-    @javax.inject.Named("qualified") Dependency is injected at
-        [ExampleGraph] ExampleClass.qualified
-    ExampleClass is injected at
-        [ExampleGraph] ExampleGraph.inject()
+  ExampleClass -> @Named("qualified") Dependency
 
-Similar bindings:
-  - Dependency (Different qualifier). Type: Alias. Source: DependencyImpl.kt:25:1
+  trace (in ExampleGraph):
+      @Named("qualified") Dependency is injected at ExampleClass.qualified
+      ExampleClass is injected at ExampleGraph.inject()
+
+  similar bindings:
+      - Dependency (Different qualifier. Type: Alias) - DependencyImpl.kt:25:1
+
+  help: ensure @Named("qualified") Dependency has an @Inject constructor or is provided by an
+        @Provides or @Binds declaration visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 
