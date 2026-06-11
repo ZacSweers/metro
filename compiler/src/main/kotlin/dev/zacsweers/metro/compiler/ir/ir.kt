@@ -369,9 +369,7 @@ internal fun IrClass.isBindingContainer(): Boolean {
     isAnnotatedWithAny(context.metroSymbols.classIds.bindingContainerAnnotations) -> true
     context.options.enableGuiceRuntimeInterop -> {
       // Guice interop
-      with(context.pluginContext) {
-        return implements(GuiceSymbols.ClassIds.module)
-      }
+      implements(GuiceSymbols.ClassIds.module)
     }
     else -> false
   }
