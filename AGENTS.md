@@ -21,7 +21,7 @@ Generally you should run with `--quiet` to reduce noise. Failures would be repor
 
 ### Documentation
 
-- `./gradlew dokkaHtml` - Generate API documentation
+- `./gradlew dokkaGenerateHtml` - Generate API documentation
 - `docs/` - Contains all Markdown documentation
 
 ### Benchmarks
