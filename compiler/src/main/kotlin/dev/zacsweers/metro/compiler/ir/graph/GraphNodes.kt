@@ -5,12 +5,23 @@ package dev.zacsweers.metro.compiler.ir.graph
 import dev.zacsweers.metro.compiler.BitFieldBuilder
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
+import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.Style
+import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
+import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -45,6 +56,7 @@ import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
+import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
@@ -52,7 +64,7 @@ import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.renderDiagnostic
+import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
@@ -421,21 +433,28 @@ internal class GraphNodes(
     ) {
       if (bindingStack.entryFor(graphTypeKey) != null) {
         // TODO dagger doesn't appear to error for this case to model off of
-        val message = renderDiagnostic {
+        val title =
           if (bindingStack.entries.size == 1) {
             // If there's just one entry, specify that it's a self-referencing cycle for clarity
-            appendLine(
-              "Graph dependency cycle detected! The below graph ${bold("depends on itself")}."
-            )
+            buildText {
+              append("${DiagnosticHeadlines.GRAPH_DEPENDENCY_CYCLE}: ")
+              append(graphDeclaration.kotlinFqName.asString(), Style.EMPHASIS)
+              append(" depends on itself")
+            }
           } else {
-            appendLine("Graph dependency cycle detected!")
+            textOf(DiagnosticHeadlines.GRAPH_DEPENDENCY_CYCLE)
           }
-          appendBindingStack(bindingStack, short = false)
-        }
+        val diagnostic =
+          MetroDiagnostic(
+            id = MetroDiagnosticId.DEPENDENCY_CYCLE,
+            severity = MetroSeverity.ERROR,
+            title = title,
+            sections = listOfNotNull(bindingStack.toTraceSection()),
+          )
         metroContext.reportCompat(
           graphDeclaration,
           MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE,
-          message,
+          metroContext.render(diagnostic).padForConsole(),
         )
         // In this case, we exit early as we have a self-cycle in the graph that deferring would
         // just loop
@@ -490,33 +509,77 @@ internal class GraphNodes(
 
     private fun flushQualifierMismatchErrors() {
       if (qualifierMismatches.isEmpty()) return
-      val message =
+      val helpNote =
+        Note.help("match the qualifier annotations on overrides with their overridden declarations")
+      val diagnostic =
         if (qualifierMismatches.size == 1) {
           val e = qualifierMismatches[0]
-          renderDiagnostic {
-            append(
-              "[Metro/QualifierOverrideMismatch] Overridden ${e.type} '${bold(e.declarationFqName)}' must have the same qualifier annotations as the overridden ${e.type}. However, the final ${e.type} qualifier is ${red(e.actualQualifier)} but overridden symbol ${e.overriddenSymbolFqName} has ${green(e.expectedQualifier)}."
-            )
-          }
+          MetroDiagnostic(
+            id = MetroDiagnosticId.QUALIFIER_OVERRIDE_MISMATCH,
+            severity = MetroSeverity.ERROR,
+            title =
+              buildText {
+                append("Overridden ${e.type} ")
+                append(e.declarationFqName, Style.EMPHASIS)
+                append(" must have the same qualifier annotations as the overridden ${e.type}")
+              },
+            sections =
+              listOf(
+                DiagnosticSection.Generic(
+                  buildText {
+                    append("The final ${e.type} qualifier is ")
+                    append(e.actualQualifier, Style.ERROR)
+                    append(" but overridden symbol ${e.overriddenSymbolFqName} has ")
+                    append(e.expectedQualifier, Style.SUCCESS)
+                  }
+                )
+              ),
+            notes = listOf(helpNote),
+          )
         } else {
-          renderDiagnostic {
-            appendLine(
-              "[Metro/QualifierOverrideMismatch] Overridden declarations must have matching qualifier annotations:"
-            )
-            for (e in qualifierMismatches) {
-              appendLine()
-              appendLine("  ${e.type} '${bold(e.declarationFqName)}'")
-              appendLine(
-                "    expected: ${green(e.expectedQualifier)} (from ${e.overriddenSymbolFqName})"
-              )
-              appendLine("    actual:   ${red(e.actualQualifier)}")
-            }
-          }
+          MetroDiagnostic(
+            id = MetroDiagnosticId.QUALIFIER_OVERRIDE_MISMATCH,
+            severity = MetroSeverity.ERROR,
+            title = textOf("Overridden declarations must have matching qualifier annotations"),
+            sections =
+              qualifierMismatches.map { e ->
+                DiagnosticSection.Locations(
+                  header =
+                    buildText {
+                      append("${e.type} ")
+                      append(e.declarationFqName, Style.EMPHASIS)
+                    },
+                  items =
+                    listOf(
+                      LocatedItem(
+                        location = null,
+                        code = null,
+                        description =
+                          buildText {
+                            append("expected: ")
+                            append(e.expectedQualifier, Style.SUCCESS)
+                            append(" (from ${e.overriddenSymbolFqName})")
+                          },
+                      ),
+                      LocatedItem(
+                        location = null,
+                        code = null,
+                        description =
+                          buildText {
+                            append("actual: ")
+                            append(e.actualQualifier, Style.ERROR)
+                          },
+                      ),
+                    ),
+                )
+              },
+            notes = listOf(helpNote),
+          )
         }
       reportCompat(
         sequenceOf(graphDeclaration.sourceGraphIfMetroGraph),
         MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH,
-        message,
+        render(diagnostic).padForConsole(),
       )
       qualifierMismatches.clear()
     }
