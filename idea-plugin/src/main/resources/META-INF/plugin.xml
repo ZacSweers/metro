@@ -25,6 +25,22 @@ Metro IDE support for Kotlin dependency injection projects.
         displayName="Metro"
         instance="dev.zacsweers.metro.idea.MetroSettingsConfigurable"/>
     <implicitUsageProvider implementation="dev.zacsweers.metro.idea.MetroImplicitUsageProvider"/>
+    <codeInsight.lineMarkerProvider
+        language="kotlin"
+        implementationClass="dev.zacsweers.metro.idea.MetroLineMarkerProvider"/>
+    <codeInsight.daemonBoundCodeVisionProvider
+        implementation="dev.zacsweers.metro.idea.MetroCodeVisionProvider"/>
+    <config.codeVisionGroupSettingProvider
+        implementation="dev.zacsweers.metro.idea.MetroCodeVisionGroupSettingProvider"/>
+    <codeInsight.declarativeInlayProvider
+        language="kotlin"
+        implementationClass="dev.zacsweers.metro.idea.MetroInjectedImplementationInlayProvider"
+        isEnabledByDefault="true"
+        group="OTHER_GROUP"
+        providerId="metro.injected.implementation"
+        bundle="messages.MetroBundle"
+        nameKey="metro.inlay.injected.implementation.name"
+        descriptionKey="metro.inlay.injected.implementation.description"/>
     <lang.inspectionSuppressor
         language="kotlin"
         implementationClass="dev.zacsweers.metro.idea.MetroUnusedDeclarationInspectionSuppressor"
