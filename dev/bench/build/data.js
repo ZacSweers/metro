@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781288177772,
+  "lastUpdate": 1781306851058,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -17248,6 +17248,62 @@ window.BENCHMARK_DATA = {
             "value": 21664.212,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +5.02%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3bf51a6f~1",
+          "message": "[before] Fully qualify scope names for hint functions (#244",
+          "timestamp": "2026-06-12T22:49:52Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3bf51a6f3b7fd369bf02bd09ffe1d83ab35e9529"
+        },
+        "date": 1781306851058,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22191.85,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3bf51a6f3b7fd369bf02bd09ffe1d83ab35e9529",
+          "message": "[after] Fully qualify scope names for hint functions (#244",
+          "timestamp": "2026-06-12T22:49:52Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3bf51a6f3b7fd369bf02bd09ffe1d83ab35e9529"
+        },
+        "date": 1781306851059,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 23137.68,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +4.26%"
           }
         ]
       }

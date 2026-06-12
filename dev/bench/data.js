@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781288177602,
+  "lastUpdate": 1781306850864,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -17248,6 +17248,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2299697386356064,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.76%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3bf51a6f~1",
+          "message": "[before] Fully qualify scope names for hint functions (#244",
+          "timestamp": "2026-06-12T22:49:52Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3bf51a6f3b7fd369bf02bd09ffe1d83ab35e9529"
+        },
+        "date": 1781306850864,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22565758888431345,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3bf51a6f3b7fd369bf02bd09ffe1d83ab35e9529",
+          "message": "[after] Fully qualify scope names for hint functions (#244",
+          "timestamp": "2026-06-12T22:49:52Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3bf51a6f3b7fd369bf02bd09ffe1d83ab35e9529"
+        },
+        "date": 1781306850865,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22563946260536544,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.01%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
