@@ -20,7 +20,11 @@ private const val METRO_PLUGIN_OPTION_PREFIX = "plugin:$PLUGIN_ID:"
 private val DEFAULT_METRO_IDE_STATE = MetroIdeModuleState(MetroOptions())
 
 /** Parsed Metro options plus IDE-specific derived caches for one module. */
-internal class MetroIdeModuleState(val options: MetroOptions) {
+internal class MetroIdeModuleState(
+  val options: MetroOptions,
+  /** The raw plugin option strings [options] was parsed from; identifies equivalent configs. */
+  val optionsFingerprint: List<String> = emptyList(),
+) {
   val annotationClassIds: MetroIdeAnnotationClassIds = MetroIdeAnnotationClassIds(options)
 }
 
@@ -40,6 +44,9 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
       addAll(options.providesAnnotations)
       addAll(options.multibindsAnnotations)
       addAll(options.injectAnnotations)
+      if (options.enableCircuitCodegen) {
+        add(CircuitIds.CIRCUIT_INJECT)
+      }
     }
   }
 
@@ -65,6 +72,10 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
         addAll(bindingContributionAnnotations)
       }
       addAll(options.assistedInjectAnnotations)
+      if (options.enableCircuitCodegen) {
+        // @CircuitInject classes are consumed through their generated circuit factory
+        add(CircuitIds.CIRCUIT_INJECT)
+      }
     }
   }
 
@@ -85,9 +96,14 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
 class MetroIdeProjectService(private val project: Project) {
   internal fun state(element: PsiElement): MetroIdeModuleState {
     val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return DEFAULT_METRO_IDE_STATE
+    return state(module)
+  }
+
+  internal fun state(module: Module): MetroIdeModuleState {
     return CachedValuesManager.getManager(project).getCachedValue(module) {
+      val optionStrings = module.metroPluginOptionStrings()
       CachedValueProvider.Result.create(
-        MetroIdeModuleState(module.metroOptions()),
+        MetroIdeModuleState(parseMetroOptions(optionStrings), optionStrings),
         KotlinCompilerSettingsTracker.getInstance(project),
       )
     }
@@ -99,18 +115,23 @@ internal fun PsiElement.metroIdeState(): MetroIdeModuleState {
 }
 
 /**
- * Reads Metro options from Kotlin's stored compiler plugin option strings.
+ * Reads the module's Metro compiler plugin option strings, sorted for stable fingerprinting.
  *
  * Kotlin's IDE support stores plugin options as `plugin:<plugin-id>:<key>=<value>`.
  *
  * @see org.jetbrains.kotlin.idea.compilerPlugin.modifyCompilerArgumentsForPluginWithFacetSettings
  */
-private fun Module.metroOptions(): MetroOptions {
+private fun Module.metroPluginOptionStrings(): List<String> {
   return KotlinCommonCompilerArgumentsHolder.getMergedCompilerArguments(this)
     .pluginOptions
     .orEmpty()
-    .asSequence()
     .filter { it.startsWith(METRO_PLUGIN_OPTION_PREFIX) }
+    .sorted()
+}
+
+private fun parseMetroOptions(optionStrings: List<String>): MetroOptions {
+  return optionStrings
+    .asSequence()
     .map { it.removePrefix(METRO_PLUGIN_OPTION_PREFIX) }
     .mapNotNull { option ->
       val key = option.substringBefore('=', missingDelimiterValue = "")

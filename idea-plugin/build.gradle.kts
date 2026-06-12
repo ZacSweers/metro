@@ -49,6 +49,19 @@ version = propertyResolver.requiredStringProvider("VERSION_NAME").get()
 
 metroProject { jvmTarget.set(libs.versions.ideaJvmTarget) }
 
+kotlin {
+  compilerOptions {
+    optIn.addAll(
+      // Analysis API type rendering used by MetroResolutionService
+      "org.jetbrains.kotlin.analysis.api.KaExperimentalApi",
+      // Platform extension points (line markers, implicit usage) have no threading contract and
+      // are sometimes invoked on the EDT (always in tests); analysis there is scoped via
+      // allowAnalysisOnEdt rather than assuming background execution.
+      "org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt",
+    )
+  }
+}
+
 java { toolchain { languageVersion.set(libs.versions.ideaJvmTarget.map(JavaLanguageVersion::of)) } }
 
 repositories {
