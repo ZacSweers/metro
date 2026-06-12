@@ -75,6 +75,16 @@ val metroRuntimeClasspath: Configuration by configurations.creating {
 
 val shaded: Configuration by configurations.creating
 
+// Runs a sandboxed IDE with the plugin installed from source: ./gradlew runLocalIde
+// To use a locally installed IDE (e.g. Android Studio) instead of the default target:
+// ./gradlew runLocalIde "-PintellijPlatformTesting.idePath=/Applications/Android Studio.app"
+val runLocalIde by
+  intellijPlatformTesting.runIde.registering {
+    providers.gradleProperty("intellijPlatformTesting.idePath").orNull?.let {
+      localPath.set(file(it))
+    }
+  }
+
 dependencies {
   intellijPlatform {
     intellijIdeaUltimate("2026.1.3")
