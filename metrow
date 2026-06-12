@@ -283,6 +283,9 @@ case "$1" in
            echo "Running apiDump..."
            # shellcheck disable=SC2086  # Word splitting is intentional so empty version_flag drops out
            ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
+
+           echo "Generating diagnostics docs..."
+           ./gradlew :compiler:generateDiagnosticsDocs --quiet
        else
            echo "Regenerating package locks only..."
        fi

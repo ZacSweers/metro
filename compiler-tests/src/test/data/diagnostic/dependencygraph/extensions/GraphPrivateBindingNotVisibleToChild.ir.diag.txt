@@ -1,7 +1,12 @@
-/GraphPrivateBindingNotVisibleToChild.kt:15:7: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+/GraphPrivateBindingNotVisibleToChild.kt:15:7: error: 
+[Metro/MissingBinding] No binding found for String
 
-    kotlin.String is requested at
-        [ParentGraph.Impl.ChildGraphImpl] ChildGraph.text
+  trace (in ParentGraph.Impl.ChildGraphImpl):
+      String is requested at ChildGraph.text
 
-(Hint)
-A binding for 'String' exists in a parent graph but is marked @GraphPrivate and cannot be accessed from this graph.
+  note: a binding for 'String' exists in a parent graph but is marked @GraphPrivate and cannot be
+        accessed from this graph
+  help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to ChildGraphImpl
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

@@ -417,23 +417,31 @@ interface TestGraph {
     @Binds
     @IntoSet
     @CallableMetadata(callableName = "bindA", propertyName = "", startOffset = 899, endOffset = 915)
-    abstract fun A.bindA_intoset(): A
+    fun A.bindA_intoset(): A {
+      return error(message = "Never called")
+    }
 
     @Binds
     @IntoMap
     @IntKey(value = 1)
     @CallableMetadata(callableName = "bindB", propertyName = "", startOffset = 976, endOffset = 992)
-    abstract fun B.bindB4013004649_intomap(): B
+    fun B.bindB4013004649_intomap(): B {
+      return error(message = "Never called")
+    }
 
     @Binds
     @IntoMap
     @IntKey(value = 1)
     @CallableMetadata(callableName = "bindC", propertyName = "", startOffset = 1077, endOffset = 1093)
-    abstract fun C.bindC4013004649_intomap(): C
+    fun C.bindC4013004649_intomap(): C {
+      return error(message = "Never called")
+    }
 
     @Binds
     @CallableMetadata(callableName = "bindX", propertyName = "", startOffset = 834, endOffset = 854)
-    abstract fun XImpl.bindX(): X
+    fun XImpl.bindX(): X {
+      return error(message = "Never called")
+    }
 
   }
 

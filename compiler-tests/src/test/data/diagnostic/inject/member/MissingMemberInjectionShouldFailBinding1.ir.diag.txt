@@ -1,10 +1,16 @@
-/MissingMemberInjectionShouldFailBinding1.kt:31:26: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Implementation
+/MissingMemberInjectionShouldFailBinding1.kt:31:26: error: 
+[Metro/MissingBinding] No binding found for Implementation
 
-    Implementation is injected at
-        [TestGraph.Impl.SubscopeGraphImpl] SubscopeGraph.bindImplementation(…, instance)
-    Base is requested at
-        [TestGraph.Impl.SubscopeGraphImpl] SubscopeGraph.base
+  SubscopeGraph.base -> Base -> Implementation
 
-Similar bindings:
-  - Base (Supertype). Type: Alias. Source: MissingMemberInjectionShouldFailBinding1.kt:31:3
+  trace (in TestGraph.Impl.SubscopeGraphImpl):
+      Implementation is injected at SubscopeGraph.bindImplementation(…, instance)
+      Base is requested at SubscopeGraph.base
+
+  similar bindings:
+      - Base (Supertype. Type: Alias) - MissingMemberInjectionShouldFailBinding1.kt:31:3
+
+  help: ensure Implementation has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to SubscopeGraphImpl
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 

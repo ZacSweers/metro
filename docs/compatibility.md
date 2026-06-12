@@ -73,12 +73,13 @@ The following Kotlin versions are tested via CI:
 | Kotlin Version  |
 |-----------------|
 | 2.4.20-dev-6138 |
-| 2.4.0-dev-2124 |
-| 2.4.0          |
-| 2.3.21         |
-| 2.3.20         |
-| 2.3.10         |
-| 2.3.0          |
+| 2.4.20-dev-3583 |
+| 2.4.0-dev-2124  |
+| 2.4.0           |
+| 2.3.21          |
+| 2.3.20          |
+| 2.3.10          |
+| 2.3.0           |
 
 !!! note
     Versions without dedicated compiler-compat modules will use the nearest available implementation _below_ that version. See [`compiler-compat/version-aliases.txt`](https://github.com/ZacSweers/metro/blob/main/compiler-compat/version-aliases.txt) for the full list.
@@ -95,7 +96,7 @@ The following IDE versions are tested via IDE integration tests:
 | 2026.1.1      | 2025.3.2.6 (Panda 2)          |
 | 2026.1.2      | 2025.3.3.6 (Panda 3)          |
 | 2026.1.3      | 2025.3.4.7 (Panda 4 Patch 1)  |
-|               | 2026.1.1.8 (Quail 1)          |
+| 262.7132.23   | 2026.1.1.8 (Quail 1)          |
 |               | 2026.1.2.4 (Quail 2 Canary 4) |
 
 ## Runtime Compatibility

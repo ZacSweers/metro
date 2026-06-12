@@ -12,7 +12,9 @@ interface AppGraph {
     @Binds
     @IntoSet
     @CallableMetadata(callableName = "bindInt", propertyName = "", startOffset = 149, endOffset = 171)
-    abstract fun Int.bindInt_intoset(): Int
+    fun Int.bindInt_intoset(): Int {
+      return error(message = "Never called")
+    }
 
   }
 

@@ -1,7 +1,13 @@
-/module_main_ContributionProviderMissingBindingShowsOrigin.kt:21:11: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Dependency
+/module_main_ContributionProviderMissingBindingShowsOrigin.kt:21:11: error: 
+[Metro/MissingBinding] No binding found for Dependency
 
-    Dependency is injected at
-        [AppGraph] RepositoryImpl(…, dep)
-    Repository is requested at
-        [AppGraph] AppGraph.repo
+  AppGraph.repo -> Repository -> Dependency
+
+  trace (in AppGraph):
+      Dependency is injected at RepositoryImpl(…, dep)
+      Repository is requested at AppGraph.repo
+
+  help: ensure Dependency has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 

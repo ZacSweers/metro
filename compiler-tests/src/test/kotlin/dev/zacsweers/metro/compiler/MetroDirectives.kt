@@ -71,6 +71,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<OptionalBindingBehavior>(
       "Controls the behavior of optional dependencies on a per-compilation basis."
     )
+  val DIAGNOSTICS_CONSOLE by
+    enumDirective<ConsoleMode>(
+      "Console mode for rendered diagnostics. RICH output is asserted against .rich golden files with ANSI codes escaped."
+    )
   val INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of interop annotations using positional arguments instead of named arguments."

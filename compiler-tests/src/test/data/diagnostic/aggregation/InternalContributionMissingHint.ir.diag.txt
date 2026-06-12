@@ -1,8 +1,14 @@
-/module_main_InternalContributionMissingHint.kt:17:7: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Foo
+/module_main_InternalContributionMissingHint.kt:17:7: error: 
+[Metro/MissingBinding] No binding found for Foo
 
-    Foo is requested at
-        [AppGraph] AppGraph.foo
+  trace (in AppGraph):
+      Foo is requested at AppGraph.foo
 
-Similar bindings:
-  - Foo (Contributed by 'FooImpl' but that class is internal to its module and its module is not a friend module to this one.)
+  similar bindings:
+      - Foo (Contributed by 'FooImpl' but that class is internal to its module and its module is not
+        a friend module to this one.)
+
+  help: ensure Foo has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 

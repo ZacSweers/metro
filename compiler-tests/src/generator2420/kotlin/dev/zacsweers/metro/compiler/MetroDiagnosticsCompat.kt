@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.test.backend.BlackBoxCodegenSuppressor
 import org.jetbrains.kotlin.test.backend.BlackBoxCodegenSuppressor.SuppressionChecker
 import org.jetbrains.kotlin.test.backend.handlers.NoIrCompilationErrorsHandler
 import org.jetbrains.kotlin.test.backend.ir.IrBackendInput
+import org.jetbrains.kotlin.test.builders.RegisteredDirectivesBuilder
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.frontend.fir.FirOutputArtifact
 import org.jetbrains.kotlin.test.model.AfterAnalysisChecker
@@ -56,6 +57,8 @@ fun TestConfigurationBuilder.useIrDumpFailureSuppressorsCompat() {
 fun TestConfigurationBuilder.usePhasedPipelineFailureSuppressorCompat() {
   useFailureSuppressors(::PhasedPipelineChecker)
 }
+
+fun RegisteredDirectivesBuilder.firIdenticalCompat() = Unit
 
 abstract class MetroReportsCheckerCompat(testServices: TestServices) :
   AfterAnalysisChecker(testServices) {

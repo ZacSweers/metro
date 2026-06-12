@@ -397,10 +397,14 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
         """
         e: Could not find generated factory for 'test.ExampleClass' in the upstream module where it's defined. Run the Metro compiler over that module too (or Dagger if you're using its interop).
 
-        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ExampleClass
+        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] No binding found for ExampleClass
 
-            test.ExampleClass is requested at
-                [test.ExampleGraph] test.ExampleGraph.exampleClass
+          trace (in test.ExampleGraph):
+              ExampleClass is requested at test.ExampleGraph.exampleClass
+
+          help: ensure ExampleClass has an @Inject constructor or is provided by an @Provides or @Binds
+                declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )

@@ -111,7 +111,9 @@ interface Bindings {
 
     @BindsOptionalOf
     @CallableMetadata(callableName = "string", propertyName = "", startOffset = 350, endOffset = 370)
-    abstract fun string_opt(): String
+    fun string_opt(): String {
+      return error(message = "Never called")
+    }
 
   }
 

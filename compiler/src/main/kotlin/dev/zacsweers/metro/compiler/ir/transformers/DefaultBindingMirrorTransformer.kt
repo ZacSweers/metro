@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedCla
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
+import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -146,10 +147,10 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
         .addFunction(
           Symbols.Names.defaultBindingFunction.asString(),
           returnType = finalType,
-          modality = Modality.ABSTRACT,
           origin = Origins.Default,
         )
         .apply {
+          body = stubExpressionBody()
           qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
           // Register as metadata visible
           metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)

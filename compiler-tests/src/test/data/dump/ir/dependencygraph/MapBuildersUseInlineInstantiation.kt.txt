@@ -58,7 +58,9 @@ class IntHolderImpl : IntHolder {
       @IntoMap
       @IntKey(value = 3)
       @CallableMetadata(callableName = "bindIntoMapAsIntHolder4013004651", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsIntHolder40130046514013004651_intomap(instance: IntHolderImpl): IntHolder
+      fun bindIntoMapAsIntHolder40130046514013004651_intomap(instance: IntHolderImpl): IntHolder {
+        return error(message = "Never called")
+      }
 
     }
 

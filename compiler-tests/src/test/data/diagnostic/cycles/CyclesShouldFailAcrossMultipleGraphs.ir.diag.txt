@@ -1,13 +1,19 @@
-/CyclesShouldFailAcrossMultipleGraphs.kt:7:11: error: Graph dependency cycle detected!
-    test.StringGraph is injected at
-        [test.CharSequenceGraph] test.StringGraph.Factory.create()
-    test.CharSequenceGraph is injected at
-        [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
+/CyclesShouldFailAcrossMultipleGraphs.kt:7:11: error: 
+[Metro/DependencyCycle] Graph dependency cycle detected
+
+  trace (in test.CharSequenceGraph):
+      StringGraph is injected at test.StringGraph.Factory.create()
+      CharSequenceGraph is injected at test.CharSequenceGraph.Factory.create()
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
 
 
-/CyclesShouldFailAcrossMultipleGraphs.kt:21:11: error: Graph dependency cycle detected!
-    test.CharSequenceGraph is injected at
-        [test.StringGraph] test.CharSequenceGraph.Factory.create()
-    test.StringGraph is injected at
-        [test.StringGraph] test.StringGraph.Factory.create()
+/CyclesShouldFailAcrossMultipleGraphs.kt:21:11: error: 
+[Metro/DependencyCycle] Graph dependency cycle detected
+
+  trace (in test.StringGraph):
+      CharSequenceGraph is injected at test.CharSequenceGraph.Factory.create()
+      StringGraph is injected at test.StringGraph.Factory.create()
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
 

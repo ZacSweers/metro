@@ -1,29 +1,54 @@
-/ConfigurableMaxIrErrors.kt:9:19: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("1") kotlin.Int
+/ConfigurableMaxIrErrors.kt:9:19: error: 
+[Metro/MissingBinding] No binding found for @Named("1") Int
 
-    @dev.zacsweers.metro.Named("1") kotlin.Int is requested at
-        [AppGraph] AppGraph.int1
+  trace (in AppGraph):
+      @Named("1") Int is requested at AppGraph.int1
 
-
-/ConfigurableMaxIrErrors.kt:10:19: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("2") kotlin.Int
-
-    @dev.zacsweers.metro.Named("2") kotlin.Int is requested at
-        [AppGraph] AppGraph.int2
-
-
-/ConfigurableMaxIrErrors.kt:11:19: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("3") kotlin.Int
-
-    @dev.zacsweers.metro.Named("3") kotlin.Int is requested at
-        [AppGraph] AppGraph.int3
+  help: ensure @Named("1") Int has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 
 
-/ConfigurableMaxIrErrors.kt:12:19: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("4") kotlin.Int
+/ConfigurableMaxIrErrors.kt:10:19: error: 
+[Metro/MissingBinding] No binding found for @Named("2") Int
 
-    @dev.zacsweers.metro.Named("4") kotlin.Int is requested at
-        [AppGraph] AppGraph.int4
+  trace (in AppGraph):
+      @Named("2") Int is requested at AppGraph.int2
+
+  help: ensure @Named("2") Int has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 
 
-/ConfigurableMaxIrErrors.kt:13:19: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("5") kotlin.Int
+/ConfigurableMaxIrErrors.kt:11:19: error: 
+[Metro/MissingBinding] No binding found for @Named("3") Int
 
-    @dev.zacsweers.metro.Named("5") kotlin.Int is requested at
-        [AppGraph] AppGraph.int5
+  trace (in AppGraph):
+      @Named("3") Int is requested at AppGraph.int3
+
+  help: ensure @Named("3") Int has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/ConfigurableMaxIrErrors.kt:12:19: error: 
+[Metro/MissingBinding] No binding found for @Named("4") Int
+
+  trace (in AppGraph):
+      @Named("4") Int is requested at AppGraph.int4
+
+  help: ensure @Named("4") Int has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/ConfigurableMaxIrErrors.kt:13:19: error: 
+[Metro/MissingBinding] No binding found for @Named("5") Int
+
+  trace (in AppGraph):
+      @Named("5") Int is requested at AppGraph.int5
+
+  help: ensure @Named("5") Int has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 

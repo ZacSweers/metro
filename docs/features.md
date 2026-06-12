@@ -52,18 +52,23 @@ Most errors are reported in FIR, which should (eventually) be visible in the K2 
 
 ## Helpful diagnostics
 
-Metro tries its best to give detailed-yet-readable error messages and diagnostics.
+Metro tries its best to give detailed-yet-readable error messages and diagnostics, with stable diagnostic IDs, `help:` suggestions, and links to the [Diagnostics Reference](diagnostics.md). An optional rich console mode adds color, Unicode structure, and underlined source snippets in terminals. See [Validation & Error Reporting](validation-and-error-reporting.md).
 
 ```
-e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+e: ExampleGraph.kt:8:3 
+[Metro/MissingBinding] No binding found for Int
 
-    kotlin.Int is requested at
-        [test.ExampleGraph] test.ExampleGraph.int
+  trace (in test.ExampleGraph):
+      Int is requested at test.ExampleGraph.int
 
-Similar bindings:
-  - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:3
-  - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
-  - Set<Int> (Multibinding). Type: Multibinding.
+  similar bindings:
+      - @Named("qualified") Int (Different qualifier. Type: Provided) - ExampleGraph.kt:11:3
+      - Number (Supertype. Type: Provided) - ExampleGraph.kt:10:3
+      - Set<Int> (Multibinding. Type: Multibinding)
+
+  help: ensure Int has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 ```
 
 For more thorough debugging, Metro also has controls to enable debug logging controls and write graph reports to an output directory (configurable via the Gradle extension).

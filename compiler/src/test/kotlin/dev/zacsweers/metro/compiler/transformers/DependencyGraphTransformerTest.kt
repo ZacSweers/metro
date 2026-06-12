@@ -92,10 +92,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:9:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        e: ExampleGraph.kt:9:7 [Metro/MissingBinding] No binding found for String
 
-            kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.text
+          trace (in test.ExampleGraph):
+              String is requested at test.ExampleGraph.text
+
+          help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+                declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -121,10 +125,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
+        e: ExampleGraph.kt:10:7 [Metro/MissingBinding] No binding found for @Named("hello") String
 
-            @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.text
+          trace (in test.ExampleGraph):
+              @Named("hello") String is requested at test.ExampleGraph.text
+
+          help: ensure @Named("hello") String has an @Inject constructor or is provided by an @Provides or
+                @Binds declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -150,10 +158,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
+        e: ExampleGraph.kt:10:7 [Metro/MissingBinding] No binding found for @Named("hello") String
 
-            @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.text
+          trace (in test.ExampleGraph):
+              @Named("hello") String is requested at test.ExampleGraph.text
+
+          help: ensure @Named("hello") String has an @Inject constructor or is provided by an @Provides or
+                @Binds declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -178,10 +190,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:9:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        e: ExampleGraph.kt:9:7 [Metro/MissingBinding] No binding found for String
 
-            kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.text()
+          trace (in test.ExampleGraph):
+              String is requested at test.ExampleGraph.text()
+
+          help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+                declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -207,10 +223,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
+        e: ExampleGraph.kt:10:7 [Metro/MissingBinding] No binding found for @Named("hello") String
 
-            @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.text()
+          trace (in test.ExampleGraph):
+              @Named("hello") String is requested at test.ExampleGraph.text()
+
+          help: ensure @Named("hello") String has an @Inject constructor or is provided by an @Provides or
+                @Binds declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -238,12 +258,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:13:28 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        e: ExampleGraph.kt:13:28 [Metro/MissingBinding] No binding found for String
 
-            kotlin.String is injected at
-                [test.ExampleGraph] test.ExampleClass(…, text)
-            test.ExampleClass is requested at
-                [test.ExampleGraph] test.ExampleGraph.exampleClass()
+          test.ExampleGraph.exampleClass() -> ExampleClass -> String
+
+          trace (in test.ExampleGraph):
+              String is injected at test.ExampleClass(…, text)
+              ExampleClass is requested at test.ExampleGraph.exampleClass()
+
+          help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+                declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -271,12 +296,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:13:44 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
+        e: ExampleGraph.kt:13:44 [Metro/MissingBinding] No binding found for @Named("hello") String
 
-            @dev.zacsweers.metro.Named("hello") kotlin.String is injected at
-                [test.ExampleGraph] test.ExampleClass(…, text)
-            test.ExampleClass is requested at
-                [test.ExampleGraph] test.ExampleGraph.exampleClass()
+          test.ExampleGraph.exampleClass() -> ExampleClass -> @Named("hello") String
+
+          trace (in test.ExampleGraph):
+              @Named("hello") String is injected at test.ExampleClass(…, text)
+              ExampleClass is requested at test.ExampleGraph.exampleClass()
+
+          help: ensure @Named("hello") String has an @Inject constructor or is provided by an @Provides or
+                @Binds declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -360,10 +390,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-      e: ExampleGraph.kt:8:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@SingleIn(AppScope::class)', '@Singleton') may not reference bindings from different scopes:
-          kotlin.Int (scoped to '@SingleIn(UserScope::class)')
-          kotlin.Int is requested at
-              [test.ExampleGraph] test.ExampleGraph.intValue
+      e: ExampleGraph.kt:8:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@SingleIn(AppScope::class)',
+          '@Singleton') may not reference bindings from different scopes
+
+        trace (in test.ExampleGraph):
+            Int (scoped to '@SingleIn(UserScope::class)')
+            Int is requested at test.ExampleGraph.intValue
+
+        docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings
       """
         .trimIndent()
     )
@@ -580,10 +614,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
-            kotlin.String (scoped to '@SingleIn(AppScope::class)')
-            kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.value
+        e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings
+
+          trace (in test.ExampleGraph):
+              String (scoped to '@SingleIn(AppScope::class)')
+              String is requested at test.ExampleGraph.value
+
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings
         """
           .trimIndent()
       )
@@ -614,13 +651,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
+        e: ExampleGraph.kt:10:7 [Metro/MissingBinding] No binding found for CharSequence
 
-            kotlin.CharSequence is requested at
-                [test.ExampleGraph] test.ExampleGraph.value2
+          trace (in test.ExampleGraph):
+              CharSequence is requested at test.ExampleGraph.value2
 
-        Similar bindings:
-          - String (Subtype). Type: Provided. Source: ExampleGraph.kt:13:3
+          similar bindings:
+              - String (Subtype. Type: Provided) - ExampleGraph.kt:13:3
+
+          help: ensure CharSequence has an @Inject constructor or is provided by an @Provides or @Binds
+                declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -731,13 +772,18 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:11 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
-        Cycle:
-            Int <--> Int (depends on itself)
+        e: ExampleGraph.kt:7:11
+        [Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
 
-        Trace:
-            kotlin.Int is injected at
-                [test.ExampleGraph] test.ExampleGraph.provideInt(…, value)
+          cycle:
+              +-> Int --+
+              +---------+
+
+          trace (in test.ExampleGraph):
+              Int is injected at test.ExampleGraph.provideInt(…, value)
+
+          help: break the cycle by injecting a deferred type at one edge, e.g. `() -> Int` or `Lazy<Int>`
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
         """
           .trimIndent()
       )
@@ -777,20 +823,22 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:11 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
-        Cycle:
-            Double --> String --> Int --> Double
+        e: ExampleGraph.kt:7:11 [Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
 
-        Trace:
-            kotlin.Double is injected at
-                [test.ExampleGraph] test.ExampleGraph.provideInt(…, double)
-            kotlin.String is injected at
-                [test.ExampleGraph] test.ExampleGraph.provideDouble(…, string)
-            kotlin.Int is injected at
-                [test.ExampleGraph] test.ExampleGraph.provideString(…, int)
-            kotlin.Double is injected at
-                [test.ExampleGraph] test.ExampleGraph.provideInt(…, double)
-            ...
+          cycle:
+              +-> Double -> String -> Int --+
+              +-----------------------------+
+
+          trace (in test.ExampleGraph):
+              Double is injected at test.ExampleGraph.provideInt(…, double)
+              String is injected at test.ExampleGraph.provideDouble(…, string)
+              Int is injected at test.ExampleGraph.provideString(…, int)
+              Double is injected at test.ExampleGraph.provideInt(…, double)
+              ...
+
+          help: break the cycle by injecting a deferred type at one edge, e.g. `() -> Double` or
+                `Lazy<Double>`
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
         """
           .trimIndent()
       )
@@ -1407,9 +1455,11 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+        e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding Set<String> was unexpectedly empty
 
-        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+          help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+                empty
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
           .trimIndent()
       )
@@ -1436,12 +1486,12 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+        e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding Set<String> was unexpectedly empty
 
-        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
-
-        Similar multibindings:
-        - Set<CharSequence>
+          help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+                empty
+          note: similar multibindings: Set<CharSequence>
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
           .trimIndent()
       )
@@ -1469,12 +1519,12 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.String>' was unexpectedly empty.
+        e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding Map<String, String> was unexpectedly empty
 
-        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
-
-        Similar multibindings:
-        - Map<String, CharSequence>
+          help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+                empty
+          note: similar multibindings: Map<String, CharSequence>
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
           .trimIndent()
       )
@@ -1845,14 +1895,19 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for test.ExampleClass
+        e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for ExampleClass
 
-          ExampleGraph.kt:10:13
-            @Provides fun provideExampleClass1(): test.ExampleClass
-                                                  ~~~~~~~~~~~~~~~~~
-          ExampleGraph.kt:11:13
-            @Provides fun provideExampleClass2(): test.ExampleClass
-                                                  ~~~~~~~~~~~~~~~~~
+              ExampleGraph.kt:10:13
+                @Provides fun provideExampleClass1(): test.ExampleClass
+                                                      ~~~~~~~~~~~~~~~~~
+
+              ExampleGraph.kt:11:13
+                @Provides fun provideExampleClass2(): test.ExampleClass
+                                                      ~~~~~~~~~~~~~~~~~
+
+          help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+                @IntoSet/@IntoMap if you intended a multibinding
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
           .trimIndent()
       )
@@ -1882,14 +1937,19 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for test.ExampleClass
+        e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for ExampleClass
 
-          ExampleGraph.kt:10:13
-            @Provides fun provideExampleClass1(): test.ExampleClass
-                                                  ~~~~~~~~~~~~~~~~~
-          ExampleGraph.kt:11:10
-            @Binds fun test.Impl2.provideExampleClass2(): test.ExampleClass
-                                                          ~~~~~~~~~~~~~~~~~
+              ExampleGraph.kt:10:13
+                @Provides fun provideExampleClass1(): test.ExampleClass
+                                                      ~~~~~~~~~~~~~~~~~
+
+              ExampleGraph.kt:11:10
+                @Binds fun test.Impl2.provideExampleClass2(): test.ExampleClass
+                                                              ~~~~~~~~~~~~~~~~~
+
+          help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+                @IntoSet/@IntoMap if you intended a multibinding
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
           .trimIndent()
       )
@@ -1919,14 +1979,19 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for test.ExampleClass
+        e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for ExampleClass
 
-          ExampleGraph.kt:10:10
-            @Binds fun test.Impl1.provideExampleClass1(): test.ExampleClass
-                                                          ~~~~~~~~~~~~~~~~~
-          ExampleGraph.kt:11:10
-            @Binds fun test.Impl2.provideExampleClass2(): test.ExampleClass
-                                                          ~~~~~~~~~~~~~~~~~
+              ExampleGraph.kt:10:10
+                @Binds fun test.Impl1.provideExampleClass1(): test.ExampleClass
+                                                              ~~~~~~~~~~~~~~~~~
+
+              ExampleGraph.kt:11:10
+                @Binds fun test.Impl2.provideExampleClass2(): test.ExampleClass
+                                                              ~~~~~~~~~~~~~~~~~
+
+          help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+                @IntoSet/@IntoMap if you intended a multibinding
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
           .trimIndent()
       )
@@ -1959,14 +2024,19 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for test.ExampleClass
+        e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for ExampleClass
 
-          ExampleGraph.kt:13:1
-            test.Impl1 contributes a binding of test.ExampleClass
-                                                ~~~~~~~~~~~~~~~~~
-          ExampleGraph.kt:17:1
-            test.Impl2 contributes a binding of test.ExampleClass
-                                                ~~~~~~~~~~~~~~~~~
+              ExampleGraph.kt:13:1
+                test.Impl1 contributes a binding of test.ExampleClass
+                                                    ~~~~~~~~~~~~~~~~~
+
+              ExampleGraph.kt:17:1
+                test.Impl2 contributes a binding of test.ExampleClass
+                                                    ~~~~~~~~~~~~~~~~~
+
+          help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+                @IntoSet/@IntoMap if you intended a multibinding
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
           .trimIndent()
       )
@@ -2011,14 +2081,19 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:11 [Metro/DuplicateBinding] Multiple bindings found for other.OtherClass
+        e: ExampleGraph.kt:8:11 [Metro/DuplicateBinding] Multiple bindings found for OtherClass
 
-          <unknown location, likely a separate compilation>
-            other.ExampleClass contributes a binding of other.OtherClass
-                                                        ~~~~~~~~~~~~~~~~
-          <unknown location, likely a separate compilation>
-            other.ExampleClass2 contributes a binding of other.OtherClass
-                                                         ~~~~~~~~~~~~~~~~
+              <unknown location, likely a separate compilation>
+                other.ExampleClass contributes a binding of other.OtherClass
+                                                            ~~~~~~~~~~~~~~~~
+
+              <unknown location, likely a separate compilation>
+                other.ExampleClass2 contributes a binding of other.OtherClass
+                                                             ~~~~~~~~~~~~~~~~
+
+          help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+                @IntoSet/@IntoMap if you intended a multibinding
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
           .trimIndent()
       )
@@ -2068,14 +2143,19 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:11 [Metro/DuplicateBinding] Multiple bindings found for other.OtherClass
+        e: ExampleGraph.kt:8:11 [Metro/DuplicateBinding] Multiple bindings found for OtherClass
 
-          <unknown location, likely a separate compilation>
-            other.ExampleClass contributes a binding of other.OtherClass
-                                                        ~~~~~~~~~~~~~~~~
-          ExampleClass2.kt:7:1
-            test.ExampleClass2 contributes a binding of other.OtherClass
-                                                        ~~~~~~~~~~~~~~~~
+              <unknown location, likely a separate compilation>
+                other.ExampleClass contributes a binding of other.OtherClass
+                                                            ~~~~~~~~~~~~~~~~
+
+              ExampleClass2.kt:7:1
+                test.ExampleClass2 contributes a binding of other.OtherClass
+                                                            ~~~~~~~~~~~~~~~~
+
+          help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+                @IntoSet/@IntoMap if you intended a multibinding
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
           .trimIndent()
       )
@@ -2209,13 +2289,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] No binding found for Int
 
-            kotlin.Int is requested at
-                [test.ExampleGraph] test.ExampleGraph.int
+          trace (in test.ExampleGraph):
+              Int is requested at test.ExampleGraph.int
 
-        Similar bindings:
-          - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:33
+          similar bindings:
+              - @Named("qualified") Int (Different qualifier. Type: Provided) - ExampleGraph.kt:10:33
+
+          help: ensure Int has an @Inject constructor or is provided by an @Provides or @Binds declaration
+                visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -2240,13 +2324,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:27 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("qualified") kotlin.Int
+        e: ExampleGraph.kt:8:27 [Metro/MissingBinding] No binding found for @Named("qualified") Int
 
-            @dev.zacsweers.metro.Named("qualified") kotlin.Int is requested at
-                [test.ExampleGraph] test.ExampleGraph.int
+          trace (in test.ExampleGraph):
+              @Named("qualified") Int is requested at test.ExampleGraph.int
 
-        Similar bindings:
-          - Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:13
+          similar bindings:
+              - Int (Different qualifier. Type: Provided) - ExampleGraph.kt:10:13
+
+          help: ensure @Named("qualified") Int has an @Inject constructor or is provided by an @Provides or
+                @Binds declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -2271,13 +2359,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] No binding found for Int
 
-            kotlin.Int is requested at
-                [test.ExampleGraph] test.ExampleGraph.int
+          trace (in test.ExampleGraph):
+              Int is requested at test.ExampleGraph.int
 
-        Similar bindings:
-          - Set<Int> (Multibinding). Type: Multibinding.
+          similar bindings:
+              - Set<Int> (Multibinding. Type: Multibinding)
+
+          help: ensure Int has an @Inject constructor or is provided by an @Provides or @Binds declaration
+                visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -2302,13 +2394,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] No binding found for Int
 
-            kotlin.Int is requested at
-                [test.ExampleGraph] test.ExampleGraph.int
+          trace (in test.ExampleGraph):
+              Int is requested at test.ExampleGraph.int
 
-        Similar bindings:
-          - Map<String, Int> (Multibinding). Type: Multibinding.
+          similar bindings:
+              - Map<String, Int> (Multibinding. Type: Multibinding)
+
+          help: ensure Int has an @Inject constructor or is provided by an @Provides or @Binds declaration
+                visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -2333,13 +2429,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Number
+        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] No binding found for Number
 
-            kotlin.Number is requested at
-                [test.ExampleGraph] test.ExampleGraph.int
+          trace (in test.ExampleGraph):
+              Number is requested at test.ExampleGraph.int
 
-        Similar bindings:
-          - Int (Subtype). Type: Provided. Source: ExampleGraph.kt:10:13
+          similar bindings:
+              - Int (Subtype. Type: Provided) - ExampleGraph.kt:10:13
+
+          help: ensure Number has an @Inject constructor or is provided by an @Provides or @Binds
+                declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -2364,13 +2464,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] No binding found for Int
 
-            kotlin.Int is requested at
-                [test.ExampleGraph] test.ExampleGraph.int
+          trace (in test.ExampleGraph):
+              Int is requested at test.ExampleGraph.int
 
-        Similar bindings:
-          - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:13
+          similar bindings:
+              - Number (Supertype. Type: Provided) - ExampleGraph.kt:10:13
+
+          help: ensure Int has an @Inject constructor or is provided by an @Provides or @Binds declaration
+                visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -2397,15 +2501,19 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] No binding found for Int
 
-            kotlin.Int is requested at
-                [test.ExampleGraph] test.ExampleGraph.int
+          trace (in test.ExampleGraph):
+              Int is requested at test.ExampleGraph.int
 
-        Similar bindings:
-          - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:33
-          - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:13
-          - Set<Int> (Multibinding). Type: Multibinding.
+          similar bindings:
+              - @Named("qualified") Int (Different qualifier. Type: Provided) - ExampleGraph.kt:11:33
+              - Number (Supertype. Type: Provided) - ExampleGraph.kt:10:13
+              - Set<Int> (Multibinding. Type: Multibinding)
+
+          help: ensure Int has an @Inject constructor or is provided by an @Provides or @Binds declaration
+                visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -2729,17 +2837,21 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int>' was unexpectedly empty.
+        e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding Set<Int> was unexpectedly empty
 
-        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+          help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+                empty
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
+        e: ExampleGraph.kt:9:19 [Metro/EmptyMultibinding] Multibinding Set<String> was unexpectedly empty
 
-        e: ExampleGraph.kt:9:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+          help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+                empty
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
+        e: ExampleGraph.kt:10:19 [Metro/EmptyMultibinding] Multibinding Map<String, Int> was unexpectedly empty
 
-        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
-
-        e: ExampleGraph.kt:10:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.Int>' was unexpectedly empty.
-
-        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+          help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+                empty
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
           .trimIndent()
       )
@@ -2846,15 +2958,18 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Parent1.kt:11:28 [Metro/QualifierOverrideMismatch] Overridden declarations must have matching qualifier annotations:
+        e: Parent1.kt:11:28 [Metro/QualifierOverrideMismatch] Overridden declarations must have matching qualifier annotations
 
-          accessor property 'test.AppGraph.Impl.prop'
-            expected: '@Named("qualified")' (from test.Parent1.prop)
-            actual:   absent
+          accessor property test.AppGraph.Impl.prop
+              expected: '@Named("qualified")' (from test.Parent1.prop)
+              actual: absent
 
-          accessor function 'test.AppGraph.Impl.function'
-            expected: '@Named("qualified")' (from test.Parent1.function)
-            actual:   absent
+          accessor function test.AppGraph.Impl.function
+              expected: '@Named("qualified")' (from test.Parent1.function)
+              actual: absent
+
+          help: match the qualifier annotations on overrides with their overridden declarations
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch
         """
           .trimIndent()
       )
@@ -2882,7 +2997,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Parent1.kt:14:28 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.Impl.string' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is absent but overridden symbol test.Parent2.string has '@Named("qualified")'.
+        e: Parent1.kt:14:28 [Metro/QualifierOverrideMismatch] Overridden accessor property test.AppGraph.Impl.string must have
+            the same qualifier annotations as the overridden accessor property
+
+          The final accessor property qualifier is absent but overridden symbol test.Parent2.string has
+          '@Named("qualified")'
+
+          help: match the qualifier annotations on overrides with their overridden declarations
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch
         """
           .trimIndent()
       )
@@ -2910,7 +3032,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Parent1.kt:14:28 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.Impl.string' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is absent but overridden symbol test.Parent2.string has '@Named("qualified")'.
+        e: Parent1.kt:14:28 [Metro/QualifierOverrideMismatch] Overridden accessor function test.AppGraph.Impl.string must have
+            the same qualifier annotations as the overridden accessor function
+
+          The final accessor function qualifier is absent but overridden symbol test.Parent2.string has
+          '@Named("qualified")'
+
+          help: match the qualifier annotations on overrides with their overridden declarations
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch
         """
           .trimIndent()
       )
@@ -2942,7 +3071,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Thing.kt:18:28 [Metro/QualifierOverrideMismatch] Overridden injector function 'test.AppGraph.Impl.injectThing' must have the same qualifier annotations as the overridden injector function. However, the final injector function qualifier is absent but overridden symbol test.Parent2.injectThing has '@Named("qualified")'.
+        e: Thing.kt:18:28 [Metro/QualifierOverrideMismatch] Overridden injector function test.AppGraph.Impl.injectThing must
+            have the same qualifier annotations as the overridden injector function
+
+          The final injector function qualifier is absent but overridden symbol test.Parent2.injectThing has
+          '@Named("qualified")'
+
+          help: match the qualifier annotations on overrides with their overridden declarations
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch
         """
           .trimIndent()
       )

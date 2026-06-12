@@ -120,7 +120,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "debug",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Enable/disable debug logging on the given compilation",
+      description = "Enable debug logging for this compilation.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -130,7 +130,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "enabled",
       defaultValue = true,
       valueDescription = "<true | false>",
-      description = "Enable/disable Metro's plugin on the given compilation",
+      description = "Enable Metro for this compilation.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -139,8 +139,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
     RawMetroOption(
       name = "reports-destination",
       defaultValue = "",
-      valueDescription = "Path to a directory to dump Metro reports information",
-      description = "Path to a directory to dump Metro reports information",
+      valueDescription = "<path>",
+      description = "Directory where Metro writes diagnostic and metadata reports.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -150,8 +150,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
     RawMetroOption(
       name = "trace-destination",
       defaultValue = "",
-      valueDescription = "Path to a directory to dump Metro trace information",
-      description = "Path to a directory to dump Metro trace information",
+      valueDescription = "<path>",
+      description = "Directory where Metro writes compiler trace files.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -162,7 +162,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "generate-assisted-factories",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Enable/disable automatic generation of assisted factories",
+      description = "Generate assisted factories automatically.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -173,7 +173,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable top-level function injection. Note this is disabled by default because this is not compatible with incremental compilation yet.",
+        "Enable injection for top-level functions. Disabled by default because it is not " +
+          "compatible with incremental compilation.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -184,7 +185,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable interop with Dagger's runtime (Provider, Lazy, and generated Dagger factories).",
+        "Recognize Dagger runtime types: Provider, Lazy, and generated Dagger factories.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -194,7 +195,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "enable-guice-runtime-interop",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Enable/disable interop with Guice's runtime (Provider and MembersInjector).",
+      description = "Recognize Guice runtime types: Provider and MembersInjector.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -204,7 +205,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "generate-contribution-hints",
       defaultValue = true,
       valueDescription = "<true | false>",
-      description = "Enable/disable generation of contribution hints.",
+      description = "Generate contribution hints.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -214,7 +215,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "generate-contribution-hints-in-fir",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Enable/disable generation of contribution hint generation in FIR.",
+      description = "Generate contribution hints in FIR.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -224,8 +225,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "generate-classes-in-ir",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description =
-        "Enable/disable generation of metadata-visible hidden classes in IR instead of FIR.",
+      description = "Generate metadata-visible hidden classes in IR instead of FIR.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -235,7 +235,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "shrink-unused-bindings",
       defaultValue = true,
       valueDescription = "<true | false>",
-      description = "Enable/disable shrinking of unused bindings from binding graphs.",
+      description = "Remove unused bindings from binding graphs.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -246,7 +246,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = DEFAULT_STATEMENTS_PER_INIT_FUN,
       valueDescription = "<count>",
       description =
-        "Maximum number of statements per init method when chunking field initializers. Default is $DEFAULT_STATEMENTS_PER_INIT_FUN, must be > 0.",
+        "Maximum statements per init method when chunking field initializers. Default is " +
+          "$DEFAULT_STATEMENTS_PER_INIT_FUN. Must be > 0.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.toInt() },
@@ -257,7 +258,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "enable-graph-sharding",
       defaultValue = true,
       valueDescription = "<true | false>",
-      description = "Enable/disable graph sharding of binding graphs.",
+      description = "Shard generated binding graphs.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -268,7 +269,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = DEFAULT_KEYS_PER_GRAPH_SHARD,
       valueDescription = "<count>",
       description =
-        "Maximum number of binding keys per graph shard when sharding is enabled. Default is $DEFAULT_KEYS_PER_GRAPH_SHARD, must be > 0.",
+        "Maximum binding keys per graph shard when sharding is enabled. Default is " +
+          "$DEFAULT_KEYS_PER_GRAPH_SHARD. Must be > 0.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.toInt() },
@@ -280,10 +282,10 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = 0,
       valueDescription = "<count>",
       description =
-        "Maximum number of contribution supertypes per chunk when merging contributions in IR." +
+        "Maximum contribution supertypes per chunk when merging contributions in IR." +
           " When set, the IR contribution merger groups merged supertypes into synthetic intermediate" +
           " interfaces of at most this size, which is useful for graphs whose merged supertype list" +
-          " exceeds the JVM's 65k class signature byte limit. Default 0 disables chunking. Values < 2" +
+          " exceeds the JVM's 65k class-signature byte limit. Default 0 disables chunking. Values < 2" +
           " are treated as disabled.",
       required = false,
       allowMultipleOccurrences = false,
@@ -295,7 +297,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "enable-switching-providers",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Enable SwitchingProviders for deferred class loading.",
+      description = "Use SwitchingProviders for deferred class loading.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -306,7 +308,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
       valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
-        "Control diagnostic severity reporting of public scoped providers. Only applies if `transform-providers-to-private` is false.",
+        "Severity for public scoped-provider diagnostics. Only applies when " +
+          "`transform-providers-to-private` is false.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -317,8 +320,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "non-public-contribution-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
       valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
-      description =
-        "Control diagnostic severity reporting of @Contributes*-annotated declarations that are non-public.",
+      description = "Severity for non-public `@Contributes*` declaration diagnostics.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -330,7 +332,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = true,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable suggestion to lift @Inject/@AssistedInject to class when there is only one constructor.",
+        "Suggest moving `@Inject`/`@AssistedInject` to the class when it has only one constructor.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -341,7 +343,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
       valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
-        "Control diagnostic severity reporting of interop annotations using positional arguments instead of named arguments.",
+        "Severity for interop annotations that use positional arguments instead of named arguments.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -353,7 +355,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
       valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
-        "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph).",
+        "Severity for unused graph inputs, such as factory parameters not used by the graph.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -364,7 +366,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "logging",
       defaultValue = emptySet(),
       valueDescription = MetroLogger.Type.entries.joinToString("|") { it.name },
-      description = "Enabled logging types",
+      description = "Logging types to enable.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence('|').map(MetroLogger.Type::valueOf).toSet() },
@@ -376,7 +378,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = 20,
       valueDescription = "<count>",
       description =
-        "Maximum number of errors to report before exiting IR processing. Default is 20, must be > 0.",
+        "Maximum errors to report before exiting IR processing. Default is 20. Must be > 0.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.toInt() },
@@ -641,7 +643,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable interop with Dagger Anvil's additional functionality (currently for 'rank' support).",
+        "Enable Dagger Anvil interop beyond annotation aliases, currently rank support.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -651,8 +653,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "enable-full-binding-graph-validation",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description =
-        "Enable/disable full validation of all binds and provides declarations, even if they are unused.",
+      description = "Validate all binds and provides declarations, including unused declarations.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -663,7 +664,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "If true changes the return type of generated Graph Factories from the declared interface type to the generated Metro graph type. This is helpful for Dagger/Anvil interop.",
+        "Return the generated Metro graph type from generated graph factories instead of the " +
+          "declared graph interface. Useful for Dagger/Anvil interop.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -674,7 +676,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = emptySet(),
       valueDescription = "Origin annotations",
       description =
-        "Custom annotations that indicate the origin class of generated types for contribution merging",
+        "Custom annotations that identify the origin class of generated contribution types.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
@@ -696,7 +698,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "optional-binding-behavior",
       defaultValue = OptionalBindingBehavior.DEFAULT.name,
       valueDescription = OptionalBindingBehavior.entries.joinToString("|"),
-      description = "Controls the behavior of optional bindings",
+      description = "Optional binding behavior.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -708,7 +710,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = true,
       valueDescription = "<true | false>",
       description =
-        "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations",
+        "Treat `@Contributes*` annotations, except `@ContributesTo`, as implicit `@Inject` annotations.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -719,7 +721,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable klib parameter qualifier checking. Should be enabled for Kotlin versions [2.3.0, 2.3.20-Beta2).",
+        "Check klib parameter qualifiers. Intended for Kotlin versions [2.3.0, 2.3.20-Beta2).",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -730,7 +732,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = true,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable patching of klib parameter qualifiers to work around kotlinc bug. Only applies when enable-klib-params-check is also enabled.",
+        "Patch klib parameter qualifiers to work around a kotlinc bug. Only applies when " +
+          "`enable-klib-params-check` is enabled.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -740,7 +743,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "interop-include-javax-annotations",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Interop with javax annotations",
+      description = "Recognize javax.inject annotations.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -750,7 +753,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "interop-include-jakarta-annotations",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Interop with jakarta annotations",
+      description = "Recognize jakarta.inject annotations.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -761,7 +764,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Interop with Dagger annotations (automatically includes javax and jakarta annotations)",
+        "Recognize Dagger annotations. Also includes javax.inject and jakarta.inject annotations.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -771,7 +774,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "interop-include-kotlin-inject-annotations",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Interop with kotlin-inject annotations",
+      description = "Recognize kotlin-inject annotations.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -781,7 +784,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "interop-include-anvil-annotations",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Interop with Anvil annotations (automatically includes Dagger annotations)",
+      description = "Recognize Anvil annotations. Also includes Dagger annotations.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -792,7 +795,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Interop with kotlin-inject Anvil annotations (automatically includes kotlin-inject annotations)",
+        "Recognize kotlin-inject Anvil annotations. Also includes kotlin-inject annotations.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -803,7 +806,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Interop with Hilt @InstallIn/@AggregatedDeps annotations (typically used together with interop-include-dagger-annotations since Hilt modules are also Dagger modules).",
+        "Recognize Hilt `@InstallIn` and `@AggregatedDeps` annotations. Usually paired with " +
+          "Dagger annotations because Hilt modules are Dagger modules.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -813,7 +817,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "interop-include-guice-annotations",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Interop with Guice annotations (automatically includes javax annotations)",
+      description = "Recognize Guice annotations. Also includes javax.inject annotations.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -824,7 +828,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Force enable Metro's FIR extensions in IDE even if the compat layer cannot be determined.",
+        "Enable Metro FIR extensions in the IDE even when the compat layer cannot be determined.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -835,7 +839,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = "",
       valueDescription = "<true | false | empty>",
       description =
-        "Internal option indicating whether the plugin order was set before compose-compiler. Empty means unset.",
+        "Internal marker for whether plugin order was set before compose-compiler. Empty means unset.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -847,7 +851,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = "",
       valueDescription = "<version>",
       description =
-        "Override the Kotlin compiler version Metro operates with. If set, Metro will behave as if running in this Kotlin environment (e.g., 2.3.20-dev-1234).",
+        "Override the Kotlin compiler version Metro uses for compatibility decisions, for " +
+          "example 2.3.20-dev-1234.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -859,7 +864,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = emptyMap(),
       valueDescription = "<from1=to1:from2=to2>",
       description =
-        "Compiler version aliases mapping fake IDE versions to real compiler versions. Format: from1=to1:from2=to2",
+        "Map fake IDE compiler versions to real compiler versions. Format: from1=to1:from2=to2.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { value ->
@@ -879,8 +884,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "parallel-threads",
       defaultValue = 0,
       valueDescription = "<count>",
-      description =
-        "Number of threads to use for parallel graph validation. 0 (default) disables parallelism.",
+      description = "Threads to use for parallel graph validation. 0 disables parallelism.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.toInt() },
@@ -892,7 +896,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = true,
       valueDescription = "<true | false>",
       description =
-        "Buffer incremental-compilation lookup and expect/actual tracking during IR and flush it once after graph validation, instead of writing through (and locking) during validation. Enabled by default; can be disabled as a kill-switch.",
+        "Buffer incremental-compilation lookup and expect/actual tracking during IR, then flush " +
+          "once after graph validation. Enabled by default; disable as a kill switch.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -903,7 +908,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = true,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable inlining constant provider bodies directly into generated graph accessors. Enabled by default; can be disabled as a kill-switch.",
+        "Inline constant provider bodies into generated graph accessors. Enabled by default; " +
+          "disable as a kill switch.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -913,7 +919,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "enable-function-providers",
       defaultValue = true,
       valueDescription = "<true | false>",
-      description = "Enable/disable treating () -> T as a provider type.",
+      description = "Treat `() -> T` as a provider type.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -924,7 +930,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
       valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
       description =
-        "Control diagnostic severity reporting of uses of the desugared `Provider<T>` form as a provider type. Prefer the function syntax form `() -> T` instead. Only applies if `enable-function-providers` is enabled; otherwise this is treated as NONE.",
+        "Severity for desugared `Provider<T>` function types. Prefer `() -> T`. Only applies " +
+          "when `enable-function-providers` is enabled; otherwise treated as NONE.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -936,7 +943,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable KClass/Class interop for multibinding map keys. When enabled, java.lang.Class and kotlin.reflect.KClass are treated as interchangeable in map key types.",
+        "Treat `java.lang.Class` and `kotlin.reflect.KClass` as interchangeable in multibinding " +
+          "map key types.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -947,7 +955,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "When enabled, generates top-level contribution provider classes with @Provides functions instead of nested @Binds interfaces. This allows implementation classes to remain internal.",
+        "Generate top-level contribution provider classes with `@Provides` functions instead of " +
+          "nested `@Binds` interfaces, allowing implementation classes to stay internal.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -958,20 +967,24 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable Metro-native Circuit code generation for @CircuitInject-annotated classes and functions.",
+        "Generate Metro-native Circuit bindings for `@CircuitInject` classes and functions.",
       required = false,
       allowMultipleOccurrences = false,
     )
   ),
-  RICH_DIAGNOSTICS(
-    RawMetroOption.boolean(
-      name = "rich-diagnostics",
-      defaultValue = false,
-      valueDescription = "<true | false>",
+  DIAGNOSTICS_CONSOLE(
+    RawMetroOption(
+      name = "diagnostics-console",
+      defaultValue = ConsoleMode.PLAIN.name,
+      valueDescription = ConsoleMode.entries.joinToString("|"),
       description =
-        "Enable/disable rich diagnostic formatting (ANSI bold, colors, etc.) in error messages. The metro.richDiagnostics system property takes priority over this option if set.",
+        "Console rendering mode for diagnostics. PLAIN uses ASCII with no ANSI styling. RICH " +
+          "uses Unicode glyphs and ANSI styling. AUTO is resolved by the Gradle plugin and " +
+          "falls back to PLAIN in the compiler. The `metro.diagnosticsConsole` system property " +
+          "overrides this option.",
       required = false,
       allowMultipleOccurrences = false,
+      valueMapper = { it },
     )
   ),
   GENERATE_STATIC_ANNOTATIONS(
@@ -980,7 +993,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = true,
       valueDescription = "<true | false>",
       description =
-        "When enabled, annotates generated static-ish factory functions (e.g. create, newInstance, inject{Name}) with @JvmStatic and @JsStatic so they compile to true static methods on JVM/JS.",
+        "Annotate generated static factory functions, such as `create`, `newInstance`, and " +
+          "`inject{Name}`, with `@JvmStatic` and `@JsStatic`.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -991,7 +1005,9 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = true,
       valueDescription = "<true | false>",
       description =
-        "When enabled, pure binding contributions (@ContributesBinding/@ContributesIntoSet/@ContributesIntoMap without @ContributesTo) are routed as a @BindingContainer instead of being merged into graphs as supertypes. Disable to restore the supertype-merge behavior.",
+        "Route pure binding contributions (`@ContributesBinding`, `@ContributesIntoSet`, and " +
+          "`@ContributesIntoMap` without `@ContributesTo`) through a `@BindingContainer` instead " +
+          "of merging them into graphs as supertypes. Disable to restore supertype merging.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -1068,7 +1084,7 @@ public class MetroOptions(
     MetroOption.OPTIONAL_BINDING_BEHAVIOR.raw.defaultValue.expectAs<String>().let { rawValue ->
       val adjusted =
         rawValue.uppercase(Locale.US).let {
-          // temporary cover for deprecated entry
+          // Compatibility for the removed REQUIRE_OPTIONAL_DEPENDENCY enum entry.
           if (it == "REQUIRE_OPTIONAL_DEPENDENCY") {
             "REQUIRE_OPTIONAL_BINDING"
           } else {
@@ -1191,7 +1207,8 @@ public class MetroOptions(
     MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
   public val enableHiltInterop: Boolean =
     MetroOption.INTEROP_INCLUDE_HILT_ANNOTATIONS.raw.defaultValue.expectAs(),
-  public val richDiagnostics: Boolean = MetroOption.RICH_DIAGNOSTICS.raw.defaultValue.expectAs(),
+  public val diagnosticsConsole: ConsoleMode =
+    MetroOption.DIAGNOSTICS_CONSOLE.raw.defaultValue.expectAs<String>().let(ConsoleMode::parse),
   public val generateStaticAnnotations: Boolean =
     MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
   public val bindingContributionsAsContainers: Boolean =
@@ -1492,7 +1509,7 @@ public class MetroOptions(
     public var generateContributionProviders: Boolean = base.generateContributionProviders
     public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
     public var enableHiltInterop: Boolean = base.enableHiltInterop
-    public var richDiagnostics: Boolean = base.richDiagnostics
+    public var diagnosticsConsole: ConsoleMode = base.diagnosticsConsole
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
     public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
     public var memberNamingStrategy: MemberNamingStrategy = base.memberNamingStrategy
@@ -1620,7 +1637,7 @@ public class MetroOptions(
       customIntoSetAnnotations.add(daggerMultibindingsPackage.classId("IntoSet"))
       customMultibindsAnnotations.add(daggerMultibindingsPackage.classId("Multibinds"))
       customMapKeyAnnotations.add(daggerPackage.classId("MapKey"))
-      // Everything else
+      // Core Dagger annotations and runtime types
       customBindingContainerAnnotations.add(daggerPackage.classId("Module"))
       customBindsAnnotations.add(daggerPackage.classId("Binds"))
       customGraphAnnotations.add(daggerPackage.classId("Component"))
@@ -1690,7 +1707,7 @@ public class MetroOptions(
 
     public fun includeGuiceAnnotations() {
       enableGuiceRuntimeInterop = true
-      // TODO
+      // Unsupported Guice interop surfaces:
       //  Injector (members injector)
       //  ProvidesIntoOptional. Different than `@BindsOptionalOf`, provides a value
 
@@ -1842,7 +1859,8 @@ public class MetroOptions(
         MetroOption.GENERATE_CONTRIBUTION_PROVIDERS ->
           generateContributionProviders = value.expectAs()
         MetroOption.ENABLE_CIRCUIT_CODEGEN -> enableCircuitCodegen = value.expectAs()
-        MetroOption.RICH_DIAGNOSTICS -> richDiagnostics = value.expectAs()
+        MetroOption.DIAGNOSTICS_CONSOLE ->
+          diagnosticsConsole = ConsoleMode.parse(value.expectAs<String>())
         MetroOption.GENERATE_STATIC_ANNOTATIONS -> generateStaticAnnotations = value.expectAs()
         MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS ->
           bindingContributionsAsContainers = value.expectAs()
@@ -1933,7 +1951,7 @@ public class MetroOptions(
         generateContributionProviders = generateContributionProviders,
         enableCircuitCodegen = enableCircuitCodegen,
         enableHiltInterop = enableHiltInterop,
-        richDiagnostics = richDiagnostics,
+        diagnosticsConsole = diagnosticsConsole,
         generateStaticAnnotations = generateStaticAnnotations,
         bindingContributionsAsContainers = bindingContributionsAsContainers,
         memberNamingStrategy = memberNamingStrategy,
@@ -1960,6 +1978,10 @@ public class MetroOptions(
   public object SystemProperties {
     public val SHORTEN_LOCATIONS: Boolean =
       System.getProperty("metro.shortLocations", "false").toBoolean()
+
+    /** Overrides [MetroOptions.diagnosticsConsole] when set. */
+    public val DIAGNOSTICS_CONSOLE: ConsoleMode? =
+      System.getProperty("metro.diagnosticsConsole")?.let(ConsoleMode::parse)
   }
 
   public companion object {

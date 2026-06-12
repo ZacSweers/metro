@@ -138,13 +138,17 @@ interface CycleMapGraph {
     @IntoMap
     @StringKey(value = "X")
     @CallableMetadata(callableName = "<get-x>", propertyName = "x", startOffset = 287, endOffset = 297)
-    abstract fun X.x3540965534_intomap(): X
+    fun X.x_property3540965534_intomap(): X {
+      return error(message = "Never called")
+    }
 
     @Binds
     @IntoMap
     @StringKey(value = "Y")
     @CallableMetadata(callableName = "<get-y>", propertyName = "y", startOffset = 333, endOffset = 343)
-    abstract fun Y.y3540965535_intomap(): Y
+    fun Y.y_property3540965535_intomap(): Y {
+      return error(message = "Never called")
+    }
 
   }
 

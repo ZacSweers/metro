@@ -30,37 +30,33 @@ constructor(
   public val compilerOptions: CompilerOptionsHandler =
     objects.newInstance(CompilerOptionsHandler::class.java)
 
-  /** Controls whether Metro's compiler plugin will be enabled on this project. */
+  /** Enables Metro for this project. */
   public val enabled: Property<Boolean> = objects.booleanProperty("metro.enabled", true)
 
-  /** Controls whether Metro's runtime artifact dependencies should be automatically added. */
+  /** Automatically adds Metro runtime artifact dependencies. */
   public val automaticallyAddRuntimeDependencies: Property<Boolean> =
     objects.booleanProperty("metro.automaticallyAddRuntimeDependencies", true)
 
-  /**
-   * Maximum number of IR errors to report before exiting IR processing. Default is 20, must be > 0.
-   */
+  /** Maximum errors to report before exiting IR processing. Default is 20. Must be > 0. */
   public val maxIrErrors: Property<Int> = objects.intProperty("metro.maxIrErrors", 20)
 
   /**
-   * If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging.
+   * Enables debug logging for this project.
    *
-   * Optionally, you can specify a `metro.debug` gradle property to enable this globally.
+   * Optionally, you can specify a `metro.debug` Gradle property to enable this globally.
    */
   public val debug: Property<Boolean> = objects.booleanProperty("metro.debug", false)
 
   /**
-   * Enables whether the Metro compiler plugin will automatically generate assisted factories for
-   * injected constructors with assisted parameters. See the kdoc on `AssistedFactory` for more
-   * details.
+   * Generates assisted factories automatically for injected constructors with assisted parameters.
+   * See the kdoc on `AssistedFactory` for more details.
    */
   @RequiresIdeSupport
   public val generateAssistedFactories: Property<Boolean> =
     objects.booleanProperty("metro.generateAssistedFactories", false)
 
   /**
-   * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
-   * `Inject` for more details.
+   * Enables injection for top-level functions. See the kdoc on `Inject` for more details.
    *
    * **Warnings**
    * - Prior to Kotlin 2.3.20-Beta1, top-level function injection is only compatible with
@@ -79,8 +75,8 @@ constructor(
       .booleanProperty()
       .convention(
         compilerVersion.map {
-          // Kotlin 2.3.20-Beta1, top-level declaration gen is fully supported on all platforms are
-          // supported except JS
+          // Kotlin 2.3.20-Beta1, top-level declaration generation is supported on all platforms
+          // except JS.
           // https://youtrack.jetbrains.com/issue/KT-82395
           // https://youtrack.jetbrains.com/issue/KT-82989
           KotlinVersions.supportsTopLevelFirGen(it)
@@ -88,7 +84,7 @@ constructor(
       )
 
   /**
-   * Enable/disable contribution hint generation in IR for contributed types. Enabled by default.
+   * Generates contribution hints in IR.
    *
    * This does not have a convention default set here as it actually depends on the platform. You
    * can set a value to force it to one or the other, otherwise if unset it will default to the
@@ -97,27 +93,26 @@ constructor(
   public val generateContributionHints: Property<Boolean> = objects.booleanProperty()
 
   /**
-   * Enable/disable contribution hint generation in FIR. Disabled by default as this is still
-   * experimental. Requires [generateContributionHints] to be true.
+   * Generates contribution hints in FIR. Requires [generateContributionHints] to be true.
    *
    * **Warnings**
-   * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint gen is only compatible with jvm/android
-   *   targets.
-   * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint gen is not yet compatible with
+   * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint generation is only compatible with
+   *   jvm/android targets.
+   * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint generation is not yet compatible with
    *   incremental compilation on any platform
    * - Kotlin/JS does not support this with incremental compilation enabled. See
    *   https://youtrack.jetbrains.com/issue/KT-82395
    */
   @ExperimentalMetroGradleApi // Will eventually be the default and removed
   @DelicateMetroGradleApi(
-    "FIR contribution hint gen is experimental and does not work yet in all cases. See the kdoc."
+    "FIR contribution hint generation is experimental and does not work yet in all cases. See the kdoc."
   )
   public val generateContributionHintsInFir: Property<Boolean> =
     objects
       .booleanProperty()
       .convention(
         compilerVersion.map {
-          // Kotlin 2.3.20-Beta1, FIR hint gen is fully supported on all platforms.
+          // Kotlin 2.3.20-Beta1, FIR hint generation is fully supported on all platforms.
           // JS is further gated on incremental compilation being disabled in MetroGradleSubplugin.
           // https://youtrack.jetbrains.com/issue/KT-82395
           // https://youtrack.jetbrains.com/issue/KT-82989
@@ -126,8 +121,8 @@ constructor(
       )
 
   /**
-   * Enables generating Metro's hidden metadata-visible classes in IR instead of FIR when supported
-   * by the Kotlin compiler.
+   * Generates metadata-visible hidden classes in IR instead of FIR when supported by the Kotlin
+   * compiler.
    */
   @ExperimentalMetroGradleApi
   public val generateClassesInIr: Property<Boolean> =
@@ -139,7 +134,7 @@ constructor(
    * Sets the platforms for which contribution hints will be generated. If not set, defaults are
    * computed per-platform and per Kotlin version based on known compatible combinations.
    *
-   * **Warnings** Prior to Kotlin 2.3.20, contribution hint gen is
+   * **Warnings** Prior to Kotlin 2.3.20, contribution hint generation is
    * - ...only compatible with jvm/android targets.
    * - ...does not support incremental compilation on any targets.
    *
@@ -148,7 +143,7 @@ constructor(
    */
   @ExperimentalMetroGradleApi // This may eventually be removed
   @DelicateMetroGradleApi(
-    "Contribution hint gen does not work yet in all platforms on all Kotlin versions. See the kdoc."
+    "Contribution hint generation does not work yet in all platforms on all Kotlin versions. See the kdoc."
   )
   public val supportedHintContributionPlatforms: SetProperty<KotlinPlatformType> =
     objects
@@ -168,48 +163,43 @@ constructor(
       )
 
   /**
-   * Maximum number of statements per init function when chunking field initializers. Default is 25,
-   * must be > 0.
+   * Maximum statements per init method when chunking field initializers. Default is 25. Must
+   * be > 0.
    */
   public val statementsPerInitFun: Property<Int> =
     objects.intProperty("metro.statementsPerInitFun", 25)
 
-  /** Enable/disable graph sharding of binding graphs. Enabled by default. */
+  /** Shards generated binding graphs. Enabled by default. */
   public val enableGraphSharding: Property<Boolean> =
     objects.booleanProperty("metro.enableGraphSharding", true)
 
   /**
-   * Maximum number of binding keys per graph shard when sharding is enabled. Default is 2000, must
-   * be > 0.
+   * Maximum binding keys per graph shard when sharding is enabled. Default is 2000. Must be > 0.
    */
   public val keysPerGraphShard: Property<Int> = objects.intProperty("metro.keysPerGraphShard", 2000)
 
   /**
-   * Enables switching providers for deferred class loading. This reduces graph initialization time
-   * by deferring bindings' class init until it's actually requested.
+   * Uses SwitchingProviders for deferred class loading. This reduces graph initialization time by
+   * deferring bindings' class init until the binding is requested.
    *
    * This is analogous to Dagger's `fastInit` option.
    *
-   * You should really only use this if you've benchmarked it and measured a meaningful difference,
-   * as it comes with the same tradeoffs (always holding a graph instance ref, etc.)
+   * Only use this after benchmarking a meaningful improvement, as it comes with the same tradeoffs
+   * (always holding a graph instance ref, etc.).
    *
    * Disabled by default.
    */
   public val enableSwitchingProviders: Property<Boolean> =
     objects.booleanProperty("metro.enableSwitchingProviders", false)
 
-  /**
-   * Controls the behavior of optional dependencies on a per-compilation basis. Default is
-   * [OptionalBindingBehavior.DEFAULT] mode.
-   */
+  /** Optional binding behavior. Default is [OptionalBindingBehavior.DEFAULT]. */
   public val optionalBindingBehavior: Property<OptionalBindingBehavior> =
     objects
       .property(OptionalBindingBehavior::class.java)
       .convention(OptionalBindingBehavior.DEFAULT)
 
   /**
-   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
-   * **scoped** `public` provider callables. See the kdoc on `Provides` for more details.
+   * Severity for public scoped-provider diagnostics. See the kdoc on `Provides` for more details.
    */
   public val publicScopedProviderSeverity: Property<DiagnosticSeverity> =
     objects.enumProperty<DiagnosticSeverity>(
@@ -218,9 +208,8 @@ constructor(
     )
 
   /**
-   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
-   * `@Contributes*`-annotated declarations that are non-public (`internal`, `private`, `protected`,
-   * nested in non-public classes, etc.)
+   * Severity for non-public `@Contributes*` declaration diagnostics. This includes declarations
+   * that are `internal`, `private`, `protected`, nested in non-public classes, etc.
    *
    * Note that if the scope argument to the annotation is itself a non-public class, the check will
    * not report, regardless of severity, since the contribution is assumed to be intentionally
@@ -235,22 +224,21 @@ constructor(
     )
 
   /**
-   * Enable/disable Kotlin version compatibility checks. Defaults to true or the value of the
-   * `metro.version.check` gradle property.
+   * Enables Kotlin version compatibility checks. Defaults to true or the value of the
+   * `metro.version.check` Gradle property.
    */
   public val enableKotlinVersionCompatibilityChecks: Property<Boolean> =
     objects.booleanProperty("metro.version.check", true)
 
   /**
-   * Enable/disable suggestion to lift @Inject to class when there is only one constructor. Enabled
-   * by default.
+   * Suggests moving `@Inject`/`@AssistedInject` to the class when it has only one constructor.
+   * Enabled by default.
    */
   public val warnOnInjectAnnotationPlacement: Property<Boolean> =
     objects.booleanProperty("metro.warnOnInjectAnnotationPlacement", true)
 
   /**
-   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters interop
-   * annotations using positional arguments instead of named arguments.
+   * Severity for interop annotations that use positional arguments instead of named arguments.
    *
    * Disabled by default as this can be quite noisy in a codebase that uses a lot of interop.
    */
@@ -261,9 +249,8 @@ constructor(
     )
 
   /**
-   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters unused
-   * graph inputs (graph factory parameters or directly included binding containers that are not
-   * used by the graph).
+   * Severity for unused graph inputs, such as factory parameters and directly included binding
+   * containers that are not used by the graph.
    *
    * WARN by default.
    *
@@ -275,8 +262,7 @@ constructor(
     objects.enumProperty<DiagnosticSeverity>("unusedGraphInputsSeverity", DiagnosticSeverity.WARN)
 
   /**
-   * If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject`
-   * annotations.
+   * Treats `@Contributes*` annotations, except `@ContributesTo`, as implicit `@Inject` annotations.
    *
    * Enabled by default.
    */
@@ -284,7 +270,7 @@ constructor(
     objects.booleanProperty("metro.contributesAsInject", true)
 
   /**
-   * Enable/disable klib parameter qualifier checking.
+   * Checks klib parameter qualifiers.
    *
    * This is automatically enabled for Kotlin versions `[2.3.0, 2.3.20-Beta2)` and disabled
    * otherwise.
@@ -302,8 +288,8 @@ constructor(
       )
 
   /**
-   * Enable/disable patching of klib parameter qualifiers to work around a kotlinc bug. Only applies
-   * when [enableKlibParamsCheck] is also enabled.
+   * Patches klib parameter qualifiers to work around a kotlinc bug. Only applies when
+   * [enableKlibParamsCheck] is also enabled.
    *
    * When enabled, Metro will patch the affected parameter qualifiers at compile time and emit a
    * warning instead of an error.
@@ -315,7 +301,7 @@ constructor(
     objects.booleanProperty("metro.patchKlibParams", true)
 
   /**
-   * Force enable Metro's FIR extensions in IDE even if the compat layer cannot be determined.
+   * Enables Metro FIR extensions in the IDE even when the compat layer cannot be determined.
    *
    * This is useful when working with IDE versions where Metro cannot automatically detect the
    * correct compatibility layer.
@@ -352,11 +338,10 @@ constructor(
     objects.mapProperty(String::class.java, String::class.java).convention(emptyMap())
 
   /**
-   * Enable/disable treating `() -> T` (i.e., `Function0<T>`) as a provider type.
+   * Treats `() -> T` as a provider type.
    *
-   * When enabled, `() -> T` can be used as an alternative to `Provider<T>` for injecting provider
-   * dependencies. This works because `Provider<T>` implements `() -> T` on JVM, Native, and Wasm
-   * platforms.
+   * When enabled, `() -> T` can defer dependency retrieval. Existing `Provider<T>` values also work
+   * on JVM, Native, and Wasm because `Provider<T>` implements `() -> T` on those platforms.
    *
    * Note: On JS, `Provider<T>` does not implement `() -> T`, so an ad-hoc wrapping lambda is
    * generated.
@@ -367,9 +352,7 @@ constructor(
     objects.booleanProperty("metro.enableFunctionProviders", true)
 
   /**
-   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters uses of
-   * the desugared `Provider<T>` form as a provider type. Prefer the function syntax form `() -> T`
-   * instead.
+   * Severity for desugared `Provider<T>` function types. Prefer `() -> T`.
    *
    * Only applies when [enableFunctionProviders] is enabled; treated as [DiagnosticSeverity.NONE]
    * otherwise.
@@ -380,11 +363,20 @@ constructor(
     objects.enumProperty<DiagnosticSeverity>("desugaredProviderSeverity", DiagnosticSeverity.WARN)
 
   /**
-   * Enable/disable [kotlin.reflect.KClass]/[Class] interop for multibinding map keys. When enabled,
-   * `java.lang.Class` and `kotlin.reflect.KClass` are treated as interchangeable in map key types,
-   * matching Kotlin's own annotation compilation behavior. This only applies to map keys because
-   * these are the only scenario where annotation arguments are materialized into non-annotation
-   * code (i.e. `@ClassKey(Foo::class) -> Map<Class<*>, V>`).
+   * Console rendering mode for diagnostics. See the docs on [ConsoleMode] for details.
+   *
+   * The compiler only ever receives a concrete `PLAIN`/`RICH` value, [ConsoleMode.AUTO] resolves to
+   * one of them.
+   */
+  @ExperimentalMetroGradleApi
+  public val diagnosticsConsole: Property<ConsoleMode> =
+    objects.enumProperty<ConsoleMode>("diagnosticsConsole", ConsoleMode.AUTO)
+
+  /**
+   * Treats `java.lang.Class` and `kotlin.reflect.KClass` as interchangeable in multibinding map key
+   * types, matching Kotlin's own annotation compilation behavior. This only applies to map keys
+   * because these are the only scenario where annotation arguments are materialized into
+   * non-annotation code (i.e. `@ClassKey(Foo::class) -> Map<Class<*>, V>`).
    *
    * Disabled by default because this is purely for annotations interop and potentially comes at
    * some runtime overhead cost to interop since `KClass` types are still used under the hood and
@@ -395,9 +387,9 @@ constructor(
     objects.booleanProperty("metro.enableKClassToClassMapKeyInterop", false)
 
   /**
-   * When enabled, generates top-level contribution provider classes with `@Provides` functions
-   * instead of nested binding containers with `@Binds` callables for `@ContributesBinding`,
-   * `@ContributesIntoSet`, and `@ContributesIntoMap`.
+   * Generates top-level contribution provider classes with `@Provides` functions instead of nested
+   * binding containers with `@Binds` callables for `@ContributesBinding`, `@ContributesIntoSet`,
+   * and `@ContributesIntoMap`.
    *
    * This works by wholly encapsulating the injected class behind a `@Provides` declaration, which
    * hides it from the graph and only exposes the bound type.
@@ -411,9 +403,9 @@ constructor(
     objects.booleanProperty("metro.generateContributionProviders", false)
 
   /**
-   * Enable/disable Metro-native Circuit code generation. When enabled, Metro will generate
-   * `Ui.Factory` and `Presenter.Factory` implementations for `@CircuitInject`-annotated classes and
-   * functions.
+   * Generates Metro-native Circuit bindings for `@CircuitInject` classes and functions. Metro will
+   * generate `Ui.Factory` and `Presenter.Factory` implementations for `@CircuitInject`-annotated
+   * classes and functions.
    *
    * Note this will eventually move to a separate plugin.
    *
@@ -479,7 +471,7 @@ constructor(
    *
    * This enables a nontrivial amount of logging and overhead and should only be used for debugging.
    *
-   * Optionally, you can specify a `metro.reportsDestination` gradle property whose value is a
+   * Optionally, you can specify a `metro.reportsDestination` Gradle property whose value is a
    * _relative_ path from the project's **build** directory.
    */
   @DelicateMetroGradleApi(
@@ -501,7 +493,7 @@ constructor(
    * Unlike [reportsDestination], this is designed for low-overhead performance tracing and can be
    * used in realistic scenarios without significantly impacting compilation performance.
    *
-   * Optionally, you can specify a `metro.traceDestination` gradle property whose value is a
+   * Optionally, you can specify a `metro.traceDestination` Gradle property whose value is a
    * _relative_ path from the project's **build** directory.
    */
   public val traceDestination: DirectoryProperty =
@@ -580,17 +572,17 @@ constructor(
     // Interop markers
     public val enableDaggerAnvilInterop: Property<Boolean> = objects.property(Boolean::class.java)
 
-    /** Includes Javax annotations support. */
+    /** Recognizes javax.inject annotations. */
     public fun includeJavax() {
       includeJavaxAnnotations.set(true)
     }
 
-    /** Includes Jakarta annotations support. */
+    /** Recognizes jakarta.inject annotations. */
     public fun includeJakarta() {
       includeJakartaAnnotations.set(true)
     }
 
-    /** Includes Dagger annotations support. */
+    /** Recognizes Dagger annotations. */
     public fun includeDagger(includeJavax: Boolean = true, includeJakarta: Boolean = true) {
       enableDaggerRuntimeInterop.set(true)
       includeDaggerAnnotations.set(true)
@@ -607,12 +599,12 @@ constructor(
       }
     }
 
-    /** Includes kotlin-inject annotations support. */
+    /** Recognizes kotlin-inject annotations. */
     public fun includeKotlinInject() {
       includeKotlinInjectAnnotations.set(true)
     }
 
-    /** Includes Anvil annotations support for Dagger. */
+    /** Recognizes Anvil annotations for Dagger. */
     @JvmOverloads
     public fun includeAnvilForDagger(includeJavax: Boolean = true, includeJakarta: Boolean = true) {
       enableDaggerAnvilInterop.set(true)
@@ -620,14 +612,14 @@ constructor(
       includeDagger(includeJavax, includeJakarta)
     }
 
-    /** Includes Anvil annotations support for kotlin-inject. */
+    /** Recognizes Anvil annotations for kotlin-inject. */
     public fun includeAnvilForKotlinInject() {
       includeKotlinInject()
       includeKotlinInjectAnvilAnnotations.set(true)
     }
 
     /**
-     * Includes Hilt `@InstallIn` / `@EntryPoint` interop. Hilt `@Module`s are also Dagger
+     * Recognizes Hilt `@InstallIn` / `@EntryPoint` interop. Hilt `@Module`s are also Dagger
      * `@Module`s, so this implicitly enables Dagger annotation interop.
      */
     @ExperimentalMetroGradleApi
@@ -637,7 +629,7 @@ constructor(
       includeDagger(includeJavax, includeJakarta)
     }
 
-    /** Includes Guice annotations support. */
+    /** Recognizes Guice annotations. */
     public fun includeGuice() {
       enableGuiceRuntimeInterop.set(true)
       includeGuiceAnnotations.set(true)
@@ -664,7 +656,7 @@ constructor(
     defaultValue: T,
   ): Property<T> {
     return property(T::class.java).propertyNameConventionImpl(name, defaultValue) { value ->
-      enumValues<T>().find { it.name.equals(defaultValue.name, ignoreCase = true) }
+      enumValues<T>().find { it.name.equals(value, ignoreCase = true) }
         ?: error(
           "Value '$value' is not a valid input for metro.$name. Allowed values: ${enumValues<T>().joinToString { it.name }}"
         )

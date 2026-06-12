@@ -91,15 +91,20 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
       .hasMessageThat()
       .contains(
         """
-        [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
-        Cycle:
-            B --> A --> B
+        [Metro/DependencyCycle] Found a dependency cycle while processing AppGraph
 
-        Trace:
-            B
-            A
-            B
-            ...
+          cycle:
+              +-> B -> A --+
+              +------------+
+
+          trace (in AppGraph):
+              B
+              A
+              B
+              ...
+
+          help: break the cycle by injecting a deferred type at one edge, e.g. `() -> B` or `Lazy<B>`
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
         """
           .trimIndent()
       )
@@ -134,7 +139,7 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
 
     val message = exception.message!!
 
-    val cycleLine = message.lines().find { it.contains("-->") }?.trim() ?: ""
+    val cycleLine = message.lines().find { it.contains("+->") }?.trim() ?: ""
 
     // Must contain B, C, and D, not A
     assertThat(cycleLine).contains("B")
@@ -143,7 +148,7 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
     assertThat(cycleLine).doesNotContain("A")
 
     // Verify Trace
-    val traceSection = message.substringAfter("Trace:")
+    val traceSection = message.substringAfter("trace (in AppGraph):").substringBefore("help:")
     assertThat(traceSection).doesNotContain("A")
     assertThat(traceSection).contains("B")
     assertThat(traceSection).contains("C")
@@ -343,10 +348,13 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
         """
         [Metro/DuplicateBinding] Multiple bindings found for A
 
-          A
-          A
+              A
+              A
 
-        (Hint) Bindings are all equal
+          note: the duplicate bindings are all equal
+          help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+                @IntoSet/@IntoMap if you intended a multibinding
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
           .trimIndent()
       )
@@ -367,10 +375,13 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
         """
         [Metro/DuplicateBinding] Multiple bindings found for A
 
-          A
-          A
+              A
+              A
 
-        (Hint) Bindings are all the same
+          note: the duplicate bindings are all the same instance
+          help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+                @IntoSet/@IntoMap if you intended a multibinding
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
           .trimIndent()
       )

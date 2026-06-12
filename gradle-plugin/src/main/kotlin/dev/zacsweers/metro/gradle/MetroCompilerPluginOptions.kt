@@ -6,8 +6,10 @@ import dev.zacsweers.metro.compiler.MetroOption
 import java.io.File
 import org.gradle.api.Project
 import org.gradle.api.file.Directory
+import org.gradle.api.logging.configuration.ConsoleOutput
 import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
+import org.jetbrains.kotlin.gradle.plugin.InternalSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 
@@ -15,6 +17,15 @@ internal data class MetroCompilerPluginOption(
   val key: String,
   val value: String,
   val isFileOption: Boolean = false,
+  /**
+   * Internal options are passed to the compiler but excluded from Gradle's task input snapshot (via
+   * [InternalSubpluginOption]).
+   *
+   * Use for presentation-only options whose value never affects compilation outputs — otherwise
+   * environment-dependent values (like [ConsoleMode]) would spuriously invalidate compile tasks and
+   * break build-cache sharing between environments.
+   */
+  val isInternal: Boolean = false,
 )
 
 @OptIn(
@@ -62,6 +73,16 @@ internal fun Project.metroCompilerPluginOptions(
     add(metroOption(MetroOption.KEYS_PER_GRAPH_SHARD, extension.keysPerGraphShard))
     add(metroOption(MetroOption.ENABLE_SWITCHING_PROVIDERS, extension.enableSwitchingProviders))
     add(metroOption(MetroOption.OPTIONAL_BINDING_BEHAVIOR, extension.optionalBindingBehavior))
+    add(
+      // Internal as console mode is presentation-only and environment-dependent
+      // (IDE, CLI, CI, etc.). Snapshotting it would otherwise invalidate compilation and split
+      // build caches between environments.
+      MetroCompilerPluginOption(
+        MetroOption.DIAGNOSTICS_CONSOLE.raw.name,
+        resolveConsoleMode(extension.diagnosticsConsole).get().name,
+        isInternal = true,
+      )
+    )
     add(
       metroOption(
         MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY,
@@ -232,6 +253,38 @@ internal fun Project.metroCompilerPluginOptions(
   }
 }
 
+/**
+ * Resolves [ConsoleMode.AUTO] to a concrete mode at configuration time. The compiler runs in a
+ * daemon with no terminal information, so console detection must happen here: the `NO_COLOR` or
+ * `CI` environment variables, `--console=plain`, or an IDE-invoked build (IntelliJ/Android Studio
+ * pass `-Didea.active=true`; IDE build output windows do not interpret ANSI escape codes) force
+ * [ConsoleMode.PLAIN]; otherwise AUTO resolves to [ConsoleMode.RICH].
+ */
+@OptIn(ExperimentalMetroGradleApi::class)
+private fun Project.resolveConsoleMode(requested: Provider<ConsoleMode>): Provider<ConsoleMode> {
+  val noColor = providers.environmentVariable("NO_COLOR")
+  val ci = providers.environmentVariable("CI")
+  val ideaActive = providers.systemProperty("idea.active")
+  return requested.map { mode ->
+    when (mode) {
+      ConsoleMode.PLAIN,
+      ConsoleMode.RICH -> mode
+      ConsoleMode.AUTO -> {
+        val noColorSet = !noColor.orNull.isNullOrEmpty()
+        val ciValue = ci.orNull
+        val ciSet = !ciValue.isNullOrEmpty() && !ciValue.equals("false", ignoreCase = true)
+        val plainConsole = gradle.startParameter.consoleOutput == ConsoleOutput.Plain
+        val ideInvoked = ideaActive.orNull?.toBoolean() == true
+        if (noColorSet || ciSet || plainConsole || ideInvoked) {
+          ConsoleMode.PLAIN
+        } else {
+          ConsoleMode.RICH
+        }
+      }
+    }
+  }
+}
+
 private fun MutableList<MetroCompilerPluginOption>.addCustomOption(
   option: MetroOption,
   value: Provider<Set<String>>,
@@ -268,10 +321,10 @@ private fun metroOption(option: MetroOption, value: Provider<String>): MetroComp
   MetroCompilerPluginOption(option.raw.name, value.get())
 
 internal fun MetroCompilerPluginOption.toSubpluginOption(): SubpluginOption =
-  if (isFileOption) {
-    FilesSubpluginOption(key, listOf(File(value)))
-  } else {
-    SubpluginOption(key, value)
+  when {
+    isFileOption -> FilesSubpluginOption(key, listOf(File(value)))
+    isInternal -> InternalSubpluginOption(key, value)
+    else -> SubpluginOption(key, value)
   }
 
 internal fun Collection<MetroCompilerPluginOption>.renderForReport(): List<String> = map {

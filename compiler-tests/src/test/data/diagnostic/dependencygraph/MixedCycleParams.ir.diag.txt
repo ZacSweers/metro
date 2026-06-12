@@ -1,15 +1,17 @@
-/MixedCycleParams.kt:25:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing 'CycleGraph'.
-Cycle:
-    B --> A ~~> FakeA --> B
+/MixedCycleParams.kt:25:11: error: 
+[Metro/DependencyCycle] Found a dependency cycle while processing CycleGraph
 
-Trace:
-    B is injected at
-        [CycleGraph] FakeA(…, b)
-    A is injected at
-        [CycleGraph] B(…, a)
-    FakeA is injected at
-        [CycleGraph] FakeA.MetroContributionToUnit.bindsAsA(…, instance)
-    B is injected at
-        [CycleGraph] FakeA(…, b)
-    ...
+  cycle:
+      +-> B -> A ~~> FakeA --+
+      +----------------------+
+
+  trace (in CycleGraph):
+      B is injected at FakeA(…, b)
+      A is injected at B(…, a)
+      FakeA is injected at FakeA.MetroContributionToUnit.bindsAsA(…, instance)
+      B is injected at FakeA(…, b)
+      ...
+
+  help: break the cycle by injecting a deferred type at one edge, e.g. `() -> B` or `Lazy<B>`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
 

@@ -55,7 +55,9 @@ class Impl : Base<Impl>, Other {
 
       @Binds
       @CallableMetadata(callableName = "bindsAsBase", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsBase(instance: Impl): Base<*>
+      fun bindsAsBase(instance: Impl): Base<*> {
+        return error(message = "Never called")
+      }
 
     }
 
@@ -85,7 +87,9 @@ interface Base<T : Any?> {
 
     }
 
-    abstract fun defaultBinding(): Base<*>
+    fun defaultBinding(): Base<*> {
+      return error(message = "Never called")
+    }
 
   }
 

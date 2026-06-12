@@ -141,6 +141,7 @@ nav:
       - 'Aggregation (aka "Anvil")': aggregation.md
       - 'Multiplatform': multiplatform.md
       - 'Validation & Error Reporting': validation-and-error-reporting.md
+      - 'Diagnostics Reference': diagnostics.md
       - 'Interop': interop.md
       - 'Generating Custom Metro Code': generating-metro-code.md
       - 'Circuit': circuit.md

@@ -1496,4 +1496,36 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       run("ScopedConstantProviderInliningDisabled.kt");
     }
   }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/rich")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Rich {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/diagnostic/rich/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInRich() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/rich"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("DependencyCycleRich.kt")
+    public void testDependencyCycleRich() {
+      run("DependencyCycleRich.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateBindingsRich.kt")
+    public void testDuplicateBindingsRich() {
+      run("DuplicateBindingsRich.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingRich.kt")
+    public void testMissingBindingRich() {
+      run("MissingBindingRich.kt");
+    }
+  }
 }

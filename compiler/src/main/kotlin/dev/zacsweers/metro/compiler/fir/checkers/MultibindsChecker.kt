@@ -110,11 +110,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
 
     // Multibinds cannot be overrides
     if (declaration.isOverride) {
-      reporter.reportOn(
-        source,
-        MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR,
-        "Multibinding contributors cannot be overrides.",
-      )
+      reporter.reportOn(source, MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR)
       return
     }
 

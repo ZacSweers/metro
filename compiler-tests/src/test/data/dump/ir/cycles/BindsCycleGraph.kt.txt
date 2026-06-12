@@ -71,7 +71,9 @@ interface BindsCycleGraph {
 
     @Binds
     @CallableMetadata(callableName = "foo", propertyName = "", startOffset = 310, endOffset = 332)
-    abstract fun foo(bar: Bar): Foo
+    fun foo(bar: Bar): Foo {
+      return error(message = "Never called")
+    }
 
   }
 

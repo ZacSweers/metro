@@ -30,6 +30,6 @@ interface AppGraph
 
 fun box(): String {
   val graph = createGraph<AppGraph>().createExampleGraph()
-  assertEquals(graph.myType.javaClass.simpleName, "Impl1")
+  assertIs<Impl1>(graph.myType)
   return "OK"
 }

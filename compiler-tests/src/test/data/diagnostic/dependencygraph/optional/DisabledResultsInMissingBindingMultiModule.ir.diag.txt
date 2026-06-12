@@ -1,18 +1,25 @@
-/module_main_DisabledResultsInMissingBindingMultiModule.kt:19:11: error: 2 errors:
+/module_main_DisabledResultsInMissingBindingMultiModule.kt:19:11: error: 
+[Metro/MissingBinding] No binding found for Long?
 
-[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Long?
+  AppGraph.int -> Int -> Long?
 
-    kotlin.Long? is injected at
-        [AppGraph] Base.provideInt(…, long)
-    kotlin.Int is requested at
-        [AppGraph] AppGraph.int
+  trace (in AppGraph):
+      Long? is injected at Base.provideInt(…, long)
+      Int is requested at AppGraph.int
 
+  help: ensure Long? has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 
-[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String?
+[Metro/MissingBinding] No binding found for String?
 
-    kotlin.String? is injected at
-        [AppGraph] Example(…, value)
-    Example is requested at
-        [AppGraph] AppGraph.example
+  AppGraph.example -> Example -> String?
 
+  trace (in AppGraph):
+      String? is injected at Example(…, value)
+      Example is requested at AppGraph.example
+
+  help: ensure String? has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 

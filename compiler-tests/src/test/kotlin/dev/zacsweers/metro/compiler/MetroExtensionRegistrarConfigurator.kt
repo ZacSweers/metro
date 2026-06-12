@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
 import dev.zacsweers.metro.compiler.circuit.configureCircuit
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.hilt.HiltContributionExtension
 import dev.zacsweers.metro.compiler.hilt.HiltFirDeclarationExtension
@@ -33,6 +34,7 @@ import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
 import dev.zacsweers.metro.compiler.interop.configureGuiceInterop
 import dev.zacsweers.metro.compiler.interop.configureHiltAnnotations
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
+import dev.zacsweers.metro.compiler.test.TEST_COMPILER_VERSION
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import kotlin.io.path.Path
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -41,11 +43,13 @@ import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
+import org.jetbrains.kotlin.test.TargetBackend
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
 import org.jetbrains.kotlin.test.model.TestModule
 import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.TestServices
+import org.jetbrains.kotlin.test.services.defaultsProvider
 import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
 
 fun TestConfigurationBuilder.configurePlugin(
@@ -119,7 +123,8 @@ class MetroExtensionRegistrarConfigurator(
       generateContributionHints =
         module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
       generateContributionHintsInFir =
-        MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
+        MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives ||
+          testServices.shouldGenerateContributionHintsInFirForBackend()
       generateClassesInIr =
         module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
           .lastOrNull()
@@ -130,6 +135,9 @@ class MetroExtensionRegistrarConfigurator(
       }
       module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)?.let {
         optionalBindingBehavior = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.DIAGNOSTICS_CONSOLE)?.let {
+        diagnosticsConsole = it
       }
       module.directives
         .singleOrZeroValue(MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY)
@@ -346,5 +354,19 @@ class MetroExtensionRegistrarConfigurator(
         ComposePluginRegistrar.createComposeIrExtension(configuration)
       )
     }
+  }
+}
+
+private val MIN_KOTLIN_VERSION_FOR_JS_FIR_CONTRIBUTION_HINTS = KotlinToolingVersion("2.3.21")
+
+private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_VERSION)
+
+private fun TestServices.shouldGenerateContributionHintsInFirForBackend(): Boolean {
+  return when (defaultsProvider.targetBackend) {
+    TargetBackend.JS_IR,
+    TargetBackend.JS_IR_ES6 -> {
+      TEST_COMPILER_TOOLING_VERSION >= MIN_KOTLIN_VERSION_FOR_JS_FIR_CONTRIBUTION_HINTS
+    }
+    else -> false
   }
 }

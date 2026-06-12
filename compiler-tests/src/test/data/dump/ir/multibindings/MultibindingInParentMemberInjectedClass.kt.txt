@@ -123,7 +123,9 @@ class AFragmentInjector : Injector {
       @IntoMap
       @ClassKey(value = AFragment::class)
       @CallableMetadata(callableName = "bindIntoMapAsInjector3288387779", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsInjector32883877793288387779_intomap(instance: AFragmentInjector): Injector
+      fun bindIntoMapAsInjector32883877793288387779_intomap(instance: AFragmentInjector): Injector {
+        return error(message = "Never called")
+      }
 
     }
 
@@ -203,7 +205,9 @@ class AViewModel : ViewModel {
       @IntoMap
       @ClassKey(value = AViewModel::class)
       @CallableMetadata(callableName = "bindIntoMapAsViewModel2182965618", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsViewModel21829656184203417713_intomap(instance: AViewModel): ViewModel
+      fun bindIntoMapAsViewModel21829656184203417713_intomap(instance: AViewModel): ViewModel {
+        return error(message = "Never called")
+      }
 
     }
 
@@ -357,7 +361,9 @@ class BFragmentInjector : Injector {
       @IntoMap
       @ClassKey(value = BFragment::class)
       @CallableMetadata(callableName = "bindIntoMapAsInjector3091874274", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsInjector30918742743091874274_intomap(instance: BFragmentInjector): Injector
+      fun bindIntoMapAsInjector30918742743091874274_intomap(instance: BFragmentInjector): Injector {
+        return error(message = "Never called")
+      }
 
     }
 
@@ -437,7 +443,9 @@ class BViewModel : ViewModel {
       @IntoMap
       @ClassKey(value = BViewModel::class)
       @CallableMetadata(callableName = "bindIntoMapAsViewModel386014259", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsViewModel3860142592406466354_intomap(instance: BViewModel): ViewModel
+      fun bindIntoMapAsViewModel3860142592406466354_intomap(instance: BViewModel): ViewModel {
+        return error(message = "Never called")
+      }
 
     }
 

@@ -6,12 +6,111 @@ Changelog
 
 ### New
 
-- Add support for generating metadata-visible classes entirely in IR, allowing Metro to move much of its current FIR code gen entirely to IR. This is enabled by default on Kotlin `2.4.20-dev-6138` or newer and can be configured via the `generateClassesInIr` option.
+- **[IR]** Revamp graph-validation diagnostics with structured output. Taking some inspiration from Rust error messages.
+  - Stable diagnostic IDs
+  - Compact dependency chains
+  - Aligned binding traces
+  - Source snippets
+  - `help:`/`note:` guidance in messages (replaces the previous `(hint)` sections)
+  - Per-diagnostic docs links
+  - Diagnostics now wrap to 100 columns and start on their own line after the compiler location prefix
+
+Example plain output
+```
+ExampleGraph.kt:7:11: error: 
+[Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
+
+  cycle:
+      +-> Double -> String -> Int --+
+      +-----------------------------+
+
+  trace (in test.ExampleGraph):
+      Double is injected at test.ExampleGraph.provideInt(…, double)
+      String is injected at test.ExampleGraph.provideDouble(…, string)
+      Int is injected at test.ExampleGraph.provideString(…, int)
+      Double is injected at test.ExampleGraph.provideInt(…, double)
+      ...
+
+  help: break the cycle by injecting a deferred type at one edge, e.g. `() -> Double` or
+        `Lazy<Double>`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+```
+
+Example rich output (note that in rich terminals this would have color and markup too!)
+```
+[Metro/MissingBinding] No binding found for String
+
+    ╭─[ /Users/zacsweers/dev/android/personal/FieldSpottr/shared/src/commonMain/kotlin/dev/zacsweers/example/ExampleGraph.kt:9:3 ]
+  9 │   val a: String
+    │   ─────────────
+    ╰─
+
+  trace (in dev.zacsweers.example.ExampleGraph):
+      String is requested at dev.zacsweers.example.ExampleGraph.a
+
+  similar bindings:
+      • CharSequence (Supertype. Type: Provided) — ExampleGraph.kt:12:3
+
+  help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+```
+
+- **[gradle]** Add a `diagnosticsConsole` Gradle option (`AUTO`/`PLAIN`/`RICH`) for diagnostic rendering.
+  - `AUTO` defaults to rich output only for terminal builds and falls back to plain output for CI, `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
+  - The resolved mode is passed as a non-input compiler option, so console changes do not invalidate compilation or poison build caches.
+- **[docs]** Add a generated [Diagnostics Reference](https://zacsweers.github.io/metro/latest/diagnostics/) docs page for Metro's common graph validation diagnostics.
+
+### Enhancements
+
+- **[IR]** Add cycle-breaking `help:` guidance for dependency cycle errors, suggesting deferred types such as `() -> T` or `Lazy<T>`.
+- **[IR/reporting]** Collapse sibling missing-binding errors with identical trace tails to a `... same as for X` continuation, and fully qualify type names only when two distinct types in one diagnostic share a simple name.
+
+### Fixes
+
+- **[IR]** Preserve substituted generic type arguments when generating assisted factory delegate parameters and dynamic graph container inputs.
+- **[IR]** Forward extension and context receivers when generated binding-container factories invoke the original binding function.
+- **[IR]** Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.
+- **[IR]** Patch declaration parents for generated `@Binds` mirror declarations so copied declarations remain attached to the correct generated class.
+- **[IR/JS]** Fix `Map<K, () -> V>` multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro `Provider` objects.
+- **[IR/KLIB]** Fix generated `@Binds` implementations on KLIB backends. Metro now emits concrete identity bodies for inherited `@Binds` members where JS, Native, and Wasm validate abstract members during deserialization.
+- **[IR/KLIB]** Keep generated graph and shard backing fields private while preserving generated access through properties. This avoids backing-field visibility validation failures on KLIB backends.
 
 ### Changes
 
+- Run Metro's functional compiler unit tests on JS.
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+1.2.1
+-----
+
+_2026-06-11_
+
+### New
+
+- **[IR]** Add support for generating metadata-visible classes entirely in IR, allowing Metro to move much of its current FIR code gen entirely to IR.
+  - This is enabled by default (and only possible) on Kotlin `2.4.20-dev-6138` or newer and can be configured via the `generateClassesInIr` option. Do not try to enable this on older versions, your builds will fail and you will be sad.
+
+### Fixes
+
+- **[FIR]** Fix supertype merging not accounting for `replaces` coming from binding container contributions.
+
+### Changes
+
+- **[gradle]** Replace the `rich-diagnostics` compiler option and `metro.richDiagnostics` system property with `diagnostics-console` and `metro.diagnosticsConsole`.
 - Test Kotlin `2.4.20-dev-6138`.
 - Test IntelliJ `2026.2` EAPs.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@hossain-khan](https://github.com/hossain-khan)
+- [@kevinguitar](https://github.com/kevinguitar)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.2.0
 -----
@@ -55,6 +154,7 @@ _2026-06-10_
 - **[FIR]** Loosen `nonPublicContributionSeverity` if `generateContributionProviders` is enabled. Note it will still fire on internal `@ExposeImplBinding`-annotated types.
 - **[FIR]** Fix compatibility with IntelliJ `2026.1.3`.
 - **[FIR]** Don't merge generated binding containers from `@ContributesInto*` declarations as supertypes when aggregating contributions.
+- **[FIR/JS/Wasm]** Fix cross-module contributed graph extension factories on KLIB backends. Nested `@GraphExtension.Factory @ContributesTo(...)` factories are now emitted as contribution hints and promoted as direct supertypes where needed, avoiding unresolved downstream calls such as `createGraph<AppGraph>().createChildGraph()` on JS/Wasm.
 - **[IR]** Fix graph extensions inheriting a farther ancestor's contribution-provider binding when a closer parent graph already owns a scoped binding for the same key.
 - **[IR]** Fix dynamic graphs (`createDynamicGraph`/`createDynamicGraphFactory`) sharing a single generated impl across call sites in different files. The shared impl was a `private` (on the JVM, package-private) nested class placed under one call site, so call sites in other packages failed at runtime with `IllegalAccessError`, and removing the owning file caused `NoClassDefFoundError`. Generated impls are now cached per-file.
 - **[IR]** Fix IR graph nodes eagerly resolving supertypes.

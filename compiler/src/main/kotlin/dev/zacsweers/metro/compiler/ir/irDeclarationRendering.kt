@@ -5,11 +5,14 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSpan
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import java.io.File
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
@@ -336,9 +339,12 @@ internal fun IrOverridableDeclaration<*>.renderLocationDiagnostic(
   annotations: MetroAnnotations<IrAnnotation>? = null,
   short: Boolean = false,
 ): LocationDiagnostic {
+  val sourceDeclaration = sourceDeclarationForDiagnostic()
+
   val location =
-    sourceDeclarationForDiagnostic().renderSourceLocation(short = shortLocation)
+    sourceDeclaration.renderSourceLocation(short = shortLocation)
       ?: parentAsClass.kotlinFqName.asString()
+
   val description = buildString {
     renderForDiagnostic(
       declaration = this@renderLocationDiagnostic,
@@ -346,7 +352,32 @@ internal fun IrOverridableDeclaration<*>.renderLocationDiagnostic(
       annotations = annotations,
     )
   }
-  return LocationDiagnostic(location, description)
+
+  return LocationDiagnostic(
+    location,
+    description,
+    sourceDeclaration.toDiagnosticSpan(shortDisplayPath = shortLocation),
+  )
+}
+
+/**
+ * Resolves this declaration's source location into a [DiagnosticSpan] for source-frame rendering,
+ * or null when no source is available (cross-module declarations, synthetics).
+ */
+internal fun IrDeclaration.toDiagnosticSpan(
+  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+): DiagnosticSpan? {
+  val location = locationOrNull() ?: return null
+  if (location.line < 1 || location.column < 1) return null
+  return DiagnosticSpan(
+    filePath = location.path,
+    line = location.line,
+    column = location.column,
+    endLine = (location as? CompilerMessageLocationWithRange)?.lineEnd ?: location.line,
+    endColumn = (location as? CompilerMessageLocationWithRange)?.columnEnd ?: location.column,
+    displayPath =
+      if (shortDisplayPath) location.path.substringAfterLast(File.separatorChar) else location.path,
+  )
 }
 
 private fun IrOverridableDeclaration<*>.sourceDeclarationForDiagnostic(): IrDeclaration {
