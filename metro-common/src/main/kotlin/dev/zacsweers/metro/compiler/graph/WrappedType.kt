@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -18,13 +17,13 @@ import org.jetbrains.kotlin.name.ClassId
  * - `Provider<Lazy<<Map<Int, Provider<Int>>>>>`
  * - `Provider<Lazy<Map<Int, Provider<Lazy<Int>>>>>`
  */
-internal sealed interface WrappedType<T : Any> {
+public sealed interface WrappedType<T : Any> {
   /** The canonical type with no wrapping. */
-  class Canonical<T : Any>(val type: T) : WrappedType<T> {
-    private val cachedHashCode by memoize { type.hashCode() }
-    private val cachedToString by memoize { type.toString() }
+  public class Canonical<T : Any>(public val type: T) : WrappedType<T> {
+    private val cachedHashCode by lazy(LazyThreadSafetyMode.PUBLICATION) { type.hashCode() }
+    private val cachedToString by lazy(LazyThreadSafetyMode.PUBLICATION) { type.toString() }
 
-    override fun equals(other: Any?): Boolean {
+    public override fun equals(other: Any?): Boolean {
       if (this === other) return true
       if (javaClass != other?.javaClass) return false
 
@@ -35,23 +34,29 @@ internal sealed interface WrappedType<T : Any> {
       return type == other.type
     }
 
-    override fun hashCode() = cachedHashCode
+    public override fun hashCode(): Int = cachedHashCode
 
-    override fun toString() = cachedToString
+    public override fun toString(): String = cachedToString
   }
 
   /** A type wrapped in a Provider. */
-  class Provider<T : Any>(val innerType: WrappedType<T>, val providerType: ClassId) :
-    WrappedType<T> {
-    private val cachedHashCode by memoize {
-      var result = innerType.hashCode()
-      result = 31 * result + providerType.hashCode()
-      result
-    }
+  public class Provider<T : Any>(
+    public val innerType: WrappedType<T>,
+    public val providerType: ClassId,
+  ) : WrappedType<T> {
+    private val cachedHashCode by
+      lazy(LazyThreadSafetyMode.PUBLICATION) {
+        var result = innerType.hashCode()
+        result = 31 * result + providerType.hashCode()
+        result
+      }
 
-    private val cachedToString by memoize { "${providerType.asFqNameString()}<$innerType>" }
+    private val cachedToString by
+      lazy(LazyThreadSafetyMode.PUBLICATION) {
+        "${providerType.asFqNameString()}<$innerType>"
+      }
 
-    override fun equals(other: Any?): Boolean {
+    public override fun equals(other: Any?): Boolean {
       if (this === other) return true
       if (javaClass != other?.javaClass) return false
 
@@ -65,22 +70,29 @@ internal sealed interface WrappedType<T : Any> {
       return true
     }
 
-    override fun hashCode() = cachedHashCode
+    public override fun hashCode(): Int = cachedHashCode
 
-    override fun toString() = cachedToString
+    public override fun toString(): String = cachedToString
   }
 
   /** A type wrapped in a Lazy. */
-  class Lazy<T : Any>(val innerType: WrappedType<T>, val lazyType: ClassId) : WrappedType<T> {
-    private val cachedHashCode by memoize {
-      var result = innerType.hashCode()
-      result = 31 * result + lazyType.hashCode()
-      result
-    }
+  public class Lazy<T : Any>(
+    public val innerType: WrappedType<T>,
+    public val lazyType: ClassId,
+  ) : WrappedType<T> {
+    private val cachedHashCode by
+      lazy(LazyThreadSafetyMode.PUBLICATION) {
+        var result = innerType.hashCode()
+        result = 31 * result + lazyType.hashCode()
+        result
+      }
 
-    private val cachedToString by memoize { "${lazyType.asFqNameString()}<$innerType>" }
+    private val cachedToString by
+      lazy(LazyThreadSafetyMode.PUBLICATION) {
+        "${lazyType.asFqNameString()}<$innerType>"
+      }
 
-    override fun equals(other: Any?): Boolean {
+    public override fun equals(other: Any?): Boolean {
       if (this === other) return true
       if (javaClass != other?.javaClass) return false
 
@@ -94,23 +106,30 @@ internal sealed interface WrappedType<T : Any> {
       return true
     }
 
-    override fun hashCode() = cachedHashCode
+    public override fun hashCode(): Int = cachedHashCode
 
-    override fun toString() = cachedToString
+    public override fun toString(): String = cachedToString
   }
 
   /** A map type with special handling for the value type. */
-  class Map<T : Any>(val keyType: T, val valueType: WrappedType<T>, val type: () -> T) :
-    WrappedType<T> {
-    private val cachedHashCode by memoize {
-      var result = keyType.hashCode()
-      result = 31 * result + valueType.hashCode()
-      result
-    }
+  public class Map<T : Any>(
+    public val keyType: T,
+    public val valueType: WrappedType<T>,
+    public val type: () -> T,
+  ) : WrappedType<T> {
+    private val cachedHashCode by
+      lazy(LazyThreadSafetyMode.PUBLICATION) {
+        var result = keyType.hashCode()
+        result = 31 * result + valueType.hashCode()
+        result
+      }
 
-    private val cachedToString by memoize { "Map<$keyType, $valueType>" }
+    private val cachedToString by
+      lazy(LazyThreadSafetyMode.PUBLICATION) {
+        "Map<$keyType, $valueType>"
+      }
 
-    override fun equals(other: Any?): Boolean {
+    public override fun equals(other: Any?): Boolean {
       if (this === other) return true
       if (javaClass != other?.javaClass) return false
 
@@ -124,13 +143,13 @@ internal sealed interface WrappedType<T : Any> {
       return true
     }
 
-    override fun hashCode() = cachedHashCode
+    public override fun hashCode(): Int = cachedHashCode
 
-    override fun toString() = cachedToString
+    public override fun toString(): String = cachedToString
   }
 
   /** Unwraps all layers and returns the canonical type. */
-  fun canonicalType(): T =
+  public fun canonicalType(): T =
     when (this) {
       is Canonical -> type
       is Provider -> innerType.canonicalType()
@@ -139,7 +158,7 @@ internal sealed interface WrappedType<T : Any> {
     }
 
   /** Returns true if this type is wrapped in a Provider or Lazy at any level. */
-  fun isDeferrable(): Boolean =
+  public fun isDeferrable(): Boolean =
     when (this) {
       is Canonical -> false
       is Provider -> true
@@ -147,7 +166,7 @@ internal sealed interface WrappedType<T : Any> {
       is Map -> valueType.isDeferrable()
     }
 
-  fun findMapValueType(): WrappedType<T>? {
+  public fun findMapValueType(): WrappedType<T>? {
     return when (this) {
       is Canonical -> this
       is Provider -> innerType.findMapValueType()
@@ -156,7 +175,7 @@ internal sealed interface WrappedType<T : Any> {
     }
   }
 
-  fun render(renderType: (T) -> String): String =
+  public fun render(renderType: (T) -> String): String =
     when (this) {
       is Canonical -> renderType(type)
       is Provider -> "Provider<${innerType.render(renderType)}>"
@@ -164,7 +183,7 @@ internal sealed interface WrappedType<T : Any> {
       is Map -> "Map<${renderType(keyType)}, ${valueType.render(renderType)}>"
     }
 
-  val innerTypesSequence: Sequence<WrappedType<T>>
+  public val innerTypesSequence: Sequence<WrappedType<T>>
     get() =
       when (this) {
         is Canonical -> sequenceOf(this)

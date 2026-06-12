@@ -2,46 +2,46 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
-internal interface BaseContextualTypeKey<
+public interface BaseContextualTypeKey<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, *>,
   ImplType : BaseContextualTypeKey<Type, TypeKey, ImplType>,
 > {
-  val typeKey: TypeKey
-  val wrappedType: WrappedType<Type>
-  val hasDefault: Boolean
-  val rawType: Type?
-  val isDeferrable: Boolean
+  public val typeKey: TypeKey
+  public val wrappedType: WrappedType<Type>
+  public val hasDefault: Boolean
+  public val rawType: Type?
+  public val isDeferrable: Boolean
     get() = wrappedType.isDeferrable()
 
-  val isWrapped: Boolean
+  public val isWrapped: Boolean
     get() = isWrappedInProvider || isWrappedInLazy
 
-  val requiresProviderInstance: Boolean
+  public val requiresProviderInstance: Boolean
     get() = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider
 
-  val isWrappedInProvider: Boolean
+  public val isWrappedInProvider: Boolean
     get() = wrappedType is WrappedType.Provider
 
-  val isWrappedInLazy: Boolean
+  public val isWrappedInLazy: Boolean
     get() = wrappedType is WrappedType.Lazy
 
-  val isLazyWrappedInProvider: Boolean
+  public val isLazyWrappedInProvider: Boolean
     get() =
       wrappedType is WrappedType.Provider &&
         (wrappedType as WrappedType.Provider<Type>).innerType is WrappedType.Lazy
 
-  val isMapProvider: Boolean
+  public val isMapProvider: Boolean
     get() = wrappedType.findMapValueType() is WrappedType.Provider
 
-  val isMapLazy: Boolean
+  public val isMapLazy: Boolean
     get() = wrappedType.findMapValueType() is WrappedType.Lazy
 
-  val isMapProviderLazy: Boolean
+  public val isMapProviderLazy: Boolean
     get() {
       val valueType = wrappedType.findMapValueType()
       return valueType is WrappedType.Provider && valueType.innerType is WrappedType.Lazy
     }
 
-  fun render(short: Boolean, includeQualifier: Boolean = true): String
+  public fun render(short: Boolean, includeQualifier: Boolean = true): String
 }

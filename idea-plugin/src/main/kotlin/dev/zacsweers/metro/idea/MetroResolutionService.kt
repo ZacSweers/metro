@@ -20,6 +20,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.compiler.MetroHints
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
 import java.util.concurrent.ConcurrentHashMap
@@ -189,13 +190,16 @@ private fun sweepAnnotationIds(options: MetroOptions): Set<ClassId> {
 
 /** Key plus display metadata for a consuming site. */
 internal class MetroConsumedSite(
-  val key: KaTypeKey,
+  val contextKey: KaContextualTypeKey,
   val isAbstractType: Boolean,
   /** For `Set`/`Map` aggregate sites, the multibinding id collecting contributed elements. */
   val multibindingId: String? = null,
   /** The consumed type's class, when it is a class type. */
   val typeClassId: ClassId? = null,
-)
+) {
+  val key: KaTypeKey
+    get() = contextKey.typeKey
+}
 
 /** Key plus display metadata for a single binding originated by a provider declaration. */
 internal class MetroProviderData(
@@ -804,64 +808,113 @@ internal fun KaSession.renderMetroKeyTypeShort(type: KaType): String {
 
 /** Builds a [KaTypeKey] for [type], capturing a restorable pointer and both renderings. */
 internal fun KaSession.metroKey(type: KaType, qualifier: MetroKaAnnotation?): KaTypeKey {
-  return KaTypeKey(
-    type.createPointer(),
-    qualifier,
-    renderMetroKeyType(type),
-    renderMetroKeyTypeShort(type),
+  return KaTypeKey(metroTypeSnapshot(type), qualifier)
+}
+
+/** Builds a session-free type snapshot for the current analysis session. */
+internal fun KaSession.metroTypeSnapshot(type: KaType): KaTypeSnapshot {
+  val expanded = type.fullyExpandedType
+  return KaTypeSnapshot(
+    expanded.createPointer(),
+    renderMetroKeyType(expanded),
+    renderMetroKeyTypeShort(expanded),
+    (expanded as? KaClassType)?.classId,
   )
 }
 
-/** Unwraps `Provider<T>`, `Lazy<T>`, and `() -> T` to the underlying key type. */
-private fun KaSession.unwrapWrapperTypes(type: KaType, options: MetroOptions): KaType {
-  val classType = type.fullyExpandedType as? KaClassType ?: return type
-  if (classType.classId !in options.providerTypes && classType.classId !in options.lazyTypes) {
-    return type
+/** Builds a contextual key that preserves provider/lazy/map wrapper structure. */
+internal fun KaSession.metroContextualTypeKey(
+  type: KaType,
+  qualifier: MetroKaAnnotation?,
+  options: MetroOptions,
+): KaContextualTypeKey {
+  val declaredType = type.fullyExpandedType
+  val rawSnapshot = metroTypeSnapshot(declaredType)
+  val wrappedType = declaredType.asWrappedType(options)
+  val keySnapshot =
+    when (wrappedType) {
+      is WrappedType.Canonical -> wrappedType.type
+      is WrappedType.Map -> rawSnapshot
+      else -> wrappedType.canonicalType()
+    }
+  return KaContextualTypeKey(
+    typeKey = KaTypeKey(keySnapshot, qualifier),
+    wrappedType = wrappedType,
+    rawType = rawSnapshot,
+  )
+}
+
+context(session: KaSession)
+private fun KaType.asWrappedType(options: MetroOptions): WrappedType<KaTypeSnapshot> {
+  val expanded = with(session) { fullyExpandedType }
+  val rawSnapshot = session.metroTypeSnapshot(expanded)
+  val classType = expanded as? KaClassType ?: return WrappedType.Canonical(rawSnapshot)
+  val classId = classType.classId ?: return WrappedType.Canonical(rawSnapshot)
+
+  if (classId == MAP_CLASS_ID) {
+    val keyType = classType.typeArguments.getOrNull(0)?.type
+    val valueType = classType.typeArguments.getOrNull(1)?.type
+    if (keyType != null && valueType != null) {
+      return WrappedType.Map(session.metroTypeSnapshot(keyType), valueType.asWrappedType(options)) {
+        rawSnapshot
+      }
+    }
   }
-  val argument = classType.typeArguments.firstOrNull()?.type ?: return type
-  return unwrapWrapperTypes(argument, options)
+
+  if (classId in options.providerTypes) {
+    val innerType = classType.typeArguments.firstOrNull()?.type
+    if (innerType != null) {
+      return WrappedType.Provider(innerType.asWrappedType(options), classId)
+    }
+  }
+
+  if (classId in options.lazyTypes) {
+    val innerType = classType.typeArguments.firstOrNull()?.type
+    if (innerType != null) {
+      return WrappedType.Lazy(innerType.asWrappedType(options), classId)
+    }
+  }
+
+  return WrappedType.Canonical(rawSnapshot)
 }
 
 internal fun KaSession.metroConsumedSite(
   symbol: KaCallableSymbol,
   options: MetroOptions,
 ): MetroConsumedSite {
-  val type = unwrapWrapperTypes(symbol.returnType, options)
+  val returnType = symbol.returnType.fullyExpandedType
   val qualifier = metroQualifier(symbol, options)
-  val key = metroKey(type, qualifier)
-  val classType = type.fullyExpandedType as? KaClassType
-  val classSymbol = classType?.symbol as? KaClassSymbol
+  val contextKey = metroContextualTypeKey(returnType, qualifier, options)
+  val classSymbol = contextKey.typeKey.type.classId?.let { findClass(it) } as? KaClassSymbol
   val isAbstract =
     classSymbol != null &&
       (classSymbol.classKind == KaClassKind.INTERFACE ||
         classSymbol.modality == KaSymbolModality.ABSTRACT)
   return MetroConsumedSite(
-    key,
+    contextKey,
     isAbstract,
-    aggregateMultibindingId(classType, qualifier, options),
-    classType?.classId,
+    aggregateMultibindingId(returnType as? KaClassType, contextKey, options),
+    contextKey.typeKey.type.classId,
   )
 }
 
 /** Computes the multibinding id collected by a `Set<E>`/`Map<K, V>` consumer site, if any. */
 private fun KaSession.aggregateMultibindingId(
   classType: KaClassType?,
-  qualifier: MetroKaAnnotation?,
+  contextKey: KaContextualTypeKey,
   options: MetroOptions,
 ): String? {
   if (classType == null) return null
   return when (classType.classId) {
     SET_CLASS_ID -> {
       val elementType = classType.typeArguments.firstOrNull()?.type ?: return null
-      metroKey(unwrapWrapperTypes(elementType, options), qualifier).computeMultibindingId()
+      val elementKeyType = elementType.asWrappedType(options).canonicalType()
+      contextKey.typeKey.copy(type = elementKeyType).computeMultibindingId()
     }
     MAP_CLASS_ID -> {
-      val keyType = classType.typeArguments.getOrNull(0)?.type ?: return null
-      val valueType = classType.typeArguments.getOrNull(1)?.type ?: return null
-      createMapBindingId(
-        renderMetroKeyType(keyType),
-        metroKey(unwrapWrapperTypes(valueType, options), qualifier),
-      )
+      val wrappedMap = contextKey.wrappedType as? WrappedType.Map ?: return null
+      val valueType = wrappedMap.valueType.canonicalType()
+      createMapBindingId(wrappedMap.keyType.renderedType, contextKey.typeKey.copy(type = valueType))
     }
     else -> null
   }
