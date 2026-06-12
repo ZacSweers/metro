@@ -23,6 +23,7 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
       import com.slack.circuit.runtime.CircuitUiState
       import com.slack.circuit.runtime.screen.Screen
       import dev.zacsweers.metro.AppScope
+      import dev.zacsweers.metro.Assisted
       import dev.zacsweers.metro.ContributesBinding
       import dev.zacsweers.metro.Inject
       import dev.zacsweers.metro.SingleIn
@@ -39,7 +40,7 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
       }
 
       @CircuitInject(AreaScreen::class, AppScope::class)
-      fun AreaPresenter(/*<# assisted #>*/screen: AreaScreen, repo: Repo/*<#  RepoImpl #>*/): AreaState {
+      fun AreaPresenter(/*<# assisted #>*/screen: AreaScreen, @Assisted tag: String, repo: Repo/*<#  RepoImpl #>*/): AreaState {
         return AreaState()
       }
       """
