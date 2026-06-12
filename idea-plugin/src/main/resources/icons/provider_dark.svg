@@ -3,6 +3,6 @@
   ~ SPDX-License-Identifier: Apache-2.0
   -->
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-  <path d="M7 8 H13 M10.5 5.5 L13.2 8 L10.5 10.5" stroke="#5DCAA5" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="4" cy="8" r="2.7" fill="#5DCAA5"/>
+  <path d="M6.8 8 H14.2 M11.5 5.3 L14.2 8 L11.5 10.7" stroke="#5DCAA5" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="3.5" cy="8" r="2.8" fill="#5DCAA5"/>
 </svg>
