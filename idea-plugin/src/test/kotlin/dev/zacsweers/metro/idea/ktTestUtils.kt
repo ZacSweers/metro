@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -114,4 +115,75 @@ internal fun List<KtDeclaration>.parameter(name: String): KtParameter {
   return PsiTreeUtil.findChildrenOfType(first().containingFile, KtParameter::class.java).single {
     it.name == name
   }
+}
+
+internal fun CodeInsightTestFixture.addCircuitStubs() {
+  addFileToProject(
+    "circuit/Stubs.kt",
+    """
+    package com.slack.circuit.runtime
+
+    interface CircuitUiState
+
+    interface Navigator
+
+    interface CircuitContext
+    """
+      .trimIndent(),
+  )
+  addFileToProject(
+    "circuit/Screen.kt",
+    """
+    package com.slack.circuit.runtime.screen
+
+    interface Screen
+    """
+      .trimIndent(),
+  )
+  addFileToProject(
+    "circuit/Ui.kt",
+    """
+    package com.slack.circuit.runtime.ui
+
+    import com.slack.circuit.runtime.CircuitUiState
+
+    interface Ui<S : CircuitUiState> {
+      interface Factory
+    }
+    """
+      .trimIndent(),
+  )
+  addFileToProject(
+    "circuit/Presenter.kt",
+    """
+    package com.slack.circuit.runtime.presenter
+
+    import com.slack.circuit.runtime.CircuitUiState
+
+    interface Presenter<S : CircuitUiState> {
+      interface Factory
+    }
+    """
+      .trimIndent(),
+  )
+  addFileToProject(
+    "circuit/CircuitInject.kt",
+    """
+    package com.slack.circuit.codegen.annotations
+
+    import kotlin.reflect.KClass
+
+    annotation class CircuitInject(val screen: KClass<*>, val scope: KClass<*>)
+    """
+      .trimIndent(),
+  )
+  addFileToProject(
+    "compose/Modifier.kt",
+    """
+    package androidx.compose.ui
+
+    interface Modifier
+    """
+      .trimIndent(),
+  )
 }
