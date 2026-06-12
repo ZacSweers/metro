@@ -262,9 +262,55 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     )
   }
 
+  fun testCircuitParameterResolvesSingleContributedImplementation() {
+    project.setMetroOptions("enable-circuit-codegen" to "true")
+    myFixture.addCircuitStubs()
+    val file =
+      myFixture.configureByText(
+        "CircuitImpl.kt",
+        """
+        package test
+
+        import com.slack.circuit.codegen.annotations.CircuitInject
+        import com.slack.circuit.runtime.CircuitUiState
+        import com.slack.circuit.runtime.screen.Screen
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.ContributesBinding
+        import dev.zacsweers.metro.Inject
+        import dev.zacsweers.metro.SingleIn
+
+        class AreaScreen : Screen
+        class AreaState : CircuitUiState
+
+        interface Repo
+
+        @SingleIn(AppScope::class)
+        @ContributesBinding(AppScope::class)
+        class RepoImpl(private val name: String) : Repo {
+          @Inject constructor(count: Int) : this(count.toString())
+        }
+
+        @CircuitInject(AreaScreen::class, AppScope::class)
+        fun AreaPresenter(screen: AreaScreen, repo: Repo): AreaState {
+          return AreaState()
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    // The exact inputs the implementation inlay needs
+    val consumer = index.consumerEntryAt(declarations.parameter("repo"))!!
+    assertTrue(consumer.isAbstractType)
+    val providers = index.providersFor(consumer)
+    assertEquals(1, providers.size)
+    assertEquals("RepoImpl", providers.single().implementationName)
+  }
+
   fun testCircuitInjectDeclarationsContributeFactoriesAndConsumeParameters() {
     project.setMetroOptions("enable-circuit-codegen" to "true")
-    addCircuitStubs()
+    myFixture.addCircuitStubs()
     val file =
       myFixture.configureByText(
         "Circuit.kt",
@@ -355,77 +401,6 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         (it.pointer.element as? KtNamedDeclaration)?.name
       }
     assertTrue(contributionNames.containsAll(listOf("HomePresenter", "HomeUi")))
-  }
-
-  private fun addCircuitStubs() {
-    myFixture.addFileToProject(
-      "circuit/Stubs.kt",
-      """
-      package com.slack.circuit.runtime
-
-      interface CircuitUiState
-
-      interface Navigator
-
-      interface CircuitContext
-      """
-        .trimIndent(),
-    )
-    myFixture.addFileToProject(
-      "circuit/Screen.kt",
-      """
-      package com.slack.circuit.runtime.screen
-
-      interface Screen
-      """
-        .trimIndent(),
-    )
-    myFixture.addFileToProject(
-      "circuit/Ui.kt",
-      """
-      package com.slack.circuit.runtime.ui
-
-      import com.slack.circuit.runtime.CircuitUiState
-
-      interface Ui<S : CircuitUiState> {
-        interface Factory
-      }
-      """
-        .trimIndent(),
-    )
-    myFixture.addFileToProject(
-      "circuit/Presenter.kt",
-      """
-      package com.slack.circuit.runtime.presenter
-
-      import com.slack.circuit.runtime.CircuitUiState
-
-      interface Presenter<S : CircuitUiState> {
-        interface Factory
-      }
-      """
-        .trimIndent(),
-    )
-    myFixture.addFileToProject(
-      "circuit/CircuitInject.kt",
-      """
-      package com.slack.circuit.codegen.annotations
-
-      import kotlin.reflect.KClass
-
-      annotation class CircuitInject(val screen: KClass<*>, val scope: KClass<*>)
-      """
-        .trimIndent(),
-    )
-    myFixture.addFileToProject(
-      "compose/Modifier.kt",
-      """
-      package androidx.compose.ui
-
-      interface Modifier
-      """
-        .trimIndent(),
-    )
   }
 
   fun testGraphFactoryInstanceBindingsResolve() {
