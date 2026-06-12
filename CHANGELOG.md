@@ -4,6 +4,22 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[IR]** Preserve substituted generic type arguments when generating assisted factory delegate parameters and dynamic graph container inputs.
+- **[IR]** Forward extension and context receivers when generated binding-container factories invoke the original binding function.
+- **[IR]** Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.
+- **[IR]** Patch declaration parents for generated `@Binds` mirror declarations so copied declarations remain attached to the correct generated class.
+- **[IR/JS]** Fix `Map<K, () -> V>` multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro `Provider` objects.
+- **[IR/KLIB]** Fix generated `@Binds` implementations on KLIB backends. Metro now emits concrete identity bodies for inherited `@Binds` members where JS, Native, and Wasm validate abstract members during deserialization.
+- **[IR/KLIB]** Keep generated graph and shard backing fields private while preserving generated access through properties. This avoids backing-field visibility validation failures on KLIB backends.
+
+### Changes
+
+- Run Metro's functional compiler unit tests on JS.
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
 1.2.1
 -----
 
@@ -18,19 +34,6 @@ _2026-06-11_
 
 - **[FIR]** Fix supertype merging not accounting for `replaces` coming from binding container contributions.
 
-### Fixes
-
-- **[IR]** Preserve substituted generic type arguments when generating assisted factory delegate parameters and dynamic graph container inputs.
-- **[IR]** Forward extension and context receivers when generated binding-container factories invoke the original binding function.
-- **[IR]** Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.
-- **[IR]** Patch declaration parents for generated `@Binds` mirror declarations so copied declarations remain attached to the correct generated class.
-- **[IR/JS]** Fix `Map<K, () -> V>` multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro `Provider` objects.
-- **[IR/KLIB]** Fix generated `@Binds` implementations on KLIB backends. Metro now emits concrete identity bodies for inherited `@Binds` members where JS, Native, and Wasm validate abstract members during deserialization.
-- **[IR/KLIB]** Keep generated graph and shard backing fields private while preserving generated access through properties. This avoids backing-field visibility validation failures on KLIB backends.
-
-### Changes
-
-- Add JS box-test suite generation for Metro's functional compiler tests.
 - Test Kotlin `2.4.20-dev-6138`.
 - Test IntelliJ `2026.2` EAPs.
 
