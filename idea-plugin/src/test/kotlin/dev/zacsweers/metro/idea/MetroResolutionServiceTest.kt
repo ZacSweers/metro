@@ -607,6 +607,77 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testCustomProviderAndLazyWrappersAreUnwrapped() {
+    project.setMetroOptions(
+      "custom-provider" to "test/CustomProvider",
+      "custom-lazy" to "test/CustomLazy",
+    )
+    val file =
+      myFixture.configureByText(
+        "CustomWrappers.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Binds
+        import dev.zacsweers.metro.Inject
+
+        class CustomProvider<T>
+        class CustomLazy<T>
+
+        interface Service
+        @Inject class ServiceImpl : Service
+
+        interface ServiceBindings {
+          @Binds fun bindService(impl: ServiceImpl): Service
+        }
+
+        @Inject
+        class Consumer(
+          val serviceProvider: CustomProvider<Service>,
+          val serviceLazy: CustomLazy<Service>,
+        )
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    for (name in listOf("serviceProvider", "serviceLazy")) {
+      val consumer = index.consumerEntryAt(declarations.parameter(name))!!
+      assertEquals("test.Service", consumer.key.renderedType)
+      assertEquals(listOf(MetroProviderKind.BINDS), index.providersFor(consumer).map { it.kind })
+    }
+  }
+
+  fun testFunctionTypesAreNotUnwrappedWhenFunctionProvidersAreDisabled() {
+    project.setMetroOptions("enable-function-providers" to "false")
+    val file =
+      myFixture.configureByText(
+        "FunctionProvider.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Binds
+        import dev.zacsweers.metro.Inject
+
+        interface Service
+        @Inject class ServiceImpl : Service
+
+        interface ServiceBindings {
+          @Binds fun bindService(impl: ServiceImpl): Service
+        }
+
+        @Inject class Consumer(val serviceFactory: () -> Service)
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val consumer = index.consumerEntryAt(declarations.parameter("serviceFactory"))!!
+    assertTrue(index.providersFor(consumer).isEmpty())
+  }
+
   fun testIndexIsEmptyWhenMetroDisabled() {
     project.setMetroOptions("enabled" to "false")
     val file = configure()
