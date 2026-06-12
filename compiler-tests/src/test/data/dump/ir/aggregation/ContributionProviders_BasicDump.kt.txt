@@ -116,11 +116,11 @@ abstract class ImplContributions {
 
 }
 
-// FILE: implContributionsToAppScopeAppScope.kt
+// FILE: implContributionsToAppScopeDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
 @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-fun AppScope(contributed: ImplContributions.ToAppScope) {
+fun dev_zacsweers_metro_AppScope(contributed: ImplContributions.ToAppScope) {
   return error(message = "Never called")
 }
 

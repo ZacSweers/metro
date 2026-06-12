@@ -98,10 +98,10 @@ interface Base<T : Any?> {
 interface Other {
 }
 
-// FILE: implAppScope.kt
+// FILE: implDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Impl) {
+fun dev_zacsweers_metro_AppScope(contributed: Impl) {
   return error(message = "Never called")
 }
 

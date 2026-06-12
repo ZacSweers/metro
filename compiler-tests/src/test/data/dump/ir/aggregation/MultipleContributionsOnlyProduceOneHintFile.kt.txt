@@ -190,10 +190,10 @@ interface ExampleGraph {
 
 }
 
-// FILE: base1ImplAppScope.kt
+// FILE: base1ImplDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Base1Impl) {
+fun dev_zacsweers_metro_AppScope(contributed: Base1Impl) {
   return error(message = "Never called")
 }
 

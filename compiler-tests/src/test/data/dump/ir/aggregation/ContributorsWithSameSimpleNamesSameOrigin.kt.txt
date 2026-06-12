@@ -112,10 +112,10 @@ class FooImpl : Foo {
 
 }
 
-// FILE: fooImplAppScope.kt
+// FILE: fooImplDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: FooImpl) {
+fun dev_zacsweers_metro_AppScope(contributed: FooImpl) {
   return error(message = "Never called")
 }
 

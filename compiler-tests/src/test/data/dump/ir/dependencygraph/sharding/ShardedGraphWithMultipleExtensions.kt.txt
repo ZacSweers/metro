@@ -836,17 +836,17 @@ interface Feature2Graph {
 
 }
 
-// FILE: feature1GraphFactoryAppScope.kt
+// FILE: feature1GraphFactoryDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Feature1Graph.Factory) {
+fun dev_zacsweers_metro_AppScope(contributed: Feature1Graph.Factory) {
   return error(message = "Never called")
 }
 
-// FILE: feature2GraphFactoryAppScope.kt
+// FILE: feature2GraphFactoryDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Feature2Graph.Factory) {
+fun dev_zacsweers_metro_AppScope(contributed: Feature2Graph.Factory) {
   return error(message = "Never called")
 }
 

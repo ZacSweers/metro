@@ -167,17 +167,17 @@ class ImplicitKeyImpl : Base {
 interface Base {
 }
 
-// FILE: explicitKeyImplAppScope.kt
+// FILE: explicitKeyImplDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ExplicitKeyImpl) {
+fun dev_zacsweers_metro_AppScope(contributed: ExplicitKeyImpl) {
   return error(message = "Never called")
 }
 
-// FILE: implicitKeyImplAppScope.kt
+// FILE: implicitKeyImplDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ImplicitKeyImpl) {
+fun dev_zacsweers_metro_AppScope(contributed: ImplicitKeyImpl) {
   return error(message = "Never called")
 }
 

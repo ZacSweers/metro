@@ -752,10 +752,10 @@ interface GrandchildGraph {
 
 }
 
-// FILE: childGraphFactoryAppScope.kt
+// FILE: childGraphFactoryDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ChildGraph.Factory) {
+fun dev_zacsweers_metro_AppScope(contributed: ChildGraph.Factory) {
   return error(message = "Never called")
 }
 
