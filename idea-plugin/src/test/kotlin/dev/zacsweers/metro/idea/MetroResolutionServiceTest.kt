@@ -653,6 +653,36 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(index.providersFor(consumer).isEmpty())
   }
 
+  fun testInternalHintsFromProjectOwnedBinariesAreHonored() {
+    module.withMetroLibFixtureLibrary(withinProject = true) {
+      val file =
+        myFixture.configureByText(
+          "FriendGraph.kt",
+          """
+          package test
+
+          import dev.zacsweers.metro.AppScope
+          import dev.zacsweers.metro.DependencyGraph
+          import libtest.LibHidden
+
+          @DependencyGraph(AppScope::class)
+          interface FriendGraph {
+            val hidden: LibHidden
+          }
+          """
+            .trimIndent(),
+        ) as KtFile
+      val index = MetroResolutionService.getInstance(project).index(file)
+      val declarations = file.declarationsIncludingNested()
+
+      // The hint is internal, but the binary belongs to this project (friend-module
+      // approximation), so the contribution resolves
+      val hiddenAccessor = index.consumerEntryAt(declarations.property("hidden"))!!
+      val providers = index.providersFor(hiddenAccessor)
+      assertEquals(listOf("LibHiddenImpl"), providers.map { it.implementationName })
+    }
+  }
+
   fun testIndexIsEmptyWhenMetroDisabled() {
     project.setMetroOptions("enabled" to "false")
     val file = configure()

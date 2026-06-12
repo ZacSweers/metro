@@ -4,10 +4,12 @@ package dev.zacsweers.metro.idea
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
@@ -30,6 +32,8 @@ import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotation
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotationValue
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KaTypeRendererForSource
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
@@ -41,6 +45,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
+import org.jetbrains.kotlin.idea.base.projectStructure.toKaSourceModules
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
 import org.jetbrains.kotlin.idea.stubindex.KotlinTopLevelFunctionFqnNameIndex
@@ -310,6 +315,13 @@ private class MetroIndexBuilder(
         ?: return
     val fileIndex = ProjectFileIndex.getInstance(project)
     val allScope = GlobalSearchScope.allScope(project)
+    val friendModules: Set<KaModule> by
+      lazy(LazyThreadSafetyMode.NONE) {
+        ModuleManager.getInstance(project)
+          .modules
+          .flatMap { it.toKaSourceModules() }
+          .flatMapTo(hashSetOf()) { it.directFriendDependencies }
+      }
     for (scopeId in scopeIds) {
       ProgressManager.checkCanceled()
       val hintFqName = MetroHints.hintCallableId(scopeId).asSingleFqName().asString()
@@ -319,10 +331,10 @@ private class MetroIndexBuilder(
         // exist as generated declarations in binaries.
         if (fileIndex.isInContent(virtualFile)) continue
         // Mirrors the compiler's visibility filtering: internal hints are only visible to their
-        // own module and friends, neither of which a binary dependency can be.
+        // own module and friend modules (test source sets, KMP sibling compilations).
         if (
-          hintFunction.hasModifier(KtTokens.INTERNAL_KEYWORD) ||
-            hintFunction.hasModifier(KtTokens.PRIVATE_KEYWORD)
+          hintFunction.hasModifier(KtTokens.INTERNAL_KEYWORD) &&
+            !isFriendHint(hintFunction, virtualFile, friendModules)
         ) {
           continue
         }
@@ -392,6 +404,22 @@ private class MetroIndexBuilder(
         }
       }
     }
+  }
+
+  /** Whether an internal [hintFunction] is visible via friend-module relationships. */
+  private fun isFriendHint(
+    hintFunction: KtNamedFunction,
+    virtualFile: VirtualFile,
+    friendModules: Set<KaModule>,
+  ): Boolean {
+    // Friendship recorded in the project model
+    if (KaModuleProvider.getModule(project, hintFunction, useSiteModule = null) in friendModules) {
+      return true
+    }
+    // Gradle import only records friend edges between source modules, so the project's own
+    // compiled outputs attached as binaries carry none; fall back to project-path ownership.
+    val basePath = project.basePath ?: return false
+    return virtualFile.path.startsWith("$basePath/")
   }
 
   /**
