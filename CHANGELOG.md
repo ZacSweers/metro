@@ -34,6 +34,8 @@ _2026-06-11_
 
 - **[FIR]** Fix supertype merging not accounting for `replaces` coming from binding container contributions.
 
+### Changes
+
 - Test Kotlin `2.4.20-dev-6138`.
 - Test IntelliJ `2026.2` EAPs.
 
