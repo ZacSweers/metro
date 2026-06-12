@@ -383,6 +383,14 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           callable is FirPropertySymbol ||
             callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isEmpty() -> {
             // Functions with no params are accessors
+            if (callable is FirPropertySymbol && callable.isVar) {
+              reporter.reportOn(
+                callable.source,
+                MetroDiagnostics.DEPENDENCY_GRAPH_MUTABLE_PROPERTY,
+                "Graph accessor properties cannot be var. Either make it a val or implement its getter and setter.",
+              )
+            }
+
             callable.validateBindingRef(annotations)
 
             val hasBody =
