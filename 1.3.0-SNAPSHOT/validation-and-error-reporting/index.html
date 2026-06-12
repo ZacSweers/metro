@@ -18,7 +18,7 @@
         <link rel="prev" href="../multiplatform/">
       
       
-        <link rel="next" href="../interop/">
+        <link rel="next" href="../diagnostics/">
       
       
         
@@ -926,6 +926,23 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Validation & Error Reporting
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="././" class="md-nav__link md-nav__link--active">
         
   
@@ -942,6 +959,64 @@
 
       </a>
       
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#console-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Console modes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Diagnostics Reference
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1755,6 +1830,11 @@
                       
                     
                     
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
                   
                   <div class="md-sidebar__inner">
                     
@@ -1766,6 +1846,25 @@
   
     
   
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#console-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Console modes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1798,23 +1897,54 @@
 
 <h1 id="validation-error-reporting">Validation &amp; Error Reporting<a class="headerlink" href="#validation-error-reporting" title="Permanent link">&para;</a></h1>
 <p>Common programmer/usage errors are implemented in FIR. This should allow errors to appear directly in the IDE, offering the best and fastest feedback loop for developers writing their code.</p>
-<p>TODO IDE screenshot example</p>
-<p>Dependency graph validation is performed at the per-graph level. Metro seeks to report binding validation errors at least on par with Dagger, if not better.</p>
-<div class="highlight"><pre><span></span><code>ExampleGraph.kt:6:1 [Metro/DependencyCycle] Found a dependency cycle:
-    kotlin.Int is injected at
-        [test.ExampleGraph] test.ExampleGraph.provideString(..., int)
-    kotlin.String is injected at
-        [test.ExampleGraph] test.ExampleGraph.provideDouble(..., string)
-    kotlin.Double is injected at
-        [test.ExampleGraph] test.ExampleGraph.provideInt(..., double)
-    kotlin.Int is injected at
-        [test.ExampleGraph] test.ExampleGraph.provideString(..., int)
+<p>Dependency graph validation is performed at the per-graph level in the compiler IR backend. Each graph diagnostic is a structured report: a headline tagged with a stable diagnostic ID, a compact dependency chain, a binding trace, and trailing <code>help:</code> (actionable fix), <code>note:</code> (context), and <code>docs:</code> (reference link) annotations. See the <a href="../diagnostics/">Diagnostics Reference</a> for a generated index of the diagnostic IDs.</p>
+<p>A missing binding looks like this:</p>
+<div class="highlight"><pre><span></span><code>AppGraph.kt:13:3: error: 
+[Metro/MissingBinding] No binding found for Foo
+
+  AppGraph.injectedThing -&gt; InjectedThing -&gt; Foo
+
+  trace (in AppGraph):
+      Foo is injected at InjectedThing(…, foo)
+      InjectedThing is requested at AppGraph.injectedThing
+
+  help: ensure Foo has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 </code></pre></div>
-<p>Binding errors take learnings from Dagger and report fully qualified references that IDEs like IntelliJ can usually autolink.</p>
-<div class="highlight"><pre><span></span><code>ExampleGraph.kt:6:1 [Metro/GraphDependencyCycle] Dependency graph dependency cycle detected! The below graph depends on itself.
-    test.CharSequenceGraph is requested at
-        [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
+<p>When a near-miss exists (same type with a different qualifier, nullability, sub/supertype, or a multibinding of the type), a <code>similar bindings:</code> section lists it with its location.</p>
+<p>Dependency cycles are drawn as a closed loop, with <code>~~&gt;</code> marking <code>@Binds</code> alias edges, and suggest the fix:</p>
+<div class="highlight"><pre><span></span><code>ExampleGraph.kt:7:11: error: 
+[Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
+
+  cycle:
+      +-&gt; Double -&gt; String -&gt; Int --+
+      +-----------------------------+
+
+  trace (in test.ExampleGraph):
+      Double is injected at test.ExampleGraph.provideInt(…, double)
+      String is injected at test.ExampleGraph.provideDouble(…, string)
+      Int is injected at test.ExampleGraph.provideString(…, int)
+      Double is injected at test.ExampleGraph.provideInt(…, double)
+      ...
+
+  help: break the cycle by injecting a deferred type at one edge, e.g. `() -&gt; Double` or
+        `Lazy&lt;Double&gt;`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
 </code></pre></div>
+<p>Output wraps to a fixed 100-column budget. Identifiers are never truncated, so type names stay grep-able.</p>
+<h2 id="console-modes">Console modes<a class="headerlink" href="#console-modes" title="Permanent link">&para;</a></h2>
+<p>The <code>diagnosticsConsole</code> Gradle option controls rendering:</p>
+<div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">diagnosticsConsole</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">ConsoleMode</span><span class="p">.</span><span class="na">RICH</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<ul>
+<li><code>PLAIN</code> — the layout above: ASCII structure, no ANSI codes. Safe for any log consumer.</li>
+<li><code>RICH</code> — the same layout with Unicode glyphs (<code>╭─▶ Double → String → Int ─╮</code>), ANSI color/styling, and source snippets: real source lines with the relevant spans underlined, e.g. the injection site of a missing binding or each conflicting declaration of a duplicate binding.</li>
+<li><code>AUTO</code> (default) — resolved at configuration time. <code>CI</code>, <code>NO_COLOR</code>, <code>--console=plain</code>, and IDE-invoked builds (whose build output windows don&rsquo;t render ANSI) get <code>PLAIN</code>; other builds get <code>RICH</code>.</li>
+</ul>
+<p>The mode can also be set via the <code>diagnosticsConsole</code> Gradle property or the <code>metro.diagnosticsConsole</code> system property (which the compiler reads directly and wins over everything). Because rendering is presentation-only, the resolved mode is excluded from compilation task inputs — switching between IDE, CLI, and CI never invalidates compilation or splits build caches.</p>
 <p>Note that binding graph resolution currently only happens in the compiler IR backend, but maybe someday we can move this to FIR to get errors in the IDE.</p>
 
 
@@ -1872,13 +2002,13 @@
         
         
           
-          <a href="../interop/" class="md-footer__link md-footer__link--next" aria-label="Next: Interop">
+          <a href="../diagnostics/" class="md-footer__link md-footer__link--next" aria-label="Next: Diagnostics Reference">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Interop
+                Diagnostics Reference
               </div>
             </div>
             <div class="md-footer__button md-icon">

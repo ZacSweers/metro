@@ -1101,6 +1101,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Diagnostics Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../interop/" class="md-nav__link">
         
   
@@ -2107,16 +2134,21 @@
 <h2 id="ide-integration">IDE Integration<a class="headerlink" href="#ide-integration" title="Permanent link">&para;</a></h2>
 <p>Most errors are reported in FIR, which should (eventually) be visible in the K2 IDE plugin as well.</p>
 <h2 id="helpful-diagnostics">Helpful diagnostics<a class="headerlink" href="#helpful-diagnostics" title="Permanent link">&para;</a></h2>
-<p>Metro tries its best to give detailed-yet-readable error messages and diagnostics.</p>
-<div class="highlight"><pre><span></span><code>e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+<p>Metro tries its best to give detailed-yet-readable error messages and diagnostics, with stable diagnostic IDs, <code>help:</code> suggestions, and links to the <a href="../diagnostics/">Diagnostics Reference</a>. An optional rich console mode adds color, Unicode structure, and underlined source snippets in terminals. See <a href="../validation-and-error-reporting/">Validation &amp; Error Reporting</a>.</p>
+<div class="highlight"><pre><span></span><code>e: ExampleGraph.kt:8:3 
+[Metro/MissingBinding] No binding found for Int
 
-    kotlin.Int is requested at
-        [test.ExampleGraph] test.ExampleGraph.int
+  trace (in test.ExampleGraph):
+      Int is requested at test.ExampleGraph.int
 
-Similar bindings:
-  - @Named(&quot;qualified&quot;) Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:3
-  - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
-  - Set&lt;Int&gt; (Multibinding). Type: Multibinding.
+  similar bindings:
+      - @Named(&quot;qualified&quot;) Int (Different qualifier. Type: Provided) - ExampleGraph.kt:11:3
+      - Number (Supertype. Type: Provided) - ExampleGraph.kt:10:3
+      - Set&lt;Int&gt; (Multibinding. Type: Multibinding)
+
+  help: ensure Int has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 </code></pre></div>
 <p>For more thorough debugging, Metro also has controls to enable debug logging controls and write graph reports to an output directory (configurable via the Gradle extension).</p>
 <h2 id="advanced-interop">Advanced interop<a class="headerlink" href="#advanced-interop" title="Permanent link">&para;</a></h2>
