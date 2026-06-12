@@ -123,7 +123,9 @@ interface AppModule {
 
     @Binds
     @CallableMetadata(callableName = "bindRepository", propertyName = "", startOffset = 678, endOffset = 730)
-    abstract fun bindRepository(impl: RepositoryImpl): Repository
+    fun bindRepository(impl: RepositoryImpl): Repository {
+      return error(message = "Never called")
+    }
 
   }
 

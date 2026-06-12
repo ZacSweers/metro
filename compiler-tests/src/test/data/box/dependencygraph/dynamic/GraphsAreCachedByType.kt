@@ -19,9 +19,9 @@ fun otherFile(): ExampleGraph = createDynamicGraph<ExampleGraph>(Bindings)
 fun box(): String {
   val (graph1, graph2) = sameFile()
   // Same file + same type: one shared impl
-  assertEquals(graph1::class.qualifiedName, graph2::class.qualifiedName)
+  assertEquals(graph1::class, graph2::class)
   // Different file: a distinct impl, even for the same type
   // https://github.com/ZacSweers/metro/issues/2324
-  assertNotEquals(graph1::class.qualifiedName, otherFile()::class.qualifiedName)
+  assertNotEquals(graph1::class, otherFile()::class)
   return "OK"
 }

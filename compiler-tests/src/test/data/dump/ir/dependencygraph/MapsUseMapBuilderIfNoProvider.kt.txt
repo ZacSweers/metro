@@ -11,7 +11,9 @@ interface AppGraph {
 
     @Multibinds
     @CallableMetadata(callableName = "<get-ints>", propertyName = "ints", startOffset = 83, endOffset = 106)
-    abstract fun ints4205198935(): Map<Int, Int>
+    fun ints_property4205198935(): Map<Int, Int> {
+      return error(message = "Never called")
+    }
 
   }
 

@@ -157,9 +157,15 @@ internal class IrContributionData(
 
   private fun IrClass.isDirectContributedInterface(scope: Scope): Boolean {
     if (kind != ClassKind.INTERFACE) return false
+    val irClass = this
+    if (with(metroContext) { irClass.isBindingContainer() }) return false
     if (isAnnotatedWithAny(metroContext.metroSymbols.classIds.graphExtensionFactoryAnnotations)) {
       return false
     }
+    return isDirectContributionTo(scope)
+  }
+
+  private fun IrClass.isDirectContributionTo(scope: Scope): Boolean {
     return annotationsIn(metroContext.metroSymbols.classIds.contributesToAnnotations).any {
       it.scopeOrNull() == scope
     }
@@ -282,6 +288,14 @@ internal class IrContributionData(
               ?.owner
               ?.takeIf { irClass -> metroDeclarations.findBindingContainer(irClass) != null }
               ?.let(finalSet::add)
+          }
+          contributingClasses.forEach { irClass ->
+            if (!irClass.isDirectContributionTo(scope)) {
+              return@forEach
+            }
+            if (metroDeclarations.findBindingContainer(irClass) != null) {
+              finalSet.add(irClass)
+            }
           }
           if (metroContext.options.generateContributionProviders) {
             contributingClasses.forEach { irClass ->

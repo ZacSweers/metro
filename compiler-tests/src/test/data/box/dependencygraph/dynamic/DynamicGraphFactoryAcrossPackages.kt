@@ -1,4 +1,5 @@
 // https://github.com/ZacSweers/metro/issues/2324
+// IGNORE_BACKEND: JS_IR
 // Two call sites in different packages must each generate their own dynamic graph impl. If they
 // shared one, the second would reference the first's private (on the JVM, package-private) nested
 // FactoryImpl and fail at runtime with IllegalAccessError.

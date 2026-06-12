@@ -74,19 +74,25 @@ interface AppGraph {
     @ElementsIntoSet
     @Named(name = "second")
     @CallableMetadata(callableName = "bindFirstAsSecond", propertyName = "", startOffset = 367, endOffset = 432)
-    abstract fun bindFirstAsSecond1587700901_elementsintoset(@Named(name = "first") second: Set<Int>): Set<Int>
+    fun bindFirstAsSecond1587700901_elementsintoset(@Named(name = "first") second: Set<Int>): Set<Int> {
+      return error(message = "Never called")
+    }
 
     @Binds
     @IntoSet
     @Named(name = "first")
     @CallableMetadata(callableName = "bindIntAsFirstSet", propertyName = "", startOffset = 279, endOffset = 315)
-    abstract fun bindIntAsFirstSet2591421153_intoset(int: Int): Int
+    fun bindIntAsFirstSet2591421153_intoset(int: Int): Int {
+      return error(message = "Never called")
+    }
 
     @Binds
     @ElementsIntoSet
     @Named(name = "final")
     @CallableMetadata(callableName = "bindSecondAsFinal", propertyName = "", startOffset = 483, endOffset = 549)
-    abstract fun bindSecondAsFinal2591416743_elementsintoset(@Named(name = "second") second: Set<Int>): Set<Int>
+    fun bindSecondAsFinal2591416743_elementsintoset(@Named(name = "second") second: Set<Int>): Set<Int> {
+      return error(message = "Never called")
+    }
 
   }
 

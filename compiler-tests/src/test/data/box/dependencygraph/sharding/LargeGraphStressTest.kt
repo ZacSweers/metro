@@ -1,4 +1,5 @@
 // ENABLE_GRAPH_SHARDING: true
+// IGNORE_BACKEND: JS_IR
 
 /*
  * Stress test for graph sharding with a very large number of bindings.

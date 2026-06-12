@@ -33,6 +33,8 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.scopes.getSingleClassifier
+import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.classId
@@ -60,10 +62,36 @@ internal class ContributionHintFirGenerator(
         session.predicates.contributesAnnotationPredicate
       )
 
-    return (injectedClasses + contributedClasses)
+    val graphExtensionFactories =
+      session.predicateBasedProvider.getSymbolsByPredicate(
+        session.predicates.graphExtensionFactoryPredicate
+      )
+
+    val nestedGraphExtensionFactories =
+      session.predicateBasedProvider
+        .getSymbolsByPredicate(session.predicates.graphExtensionPredicate)
+        .filterIsInstance<FirClassSymbol<*>>()
+        .flatMap { graphExtension ->
+          val memberScope = graphExtension.declaredMemberScope(session, memberRequiredPhase = null)
+          memberScope.getClassifierNames().mapNotNull { name ->
+            memberScope.getSingleClassifier(name) as? FirClassSymbol<*>
+          }
+        }
+        .filter { nestedClass ->
+          nestedClass.annotationsIn(session, session.classIds.allContributesAnnotations).any()
+        }
+
+    return sequenceOf(
+        injectedClasses,
+        contributedClasses,
+        graphExtensionFactories,
+        nestedGraphExtensionFactories,
+      )
+      .flatten()
       .filterIsInstance<FirClassSymbol<*>>()
       .filterNot { it.visibility == Visibilities.Private }
       .distinct()
+      .toList()
   }
 
   private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session) }
@@ -154,6 +182,8 @@ internal class ContributionHintFirGenerator(
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.contributesAnnotationPredicate)
     register(session.predicates.injectAnnotationPredicate)
+    register(session.predicates.graphExtensionPredicate)
+    register(session.predicates.graphExtensionFactoryPredicate)
     for (extension in externalHintExtensions) {
       with(extension) { registerPredicates() }
     }

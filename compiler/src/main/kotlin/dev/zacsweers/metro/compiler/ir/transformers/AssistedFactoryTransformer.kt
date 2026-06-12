@@ -79,6 +79,7 @@ import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.simpleFunctions
@@ -195,11 +196,16 @@ internal class AssistedFactoryTransformer(
             isPrimary = true
           }
           .apply {
-            val factoryParamType =
-              injectedClassTransformer
-                .getOrGenerateFactory(targetType, null, doNotErrorOnMissing = false)!!
-                .factoryClass
-                .defaultType
+            injectedClassTransformer.getOrGenerateFactory(
+              targetType,
+              null,
+              doNotErrorOnMissing = false,
+            )
+            val factoryTypeArguments =
+              samFunction.returnType.targetTypeArguments(
+                remapper = declaration.typeParameterRemapperTo(implClass)
+              )
+            val factoryParamType = targetType.metroFactoryType(factoryTypeArguments)
             addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
             body = generateDefaultConstructorBody()
           }
@@ -300,11 +306,24 @@ internal class AssistedFactoryTransformer(
           setDispatchReceiver(companionReceiver.copyTo(this))
           typeParameters = copyTypeParametersFrom(samFunction)
 
+          val targetFactory =
+            injectedClassTransformer.getOrGenerateFactory(
+              targetType,
+              null,
+              doNotErrorOnMissing = false,
+            )
+              ?: reportCompilerBug(
+                "Could not find generated Metro factory ${targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)}"
+              )
+
+          val factoryTypeArguments =
+            samFunction.returnType.targetTypeArguments(
+              remapper = samFunction.typeParameterRemapperTo(this)
+            )
+
           val factoryParamType =
-            injectedClassTransformer
-              .getOrGenerateFactory(targetType, null, doNotErrorOnMissing = false)!!
-              .factoryClass
-              .defaultType
+            targetFactory.factoryClass.typeWith(*factoryTypeArguments.toTypedArray())
+
           addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
 
           addStaticAnnotations(this)
@@ -312,6 +331,43 @@ internal class AssistedFactoryTransformer(
         }
 
     return ImplCompanionDeclarations(companion, createFunction)
+  }
+
+  private fun IrClass.metroFactoryType(typeArguments: List<IrType>): IrType {
+    val factoryClassId = classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)
+    val factoryClass =
+      nestedClasses.singleOrNull { it.name == Symbols.Names.MetroFactory }
+        ?: lookupClass(factoryClassId)?.owner
+        ?: reportCompilerBug("Could not find generated Metro factory $factoryClassId")
+    return factoryClass.typeWith(*typeArguments.toTypedArray())
+  }
+
+  private fun IrClass.typeParameterRemapperTo(targetClass: IrClass): TypeRemapper {
+    return typeRemapperFor(
+      typeParameters.zip(targetClass.typeParameters).associate { (source, target) ->
+        source.symbol to target.defaultType
+      }
+    )
+  }
+
+  private fun IrSimpleFunction.typeParameterRemapperTo(
+    targetFunction: IrSimpleFunction
+  ): TypeRemapper {
+    return typeRemapperFor(
+      typeParameters.zip(targetFunction.typeParameters).associate { (source, target) ->
+        source.symbol to target.defaultType
+      }
+    )
+  }
+
+  private fun IrType.targetTypeArguments(remapper: TypeRemapper): List<IrType> {
+    if (this !is IrSimpleType) return emptyList()
+    return arguments.map { argument ->
+      val typeProjection =
+        argument as? IrTypeProjection
+          ?: reportCompilerBug("Expected type projection in assisted factory return type $this")
+      remapper.remapType(typeProjection.type)
+    }
   }
 
   private fun implementImplClass(

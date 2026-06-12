@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.doubleCheck
+import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
@@ -46,11 +47,11 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
-import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.usesKlib
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -99,7 +100,6 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.platform.konan.isNative
 
 internal typealias PropertyInitializer =
   IrBuilderWithScope.(thisReceiver: IrValueParameter, key: IrTypeKey) -> IrExpression
@@ -903,7 +903,7 @@ internal class IrGraphGenerator(
             .apply {
               addBackingFieldCompat {
                 type = shard.shardClass.typeWith()
-                visibility = DescriptorVisibilities.INTERNAL
+                visibility = DescriptorVisibilities.PRIVATE
               }
             }
         result[shard.index] = shardField
@@ -1678,11 +1678,9 @@ internal class IrGraphGenerator(
     }
 
     // Binds stub bodies are implemented in BindsMirrorClassTransformer on the original
-    // declarations, so we don't need to implement fake overrides here
-    // TODO EXCEPT in native compilations, which appear to complain if you don't implement fake
-    //  overrides even if they have a default impl
-    //  https://youtrack.jetbrains.com/issue/KT-83666
-    if (metroContext.platform.isNative() && bindsFunctions.isNotEmpty()) {
+    // declarations. KLIB backends still need the generated graph impl to satisfy inherited
+    // abstract members during deserialization.
+    if (metroContext.platform.usesKlib() && bindsFunctions.isNotEmpty()) {
       for (function in bindsFunctions) {
         // Note we can't source this from the node.bindsCallables as those are pointed at their
         // original declarations and we need to implement their fake overrides here
@@ -1692,7 +1690,16 @@ internal class IrGraphGenerator(
           if (declarationToFinalize.isFakeOverride) {
             declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
           }
-          body = stubExpressionBody()
+          // This override is the graph impl's concrete implementation of the inherited @Binds
+          // member. @Binds is an identity conversion from the source parameter to the declared
+          // return type, so emit that body directly rather than a placeholder stub. KLIB backends
+          // deserialize and validate these inherited members before later Metro mirror code can
+          // cover for them.
+          val sourceParameter =
+            extensionReceiverParameterCompat
+              ?: regularParameters.singleOrNull()
+              ?: reportCompilerBug("No source parameter found for @Binds function $kotlinFqName")
+          body = createIrBuilder(symbol).run { irExprBodySafe(irGet(sourceParameter)) }
         }
       }
     }

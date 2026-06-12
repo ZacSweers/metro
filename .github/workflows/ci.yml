@@ -91,7 +91,7 @@ jobs:
           echo "Running checks..."
           # metro.functionalTestKmpTarget=jvm scopes IC test parameterization to JVM only here. The
           # kmp-functional job (main only) fans the remaining targets out into parallel runners.
-          ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.functionalTestKmpTarget=jvm ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.excludeJsBoxTests -Pmetro.functionalTestKmpTarget=jvm ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()
@@ -107,6 +107,57 @@ jobs:
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - core / ${{ matrix.kotlin-compiler }}'
+
+  js-box:
+    name: ${{ format('js box / {0}', github.ref == 'refs/heads/main' && 'full' || 'smoke') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Generate tests
+        run: ./gradlew :compiler-tests:generateTests --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Run JS box smoke tests
+        if: github.ref != 'refs/heads/main'
+        run: |
+          ./gradlew :compiler-tests:test --quiet \
+            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Inject$Assisted.testBasicAssistedInject' \
+            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Multibindings.testMapProviderLazyValues' \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Run JS box tests
+        if: github.ref == 'refs/heads/main'
+        run: |
+          ./gradlew :compiler-tests:test --continue --quiet \
+            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*' \
+            --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*' \
+            --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
+
+      - name: (Fail-only) Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-js-box
+          path: |
+            **/build/reports/**
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v6
+        if: failure()
+        with:
+          report_paths: '**/build/test-results/**/TEST-*.xml'
+          check_name: 'Test Report - js box'
 
   # Main-only: run each non-JVM target of :gradle-plugin:functionalTest in its own runner so
   # the slow IC test classes (BindingContainerICTests, ICTests, GenerateContributionProvidersICTests)
@@ -331,6 +382,7 @@ jobs:
     needs:
       - format
       - core
+      - js-box
       - kmp-functional
       - benchmarks
       - idea-plugin

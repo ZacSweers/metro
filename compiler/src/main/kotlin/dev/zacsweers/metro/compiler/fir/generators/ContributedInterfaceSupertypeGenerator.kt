@@ -82,6 +82,8 @@ import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.isJs
+import org.jetbrains.kotlin.platform.isWasm
 
 internal class ContributedInterfaceSupertypeGenerator(
   session: FirSession,
@@ -229,24 +231,15 @@ internal class ContributedInterfaceSupertypeGenerator(
         val generateClassesInIr = session.metroFirBuiltIns.options.generateClassesInIr
         if (generateClassesInIr) {
           // In IR-only mode MetroContribution marker classes are not generated in FIR. Keep only
-          // source interfaces that directly contribute a user-visible supertype; IR generates the
-          // hidden marker classes and binding containers later.
+          // source interfaces that directly contribute a user-visible supertype. Binding-like
+          // contributions are still tracked for replacement/rank logic, but filtered out when
+          // building supertypes.
           val contributesDirectly = originClass.directlyContributesTo(scopeClassId, typeResolver)
           if (contributesDirectly) {
             put(originClass.classId, false)
+          } else if (originClass.bindingLikeContributionMatchesScope(scopeClassId, typeResolver)) {
+            put(originClass.classId, true)
           }
-          continue
-        }
-
-        if (
-          session.metroFirBuiltIns.options.bindingContributionsAsContainers &&
-            originClass.hasBindingContribution() &&
-            !originClass.hasDirectContributesTo()
-        ) {
-          // Pure binding contributions are consumed as binding containers, not graph supertypes.
-          // Do not depend on FIR-generated nested marker classes for this path. Non-Metro
-          // extension contributions, such as Hilt entry points, do not carry binding-contribution
-          // annotations and still use their generated markers in legacy FIR mode.
           continue
         }
 
@@ -266,21 +259,15 @@ internal class ContributedInterfaceSupertypeGenerator(
               ?.annotationsIn(session, setOf(Symbols.ClassIds.metroContribution))
               ?.single()
               ?.resolvedScopeClassId(session, typeResolver)
+
           if (scopeId == scopeClassId) {
-            put(originClass.classId.createNestedClassId(nestedClassName), false)
+            val nestedClassSymbol = nestedClass.expectAsOrNull<FirClassLikeSymbol<*>>()
+            val isBindingContainer = nestedClassSymbol?.isBindingContainer(session) == true
+            put(originClass.classId.createNestedClassId(nestedClassName), isBindingContainer)
           }
         }
       }
     }
-  }
-
-  private fun FirRegularClassSymbol.hasDirectContributesTo(): Boolean {
-    return annotationsIn(session, session.classIds.contributesToAnnotations).any()
-  }
-
-  private fun FirRegularClassSymbol.hasBindingContribution(): Boolean {
-    return annotationsIn(session, session.classIds.contributesBindingLikeAnnotationsWithContainers)
-      .any()
   }
 
   private fun FirRegularClassSymbol.directlyContributesTo(
@@ -291,6 +278,14 @@ internal class ContributedInterfaceSupertypeGenerator(
       annotationsIn(session, session.classIds.contributesToAnnotations).any {
         it.resolvedScopeClassId(session, typeResolver) == scopeClassId
       }
+  }
+
+  private fun FirRegularClassSymbol.bindingLikeContributionMatchesScope(
+    scopeClassId: ClassId,
+    typeResolver: TypeResolveService,
+  ): Boolean {
+    return annotationsIn(session, session.classIds.contributesBindingLikeAnnotationsWithContainers)
+      .any { it.resolvedScopeClassId(session, typeResolver) == scopeClassId }
   }
 
   /**
@@ -747,8 +742,9 @@ internal class ContributedInterfaceSupertypeGenerator(
           // Objective-C framework exporter hides the @Deprecated(HIDDEN) intermediates and does
           // not transitively hoist their non-hidden supertypes into the child class's
           // superprotocol list, so the parent has to be a direct supertype to appear in
-          // Swift/ObjC framework headers. Graph extension factories are excluded — they're
-          // contributed via @ContributesTo but aren't meant to be inherited by the graph.
+          // Swift/ObjC framework headers. Graph extension factories are normally excluded, but
+          // JS/Wasm KLIB metadata also needs the direct factory supertype for downstream source
+          // calls to resolve.
           // https://github.com/ZacSweers/metro/issues/2185
           val parentSymbol =
             parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
@@ -758,15 +754,23 @@ internal class ContributedInterfaceSupertypeGenerator(
             parentSymbol.annotationsIn(session, session.classIds.contributesToAnnotations).any {
               it.resolvedScopeClassId(session, typeResolver) in scopes
             }
+
           if (!contributesToThisScope) return@flatMap listOf(metroContribution)
+
+          val isGraphExtensionFactory =
+            parentSymbol.isAnnotatedWithAny(
+              session,
+              session.classIds.graphExtensionFactoryAnnotations,
+            )
+
+          val promoteGraphExtensionFactory =
+            isGraphExtensionFactory &&
+              (session.moduleData.platform.isJs() || session.moduleData.platform.isWasm())
 
           val promoteParent =
             parentSymbol.classKind.isInterface &&
               parentClassId !in existingSupertypeClassIds &&
-              !parentSymbol.isAnnotatedWithAny(
-                session,
-                session.classIds.graphExtensionFactoryAnnotations,
-              ) &&
+              (!isGraphExtensionFactory || promoteGraphExtensionFactory) &&
               (declarationVisibility == null ||
                 !parentSymbol.exposesNarrowerVisibilityThan(declarationVisibility))
 

@@ -51,6 +51,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("BindingReplacesProvider.kt")
+    public void testBindingReplacesProvider() {
+      run("BindingReplacesProvider.kt");
+    }
+
+    @Test
     @TestMetadata("ChunkMergedSupertypesBasic.kt")
     public void testChunkMergedSupertypesBasic() {
       run("ChunkMergedSupertypesBasic.kt");
@@ -1203,6 +1209,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("NullabilityInFunInterfaceContributions.kt")
+    public void testNullabilityInFunInterfaceContributions() {
+      run("NullabilityInFunInterfaceContributions.kt");
+    }
+
+    @Test
     @TestMetadata("OpenAccessorsInClasses.kt")
     public void testOpenAccessorsInClasses() {
       run("OpenAccessorsInClasses.kt");
@@ -1377,6 +1389,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       @TestMetadata("DynamicGraphCanReplaceScopedBindings.kt")
       public void testDynamicGraphCanReplaceScopedBindings() {
         run("DynamicGraphCanReplaceScopedBindings.kt");
+      }
+
+      @Test
+      @TestMetadata("DynamicGraphCanReplaceScopedBindingsWithJvmStatic.kt")
+      public void testDynamicGraphCanReplaceScopedBindingsWithJvmStatic() {
+        run("DynamicGraphCanReplaceScopedBindingsWithJvmStatic.kt");
       }
 
       @Test
@@ -1616,9 +1634,21 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("IncludesAcrossIntermediateUnpackingExplicitFactory.kt")
+      public void testIncludesAcrossIntermediateUnpackingExplicitFactory() {
+        run("IncludesAcrossIntermediateUnpackingExplicitFactory.kt");
+      }
+
+      @Test
       @TestMetadata("IncludesTypesCanBeAccessibleAsProviders.kt")
       public void testIncludesTypesCanBeAccessibleAsProviders() {
         run("IncludesTypesCanBeAccessibleAsProviders.kt");
+      }
+
+      @Test
+      @TestMetadata("IncludesTypesCanBeAccessibleAsProvidersExplicitFactory.kt")
+      public void testIncludesTypesCanBeAccessibleAsProvidersExplicitFactory() {
+        run("IncludesTypesCanBeAccessibleAsProvidersExplicitFactory.kt");
       }
 
       @Test
@@ -2885,6 +2915,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("MemberInjectWithJvmFieldProperties.kt")
+    public void testMemberInjectWithJvmFieldProperties() {
+      run("MemberInjectWithJvmFieldProperties.kt");
+    }
+
+    @Test
     @TestMetadata("MemberInjectWithNullableMutableProperties.kt")
     public void testMemberInjectWithNullableMutableProperties() {
       run("MemberInjectWithNullableMutableProperties.kt");
@@ -3132,6 +3168,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("JvmFieldProvidersAreRespected.kt")
     public void testJvmFieldProvidersAreRespected() {
       run("JvmFieldProvidersAreRespected.kt");
+    }
+
+    @Test
+    @TestMetadata("PropertyProvidersAreRespected.kt")
+    public void testPropertyProvidersAreRespected() {
+      run("PropertyProvidersAreRespected.kt");
     }
 
     @Test

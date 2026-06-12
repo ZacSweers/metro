@@ -71,6 +71,7 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
+import dev.zacsweers.metro.compiler.ir.usesKlib
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
@@ -118,7 +119,6 @@ import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class GraphNodes(
   metroContext: IrMetroContext,
@@ -693,7 +693,7 @@ internal class GraphNodes(
           //  https://youtrack.jetbrains.com/issue/KT-83666
           val isBindsLike =
             annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
-          val canDeferToDefaultImpl = !isBindsLike || !platform.isNative()
+          val canDeferToDefaultImpl = !isBindsLike || !platform.usesKlib()
 
           when (declaration) {
             is IrSimpleFunction -> {
@@ -919,8 +919,7 @@ internal class GraphNodes(
                 val contextKey =
                   IrContextualTypeKey.from(declaration, hasDefaultOverride = isOptionalBinding)
                 if (metroFunction.annotations.isBinds) {
-                  // Only needed for native platform workarounds now
-                  if (metroContext.platform.isNative()) {
+                  if (metroContext.platform.usesKlib()) {
                     bindsFunctions += (metroFunction to contextKey)
                   }
                 } else {
@@ -1067,8 +1066,7 @@ internal class GraphNodes(
                 hasGraphExtensions = true
               } else {
                 if (metroFunction.annotations.isBinds) {
-                  // Only needed for native platform workarounds now
-                  if (metroContext.platform.isNative()) {
+                  if (metroContext.platform.usesKlib()) {
                     bindsFunctions += (metroFunction to contextKey)
                   }
                 } else {

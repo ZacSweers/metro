@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.circuit
 
 import dev.zacsweers.metro.compiler.MetroDirectives
+import dev.zacsweers.metro.compiler.isJsBackend
 import java.io.File
 import org.jetbrains.kotlin.cli.jvm.config.addJvmClasspathRoot
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -15,6 +16,10 @@ import org.jetbrains.kotlin.test.services.TestServices
 private val circuitClasspath =
   System.getProperty("circuit.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'circuit.classpath' property")
+
+private val circuitKlibClasspath =
+  System.getProperty("circuit.klibClasspath")?.split(File.pathSeparator)?.map(::File)
+    ?: error("Unable to get a valid classpath from 'circuit.klibClasspath' property")
 
 fun TestConfigurationBuilder.configureCircuit() {
   useConfigurators(::CircuitEnvironmentConfigurator)
@@ -30,6 +35,8 @@ class CircuitEnvironmentConfigurator(testServices: TestServices) :
     val addCircuit = MetroDirectives.ENABLE_CIRCUIT in module.directives
 
     if (addCircuit) {
+      if (testServices.isJsBackend()) return
+
       for (file in circuitClasspath) {
         configuration.addJvmClasspathRoot(file)
       }
@@ -43,7 +50,11 @@ class CircuitClassPathProvider(testServices: TestServices) :
     val paths = mutableListOf<File>()
 
     if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
-      paths.addAll(circuitClasspath)
+      if (testServices.isJsBackend()) {
+        paths.addAll(circuitKlibClasspath)
+      } else {
+        paths.addAll(circuitClasspath)
+      }
     }
 
     return paths

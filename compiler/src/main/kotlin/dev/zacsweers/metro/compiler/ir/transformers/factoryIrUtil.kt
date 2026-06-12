@@ -419,7 +419,7 @@ internal fun generateStubCreatorFunctions(
 ) {
   val creatorClass = factoryClass.requireStaticIshDeclarationContainer()
 
-  val params = sourceFunction.parameters().allParameters
+  val params = sourceFunction.parameters().nonDispatchParameters
 
   // create() function, parameters are Provider-wrapped
   creatorClass.addFunction(Symbols.StringNames.CREATE, factoryClass.defaultType).apply {

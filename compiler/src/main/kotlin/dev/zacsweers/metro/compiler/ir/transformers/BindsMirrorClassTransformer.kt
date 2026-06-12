@@ -44,6 +44,7 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
+import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -140,6 +141,10 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
   val isExternal = mirrorClass.isExternalParent
   val collector = BindsMirrorCollector(isInterop = false)
 
+  if (!isExternal) {
+    mirrorClass.patchDeclarationParents(parentClass)
+  }
+
   // On JVM, annotate with @ComptimeOnly so R8 can remove these
   val comptimeOnlyConstructor =
     if (!isExternal && context.pluginContext.platform.isJvm()) {
@@ -232,7 +237,11 @@ private fun generateMirrorFunction(
   val annotations = targetFunction.annotations
   val mirrorFunctionName =
     buildString {
-        append(targetFunction.ir.propertyIfAccessor.expectAs<IrDeclarationWithName>().name)
+        val sourceDeclaration = targetFunction.ir.propertyIfAccessor
+        append(sourceDeclaration.expectAs<IrDeclarationWithName>().name)
+        if (sourceDeclaration is IrProperty) {
+          append("_property")
+        }
         annotations.qualifier?.hashCode()?.toUInt()?.let(::append)
         annotations.mapKey?.hashCode()?.toUInt()?.let(::append)
         annotations.multibinds?.hashCode()?.toUInt()?.let(::append)
@@ -259,10 +268,11 @@ private fun generateMirrorFunction(
         visibility = DescriptorVisibilities.PUBLIC
         returnType = targetFunction.ir.returnType
         origin = Origins.Default
-        modality = Modality.ABSTRACT
+        modality = Modality.FINAL
       }
       .apply {
         copyParametersFrom(targetFunction.ir)
+        body = stubExpressionBody()
         replaceAnnotationsCompat(annotations.mirrorIrConstructorCalls(symbol))
       }
 

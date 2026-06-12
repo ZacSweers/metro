@@ -122,12 +122,16 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
     @Binds
     @IntoSet
     @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 313, endOffset = 337)
-    abstract fun TaskImpl1.bind_intoset(): Task
+    fun TaskImpl1.bind_property_intoset(): Task {
+      return error(message = "Never called")
+    }
 
     @Binds
     @IntoSet
     @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 270, endOffset = 294)
-    abstract fun TaskImpl2.bind_intoset(): Task
+    fun TaskImpl2.bind_property_intoset(): Task {
+      return error(message = "Never called")
+    }
 
   }
 
