@@ -59,11 +59,27 @@ private val libFixtureJar: Path by lazy {
  * attached as a module library. Light fixtures reuse the module across tests, so the library is
  * removed afterwards to avoid leaking into other tests.
  */
-internal fun Module.withMetroLibFixtureLibrary(body: () -> Unit) {
+internal fun Module.withMetroLibFixtureLibrary(
+  withinProject: Boolean = false,
+  body: () -> Unit,
+) {
+  val jar =
+    if (withinProject) {
+      // Simulates a binary produced by the project itself (e.g. its own compiled outputs), which
+      // the internal-hint friend-module approximation admits.
+      val base = Path.of(checkNotNull(project.basePath) { "No project base path" })
+      Files.createDirectories(base)
+      val copy = Files.createTempFile(base, "metro-lib-fixture", ".jar")
+      Files.copy(libFixtureJar, copy, StandardCopyOption.REPLACE_EXISTING)
+      copy.toFile().deleteOnExit()
+      copy
+    } else {
+      libFixtureJar
+    }
   ModuleRootModificationUtil.addModuleLibrary(
     this,
     LIB_FIXTURE_NAME,
-    listOf(VfsUtil.getUrlForLibraryRoot(libFixtureJar.toFile())),
+    listOf(VfsUtil.getUrlForLibraryRoot(jar.toFile())),
     emptyList(),
   )
   try {
