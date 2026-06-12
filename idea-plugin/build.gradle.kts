@@ -86,6 +86,16 @@ val metroRuntimeClasspath: Configuration by configurations.creating {
   resolutionStrategy.useGlobalDependencySubstitutionRules = false
 }
 
+// A compiled "library" with Metro-annotated classes + handwritten contribution hint functions,
+// used by tests covering resolution from binary dependencies.
+val libFixture: SourceSet by sourceSets.creating
+
+val libFixtureJar =
+  tasks.register<Jar>("libFixtureJar") {
+    archiveClassifier.set("lib-fixture")
+    from(libFixture.output)
+  }
+
 val shaded: Configuration by configurations.creating
 
 // Runs a sandboxed IDE with the plugin installed from source: ./gradlew runLocalIde
@@ -106,6 +116,7 @@ dependencies {
   }
 
   metroRuntimeClasspath("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
+  "libFixtureCompileOnly"("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
   compileOnly("dev.zacsweers.metro:metro-common")
   shaded("dev.zacsweers.metro:metro-common")
   testImplementation(libs.junit)
@@ -158,5 +169,13 @@ tasks.withType<VerifyPluginTask>().configureEach {
 
 tasks.test {
   dependsOn(metroRuntimeClasspath)
+  dependsOn(libFixtureJar)
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
+  jvmArgumentProviders.add(
+    CommandLineArgumentProvider {
+      listOf(
+        "-DmetroLibFixture.classpath=${libFixtureJar.get().archiveFile.get().asFile.absolutePath}"
+      )
+    }
+  )
 }
