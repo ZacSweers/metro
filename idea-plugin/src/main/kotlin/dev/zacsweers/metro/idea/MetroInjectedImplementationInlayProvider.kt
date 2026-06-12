@@ -24,7 +24,6 @@ import org.jetbrains.kotlin.psi.KtProperty
 /**
  * Shows the statically-resolved implementation next to injection sites whose declared type is an
  * interface or abstract class:
- *
  * ```kotlin
  * @Inject class CheckoutFlow(
  *   private val api: HttpApi,        // <- RealHttpApi
@@ -49,9 +48,11 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
       if (element !is KtParameter && element !is KtProperty && element !is KtNamedFunction) return
       element as KtElement
       val index = MetroResolutionService.getInstance(element.project).index(element)
+      // Only implicitly assisted parameters get the inlay; explicit @Assisted already reads as
+      // assisted in source.
       if (
         MetroSettings.getInstance(element.project).state.assistedParameterInlays &&
-          index.assistedSiteAt(element) != null
+          index.assistedSiteAt(element)?.isImplicit == true
       ) {
         val nameOffset =
           (element as? KtParameter)?.nameIdentifier?.textRange?.startOffset
@@ -69,8 +70,7 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
       val providers = index.providersFor(consumer)
       if (providers.isEmpty()) return
 
-      val contributions =
-        providers.count { it.kind == MetroProviderKind.MULTIBINDING_CONTRIBUTION }
+      val contributions = providers.count { it.kind == MetroProviderKind.MULTIBINDING_CONTRIBUTION }
       val hint: String
       val target: PsiPointerInlayActionPayload?
       if (contributions > 0) {

@@ -233,6 +233,12 @@ internal class MetroAssistedSite(
   val pointer: SmartPsiElementPointer<out KtElement>,
   /** Short description of what supplies the value, e.g. `@Assisted` or `Circuit`. */
   val supplier: String,
+  /**
+   * True when nothing in the source marks the parameter as assisted (e.g. Circuit-provided types),
+   * as opposed to an explicit `@Assisted` annotation. Implicit sites get an `assisted` inlay;
+   * explicit ones don't need a second marker.
+   */
+  val isImplicit: Boolean,
 )
 
 /** A `@DependencyGraph`-annotated class and its aggregation scope classes. */

@@ -26,7 +26,7 @@ class MetroSettingsState : BaseState() {
   /** Also resolve bindings from compiled dependencies (inject classes, contribution hints). */
   var resolveFromLibraries by property(true)
 
-  /** `assisted` inlay hint next to `@Assisted` and Circuit-provided parameters. */
+  /** `assisted` inlay hint next to implicitly assisted (e.g. Circuit-provided) parameters. */
   var assistedParameterInlays by property(true)
 }
 
@@ -73,7 +73,9 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
         checkBox("Show \"assisted\" inlay hints")
           .bindSelected(state::assistedParameterInlays)
           .enabledIf(resolutionSelected)
-          .comment("@Assisted and Circuit-provided parameters supplied at runtime")
+          .comment(
+            "Implicitly assisted parameters, e.g. Circuit-provided types, that have no @Assisted annotation in source"
+          )
       }
     }
   }

@@ -678,11 +678,11 @@ private class MetroIndexBuilder(
   private fun KaSession.addCircuitParameterConsumer(parameter: KtParameter) {
     val symbol = parameter.symbol as? KaValueParameterSymbol ?: return
     if (symbol.hasAnyAnnotation(options.assistedAnnotations)) {
-      assistedSites += MetroAssistedSite(ptr(parameter), "@Assisted")
+      assistedSites += MetroAssistedSite(ptr(parameter), "@Assisted", isImplicit = false)
       return
     }
     if (isCircuitProvidedType(symbol.returnType)) {
-      assistedSites += MetroAssistedSite(ptr(parameter), "Circuit")
+      assistedSites += MetroAssistedSite(ptr(parameter), "Circuit", isImplicit = true)
       return
     }
     addConsumer(parameter, symbol)
@@ -728,7 +728,7 @@ private class MetroIndexBuilder(
   private fun KaSession.addParameterConsumer(parameter: KtParameter) {
     val symbol = parameter.symbol as? KaValueParameterSymbol ?: return
     if (symbol.hasAnyAnnotation(options.assistedAnnotations)) {
-      assistedSites += MetroAssistedSite(ptr(parameter), "@Assisted")
+      assistedSites += MetroAssistedSite(ptr(parameter), "@Assisted", isImplicit = false)
       return
     }
     if (symbol.hasAnyAnnotation(options.providesAnnotations)) return // instance binding param
