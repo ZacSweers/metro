@@ -17,7 +17,6 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiTreeUtil
-import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroHints
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
@@ -756,16 +755,6 @@ private class MetroIndexBuilder(
 // Shared Analysis API helpers
 // ---------------------------------------------------------------------------------------------
 
-private val WRAPPER_CLASS_IDS: Set<ClassId> =
-  setOf(
-    MetroClassIds.provider,
-    MetroClassIds.lazy,
-    MetroClassIds.function0,
-    ClassId.fromString("javax/inject/Provider"),
-    ClassId.fromString("jakarta/inject/Provider"),
-    ClassId.fromString("dagger/Lazy"),
-  )
-
 internal val SET_CLASS_ID = ClassId.fromString("kotlin/collections/Set")
 internal val MAP_CLASS_ID = ClassId.fromString("kotlin/collections/Map")
 private val COLLECTION_LIKE_CLASS_IDS =
@@ -824,18 +813,20 @@ internal fun KaSession.metroKey(type: KaType, qualifier: MetroKaAnnotation?): Ka
 }
 
 /** Unwraps `Provider<T>`, `Lazy<T>`, and `() -> T` to the underlying key type. */
-private fun KaSession.unwrapWrapperTypes(type: KaType): KaType {
+private fun KaSession.unwrapWrapperTypes(type: KaType, options: MetroOptions): KaType {
   val classType = type.fullyExpandedType as? KaClassType ?: return type
-  if (classType.classId !in WRAPPER_CLASS_IDS) return type
+  if (classType.classId !in options.providerTypes && classType.classId !in options.lazyTypes) {
+    return type
+  }
   val argument = classType.typeArguments.firstOrNull()?.type ?: return type
-  return unwrapWrapperTypes(argument)
+  return unwrapWrapperTypes(argument, options)
 }
 
 internal fun KaSession.metroConsumedSite(
   symbol: KaCallableSymbol,
   options: MetroOptions,
 ): MetroConsumedSite {
-  val type = unwrapWrapperTypes(symbol.returnType)
+  val type = unwrapWrapperTypes(symbol.returnType, options)
   val qualifier = metroQualifier(symbol, options)
   val key = metroKey(type, qualifier)
   val classType = type.fullyExpandedType as? KaClassType
@@ -847,7 +838,7 @@ internal fun KaSession.metroConsumedSite(
   return MetroConsumedSite(
     key,
     isAbstract,
-    aggregateMultibindingId(classType, qualifier),
+    aggregateMultibindingId(classType, qualifier, options),
     classType?.classId,
   )
 }
@@ -856,19 +847,20 @@ internal fun KaSession.metroConsumedSite(
 private fun KaSession.aggregateMultibindingId(
   classType: KaClassType?,
   qualifier: MetroKaAnnotation?,
+  options: MetroOptions,
 ): String? {
   if (classType == null) return null
   return when (classType.classId) {
     SET_CLASS_ID -> {
       val elementType = classType.typeArguments.firstOrNull()?.type ?: return null
-      metroKey(unwrapWrapperTypes(elementType), qualifier).computeMultibindingId()
+      metroKey(unwrapWrapperTypes(elementType, options), qualifier).computeMultibindingId()
     }
     MAP_CLASS_ID -> {
       val keyType = classType.typeArguments.getOrNull(0)?.type ?: return null
       val valueType = classType.typeArguments.getOrNull(1)?.type ?: return null
       createMapBindingId(
         renderMetroKeyType(keyType),
-        metroKey(unwrapWrapperTypes(valueType), qualifier),
+        metroKey(unwrapWrapperTypes(valueType, options), qualifier),
       )
     }
     else -> null
