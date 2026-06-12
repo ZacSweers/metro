@@ -4,6 +4,10 @@ package dev.zacsweers.metro.idea
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.graph.BaseTypeKey
+import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.types.KaType
+import org.jetbrains.kotlin.analysis.api.types.KaTypePointer
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -74,37 +78,45 @@ internal data class MetroKaAnnotation(
 }
 
 /**
- * The Analysis API analog of the compiler's `FirTypeKey`/`IrTypeKey`, mirroring the
- * `dev.zacsweers.metro.compiler.graph.BaseTypeKey` contract (`type` + `qualifier` + `render(short,
- * includeQualifier)`).
+ * The Analysis API analog of the compiler's `FirTypeKey`/`IrTypeKey`.
  *
- * Unlike the compiler's keys, [type] is the fully-expanded, fully-qualified *rendered* type,
- * compared structurally rather than semantically — Analysis API types cannot escape their analysis
- * session, so the index stores renderings. [shortType] is the short-name rendering of the same
- * type, kept for display only and excluded from equality.
+ * [type] is a restorable pointer to the semantic type — `KaType`s cannot escape their analysis
+ * session, and this key lives in a cached cross-session index. Restore it inside a [KaSession] for
+ * semantic type operations. Because pointer restoration requires a session, *identity* is the
+ * fully-expanded, fully-qualified [renderedType], compared structurally. [shortType] is the
+ * short-name rendering, kept for display only and excluded from equality.
  */
 internal class KaTypeKey(
-  val type: String,
-  val qualifier: MetroKaAnnotation? = null,
-  private val shortType: String = type,
-) : Comparable<KaTypeKey> {
-  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
+  override val type: KaTypePointer<KaType>,
+  override val qualifier: MetroKaAnnotation? = null,
+  val renderedType: String,
+  private val shortType: String = renderedType,
+) : BaseTypeKey<KaTypePointer<KaType>, MetroKaAnnotation, KaTypeKey> {
+  override fun copy(type: KaTypePointer<KaType>, qualifier: MetroKaAnnotation?): KaTypeKey {
+    require(type === this.type) {
+      "Copying with a different type requires re-rendering in an analysis session; build a new " +
+        "key with KaSession.metroKey instead"
+    }
+    return KaTypeKey(type, qualifier, renderedType, shortType)
+  }
+
+  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
     if (includeQualifier) {
       qualifier?.let {
         append(it.render(short))
         append(' ')
       }
     }
-    append(if (short) shortType else type)
+    append(if (short) shortType else renderedType)
   }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other !is KaTypeKey) return false
-    return type == other.type && qualifier == other.qualifier
+    return renderedType == other.renderedType && qualifier == other.qualifier
   }
 
-  override fun hashCode(): Int = 31 * type.hashCode() + (qualifier?.hashCode() ?: 0)
+  override fun hashCode(): Int = 31 * renderedType.hashCode() + (qualifier?.hashCode() ?: 0)
 
   override fun toString(): String = render(short = false)
 
