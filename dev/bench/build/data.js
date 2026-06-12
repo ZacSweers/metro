@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781236061708,
+  "lastUpdate": 1781279873045,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -17136,6 +17136,62 @@ window.BENCHMARK_DATA = {
             "value": 19894.366,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.64%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Yang",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Yang",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b2387afd~1",
+          "message": "[before] Update compiler API doc. (#2441)",
+          "timestamp": "2026-06-12T15:22:53Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b2387afd89185d0604b63d69237f6195edbc8ec0"
+        },
+        "date": 1781279873045,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20302.345999999998,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Yang",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Yang",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b2387afd89185d0604b63d69237f6195edbc8ec0",
+          "message": "[after] Update compiler API doc. (#2441)",
+          "timestamp": "2026-06-12T15:22:53Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b2387afd89185d0604b63d69237f6195edbc8ec0"
+        },
+        "date": 1781279873046,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20631.104,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.62%"
           }
         ]
       }
