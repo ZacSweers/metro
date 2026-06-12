@@ -81,6 +81,13 @@ Example rich output (note that in rich terminals this would have color and marku
 
 - Run Metro's functional compiler unit tests on JS.
 
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@BraisGabin](https://github.com/BraisGabin)
+- [@ychescale9](https://github.com/ychescale9)
+
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.2.1
