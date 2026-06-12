@@ -4,7 +4,9 @@ package dev.zacsweers.metro.idea
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.analysis.api.types.KaTypePointer
@@ -78,26 +80,40 @@ internal data class MetroKaAnnotation(
 }
 
 /**
- * The Analysis API analog of the compiler's `FirTypeKey`/`IrTypeKey`.
+ * A session-free snapshot of a [KaType].
  *
- * [type] is a restorable pointer to the semantic type — `KaType`s cannot escape their analysis
- * session, and this key lives in a cached cross-session index. Restore it inside a [KaSession] for
- * semantic type operations. Because pointer restoration requires a session, *identity* is the
- * fully-expanded, fully-qualified [renderedType], compared structurally. [shortType] is the
- * short-name rendering, kept for display only and excluded from equality.
+ * [pointer] can restore the semantic type inside a [KaSession], while [renderedType] and
+ * [shortType] give cached keys and UI text to cross-session indexes. Equality is structural by
+ * [renderedType]; Analysis API pointers are intentionally excluded because two pointers can point
+ * at equivalent type renderings while still being different pointer objects.
  */
-internal class KaTypeKey(
-  override val type: KaTypePointer<KaType>,
-  override val qualifier: MetroKaAnnotation? = null,
+internal class KaTypeSnapshot(
+  val pointer: KaTypePointer<KaType>,
   val renderedType: String,
-  private val shortType: String = renderedType,
-) : BaseTypeKey<KaTypePointer<KaType>, MetroKaAnnotation, KaTypeKey> {
-  override fun copy(type: KaTypePointer<KaType>, qualifier: MetroKaAnnotation?): KaTypeKey {
-    require(type === this.type) {
-      "Copying with a different type requires re-rendering in an analysis session; build a new " +
-        "key with KaSession.metroKey instead"
-    }
-    return KaTypeKey(type, qualifier, renderedType, shortType)
+  val shortType: String = renderedType,
+  val classId: ClassId?,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is KaTypeSnapshot) return false
+    return renderedType == other.renderedType
+  }
+
+  override fun hashCode(): Int = renderedType.hashCode()
+
+  override fun toString(): String = renderedType
+}
+
+/** The Analysis API analog of the compiler's `FirTypeKey`/`IrTypeKey`. */
+internal class KaTypeKey(
+  override val type: KaTypeSnapshot,
+  override val qualifier: MetroKaAnnotation? = null,
+) : BaseTypeKey<KaTypeSnapshot, MetroKaAnnotation, KaTypeKey> {
+  val renderedType: String
+    get() = type.renderedType
+
+  override fun copy(type: KaTypeSnapshot, qualifier: MetroKaAnnotation?): KaTypeKey {
+    return KaTypeKey(type, qualifier)
   }
 
   override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
@@ -107,7 +123,7 @@ internal class KaTypeKey(
         append(' ')
       }
     }
-    append(if (short) shortType else renderedType)
+    append(if (short) type.shortType else renderedType)
   }
 
   override fun equals(other: Any?): Boolean {
@@ -124,6 +140,36 @@ internal class KaTypeKey(
     if (this == other) return 0
     return toString().compareTo(other.toString())
   }
+}
+
+/** The Analysis API analog of the compiler's contextual type key. */
+internal class KaContextualTypeKey(
+  override val typeKey: KaTypeKey,
+  override val wrappedType: WrappedType<KaTypeSnapshot>,
+  override val hasDefault: Boolean = false,
+  override val rawType: KaTypeSnapshot? = null,
+) : BaseContextualTypeKey<KaTypeSnapshot, KaTypeKey, KaContextualTypeKey> {
+  override fun render(short: Boolean, includeQualifier: Boolean): String {
+    return wrappedType.render { snapshot ->
+      if (snapshot == typeKey.type) {
+        typeKey.render(short, includeQualifier)
+      } else if (short) {
+        snapshot.shortType
+      } else {
+        snapshot.renderedType
+      }
+    }
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is KaContextualTypeKey) return false
+    return typeKey == other.typeKey && wrappedType == other.wrappedType
+  }
+
+  override fun hashCode(): Int = 31 * typeKey.hashCode() + wrappedType.hashCode()
+
+  override fun toString(): String = render(short = false)
 }
 
 internal enum class MetroProviderKind(val label: String) {
