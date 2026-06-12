@@ -1,0 +1,1 @@
+/GraphAccessorsCannotBeMutable.kt:6:3: error: Graph accessor properties cannot be var. Either make it a val or implement its getter and setter.

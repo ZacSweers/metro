@@ -477,6 +477,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphAccessorsCannotBeMutable.kt")
+    public void testGraphAccessorsCannotBeMutable() {
+      run("GraphAccessorsCannotBeMutable.kt");
+    }
+
+    @Test
     @TestMetadata("GraphPrivateAccessorIsAnError.kt")
     public void testGraphPrivateAccessorIsAnError() {
       run("GraphPrivateAccessorIsAnError.kt");

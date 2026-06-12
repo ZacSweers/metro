@@ -51,6 +51,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("BindingReplacesProvider.kt")
+    public void testBindingReplacesProvider() {
+      run("BindingReplacesProvider.kt");
+    }
+
+    @Test
     @TestMetadata("ChunkMergedSupertypesBasic.kt")
     public void testChunkMergedSupertypesBasic() {
       run("ChunkMergedSupertypesBasic.kt");
