@@ -1030,6 +1030,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       run("StaticGraphCompanionsSeparateModules.kt");
     }
 
+    @Test
+    @TestMetadata("TwoScopesWithTheSameName.kt")
+    public void testTwoScopesWithTheSameName() {
+      run("TwoScopesWithTheSameName.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers")
     @TestDataPath("$PROJECT_ROOT")
