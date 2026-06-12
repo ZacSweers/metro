@@ -19,6 +19,11 @@ Metro IDE support for Kotlin dependency injection projects.
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
+    <projectConfigurable
+        parentId="tools"
+        id="dev.zacsweers.metro.idea.settings"
+        displayName="Metro"
+        instance="dev.zacsweers.metro.idea.MetroSettingsConfigurable"/>
     <implicitUsageProvider implementation="dev.zacsweers.metro.idea.MetroImplicitUsageProvider"/>
     <lang.inspectionSuppressor
         language="kotlin"
