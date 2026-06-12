@@ -113,6 +113,8 @@ dependencies {
     intellijIdeaUltimate("2026.1.3")
     bundledPlugin("org.jetbrains.kotlin")
     testFramework(TestFrameworkType.Platform)
+    pluginVerifier()
+    zipSigner()
   }
 
   metroRuntimeClasspath("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
