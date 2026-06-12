@@ -369,9 +369,7 @@ internal fun IrClass.isBindingContainer(): Boolean {
     isAnnotatedWithAny(context.metroSymbols.classIds.bindingContainerAnnotations) -> true
     context.options.enableGuiceRuntimeInterop -> {
       // Guice interop
-      with(context.pluginContext) {
-        return implements(GuiceSymbols.ClassIds.module)
-      }
+      implements(GuiceSymbols.ClassIds.module)
     }
     else -> false
   }
@@ -1049,7 +1047,15 @@ internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolea
   (getValueArgument(name) as IrConst?)?.value as Boolean?
 
 internal fun IrConstructorCall.replacesArgument() =
-  getValueArgument(Symbols.Names.replaces)?.expectAsOrNull<IrVararg>()
+  (getValueArgument(Symbols.Names.replaces) ?: arguments.getOrNull(replacesArgumentIndex()))
+    ?.expectAsOrNull<IrVararg>()
+
+private fun IrConstructorCall.replacesArgumentIndex(): Int {
+  // ContributesTo(scope, replaces) has two parameters. Binding-like Metro contribution annotations
+  // have scope/binding/replaces. Prefer the name-based lookup above, but fall back to the stable
+  // runtime constructor order for compiler versions that don't preserve value argument names in IR.
+  return if (arguments.size > 2) 2 else 1
+}
 
 internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
   return replacesArgument().toClassReferences()

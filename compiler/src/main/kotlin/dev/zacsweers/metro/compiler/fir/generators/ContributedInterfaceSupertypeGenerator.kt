@@ -231,24 +231,15 @@ internal class ContributedInterfaceSupertypeGenerator(
         val generateClassesInIr = session.metroFirBuiltIns.options.generateClassesInIr
         if (generateClassesInIr) {
           // In IR-only mode MetroContribution marker classes are not generated in FIR. Keep only
-          // source interfaces that directly contribute a user-visible supertype; IR generates the
-          // hidden marker classes and binding containers later.
+          // source interfaces that directly contribute a user-visible supertype. Binding-like
+          // contributions are still tracked for replacement/rank logic, but filtered out when
+          // building supertypes.
           val contributesDirectly = originClass.directlyContributesTo(scopeClassId, typeResolver)
           if (contributesDirectly) {
             put(originClass.classId, false)
+          } else if (originClass.bindingLikeContributionMatchesScope(scopeClassId, typeResolver)) {
+            put(originClass.classId, true)
           }
-          continue
-        }
-
-        if (
-          session.metroFirBuiltIns.options.bindingContributionsAsContainers &&
-            originClass.hasBindingContribution() &&
-            !originClass.hasDirectContributesTo()
-        ) {
-          // Pure binding contributions are consumed as binding containers, not graph supertypes.
-          // Do not depend on FIR-generated nested marker classes for this path. Non-Metro
-          // extension contributions, such as Hilt entry points, do not carry binding-contribution
-          // annotations and still use their generated markers in legacy FIR mode.
           continue
         }
 
@@ -268,21 +259,15 @@ internal class ContributedInterfaceSupertypeGenerator(
               ?.annotationsIn(session, setOf(Symbols.ClassIds.metroContribution))
               ?.single()
               ?.resolvedScopeClassId(session, typeResolver)
+
           if (scopeId == scopeClassId) {
-            put(originClass.classId.createNestedClassId(nestedClassName), false)
+            val nestedClassSymbol = nestedClass.expectAsOrNull<FirClassLikeSymbol<*>>()
+            val isBindingContainer = nestedClassSymbol?.isBindingContainer(session) == true
+            put(originClass.classId.createNestedClassId(nestedClassName), isBindingContainer)
           }
         }
       }
     }
-  }
-
-  private fun FirRegularClassSymbol.hasDirectContributesTo(): Boolean {
-    return annotationsIn(session, session.classIds.contributesToAnnotations).any()
-  }
-
-  private fun FirRegularClassSymbol.hasBindingContribution(): Boolean {
-    return annotationsIn(session, session.classIds.contributesBindingLikeAnnotationsWithContainers)
-      .any()
   }
 
   private fun FirRegularClassSymbol.directlyContributesTo(
@@ -293,6 +278,14 @@ internal class ContributedInterfaceSupertypeGenerator(
       annotationsIn(session, session.classIds.contributesToAnnotations).any {
         it.resolvedScopeClassId(session, typeResolver) == scopeClassId
       }
+  }
+
+  private fun FirRegularClassSymbol.bindingLikeContributionMatchesScope(
+    scopeClassId: ClassId,
+    typeResolver: TypeResolveService,
+  ): Boolean {
+    return annotationsIn(session, session.classIds.contributesBindingLikeAnnotationsWithContainers)
+      .any { it.resolvedScopeClassId(session, typeResolver) == scopeClassId }
   }
 
   /**
