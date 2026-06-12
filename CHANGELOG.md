@@ -69,6 +69,7 @@ Example rich output (note that in rich terminals this would have color and marku
 
 ### Fixes
 
+- **[FIR/IR]** Fully qualify generated hint function names so scope classes with the same simple name don't collide.
 - **[IR]** Preserve substituted generic type arguments when generating assisted factory delegate parameters and dynamic graph container inputs.
 - **[IR]** Forward extension and context receivers when generated binding-container factories invoke the original binding function.
 - **[IR]** Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.
