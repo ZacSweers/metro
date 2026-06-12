@@ -209,8 +209,7 @@ internal fun String.suffixIfNot(suffix: String) =
 internal fun Name.suffixIfNot(suffix: String) =
   if (asString().endsWith(suffix)) this else "$this$suffix".asName()
 
-// TODO this doesn't include the package name, should we include it
-internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClassName
+internal fun ClassId.scopeHintFunctionName(): Name = safePathString.asName()
 
 @Suppress("NOTHING_TO_INLINE")
 internal inline fun reportCompilerBug(message: String): Nothing {

@@ -10,8 +10,8 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.scopeHintFunctionName
 import dev.zacsweers.metro.compiler.symbols.Symbols.FqNames.kotlinCollectionsPackageFqn
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
@@ -131,7 +131,7 @@ internal class Symbols(
 
   object CallableIds {
     fun scopeHint(scopeClassId: ClassId): CallableId {
-      return CallableId(FqNames.metroHintsPackage, scopeClassId.joinSimpleNames().shortClassName)
+      return CallableId(FqNames.metroHintsPackage, scopeClassId.scopeHintFunctionName())
     }
 
     fun scopedInjectClassHint(scopeAnnotation: IrAnnotation): CallableId {
