@@ -16,7 +16,7 @@ class ValueHolder {
       fun create(stringValue: Provider<String?> = provider<String?>(provider = local fun <anonymous>(): String? {
         return null
       }
-)): Factory<ValueHolder> {
+)): MetroFactory {
         return MetroFactory(stringValue = stringValue)
       }
 

@@ -475,12 +475,16 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       // @ExposeImplBinding opts out of this skip.
       val skipFactory = classSymbol.usesContributionProviderPath(session)
 
-      if (injectedClass.isConstructorInjected && !skipFactory) {
+      val generateHiddenNestedClassesInFir =
+        !session.metroFirBuiltIns.options.generateClassesInIr ||
+          classSymbol.hasOrigin(Keys.TopLevelInjectFunctionClass)
+
+      if (generateHiddenNestedClassesInFir && injectedClass.isConstructorInjected && !skipFactory) {
         val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroFactory)
         injectFactoryClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
       }
-      if (declaredInjectedMembers.isNotEmpty()) {
+      if (generateHiddenNestedClassesInFir && declaredInjectedMembers.isNotEmpty()) {
         val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroMembersInjector)
         membersInjectorClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName

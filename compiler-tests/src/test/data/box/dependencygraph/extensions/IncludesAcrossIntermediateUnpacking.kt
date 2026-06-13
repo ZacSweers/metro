@@ -1,3 +1,4 @@
+// IGNORE_BACKEND: JS_IR
 // https://github.com/ZacSweers/metro/issues/1093
 
 class ValueHolder {

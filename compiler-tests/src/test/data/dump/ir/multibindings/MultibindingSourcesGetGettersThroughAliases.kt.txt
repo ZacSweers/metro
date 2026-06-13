@@ -11,7 +11,7 @@ class Bar : Base {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<Bar> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -65,7 +65,7 @@ class Foo : Base {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<Foo> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -110,17 +110,23 @@ interface AppGraph {
 
     @Binds
     @CallableMetadata(callableName = "<get-bind2>", propertyName = "bind2", startOffset = 263, endOffset = 282)
-    abstract fun Bar.bind2(): Base
+    fun Bar.bind2_property(): Base {
+      return error(message = "Never called")
+    }
 
     @Binds
     @IntoSet
     @CallableMetadata(callableName = "<get-bind3>", propertyName = "bind3", startOffset = 301, endOffset = 320)
-    abstract fun Base.bind3_intoset(): Any
+    fun Base.bind3_property_intoset(): Any {
+      return error(message = "Never called")
+    }
 
     @Binds
     @IntoSet
     @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 236, endOffset = 253)
-    abstract fun Foo.bind_intoset(): Any
+    fun Foo.bind_property_intoset(): Any {
+      return error(message = "Never called")
+    }
 
   }
 

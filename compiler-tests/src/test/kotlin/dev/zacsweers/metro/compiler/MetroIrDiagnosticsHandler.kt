@@ -52,13 +52,23 @@ class MetroIrDiagnosticsHandler(testServices: TestServices) : AbstractIrHandler(
     }
   }
 
+  /**
+   * True when this test compiles with [DiagnosticsRenderMode.RICH] diagnostics. Rich output asserts
+   * against `.rich.ir.diag.txt` goldens with ANSI codes escaped via [AnsiMarkup] for readability.
+   */
+  private val isRichMode: Boolean
+    get() =
+      testServices.moduleStructure.allDirectives[MetroDirectives.DIAGNOSTICS_RENDER_MODE]
+        .lastOrNull() == DiagnosticsRenderMode.RICH
+
   override fun processAfterAllModules(someAssertionWasFailed: Boolean) {
     val directives = testServices.moduleStructure.allDirectives
     if (FirDiagnosticsDirectives.USE_LATEST_LANGUAGE_VERSION in directives) return
     val testDataFile = testServices.moduleStructure.originalTestDataFiles.first()
+    val goldenSuffix = if (isRichMode) "rich.ir.diag.txt" else "ir.diag.txt"
     val expectedFile =
       testDataFile.parentFile.resolve(
-        "${testDataFile.nameWithoutExtension.removeSuffix(".fir")}.ir.diag.txt"
+        "${testDataFile.nameWithoutExtension.removeSuffix(".fir")}.$goldenSuffix"
       )
     if (DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT !in directives) {
       if (DiagnosticsDirectives.RENDER_ALL_DIAGNOSTICS_FULL_TEXT !in directives) {
@@ -95,7 +105,7 @@ class MetroIrDiagnosticsHandler(testServices: TestServices) : AbstractIrHandler(
                 is KtDiagnosticWithoutSource -> listOf(it.firstRange)
               },
             severity = severityToStringCompat(it.severity),
-            message = it.renderMessage(),
+            message = it.renderMessage().let { m -> if (isRichMode) AnsiMarkup.escape(m) else m },
           )
         }
         .sortedWith(

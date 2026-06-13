@@ -9,13 +9,18 @@ import dev.zacsweers.metro.Qualifier
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MemberNamingStrategy
-import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
+import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
+import dev.zacsweers.metro.compiler.diagnostics.render.SourceFileCache
+import dev.zacsweers.metro.compiler.diagnostics.render.renderProfileFor
+import dev.zacsweers.metro.compiler.diagnostics.render.resolveDiagnosticsRenderMode
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.nio.file.Path
+import java.util.ServiceLoader
 import java.util.concurrent.ForkJoinPool
 import kotlin.io.path.appendText
 import kotlin.io.path.createFile
@@ -67,8 +72,14 @@ internal interface IrDependencyGraph {
 
   @Provides
   @SingleIn(IrScope::class)
-  fun provideMessageRenderer(options: MetroOptions): MessageRenderer =
-    MessageRenderer(MessageRenderer.resolveRichOutput(options.richDiagnostics))
+  fun provideDiagnosticRenderer(
+    options: MetroOptions,
+    sourceFileCache: SourceFileCache,
+  ): DiagnosticRenderer =
+    DiagnosticRenderer(
+      renderProfileFor(options.resolveDiagnosticsRenderMode()),
+      sourceLines = sourceFileCache::linesFor,
+    )
 
   @Provides
   @SingleIn(IrScope::class)
@@ -134,6 +145,39 @@ internal interface IrDependencyGraph {
     val moduleName =
       moduleFragment.name.asString().removePrefix("<").removeSuffix(">").ifBlank { "ir" }
     return TraceScope(traceDriver.tracer, "ir-$moduleName")
+  }
+
+  @Provides
+  @SingleIn(IrScope::class)
+  fun provideBuiltinsFinder(
+    pluginContext: IrPluginContext,
+    compatContext: CompatContext,
+  ): CompatContext.DeclarationFinderCompat =
+    with(compatContext) { pluginContext.finderForBuiltinsCompat() }
+
+  @Provides
+  @SingleIn(IrScope::class)
+  fun provideIrContributionExtensions(
+    pluginContext: IrPluginContext,
+    compatContext: CompatContext,
+    options: MetroOptions,
+  ): List<MetroIrContributionExtension> {
+    return ServiceLoader.load(
+        MetroIrContributionExtension.Factory::class.java,
+        MetroIrContributionExtension.Factory::class.java.classLoader,
+      )
+      .mapNotNull { factory ->
+        try {
+          factory.create(pluginContext, compatContext, options)
+        } catch (e: Exception) {
+          if (options.debug) {
+            System.err.println(
+              "[Metro] Failed to load external IR contribution extension from ${factory::class}: ${e.message}"
+            )
+          }
+          null
+        }
+      }
   }
 
   @DependencyGraph.Factory

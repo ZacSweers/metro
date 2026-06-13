@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
+
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -43,6 +45,7 @@ import org.jetbrains.annotations.NotNull;
  * @author Assaf Mizrachi
  */
 // Fork notes: Modified to work with Guava
+@ExperimentalMetroGradleApi
 public class BetweennessCentrality<V> {
   /** Underlying graph */
   private final Graph<@NotNull V> graph;

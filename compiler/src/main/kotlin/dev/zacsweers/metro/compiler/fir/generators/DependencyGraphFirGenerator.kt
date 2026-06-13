@@ -212,10 +212,12 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
         }
       }
 
-      val classId =
-        classSymbol.classId.createNestedClassId(nameAllocator.newName(Symbols.Names.Impl))
-      graphImpls += classId
-      names += classId.shortClassName
+      if (!session.metroFirBuiltIns.options.generateClassesInIr) {
+        val classId =
+          classSymbol.classId.createNestedClassId(nameAllocator.newName(Symbols.Names.Impl))
+        graphImpls += classId
+        names += classId.shortClassName
+      }
 
       if (!hasCompanion) {
         // Generate a companion for us to generate these functions on to
@@ -223,11 +225,13 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
       }
     } else if (classSymbol.isGraphFactory(session)) {
       log("Found graph factory ${classSymbol.classId}")
-      val classId = classSymbol.classId.createNestedClassId(Symbols.Names.Impl)
-      factoryImpls += classId
-      // Always generate this impl though we may not use it. It's just easier to do it this way in
-      // FIR unfortunately due to lifecycles
-      names += classId.shortClassName
+      if (!session.metroFirBuiltIns.options.generateClassesInIr) {
+        val classId = classSymbol.classId.createNestedClassId(Symbols.Names.Impl)
+        factoryImpls += classId
+        // Always generate this impl though we may not use it. It's just easier to do it this way in
+        // FIR unfortunately due to lifecycles
+        names += classId.shortClassName
+      }
     }
 
     if (names.isNotEmpty()) {

@@ -17,32 +17,39 @@ import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesInGraphExtension
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
 import dev.zacsweers.metro.compiler.circuit.configureCircuit
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
+import dev.zacsweers.metro.compiler.hilt.HiltContributionExtension
+import dev.zacsweers.metro.compiler.hilt.HiltFirDeclarationExtension
 import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
 import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
 import dev.zacsweers.metro.compiler.interop.configureGuiceInterop
+import dev.zacsweers.metro.compiler.interop.configureHiltAnnotations
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
+import dev.zacsweers.metro.compiler.test.TEST_COMPILER_VERSION
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import kotlin.io.path.Path
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.config.messageCollector
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
+import org.jetbrains.kotlin.test.TargetBackend
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
 import org.jetbrains.kotlin.test.model.TestModule
 import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.TestServices
+import org.jetbrains.kotlin.test.services.defaultsProvider
 import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
 
 fun TestConfigurationBuilder.configurePlugin(
@@ -63,6 +70,7 @@ fun TestConfigurationBuilder.configurePlugin(
   configureDaggerAnnotations()
   configureDaggerInterop()
   configureGuiceInterop()
+  configureHiltAnnotations()
   configureCircuit()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
   useAfterAnalysisCheckers(::MetroReportsChecker)
@@ -115,12 +123,21 @@ class MetroExtensionRegistrarConfigurator(
       generateContributionHints =
         module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
       generateContributionHintsInFir =
-        MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
+        MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives ||
+          testServices.shouldGenerateContributionHintsInFirForBackend()
+      generateClassesInIr =
+        module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
+          .lastOrNull()
+          ?.toString()
+          ?.toBoolean() ?: false
       module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
         publicScopedProviderSeverity = it
       }
       module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)?.let {
         optionalBindingBehavior = it
+      }
+      module.directives.singleOrZeroValue(MetroDirectives.DIAGNOSTICS_RENDER_MODE)?.let {
+        diagnosticsRenderMode = it
       }
       module.directives
         .singleOrZeroValue(MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY)
@@ -161,6 +178,9 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.PARALLEL_THREADS)?.let {
         parallelThreads = it
       }
+      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_PROVIDER_INLINING)?.let {
+        enableProviderInlining = it
+      }
       contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
       module.directives.singleOrZeroValue(MetroDirectives.DESUGARED_PROVIDER_SEVERITY)?.let {
         desugaredProviderSeverity = it
@@ -190,7 +210,7 @@ class MetroExtensionRegistrarConfigurator(
       if (
         MetroDirectives.WITH_DAGGER in module.directives ||
           MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
-          MetroDirectives.ENABLE_DAGGER_KSP in module.directives
+          MetroDirectives.enableDaggerKsp(module.directives)
       ) {
         includeDaggerAnnotations()
       }
@@ -211,6 +231,10 @@ class MetroExtensionRegistrarConfigurator(
 
       if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
         enableCircuitCodegen = true
+      }
+
+      if (MetroDirectives.ENABLE_HILT_INTEROP in module.directives) {
+        includeHiltAnnotations()
       }
 
       if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {
@@ -245,6 +269,36 @@ class MetroExtensionRegistrarConfigurator(
             if (options.enableCircuitCodegen) {
               add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
             }
+            if (options.enableHiltInterop) {
+              HiltFirDeclarationExtension.Factory()
+                .create(session, options, compatContext)
+                ?.let(::add)
+            }
+          }
+        },
+        loadExternalContributionHintExtensions = { session, options, compatContext ->
+          buildList {
+            addAll(
+              listOfNotNull(
+                GenerateProvidesContributionExtension.Factory()
+                  .create(session, options, compatContext) as? MetroContributionHintExtension,
+                GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
+                  as? MetroContributionHintExtension,
+                GenerateGraphExtensionExtension.Factory().create(session, options, compatContext)
+                  as? MetroContributionHintExtension,
+              )
+            )
+            if (options.enableCircuitCodegen && !options.generateClassesInIr) {
+              add(
+                CircuitFirExtension.Factory().create(session, options, compatContext)!!
+                  as MetroContributionHintExtension
+              )
+            }
+            if (options.enableHiltInterop) {
+              HiltFirDeclarationExtension.HintFactory()
+                .create(session, options, compatContext)
+                ?.let(::add)
+            }
           }
         },
         loadExternalContributionExtensions = { session, options, compatContext ->
@@ -262,8 +316,13 @@ class MetroExtensionRegistrarConfigurator(
               GenerateGraphExtensionContributionExtension.Factory()
                 .create(session, options, compatContext)
             )
-            if (options.enableCircuitCodegen) {
+            if (options.enableCircuitCodegen && !options.generateClassesInIr) {
               add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
+            }
+            if (options.enableHiltInterop) {
+              HiltContributionExtension.Factory()
+                .create(session, options, compatContext)
+                ?.let(::add)
             }
           }
         },
@@ -271,14 +330,20 @@ class MetroExtensionRegistrarConfigurator(
     )
     if (options.enableCircuitCodegen) {
       FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
-      IrGenerationExtension.registerExtension(CircuitIrExtension(compatContext))
+      IrGenerationExtension.registerExtension(
+        CircuitIrExtension.create(
+          generateClassesInIr = options.generateClassesInIr,
+          classIds = classIds,
+          compatContext = compatContext,
+        )
+      )
     }
     IrGenerationExtension.registerExtension(GenerateImplIrExtension())
     IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
     IrGenerationExtension.registerExtension(GenerateProvidersInGraphIrExtension())
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
-        messageCollector = configuration.messageCollector,
+        messageCollector = with(compatContext) { configuration.messageCollectorCompat() },
         classIds = classIds,
         options = options,
         // TODO ever support this in tests?
@@ -293,5 +358,19 @@ class MetroExtensionRegistrarConfigurator(
         ComposePluginRegistrar.createComposeIrExtension(configuration)
       )
     }
+  }
+}
+
+private val MIN_KOTLIN_VERSION_FOR_JS_FIR_CONTRIBUTION_HINTS = KotlinToolingVersion("2.3.21")
+
+private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_VERSION)
+
+private fun TestServices.shouldGenerateContributionHintsInFirForBackend(): Boolean {
+  return when (defaultsProvider.targetBackend) {
+    TargetBackend.JS_IR,
+    TargetBackend.JS_IR_ES6 -> {
+      TEST_COMPILER_TOOLING_VERSION >= MIN_KOTLIN_VERSION_FOR_JS_FIR_CONTRIBUTION_HINTS
+    }
+    else -> false
   }
 }

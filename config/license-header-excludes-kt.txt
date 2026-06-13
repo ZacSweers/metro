@@ -8,6 +8,7 @@
 **/DelegateFactory.kt
 **/DoubleCheck.kt
 **/DoubleCheckCycleTest.kt
+**/DoubleCheckInitGuard.apple.kt
 **/DoubleCheckTest.kt
 **/ElementsIntoSet.kt
 **/InstanceFactory.kt
@@ -16,7 +17,6 @@
 **/IntoMap.kt
 **/IntoSet.kt
 **/KotlinToolingVersion.kt
-**/Lock.kt
 **/LongKey.kt
 **/MapFactory.kt
 **/MapKey.kt

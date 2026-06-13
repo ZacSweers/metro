@@ -34,6 +34,7 @@ import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
 import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
+import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -102,6 +103,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     return LocationDiagnostic(
       locationString,
       renderDescriptionDiagnostic(short = short, underlineTypeKey = underlineTypeKey),
+      reportableDeclaration?.toDiagnosticSpan(shortDisplayPath = shortLocation),
     )
   }
 
@@ -127,7 +129,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
     val isAssisted
-      get() = classFactory.isAssistedInject
+      get() =
+        classFactory.isAssistedInject || parameters.nonDispatchParameters.any { it.isAssisted }
 
     override val dependencies: List<IrContextualTypeKey> by memoize {
       parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey } +
@@ -152,7 +155,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      * We can't use direct invocation if there are injected members because the factory handles
      * member injection
      */
-    fun canBypassFactory(): Boolean = !classFactory.isAssistedInject && injectedMembers.isEmpty()
+    fun canBypassFactory(): Boolean = !isAssisted && injectedMembers.isEmpty()
 
     fun parameterFor(typeKey: IrTypeKey) =
       classFactory.function.regularParameters.getOrNull(

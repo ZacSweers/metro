@@ -13,7 +13,7 @@ class TaskImpl1 : Task {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<TaskImpl1> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -58,7 +58,7 @@ class TaskImpl2 : Task {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<TaskImpl2> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -122,12 +122,16 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
     @Binds
     @IntoSet
     @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 313, endOffset = 337)
-    abstract fun TaskImpl1.bind_intoset(): Task
+    fun TaskImpl1.bind_property_intoset(): Task {
+      return error(message = "Never called")
+    }
 
     @Binds
     @IntoSet
     @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 270, endOffset = 294)
-    abstract fun TaskImpl2.bind_intoset(): Task
+    fun TaskImpl2.bind_property_intoset(): Task {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -228,7 +232,7 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: ExampleGraph): Factory<Task> {
+      fun create(instance: ExampleGraph): Provide3MetroFactory {
         return Provide3MetroFactory(instance = instance)
       }
 
@@ -276,7 +280,7 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: ExampleGraph): Factory<Task> {
+      fun create(instance: ExampleGraph): Provide4MetroFactory {
         return Provide4MetroFactory(instance = instance)
       }
 

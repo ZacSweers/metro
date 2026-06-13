@@ -329,30 +329,6 @@ internal inline fun <
 internal val IrBindingStack.lastEntryOrGraph
   get() = entries.firstOrNull()?.declaration?.takeUnless { it.fileOrNull == null }
 
-internal fun Appendable.appendBindingStack(
-  stack: BaseBindingStack<*, *, *, *, *>,
-  indent: String = "    ",
-  ellipse: Boolean = false,
-  short: Boolean = true,
-) = appendBindingStackEntries(stack.graphFqName, stack.entries, indent, ellipse, short)
-
-internal fun Appendable.appendBindingStackEntries(
-  graphName: FqName,
-  entries: Collection<BaseBindingStack.BaseEntry<*, *, *>>,
-  indent: String = "    ",
-  ellipse: Boolean = false,
-  short: Boolean = true,
-) {
-  if (graphName == FqName.ROOT || entries.isEmpty()) return
-  for (entry in entries) {
-    entry.render(graphName, short).prependIndent(indent).lineSequence().forEach { appendLine(it) }
-  }
-  if (ellipse) {
-    append(indent)
-    appendLine("...")
-  }
-}
-
 internal class IrBindingStackImpl(override val graph: IrClass, private val logger: MetroLogger) :
   IrBindingStack {
   override val graphFqName: FqName by memoize { graph.kotlinFqName }

@@ -1,16 +1,47 @@
 // FILE: MergeContributionsInIrOptIn.kt
 
+class A {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class B {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
 @MergeContributionsInIr
 @DependencyGraph(scope = AppScope::class)
 interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph, ContributedA, ContributedA.MetroContributionToAppScope, ContributedB, ContributedB.MetroContributionToAppScope {
+    private val thisGraphInstance: Impl
+      field = <this>
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
+
+    override val a: A
+      override get(): A {
+        return <this>.#thisGraphInstance.provideA()
+      }
+
+    override val b: B
+      override get(): B {
+        return <this>.#thisGraphInstance.provideB()
+      }
 
   }
 
@@ -31,8 +62,8 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideA", propertyName = "", startOffset = 262, endOffset = 300, newInstanceName = "provideA")
-  class ProvideAMetroFactory : Factory<String> {
+  @CallableMetadata(callableName = "provideA", propertyName = "", startOffset = 270, endOffset = 303, newInstanceName = "provideA")
+  class ProvideAMetroFactory : Factory<A> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
       private constructor() /* primary */ {
@@ -44,14 +75,14 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): ProvideAMetroFactory {
         return ProvideAMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun provideA(instance: AppGraph): String {
+      fun provideA(instance: AppGraph): A {
         return instance.provideA()
       }
 
@@ -65,21 +96,21 @@ interface AppGraph {
     }
 
     @HiddenFromObjC
-    override operator fun invoke(): String {
+    override operator fun invoke(): A {
       return ProvideAMetroFactory/* companion */.provideA(instance = <this>.#instance)
     }
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    fun mirrorFunction(): A {
       return error(message = "Never called")
     }
 
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideB", propertyName = "", startOffset = 303, endOffset = 341, newInstanceName = "provideB")
-  class ProvideBMetroFactory : Factory<String> {
+  @CallableMetadata(callableName = "provideB", propertyName = "", startOffset = 306, endOffset = 339, newInstanceName = "provideB")
+  class ProvideBMetroFactory : Factory<B> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
       private constructor() /* primary */ {
@@ -91,14 +122,14 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): ProvideBMetroFactory {
         return ProvideBMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun provideB(instance: AppGraph): String {
+      fun provideB(instance: AppGraph): B {
         return instance.provideB()
       }
 
@@ -112,26 +143,26 @@ interface AppGraph {
     }
 
     @HiddenFromObjC
-    override operator fun invoke(): String {
+    override operator fun invoke(): B {
       return ProvideBMetroFactory/* companion */.provideB(instance = <this>.#instance)
     }
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    fun mirrorFunction(): B {
       return error(message = "Never called")
     }
 
   }
 
   @Provides
-  fun provideA(): String {
-    return "a"
+  fun provideA(): A {
+    return A()
   }
 
   @Provides
-  fun provideB(): String {
-    return "b"
+  fun provideB(): B {
+    return B()
   }
 
 }
@@ -143,7 +174,7 @@ interface ContributedA {
   interface MetroContributionToAppScope : ContributedA {
   }
 
-  abstract val a: String
+  abstract val a: A
     abstract get
 
 }
@@ -155,22 +186,22 @@ interface ContributedB {
   interface MetroContributionToAppScope : ContributedB {
   }
 
-  abstract val b: String
+  abstract val b: B
     abstract get
 
 }
 
-// FILE: contributedAAppScope.kt
+// FILE: contributedADev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ContributedA) {
+fun dev_zacsweers_metro_AppScope(contributed: ContributedA) {
   return error(message = "Never called")
 }
 
-// FILE: contributedBAppScope.kt
+// FILE: contributedBDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ContributedB) {
+fun dev_zacsweers_metro_AppScope(contributed: ContributedB) {
   return error(message = "Never called")
 }
 

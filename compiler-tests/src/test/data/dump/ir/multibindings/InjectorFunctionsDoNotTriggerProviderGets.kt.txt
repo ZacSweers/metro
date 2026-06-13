@@ -63,7 +63,7 @@ interface Bindings {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: Bindings): Factory<String> {
+      fun create(instance: Bindings): ProvideStringMetroFactory {
         return ProvideStringMetroFactory(instance = instance)
       }
 

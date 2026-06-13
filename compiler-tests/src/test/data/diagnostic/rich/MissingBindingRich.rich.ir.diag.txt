@@ -1,0 +1,18 @@
+/MissingBindingRich.kt:14:22: error: 
+<red>[Metro/MissingBinding]</> No binding found for <b>Dependency</>
+
+  <dim>   ╭─[ MissingBindingRich.kt:14:22 ]</>
+  <dim>14 │ </>class RepositoryImpl(dep: Dependency) : Repository
+  <dim>   │ </>                     <dim>───────────────</>
+  <dim>   ╰─</>
+
+  AppGraph.repo <dim>→ </><b>RepositoryImpl</> <dim>→ </><b>Dependency</>
+
+  trace (in <b>AppGraph</>):
+      <b>Dependency</> is injected at RepositoryImpl(…, dep)
+      <b>RepositoryImpl</> is requested at AppGraph.repo
+
+  <green>help:</> ensure <b>Dependency</> has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to <b>AppGraph</>
+  <dim>docs:</> https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

@@ -68,7 +68,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): ProvideAMetroFactory {
         return ProvideAMetroFactory(instance = instance)
       }
 
@@ -144,24 +144,24 @@ interface ContributedC {
 
 }
 
-// FILE: contributedAAppScope.kt
+// FILE: contributedADev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ContributedA) {
+fun dev_zacsweers_metro_AppScope(contributed: ContributedA) {
   return error(message = "Never called")
 }
 
-// FILE: contributedBAppScope.kt
+// FILE: contributedBDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ContributedB) {
+fun dev_zacsweers_metro_AppScope(contributed: ContributedB) {
   return error(message = "Never called")
 }
 
-// FILE: contributedCAppScope.kt
+// FILE: contributedCDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ContributedC) {
+fun dev_zacsweers_metro_AppScope(contributed: ContributedC) {
   return error(message = "Never called")
 }
 

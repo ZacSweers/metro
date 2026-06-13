@@ -24,6 +24,6 @@ interface ExampleGraph {
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  assertEquals(graph.myType.javaClass.simpleName, "Impl2")
+  assertIs<Impl2>(graph.myType)
   return "OK"
 }

@@ -262,7 +262,7 @@ internal class IrGraphShardGenerator(
           .apply {
             graphPropertyData = GraphPropertyData(shardBinding.contextKey, shardBinding.irType)
             shardBinding.contextKey.typeKey.qualifier?.ir?.let {
-              annotations += it.deepCopyWithSymbols()
+              addAnnotationCompat(it.deepCopyWithSymbols())
             }
             ensureInitialized(shardBinding.propertyKind, shardBinding.irType)
           }
@@ -341,7 +341,8 @@ internal class IrGraphShardGenerator(
         val property =
           shardClass
             .addProperty {
-              // Use internal visibility so other shards can access these fields
+              // Use internal property visibility so generated code can access shards across the
+              // graph. The backing fields stay private for JS/KLIB validation.
               name =
                 shardNameAllocator
                   .allocateName(namer, shardBinding.kind) { shardBinding.nameHint.asString() }
@@ -351,9 +352,13 @@ internal class IrGraphShardGenerator(
             .apply {
               graphPropertyData = GraphPropertyData(shardBinding.contextKey, shardBinding.irType)
               shardBinding.contextKey.typeKey.qualifier?.ir?.let {
-                annotations += it.deepCopyWithSymbols()
+                addAnnotationCompat(it.deepCopyWithSymbols())
               }
-              ensureInitialized(shardBinding.propertyKind, shardBinding.irType)
+              ensureInitialized(
+                shardBinding.propertyKind,
+                shardBinding.irType,
+                backingFieldVisibility = DescriptorVisibilities.PRIVATE,
+              )
             }
 
         properties[shardBinding.contextKey] =
@@ -422,8 +427,8 @@ internal class IrGraphShardGenerator(
         }
 
         if (needsGraphAccess) {
-          // Add graph property field to store the graph reference (needed for cross-shard access)
-          // Use INTERNAL visibility so other shards can access it
+          // Add graph property to store the graph reference needed for cross-shard access. The
+          // property is internal for generated access, but the backing field must remain private.
           val graphProperty =
             shardClass
               .addProperty {
@@ -433,7 +438,7 @@ internal class IrGraphShardGenerator(
               .apply {
                 addBackingFieldCompat {
                   type = graphClass.defaultType
-                  visibility = DescriptorVisibilities.INTERNAL
+                  visibility = DescriptorVisibilities.PRIVATE
                 }
               }
           shard.graphProperty = graphProperty

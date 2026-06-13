@@ -4,6 +4,8 @@ package dev.zacsweers.metro.compiler.api
 
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension.ContributionHint
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -86,7 +88,7 @@ private val CREATE_NAME = Name.identifier("create")
  * ```
  */
 internal class GenerateGraphExtensionExtension(session: FirSession) :
-  MetroFirDeclarationGenerationExtension(session) {
+  MetroFirDeclarationGenerationExtension(session), MetroContributionHintExtension {
 
   companion object {
     val ANNOTATION_FQ_NAME = FqName("test.GenerateGraphExtension")

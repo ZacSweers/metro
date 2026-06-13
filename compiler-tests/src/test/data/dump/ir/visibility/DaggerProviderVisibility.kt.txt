@@ -8,9 +8,6 @@ interface ExampleGraph {
     private val moduleWithInternalInstance: ModuleWithInternal
       field = ModuleWithInternal()
 
-    private val moduleWithInternalInstanceProvider: Provider<ModuleWithInternal>
-      field = InstanceFactory/* companion */.invoke<ModuleWithInternal>(value = <this>.#moduleWithInternalInstance)
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -79,7 +76,7 @@ class ModuleWithInternal {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: ModuleWithInternal): Factory<Int> {
+      fun create(instance: ModuleWithInternal): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 

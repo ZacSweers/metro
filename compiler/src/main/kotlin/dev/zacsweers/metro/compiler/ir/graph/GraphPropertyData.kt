@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.ir.builders.declarations.addGetter
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.irAttribute
@@ -28,6 +29,7 @@ context(context: IrMetroContext)
 internal fun IrProperty.ensureInitialized(
   propertyKind: PropertyKind,
   type: IrType = graphPropertyData!!.type,
+  backingFieldVisibility: DescriptorVisibility? = null,
 ): IrProperty = apply {
   if (backingField == null && getter == null) {
     when (propertyKind) {
@@ -35,8 +37,9 @@ internal fun IrProperty.ensureInitialized(
         with(context) {
           addBackingFieldCompat {
             this.type = type
-            // Match the property visibility
-            this.visibility = this@ensureInitialized.visibility
+            // Some backends validate Kotlin backing fields as private, while other generated
+            // fields historically matched the property visibility.
+            this.visibility = backingFieldVisibility ?: this@ensureInitialized.visibility
           }
         }
       GETTER ->

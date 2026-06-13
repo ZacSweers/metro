@@ -20,7 +20,7 @@ class Collector {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(services: Provider<Set<Any>>): Factory<Collector> {
+      fun create(services: Provider<Set<Any>>): MetroFactory {
         return MetroFactory(services = services)
       }
 
@@ -76,7 +76,7 @@ class Service1 {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<Service1> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -123,7 +123,7 @@ class Service2 {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<Service2> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -262,7 +262,7 @@ object Module1 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(s1: Provider<Service1>): Factory<Any> {
+      fun create(s1: Provider<Service1>): ProvideService1MetroFactory {
         return ProvideService1MetroFactory(s1 = s1)
       }
 
@@ -329,7 +329,7 @@ object Module2 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(s2: Provider<Service2>): Factory<Any> {
+      fun create(s2: Provider<Service2>): ProvideService2MetroFactory {
         return ProvideService2MetroFactory(s2 = s2)
       }
 
@@ -379,17 +379,17 @@ object Module2 {
 
 }
 
-// FILE: module1AppScope.kt
+// FILE: module1Dev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Module1) {
+fun dev_zacsweers_metro_AppScope(contributed: Module1) {
   return error(message = "Never called")
 }
 
-// FILE: module2AppScope.kt
+// FILE: module2Dev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Module2) {
+fun dev_zacsweers_metro_AppScope(contributed: Module2) {
   return error(message = "Never called")
 }
 

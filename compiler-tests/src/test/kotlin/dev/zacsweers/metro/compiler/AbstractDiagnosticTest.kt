@@ -31,7 +31,6 @@ import org.jetbrains.kotlin.test.frontend.fir.handlers.NonSourceErrorMessagesHan
 import org.jetbrains.kotlin.test.frontend.fir.handlers.PsiLightTreeMetaInfoProcessor
 import org.jetbrains.kotlin.test.runners.AbstractPhasedJvmDiagnosticLightTreeTest
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
-import org.jetbrains.kotlin.test.services.PhasedPipelineChecker
 import org.jetbrains.kotlin.test.services.TestPhase
 
 open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
@@ -81,7 +80,7 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
         LANGUAGE + "+EnableDfaWarningsInK2"
       }
 
-      setupMetroJvmPipeline(FirParser.LightTree)
+      setupMetroJvmPipelineCompat(FirParser.LightTree)
       configureFirParser(FirParser.LightTree)
       configureCommonDiagnosticTestPaths()
 
@@ -111,14 +110,11 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
       useMetaInfoProcessors(::PsiLightTreeMetaInfoProcessor)
       val tagsAfter = tagsGeneratorCheckerAfterAnalysis
       if (tagsAfter != null) {
-        useAfterAnalysisCheckers(
-          ::PhasedPipelineChecker,
-          ::NonSourceErrorMessagesHandler,
-          tagsAfter,
-        )
+        useAfterAnalysisCheckers(::NonSourceErrorMessagesHandler, tagsAfter)
       } else {
-        useAfterAnalysisCheckers(::PhasedPipelineChecker, ::NonSourceErrorMessagesHandler)
+        useAfterAnalysisCheckers(::NonSourceErrorMessagesHandler)
       }
+      usePhasedPipelineFailureSuppressorCompat()
       enableMetaInfoHandler()
       useAdditionalService<SuppressionChecker>(suppressionCheckerCtor)
     }

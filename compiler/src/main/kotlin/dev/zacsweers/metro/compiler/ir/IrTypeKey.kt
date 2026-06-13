@@ -26,8 +26,8 @@ private constructor(
 
   val classId by memoize { type.rawTypeOrNull()?.classId }
 
-  private val cachedRender by memoize { render(short = false, includeQualifier = true) }
-  private val cachedHashCode: Int = (type.hashCode() * 31) + (qualifier?.hashCode() ?: 0)
+  private var cachedRender: String? = null
+  private var cachedHashCode: Int = 0
 
   val hasTypeArgs: Boolean
     get() = type is IrSimpleType && type.arguments.isNotEmpty()
@@ -89,12 +89,19 @@ private constructor(
     type.renderTo(this, short)
   }
 
-  override fun toString(): String = cachedRender
+  override fun toString(): String {
+    var result = cachedRender
+    if (result == null) {
+      result = render(short = false, includeQualifier = true)
+      cachedRender = result
+    }
+    return result
+  }
 
   // Optimized comparison that just uses natural sorting based on the cached render
   override fun compareTo(other: IrTypeKey): Int {
     if (this === other) return 0
-    return cachedRender.compareTo(other.cachedRender)
+    return toString().compareTo(other.toString())
   }
 
   override fun equals(other: Any?): Boolean {
@@ -104,7 +111,7 @@ private constructor(
     other as IrTypeKey
 
     // Fast fail: If hash codes differ, they are definitely not equal
-    if (cachedHashCode != other.cachedHashCode) return false
+    if (hashCode() != other.hashCode()) return false
 
     // Structural compare. Both `IrType` and `IrAnnotation` provide structural equals/hashCode, so
     // this avoids materializing/comparing the diagnostic render string on every map operation.
@@ -112,7 +119,15 @@ private constructor(
   }
 
   // Optimized hashCode that uses a cached hashCode
-  override fun hashCode() = cachedHashCode
+  override fun hashCode(): Int {
+    var h = cachedHashCode
+    if (h == 0) {
+      h = type.hashCode()
+      h = 31 * h + (qualifier?.hashCode() ?: 0)
+      cachedHashCode = h
+    }
+    return h
+  }
 
   data class MultibindingKeyData(
     /**

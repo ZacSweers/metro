@@ -12,7 +12,9 @@ interface AppGraph {
     @Binds
     @IntoSet
     @CallableMetadata(callableName = "bindInt", propertyName = "", startOffset = 149, endOffset = 171)
-    abstract fun Int.bindInt_intoset(): Int
+    fun Int.bindInt_intoset(): Int {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -91,7 +93,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph, int: Provider<Int>): Factory<Double> {
+      fun create(instance: AppGraph, int: Provider<Int>): BindDoubleMetroFactory {
         return BindDoubleMetroFactory(instance = instance, int = int)
       }
 
@@ -140,7 +142,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph, int: Provider<Int>): Factory<Long> {
+      fun create(instance: AppGraph, int: Provider<Int>): BindLongMetroFactory {
         return BindLongMetroFactory(instance = instance, int = int)
       }
 
@@ -188,7 +190,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Int> {
+      fun create(instance: AppGraph): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 

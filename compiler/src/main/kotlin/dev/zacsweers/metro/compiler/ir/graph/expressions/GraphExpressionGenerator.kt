@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
+import dev.zacsweers.metro.compiler.ir.graph.GraphMetadataReporter
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
@@ -17,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -60,6 +62,7 @@ private constructor(
   override val bindingGraph: IrBindingGraph,
   private val metroDeclarations: MetroDeclarations,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
+  private val codegenStats: GraphMetadataReporter.CodegenStats?,
   /**
    * For extension graphs, maps ancestor graph type key -> list of properties to chain through. Used
    * to access ancestor bindings in non-shard context.
@@ -77,6 +80,7 @@ private constructor(
     private val bindingGraph: IrBindingGraph,
     private val metroDeclarations: MetroDeclarations,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
+    private val codegenStats: GraphMetadataReporter.CodegenStats?,
     /**
      * For extension graphs, maps ancestor graph type key -> list of properties to chain through.
      * Used to access ancestor bindings in non-shard context.
@@ -95,6 +99,7 @@ private constructor(
         bindingGraph = bindingGraph,
         metroDeclarations = metroDeclarations,
         graphExtensionGenerator = graphExtensionGenerator,
+        codegenStats = codegenStats,
         traceScope = traceScope,
         ancestorGraphProperties = ancestorGraphProperties,
         shardContext = shardContext,
@@ -159,12 +164,13 @@ private constructor(
       return when (binding) {
         is ConstructorInjected -> {
           val classFactory = binding.classFactory
-          val isAssistedInject = classFactory.isAssistedInject
+          val isAssistedInject = binding.isAssisted
           // Optimization: Skip factory instantiation when possible
           val canBypassFactory = accessType == AccessType.INSTANCE && binding.canBypassFactory()
 
           if (canBypassFactory) {
             if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
+              codegenStats?.run { classConstructorDirectInvocations++ }
               // Call constructor directly
               val targetConstructor = classFactory.targetConstructor!!
               val directExpr = irCallConstructor(
@@ -187,6 +193,7 @@ private constructor(
               maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             } else {
+              codegenStats?.run { classConstructorNewInstanceCalls++ }
               // Constructor isn't public - call newInstance() on the factory object instead
               // Example_Factory.newInstance(...)
               val directExpr = classFactory
@@ -281,6 +288,18 @@ private constructor(
                 "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
               )
 
+          if (options.enableProviderInlining) {
+            // Materialization can fail if the value references a class that isn't resolvable in
+            // this compilation (e.g. an object from an implementation dependency of the providing
+            // module). In that case, fall through to the standard factory paths below.
+            providerFactory.inlinedValue?.materialize(binding.typeKey.type)?.let { materialized ->
+              return materialized.toTargetType(
+                actual = AccessType.INSTANCE,
+                contextualTypeKey = contextualTypeKey,
+              )
+            }
+          }
+
           // Optimization: Skip factory instantiation when we don't need a provider instance.
           // This applies when accessType is INSTANCE and the providerFactory supports direct
           // invocation
@@ -300,6 +319,7 @@ private constructor(
 
             // If we need a dispatch receiver but couldn't get one, fall back to factory
             if (providerFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
+              codegenStats?.run { providerDirectInvocations++ }
               // Call the provider function directly
               val realFunction =
                 providerFactory.realDeclaration?.expectAsOrNull<IrFunction>() ?: providerFunction
@@ -315,6 +335,7 @@ private constructor(
               maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             } else {
+              codegenStats?.run { providerNewInstanceCalls++ }
               // Function isn't public - call factory's static newInstance() method instead
               val directExpr = providerFactory
                 .invokeNewInstanceExpression(binding.typeKey, providerFactory.newInstanceName) {
@@ -393,7 +414,7 @@ private constructor(
         }
 
         is MembersInjected -> {
-          val injectedClass = referenceClass(binding.targetClassId)!!.owner
+          val injectedClass = node.metroGraphOrFail.lookupClass(binding.targetClassId)!!.owner
           val injectedType = injectedClass.defaultType
 
           // When looking for an injector, try the current class.
@@ -619,7 +640,8 @@ private constructor(
           bindingGetter.toTargetType(
             contextualTypeKey = contextualTypeKey,
             actual = actual,
-            allowPropertyGetter = binding.token?.let { !it.contextKey.isWrappedInProvider } ?: false,
+            allowPropertyGetter =
+              binding.token?.let { !it.contextKey.isWrappedInProvider } ?: false,
           )
         }
       }
@@ -705,7 +727,14 @@ private constructor(
         }
       }
 
-      return params.allParameters.mapIndexed { i, param ->
+      val paramsForCall =
+        if (params.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject == true) {
+          params.nonDispatchParameters
+        } else {
+          params.allParameters
+        }
+
+      return paramsForCall.mapIndexed { i, param ->
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
         val accessType =
           if (param.contextualTypeKey.requiresProviderInstance) {

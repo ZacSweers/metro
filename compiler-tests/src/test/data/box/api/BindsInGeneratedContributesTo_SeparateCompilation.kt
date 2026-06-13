@@ -1,4 +1,5 @@
 // GENERATE_CONTRIBUTION_HINTS_IN_FIR
+// GENERATE_CLASSES_IN_IR: false
 // MODULE: lib
 package test
 
@@ -31,6 +32,6 @@ interface AppGraph {
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  assertEquals("test.MyImpl", graph.myType::class.qualifiedName)
+  assertIs<MyImpl>(graph.myType)
   return "OK"
 }

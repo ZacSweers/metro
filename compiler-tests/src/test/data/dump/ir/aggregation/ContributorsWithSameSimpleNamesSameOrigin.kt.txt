@@ -31,7 +31,7 @@ class FooImpl : Foo {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<FooImpl> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -72,11 +72,15 @@ class FooImpl : Foo {
 
       @Binds
       @CallableMetadata(callableName = "bindsAsFoo", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsFoo(instance: FooImpl): Foo
+      fun bindsAsFoo(instance: FooImpl): Foo {
+        return error(message = "Never called")
+      }
 
       @Binds
       @CallableMetadata(callableName = "bindsAsFoo2", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsFoo2(instance: FooImpl): Foo
+      fun bindsAsFoo2(instance: FooImpl): Foo {
+        return error(message = "Never called")
+      }
 
     }
 
@@ -108,10 +112,10 @@ class FooImpl : Foo {
 
 }
 
-// FILE: fooImplAppScope.kt
+// FILE: fooImplDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: FooImpl) {
+fun dev_zacsweers_metro_AppScope(contributed: FooImpl) {
   return error(message = "Never called")
 }
 

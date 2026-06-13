@@ -17,7 +17,7 @@ import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 import okio.Buffer
 import org.intellij.lang.annotations.Language
-import org.jetbrains.kotlin.compiler.plugin.CliOption
+import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
@@ -58,11 +58,15 @@ abstract class MetroCompilerTest {
     generateAssistedFactories: Boolean =
       MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: MetroOptions =
-      metroOptions.copy(debug = debug, generateAssistedFactories = generateAssistedFactories),
+      metroOptions
+        .toBuilder()
+        .debug(debug)
+        .generateAssistedFactories(generateAssistedFactories)
+        .build(),
     previousCompilationResult: JvmCompilationResult? = null,
     compilationName: String = "compilation${compilationCount++}",
   ): KotlinCompilation {
-    val finalOptions = options.copy(debug = debug || options.debug)
+    val finalOptions = options.toBuilder().debug(debug || options.debug).build()
     return KotlinCompilation().apply {
       workingDir = temporaryFolder.newFolder(compilationName)
       compilerPluginRegistrars = listOf(MetroCompilerPluginRegistrar())
@@ -73,8 +77,7 @@ abstract class MetroCompilerTest {
       sources = sourceFiles.asList()
       verbose = false
       jvmTarget = JVM_TARGET
-      kotlincArguments +=
-        listOf("-jvm-default=no-compatibility", "-Xverify-ir=error", "-Xverify-ir-visibility")
+      kotlincArguments += listOf("-jvm-default=no-compatibility", "-Xverify-ir=error")
 
       if (previousCompilationResult != null) {
         addPreviousResultToClasspath(previousCompilationResult)
@@ -110,6 +113,7 @@ abstract class MetroCompilerTest {
                   entry.raw.cliOption,
                   this@toPluginOptions.generateContributionHintsInFir,
                 )
+              GENERATE_CLASSES_IN_IR -> processor.option(entry.raw.cliOption, generateClassesInIr)
               SHRINK_UNUSED_BINDINGS -> processor.option(entry.raw.cliOption, shrinkUnusedBindings)
               STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
               ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)
@@ -339,6 +343,9 @@ abstract class MetroCompilerTest {
               BUFFERED_IC_TRACKING -> {
                 processor.option(entry.raw.cliOption, this@toPluginOptions.bufferedIcTracking)
               }
+              ENABLE_PROVIDER_INLINING -> {
+                processor.option(entry.raw.cliOption, this@toPluginOptions.enableProviderInlining)
+              }
               ENABLE_FUNCTION_PROVIDERS -> {
                 processor.option(entry.raw.cliOption, enableFunctionProviders)
               }
@@ -360,11 +367,14 @@ abstract class MetroCompilerTest {
               ENABLE_CIRCUIT_CODEGEN -> {
                 processor.option(entry.raw.cliOption, enableCircuitCodegen)
               }
+              INTEROP_INCLUDE_HILT_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, enableHiltInterop)
+              }
+              DIAGNOSTICS_RENDER_MODE -> {
+                processor.option(entry.raw.cliOption, diagnosticsRenderMode)
+              }
               ENABLE_RUNTIME_TRACING -> {
                 processor.option(entry.raw.cliOption, enableRuntimeTracing)
-              }
-              RICH_DIAGNOSTICS -> {
-                processor.option(entry.raw.cliOption, richDiagnostics)
               }
               GENERATE_STATIC_ANNOTATIONS -> {
                 processor.option(
@@ -388,7 +398,7 @@ abstract class MetroCompilerTest {
       .toList()
   }
 
-  protected fun CommandLineProcessor.option(key: CliOption, value: Any?): PluginOption {
+  protected fun CommandLineProcessor.option(key: AbstractCliOption, value: Any?): PluginOption {
     return PluginOption(pluginId, key.optionName, value.toString())
   }
 
@@ -466,11 +476,12 @@ abstract class MetroCompilerTest {
     generateAssistedFactories: Boolean =
       MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: MetroOptions =
-      metroOptions.copy(
-        enabled = metroEnabled,
-        debug = debug,
-        generateAssistedFactories = generateAssistedFactories,
-      ),
+      metroOptions
+        .toBuilder()
+        .enabled(metroEnabled)
+        .debug(debug)
+        .generateAssistedFactories(generateAssistedFactories)
+        .build(),
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
     compilationBlock: KotlinCompilation.() -> Unit = {},
     previousCompilationResult: JvmCompilationResult? = null,

@@ -26,7 +26,7 @@ class ConsumerA {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(consumer: Provider<SetConsumer>): Factory<ConsumerA> {
+      fun create(consumer: Provider<SetConsumer>): MetroFactory {
         return MetroFactory(consumer = consumer)
       }
 
@@ -86,7 +86,7 @@ class ConsumerB {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(consumer: Provider<SetConsumer>): Factory<ConsumerB> {
+      fun create(consumer: Provider<SetConsumer>): MetroFactory {
         return MetroFactory(consumer = consumer)
       }
 
@@ -151,7 +151,7 @@ class Entry {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(a: Provider<ConsumerA>, b: Provider<ConsumerB>): Factory<Entry> {
+      fun create(a: Provider<ConsumerA>, b: Provider<ConsumerB>): MetroFactory {
         return MetroFactory(a = a, b = b)
       }
 
@@ -211,7 +211,7 @@ class SetConsumer {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(set: Provider<Set<Int>>): Factory<SetConsumer> {
+      fun create(set: Provider<Set<Int>>): MetroFactory {
         return MetroFactory(set = set)
       }
 
@@ -319,7 +319,7 @@ interface TestGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: TestGraph): Factory<Base> {
+      fun create(instance: TestGraph): ProvideBaseMetroFactory {
         return ProvideBaseMetroFactory(instance = instance)
       }
 
@@ -367,7 +367,7 @@ interface TestGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: TestGraph, base: Provider<Base>): Factory<Int> {
+      fun create(instance: TestGraph, base: Provider<Base>): ProvideInt1MetroFactory {
         return ProvideInt1MetroFactory(instance = instance, base = base)
       }
 
@@ -416,7 +416,7 @@ interface TestGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: TestGraph, base: Provider<Base>): Factory<Int> {
+      fun create(instance: TestGraph, base: Provider<Base>): ProvideInt2MetroFactory {
         return ProvideInt2MetroFactory(instance = instance, base = base)
       }
 

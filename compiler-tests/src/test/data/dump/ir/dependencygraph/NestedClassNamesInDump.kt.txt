@@ -56,7 +56,9 @@ interface ExampleGraph {
 
       @Binds
       @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 231, endOffset = 260)
-      abstract fun String.bind(): CharSequence
+      fun String.bind_property(): CharSequence {
+        return error(message = "Never called")
+      }
 
     }
 
@@ -73,7 +75,7 @@ interface ExampleGraph {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun create(): Factory<String> {
+        fun create(): ProvideStringMetroFactory {
           return ProvideStringMetroFactory
         }
 
@@ -129,10 +131,10 @@ interface ExampleGraph {
 
 }
 
-// FILE: exampleGraphBindingsAppScope.kt
+// FILE: exampleGraphBindingsDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ExampleGraph.Bindings) {
+fun dev_zacsweers_metro_AppScope(contributed: ExampleGraph.Bindings) {
   return error(message = "Never called")
 }
 

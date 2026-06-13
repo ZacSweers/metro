@@ -3,11 +3,9 @@
 package dev.zacsweers.metro.compiler
 
 import java.io.File
-import org.jetbrains.kotlin.test.WrappedException
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
-import org.jetbrains.kotlin.test.model.AfterAnalysisChecker
 import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.assertions
 import org.jetbrains.kotlin.test.services.moduleStructure
@@ -22,7 +20,9 @@ import org.opentest4j.AssertionFailedError
  * 1. Find the specified report files in the reports destination
  * 2. Compare each report file against an expected file alongside the test data
  *
- * Expected files should be named: `<testFile>/<diagnosticKey>/<path>/<reportName>.txt`
+ * Expected files should be named: `<testFile>/<diagnosticKey>/<path>/<reportName>.txt`. If the
+ * report name includes an explicit extension, the expected file appends `.txt` to avoid treating
+ * generated `.kt` reports as test inputs.
  *
  * Example usage:
  * ```
@@ -41,7 +41,7 @@ import org.opentest4j.AssertionFailedError
  * `<id>-(fir|ir)-<moduleName>.perfetto-trace`, all files share the same `<id>` prefix, and both
  * phases are represented.
  */
-class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(testServices) {
+class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompat(testServices) {
   companion object {
     const val DEFAULT_REPORTS_DIR = "metro/reports"
     const val DEFAULT_TRACES_DIR = "metro/traces"
@@ -51,8 +51,8 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
   override val directiveContainers: List<DirectivesContainer>
     get() = listOf(MetroDirectives)
 
-  override fun check(failedAssertions: List<WrappedException>) {
-    if (failedAssertions.isNotEmpty()) return
+  override fun checkMetroReports(thereWereFailures: Boolean) {
+    if (thereWereFailures) return
 
     val allDirectives = testServices.moduleStructure.allDirectives
 
@@ -79,9 +79,9 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
     var generatedMissingFiles = false
     var lastError: AssertionFailedError? = null
     for (reportName in reportNamesToCheck) {
-      val baseFileName = "$reportName.txt"
+      val baseFileName = reportFileName(reportName)
       val reportFile = File(reportsDir, baseFileName)
-      val expectedFile = File(testDataFile.withoutExtension(), baseFileName)
+      val expectedFile = File(testDataFile.withoutExtension(), expectedReportFileName(reportName))
 
       if (!reportFile.exists()) {
         testServices.assertions.fail {
@@ -107,6 +107,15 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
     if (generatedMissingFiles) {
       throw lastError!!
     }
+  }
+
+  private fun reportFileName(reportName: String): String {
+    return if (File(reportName).extension.isEmpty()) "$reportName.txt" else reportName
+  }
+
+  private fun expectedReportFileName(reportName: String): String {
+    return if (File(reportName).extension.isEmpty()) reportFileName(reportName)
+    else "${reportName}.txt"
   }
 
   private fun checkTraces(allDirectives: RegisteredDirectives) {

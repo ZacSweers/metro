@@ -1,7 +1,13 @@
-/module_main_UsefulHintsForMissingImplDeps.kt:21:11: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: FooImpl
+/module_main_UsefulHintsForMissingImplDeps.kt:21:11: error: 
+[Metro/MissingBinding] No binding found for FooImpl
 
-    FooImpl is injected at
-        [AppGraph] Bindings.bind: FooImpl
-    Base is requested at
-        [AppGraph] AppGraph.base
+  AppGraph.base -> Base -> FooImpl
+
+  trace (in AppGraph):
+      FooImpl is injected at Bindings.bind: FooImpl
+      Base is requested at AppGraph.base
+
+  help: ensure FooImpl has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 

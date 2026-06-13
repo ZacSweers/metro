@@ -1,10 +1,16 @@
-/SomeUnusedAndSomeUsed.kt:10:14: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+/SomeUnusedAndSomeUsed.kt:10:14: error: 
+[Metro/MissingBinding] No binding found for Int
 
-    kotlin.Int is injected at
-        [AppGraph] AppGraph.unusedBinding: kotlin.Int
-    kotlin.Number is requested at
-        [AppGraph] AppGraph.number
+  AppGraph.number -> Number -> Int
 
-Similar bindings:
-  - Number (Supertype). Type: Alias. Source: SomeUnusedAndSomeUsed.kt:10:10
+  trace (in AppGraph):
+      Int is injected at AppGraph.unusedBinding: kotlin.Int
+      Number is requested at AppGraph.number
+
+  similar bindings:
+      - Number (Supertype. Type: Alias) - SomeUnusedAndSomeUsed.kt:10:10
+
+  help: ensure Int has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 

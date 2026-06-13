@@ -22,7 +22,7 @@ class A {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(b: Provider<B>, e: Provider<E>): Factory<A> {
+      fun create(b: Provider<B>, e: Provider<E>): MetroFactory {
         return MetroFactory(b = b, e = e)
       }
 
@@ -82,7 +82,7 @@ class B {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(c: Provider<C>): Factory<B> {
+      fun create(c: Provider<C>): MetroFactory {
         return MetroFactory(c = c)
       }
 
@@ -151,7 +151,7 @@ class C {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(aProvider: Provider<A>): Factory<C> {
+      fun create(aProvider: Provider<A>): MetroFactory {
         return MetroFactory(aProvider = aProvider)
       }
 
@@ -259,7 +259,7 @@ class D {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(b: Provider<B>): Factory<D> {
+      fun create(b: Provider<B>): MetroFactory {
         return MetroFactory(b = b)
       }
 
@@ -319,7 +319,7 @@ class E {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(d: Provider<D>): Factory<E> {
+      fun create(d: Provider<D>): MetroFactory {
         return MetroFactory(d = d)
       }
 
@@ -505,7 +505,7 @@ interface CycleGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: CycleGraph, obj: Provider<Any>): Factory<Any> {
+      fun create(instance: CycleGraph, obj: Provider<Any>): ProvideObjectWithCycleMetroFactory {
         return ProvideObjectWithCycleMetroFactory(instance = instance, obj = obj)
       }
 

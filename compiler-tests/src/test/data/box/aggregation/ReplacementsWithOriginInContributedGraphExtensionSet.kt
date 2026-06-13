@@ -47,7 +47,7 @@ fun box(): String {
   val graph = createGraph<AppGraph>().createLoggedInGraph()
 
   assertEquals(1, graph.tasks.size)
-  assertEquals("Task3", graph.tasks.single()::class.qualifiedName)
-  assertEquals("Task2", graph.task::class.qualifiedName)
+  assertIs<Task3>(graph.tasks.single())
+  assertIs<Task2>(graph.task)
   return "OK"
 }

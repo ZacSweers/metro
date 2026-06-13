@@ -1,3 +1,4 @@
+// IGNORE_BACKEND: JS_IR
 // Regression test for https://github.com/ZacSweers/metro/issues/1097
 
 @DependencyGraph(AppScope::class)

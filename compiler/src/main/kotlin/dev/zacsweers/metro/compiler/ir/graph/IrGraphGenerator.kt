@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.doubleCheck
+import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
@@ -34,6 +35,7 @@ import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -45,12 +47,11 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
-import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
-import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
+import dev.zacsweers.metro.compiler.ir.usesKlib
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -99,7 +100,6 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.platform.konan.isNative
 
 internal typealias PropertyInitializer =
   IrBuilderWithScope.(thisReceiver: IrValueParameter, key: IrTypeKey) -> IrExpression
@@ -171,33 +171,10 @@ internal class IrGraphGenerator(
       BindingPropertyContext(bindingGraph, graphKey = node.typeKey, parent = parentBindingContext)
     }
 
-  /**
-   * To avoid `MethodTooLargeException`, we split property field initializations up over multiple
-   * constructor inits.
-   *
-   * @see <a href="https://github.com/ZacSweers/metro/issues/645">#645</a>
-   */
-  private val propertyInitializers = mutableListOf<Pair<IrProperty, PropertyInitializer>>()
-
-  // TODO replace with irAttribute
-  private val propertiesToTypeKeys = mutableMapOf<IrProperty, IrTypeKey>()
-
   private val graphMetadataReporter =
     trace("Init graphMetadataReporter") { GraphMetadataReporter(this@IrGraphGenerator) }
 
-  @IgnorableReturnValue
-  fun IrProperty.withInit(typeKey: IrTypeKey, init: PropertyInitializer): IrProperty = apply {
-    // Only necessary for fields
-    if (backingField != null) {
-      propertiesToTypeKeys[this] = typeKey
-      propertyInitializers += (this to init)
-    } else {
-      getter!!.apply {
-        this.body =
-          createIrBuilder(symbol).run { irExprBodySafe(init(dispatchReceiverParameter!!, typeKey)) }
-      }
-    }
-  }
+  private val codegenStats = if (reportsDir != null) GraphMetadataReporter.CodegenStats() else null
 
   @IgnorableReturnValue
   fun IrProperty.initFinal(body: IrBuilderWithScope.() -> IrExpression): IrProperty = apply {
@@ -207,6 +184,16 @@ internal class IrGraphGenerator(
       return@apply
     }
     getter?.apply { this.body = createIrBuilder(symbol).run { irExprBodySafe(body()) } }
+  }
+
+  @IgnorableReturnValue
+  fun IrProperty.initFinal(expression: IrExpression): IrProperty = apply {
+    backingField?.apply {
+      isFinal = true
+      initializer = createIrBuilder(symbol).run { irExprBody(expression) }
+      return@apply
+    }
+    getter?.apply { this.body = createIrBuilder(symbol).run { irExprBodySafe(expression) } }
   }
 
   /**
@@ -227,7 +214,7 @@ internal class IrGraphGenerator(
         }
         .apply {
           graphPropertyData = GraphPropertyData(contextKey, type)
-          contextKey.typeKey.qualifier?.ir?.let { annotations += it.deepCopyWithSymbols() }
+          contextKey.typeKey.qualifier?.ir?.let { addAnnotationCompat(it.deepCopyWithSymbols()) }
         }
 
     return property.ensureInitialized(propertyKind, type)
@@ -261,6 +248,7 @@ internal class IrGraphGenerator(
             bindingGraph = bindingGraph,
             metroDeclarations = metroDeclarations,
             graphExtensionGenerator = graphExtensionGenerator,
+            codegenStats = codegenStats,
           )
         }
 
@@ -272,21 +260,27 @@ internal class IrGraphGenerator(
         )
       }
 
+      // Collect bindings and their dependencies for provider property ordering
+      val (initOrder, cachedProviderContextKeys) = collectBindingProperties()
+
       // Process creator parameters and set up bound instance properties
-      trace("Process creator parameters") { processCreatorParameters(ctor, thisReceiverParameter) }
+      trace("Process creator parameters") {
+        processCreatorParameters(ctor, thisReceiverParameter, cachedProviderContextKeys)
+      }
 
       // Create managed binding containers instance properties if used
-      trace("Process binding containers") { processBindingContainers(thisReceiverParameter) }
+      trace("Process binding containers") {
+        processBindingContainers(thisReceiverParameter, cachedProviderContextKeys)
+      }
 
       // Set up this graph's self-binding property
       trace("Setup this-graph property") { setupThisGraphProperty(thisReceiverParameter) }
 
-      // Collect bindings and their dependencies for provider property ordering
-      val initOrder = collectBindingProperties()
-
       // Filter bindings that need properties
       val collectedBindings =
         trace("Filter to IR properties") { initOrder.filterOnlyIrProperties() }
+      codegenStats?.providerProperties = collectedBindings.size
+      codegenStats?.scopedProviderProperties = collectedBindings.count { it.binding.isScoped() }
 
       // Convert collected bindings to ShardBinding for shard generator
       val shardBindings = trace("Map to shard bindings") { collectedBindings.mapToShardBindings() }
@@ -305,6 +299,7 @@ internal class IrGraphGenerator(
             )
             .generateShards(diagnosticTag = diagnosticTag)
         }
+      codegenStats?.shards = shardResult?.takeUnless { it.isGraphAsShard }?.shards?.size ?: 0
 
       if (shardResult != null) {
         // Create shard field properties on the main class (only for nested shards)
@@ -359,8 +354,17 @@ internal class IrGraphGenerator(
               .orEmpty()
               .toSet()
           val graphProto =
-            node.toProto(bindingGraph = bindingGraph, ownProviderFactories = ownProviderFactories)
-          graphMetadataReporter.write(node, bindingGraph)
+            node.toProto(
+              bindingGraph = bindingGraph,
+              ownProviderFactories = ownProviderFactories,
+              generateClassesInIr = options.generateClassesInIr,
+            )
+          graphMetadataReporter.write(
+            node,
+            bindingGraph,
+            sealResult,
+            codegenStats,
+          )
           val metroMetadata = createMetroMetadata(dependency_graph = graphProto)
 
           writeDiagnostic(
@@ -507,16 +511,17 @@ internal class IrGraphGenerator(
   }
 
   /**
-   * Adds a bound instance property with both instance and provider variants.
+   * Adds a bound instance property and, when provider access is reused, a cached provider wrapper.
    *
    * Creates properties for types that are bound as instances (e.g., @BindsInstance parameters,
-   * binding containers). Both the instance property and a provider wrapper are created.
+   * binding containers). Single provider usages are generated ad hoc from the instance property.
    */
   private fun IrClass.addBoundInstanceProperty(
     typeKey: IrTypeKey,
     name: Name,
     thisReceiverParameter: IrValueParameter,
     contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey),
+    cachedProviderContextKeys: Set<IrContextualTypeKey>,
     initializer:
       IrBuilderWithScope.(thisReceiver: IrValueParameter, typeKey: IrTypeKey) -> IrExpression,
   ) {
@@ -538,8 +543,16 @@ internal class IrGraphGenerator(
 
     bindingPropertyContext.put(contextualTypeKey, instanceProperty)
 
-    val providerType = metroSymbols.metroProvider.typeWith(typeKey.type)
     val providerContextKey = contextualTypeKey.wrapInProvider()
+    if (providerContextKey !in cachedProviderContextKeys) return
+
+    val providerInitializer =
+      createIrBuilder(thisReceiverParameter.symbol).run {
+        instanceFactory(
+          typeKey.type,
+          irGetProperty(irGet(thisReceiverParameter), instanceProperty),
+        )
+      }
     val providerProperty =
       createBindingProperty(
           providerContextKey,
@@ -548,15 +561,10 @@ internal class IrGraphGenerator(
               instanceProperty.name.suffixIfNot("Provider").asString()
             }
             .asName(),
-          providerType,
+          providerInitializer.type,
           PropertyKind.FIELD,
         )
-        .initFinal {
-          instanceFactory(
-            typeKey.type,
-            irGetProperty(irGet(thisReceiverParameter), instanceProperty),
-          )
-        }
+        .initFinal(providerInitializer)
     bindingPropertyContext.put(providerContextKey, providerProperty)
   }
 
@@ -569,6 +577,7 @@ internal class IrGraphGenerator(
   private fun IrClass.processCreatorParameters(
     ctor: IrConstructor,
     thisReceiverParameter: IrValueParameter,
+    cachedProviderContextKeys: Set<IrContextualTypeKey>,
   ) {
     val creator = node.creator ?: return
 
@@ -593,13 +602,19 @@ internal class IrGraphGenerator(
           param.name,
           thisReceiverParameter,
           contextualTypeKey = param.contextualTypeKey,
+          cachedProviderContextKeys = cachedProviderContextKeys,
         ) { _, _ ->
           irGet(irParam)
         }
       } else {
         // It's a graph dep. Add all its accessors as available keys and point them at
         // this constructor parameter for provider property initialization
-        processGraphDependencyParameter(param, irParam, thisReceiverParameter)
+        processGraphDependencyParameter(
+          param,
+          irParam,
+          thisReceiverParameter,
+          cachedProviderContextKeys,
+        )
       }
     }
   }
@@ -613,6 +628,7 @@ internal class IrGraphGenerator(
     param: Parameter,
     irParam: IrValueParameter,
     thisReceiverParameter: IrValueParameter,
+    cachedProviderContextKeys: Set<IrContextualTypeKey>,
   ) {
     val graphDep =
       node.includedGraphNodes[param.typeKey]
@@ -644,6 +660,13 @@ internal class IrGraphGenerator(
       )
     // Only create the provider property if it was reserved (requested by a child graph)
     if (bindingGraph.isContextKeyReserved(graphDepProviderContextKey)) {
+      val providerInitializer =
+        createIrBuilder(thisReceiverParameter.symbol).run {
+          instanceFactory(
+            param.typeKey.type,
+            irGetProperty(irGet(thisReceiverParameter), graphDepProperty),
+          )
+        }
       val providerWrapperProperty =
         createBindingProperty(
           graphDepProviderContextKey,
@@ -652,19 +675,14 @@ internal class IrGraphGenerator(
               graphDepProperty.name.suffixIfNot("Provider").asString()
             }
             .asName(),
-          graphDepProviderType,
+          providerInitializer.type,
           PropertyKind.FIELD,
         )
 
       // Link both the graph typekey and the (possibly-impl type)
       bindingPropertyContext.put(
         param.contextualTypeKey.stripOuterProviderOrLazy(),
-        providerWrapperProperty.initFinal {
-          instanceFactory(
-            param.typeKey.type,
-            irGetProperty(irGet(thisReceiverParameter), graphDepProperty),
-          )
-        },
+        providerWrapperProperty.initFinal(providerInitializer),
       )
       bindingPropertyContext.put(IrContextualTypeKey(graphDep.typeKey), providerWrapperProperty)
     }
@@ -672,7 +690,12 @@ internal class IrGraphGenerator(
     if (graphDep is GraphNode.Local && graphDep.hasExtensions) {
       val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
       val paramName = depMetroGraph.sourceGraphIfMetroGraph.name
-      addBoundInstanceProperty(param.typeKey, paramName, thisReceiverParameter) { _, _ ->
+      addBoundInstanceProperty(
+        param.typeKey,
+        paramName,
+        thisReceiverParameter,
+        cachedProviderContextKeys = cachedProviderContextKeys,
+      ) { _, _ ->
         irGet(irParam)
       }
     }
@@ -684,7 +707,10 @@ internal class IrGraphGenerator(
    * Processes all binding containers from this node and extended nodes, creating instance
    * properties for each that isn't replaced by a dynamic instance.
    */
-  private fun IrClass.processBindingContainers(thisReceiverParameter: IrValueParameter) {
+  private fun IrClass.processBindingContainers(
+    thisReceiverParameter: IrValueParameter,
+    cachedProviderContextKeys: Set<IrContextualTypeKey>,
+  ) {
     val allBindingContainers = buildSet {
       addAll(node.bindingContainers)
       addAll(
@@ -699,7 +725,12 @@ internal class IrGraphGenerator(
         val typeKey = IrTypeKey(clazz)
         if (typeKey !in node.dynamicTypeKeys) {
           // Only add if not replaced with a dynamic instance
-          addBoundInstanceProperty(IrTypeKey(clazz), clazz.name, thisReceiverParameter) { _, _ ->
+          addBoundInstanceProperty(
+            IrTypeKey(clazz),
+            clazz.name,
+            thisReceiverParameter,
+            cachedProviderContextKeys = cachedProviderContextKeys,
+          ) { _, _ ->
             // Can't use primaryConstructor here because it may be a Java dagger Module in interop
             val noArgConstructor = clazz.constructors.first { it.parameters.isEmpty() }
             irCallConstructor(noArgConstructor.symbol, emptyList())
@@ -742,22 +773,24 @@ internal class IrGraphGenerator(
         rawType = thisGraphProviderType,
       )
     if (bindingGraph.isContextKeyReserved(thisGraphProviderContextKey)) {
+      val providerInitializer =
+        createIrBuilder(thisReceiverParameter.symbol).run {
+          instanceFactory(
+            node.typeKey.type,
+            irGetProperty(irGet(thisReceiverParameter), thisGraphProperty),
+          )
+        }
       val property =
         createBindingProperty(
           thisGraphProviderContextKey,
           memberNamer.suggest(MemberNamer.Kind.PROVIDER) { "thisGraphInstanceProvider" }.asName(),
-          thisGraphProviderType,
+          providerInitializer.type,
           PropertyKind.FIELD,
         )
 
       bindingPropertyContext.put(
         thisGraphProviderContextKey,
-        property.initFinal {
-          instanceFactory(
-            node.typeKey.type,
-            irGetProperty(irGet(thisReceiverParameter), thisGraphProperty),
-          )
-        },
+        property.initFinal(providerInitializer),
       )
     }
   }
@@ -768,7 +801,7 @@ internal class IrGraphGenerator(
    * Uses [BindingPropertyCollector] to determine which bindings need properties and in what order
    * they should be initialized.
    */
-  private fun collectBindingProperties(): List<BindingPropertyCollector.CollectedProperty> =
+  private fun collectBindingProperties(): BindingPropertyCollector.Result =
     trace("Collect binding properties") {
       // Injector roots are specifically from inject() functions - they don't create
       // MembersInjector instances, so their dependencies are scalar accesses
@@ -870,7 +903,7 @@ internal class IrGraphGenerator(
             .apply {
               addBackingFieldCompat {
                 type = shard.shardClass.typeWith()
-                visibility = DescriptorVisibilities.INTERNAL
+                visibility = DescriptorVisibilities.PRIVATE
               }
             }
         result[shard.index] = shardField
@@ -1276,6 +1309,7 @@ internal class IrGraphGenerator(
           }
         }
     }
+    codegenStats?.run { shardedInitFunctions += initFunctionsToCall.size }
 
     if (shard.isGraphAsShard) {
       // For graph-as-shard, add init calls to main constructor
@@ -1571,7 +1605,7 @@ internal class IrGraphGenerator(
             val wrappedType =
               typeKey.copy(typeKey.type.requireSimpleType(targetParam).arguments[0].typeOrFail)
 
-            val targetClass = pluginContext.referenceClass(binding.targetClassId)!!.owner
+            val targetClass = graphClass.lookupClass(binding.targetClassId)!!.owner
 
             // Create a single deep remapper from the target class - this handles the entire
             // type hierarchy correctly (e.g., ExampleClass<Int> -> Parent<Int, String> ->
@@ -1635,10 +1669,6 @@ internal class IrGraphGenerator(
 
                 +irInvoke(
                   callee = function.symbol,
-                  typeArgs =
-                    targetParam.type.requireSimpleType(targetParam).arguments.map {
-                      it.typeOrNullableAny
-                    },
                   args = args,
                 )
               }
@@ -1648,11 +1678,9 @@ internal class IrGraphGenerator(
     }
 
     // Binds stub bodies are implemented in BindsMirrorClassTransformer on the original
-    // declarations, so we don't need to implement fake overrides here
-    // TODO EXCEPT in native compilations, which appear to complain if you don't implement fake
-    //  overrides even if they have a default impl
-    //  https://youtrack.jetbrains.com/issue/KT-83666
-    if (metroContext.platform.isNative() && bindsFunctions.isNotEmpty()) {
+    // declarations. KLIB backends still need the generated graph impl to satisfy inherited
+    // abstract members during deserialization.
+    if (metroContext.platform.usesKlib() && bindsFunctions.isNotEmpty()) {
       for (function in bindsFunctions) {
         // Note we can't source this from the node.bindsCallables as those are pointed at their
         // original declarations and we need to implement their fake overrides here
@@ -1662,7 +1690,16 @@ internal class IrGraphGenerator(
           if (declarationToFinalize.isFakeOverride) {
             declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
           }
-          body = stubExpressionBody()
+          // This override is the graph impl's concrete implementation of the inherited @Binds
+          // member. @Binds is an identity conversion from the source parameter to the declared
+          // return type, so emit that body directly rather than a placeholder stub. KLIB backends
+          // deserialize and validate these inherited members before later Metro mirror code can
+          // cover for them.
+          val sourceParameter =
+            extensionReceiverParameterCompat
+              ?: regularParameters.singleOrNull()
+              ?: reportCompilerBug("No source parameter found for @Binds function $kotlinFqName")
+          body = createIrBuilder(symbol).run { irExprBodySafe(irGet(sourceParameter)) }
         }
       }
     }

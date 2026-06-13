@@ -12,7 +12,7 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithBackRefs<T, V, E>> {
+      fun <T : Any?, V : Any?, E : V> create(): MetroFactory<T, V, E> {
         return MetroFactory<T, V, E>()
       }
 
@@ -67,7 +67,7 @@ class ClassWithBounds<T : Any> {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun <T : Any> create(): Factory<ClassWithBounds<T>> {
+      fun <T : Any> create(): MetroFactory<T> {
         return MetroFactory<T>()
       }
 
@@ -122,7 +122,7 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun <T : Any?, V : Any?, E : Any?> create(): Factory<ClassWithMultiple<T, V, E>> {
+      fun <T : Any?, V : Any?, E : Any?> create(): MetroFactory<T, V, E> {
         return MetroFactory<T, V, E>()
       }
 
@@ -177,7 +177,7 @@ class ClassWithNullable<T : Any?, E : T?> {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun <T : Any?, E : T?> create(): Factory<ClassWithNullable<T, E>> {
+      fun <T : Any?, E : T?> create(): MetroFactory<T, E> {
         return MetroFactory<T, E>()
       }
 
@@ -232,7 +232,7 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithWheres<T, V, E>> {
+      fun <T : Any?, V : Any?, E : V> create(): MetroFactory<T, V, E> {
         return MetroFactory<T, V, E>()
       }
 
@@ -287,7 +287,7 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> create(): Factory<ComplexMonster<T, V, E, LongName, NullableLongName>> {
+      fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> create(): MetroFactory<T, V, E, LongName, NullableLongName> {
         return MetroFactory<T, V, E, LongName, NullableLongName>()
       }
 
@@ -342,7 +342,7 @@ class SimpleClass<T : Any?> {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun <T : Any?> create(): Factory<SimpleClass<T>> {
+      fun <T : Any?> create(): MetroFactory<T> {
         return MetroFactory<T>()
       }
 

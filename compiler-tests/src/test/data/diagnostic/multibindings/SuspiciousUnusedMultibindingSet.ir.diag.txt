@@ -1,16 +1,21 @@
-/SuspiciousUnusedMultibindingSet.kt:12:11: warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding kotlin.collections.Set<BaseViewModel> is unused but has 4 source binding(s). Did you possibly bind them to the wrong type or contribute them to the wrong scope?
+/SuspiciousUnusedMultibindingSet.kt:12:11: warning: 
+[Metro/SuspiciousUnusedMultibinding] Synthetic multibinding Set<BaseViewModel> is unused but has 4
+    source binding(s)
 
-  SuspiciousUnusedMultibindingSet.kt:20:1
-    Impl2 contributes a binding of BaseViewModel
-                                   ~~~~~~~~~~~~~
-  SuspiciousUnusedMultibindingSet.kt:24:1
-    Impl3 contributes a binding of BaseViewModel
-                                   ~~~~~~~~~~~~~
-  SuspiciousUnusedMultibindingSet.kt:28:1
-    Impl4 contributes a binding of BaseViewModel
-                                   ~~~~~~~~~~~~~
-  ...and 1 more
+      SuspiciousUnusedMultibindingSet.kt:20:1
+        Impl2 contributes a binding of BaseViewModel
+                                       ~~~~~~~~~~~~~
 
-Similar multibindings:
-- Set<ViewModel>
+      SuspiciousUnusedMultibindingSet.kt:24:1
+        Impl3 contributes a binding of BaseViewModel
+                                       ~~~~~~~~~~~~~
+
+      SuspiciousUnusedMultibindingSet.kt:28:1
+        Impl4 contributes a binding of BaseViewModel
+                                       ~~~~~~~~~~~~~
+      ...and 1 more
+
+  help: did you possibly bind them to the wrong type or contribute them to the wrong scope?
+  note: similar multibindings: Set<ViewModel>
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#suspiciousunusedmultibinding
 

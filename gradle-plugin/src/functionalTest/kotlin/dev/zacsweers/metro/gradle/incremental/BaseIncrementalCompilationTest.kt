@@ -285,6 +285,9 @@ abstract class BaseIncrementalCompilationTest(protected val target: KmpTarget) {
   ): Array<String> {
     return buildList {
         add(task)
+        // These tests assert raw diagnostic text; plain console keeps Metro's AUTO console mode
+        // from resolving to RICH (ANSI codes) on developer machines.
+        add("--console=plain")
         if (enableDebugger) {
           add(GRADLE_DEBUG_ARGS)
           add(KOTLIN_DEBUG_ARGS)

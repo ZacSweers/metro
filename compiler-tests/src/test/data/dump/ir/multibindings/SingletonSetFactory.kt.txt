@@ -12,7 +12,9 @@ interface AppGraph {
     @Binds
     @IntoSet
     @CallableMetadata(callableName = "bindOnly", propertyName = "", startOffset = 279, endOffset = 308)
-    abstract fun String.bindOnly_intoset(): String
+    fun String.bindOnly_intoset(): String {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -70,7 +72,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): ProvideOnlyMetroFactory {
         return ProvideOnlyMetroFactory(instance = instance)
       }
 

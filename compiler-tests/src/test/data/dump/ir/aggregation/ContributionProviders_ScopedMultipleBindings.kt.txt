@@ -51,6 +51,7 @@ abstract class ImplContributions {
   @IROnlyFactories
   @ContributesTo(scope = AppScope::class)
   object ToAppScope {
+    @CallableMetadata(callableName = "provideImplAsBar", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideImplAsBar")
     class ProvideImplAsBarMetroFactory : Factory<Bar> {
       private /* final field */ val instance: Provider<Any?> = instance
       companion object Companion {
@@ -63,7 +64,7 @@ abstract class ImplContributions {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Bar> {
+        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): ProvideImplAsBarMetroFactory {
           return ProvideImplAsBarMetroFactory(instance = instance)
         }
 
@@ -96,6 +97,7 @@ abstract class ImplContributions {
 
     }
 
+    @CallableMetadata(callableName = "provideImplAsFoo", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideImplAsFoo")
     class ProvideImplAsFooMetroFactory : Factory<Foo> {
       private /* final field */ val instance: Provider<Any?> = instance
       companion object Companion {
@@ -108,7 +110,7 @@ abstract class ImplContributions {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): Factory<Foo> {
+        fun create(@Named(name = "metro_scoped_Impl") instance: Provider<Any?>): ProvideImplAsFooMetroFactory {
           return ProvideImplAsFooMetroFactory(instance = instance)
         }
 
@@ -141,6 +143,7 @@ abstract class ImplContributions {
 
     }
 
+    @CallableMetadata(callableName = "provideScopedInstanceImpl", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideScopedInstanceImpl")
     class ProvideScopedInstanceImplMetroFactory : Factory<Any?> {
       private /* final field */ val string: Provider<String> = string
       private /* final field */ val longProvider: Provider<Long> = longProvider
@@ -156,7 +159,7 @@ abstract class ImplContributions {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): Factory<Any?> {
+        fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): ProvideScopedInstanceImplMetroFactory {
           return ProvideScopedInstanceImplMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
@@ -224,11 +227,11 @@ abstract class ImplContributions {
 
 }
 
-// FILE: implContributionsToAppScopeAppScope.kt
+// FILE: implContributionsToAppScopeDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
 @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-fun AppScope(contributed: ImplContributions.ToAppScope) {
+fun dev_zacsweers_metro_AppScope(contributed: ImplContributions.ToAppScope) {
   return error(message = "Never called")
 }
 

@@ -18,7 +18,7 @@ class InternalModule {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: InternalModule): Factory<Int> {
+      fun create(instance: InternalModule): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 
@@ -75,9 +75,6 @@ interface ExampleGraph {
   class Impl : ExampleGraph {
     private val internalModuleInstance: InternalModule
       field = InternalModule()
-
-    private val internalModuleInstanceProvider: Provider<InternalModule>
-      field = InstanceFactory/* companion */.invoke<InternalModule>(value = <this>.#internalModuleInstance)
 
     private constructor() /* primary */ {
       super/*Any*/()

@@ -14,7 +14,7 @@ class InternalClass {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<InternalClass> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -50,6 +50,7 @@ class InternalClass {
 object IntProvider {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 290, endOffset = 335, newInstanceName = "provideInt")
+  @ComptimeOnly
   object ProvideIntMetroFactory : Factory<Int> {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -60,7 +61,7 @@ object IntProvider {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<Int> {
+    fun create(): ProvideIntMetroFactory {
       return ProvideIntMetroFactory
     }
 

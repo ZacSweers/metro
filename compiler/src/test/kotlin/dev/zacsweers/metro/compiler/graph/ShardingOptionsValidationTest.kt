@@ -18,7 +18,7 @@ class ShardingOptionsValidationTest : MetroCompilerTest() {
         interface TestGraph
         """
       ),
-      options = MetroOptions(keysPerGraphShard = 0),
+      options = MetroOptions.builder().keysPerGraphShard(0).build(),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertContains("keysPerGraphShard must be greater than zero but was 0")
@@ -34,7 +34,7 @@ class ShardingOptionsValidationTest : MetroCompilerTest() {
         interface TestGraph
         """
       ),
-      options = MetroOptions(keysPerGraphShard = -1),
+      options = MetroOptions.builder().keysPerGraphShard(-1).build(),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertContains("keysPerGraphShard must be greater than zero but was -1")

@@ -88,15 +88,12 @@ plugins.withType<KotlinBasePlugin> {
         freeCompilerArgs.addAll("-Xassertions=jvm", "-Xannotation-default-target=param-property")
         if (isCompilerProject) {
           freeCompilerArgs.addAll(
-            "-Xcontext-parameters",
             "-Xreturn-value-checker=full",
             "-Xcontext-sensitive-resolution",
             "-Xwhen-expressions=indy",
             //  "-Xallow-contracts-on-more-functions",
             //  "-Xallow-condition-implies-returns-contracts",
             //  "-Xallow-holdsin-contract",
-            // TODO Kotlin 2.3.0
-            //  "-Xexplicit-backing-fields",
           )
           optIn.addAll(
             "kotlin.contracts.ExperimentalContracts",

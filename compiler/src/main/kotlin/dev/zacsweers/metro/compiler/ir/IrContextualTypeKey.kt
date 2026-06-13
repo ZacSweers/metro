@@ -7,7 +7,6 @@ import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.WrappedType.Canonical
 import dev.zacsweers.metro.compiler.graph.WrappedType.Provider
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -33,12 +32,8 @@ internal class IrContextualTypeKey(
   override val rawType: IrType? = null,
 ) : BaseContextualTypeKey<IrType, IrTypeKey, IrContextualTypeKey> {
 
-  private val cachedRender by memoize { render(short = false) }
-  private val cachedHashCode by memoize {
-    var result = typeKey.hashCode()
-    result = 31 * result + wrappedType.hashCode()
-    result
-  }
+  private var cachedRender: String? = null
+  private var cachedHashCode: Int = 0
 
   context(metroContext: IrMetroContext)
   fun withIrTypeKey(typeKey: IrTypeKey, rawType: IrType? = null): IrContextualTypeKey {
@@ -76,12 +71,12 @@ internal class IrContextualTypeKey(
       is Canonical -> wt.type
       is Provider -> {
         val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
-        innerType.wrapInProvider(context.referenceClass(wt.providerType)!!)
+        innerType.wrapInProvider(context.builtinsFinderCompat().findClass(wt.providerType)!!)
       }
 
       is WrappedType.Lazy -> {
         val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
-        innerType.wrapInProvider(context.referenceClass(wt.lazyType)!!)
+        innerType.wrapInProvider(context.builtinsFinderCompat().findClass(wt.lazyType)!!)
       }
 
       is WrappedType.Map -> {
@@ -108,9 +103,24 @@ internal class IrContextualTypeKey(
     return true
   }
 
-  override fun hashCode(): Int = cachedHashCode
+  override fun hashCode(): Int {
+    var h = cachedHashCode
+    if (h == 0) {
+      h = typeKey.hashCode()
+      h = 31 * h + wrappedType.hashCode()
+      cachedHashCode = h
+    }
+    return h
+  }
 
-  override fun toString(): String = cachedRender
+  override fun toString(): String {
+    var result = cachedRender
+    if (result == null) {
+      result = render(short = false)
+      cachedRender = result
+    }
+    return result
+  }
 
   // TODO cache these in DependencyGraphTransformer or shared transformer data
   companion object {
@@ -396,13 +406,13 @@ internal fun WrappedType<IrType>.toIrType(): IrType {
     is Canonical -> type
     is Provider -> {
       val innerIrType = innerType.toIrType()
-      val providerType = context.referenceClass(providerType)!!
+      val providerType = context.builtinsFinderCompat().findClass(providerType)!!
       providerType.typeWith(innerIrType)
     }
 
     is WrappedType.Lazy -> {
       val innerIrType = innerType.toIrType()
-      val lazyType = context.referenceClass(lazyType)!!
+      val lazyType = context.builtinsFinderCompat().findClass(lazyType)!!
       lazyType.typeWith(innerIrType)
     }
 

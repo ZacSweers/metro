@@ -11,7 +11,7 @@ class NonReused {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<NonReused> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -62,7 +62,7 @@ class Reused {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(nonReused: Provider<NonReused>): Factory<Reused> {
+      fun create(nonReused: Provider<NonReused>): MetroFactory {
         return MetroFactory(nonReused = nonReused)
       }
 
@@ -175,7 +175,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph, long: Provider<Long>): Factory<Double> {
+      fun create(instance: AppGraph, long: Provider<Long>): ProvideDoubleMetroFactory {
         return ProvideDoubleMetroFactory(instance = instance, long = long)
       }
 
@@ -222,7 +222,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Int> {
+      fun create(instance: AppGraph): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 
@@ -270,7 +270,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph, int: Provider<Int>): Factory<Long> {
+      fun create(instance: AppGraph, int: Provider<Int>): ProvideLongMetroFactory {
         return ProvideLongMetroFactory(instance = instance, int = int)
       }
 

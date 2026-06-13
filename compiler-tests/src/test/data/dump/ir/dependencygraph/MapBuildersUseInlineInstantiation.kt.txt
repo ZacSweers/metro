@@ -15,7 +15,7 @@ class IntHolderImpl : IntHolder {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<IntHolderImpl> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -58,7 +58,9 @@ class IntHolderImpl : IntHolder {
       @IntoMap
       @IntKey(value = 3)
       @CallableMetadata(callableName = "bindIntoMapAsIntHolder4013004651", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindIntoMapAsIntHolder40130046514013004651_intomap(instance: IntHolderImpl): IntHolder
+      fun bindIntoMapAsIntHolder40130046514013004651_intomap(instance: IntHolderImpl): IntHolder {
+        return error(message = "Never called")
+      }
 
     }
 
@@ -81,7 +83,7 @@ class IntHolderImpl : IntHolder {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : IntHolderImpl.MetroContributionToAppScope {
+interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
@@ -153,7 +155,7 @@ interface AppGraph : IntHolderImpl.MetroContributionToAppScope {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Int> {
+      fun create(instance: AppGraph): ProvideInt1MetroFactory {
         return ProvideInt1MetroFactory(instance = instance)
       }
 
@@ -202,7 +204,7 @@ interface AppGraph : IntHolderImpl.MetroContributionToAppScope {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Int> {
+      fun create(instance: AppGraph): ProvideInt2MetroFactory {
         return ProvideInt2MetroFactory(instance = instance)
       }
 
@@ -262,10 +264,10 @@ interface AppGraph : IntHolderImpl.MetroContributionToAppScope {
 interface IntHolder {
 }
 
-// FILE: intHolderImplAppScope.kt
+// FILE: intHolderImplDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: IntHolderImpl) {
+fun dev_zacsweers_metro_AppScope(contributed: IntHolderImpl) {
   return error(message = "Never called")
 }
 

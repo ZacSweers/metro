@@ -32,7 +32,6 @@ import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.ClassId
@@ -153,10 +152,10 @@ internal class IrDynamicGraphGenerator(
     // Extend the target type (graph interface or factory interface)
     val supertype = factorySamFunction?.returnType ?: targetType
 
-    val storedParams = containerClasses.mapIndexed { index, containerClass ->
+    val storedParams = containerTypeKeys.mapIndexed { index, containerTypeKey ->
       SyntheticGraphParameter(
         name = "container$index",
-        type = containerClass.symbol.defaultType,
+        type = containerTypeKey.type,
         origin = Origins.DynamicContainerParam,
       )
     }

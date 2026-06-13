@@ -70,11 +70,12 @@ class RenderingTest : MetroCompilerTest() {
         extraImports = arrayOf("kotlin.reflect.KClass"),
       ),
       options =
-        metroOptions.copy(
-          rawReportsDestination = reportsDir,
-          enableFullBindingGraphValidation = true,
-          enableFunctionProviders = false, // We want to cover all of them
-        ),
+        metroOptions
+          .toBuilder()
+          .reportsDestination(reportsDir)
+          .enableFullBindingGraphValidation(true)
+          .enableFunctionProviders(false) // We want to cover all of them
+          .build(),
     ) {
       val keysFile = reportsDir.resolve("keys-populated/test/ExampleGraph/Impl.txt").readText()
       assertThat(keysFile)

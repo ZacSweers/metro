@@ -7,14 +7,21 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.buildText
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
+import dev.zacsweers.metro.compiler.ir.IrContributions
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -24,11 +31,11 @@ import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.UsedKeyCollector
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.betterDumpKotlinLike
 import dev.zacsweers.metro.compiler.ir.chunkSupertypesIfNeeded
 import dev.zacsweers.metro.compiler.ir.computePromotedParents
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.getOrCreateGraphFactoryImplShell
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.BindingLookupCache
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
@@ -46,8 +53,13 @@ import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.metroDumpKotlinLike
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
+import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
+import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -73,18 +85,23 @@ import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
 import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getAllSuperclasses
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isInterface
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 
@@ -156,15 +173,22 @@ internal class DependencyGraphTransformer(
 
   /**
    * For graphs annotated with `@MergeContributionsInIr`, FIR skipped the contribution-supertype
-   * merge entirely. Run the merger here in IR and append the merged supertypes onto the generated
-   * `$$Impl` so the binding graph builder picks them up via `allSupertypesSequence`.
+   * merge entirely. IR-only class generation also skips FIR-hidden contribution markers so metadata
+   * does not reference classes generated later. Run the merger here in IR and append the merged
+   * supertypes onto the generated `$$Impl` so the binding graph builder picks them up via
+   * `allSupertypesSequence`.
    */
   private fun applyIrContributionMergeIfNeeded(
     graphDeclaration: IrClass,
     graphAnnotation: IrConstructorCall,
     metroGraph: IrClass,
   ) {
-    if (!graphDeclaration.hasAnnotation(Symbols.ClassIds.mergeContributionsInIr)) return
+    if (
+      !options.generateClassesInIr &&
+        !graphDeclaration.hasAnnotation(Symbols.ClassIds.mergeContributionsInIr)
+    ) {
+      return
+    }
 
     val contributions =
       contributionMerger.computeContributions(graphAnnotation, graphDeclaration) ?: return
@@ -181,12 +205,55 @@ internal class DependencyGraphTransformer(
     // to a different supertype path.
     IrFakeOverrideBuilder(irTypeSystemContext, MetroFakeOverrideBuilderStrategy, emptyList())
       .buildFakeOverridesForClass(metroGraph, oldSignatures = false)
+    reconcileContributionOverrides(metroGraph, contributions)
 
     contributions.supertypes.forEach { marker ->
       marker.rawTypeOrNull()?.let { trackClassLookup(graphDeclaration, it) }
     }
     promotedParents.values.forEach { parent ->
       parent.rawTypeOrNull()?.let { trackClassLookup(graphDeclaration, it) }
+    }
+  }
+
+  private fun reconcileContributionOverrides(metroGraph: IrClass, contributions: IrContributions) {
+    val contributionClasses = contributions.supertypes.mapNotNull { it.rawTypeOrNull() }
+    if (contributionClasses.isEmpty()) return
+
+    val graphProperties = metroGraph.properties.groupBy { it.name }
+    for (contributionProperty in contributionClasses.flatMap { it.properties }) {
+      val matchingProperties = graphProperties[contributionProperty.name] ?: continue
+      for (graphProperty in matchingProperties) {
+        graphProperty.addOverriddenSymbol(contributionProperty.symbol)
+        graphProperty.getter?.let { graphGetter ->
+          contributionProperty.getter?.let { graphGetter.addOverriddenSymbol(it.symbol) }
+        }
+        graphProperty.setter?.let { graphSetter ->
+          contributionProperty.setter?.let { graphSetter.addOverriddenSymbol(it.symbol) }
+        }
+      }
+    }
+
+    val graphFunctions = metroGraph.functions.groupBy { it.name }
+    for (contributionFunction in contributionClasses.flatMap { it.functions }) {
+      val matchingFunctions = graphFunctions[contributionFunction.name] ?: continue
+      matchingFunctions
+        .filter { it.hasSameValueParameterShape(contributionFunction) }
+        .forEach { it.addOverriddenSymbol(contributionFunction.symbol) }
+    }
+  }
+
+  private fun IrSimpleFunction.hasSameValueParameterShape(other: IrSimpleFunction): Boolean {
+    val parameters = regularParameters
+    val otherParameters = other.regularParameters
+    if (parameters.size != otherParameters.size) return false
+    return parameters.zip(otherParameters).all { (parameter, otherParameter) ->
+      parameter.type == otherParameter.type
+    }
+  }
+
+  private fun <S : IrSymbol> IrOverridableDeclaration<S>.addOverriddenSymbol(symbol: S) {
+    if (symbol !in overriddenSymbols) {
+      overriddenSymbols += symbol
     }
   }
 
@@ -557,7 +624,7 @@ internal class DependencyGraphTransformer(
             reportCompat(
               irDeclarations = sequenceOf(declaration, dependencyGraphDeclaration),
               factory = factory,
-              a = combinedMessage,
+              a = combinedMessage.padForConsole(),
             )
           }
       }
@@ -615,10 +682,10 @@ internal class DependencyGraphTransformer(
 
     if (unusedKeys.isEmpty()) return
 
-    val diagnosticFactory =
+    val (diagnosticFactory, metroSeverity) =
       when (severity) {
-        WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
-        ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
+        WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING to MetroSeverity.WARNING
+        ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR to MetroSeverity.ERROR
         // Already checked above, but for exhaustive when
         else -> return
       }
@@ -633,9 +700,7 @@ internal class DependencyGraphTransformer(
     )
 
     val reports = unusedGraphInputs.map { unusedBinding ->
-      val message = buildString {
-        appendLine("Graph input '${unusedBinding.typeKey}' is unused and can be removed.")
-
+      val notes = buildList {
         // Show a hint of what direct node is including this, if any
         unusedBinding.typeKey.type.rawTypeOrNull()?.let { containerClass ->
           // Efficient to call here as it should be already cached
@@ -644,16 +709,39 @@ internal class DependencyGraphTransformer(
           val transitivelyUsed =
             sortedKeys.intersect(transitivelyIncluded).minus(unusedBinding.typeKey)
           if (transitivelyUsed.isNotEmpty()) {
-            appendLine()
-            appendLine("(Hint)")
-            appendLine(
-              "The following binding containers *are* used and transitively included by '${unusedBinding.typeKey}'. Consider including them directly instead"
+            add(
+              Note.help(
+                buildText {
+                  append("the following binding containers are used and transitively included by ")
+                  append(unusedBinding.typeKey.toText())
+                  append(", consider including them directly instead: ")
+                  transitivelyUsed.sorted().forEachIndexed { index, key ->
+                    if (index > 0) append(", ")
+                    append(key.toText())
+                  }
+                }
+              )
             )
-            transitivelyUsed.sorted().joinTo(this, separator = "\n", postfix = "\n") { "- $it" }
           }
         }
       }
-      UnusedInputReport(message, unusedBinding.irElement, unusedBinding.reportableDeclaration)
+      val diagnostic =
+        MetroDiagnostic(
+          id = MetroDiagnosticId.UNUSED_GRAPH_INPUTS,
+          severity = metroSeverity,
+          title =
+            buildText {
+              append("Graph input ")
+              append(unusedBinding.typeKey.toText())
+              append(" is unused and can be removed")
+            },
+          notes = notes,
+        )
+      UnusedInputReport(
+        render(diagnostic).padForConsole(),
+        unusedBinding.irElement,
+        unusedBinding.reportableDeclaration,
+      )
     }
 
     // Partition: reports with irElement can be reported directly (unique per element)
@@ -795,7 +883,7 @@ internal class DependencyGraphTransformer(
       "graph-dumpKotlin",
       { "${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt" },
     ) {
-      metroGraph.betterDumpKotlinLike()
+      metroGraph.metroDumpKotlinLike()
     }
   }
 
@@ -811,10 +899,11 @@ internal class DependencyGraphTransformer(
     if (factoryCreator != null) {
       // TODO would be nice if we could just class delegate to the `Impl` object
       val implementFactoryFunction: IrClass.() -> Unit = {
+        val ownerClass = this
         val samName = factoryCreator.function.name.asString()
         requireSimpleFunction(samName).owner.apply {
           if (isFakeOverride) {
-            finalizeFakeOverride(metroGraph.thisReceiverOrFail)
+            finalizeFakeOverride(ownerClass.thisReceiverOrFail)
           }
           val createFunction = this
           body =
@@ -830,8 +919,7 @@ internal class DependencyGraphTransformer(
       }
 
       // Implement the factory's `Impl` class if present
-      val factoryImpl =
-        factoryCreator.type.requireNestedClass(Symbols.Names.Impl).apply(implementFactoryFunction)
+      val factoryImpl = factoryCreator.type.graphFactoryImplClass().apply(implementFactoryFunction)
 
       if (
         factoryCreator.type.isInterface &&
@@ -845,12 +933,16 @@ internal class DependencyGraphTransformer(
           requireSimpleFunction(Symbols.StringNames.FACTORY).owner.apply {
             if (origin == Origins.MetroGraphFactoryCompanionGetter) {
               if (isFakeOverride) {
-                finalizeFakeOverride(metroGraph.thisReceiverOrFail)
+                finalizeFakeOverride(companionObject.thisReceiverOrFail)
               }
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBodySafe(
-                    irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList())
+                    if (factoryImpl.isObject) {
+                      irGetObject(factoryImpl.symbol)
+                    } else {
+                      irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList())
+                    }
                   )
                 }
             }
@@ -862,7 +954,7 @@ internal class DependencyGraphTransformer(
       companionObject.apply {
         requireSimpleFunction(Symbols.StringNames.INVOKE).owner.apply {
           if (isFakeOverride) {
-            finalizeFakeOverride(metroGraph.thisReceiverOrFail)
+            finalizeFakeOverride(companionObject.thisReceiverOrFail)
           }
           body =
             pluginContext.createIrBuilder(symbol).run {
@@ -873,6 +965,18 @@ internal class DependencyGraphTransformer(
     }
 
     companionObject.dumpToMetroLog()
+  }
+
+  private fun IrClass.graphFactoryImplClass(): IrClass {
+    nestedClassOrNull(Symbols.Names.Impl)?.let {
+      return it
+    }
+
+    return if (options.generateClassesInIr) {
+      getOrCreateGraphFactoryImplShell()
+    } else {
+      requireNestedClass(Symbols.Names.Impl)
+    }
   }
 }
 

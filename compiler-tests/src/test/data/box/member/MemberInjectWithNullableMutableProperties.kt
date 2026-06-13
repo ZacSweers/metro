@@ -1,12 +1,10 @@
 class Example {
-  @JvmField
   @Inject
   var nullableFieldInject: String? = null
 
   @Inject
   var nullablePropertyInject: Int? = null
 
-  @JvmField
   @Inject
   var fieldInject: Long = 3L
 

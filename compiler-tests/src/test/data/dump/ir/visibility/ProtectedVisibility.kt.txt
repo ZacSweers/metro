@@ -59,7 +59,7 @@ abstract class AppGraph : BaseGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): ProvideStringMetroFactory {
         return ProvideStringMetroFactory(instance = instance)
       }
 
@@ -129,7 +129,7 @@ open class BaseGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: BaseGraph): Factory<Int> {
+      fun create(instance: BaseGraph): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 
@@ -188,7 +188,7 @@ class ProtectedConstructorClass {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<ProtectedConstructorClass> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 

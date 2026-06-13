@@ -7,7 +7,6 @@ import kotlin.getValue
 import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.test.FirParser
 import org.jetbrains.kotlin.test.TargetBackend
-import org.jetbrains.kotlin.test.backend.BlackBoxCodegenSuppressor
 import org.jetbrains.kotlin.test.backend.handlers.IrSourceRangesDumpHandler
 import org.jetbrains.kotlin.test.backend.handlers.IrTextDumpHandler
 import org.jetbrains.kotlin.test.backend.handlers.IrTreeVerifierHandler
@@ -27,9 +26,7 @@ import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.LATEST_PHASE_IN_
 import org.jetbrains.kotlin.test.directives.model.SimpleDirective
 import org.jetbrains.kotlin.test.runners.AbstractKotlinCompilerWithTargetBackendTest
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
-import org.jetbrains.kotlin.test.services.PhasedPipelineChecker
 import org.jetbrains.kotlin.test.services.TestPhase
-import org.jetbrains.kotlin.utils.bind
 
 /**
  * IR dump test that uses [MetroIrPrettyKotlinDumpHandler] (with `betterDumpKotlinLike`) instead of
@@ -45,7 +42,7 @@ open class AbstractIrDumpTest : AbstractKotlinCompilerWithTargetBackendTest(Targ
 
   override fun configure(builder: TestConfigurationBuilder) =
     with(builder) {
-      setupMetroJvmPipeline(FirParser.LightTree)
+      setupMetroJvmPipelineCompat(FirParser.LightTree)
       commonHandlersForCodegenTest()
       additionalK2ConfigurationForIrTextTest(FirParser.LightTree)
 
@@ -62,10 +59,7 @@ open class AbstractIrDumpTest : AbstractKotlinCompilerWithTargetBackendTest(Targ
         )
       }
 
-      useAfterAnalysisCheckers(
-        ::BlackBoxCodegenSuppressor,
-        ::PhasedPipelineChecker.bind(TestPhase.BACKEND),
-      )
+      useIrDumpFailureSuppressorsCompat()
       enableMetaInfoHandler()
 
       configurePlugin(compatContext)

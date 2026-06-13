@@ -4,14 +4,200 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- **[IR]** Revamp graph-validation diagnostics with structured output. Taking some inspiration from Rust error messages.
+  - Stable diagnostic IDs
+  - Compact dependency chains
+  - Aligned binding traces
+  - Source snippets
+  - `help:`/`note:` guidance in messages (replaces the previous `(hint)` sections)
+  - Per-diagnostic docs links
+  - Diagnostics now wrap to 100 columns and start on their own line after the compiler location prefix
+
+Example plain output
+```
+ExampleGraph.kt:7:11: error: 
+[Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
+
+  cycle:
+      +-> Double -> String -> Int --+
+      +-----------------------------+
+
+  trace (in test.ExampleGraph):
+      Double is injected at test.ExampleGraph.provideInt(…, double)
+      String is injected at test.ExampleGraph.provideDouble(…, string)
+      Int is injected at test.ExampleGraph.provideString(…, int)
+      Double is injected at test.ExampleGraph.provideInt(…, double)
+      ...
+
+  help: break the cycle by injecting a deferred type at one edge, e.g. `() -> Double` or
+        `Lazy<Double>`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+```
+
+Example rich output (note that in rich terminals this would have color and markup too!)
+```
+[Metro/MissingBinding] No binding found for String
+
+    ╭─[ /Users/zacsweers/dev/android/personal/FieldSpottr/shared/src/commonMain/kotlin/dev/zacsweers/example/ExampleGraph.kt:9:3 ]
+  9 │   val a: String
+    │   ─────────────
+    ╰─
+
+  trace (in dev.zacsweers.example.ExampleGraph):
+      String is requested at dev.zacsweers.example.ExampleGraph.a
+
+  similar bindings:
+      • CharSequence (Supertype. Type: Provided) — ExampleGraph.kt:12:3
+
+  help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+```
+
+- **[gradle]** Add a `diagnosticsRenderMode` Gradle option (`AUTO`/`PLAIN`/`RICH`) for diagnostic rendering.
+  - `AUTO` defaults to rich output and falls back to plain output for `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
+  - The resolved mode is passed as a non-input compiler option, so render-mode changes do not invalidate compilation or poison build caches.
+- **[docs]** Add a generated [Diagnostics Reference](https://zacsweers.github.io/metro/latest/diagnostics/) docs page for Metro's common graph validation diagnostics.
+
 ### Enhancements
 
-- **[IR]** Add a `member-naming-strategy` compiler option for shortening generated member names in generated code. Accepts `DESCRIPTIVE` (default), `TYPED` (`provider*`/`instance*`/`factory*`), or `MINIMAL` (single collapsed `provider*` naming). See [docs/performance.md](https://zacsweers.github.io/metro/performance/#shortening-generated-member-names) for guidance.
-- **[IR/IC]** Optimize IC tracking by buffering lookup and expect/actual records during IR and flushing them once after graph validation, avoiding per-write synchronization on the hot path. This is enabled by default but can be disabled via the `buffered-ic-tracking` compiler option if it causes any issues.
+- **[FIR]** Add a diagnostic to report mutable graph accessor properties.
+- **[IR]** Add cycle-breaking `help:` guidance for dependency cycle errors, suggesting deferred types such as `() -> T` or `Lazy<T>`.
+- **[IR/reporting]** Collapse sibling missing-binding errors with identical trace tails to a `... same as for X` continuation, and fully qualify type names only when two distinct types in one diagnostic share a simple name.
 
 ### Fixes
 
+- **[FIR/IR]** Fully qualify generated hint function names so scope classes with the same simple name don't collide.
+- **[IR]** Preserve substituted generic type arguments when generating assisted factory delegate parameters and dynamic graph container inputs.
+- **[IR]** Forward extension and context receivers when generated binding-container factories invoke the original binding function.
+- **[IR]** Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.
+- **[IR]** Patch declaration parents for generated `@Binds` mirror declarations so copied declarations remain attached to the correct generated class.
+- **[IR/JS]** Fix `Map<K, () -> V>` multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro `Provider` objects.
+- **[IR/KLIB]** Fix generated `@Binds` implementations on KLIB backends. Metro now emits concrete identity bodies for inherited `@Binds` members where JS, Native, and Wasm validate abstract members during deserialization.
+- **[IR/KLIB]** Keep generated graph and shard backing fields private while preserving generated access through properties. This avoids backing-field visibility validation failures on KLIB backends.
+
+### Changes
+
+- Run Metro's functional compiler unit tests on JS.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@BraisGabin](https://github.com/BraisGabin)
+- [@ychescale9](https://github.com/ychescale9)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+1.2.1
+-----
+
+_2026-06-11_
+
+### New
+
+- **[IR]** Add support for generating metadata-visible classes entirely in IR, allowing Metro to move much of its current FIR code gen entirely to IR.
+  - This is enabled by default (and only possible) on Kotlin `2.4.20-dev-6138` or newer and can be configured via the `generateClassesInIr` option. Do not try to enable this on older versions, your builds will fail and you will be sad.
+
+### Fixes
+
+- **[FIR]** Fix supertype merging not accounting for `replaces` coming from binding container contributions.
+
+### Changes
+
+- **[gradle]** Replace the `rich-diagnostics` compiler option and `metro.richDiagnostics` system property with `diagnostics-render-mode` and `metro.diagnosticsRenderMode`.
+- Test Kotlin `2.4.20-dev-6138`.
+- Test IntelliJ `2026.2` EAPs.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@hossain-khan](https://github.com/hossain-khan)
+- [@kevinguitar](https://github.com/kevinguitar)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+1.2.0
+-----
+
+_2026-06-10_
+
+### New
+
+- **[interop]** This release introduces experimental support for Hilt `@InstallIn` and `@EntryPoint` interop.
+  - Enabled with `metro { interop { includeHilt() } }`
+  - A `@DependencyGraph(<scope>)` automatically merges every `@InstallIn(<component>) @Module` (as a binding container) and `@InstallIn(<component>) @EntryPoint` (as a supertype) whose `<component>` maps to `<scope>`.
+    - The eight standard Android Hilt components map to their canonical scopes out of the box.
+    - User-declared `@DefineComponent` interfaces are resolved on demand by looking for an annotation on the same interface whose annotation class is itself annotated with `@Scope` (Hilt's own convention).
+  - Both consuming Hilt-generated aggregation deps and also treating `@InstallIn` + `@EntryPoint`/`@Module` as interop are supported.
+  - See [the docs](https://zacsweers.github.io/metro/latest/interop/#hilt) for the details and current limitations.
+
+### Enhancements
+
+- **[compat]** Improve IDE kotlinc version resolution. IntelliJ uses custom tags like `2.4.0-ij261-64` that are a little tricky to decipher.
+- **[FIR]** Add diagnostic guidance around `inline` `@Provides` declarations. TL;DR, they only make sense for public providers.
+- **[FIR/IR]** Inline _constant_ `@Provides` bindings directly into generated graph implementations when possible, avoiding generated factory calls for literals, nulls, object singletons, enum entries, class literals, and `const` property reads. This is enabled by default and can be disabled with the `enable-provider-inlining` compiler flag if you see any issues.
+- **[IR]** Add a `member-naming-strategy` compiler option for shortening generated member names in generated code. Accepts `DESCRIPTIVE` (default), `TYPED` (`provider*`/`instance*`/`factory*`), or `MINIMAL` (single collapsed `provider*` naming). See [docs/performance.md](https://zacsweers.github.io/metro/performance/#shortening-generated-member-names) for guidance.
+- **[IR]** Lazily compute cached hashCode and toString renders for compiler-internal type keys without delegation.
+- **[IR]** Propagate `inline` modifiers from `@Provides` functions to factory `newInstance()` functions.
+- **[IR]** Preserve concrete generated provider factory return types where possible instead of widening to `Factory<T>`. In the future, Metro may generate these as value classes and this will allow better compiler optimization in those scenarios.
+- **[IR/IC]** Optimize IC tracking by buffering lookup and expect/actual records during IR and flushing them once after graph validation, avoiding per-write synchronization on the hot path. This is enabled by default but can be disabled via the `buffered-ic-tracking` compiler option if it causes any issues.
+- **[IR/IC]** Use newer compiler `DeclarationFinder` APIs on Kotlin `2.3.20`+. These have more granular search scopes plus automatic IC tracking.
+- **[IR/runtime]** Add internal primitive instance factories and use them where possible for primitive graph inputs and inlined providers.
+- **[gradle]** Add a `metroEnv` task that writes human-readable Metro/Kotlin/Gradle environment reports for bug reports.
+- **[reporting]** Add compiler stats to reporting.
+- **[runtime]** Rework `DoubleCheck` synchronization on JVM and native targets.
+  - On JVM, scoped bindings now synchronize on the `DoubleCheck` instance's own monitor (like Dagger) instead of allocating a `ReentrantLock` per instance, which also eliminates the spurious `ReservedStackAccess` JVM warning.
+  - On native targets, the previous spinlock impl is replaced with a reentrant init guard whose contended callers park on a process-wide condition variable instead of busy-waiting.
+    - On Apple platforms, parked waiters additionally donate their [QoS](https://developer.apple.com/library/archive/documentation/Performance/Conceptual/EnergyGuide-iOS/PrioritizeWorkWithQoS.html) class to the initializing thread to avoid priority inversion.
+  - Notes for virtual thread (i.e. Project Loom):
+    - JDK 21–23: `synchronized` can pin a virtual thread to its carrier if a scoped provider blocks during its one-time init ([JEP 444](https://openjdk.org/jeps/444)).
+    - JDK 24+ removes monitor pinning ([JEP 491](https://openjdk.org/jeps/491)).
+
+### Fixes
+
+- **[FIR]** Loosen `nonPublicContributionSeverity` if `generateContributionProviders` is enabled. Note it will still fire on internal `@ExposeImplBinding`-annotated types.
+- **[FIR]** Fix compatibility with IntelliJ `2026.1.3`.
+- **[FIR]** Don't merge generated binding containers from `@ContributesInto*` declarations as supertypes when aggregating contributions.
+- **[FIR/JS/Wasm]** Fix cross-module contributed graph extension factories on KLIB backends. Nested `@GraphExtension.Factory @ContributesTo(...)` factories are now emitted as contribution hints and promoted as direct supertypes where needed, avoiding unresolved downstream calls such as `createGraph<AppGraph>().createChildGraph()` on JS/Wasm.
+- **[IR]** Fix graph extensions inheriting a farther ancestor's contribution-provider binding when a closer parent graph already owns a scoped binding for the same key.
 - **[IR]** Fix dynamic graphs (`createDynamicGraph`/`createDynamicGraphFactory`) sharing a single generated impl across call sites in different files. The shared impl was a `private` (on the JVM, package-private) nested class placed under one call site, so call sites in other packages failed at runtime with `IllegalAccessError`, and removing the owning file caused `NoClassDefFoundError`. Generated impls are now cached per-file.
+- **[IR]** Fix IR graph nodes eagerly resolving supertypes.
+- **[IR]** Don't reserve an `InstanceFactory` field for graph inputs unless it's needed.
+- **[interop]** Read `@IntoSet`/`@IntoMap`/`@MapKey` multibinding annotations from external Dagger modules.
+
+### Changes
+
+- Promote `@GraphPrivate` to stable.
+- Promote `@DefaultBinding` to stable.
+- Promote `generateContributionProviders` (and `@ExposeImplBinding`) to stable.
+- **[compat]** Rework compat factory resolution for `dev` compiler versions. Dev builds now only prefer dev-track factories that share the same base version (i.e. the same trunk lineage, like a `2.4.20-dev-*` factory for a `2.4.20-dev-*` compiler). When crossing base versions, lower-base dev factories and stable factories now compete on version and the highest wins, so a `2.4.20-dev-*` compiler picks a `2.4.0` stable factory over a stale `2.4.0-dev-*` one.
+- **[gradle]** Add missing experimental annotations to the Gradle plugin's analysis APIs. Sorry these were not meant to be stabilized yet!
+- Build against Kotlin `2.4.0`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
+- No longer test most Kotlin `2.4.0` pre-release builds. Kotlin `2.4.0-dev-2124` _is_ still tested because this appears to be roughly where IntelliJ platform 2026.1.x branched from.
+- Test Android Studio Quail 1 stable (`2026.1.1.8`).
+- Test Android Studio Quail 2 canaries (`2026.1.2.4`).
+- Test IntelliJ `2026.1.2`.
+- Test IntelliJ `2026.1.3`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@eygraber](https://github.com/eygraber)
+- [@jonamireh](https://github.com/jonamireh)
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@SimonMarquis](https://github.com/SimonMarquis)
+- [@shenghaiyang](https://github.com/shenghaiyang)
+- [@WhosNickDoglio](https://github.com/WhosNickDoglio)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+Go Knicks!
 
 1.1.1
 -----

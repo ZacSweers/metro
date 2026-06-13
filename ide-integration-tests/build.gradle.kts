@@ -36,7 +36,11 @@ dependencies {
       }
     )
     bundledPlugin("org.jetbrains.kotlin")
-    testFramework(TestFrameworkType.Starter)
+    // Pin the Starter framework rather than tracking the IDE-under-test's version. The 262+
+    // (2026.2) Starter deleted IdeProductProvider in favor of a ServiceLoader-based product
+    // registry and is compiled with JVM target 25, so per-IDE resolution would require
+    // version-specific test sources. The Starter client is tolerant of driving newer/older IDEs.
+    testFramework(TestFrameworkType.Starter, "261.23567.138")
   }
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.testJunit5)

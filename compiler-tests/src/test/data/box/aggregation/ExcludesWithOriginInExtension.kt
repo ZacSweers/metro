@@ -23,6 +23,6 @@ interface AppGraph {
 
 fun box(): String {
   val graph = createGraph<UnitGraph>().appGraph
-  assertEquals("FakeFoo", graph.foo::class.qualifiedName)
+  assertEquals("FakeFoo", graph.foo::class.simpleName)
   return "OK"
 }

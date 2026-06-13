@@ -1,6 +1,7 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import dev.drewhamilton.poko.gradle.PokoFirIdeMode
 import dev.zacsweers.metro.gradle.RequiresIdeSupport
 
 // Bootstrap: add the Metro compiler plugin JAR to the buildscript classpath from Maven Central.
@@ -19,6 +20,7 @@ buildscript {
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.kotlin.plugin.serialization)
   alias(libs.plugins.poko)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
@@ -32,6 +34,10 @@ metro {
   @OptIn(RequiresIdeSupport::class) generateAssistedFactories.set(true)
   // We embed and shade the runtime in the compiler's shadow JAR
   automaticallyAddRuntimeDependencies.set(false)
+}
+
+poko {
+  firIdeMode.set(PokoFirIdeMode.NONE)
 }
 
 // Extract the bootstrap compiler JAR from the buildscript classpath
@@ -76,8 +82,42 @@ buildConfig {
 tasks.test {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
-  systemProperty("metro.richDiagnostics", "false")
+  systemProperty("metro.diagnosticsRenderMode", "PLAIN")
 }
+
+val diagnosticsDocsFile = rootProject.layout.projectDirectory.file("docs/diagnostics.md")
+
+// The compiler module's stdlib and kotlin-compiler are compileOnly (kotlinc provides them at
+// runtime), so the doc generator needs them added back for plain JavaExec. kotlin-compiler is
+// needed because MetroDiagnosticId entries reference their KtDiagnosticFactory transport.
+val diagnosticsDocsRuntime: Configuration by configurations.creating {
+  isCanBeConsumed = false
+}
+
+dependencies {
+  diagnosticsDocsRuntime(libs.kotlin.stdlib)
+  diagnosticsDocsRuntime(libs.kotlin.compiler)
+}
+
+val generateDiagnosticsDocs =
+  tasks.register<JavaExec>("generateDiagnosticsDocs") {
+    group = "documentation"
+    description = "Generates docs/diagnostics.md from the MetroErrorCode registry."
+    classpath = sourceSets.main.get().runtimeClasspath + diagnosticsDocsRuntime
+    mainClass.set("dev.zacsweers.metro.compiler.diagnostics.DiagnosticsDocGenerator")
+    args(diagnosticsDocsFile.asFile.absolutePath)
+  }
+
+val checkDiagnosticsDocs =
+  tasks.register<JavaExec>("checkDiagnosticsDocs") {
+    group = "verification"
+    description = "Verifies docs/diagnostics.md is up to date with the MetroErrorCode registry."
+    classpath = sourceSets.main.get().runtimeClasspath + diagnosticsDocsRuntime
+    mainClass.set("dev.zacsweers.metro.compiler.diagnostics.DiagnosticsDocGenerator")
+    args(diagnosticsDocsFile.asFile.absolutePath, "--check")
+  }
+
+tasks.named("check") { dependsOn(checkDiagnosticsDocs) }
 
 wire { kotlin { javaInterop = false } }
 
@@ -131,10 +171,19 @@ val shadowJar =
       "com.jakewharton.crossword",
       "dev.zacsweers.metro.compiler.shaded.com.jakewharton.crossword",
     )
+    relocate(
+      "kotlinx.serialization",
+      "dev.zacsweers.metro.compiler.shaded.kotlinx.serialization",
+    )
     relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
     // Relocate the metro runtime while excluding the compiler's own package
     relocate("dev.zacsweers.metro", "dev.zacsweers.metro.compiler.shaded.metro") {
       exclude("dev.zacsweers.metro.compiler.**")
+      // Metro's annotation lookup still uses string-built runtime package names. Relocate classes,
+      // but keep those string constants pointed at the public runtime package so the shaded
+      // compiler
+      // can run without an unshaded metro-common copy on the same classpath.
+      skipStringConstants = true
     }
   }
 
@@ -168,6 +217,7 @@ dependencies {
   compileOnly(libs.poko.annotations)
   compileOnly(libs.androidx.collection)
 
+  add(embedded.name, project(":metro-common"))
   add(embedded.name, project(":runtime"))
   add(embedded.name, libs.androidx.collection)
   add(embedded.name, libs.androidx.tracing.wire)
@@ -192,8 +242,8 @@ dependencies {
   // Cover for https://github.com/tschuchortdev/kotlin-compile-testing/issues/274
   testImplementation(libs.kotlin.aptEmbeddable)
   if (testCompilerVersion.startsWith("2.4")) {
-    testImplementation("dev.zacsweers.kctfork:core:0.13.0-alpha01")
-    testImplementation("dev.zacsweers.kctfork:ksp:0.13.0-alpha01")
+    testImplementation("dev.zacsweers.kctfork:core:0.13.0")
+    testImplementation("dev.zacsweers.kctfork:ksp:0.13.0")
   } else {
     testImplementation(libs.kct)
     testImplementation(libs.kct.ksp)

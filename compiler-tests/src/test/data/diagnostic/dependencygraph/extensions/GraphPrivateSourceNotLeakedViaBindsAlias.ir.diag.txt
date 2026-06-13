@@ -1,10 +1,15 @@
-/GraphPrivateSourceNotLeakedViaBindsAlias.kt:22:7: error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+/GraphPrivateSourceNotLeakedViaBindsAlias.kt:22:7: error: 
+[Metro/MissingBinding] No binding found for String
 
-    kotlin.String is requested at
-        [ParentGraph.Impl.ChildGraphImpl] ChildGraph.directString
+  trace (in ParentGraph.Impl.ChildGraphImpl):
+      String is requested at ChildGraph.directString
 
-(Hint)
-A binding for 'String' exists in a parent graph but is marked @GraphPrivate and cannot be accessed from this graph.
-Similar bindings:
-  - CharSequence (Supertype). Type: GraphDependency.
+  similar bindings:
+      - CharSequence (Supertype. Type: GraphDependency)
+
+  note: a binding for 'String' exists in a parent graph but is marked @GraphPrivate and cannot be
+        accessed from this graph
+  help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to ChildGraphImpl
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 

@@ -26,7 +26,7 @@ import org.junit.Test
 class TopLevelInjectTest : MetroCompilerTest() {
 
   override val metroOptions: MetroOptions
-    get() = MetroOptions(enableTopLevelFunctionInjection = true)
+    get() = MetroOptions.builder().enableTopLevelFunctionInjection(true).build()
 
   @Test
   fun simple() {

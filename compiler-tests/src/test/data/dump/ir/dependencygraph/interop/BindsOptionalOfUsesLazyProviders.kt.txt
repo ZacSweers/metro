@@ -71,7 +71,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Int> {
+      fun create(instance: AppGraph): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 
@@ -118,7 +118,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): ProvideStringMetroFactory {
         return ProvideStringMetroFactory(instance = instance)
       }
 
@@ -187,11 +187,15 @@ interface Bindings {
 
     @BindsOptionalOf
     @CallableMetadata(callableName = "optionalInt", propertyName = "", startOffset = 221, endOffset = 243)
-    abstract fun optionalInt_opt(): Int
+    fun optionalInt_opt(): Int {
+      return error(message = "Never called")
+    }
 
     @BindsOptionalOf
     @CallableMetadata(callableName = "optionalString", propertyName = "", startOffset = 171, endOffset = 199)
-    abstract fun optionalString_opt(): String
+    fun optionalString_opt(): String {
+      return error(message = "Never called")
+    }
 
   }
 

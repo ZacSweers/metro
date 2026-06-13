@@ -59,6 +59,8 @@ include(
   ":integration-tests",
   ":interop:customAnnotations-dagger",
   ":interop:customAnnotations-guice",
+  ":interop:customAnnotations-hilt",
+  ":interop:customAnnotations-hilt:lib",
   ":interop:customAnnotations-kotlinInject",
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",

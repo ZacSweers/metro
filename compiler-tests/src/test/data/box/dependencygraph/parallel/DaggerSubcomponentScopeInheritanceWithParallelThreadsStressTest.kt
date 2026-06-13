@@ -1,5 +1,6 @@
 // ENABLE_DAGGER_INTEROP
 // PARALLEL_THREADS: 4
+// IGNORE_BACKEND: JS_IR
 // 5-level Dagger @Component/@Subcomponent hierarchy (App -> LoggedIn -> Activity -> Feature -> Screen).
 // Screen-level subcomponents depend on bindings scoped to every ancestor level, exercising
 // cross-scope resolution under parallel validation. Also exercises qualified bindings provided

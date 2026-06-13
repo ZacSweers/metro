@@ -1,12 +1,19 @@
-/UnusedGraphInputsInGraphExtensionAreReported.kt:32:7: warning: Graph input 'kotlin.Int' is unused and can be removed.
+/UnusedGraphInputsInGraphExtensionAreReported.kt:32:7: warning: 
+[Metro/UnusedGraphInputs] Graph input Int is unused and can be removed
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unusedgraphinputs
 
 
-/UnusedGraphInputsInGraphExtensionAreReported.kt:33:7: warning: Graph input 'SomeIncludedType' is unused and can be removed.
+/UnusedGraphInputsInGraphExtensionAreReported.kt:33:7: warning: 
+[Metro/UnusedGraphInputs] Graph input SomeIncludedType is unused and can be removed
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unusedgraphinputs
 
 
-/UnusedGraphInputsInGraphExtensionAreReported.kt:34:7: warning: Graph input 'IncludedContainer' is unused and can be removed.
+/UnusedGraphInputsInGraphExtensionAreReported.kt:34:7: warning: 
+[Metro/UnusedGraphInputs] Graph input IncludedContainer is unused and can be removed
 
-(Hint)
-The following binding containers *are* used and transitively included by 'IncludedContainer'. Consider including them directly instead
-- TransitiveUsed
+  help: the following binding containers are used and transitively included by IncludedContainer,
+        consider including them directly instead: TransitiveUsed
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unusedgraphinputs
 

@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
+import dev.zacsweers.metro.compiler.calculateInitialCapacity
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.expectAs
@@ -30,13 +31,13 @@ import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.hilt.HiltComponentScopeMapping
 import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceCategories
 import dev.zacsweers.metro.compiler.tracing.trace
-import java.util.TreeMap
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.descriptors.isInterface
@@ -81,6 +82,8 @@ import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.isJs
+import org.jetbrains.kotlin.platform.isWasm
 
 internal class ContributedInterfaceSupertypeGenerator(
   session: FirSession,
@@ -96,6 +99,18 @@ internal class ContributedInterfaceSupertypeGenerator(
   }
 
   private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session).caching() }
+
+  /**
+   * Lazy component-to-scope mapping for Hilt interop. Null when interop is disabled so we skip the
+   * `@InstallIn` lookup entirely on the hot path. Owns this generator's single-pass in-round scan.
+   */
+  private val hiltComponentScopes: HiltComponentScopeMapping? by lazy {
+    if (session.metroFirBuiltIns.options.enableHiltInterop) {
+      HiltComponentScopeMapping(session)
+    } else {
+      null
+    }
+  }
 
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
@@ -209,11 +224,22 @@ internal class ContributedInterfaceSupertypeGenerator(
     return buildMap {
       for (originClass in contributingClasses) {
         if (originClass.isBindingContainer(session)) {
-          val hasMatchingScope =
-            originClass.annotationsIn(session, session.classIds.contributesToAnnotations).any {
-              it.resolvedScopeClassId(session, typeResolver) == scopeClassId
-            }
-          put(originClass.classId, hasMatchingScope)
+          put(originClass.classId, containerMatchesScope(originClass, scopeClassId, typeResolver))
+          continue
+        }
+
+        val generateClassesInIr = session.metroFirBuiltIns.options.generateClassesInIr
+        if (generateClassesInIr) {
+          // In IR-only mode MetroContribution marker classes are not generated in FIR. Keep only
+          // source interfaces that directly contribute a user-visible supertype. Binding-like
+          // contributions are still tracked for replacement/rank logic, but filtered out when
+          // building supertypes.
+          val contributesDirectly = originClass.directlyContributesTo(scopeClassId, typeResolver)
+          if (contributesDirectly) {
+            put(originClass.classId, false)
+          } else if (originClass.bindingLikeContributionMatchesScope(scopeClassId, typeResolver)) {
+            put(originClass.classId, true)
+          }
           continue
         }
 
@@ -233,11 +259,53 @@ internal class ContributedInterfaceSupertypeGenerator(
               ?.annotationsIn(session, setOf(Symbols.ClassIds.metroContribution))
               ?.single()
               ?.resolvedScopeClassId(session, typeResolver)
+
           if (scopeId == scopeClassId) {
-            put(originClass.classId.createNestedClassId(nestedClassName), false)
+            val nestedClassSymbol = nestedClass.expectAsOrNull<FirClassLikeSymbol<*>>()
+            val isBindingContainer = nestedClassSymbol?.isBindingContainer(session) == true
+            put(originClass.classId.createNestedClassId(nestedClassName), isBindingContainer)
           }
         }
       }
+    }
+  }
+
+  private fun FirRegularClassSymbol.directlyContributesTo(
+    scopeClassId: ClassId,
+    typeResolver: TypeResolveService,
+  ): Boolean {
+    return classKind.isInterface &&
+      annotationsIn(session, session.classIds.contributesToAnnotations).any {
+        it.resolvedScopeClassId(session, typeResolver) == scopeClassId
+      }
+  }
+
+  private fun FirRegularClassSymbol.bindingLikeContributionMatchesScope(
+    scopeClassId: ClassId,
+    typeResolver: TypeResolveService,
+  ): Boolean {
+    return annotationsIn(session, session.classIds.contributesBindingLikeAnnotationsWithContainers)
+      .any { it.resolvedScopeClassId(session, typeResolver) == scopeClassId }
+  }
+
+  /**
+   * Whether [container] is declared to be in-scope for [scopeClassId], via either
+   * `@ContributesTo(scope = scopeClassId)` or a Hilt `@InstallIn(component)` whose `component` maps
+   * to `scopeClassId`. Both shapes drive the supertype loop's binding-container filter.
+   */
+  private fun containerMatchesScope(
+    container: FirRegularClassSymbol,
+    scopeClassId: ClassId,
+    typeResolver: TypeResolveService,
+  ): Boolean {
+    val matchesContributesTo =
+      container.annotationsIn(session, session.classIds.contributesToAnnotations).any {
+        it.resolvedScopeClassId(session, typeResolver) == scopeClassId
+      }
+    if (matchesContributesTo) return true
+    val hiltScopes = hiltComponentScopes ?: return false
+    return hiltScopes.installInComponents(container, typeResolver).any {
+      hiltScopes.resolveScope(it) == scopeClassId
     }
   }
 
@@ -348,20 +416,29 @@ internal class ContributedInterfaceSupertypeGenerator(
         }
       }
 
+    val generateClassesInIr = session.metroFirBuiltIns.options.generateClassesInIr
+
     val contributionClassLikes =
       contributionMappingsByClassId.keys.map { classId ->
         classId.constructClassLikeType(emptyArray())
       }
 
-    // Stable sort
     val contributions =
-      TreeMap<ClassId, ConeKotlinType>(compareBy(ClassId::asString)).apply {
-        for (contribution in contributionClassLikes) {
-          // This is always the `MetroContribution`, the contribution is its parent
-          val classId = contribution.expectAs<ConeKotlinType>().classId?.parentClassId ?: continue
-          put(classId, contribution)
+      HashMap<ClassId, ConeKotlinType>(calculateInitialCapacity(contributionClassLikes.size))
+        .apply {
+          for (contribution in contributionClassLikes) {
+            val contributionClassId = contribution.expectAs<ConeKotlinType>().classId ?: continue
+            val classId =
+              if (generateClassesInIr) {
+                // FIR only sees the original @ContributesTo interface in this mode.
+                contributionClassId
+              } else {
+                // This is always the `MetroContribution`, the contribution is its parent
+                contributionClassId.parentClassId ?: continue
+              }
+            put(classId, contribution)
+          }
         }
-      }
 
     // Gather contributions from external extensions
     // These provide supertypes directly along with replacement/origin metadata
@@ -509,8 +586,12 @@ internal class ContributedInterfaceSupertypeGenerator(
         .mapNotNull {
           val symbol = it.toClassSymbol(session)
           // TODO remove expectAs in 2.3.20
-          if (contributionMappingsByClassId[it.expectAs<ConeKotlinType>().classId] == true) {
+          val contributionClassId = it.expectAs<ConeKotlinType>().classId
+          if (contributionMappingsByClassId[contributionClassId] == true) {
             // It's a binding container, use as-is
+            symbol
+          } else if (generateClassesInIr) {
+            // IR-only mode tracks direct source interfaces, not nested MetroContribution markers.
             symbol
           } else {
             // It's a contribution, get its original parent
@@ -625,6 +706,7 @@ internal class ContributedInterfaceSupertypeGenerator(
           if (metroContribution in externalSupertypes) {
             return@flatMap listOf(metroContribution)
           }
+
           // Filter out binding containers and self-references — they participate in replacements
           // but not in supertypes
           if (
@@ -634,13 +716,35 @@ internal class ContributedInterfaceSupertypeGenerator(
             return@flatMap emptyList()
           }
 
+          if (generateClassesInIr) {
+            val contributionClassId = metroContribution.classId ?: return@flatMap emptyList()
+            if (contributionClassId in existingSupertypeClassIds) {
+              return@flatMap emptyList()
+            }
+
+            // Hidden MetroContributionTo<Scope> markers are generated in IR only, so FIR must not
+            // reference them as supertypes before their class shells exist.
+            val contributionSymbol = contributionClassId.toSymbol(session)
+            val isContributedInterface =
+              contributionSymbol is FirRegularClassSymbol &&
+                contributionSymbol.classKind.isInterface
+            if (!isContributedInterface) {
+              return@flatMap emptyList()
+            }
+
+            // The original @ContributesTo interface is user-authored and visible in FIR. Keep that
+            // direct supertype so graph extension relationships remain visible in the IDE.
+            return@flatMap listOf(metroContribution)
+          }
+
           // For @ContributesTo interfaces, also emit the parent contributing interface directly
           // alongside the generated MetroContributionTo<Scope> intermediate. Kotlin/Native's
           // Objective-C framework exporter hides the @Deprecated(HIDDEN) intermediates and does
           // not transitively hoist their non-hidden supertypes into the child class's
           // superprotocol list, so the parent has to be a direct supertype to appear in
-          // Swift/ObjC framework headers. Graph extension factories are excluded — they're
-          // contributed via @ContributesTo but aren't meant to be inherited by the graph.
+          // Swift/ObjC framework headers. Graph extension factories are normally excluded, but
+          // JS/Wasm KLIB metadata also needs the direct factory supertype for downstream source
+          // calls to resolve.
           // https://github.com/ZacSweers/metro/issues/2185
           val parentSymbol =
             parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
@@ -650,15 +754,23 @@ internal class ContributedInterfaceSupertypeGenerator(
             parentSymbol.annotationsIn(session, session.classIds.contributesToAnnotations).any {
               it.resolvedScopeClassId(session, typeResolver) in scopes
             }
+
           if (!contributesToThisScope) return@flatMap listOf(metroContribution)
+
+          val isGraphExtensionFactory =
+            parentSymbol.isAnnotatedWithAny(
+              session,
+              session.classIds.graphExtensionFactoryAnnotations,
+            )
+
+          val promoteGraphExtensionFactory =
+            isGraphExtensionFactory &&
+              (session.moduleData.platform.isJs() || session.moduleData.platform.isWasm())
 
           val promoteParent =
             parentSymbol.classKind.isInterface &&
               parentClassId !in existingSupertypeClassIds &&
-              !parentSymbol.isAnnotatedWithAny(
-                session,
-                session.classIds.graphExtensionFactoryAnnotations,
-              ) &&
+              (!isGraphExtensionFactory || promoteGraphExtensionFactory) &&
               (declarationVisibility == null ||
                 !parentSymbol.exposesNarrowerVisibilityThan(declarationVisibility))
 
@@ -671,6 +783,7 @@ internal class ContributedInterfaceSupertypeGenerator(
         // Deduplicate by classId. The same contribution type can appear under different keys
         // when discovered via both hint-based and external extension paths.
         .distinctBy { it.classId }
+        .sortedBy { it.classId?.asString() }
     }
   }
 

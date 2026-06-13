@@ -9,20 +9,19 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 @Inject
 @ViewModelKey
 @ContributesIntoMap(AppScope::class)
 class HomeViewModel : ViewModel() {
-  private val _count = MutableStateFlow(0)
-  val count: StateFlow<Int> = _count.asStateFlow()
+  val count: StateFlow<Int>
+    field: MutableStateFlow<Int> = MutableStateFlow(0)
 
   fun increment() {
-    _count.value++
+    count.value++
   }
 
   fun decrement() {
-    _count.value--
+    count.value--
   }
 }

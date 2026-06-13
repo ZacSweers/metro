@@ -14,7 +14,7 @@ class RepositoryImpl : Repository {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<RepositoryImpl> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -67,7 +67,7 @@ class Service {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(repo: Provider<Repository>): Factory<Service> {
+      fun create(repo: Provider<Repository>): MetroFactory {
         return MetroFactory(repo = repo)
       }
 
@@ -123,7 +123,9 @@ interface AppModule {
 
     @Binds
     @CallableMetadata(callableName = "bindRepository", propertyName = "", startOffset = 678, endOffset = 730)
-    abstract fun bindRepository(impl: RepositoryImpl): Repository
+    fun bindRepository(impl: RepositoryImpl): Repository {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -214,10 +216,10 @@ interface TestGraph {
 
 }
 
-// FILE: appModuleAppScope.kt
+// FILE: appModuleDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: AppModule) {
+fun dev_zacsweers_metro_AppScope(contributed: AppModule) {
   return error(message = "Never called")
 }
 

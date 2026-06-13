@@ -13,7 +13,9 @@ interface AppGraph {
     @IntoMap
     @IntKey(value = 1)
     @CallableMetadata(callableName = "bindValue", propertyName = "", startOffset = 292, endOffset = 316)
-    abstract fun Int.bindValue4013004649_intomap(): Int
+    fun Int.bindValue4013004649_intomap(): Int {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -71,7 +73,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Int> {
+      fun create(instance: AppGraph): ProvideValueMetroFactory {
         return ProvideValueMetroFactory(instance = instance)
       }
 

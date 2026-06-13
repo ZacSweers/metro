@@ -90,6 +90,7 @@ internal var IrClass.metroMetadata: MetroMetadata?
 internal fun GraphNode.toProto(
   bindingGraph: IrBindingGraph,
   ownProviderFactories: Set<ProviderFactory>,
+  generateClassesInIr: Boolean,
 ): DependencyGraphProto {
   val multibindingAccessors = BitFieldBuilder()
   val accessorNames =
@@ -107,15 +108,17 @@ internal fun GraphNode.toProto(
   return createGraphProto(
     isGraph = true,
     providerFactories = ownProviderFactories,
+    generateClassesInIr = generateClassesInIr,
     accessorNames = accessorNames,
     multibindingAccessorIndices = multibindingAccessors.build().toIntList(),
   )
 }
 
-internal fun BindingContainer.toProto(): DependencyGraphProto {
+internal fun BindingContainer.toProto(generateClassesInIr: Boolean): DependencyGraphProto {
   return createGraphProto(
     isGraph = false,
     providerFactories = providerFactories.values,
+    generateClassesInIr = generateClassesInIr,
     includedBindingContainers = includes.map { it.asString() },
   )
 }
@@ -125,6 +128,7 @@ internal fun BindingContainer.toProto(): DependencyGraphProto {
 private fun createGraphProto(
   isGraph: Boolean,
   providerFactories: Collection<ProviderFactory> = emptyList(),
+  generateClassesInIr: Boolean,
   accessorNames: Collection<String> = emptyList(),
   multibindingAccessorIndices: List<Int> = emptyList(),
   includedBindingContainers: Collection<String> = emptyList(),
@@ -136,7 +140,9 @@ private fun createGraphProto(
         .map { factory ->
           val factoryClass = factory.factoryClass
           val isInvisible =
-            factoryClass.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) == true
+            !generateClassesInIr &&
+              (factoryClass.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) ==
+                true || !factoryClass.hasAnnotation(Symbols.ClassIds.CallableMetadata))
           ProviderFactoryProto(
             class_id = factoryClass.classIdOrFail.protoString,
             invisible = isInvisible,
@@ -145,6 +151,7 @@ private fun createGraphProto(
             property_name =
               if (factory.isPropertyAccessor) factory.callableId.callableName.asString() else "",
             new_instance_name = factory.newInstanceName.asString(),
+            inlined = factory.inlinedValue?.toProto(),
           )
         }
         .sortedBy { it.class_id },

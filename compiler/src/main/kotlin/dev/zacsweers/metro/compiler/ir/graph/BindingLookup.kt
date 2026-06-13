@@ -3,10 +3,16 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import androidx.collection.ScatterMap
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.compiler.diagnostics.buildText
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.toText
+import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -23,11 +29,13 @@ import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
 import dev.zacsweers.metro.compiler.ir.mapKeyType
+import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.remapTypes
+import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
@@ -103,15 +111,13 @@ internal class BindingLookup(
   private val locallyDeclaredKeys = mutableSetOf<IrTypeKey>()
 
   // Type keys for non-multibinding Map bindings, for targeted incompatible value type validation
-  private val _directMapTypeKeys = mutableSetOf<IrTypeKey>()
   val directMapTypeKeys: Set<IrTypeKey>
-    get() = _directMapTypeKeys
+    field: MutableSet<IrTypeKey> = mutableSetOf()
 
   // Tracks the actual requested contextual type when a direct Map binding is skipped
   // (e.g., the Map<K, Provider<V>> that was requested but couldn't be satisfied)
-  private val _skippedDirectMapRequests = mutableMapOf<IrTypeKey, IrContextualTypeKey>()
   val skippedDirectMapRequests: Map<IrTypeKey, IrContextualTypeKey>
-    get() = _skippedDirectMapRequests
+    field: MutableMap<IrTypeKey, IrContextualTypeKey> = mutableMapOf()
 
   /** Information about a registered injector function for MembersInjected binding creation. */
   private data class InjectorFunctionInfo(
@@ -164,7 +170,7 @@ internal class BindingLookup(
     if (
       binding !is IrBinding.Multibinding && binding.contextualTypeKey.wrappedType is WrappedType.Map
     ) {
-      _directMapTypeKeys += binding.typeKey
+      directMapTypeKeys += binding.typeKey
     }
 
     // If this is a multibinding contributor, register it
@@ -217,8 +223,8 @@ internal class BindingLookup(
     optionalBindingDeclarations.clear()
     optionalBindingsCache.clear()
     locallyDeclaredKeys.clear()
-    _directMapTypeKeys.clear()
-    _skippedDirectMapRequests.clear()
+    directMapTypeKeys.clear()
+    skippedDirectMapRequests.clear()
     registeredInjectorFunctions.clear()
   }
 
@@ -621,7 +627,7 @@ internal class BindingLookup(
         // Map<K, V> binding. Only multibinding contributions can provide wrapped map values.
         // However, a directly provided Map<K, Provider<V>> can satisfy Map<K, Provider<V>>
         // requests since the Provider wrapping is explicit in the return type.
-        if ((contextKey.isMapProvider || contextKey.isMapLazy) && key in _directMapTypeKeys) {
+        if ((contextKey.isMapProvider || contextKey.isMapLazy) && key in directMapTypeKeys) {
           val originallyWrapped =
             when (binding) {
               is Provided -> binding.providerFactory.contextualTypeKey.isDeferrable
@@ -629,7 +635,7 @@ internal class BindingLookup(
               else -> false
             }
           if (!originallyWrapped) {
-            _skippedDirectMapRequests[key] = contextKey
+            skippedDirectMapRequests[key] = contextKey
             return@let // Fall through to missing binding
           }
         }
@@ -825,13 +831,23 @@ internal class BindingLookup(
           irClass.typeParameters.isNotEmpty() &&
             (key.type as? IrSimpleType)?.arguments.isNullOrEmpty()
         ) {
-          val message = buildString {
-            appendLine(
-              "Class factory for type ${key.type} has type parameters but no type arguments provided at calling site."
+          val diagnostic =
+            MetroDiagnostic(
+              id = MetroDiagnosticId.GENERIC,
+              severity = MetroSeverity.ERROR,
+              title =
+                buildText {
+                  append("Class factory for type ")
+                  append(key.toText())
+                  append(" has type parameters but no type arguments provided at calling site")
+                },
+              sections = listOfNotNull(stack.toTraceSection()),
             )
-            appendBindingStack(stack)
-          }
-          context.reportCompat(irClass, MetroDiagnostics.METRO_ERROR, message)
+          context.reportCompat(
+            irClass,
+            MetroDiagnostics.METRO_ERROR,
+            context.render(diagnostic).padForConsole(),
+          )
           return@getOrPut emptySet()
         }
 

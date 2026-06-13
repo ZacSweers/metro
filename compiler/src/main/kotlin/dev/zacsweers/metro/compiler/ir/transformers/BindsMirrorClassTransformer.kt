@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
@@ -15,14 +16,19 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
+import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
+import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
+import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.withPopulatedImplicitClassKey
+import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import java.util.EnumSet
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -36,7 +42,9 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
+import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
+import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -56,22 +64,60 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
   fun getOrComputeBindsMirror(declaration: IrClass): BindsMirror? {
     return cache
       .getOrPut(declaration.classIdOrFail) {
-        val mirrorClass = declaration.nestedClassOrNull(Symbols.Names.BindsMirrorClass)
-        val mirror =
-          if (mirrorClass == null) {
-            // If there's no mirror class, there's no bindings
+        val mirrorClass =
+          declaration.bindsMirrorClassOrNull()
+            // If there's no mirror class, there's no bindings.
             // TODO what if they forgot to run the metro compiler? Should we put something in
             //  metadata?
-            return@getOrPut Optional.empty()
-          } else {
-            if (!declaration.isExternalParent) {
-              checkNotLocked()
-            }
-            transformBindingMirrorClass(declaration, mirrorClass)
-          }
+            ?: return@getOrPut Optional.empty()
+
+        if (!declaration.isExternalParent) {
+          checkNotLocked()
+        }
+        val mirror = transformBindingMirrorClass(declaration, mirrorClass)
         Optional.ofNullable(mirror)
       }
       .getOrNull()
+  }
+
+  private fun IrClass.bindsMirrorClassOrNull(): IrClass? {
+    nestedClassOrNull(Symbols.Names.BindsMirrorClass)?.let {
+      return it
+    }
+
+    if (!options.generateClassesInIr) return null
+
+    // Match FIR generation (BindingMirrorClassFirGenerator): only create a mirror class when the
+    // class actually declares binding callables. Besides avoiding empty mirror noise, this keeps
+    // us from generating mirrors inside Metro's own IR-generated classes (e.g. assisted factory
+    // impls and their companions), which aren't metadata-visible themselves and so can't be
+    // resolved back to FIR when registering the mirror.
+    if (!hasBindingCallables()) return null
+
+    return getOrCreateMetadataVisibleHiddenNestedClass(
+        name = Symbols.Names.BindsMirrorClass,
+        origin = Origins.BindingMirrorClassDeclaration,
+        copyTypeParameters = false,
+      )
+      .apply { modality = Modality.ABSTRACT }
+  }
+
+  private fun IrClass.hasBindingCallables(): Boolean {
+    return declarations.any { declaration ->
+      if (declaration !is IrSimpleFunction && declaration !is IrProperty) return@any false
+      if (declaration.isFakeOverride) return@any false
+      val annotations =
+        declaration.metroAnnotations(
+          metroSymbols.classIds,
+          kinds =
+            EnumSet.of(
+              MetroAnnotations.Kind.Binds,
+              MetroAnnotations.Kind.Multibinds,
+              MetroAnnotations.Kind.BindsOptionalOf,
+            ),
+        )
+      annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
+    }
   }
 }
 
@@ -95,6 +141,10 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
   val isExternal = mirrorClass.isExternalParent
   val collector = BindsMirrorCollector(isInterop = false)
 
+  if (!isExternal) {
+    mirrorClass.patchDeclarationParents(parentClass)
+  }
+
   // On JVM, annotate with @ComptimeOnly so R8 can remove these
   val comptimeOnlyConstructor =
     if (!isExternal && context.pluginContext.platform.isJvm()) {
@@ -105,7 +155,7 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
 
   // Annotate the mirror class with @ComptimeOnly
   comptimeOnlyConstructor?.let { ctor ->
-    mirrorClass.annotations += buildAnnotation(mirrorClass.symbol, ctor)
+    mirrorClass.addAnnotationCompat(buildAnnotation(mirrorClass.symbol, ctor))
   }
 
   fun processFunction(declaration: IrSimpleFunction) {
@@ -146,7 +196,9 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
             if (origin == Origins.FirstParty.DEFAULT_PROPERTY_ACCESSOR) {
               origin = Origins.Default
             }
-            comptimeOnlyConstructor?.let { ctor -> annotations += buildAnnotation(symbol, ctor) }
+            comptimeOnlyConstructor?.let { ctor ->
+              addAnnotationCompat(buildAnnotation(symbol, ctor))
+            }
           }
         }
 
@@ -185,7 +237,11 @@ private fun generateMirrorFunction(
   val annotations = targetFunction.annotations
   val mirrorFunctionName =
     buildString {
-        append(targetFunction.ir.propertyIfAccessor.expectAs<IrDeclarationWithName>().name)
+        val sourceDeclaration = targetFunction.ir.propertyIfAccessor
+        append(sourceDeclaration.expectAs<IrDeclarationWithName>().name)
+        if (sourceDeclaration is IrProperty) {
+          append("_property")
+        }
         annotations.qualifier?.hashCode()?.toUInt()?.let(::append)
         annotations.mapKey?.hashCode()?.toUInt()?.let(::append)
         annotations.multibinds?.hashCode()?.toUInt()?.let(::append)
@@ -212,11 +268,12 @@ private fun generateMirrorFunction(
         visibility = DescriptorVisibilities.PUBLIC
         returnType = targetFunction.ir.returnType
         origin = Origins.Default
-        modality = Modality.ABSTRACT
+        modality = Modality.FINAL
       }
       .apply {
         copyParametersFrom(targetFunction.ir)
-        this.annotations = annotations.mirrorIrConstructorCalls(symbol)
+        body = stubExpressionBody()
+        replaceAnnotationsCompat(annotations.mirrorIrConstructorCalls(symbol))
       }
 
   val callableMetadata =
@@ -243,7 +300,7 @@ private fun generateMirrorFunction(
       }
     }
 
-  mirrorFunction.annotations += callableMetadata
+  mirrorFunction.addAnnotationCompat(callableMetadata)
 
   // Register as metadata visible
   context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(mirrorFunction)

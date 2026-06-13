@@ -15,10 +15,10 @@ package dev.zacsweers.metro
  * class Impl : Base
  *
  * // In a graph
- * @Binds fun Impl.bind: Base
+ * @Binds val Impl.bind: Base
  *
  * // Or bind into a multibinding
- * @Binds @IntoSet fun Impl.bind: Base
+ * @Binds @IntoSet val Impl.bind: Base
  * ```
  */
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY)

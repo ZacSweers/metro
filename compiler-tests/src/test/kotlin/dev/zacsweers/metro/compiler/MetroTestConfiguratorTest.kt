@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -20,6 +21,23 @@ class MetroTestConfiguratorTest {
       minVersion = minVersion,
       maxVersion = maxVersion,
     )
+
+  private fun shouldSkip(
+    compilerVersion: String,
+    targetVersion: String? = null,
+    minVersion: String? = null,
+    maxVersion: String? = null,
+  ): Boolean {
+    val toolingVersion = KotlinToolingVersion(compilerVersion)
+    return MetroTestConfigurator.shouldSkipForCompilerVersion(
+      compilerVersion =
+        KotlinVersion(toolingVersion.major, toolingVersion.minor, toolingVersion.patch),
+      compilerToolingVersion = toolingVersion,
+      targetVersion = targetVersion,
+      minVersion = minVersion,
+      maxVersion = maxVersion,
+    )
+  }
 
   @Test
   fun `no directives - never skips`() {
@@ -106,6 +124,17 @@ class MetroTestConfiguratorTest {
   @Test
   fun `min version - below exact patch minimum`() {
     assertTrue(shouldSkip(KotlinVersion(2, 4, 0), minVersion = "2.4.20"))
+  }
+
+  @Test
+  fun `min version - below exact dev build minimum`() {
+    assertTrue(shouldSkip("2.3.0", minVersion = "2.4.20-dev-6138"))
+    assertTrue(shouldSkip("2.4.20-dev-5624", minVersion = "2.4.20-dev-6138"))
+  }
+
+  @Test
+  fun `min version - at exact dev build minimum`() {
+    assertFalse(shouldSkip("2.4.20-dev-6138", minVersion = "2.4.20-dev-6138"))
   }
 
   @Test

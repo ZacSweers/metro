@@ -10,7 +10,12 @@ inline fun <
   reified Box,
   reified FastInitBox,
   reified ContributionProvidersBox,
+  reified JsBox,
+  reified JsFastInitBox,
+  reified JsContributionProvidersBox,
+  reified IrOnlyClassesBox,
   reified Diagnostic,
+  reified JsDiagnostic,
   reified FirDump,
   reified IrDump,
   reified Reports,
@@ -23,10 +28,22 @@ inline fun <
       val commonModel: TestGroup.TestClass.(name: String) -> Unit = { name ->
         model(name, excludedPattern = exclusionPattern)
       }
+      val nonJvmModel: TestGroup.TestClass.(name: String) -> Unit = { name ->
+        model(
+          name,
+          excludedPattern = exclusionPattern,
+          excludeDirsRecursively = listOf("interop", "circuit"),
+        )
+      }
       testClass<Box> { commonModel("box") }
       testClass<FastInitBox> { commonModel("box") }
       testClass<ContributionProvidersBox> { commonModel("box") }
+      testClass<JsBox> { nonJvmModel("box") }
+      testClass<JsFastInitBox> { nonJvmModel("box") }
+      testClass<JsContributionProvidersBox> { nonJvmModel("box") }
+      testClass<IrOnlyClassesBox> { commonModel("box") }
       testClass<Diagnostic> { commonModel("diagnostic") }
+      testClass<JsDiagnostic> { nonJvmModel("diagnostic") }
       testClass<FirDump> { commonModel("dump/fir") }
       testClass<IrDump> { commonModel("dump/ir") }
       testClass<Reports> { commonModel("dump/reports") }

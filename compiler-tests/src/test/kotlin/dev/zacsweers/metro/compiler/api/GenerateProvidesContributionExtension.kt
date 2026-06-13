@@ -4,6 +4,8 @@ package dev.zacsweers.metro.compiler.api
 
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension.ContributionHint
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -80,7 +82,7 @@ private val PROVIDES_CLASS_ID = ClassId(FqName("dev.zacsweers.metro"), Name.iden
  * (since `FirSupertypeGenerationExtension` is not called for deeply nested generated classes).
  */
 internal class GenerateProvidesContributionExtension(session: FirSession) :
-  MetroFirDeclarationGenerationExtension(session) {
+  MetroFirDeclarationGenerationExtension(session), MetroContributionHintExtension {
 
   companion object {
     val ANNOTATION_FQ_NAME = FqName("test.GenerateProvidesContribution")

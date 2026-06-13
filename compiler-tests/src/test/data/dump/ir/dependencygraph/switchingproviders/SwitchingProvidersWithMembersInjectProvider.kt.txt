@@ -72,7 +72,7 @@ class ScopedClass {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(injectable: Provider<MembersInjector<Injectable>>): Factory<ScopedClass> {
+      fun create(injectable: Provider<MembersInjector<Injectable>>): MetroFactory {
         return MetroFactory(injectable = injectable)
       }
 
@@ -199,7 +199,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<String> {
+      fun create(instance: AppGraph): ProvideStringMetroFactory {
         return ProvideStringMetroFactory(instance = instance)
       }
 

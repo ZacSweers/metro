@@ -579,19 +579,22 @@ internal class MultibindingExpressionGenerator(
         valueWrappedType is WrappedType.Provider &&
           (valueWrappedType as WrappedType.Provider<*>).innerType is WrappedType.Lazy
 
-      // On Kotlin/JS, `Provider` does not extend `() -> T`.
-      // For `Map<K, () -> V>` consumed via PROVIDER access we'd otherwise build a
-      // `MapProviderFactory` whose `invoke()` returns `Map<K, Provider<V>>` — values that aren't
-      // callable as JS functions. Route those cases through `MapFunctionFactory` instead, which
-      // stores `() -> V` lambdas directly and is JS-only by definition.
+      // On JS, Provider does not implement Function0.
+      // For Map<K, () -> V> values, provider-backed map factories would store Provider<V> or
+      // Provider<Lazy<V>> objects. Use MapFunctionFactory so the map stores callable lambdas.
       val useMapFunctionFactory =
         platform.isJs() &&
           valueIsWrappedInProvider &&
-          !valueIsProviderLazy &&
           (valueWrappedType as WrappedType.Provider<*>).providerType == Symbols.ClassIds.function0
 
       // Used to unpack the right provider type
       val originalValueType = valueWrappedType.toIrType()
+      val mapFunctionValueType =
+        if (useMapFunctionFactory) {
+          originalValueType.requireSimpleType().arguments.single().typeOrFail
+        } else {
+          null
+        }
       val originalValueContextKey =
         originalValueType.asContextualTypeKey(
           null,
@@ -614,13 +617,16 @@ internal class MultibindingExpressionGenerator(
         )
 
       val valueType: IrType = rawValueTypeMetadata.typeKey.type
+      val factoryValueType: IrType = mapFunctionValueType ?: valueType
 
       val size = binding.sourceBindings.size
       val mapProviderType =
         irBuiltIns.mapClass
           .typeWith(
             keyType,
-            if (valueIsWrappedInProvider) {
+            if (useMapFunctionFactory) {
+              rawValueType
+            } else if (valueIsWrappedInProvider) {
               rawValueType.wrapInProvider(originalValueType.rawType().symbol)
             } else {
               rawValueType
@@ -739,8 +745,8 @@ internal class MultibindingExpressionGenerator(
           val metroFrameworkSymbols = metroSymbols.metroFrameworkSymbols
           val singletonFunction =
             when {
-              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactorySingletonFunction
               useMapFunctionFactory -> metroFrameworkSymbols.mapFunctionFactorySingletonFunction
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactorySingletonFunction
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactorySingletonFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactorySingletonFunction
               else -> valueProviderSymbols.mapFactorySingletonFunction
@@ -752,20 +758,26 @@ internal class MultibindingExpressionGenerator(
           if (sourceBindings.size == 1 && singletonFunction != null) {
             val sourceBinding = sourceBindings.single()
             val providerType = singletonFunction.owner.nonDispatchParameters[1].type.rawType()
+            val valueContextKey =
+              if (useMapFunctionFactory) {
+                originalValueContextKey.withIrTypeKey(sourceBinding.typeKey)
+              } else {
+                canonicalValueContextKey
+                  .wrapInProvider(providerType)
+                  .withIrTypeKey(sourceBinding.typeKey)
+              }
             val singletonInvoke =
               irInvoke(
                 callee = singletonFunction,
                 typeHint =
-                  singletonFunction.owner.returnType.rawType().typeWith(keyType, valueType),
-                typeArgs = listOf(keyType, valueType),
+                  singletonFunction.owner.returnType.rawType().typeWith(keyType, factoryValueType),
+                typeArgs = listOf(keyType, factoryValueType),
                 args =
                   listOf(
                     generateMapKeyLiteral(sourceBinding),
                     generateMultibindingArgument(
                       sourceBinding,
-                      canonicalValueContextKey
-                        .wrapInProvider(providerType)
-                        .withIrTypeKey(sourceBinding.typeKey),
+                      valueContextKey,
                       fieldInitKey,
                       accessType = AccessType.PROVIDER,
                     ),
@@ -777,16 +789,16 @@ internal class MultibindingExpressionGenerator(
           }
           val builderFunction =
             when {
-              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderFunction
               useMapFunctionFactory -> metroFrameworkSymbols.mapFunctionFactoryBuilderFunction
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderFunction
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilderFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderFunction
               else -> valueProviderSymbols.mapFactoryBuilderFunction
             }
           val builderType =
             when {
-              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilder
               useMapFunctionFactory -> metroFrameworkSymbols.mapFunctionFactoryBuilder
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilder
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilder
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilder
               else -> valueProviderSymbols.mapFactoryBuilder
@@ -794,8 +806,8 @@ internal class MultibindingExpressionGenerator(
 
           val putFunction =
             when {
-              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderPutFunction
               useMapFunctionFactory -> metroFrameworkSymbols.mapFunctionFactoryBuilderPutFunction
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderPutFunction
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilderPutFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderPutFunction
               else -> valueProviderSymbols.mapFactoryBuilderPutFunction
@@ -814,8 +826,8 @@ internal class MultibindingExpressionGenerator(
           // .build()
           val buildFunction =
             when {
-              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderBuildFunction
               useMapFunctionFactory -> metroFrameworkSymbols.mapFunctionFactoryBuilderBuildFunction
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderBuildFunction
               valueIsWrappedInProvider ->
                 valueProviderSymbols.mapProviderFactoryBuilderBuildFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderBuildFunction
@@ -834,8 +846,8 @@ internal class MultibindingExpressionGenerator(
               createAndAddTemporaryVariable(
                 irInvoke(
                   callee = builderFunction,
-                  typeArgs = listOf(keyType, valueType),
-                  typeHint = builderType.typeWith(keyType, valueType),
+                  typeArgs = listOf(keyType, factoryValueType),
+                  typeHint = builderType.typeWith(keyType, factoryValueType),
                   args = listOf(irInt(size)),
                 ),
                 nameHint = "builder",
@@ -860,6 +872,15 @@ internal class MultibindingExpressionGenerator(
 
               // Ensure we match the expected parameter type of the put() function we're calling
               val providerType = putter.owner.nonDispatchParameters[1].type.rawType()
+              val valueContextKey =
+                if (useMapFunctionFactory) {
+                  originalValueContextKey.withIrTypeKey(sourceBinding.typeKey)
+                } else {
+                  // Non-function map factories take Provider<V> where V is canonical.
+                  canonicalValueContextKey
+                    .wrapInProvider(providerType)
+                    .withIrTypeKey(sourceBinding.typeKey)
+                }
               +irInvoke(
                 dispatchReceiver = irGet(builder),
                 callee = putter,
@@ -869,11 +890,7 @@ internal class MultibindingExpressionGenerator(
                     generateMapKeyLiteral(sourceBinding),
                     generateMultibindingArgument(
                       sourceBinding,
-                      // Use canonical type - all map factories take Provider<V> where V is
-                      // canonical
-                      canonicalValueContextKey
-                        .wrapInProvider(providerType)
-                        .withIrTypeKey(sourceBinding.typeKey),
+                      valueContextKey,
                       fieldInitKey,
                       accessType = AccessType.PROVIDER,
                     ),

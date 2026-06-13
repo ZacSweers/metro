@@ -4,6 +4,8 @@ package dev.zacsweers.metro.compiler.circuit
 
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.GeneratedInjectClassData
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension.ContributionHint
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroOriginData
 import dev.zacsweers.metro.compiler.api.fir.metroGeneratedInjectClassData
@@ -93,7 +95,9 @@ import org.jetbrains.kotlin.name.StandardClassIds
  */
 @OptIn(ExperimentalTopLevelDeclarationsGenerationApi::class)
 public class CircuitFirExtension(session: FirSession, compatContext: CompatContext) :
-  MetroFirDeclarationGenerationExtension(session), CompatContext by compatContext {
+  MetroFirDeclarationGenerationExtension(session),
+  MetroContributionHintExtension,
+  CompatContext by compatContext {
 
   private val symbols by lazy { session.circuitFirSymbols }
 
@@ -592,7 +596,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       options: MetroOptions,
       compatContext: CompatContext,
     ): MetroFirDeclarationGenerationExtension? {
-      if (!options.enableCircuitCodegen) return null
+      if (!options.enableCircuitCodegen || options.generateClassesInIr) return null
       return CircuitFirExtension(session, compatContext)
     }
   }

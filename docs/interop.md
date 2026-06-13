@@ -46,6 +46,9 @@ metro {
     includeDagger()
     includeAnvilForDagger()
 
+    // Hilt
+    includeHilt()
+
     // kotlin-inject
     includeKotlinInject()
     includeAnvilForKotlinInject()
@@ -186,6 +189,85 @@ Note the companion Gradle plugin automatically adds an extra `dev.zacsweers.metr
 
 !!! question "Why not javax.inject?"
     Guice dropped support for javax.inject in 7.0.0.
+
+## Hilt
+
+Hilt interop lets a Metro `@DependencyGraph` merge Hilt modules and entry points during a migration. Enable it with:
+
+```kotlin
+metro {
+  interop {
+    includeHilt()
+  }
+}
+```
+
+!!! tip
+    `includeHilt()` implicitly chains `includeDagger()`
+
+Metro treats Hilt's component target as the graph scope. A `@DependencyGraph(<scope>)` will merge:
+
+* `@InstallIn(<component>::class) @Module` classes as binding containers. Their `@Provides` declarations enter the graph.
+* `@InstallIn(<component>::class) @EntryPoint` interfaces as graph supertypes. Their accessors are implemented by the graph.
+
+This works for Hilt declarations compiled in the same module as the graph, and for declarations coming from upstream modules. Upstream modules are discovered either through Metro's contribution hints, when they also apply `includeHilt()`, or through Hilt's generated aggregation metadata when Hilt's KSP or KAPT processor ran upstream.
+
+### Built-in component-to-scope mapping
+
+Standard Hilt components map to their canonical scopes automatically:
+
+| Hilt component              | Scope                     |
+|-----------------------------|---------------------------|
+| `SingletonComponent`        | `@Singleton`              |
+| `ActivityRetainedComponent` | `@ActivityRetainedScoped` |
+| `ActivityComponent`         | `@ActivityScoped`         |
+| `ViewModelComponent`        | `@ViewModelScoped`        |
+| `FragmentComponent`         | `@FragmentScoped`         |
+| `ServiceComponent`          | `@ServiceScoped`          |
+| `ViewComponent`             | `@ViewScoped`             |
+| `ViewWithFragmentComponent` | `@ViewScoped`             |
+
+For example, `@DependencyGraph(Singleton::class)` pulls `@InstallIn(SingletonComponent::class)` sites, and `@DependencyGraph(ActivityScoped::class)` pulls `@InstallIn(ActivityComponent::class)` sites.
+
+#### Custom `@DefineComponent`
+
+Custom `@DefineComponent` interfaces work without extra registration. Metro resolves the component's Metro scope from the scope annotation declared on the component itself:
+
+```kotlin
+@Scope @Retention(AnnotationRetention.RUNTIME) annotation class FeatureScoped
+
+@FeatureScoped
+@DefineComponent(parent = SingletonComponent::class)
+interface FeatureComponent
+
+@Module
+@InstallIn(FeatureComponent::class)
+class FeatureModule {
+  @FeatureScoped
+  @Provides fun provideTag(): String = "feature"
+}
+
+@FeatureScoped
+@DependencyGraph(FeatureScoped::class)
+interface FeatureGraph {
+  val tag: String
+}
+```
+
+The `@DependencyGraph(FeatureScoped::class)` argument is the aggregation key. If contributed Hilt
+bindings are also scoped with `@FeatureScoped`, put `@FeatureScoped` on the graph too so Metro's
+scope compatibility check sees the concrete scope annotation.
+
+### Limitations
+
+* `@TestInstallIn` and `@CustomTestApplication` are not supported.
+* `@DefineComponent.parent` is not used to derive Metro `@GraphExtension` parent/child relationships. Component hierarchy must be expressed through Metro's own graph extension APIs.
+* No `EntryPointAccessors`-style runtime helper is shipped. Cast the graph to the entry-point interface directly, or write a small helper that does so for your codebase.
+* The Hilt-internal `componentEntryPoints` field on `@AggregatedDeps` is ignored.
+* A custom `@DefineComponent` must have a scope annotation on the component interface. If Metro cannot find one, matching `@InstallIn` sites are skipped without a diagnostic.
+* Hilt component generation from `@HiltAndroidApp` is not consumed. Metro merges contributions itself.
+
+See [`samples/interop/customAnnotations-hilt`](https://github.com/ZacSweers/metro/tree/main/samples/interop/customAnnotations-hilt) for a complete two-module example.
 
 ## Diagnostics
 

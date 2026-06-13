@@ -22,7 +22,7 @@ class S {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(sProvider: Provider<S>): Factory<S> {
+      fun create(sProvider: Provider<S>): MetroFactory {
         return MetroFactory(sProvider = sProvider)
       }
 

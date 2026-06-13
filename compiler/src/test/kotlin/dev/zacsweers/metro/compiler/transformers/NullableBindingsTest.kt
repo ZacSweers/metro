@@ -60,13 +60,17 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:9:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int?
+        e: ExampleGraph.kt:9:7 [Metro/MissingBinding] No binding found for Int?
 
-            kotlin.Int? is requested at
-                [test.ExampleGraph] test.ExampleGraph.nullable
+          trace (in test.ExampleGraph):
+              Int? is requested at test.ExampleGraph.nullable
 
-        Similar bindings:
-          - Int (Non-nullable equivalent). Type: Provided. Source: ExampleGraph.kt:12:3
+          similar bindings:
+              - Int (Non-nullable equivalent. Type: Provided) - ExampleGraph.kt:12:3
+
+          help: ensure Int? has an @Inject constructor or is provided by an @Provides or @Binds declaration
+                visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -93,13 +97,17 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] No binding found for Int
 
-            kotlin.Int is requested at
-                [test.ExampleGraph] test.ExampleGraph.int
+          trace (in test.ExampleGraph):
+              Int is requested at test.ExampleGraph.int
 
-        Similar bindings:
-          - Int? (Nullable equivalent). Type: Provided. Source: ExampleGraph.kt:12:3
+          similar bindings:
+              - Int? (Nullable equivalent. Type: Provided) - ExampleGraph.kt:12:3
+
+          help: ensure Int has an @Inject constructor or is provided by an @Provides or @Binds declaration
+                visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -125,12 +133,17 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:11:13 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int?
+        e: ExampleGraph.kt:11:13 [Metro/MissingBinding] No binding found for Int?
 
-            kotlin.Int? is injected at
-                [test.ExampleGraph] test.ExampleGraph.Foo(…, input)
-            test.ExampleGraph.Foo is requested at
-                [test.ExampleGraph] test.ExampleGraph.foo
+          test.ExampleGraph.foo -> Foo -> Int?
+
+          trace (in test.ExampleGraph):
+              Int? is injected at test.ExampleGraph.Foo(…, input)
+              Foo is requested at test.ExampleGraph.foo
+
+          help: ensure Int? has an @Inject constructor or is provided by an @Provides or @Binds declaration
+                visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -252,12 +265,12 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:9:7 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int?>' was unexpectedly empty.
+        e: ExampleGraph.kt:9:7 [Metro/EmptyMultibinding] Multibinding Set<Int?> was unexpectedly empty
 
-        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
-
-        Similar multibindings:
-        - Set<Int>
+          help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+                empty
+          note: similar multibindings: Set<Int>
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
           .trimIndent()
       )
@@ -370,12 +383,12 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:9:7 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int?>' was unexpectedly empty.
+        e: ExampleGraph.kt:9:7 [Metro/EmptyMultibinding] Multibinding Set<Int?> was unexpectedly empty
 
-        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
-
-        Similar multibindings:
-        - Set<Int>
+          help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+                empty
+          note: similar multibindings: Set<Int>
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
           .trimIndent()
       )

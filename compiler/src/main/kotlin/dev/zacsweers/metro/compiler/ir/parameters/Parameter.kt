@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
+import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
@@ -260,7 +261,7 @@ internal fun IrValueParameter.toConstructorParameter(
 
   var isProvides = false
   var isIncludes = false
-  for (annotation in annotations) {
+  for (annotation in annotationsCompat()) {
     val classId = annotation.symbol.owner.parentAsClass.classId
     when (classId) {
       in context.metroSymbols.classIds.providesAnnotations -> {

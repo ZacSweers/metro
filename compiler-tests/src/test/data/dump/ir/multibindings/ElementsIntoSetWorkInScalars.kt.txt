@@ -60,7 +60,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Set<Int>> {
+      fun create(instance: AppGraph): ProvideIntsMetroFactory {
         return ProvideIntsMetroFactory(instance = instance)
       }
 

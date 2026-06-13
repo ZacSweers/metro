@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
-import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
@@ -33,6 +33,8 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.scopes.getSingleClassifier
+import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.classId
@@ -47,7 +49,7 @@ import org.jetbrains.kotlin.name.FqName
 internal class ContributionHintFirGenerator(
   session: FirSession,
   compatContext: CompatContext,
-  private val externalExtensions: List<MetroFirDeclarationGenerationExtension>,
+  private val externalHintExtensions: List<MetroContributionHintExtension>,
 ) : FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   private fun contributedClassSymbols(): List<FirClassSymbol<*>> {
@@ -60,10 +62,36 @@ internal class ContributionHintFirGenerator(
         session.predicates.contributesAnnotationPredicate
       )
 
-    return (injectedClasses + contributedClasses)
+    val graphExtensionFactories =
+      session.predicateBasedProvider.getSymbolsByPredicate(
+        session.predicates.graphExtensionFactoryPredicate
+      )
+
+    val nestedGraphExtensionFactories =
+      session.predicateBasedProvider
+        .getSymbolsByPredicate(session.predicates.graphExtensionPredicate)
+        .filterIsInstance<FirClassSymbol<*>>()
+        .flatMap { graphExtension ->
+          val memberScope = graphExtension.declaredMemberScope(session, memberRequiredPhase = null)
+          memberScope.getClassifierNames().mapNotNull { name ->
+            memberScope.getSingleClassifier(name) as? FirClassSymbol<*>
+          }
+        }
+        .filter { nestedClass ->
+          nestedClass.annotationsIn(session, session.classIds.allContributesAnnotations).any()
+        }
+
+    return sequenceOf(
+        injectedClasses,
+        contributedClasses,
+        graphExtensionFactories,
+        nestedGraphExtensionFactories,
+      )
+      .flatten()
       .filterIsInstance<FirClassSymbol<*>>()
       .filterNot { it.visibility == Visibilities.Private }
       .distinct()
+      .toList()
   }
 
   private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session) }
@@ -134,7 +162,7 @@ internal class ContributionHintFirGenerator(
       }
 
       // Collect hints from external extensions
-      externalExtensions
+      externalHintExtensions
         .flatMap { it.getContributionHints() }
         .forEach { hint ->
           val classSymbol =
@@ -154,6 +182,11 @@ internal class ContributionHintFirGenerator(
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.contributesAnnotationPredicate)
     register(session.predicates.injectAnnotationPredicate)
+    register(session.predicates.graphExtensionPredicate)
+    register(session.predicates.graphExtensionFactoryPredicate)
+    for (extension in externalHintExtensions) {
+      with(extension) { registerPredicates() }
+    }
   }
 
   @ExperimentalTopLevelDeclarationsGenerationApi
@@ -179,7 +212,7 @@ internal class ContributionHintFirGenerator(
             session.builtinTypes.unitType.coneType,
             containingFileName = containingFileName,
           ) {
-            visibility = contributingClass.rawStatus.visibility
+            visibility = contributingClass.visibility
             valueParameter(Symbols.Names.contributed, { contributingClass.constructType(it) })
           }
           .apply { markAsDeprecatedHidden(session) }

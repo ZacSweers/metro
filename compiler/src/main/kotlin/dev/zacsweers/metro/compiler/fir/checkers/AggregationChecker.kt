@@ -26,6 +26,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
+import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -544,6 +545,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     val options = session.metroFirBuiltIns.options
     val severity = options.nonPublicContributionSeverity.resolve(session.isIde())
     if (severity == MetroOptions.DiagnosticSeverity.NONE) return
+    if (declaration.symbol.usesContributionProviderPath(session)) return
 
     // Treat protected as non-public for contributions - a protected class can't be accessed
     // from outside its class hierarchy, making it unsuitable for contributions to public scopes

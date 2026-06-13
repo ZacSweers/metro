@@ -1,3 +1,5 @@
+// GENERATE_CLASSES_IN_IR: false
+
 package test
 
 // Custom annotation that triggers the test extension to generate a @GraphExtension

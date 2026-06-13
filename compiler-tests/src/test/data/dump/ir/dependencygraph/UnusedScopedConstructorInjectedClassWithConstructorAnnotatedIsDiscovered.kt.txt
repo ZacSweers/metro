@@ -20,7 +20,7 @@ class ChildDependency {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(dep: Provider<Dependency>): Factory<ChildDependency> {
+      fun create(dep: Provider<Dependency>): MetroFactory {
         return MetroFactory(dep = dep)
       }
 
@@ -75,7 +75,7 @@ class Dependency {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<Dependency> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -193,10 +193,10 @@ interface LoggedInGraph {
 sealed interface LoggedInScope {
 }
 
-// FILE: loggedInGraphFactoryAppScope.kt
+// FILE: loggedInGraphFactoryDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: LoggedInGraph.Factory) {
+fun dev_zacsweers_metro_AppScope(contributed: LoggedInGraph.Factory) {
   return error(message = "Never called")
 }
 

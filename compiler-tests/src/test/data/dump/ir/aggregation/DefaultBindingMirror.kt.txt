@@ -14,7 +14,7 @@ class Impl : Base<Impl>, Other {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<Impl> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 
@@ -55,7 +55,9 @@ class Impl : Base<Impl>, Other {
 
       @Binds
       @CallableMetadata(callableName = "bindsAsBase", propertyName = "", startOffset = -1, endOffset = -1)
-      abstract fun bindsAsBase(instance: Impl): Base<*>
+      fun bindsAsBase(instance: Impl): Base<*> {
+        return error(message = "Never called")
+      }
 
     }
 
@@ -85,7 +87,9 @@ interface Base<T : Any?> {
 
     }
 
-    abstract fun defaultBinding(): Base<*>
+    fun defaultBinding(): Base<*> {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -94,10 +98,10 @@ interface Base<T : Any?> {
 interface Other {
 }
 
-// FILE: implAppScope.kt
+// FILE: implDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: Impl) {
+fun dev_zacsweers_metro_AppScope(contributed: Impl) {
   return error(message = "Never called")
 }
 

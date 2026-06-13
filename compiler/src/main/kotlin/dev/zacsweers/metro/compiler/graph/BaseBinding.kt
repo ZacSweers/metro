@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.graph
 
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSpan
 
 internal interface BaseBinding<
   Type : Any,
@@ -45,4 +46,9 @@ internal interface BaseBinding<
   fun renderDescriptionDiagnostic(short: Boolean = false, underlineTypeKey: Boolean = false): String
 }
 
-internal data class LocationDiagnostic(val location: String, val description: String?)
+internal data class LocationDiagnostic(
+  val location: String,
+  val description: String?,
+  /** Resolved source span when available; enables source-frame rendering in rich console mode. */
+  val span: DiagnosticSpan? = null,
+)

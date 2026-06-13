@@ -280,8 +280,8 @@ class GenerateProjectsCommand : CliktCommand() {
                   )
                 } else emptyList()
             },
-          hasSubcomponent =
-            i <= (appCount * 0.1).toInt().coerceAtLeast(1), // ~10% of app modules have subcomponents
+          // ~10% of app modules have subcomponents
+          hasSubcomponent = i <= (appCount * 0.1).toInt().coerceAtLeast(1),
         )
       }
 

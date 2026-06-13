@@ -8,9 +8,6 @@ class Example {
     private val container0Instance: TestIntProvider
       field = container0
 
-    private val container0InstanceProvider: Provider<TestIntProvider>
-      field = InstanceFactory/* companion */.invoke<TestIntProvider>(value = <this>.#container0Instance)
-
     constructor(container0: TestIntProvider) /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -57,7 +54,7 @@ class TestIntProvider {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: TestIntProvider): Factory<Int> {
+      fun create(instance: TestIntProvider): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 
@@ -154,7 +151,7 @@ interface AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Int> {
+      fun create(instance: AppGraph): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 

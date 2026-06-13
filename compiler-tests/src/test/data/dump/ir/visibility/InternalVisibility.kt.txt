@@ -54,7 +54,7 @@ abstract class AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): Factory<Int> {
+      fun create(instance: AppGraph): ProvideIntMetroFactory {
         return ProvideIntMetroFactory(instance = instance)
       }
 
@@ -119,7 +119,7 @@ class InternalClass {
     @HiddenFromObjC
     @JvmStatic
     @JsStatic
-    fun create(): Factory<InternalClass> {
+    fun create(): MetroFactory {
       return MetroFactory
     }
 

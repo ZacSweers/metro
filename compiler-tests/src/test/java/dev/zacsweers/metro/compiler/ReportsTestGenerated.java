@@ -16,6 +16,10 @@ import java.util.regex.Pattern;
 @TestMetadata("compiler-tests/src/test/data/dump/reports")
 @TestDataPath("$PROJECT_ROOT")
 public class ReportsTestGenerated extends AbstractReportsTest {
+  private void run(String fileName) {
+    runTest("compiler-tests/src/test/data/dump/reports/" + fileName);
+  }
+
   @Test
   public void testAllFilesPresentInReports() {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -24,31 +28,41 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   @Test
   @TestMetadata("BasicKeysUnusedReport.kt")
   public void testBasicKeysUnusedReport() {
-    runTest("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport.kt");
+    run("BasicKeysUnusedReport.kt");
   }
 
   @Test
   @TestMetadata("DeeplyNestedGraphsKeysPopulatedReport.kt")
   public void testDeeplyNestedGraphsKeysPopulatedReport() {
-    runTest("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport.kt");
+    run("DeeplyNestedGraphsKeysPopulatedReport.kt");
+  }
+
+  @Test
+  @TestMetadata("GraphMetadataStatsReport.kt")
+  public void testGraphMetadataStatsReport() {
+    run("GraphMetadataStatsReport.kt");
   }
 
   @Test
   @TestMetadata("SimpleTraceGeneration.kt")
   public void testSimpleTraceGeneration() {
-    runTest("compiler-tests/src/test/data/dump/reports/SimpleTraceGeneration.kt");
+    run("SimpleTraceGeneration.kt");
   }
 
   @Test
   @TestMetadata("UnmatchedReplacement.kt")
   public void testUnmatchedReplacement() {
-    runTest("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement.kt");
+    run("UnmatchedReplacement.kt");
   }
 
   @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport")
   @TestDataPath("$PROJECT_ROOT")
   public class BasicKeysUnusedReport {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/" + fileName);
+    }
+
     @Test
     public void testAllFilesPresentInBasicKeysUnusedReport() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -58,6 +72,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     @TestMetadata("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused")
     @TestDataPath("$PROJECT_ROOT")
     public class Keys_unused {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/" + fileName);
+      }
+
       @Test
       public void testAllFilesPresentInKeys_unused() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -67,6 +85,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
       @TestMetadata("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph")
       @TestDataPath("$PROJECT_ROOT")
       public class AppGraph {
+        private void run(String fileName) {
+          runTest("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/" + fileName);
+        }
+
         @Test
         public void testAllFilesPresentInAppGraph() {
           KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -76,6 +98,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
         @TestMetadata("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl")
         @TestDataPath("$PROJECT_ROOT")
         public class Impl {
+          private void run(String fileName) {
+            runTest("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl/" + fileName);
+          }
+
           @Test
           public void testAllFilesPresentInImpl() {
             KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -85,6 +111,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
           @TestMetadata("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl/ChildGraphImpl")
           @TestDataPath("$PROJECT_ROOT")
           public class ChildGraphImpl {
+            private void run(String fileName) {
+              runTest("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl/ChildGraphImpl/" + fileName);
+            }
+
             @Test
             public void testAllFilesPresentInChildGraphImpl() {
               KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl/ChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -94,6 +124,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
             @TestMetadata("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl/ChildGraphImpl/GrandchildGraphImpl")
             @TestDataPath("$PROJECT_ROOT")
             public class GrandchildGraphImpl {
+              private void run(String fileName) {
+                runTest("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl/ChildGraphImpl/GrandchildGraphImpl/" + fileName);
+              }
+
               @Test
               public void testAllFilesPresentInGrandchildGraphImpl() {
                 KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport/keys-unused/AppGraph/Impl/ChildGraphImpl/GrandchildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -109,6 +143,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   @TestMetadata("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport")
   @TestDataPath("$PROJECT_ROOT")
   public class DeeplyNestedGraphsKeysPopulatedReport {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/" + fileName);
+    }
+
     @Test
     public void testAllFilesPresentInDeeplyNestedGraphsKeysPopulatedReport() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -118,6 +156,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     @TestMetadata("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated")
     @TestDataPath("$PROJECT_ROOT")
     public class Keys_populated {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/" + fileName);
+      }
+
       @Test
       public void testAllFilesPresentInKeys_populated() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -127,6 +169,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
       @TestMetadata("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph")
       @TestDataPath("$PROJECT_ROOT")
       public class AppGraph {
+        private void run(String fileName) {
+          runTest("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/" + fileName);
+        }
+
         @Test
         public void testAllFilesPresentInAppGraph() {
           KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -136,6 +182,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
         @TestMetadata("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl")
         @TestDataPath("$PROJECT_ROOT")
         public class Impl {
+          private void run(String fileName) {
+            runTest("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/" + fileName);
+          }
+
           @Test
           public void testAllFilesPresentInImpl() {
             KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -145,6 +195,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
           @TestMetadata("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl")
           @TestDataPath("$PROJECT_ROOT")
           public class ChildGraphImpl {
+            private void run(String fileName) {
+              runTest("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl/" + fileName);
+            }
+
             @Test
             public void testAllFilesPresentInChildGraphImpl() {
               KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -154,6 +208,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
             @TestMetadata("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl/GrandChildGraphImpl")
             @TestDataPath("$PROJECT_ROOT")
             public class GrandChildGraphImpl {
+              private void run(String fileName) {
+                runTest("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl/GrandChildGraphImpl/" + fileName);
+              }
+
               @Test
               public void testAllFilesPresentInGrandChildGraphImpl() {
                 KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl/GrandChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -163,6 +221,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
               @TestMetadata("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl/GrandChildGraphImpl/GreatGrandChildGraphImpl")
               @TestDataPath("$PROJECT_ROOT")
               public class GreatGrandChildGraphImpl {
+                private void run(String fileName) {
+                  runTest("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl/GrandChildGraphImpl/GreatGrandChildGraphImpl/" + fileName);
+                }
+
                 @Test
                 public void testAllFilesPresentInGreatGrandChildGraphImpl() {
                   KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DeeplyNestedGraphsKeysPopulatedReport/keys-populated/AppGraph/Impl/ChildGraphImpl/GrandChildGraphImpl/GreatGrandChildGraphImpl"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -176,9 +238,55 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport")
+  @TestDataPath("$PROJECT_ROOT")
+  public class GraphMetadataStatsReport {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInGraphMetadataStatsReport() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/graph-metadata")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Graph_metadata {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/graph-metadata/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInGraph_metadata() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/graph-metadata"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/provider-factories")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Provider_factories {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/provider-factories/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInProvider_factories() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/provider-factories"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement")
   @TestDataPath("$PROJECT_ROOT")
   public class UnmatchedReplacement {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/" + fileName);
+    }
+
     @Test
     public void testAllFilesPresentInUnmatchedReplacement() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -188,6 +296,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     @TestMetadata("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-fir")
     @TestDataPath("$PROJECT_ROOT")
     public class Merging_unmatched_exclusions_fir {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-fir/" + fileName);
+      }
+
       @Test
       public void testAllFilesPresentInMerging_unmatched_exclusions_fir() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-fir"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -198,6 +310,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     @TestMetadata("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-ir")
     @TestDataPath("$PROJECT_ROOT")
     public class Merging_unmatched_exclusions_ir {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-ir/" + fileName);
+      }
+
       @Test
       public void testAllFilesPresentInMerging_unmatched_exclusions_ir() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-ir"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -207,6 +323,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
       @TestMetadata("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-ir/kotlin")
       @TestDataPath("$PROJECT_ROOT")
       public class Kotlin {
+        private void run(String fileName) {
+          runTest("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-ir/kotlin/" + fileName);
+        }
+
         @Test
         public void testAllFilesPresentInKotlin() {
           KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-exclusions-ir/kotlin"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -218,6 +338,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     @TestMetadata("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-fir")
     @TestDataPath("$PROJECT_ROOT")
     public class Merging_unmatched_replacements_fir {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-fir/" + fileName);
+      }
+
       @Test
       public void testAllFilesPresentInMerging_unmatched_replacements_fir() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-fir"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -228,6 +352,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
     @TestMetadata("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-ir")
     @TestDataPath("$PROJECT_ROOT")
     public class Merging_unmatched_replacements_ir {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-ir/" + fileName);
+      }
+
       @Test
       public void testAllFilesPresentInMerging_unmatched_replacements_ir() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-ir"), Pattern.compile("^(.+)\\.kt$"), null, true);
@@ -237,6 +365,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
       @TestMetadata("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-ir/kotlin")
       @TestDataPath("$PROJECT_ROOT")
       public class Kotlin {
+        private void run(String fileName) {
+          runTest("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-ir/kotlin/" + fileName);
+        }
+
         @Test
         public void testAllFilesPresentInKotlin() {
           KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement/merging-unmatched-replacements-ir/kotlin"), Pattern.compile("^(.+)\\.kt$"), null, true);

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Subprojects that can be targeted with -p flag
-ALL_SUBPROJECTS=("samples" "benchmark" "ide-integration-tests")
+ALL_SUBPROJECTS=("samples" "benchmark" "ide-integration-tests" "idea-plugin")
 
 # Run a gradle command across root and specified subprojects
 # Usage: run_gradle_all "command args" [subprojects...]
@@ -95,6 +95,51 @@ case "$1" in
        else
            echo "Publishing version $version..."
            ./gradlew publish -x dokkaGeneratePublicationHtml
+       fi
+       ;;
+
+   "publish-idea-plugin")
+       version=""
+       dry_run=false
+       local=false
+
+       while [[ $# -gt 1 ]]; do
+           case "$2" in
+               --version)
+                   version="$3"
+                   shift 2
+                   ;;
+               --dry-run)
+                   dry_run=true
+                   shift
+                   ;;
+               --local)
+                   local=true
+                   shift
+                   ;;
+               *)
+                   echo "Unknown publish-idea-plugin argument: $2"
+                   exit 1
+                   ;;
+           esac
+       done
+
+       publish_args=()
+       if [[ -n "$version" ]]; then
+           publish_args+=("-PVERSION_NAME=${version}")
+           echo "Publishing idea-plugin version $version..."
+       else
+           echo "Publishing idea-plugin version from idea-plugin/gradle.properties..."
+       fi
+
+       if [[ "$dry_run" = true ]]; then
+           publish_args+=("--dry-run")
+       fi
+
+       if [[ "$local" = true ]]; then
+           ./gradlew -p idea-plugin buildPlugin --quiet "${publish_args[@]}"
+       else
+           ./gradlew -p idea-plugin publishPlugin --quiet "${publish_args[@]}"
        fi
        ;;
 
@@ -238,6 +283,9 @@ case "$1" in
            echo "Running apiDump..."
            # shellcheck disable=SC2086  # Word splitting is intentional so empty version_flag drops out
            ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
+
+           echo "Generating diagnostics docs..."
+           ./gradlew :compiler:generateDiagnosticsDocs --quiet
        else
            echo "Regenerating package locks only..."
        fi
@@ -301,11 +349,16 @@ case "$1" in
        ;;
 
    *)
-       echo "Usage: metrow (publish|check|test|clean|format|regen|gen-compat|trace|update-gradle)"
+       echo "Usage: metrow (publish|publish-idea-plugin|check|test|clean|format|regen|gen-compat|trace|update-gradle)"
        echo ""
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
        echo "  --local              Publish locally"
+       echo ""
+       echo "publish-idea-plugin options:"
+       echo "  --version <version>  Specify IDE plugin version for publishing"
+       echo "  --local              Build the IDE plugin ZIP locally instead of publishing"
+       echo "  --dry-run            Preview publish tasks without publishing"
        echo ""
        echo "check options:"
        echo "  --all                Test against all available compiler versions"
