@@ -58,6 +58,7 @@ public object MetroClassIds {
   public val inject: ClassId = metroRuntimePackage.classId("Inject")
   public val qualifier: ClassId = metroRuntimePackage.classId("Qualifier")
   public val scope: ClassId = metroRuntimePackage.classId("Scope")
+  public val singleIn: ClassId = metroRuntimePackage.classId("SingleIn")
   public val bindingContainer: ClassId = metroRuntimePackage.classId("BindingContainer")
   public val origin: ClassId = metroRuntimePackage.classId("Origin")
   public val defaultBinding: ClassId = metroRuntimePackage.classId("DefaultBinding")

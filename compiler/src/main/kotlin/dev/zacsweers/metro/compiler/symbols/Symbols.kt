@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.symbols
 
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.compiler.MetroHints
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -11,7 +12,6 @@ import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.scopeHintFunctionName
 import dev.zacsweers.metro.compiler.symbols.Symbols.FqNames.kotlinCollectionsPackageFqn
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
@@ -93,7 +93,7 @@ internal class Symbols(
     const val MULTIBINDING = "multibinding"
     const val METRO_CONTRIBUTION_NAME_PREFIX = "MetroContribution"
     const val METRO_FACTORY = "MetroFactory"
-    const val METRO_HINTS_PACKAGE = "metro.hints"
+    const val METRO_HINTS_PACKAGE = MetroHints.PACKAGE_NAME
     // Weird but here to defeat shadow jar
     val METRO_RUNTIME_PACKAGE = listOf("dev", "zacsweers", "metro").joinToString(".")
     val METRO_RUNTIME_INTERNAL_PACKAGE = "${METRO_RUNTIME_PACKAGE}.internal"
@@ -114,7 +114,7 @@ internal class Symbols(
     val composeRuntime = FqName("androidx.compose.runtime")
     val javaUtil = FqName("java.util")
     val kotlinCollectionsPackageFqn = StandardClassIds.BASE_COLLECTIONS_PACKAGE
-    val metroHintsPackage = FqName(StringNames.METRO_HINTS_PACKAGE)
+    val metroHintsPackage = MetroHints.packageFqName
     val metroRuntimeInternalPackage = FqName(StringNames.METRO_RUNTIME_INTERNAL_PACKAGE)
     val metroRuntimePackage = FqName(StringNames.METRO_RUNTIME_PACKAGE)
     val GraphFactoryInvokeFunctionMarkerClass =
@@ -131,7 +131,7 @@ internal class Symbols(
 
   object CallableIds {
     fun scopeHint(scopeClassId: ClassId): CallableId {
-      return CallableId(FqNames.metroHintsPackage, scopeClassId.scopeHintFunctionName())
+      return MetroHints.hintCallableId(scopeClassId)
     }
 
     fun scopedInjectClassHint(scopeAnnotation: IrAnnotation): CallableId {

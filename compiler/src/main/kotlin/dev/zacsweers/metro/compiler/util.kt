@@ -73,14 +73,6 @@ internal fun Name.capitalizeUS(): Name {
   }
 }
 
-internal fun String.capitalizeUS() = replaceFirstChar {
-  if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString()
-}
-
-internal fun String.decapitalizeUS() = replaceFirstChar { it.lowercase(Locale.US) }
-
-internal fun Name.decapitalizeUS() = asString().decapitalizeUS().asName()
-
 internal inline fun <T, Buffer : Appendable> Buffer.appendIterableWith(
   iterable: Iterable<T>,
   prefix: String,
@@ -147,8 +139,6 @@ internal inline fun <T> T?.escapeIfNull(block: () -> Nothing): T {
   return this
 }
 
-internal fun String.asName(): Name = Name.identifier(this)
-
 internal val String.withoutLineBreaks: String
   get() = lineSequence().joinToString(" ") { it.trim() }
 
@@ -209,7 +199,7 @@ internal fun String.suffixIfNot(suffix: String) =
 internal fun Name.suffixIfNot(suffix: String) =
   if (asString().endsWith(suffix)) this else "$this$suffix".asName()
 
-internal fun ClassId.scopeHintFunctionName(): Name = safePathString.asName()
+internal fun ClassId.scopeHintFunctionName(): Name = MetroHints.hintFunctionName(this)
 
 @Suppress("NOTHING_TO_INLINE")
 internal inline fun reportCompilerBug(message: String): Nothing {
@@ -318,27 +308,4 @@ internal fun calculateInitialCapacity(expectedSize: Int, loadFactor: Float = 0.7
     expectedSize < INT_MAX_POWER_OF_TWO -> ((expectedSize / loadFactor) + 1.0F).toInt()
     // any large value
     else -> Int.MAX_VALUE
-  }
-
-internal const val HASH_SUFFIX_LENGTH = 5
-
-private const val HEX_CHARS = HASH_SUFFIX_LENGTH - 1
-private const val HEX_BITS = HEX_CHARS * 4
-private const val HEX_MASK = (1 shl HEX_BITS) - 1
-
-/**
- * Computes a unique, deterministic suffix string derived from the object's hash code. This suffix
- * is Java identifier-safe and file name-safe, ensuring compatibility across use cases where such
- * constraints are necessary.
- *
- * The suffix is a combination of a lowercase alphabetic character followed by a fixed-length hex
- * representation of a portion of the hash code (length is [HASH_SUFFIX_LENGTH]).
- */
-internal val Any.hashSuffix: String
-  get() {
-    val hash = hashCode()
-    // Letter + (HASH_SUFFIX_LENGTH - 1) hex chars
-    val first = 'a' + ((hash ushr HEX_BITS) and 0xff) % 26
-    val rest = hash and HEX_MASK
-    return first + rest.toString(16).padStart(HEX_CHARS, '0')
   }
