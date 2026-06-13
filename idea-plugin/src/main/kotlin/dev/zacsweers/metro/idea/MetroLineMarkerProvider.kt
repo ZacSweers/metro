@@ -103,7 +103,8 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     consumer: MetroConsumerEntry,
     index: MetroBindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
-    val providers = index.providersFor(consumer)
+    val resolution = index.resolveConsumer(consumer)
+    val providers = resolution.effective
     val targets = providers.map { it.pointer }
     val tooltip = buildString {
       append("Metro dependency: ")
@@ -116,11 +117,20 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
             append(" · resolved to ")
             append(it)
           }
+        resolution.perGraph.keys.singleOrNull()?.name?.let {
+          append(" · in ")
+          append(it)
+        }
       }
       if (providers.size > 1) {
         append(" · ")
         append(providers.size)
         append(" bindings")
+        if (resolution.perGraph.size > 1) {
+          append(" across ")
+          append(resolution.perGraph.size)
+          append(" graphs")
+        }
       }
       if (providers.isEmpty()) {
         append(" · no binding found in project sources (may come from a library, generated code,")
@@ -142,7 +152,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     graph: MetroGraphEntry,
     index: MetroBindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
-    val targets = index.contributionsForScopes(graph.scopeKeys).map { it.pointer }
+    val targets = index.contributionsFor(index.contextFor(graph)).map { it.pointer }
     val scopesDisplay = graph.scopeKeys.joinToString { it.shortClassName.asString() }
     val tooltip = buildString {
       append("Metro dependency graph")

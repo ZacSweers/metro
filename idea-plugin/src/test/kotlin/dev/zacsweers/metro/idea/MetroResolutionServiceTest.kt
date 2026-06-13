@@ -683,6 +683,345 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testAssistedFactoriesProvideTheirOwnType() {
+    val file =
+      myFixture.configureByText(
+        "Assisted.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Assisted
+        import dev.zacsweers.metro.AssistedFactory
+        import dev.zacsweers.metro.AssistedInject
+        import dev.zacsweers.metro.Inject
+
+        class Engine @AssistedInject constructor(@Assisted val id: String)
+
+        @AssistedFactory
+        interface EngineFactory {
+          fun create(id: String): Engine
+        }
+
+        @Inject class EngineUser(val factory: EngineFactory)
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val factoryEntry = index.providerEntriesAt(declarations.klass("EngineFactory")).single()
+    assertEquals(MetroProviderKind.ASSISTED_FACTORY, factoryEntry.kind)
+    assertEquals("test.EngineFactory", factoryEntry.key.renderedType)
+    assertEquals("Engine", factoryEntry.implementationName)
+
+    val factoryParam = index.consumerEntryAt(declarations.parameter("factory"))!!
+    assertEquals(
+      listOf(MetroProviderKind.ASSISTED_FACTORY),
+      index.providersFor(factoryParam).map { it.kind },
+    )
+  }
+
+  fun testDefaultBindingSuppliesImplicitBoundType() {
+    val file =
+      myFixture.configureByText(
+        "Defaults.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.ContributesIntoSet
+        import dev.zacsweers.metro.DefaultBinding
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Inject
+
+        @DefaultBinding<BaseFactory<*>>
+        interface BaseFactory<T : BaseFactory<T>>
+
+        interface OtherMarker
+
+        @ContributesIntoSet(AppScope::class)
+        @Inject
+        class HomeFactory : BaseFactory<HomeFactory>, OtherMarker
+
+        @DependencyGraph(AppScope::class)
+        interface DefaultsGraph {
+          val factories: Set<BaseFactory<*>>
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    // Two supertypes, no explicit binding<T>() — the @DefaultBinding supertype decides
+    val accessor = index.consumerEntryAt(declarations.property("factories"))!!
+    val contributors = index.providersFor(accessor)
+    assertEquals(listOf("HomeFactory"), contributors.map { it.implementationName })
+    assertEquals("test.BaseFactory<*>", contributors.single().key.renderedType)
+  }
+
+  fun testClassKeyMapContributionsResolve() {
+    val file =
+      myFixture.configureByText(
+        "ClassKeys.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.ClassKey
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Inject
+        import dev.zacsweers.metro.IntoMap
+        import dev.zacsweers.metro.Provides
+        import kotlin.reflect.KClass
+
+        interface Handler
+        class FooHandler : Handler
+        class Foo
+
+        interface HandlerProviders {
+          @Provides @IntoMap @ClassKey(Foo::class) fun fooHandler(): Handler = FooHandler()
+        }
+
+        @Inject class HandlerUser(val handlers: Map<KClass<*>, Handler>)
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val handlersParam = index.consumerEntryAt(declarations.parameter("handlers"))!!
+    val contributors = index.providersFor(handlersParam)
+    assertEquals(listOf(MetroProviderKind.MULTIBINDING_CONTRIBUTION), contributors.map { it.kind })
+  }
+
+  fun testReplacedContributionsLosePerGraph() {
+    val file =
+      myFixture.configureByText(
+        "Replaces.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.ContributesBinding
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Inject
+
+        interface Repo
+
+        @ContributesBinding(AppScope::class)
+        @Inject
+        class RealRepo : Repo
+
+        @ContributesBinding(AppScope::class, replaces = [RealRepo::class])
+        @Inject
+        class FakeRepo : Repo
+
+        @DependencyGraph(AppScope::class)
+        interface ReplacesGraph {
+          val repo: Repo
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val accessor = index.consumerEntryAt(declarations.property("repo"))!!
+    val resolution = index.resolveConsumer(accessor)
+    assertEquals(2, resolution.global.size)
+    // In the graph, the replacement wins
+    assertEquals(listOf("FakeRepo"), resolution.effective.map { it.implementationName })
+  }
+
+  fun testExcludedContributionsAreDroppedFromGraphContext() {
+    val file =
+      myFixture.configureByText(
+        "Excludes.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.ContributesBinding
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Inject
+
+        interface Thing
+
+        @ContributesBinding(AppScope::class)
+        @Inject
+        class NoisyThing : Thing
+
+        @DependencyGraph(AppScope::class, excludes = [NoisyThing::class])
+        interface ExcludesGraph {
+          val thing: Thing
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val graph = index.graphEntryAt(declarations.klass("ExcludesGraph"))!!
+    val context = index.contextFor(graph)
+    assertTrue(context.excludes.isNotEmpty())
+
+    val accessor = index.consumerEntryAt(declarations.property("thing"))!!
+    assertTrue(index.providersFor(accessor, context).isEmpty())
+    assertTrue(index.contributionsFor(context).isEmpty())
+    // Global resolution still sees it as a candidate
+    assertEquals(1, index.resolveConsumer(accessor).global.size)
+  }
+
+  fun testBindingContainersGateProvidersPerGraph() {
+    val file =
+      myFixture.configureByText(
+        "Containers.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.BindingContainer
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Provides
+
+        class Client
+        class Api
+
+        @BindingContainer
+        object NetBindings {
+          @Provides fun client(): Client = Client()
+        }
+
+        @BindingContainer(includes = [NetBindings::class])
+        object AppBindings {
+          @Provides fun api(client: Client): Api = Api()
+        }
+
+        @DependencyGraph(AppScope::class, bindingContainers = [AppBindings::class])
+        interface WiredGraph {
+          val api: Api
+          val client: Client
+        }
+
+        @DependencyGraph
+        interface UnwiredGraph {
+          val unwiredClient: Client
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val wired = index.contextFor(index.graphEntryAt(declarations.klass("WiredGraph"))!!)
+    // Transitive container includes are expanded
+    assertEquals(2, wired.containers.size)
+    val clientAccessor = index.consumerEntryAt(declarations.property("client"))!!
+    assertEquals(1, index.providersFor(clientAccessor, wired).size)
+
+    val unwired = index.contextFor(index.graphEntryAt(declarations.klass("UnwiredGraph"))!!)
+    val unwiredAccessor = index.consumerEntryAt(declarations.property("unwiredClient"))!!
+    assertTrue(index.providersFor(unwiredAccessor, unwired).isEmpty())
+  }
+
+  fun testIncludedDependencyAccessorsProvide() {
+    val file =
+      myFixture.configureByText(
+        "Includes.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Includes
+
+        class Client
+
+        interface NetworkDeps {
+          val client: Client
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface IncludesGraph {
+          val graphClient: Client
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes deps: NetworkDeps): IncludesGraph
+          }
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val graph = index.graphEntryAt(declarations.klass("IncludesGraph"))!!
+    val context = index.contextFor(graph)
+    assertEquals(1, context.includedDependencies.size)
+
+    val accessor = index.consumerEntryAt(declarations.property("graphClient"))!!
+    val providers = index.providersFor(accessor, context)
+    assertEquals(listOf(MetroProviderKind.INCLUDED), providers.map { it.kind })
+    // Anchored at the dependency's accessor declaration
+    assertEquals(
+      "client",
+      (providers.single().pointer.element as? KtNamedDeclaration)?.name,
+    )
+  }
+
+  fun testGraphExtensionsInheritParentContext() {
+    val file =
+      myFixture.configureByText(
+        "Extensions.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.ContributesBinding
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.GraphExtension
+        import dev.zacsweers.metro.Inject
+
+        abstract class ChildScope
+
+        interface Thing
+
+        @ContributesBinding(AppScope::class)
+        @Inject
+        class RealThing : Thing
+
+        @GraphExtension(ChildScope::class)
+        interface ChildGraph {
+          val thing: Thing
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface ParentGraph {
+          val childGraph: ChildGraph
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val child = index.graphEntryAt(declarations.klass("ChildGraph"))!!
+    assertTrue(child.isExtension)
+    val context = index.contextFor(child)
+    assertEquals(2, context.chain.size)
+
+    // The child's accessor resolves through the parent's scope
+    val accessor = index.consumerEntryAt(declarations.property("thing"))!!
+    val providers = index.providersFor(accessor, context)
+    assertEquals(listOf("RealThing"), providers.map { it.implementationName })
+
+    // But the parent context does not include child-scoped bindings beyond its own scope
+    val parent = index.contextFor(index.graphEntryAt(declarations.klass("ParentGraph"))!!)
+    assertEquals(1, parent.chain.size)
+  }
+
   fun testIndexIsEmptyWhenMetroDisabled() {
     project.setMetroOptions("enabled" to "false")
     val file = configure()
