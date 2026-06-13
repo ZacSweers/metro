@@ -9,21 +9,19 @@ import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.platform.backend.presentation.TargetPresentation
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import com.intellij.openapi.util.NotNullLazyValue
+import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import javax.swing.Icon
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtClassOrObject
-import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import org.jetbrains.kotlin.psi.KtParameter
 
 /**
  * Adds provider/consumer/graph gutter icons to Metro declarations, with navigation to the
@@ -54,9 +52,11 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     val index = MetroResolutionService.getInstance(element.project).index(declaration)
 
     if (GRAPH_OPTION.isEnabled) {
-      (declaration as? KtClassOrObject)?.let { index.graphEntryAt(it) }?.let { graph ->
-        result += graphMarker(element, graph, index)
-      }
+      (declaration as? KtClassOrObject)
+        ?.let { index.graphEntryAt(it) }
+        ?.let { graph ->
+          result += graphMarker(element, graph, index)
+        }
     }
 
     if (PROVIDER_OPTION.isEnabled) {
@@ -71,7 +71,6 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
         result += consumerMarker(element, consumer, index)
       }
     }
-
   }
 
   private fun providerMarker(
@@ -158,7 +157,9 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     index: MetroBindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
     val context = index.contextFor(graph)
-    val targets = index.contributionsFor(context).map { it.pointer }
+    val contributions = index.contributionsFor(context)
+    val inherited = index.inheritedContributionsFor(context)
+    val targets = (contributions + inherited).map { it.pointer }
     val scopesDisplay = graph.scopeKeys.joinToString { it.shortClassName.asString() }
     val tooltip = buildString {
       append(if (graph.isExtension) "Metro graph extension" else "Metro dependency graph")
@@ -169,11 +170,10 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       context.chain.getOrNull(1)?.let { parent ->
         append(" · extends ")
         append(parent.name ?: "parent graph")
-        val inherited = index.inheritedContributionsFor(context).size
-        if (inherited > 0) {
+        if (inherited.isNotEmpty()) {
           append(" (inherits ")
-          append(inherited)
-          append(if (inherited == 1) " contribution)" else " contributions)")
+          append(inherited.size)
+          append(if (inherited.size == 1) " contribution)" else " contributions)")
         }
       }
     }

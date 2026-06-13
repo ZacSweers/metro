@@ -100,7 +100,7 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
           entry(
             text = text,
             tooltip = "Metro contributions to $scopes",
-            targets = contributions.map { it.pointer },
+            targets = (contributions + inherited).map { it.pointer },
             popupTitle = "Contributions to $scopes",
           )
     }

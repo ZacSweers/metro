@@ -8,8 +8,10 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
+import org.jetbrains.kotlin.psi.KtProperty
 
 class MetroResolutionServiceTest : BasePlatformTestCase() {
 
@@ -328,6 +330,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         import dev.zacsweers.metro.DependencyGraph
         import dev.zacsweers.metro.Inject
 
+        abstract class OtherScope
+
         class HomeScreen : Screen
         class HomeState : CircuitUiState
 
@@ -347,6 +351,11 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           val uiFactories: Set<Ui.Factory>
           val presenterFactories: Set<Presenter.Factory>
         }
+
+        @DependencyGraph(OtherScope::class)
+        interface OtherCircuitGraph {
+          val otherUiFactories: Set<Ui.Factory>
+        }
         """
           .trimIndent(),
       ) as KtFile
@@ -363,6 +372,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val uiEntry = index.providerEntriesAt(declarations.function("HomeUi")).single()
     assertEquals("com.slack.circuit.runtime.ui.Ui.Factory", uiEntry.key.renderedType)
+    assertEquals(
+      setOf(ClassId.topLevel(FqName("dev.zacsweers.metro.AppScope"))),
+      uiEntry.contributionScopes,
+    )
 
     // The graph's factory set accessors resolve to the contributions
     val presenterFactories = index.consumerEntryAt(declarations.property("presenterFactories"))!!
@@ -379,6 +392,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         (it.pointer.element as? KtNamedDeclaration)?.name
       },
     )
+
+    val otherGraph = index.contextFor(index.graphEntryAt(declarations.klass("OtherCircuitGraph"))!!)
+    val otherUiFactories = index.consumerEntryAt(declarations.property("otherUiFactories"))!!
+    assertTrue(index.providersFor(otherUiFactories, otherGraph).isEmpty())
 
     // Injected params are consumers; circuit-provided params (navigator/screen/state/modifier)
     // are assisted sites instead
@@ -832,6 +849,22 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(2, resolution.global.size)
     // In the graph, the replacement wins
     assertEquals(listOf("FakeRepo"), resolution.effective.map { it.implementationName })
+
+    val realEntry =
+      index.providerEntriesAt(declarations.klass("RealRepo")).single {
+        it.kind == MetroProviderKind.CONTRIBUTED
+      }
+    val fakeEntry =
+      index.providerEntriesAt(declarations.klass("FakeRepo")).single {
+        it.kind == MetroProviderKind.CONTRIBUTED
+      }
+    assertTrue(index.consumersFor(listOf(realEntry)).isEmpty())
+    assertEquals(
+      listOf("repo"),
+      index.consumersFor(listOf(fakeEntry)).mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
   }
 
   fun testExcludedContributionsAreDroppedFromGraphContext() {
@@ -985,12 +1018,17 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         import dev.zacsweers.metro.Inject
 
         abstract class ChildScope
+        abstract class OtherScope
 
         interface Thing
 
         @ContributesBinding(AppScope::class)
         @Inject
         class RealThing : Thing
+
+        @ContributesBinding(OtherScope::class)
+        @Inject
+        class OtherThing : Thing
 
         @GraphExtension(ChildScope::class)
         interface ChildGraph {
@@ -1007,6 +1045,11 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           val childGraph: ChildGraph
           val childFactory: ChildGraph.Factory
         }
+
+        @DependencyGraph(OtherScope::class)
+        interface OtherParentGraph {
+          val childGraph: ChildGraph
+        }
         """
           .trimIndent(),
       ) as KtFile
@@ -1015,27 +1058,37 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val child = index.graphEntryAt(declarations.klass("ChildGraph"))!!
     assertTrue(child.isExtension)
+    val childContexts = index.contextsFor(child)
+    assertEquals(2, childContexts.size)
     val context = index.contextFor(child)
-    assertEquals(2, context.chain.size)
 
-    // The child's accessor resolves through the parent's scope
+    // The child's accessor resolves through every parent scope that creates it
     val accessor = index.consumerEntryAt(declarations.property("thing"))!!
-    val providers = index.providersFor(accessor, context)
-    assertEquals(listOf("RealThing"), providers.map { it.implementationName })
+    val providers = childContexts.flatMap { childContext ->
+      index.providersFor(accessor, childContext)
+    }
+    assertEquals(setOf("RealThing", "OtherThing"), providers.map { it.implementationName }.toSet())
 
-    // But the parent context does not include child-scoped bindings beyond its own scope
+    // But parent contexts do not include child-scoped bindings beyond their own scope
     val parent = index.contextFor(index.graphEntryAt(declarations.klass("ParentGraph"))!!)
     assertEquals(1, parent.chain.size)
+    val otherParent = index.contextFor(index.graphEntryAt(declarations.klass("OtherParentGraph"))!!)
+    assertEquals(1, otherParent.chain.size)
 
     // Extension (and extension factory) accessors are creation points, not consumers
-    assertNull(index.consumerEntryAt(declarations.property("childGraph")))
+    declarations
+      .filterIsInstance<KtProperty>()
+      .filter { it.name == "childGraph" }
+      .forEach { assertNull(index.consumerEntryAt(it)) }
     assertNull(index.consumerEntryAt(declarations.property("childFactory")))
 
     // The child aggregates only its own scope; parent-scope contributions are inherited
     assertTrue(index.contributionsFor(context).isEmpty())
-    assertEquals(1, index.inheritedContributionsFor(context).size)
+    assertEquals(2, index.inheritedContributionsFor(context).size)
     assertEquals(1, index.contributionsFor(parent).size)
     assertTrue(index.inheritedContributionsFor(parent).isEmpty())
+    assertEquals(1, index.contributionsFor(otherParent).size)
+    assertTrue(index.inheritedContributionsFor(otherParent).isEmpty())
   }
 
   fun testScopedBindingsRequireMatchingGraphScope() {
