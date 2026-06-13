@@ -730,31 +730,31 @@ interface AppGraph {
 interface Injector {
 }
 
-// FILE: aFragmentInjectorAppScope.kt
+// FILE: aFragmentInjectorDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: AFragmentInjector) {
+fun dev_zacsweers_metro_AppScope(contributed: AFragmentInjector) {
   return error(message = "Never called")
 }
 
-// FILE: aViewModelAppScope.kt
+// FILE: aViewModelDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: AViewModel) {
+fun dev_zacsweers_metro_AppScope(contributed: AViewModel) {
   return error(message = "Never called")
 }
 
-// FILE: bFragmentInjectorAppScope.kt
+// FILE: bFragmentInjectorDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: BFragmentInjector) {
+fun dev_zacsweers_metro_AppScope(contributed: BFragmentInjector) {
   return error(message = "Never called")
 }
 
-// FILE: bViewModelAppScope.kt
+// FILE: bViewModelDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: BViewModel) {
+fun dev_zacsweers_metro_AppScope(contributed: BViewModel) {
   return error(message = "Never called")
 }
 

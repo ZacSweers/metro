@@ -86,12 +86,12 @@ Use this extension to generate FIR declarations (classes, functions, properties)
 
 This API is similar to `FirDeclarationGenerationExtension`, but has a `ServiceLoader` API to be loaded by Metro at compile-time and handles all its callbacks.
 
-#### `getContributionHints()`
+#### MetroContributionHintExtension and `getContributionHints()`
 
 If your extension generates classes with contributing annotations (like `@ContributesTo`), Metro's `ContributionHintFirGenerator` needs to know about them to
 produce hint marker functions for cross-module discovery.
 
-Override `getContributionHints()` to declare these generated contributions:
+Implement `MetroContributionHintExtension` and override `getContributionHints()` to declare these generated contributions:
 
 ```kotlin
 override fun getContributionHints(): List<ContributionHint> {

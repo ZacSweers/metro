@@ -54,7 +54,7 @@ class MetroArtifactsTest {
   }
 
   @Test
-  fun `diagnosticsConsole resolves AUTO plugin-side and explicit values pass through`() {
+  fun `diagnosticsRenderMode resolves AUTO plugin-side and explicit values pass through`() {
     val fixture =
       object : MetroProject(multiplatform = false) {
         override fun sources() =
@@ -82,20 +82,20 @@ class MetroArtifactsTest {
 
     // AUTO + --console=plain resolves to PLAIN before reaching the compiler.
     build(project.rootDir, "metroEnv", "--console=plain")
-    assertThat(envReport()).contains("diagnostics-console = PLAIN")
+    assertThat(envReport()).contains("diagnostics-render-mode = PLAIN")
 
     // IDE-invoked builds (idea.active) resolve AUTO to PLAIN — IDE build output windows don't
     // render ANSI codes.
     build(project.rootDir, "metroEnv", "-Didea.active=true")
-    assertThat(envReport()).contains("diagnostics-console = PLAIN")
+    assertThat(envReport()).contains("diagnostics-render-mode = PLAIN")
 
     // An explicit value skips AUTO resolution entirely.
-    build(project.rootDir, "metroEnv", "--console=plain", "-PdiagnosticsConsole=RICH")
-    assertThat(envReport()).contains("diagnostics-console = RICH")
+    build(project.rootDir, "metroEnv", "--console=plain", "-PdiagnosticsRenderMode=RICH")
+    assertThat(envReport()).contains("diagnostics-render-mode = RICH")
   }
 
   @Test
-  fun `diagnosticsConsole is not a compilation input`() {
+  fun `diagnosticsRenderMode is not a compilation input`() {
     val fixture =
       object : MetroProject(multiplatform = false) {
         override fun sources() =
@@ -114,9 +114,9 @@ class MetroArtifactsTest {
 
     build(project.rootDir, "compileKotlin", "--console=plain")
 
-    // Console mode is presentation-only; switching it (IDE vs CLI vs CI environments) must not
+    // Render mode is presentation-only; switching it (IDE vs CLI environments) must not
     // invalidate compilation or split build caches.
-    val secondBuild = build(project.rootDir, "compileKotlin", "-PdiagnosticsConsole=RICH")
+    val secondBuild = build(project.rootDir, "compileKotlin", "-PdiagnosticsRenderMode=RICH")
     assertThat(secondBuild.task(":compileKotlin")?.outcome)
       .isEqualTo(org.gradle.testkit.runner.TaskOutcome.UP_TO_DATE)
   }
@@ -158,7 +158,7 @@ class MetroArtifactsTest {
     val reports = AnalysisReports.from(project.rootDir)
 
     // Run the graph metadata generation task. Plain console keeps the recorded
-    // diagnosticsConsole option deterministic (AUTO resolves from console/CI state otherwise).
+    // Keep the diagnosticsRenderMode option deterministic (AUTO resolves from console state).
     build(project.rootDir, "generateMetroGraphMetadata", "--console=plain")
 
     val metadataFile = reports.graphMetadataFile
@@ -259,7 +259,7 @@ class MetroArtifactsTest {
                 "generateContributionProviders": false,
                 "enableCircuitCodegen": false,
                 "enableHiltInterop": false,
-                "diagnosticsConsole": "PLAIN",
+                "diagnosticsRenderMode": "PLAIN",
                 "generateStaticAnnotations": true,
                 "bindingContributionsAsContainers": true,
                 "memberNamingStrategy": "DESCRIPTIVE"

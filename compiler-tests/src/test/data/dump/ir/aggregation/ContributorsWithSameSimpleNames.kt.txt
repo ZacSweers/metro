@@ -23,17 +23,17 @@ interface ContributedInterface {
 
 }
 
-// FILE: test1ContributedInterfaceAppScope.kt
+// FILE: test1ContributedInterfaceDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ContributedInterface) {
+fun dev_zacsweers_metro_AppScope(contributed: ContributedInterface) {
   return error(message = "Never called")
 }
 
-// FILE: test2ContributedInterfaceAppScope.kt
+// FILE: test2ContributedInterfaceDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ContributedInterface) {
+fun dev_zacsweers_metro_AppScope(contributed: ContributedInterface) {
   return error(message = "Never called")
 }
 

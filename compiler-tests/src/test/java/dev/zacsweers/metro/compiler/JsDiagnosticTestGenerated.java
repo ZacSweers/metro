@@ -385,6 +385,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphAccessorsCannotBeMutable.kt")
+    public void testGraphAccessorsCannotBeMutable() {
+      run("GraphAccessorsCannotBeMutable.kt");
+    }
+
+    @Test
     @TestMetadata("GraphPrivateAccessorIsAnError.kt")
     public void testGraphPrivateAccessorIsAnError() {
       run("GraphPrivateAccessorIsAnError.kt");
@@ -1332,6 +1338,38 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("ScopedConstantProviderInliningDisabled.kt")
     public void testScopedConstantProviderInliningDisabled() {
       run("ScopedConstantProviderInliningDisabled.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/rich")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Rich {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/diagnostic/rich/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInRich() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/rich"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("DependencyCycleRich.kt")
+    public void testDependencyCycleRich() {
+      run("DependencyCycleRich.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateBindingsRich.kt")
+    public void testDuplicateBindingsRich() {
+      run("DuplicateBindingsRich.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingRich.kt")
+    public void testMissingBindingRich() {
+      run("MissingBindingRich.kt");
     }
   }
 }

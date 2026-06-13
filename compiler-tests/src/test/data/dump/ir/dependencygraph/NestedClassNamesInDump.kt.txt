@@ -131,10 +131,10 @@ interface ExampleGraph {
 
 }
 
-// FILE: exampleGraphBindingsAppScope.kt
+// FILE: exampleGraphBindingsDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ExampleGraph.Bindings) {
+fun dev_zacsweers_metro_AppScope(contributed: ExampleGraph.Bindings) {
   return error(message = "Never called")
 }
 

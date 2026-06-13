@@ -136,8 +136,8 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)?.let {
         optionalBindingBehavior = it
       }
-      module.directives.singleOrZeroValue(MetroDirectives.DIAGNOSTICS_CONSOLE)?.let {
-        diagnosticsConsole = it
+      module.directives.singleOrZeroValue(MetroDirectives.DIAGNOSTICS_RENDER_MODE)?.let {
+        diagnosticsRenderMode = it
       }
       module.directives
         .singleOrZeroValue(MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY)

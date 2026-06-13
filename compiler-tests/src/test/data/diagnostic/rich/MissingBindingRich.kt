@@ -1,6 +1,6 @@
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
-// DIAGNOSTICS_CONSOLE: RICH
+// DIAGNOSTICS_RENDER_MODE: RICH
 // MAX_COMPILER_VERSION: 2.4.19
 
 // Rich console rendering of a missing binding with a similar binding. The golden file uses

@@ -2,31 +2,31 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.diagnostics.render
 
-import dev.zacsweers.metro.compiler.ConsoleMode
+import dev.zacsweers.metro.compiler.DiagnosticsRenderMode
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.Style
 
 /**
- * Resolves the effective console mode.
+ * Resolves the effective diagnostics render mode.
  *
- * The `metro.diagnosticsConsole` system property overrides the compiler option. [ConsoleMode.AUTO]
- * is resolved by the Gradle plugin before compiler invocation; if it reaches the compiler anyway,
- * use plain output.
+ * The `metro.diagnosticsRenderMode` system property overrides the compiler option.
+ * [DiagnosticsRenderMode.AUTO] is resolved by the Gradle plugin before compiler invocation; if it
+ * reaches the compiler anyway, use plain output.
  */
-internal fun MetroOptions.resolveConsoleMode(): ConsoleMode {
-  val resolved = MetroOptions.SystemProperties.DIAGNOSTICS_CONSOLE ?: diagnosticsConsole
-  return if (resolved == ConsoleMode.AUTO) ConsoleMode.PLAIN else resolved
+internal fun MetroOptions.resolveDiagnosticsRenderMode(): DiagnosticsRenderMode {
+  val resolved = MetroOptions.SystemProperties.DIAGNOSTICS_RENDER_MODE ?: diagnosticsRenderMode
+  return if (resolved == DiagnosticsRenderMode.AUTO) DiagnosticsRenderMode.PLAIN else resolved
 }
 
-internal fun renderProfileFor(mode: ConsoleMode): RenderProfile =
+internal fun renderProfileFor(mode: DiagnosticsRenderMode): RenderProfile =
   when (mode) {
-    ConsoleMode.RICH -> RenderProfile.RICH
-    ConsoleMode.PLAIN,
-    ConsoleMode.AUTO -> RenderProfile.PLAIN
+    DiagnosticsRenderMode.RICH -> RenderProfile.RICH
+    DiagnosticsRenderMode.PLAIN,
+    DiagnosticsRenderMode.AUTO -> RenderProfile.PLAIN
   }
 
 /**
- * Console rendering choices that differ by mode.
+ * Diagnostics rendering choices that differ by mode.
  *
  * Layout logic is shared between modes. Profiles only choose glyphs, styling, source snippets, and
  * the column budget.

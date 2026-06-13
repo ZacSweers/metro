@@ -51,6 +51,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("BindingReplacesProvider.kt")
+    public void testBindingReplacesProvider() {
+      run("BindingReplacesProvider.kt");
+    }
+
+    @Test
     @TestMetadata("ChunkMergedSupertypesBasic.kt")
     public void testChunkMergedSupertypesBasic() {
       run("ChunkMergedSupertypesBasic.kt");
@@ -1022,6 +1028,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @TestMetadata("StaticGraphCompanionsSeparateModules.kt")
     public void testStaticGraphCompanionsSeparateModules() {
       run("StaticGraphCompanionsSeparateModules.kt");
+    }
+
+    @Test
+    @TestMetadata("TwoScopesWithTheSameName.kt")
+    public void testTwoScopesWithTheSameName() {
+      run("TwoScopesWithTheSameName.kt");
     }
 
     @Nested

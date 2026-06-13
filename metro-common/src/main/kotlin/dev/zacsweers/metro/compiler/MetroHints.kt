@@ -19,7 +19,7 @@ public object MetroHints {
 
   /** The hint function name for contributions to [scopeClassId]. */
   public fun hintFunctionName(scopeClassId: ClassId): Name {
-    return scopeClassId.joinSimpleNames().shortClassName
+    return scopeClassId.asFqNameString().replace('.', '_').asName()
   }
 
   /** The hint function callable id for contributions to [scopeClassId]. */
