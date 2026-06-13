@@ -363,14 +363,15 @@ constructor(
     objects.enumProperty<DiagnosticSeverity>("desugaredProviderSeverity", DiagnosticSeverity.WARN)
 
   /**
-   * Console rendering mode for diagnostics. See the docs on [ConsoleMode] for details.
+   * Build-output rendering mode for diagnostics. See the docs on [DiagnosticsRenderMode] for
+   * details.
    *
-   * The compiler only ever receives a concrete `PLAIN`/`RICH` value, [ConsoleMode.AUTO] resolves to
-   * one of them.
+   * The compiler only ever receives a concrete `PLAIN`/`RICH` value, [DiagnosticsRenderMode.AUTO]
+   * resolves to one of them.
    */
   @ExperimentalMetroGradleApi
-  public val diagnosticsConsole: Property<ConsoleMode> =
-    objects.enumProperty<ConsoleMode>("diagnosticsConsole", ConsoleMode.AUTO)
+  public val diagnosticsRenderMode: Property<DiagnosticsRenderMode> =
+    objects.enumProperty<DiagnosticsRenderMode>("diagnosticsRenderMode", DiagnosticsRenderMode.AUTO)
 
   /**
    * Treats `java.lang.Class` and `kotlin.reflect.KClass` as interchangeable in multibinding map key

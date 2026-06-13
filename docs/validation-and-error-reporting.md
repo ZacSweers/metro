@@ -47,20 +47,20 @@ ExampleGraph.kt:7:11: error:
 
 Output wraps to a fixed 100-column budget. Identifiers are never truncated, so type names stay grep-able.
 
-## Console modes
+## Render modes
 
-The `diagnosticsConsole` Gradle option controls rendering:
+The `diagnosticsRenderMode` Gradle option controls rendering:
 
 ```kotlin
 metro {
-  diagnosticsConsole.set(ConsoleMode.RICH)
+  diagnosticsRenderMode.set(DiagnosticsRenderMode.RICH)
 }
 ```
 
 - `PLAIN` — the layout above: ASCII structure, no ANSI codes. Safe for any log consumer.
 - `RICH` — the same layout with Unicode glyphs (`╭─▶ Double → String → Int ─╮`), ANSI color/styling, and source snippets: real source lines with the relevant spans underlined, e.g. the injection site of a missing binding or each conflicting declaration of a duplicate binding.
-- `AUTO` (default) — resolved at configuration time. `CI`, `NO_COLOR`, `--console=plain`, and IDE-invoked builds (whose build output windows don't render ANSI) get `PLAIN`; other builds get `RICH`.
+- `AUTO` (default) — resolved at configuration time. `NO_COLOR`, `--console=plain`, and IDE-invoked builds (whose build output windows don't render ANSI) get `PLAIN`; other builds, including CI builds, get `RICH`.
 
-The mode can also be set via the `diagnosticsConsole` Gradle property or the `metro.diagnosticsConsole` system property (which the compiler reads directly and wins over everything). Because rendering is presentation-only, the resolved mode is excluded from compilation task inputs — switching between IDE, CLI, and CI never invalidates compilation or splits build caches.
+The mode can also be set via the `diagnosticsRenderMode` Gradle property or the `metro.diagnosticsRenderMode` system property (which the compiler reads directly and wins over everything). Because rendering is presentation-only, the resolved mode is excluded from compilation task inputs — switching between IDE and CLI never invalidates compilation or splits build caches.
 
 Note that binding graph resolution currently only happens in the compiler IR backend, but maybe someday we can move this to FIR to get errors in the IDE.

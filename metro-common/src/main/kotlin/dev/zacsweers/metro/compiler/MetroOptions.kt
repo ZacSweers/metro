@@ -972,15 +972,15 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  DIAGNOSTICS_CONSOLE(
+  DIAGNOSTICS_RENDER_MODE(
     RawMetroOption(
-      name = "diagnostics-console",
-      defaultValue = ConsoleMode.PLAIN.name,
-      valueDescription = ConsoleMode.entries.joinToString("|"),
+      name = "diagnostics-render-mode",
+      defaultValue = DiagnosticsRenderMode.PLAIN.name,
+      valueDescription = DiagnosticsRenderMode.entries.joinToString("|"),
       description =
-        "Console rendering mode for diagnostics. PLAIN uses ASCII with no ANSI styling. RICH " +
+        "Build-output rendering mode for diagnostics. PLAIN uses ASCII with no ANSI styling. RICH " +
           "uses Unicode glyphs and ANSI styling. AUTO is resolved by the Gradle plugin and " +
-          "falls back to PLAIN in the compiler. The `metro.diagnosticsConsole` system property " +
+          "falls back to PLAIN in the compiler. The `metro.diagnosticsRenderMode` system property " +
           "overrides this option.",
       required = false,
       allowMultipleOccurrences = false,
@@ -1207,8 +1207,10 @@ public class MetroOptions(
     MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
   public val enableHiltInterop: Boolean =
     MetroOption.INTEROP_INCLUDE_HILT_ANNOTATIONS.raw.defaultValue.expectAs(),
-  public val diagnosticsConsole: ConsoleMode =
-    MetroOption.DIAGNOSTICS_CONSOLE.raw.defaultValue.expectAs<String>().let(ConsoleMode::parse),
+  public val diagnosticsRenderMode: DiagnosticsRenderMode =
+    MetroOption.DIAGNOSTICS_RENDER_MODE.raw.defaultValue
+      .expectAs<String>()
+      .let(DiagnosticsRenderMode::parse),
   public val generateStaticAnnotations: Boolean =
     MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
   public val bindingContributionsAsContainers: Boolean =
@@ -1509,7 +1511,7 @@ public class MetroOptions(
     public var generateContributionProviders: Boolean = base.generateContributionProviders
     public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
     public var enableHiltInterop: Boolean = base.enableHiltInterop
-    public var diagnosticsConsole: ConsoleMode = base.diagnosticsConsole
+    public var diagnosticsRenderMode: DiagnosticsRenderMode = base.diagnosticsRenderMode
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
     public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
     public var memberNamingStrategy: MemberNamingStrategy = base.memberNamingStrategy
@@ -1859,8 +1861,8 @@ public class MetroOptions(
         MetroOption.GENERATE_CONTRIBUTION_PROVIDERS ->
           generateContributionProviders = value.expectAs()
         MetroOption.ENABLE_CIRCUIT_CODEGEN -> enableCircuitCodegen = value.expectAs()
-        MetroOption.DIAGNOSTICS_CONSOLE ->
-          diagnosticsConsole = ConsoleMode.parse(value.expectAs<String>())
+        MetroOption.DIAGNOSTICS_RENDER_MODE ->
+          diagnosticsRenderMode = DiagnosticsRenderMode.parse(value.expectAs<String>())
         MetroOption.GENERATE_STATIC_ANNOTATIONS -> generateStaticAnnotations = value.expectAs()
         MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS ->
           bindingContributionsAsContainers = value.expectAs()
@@ -1951,7 +1953,7 @@ public class MetroOptions(
         generateContributionProviders = generateContributionProviders,
         enableCircuitCodegen = enableCircuitCodegen,
         enableHiltInterop = enableHiltInterop,
-        diagnosticsConsole = diagnosticsConsole,
+        diagnosticsRenderMode = diagnosticsRenderMode,
         generateStaticAnnotations = generateStaticAnnotations,
         bindingContributionsAsContainers = bindingContributionsAsContainers,
         memberNamingStrategy = memberNamingStrategy,
@@ -1979,9 +1981,9 @@ public class MetroOptions(
     public val SHORTEN_LOCATIONS: Boolean =
       System.getProperty("metro.shortLocations", "false").toBoolean()
 
-    /** Overrides [MetroOptions.diagnosticsConsole] when set. */
-    public val DIAGNOSTICS_CONSOLE: ConsoleMode? =
-      System.getProperty("metro.diagnosticsConsole")?.let(ConsoleMode::parse)
+    /** Overrides [MetroOptions.diagnosticsRenderMode] when set. */
+    public val DIAGNOSTICS_RENDER_MODE: DiagnosticsRenderMode? =
+      System.getProperty("metro.diagnosticsRenderMode")?.let(DiagnosticsRenderMode::parse)
   }
 
   public companion object {

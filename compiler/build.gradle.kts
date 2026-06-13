@@ -82,7 +82,7 @@ buildConfig {
 tasks.test {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
-  systemProperty("metro.diagnosticsConsole", "PLAIN")
+  systemProperty("metro.diagnosticsRenderMode", "PLAIN")
 }
 
 val diagnosticsDocsFile = rootProject.layout.projectDirectory.file("docs/diagnostics.md")

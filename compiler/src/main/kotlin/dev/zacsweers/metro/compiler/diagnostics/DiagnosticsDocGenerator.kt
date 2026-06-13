@@ -36,7 +36,7 @@ internal object DiagnosticsDocGenerator {
     )
     appendLine()
     appendLine(
-      "Console rendering is controlled by the `diagnosticsConsole` Gradle option: `AUTO`, " +
+      "Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option: `AUTO`, " +
         "`PLAIN`, or `RICH`."
     )
     appendLine()

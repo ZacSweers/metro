@@ -16,7 +16,7 @@ import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompa
 import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
 import dev.zacsweers.metro.compiler.diagnostics.render.SourceFileCache
 import dev.zacsweers.metro.compiler.diagnostics.render.renderProfileFor
-import dev.zacsweers.metro.compiler.diagnostics.render.resolveConsoleMode
+import dev.zacsweers.metro.compiler.diagnostics.render.resolveDiagnosticsRenderMode
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.nio.file.Path
@@ -77,7 +77,7 @@ internal interface IrDependencyGraph {
     sourceFileCache: SourceFileCache,
   ): DiagnosticRenderer =
     DiagnosticRenderer(
-      renderProfileFor(options.resolveConsoleMode()),
+      renderProfileFor(options.resolveDiagnosticsRenderMode()),
       sourceLines = sourceFileCache::linesFor,
     )
 
