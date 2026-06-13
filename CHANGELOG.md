@@ -57,18 +57,20 @@ Example rich output (note that in rich terminals this would have color and marku
 
 ```
 
-- **[gradle]** Add a `diagnosticsConsole` Gradle option (`AUTO`/`PLAIN`/`RICH`) for diagnostic rendering.
-  - `AUTO` defaults to rich output only for terminal builds and falls back to plain output for CI, `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
-  - The resolved mode is passed as a non-input compiler option, so console changes do not invalidate compilation or poison build caches.
+- **[gradle]** Add a `diagnosticsRenderMode` Gradle option (`AUTO`/`PLAIN`/`RICH`) for diagnostic rendering.
+  - `AUTO` defaults to rich output and falls back to plain output for `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
+  - The resolved mode is passed as a non-input compiler option, so render-mode changes do not invalidate compilation or poison build caches.
 - **[docs]** Add a generated [Diagnostics Reference](https://zacsweers.github.io/metro/latest/diagnostics/) docs page for Metro's common graph validation diagnostics.
 
 ### Enhancements
 
+- **[FIR]** Add a diagnostic to report mutable graph accessor properties.
 - **[IR]** Add cycle-breaking `help:` guidance for dependency cycle errors, suggesting deferred types such as `() -> T` or `Lazy<T>`.
 - **[IR/reporting]** Collapse sibling missing-binding errors with identical trace tails to a `... same as for X` continuation, and fully qualify type names only when two distinct types in one diagnostic share a simple name.
 
 ### Fixes
 
+- **[FIR/IR]** Fully qualify generated hint function names so scope classes with the same simple name don't collide.
 - **[IR]** Preserve substituted generic type arguments when generating assisted factory delegate parameters and dynamic graph container inputs.
 - **[IR]** Forward extension and context receivers when generated binding-container factories invoke the original binding function.
 - **[IR]** Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.
@@ -80,6 +82,13 @@ Example rich output (note that in rich terminals this would have color and marku
 ### Changes
 
 - Run Metro's functional compiler unit tests on JS.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@BraisGabin](https://github.com/BraisGabin)
+- [@ychescale9](https://github.com/ychescale9)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
@@ -99,7 +108,7 @@ _2026-06-11_
 
 ### Changes
 
-- **[gradle]** Replace the `rich-diagnostics` compiler option and `metro.richDiagnostics` system property with `diagnostics-console` and `metro.diagnosticsConsole`.
+- **[gradle]** Replace the `rich-diagnostics` compiler option and `metro.richDiagnostics` system property with `diagnostics-render-mode` and `metro.diagnosticsRenderMode`.
 - Test Kotlin `2.4.20-dev-6138`.
 - Test IntelliJ `2026.2` EAPs.
 

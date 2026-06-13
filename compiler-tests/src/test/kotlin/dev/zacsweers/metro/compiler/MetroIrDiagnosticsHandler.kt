@@ -53,13 +53,13 @@ class MetroIrDiagnosticsHandler(testServices: TestServices) : AbstractIrHandler(
   }
 
   /**
-   * True when this test compiles with [ConsoleMode.RICH] diagnostics. Rich output asserts against
-   * `.rich.ir.diag.txt` goldens with ANSI codes escaped via [AnsiMarkup] for readability.
+   * True when this test compiles with [DiagnosticsRenderMode.RICH] diagnostics. Rich output asserts
+   * against `.rich.ir.diag.txt` goldens with ANSI codes escaped via [AnsiMarkup] for readability.
    */
   private val isRichMode: Boolean
     get() =
-      testServices.moduleStructure.allDirectives[MetroDirectives.DIAGNOSTICS_CONSOLE]
-        .lastOrNull() == ConsoleMode.RICH
+      testServices.moduleStructure.allDirectives[MetroDirectives.DIAGNOSTICS_RENDER_MODE]
+        .lastOrNull() == DiagnosticsRenderMode.RICH
 
   override fun processAfterAllModules(someAssertionWasFailed: Boolean) {
     val directives = testServices.moduleStructure.allDirectives

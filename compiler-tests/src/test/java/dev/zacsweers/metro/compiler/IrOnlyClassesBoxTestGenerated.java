@@ -1292,6 +1292,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       run("StaticGraphCompanionsSeparateModules.kt");
     }
 
+    @Test
+    @TestMetadata("TwoScopesWithTheSameName.kt")
+    public void testTwoScopesWithTheSameName() {
+      run("TwoScopesWithTheSameName.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers")
     @TestDataPath("$PROJECT_ROOT")

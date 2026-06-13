@@ -193,10 +193,10 @@ interface LoggedInGraph {
 sealed interface LoggedInScope {
 }
 
-// FILE: loggedInGraphFactoryAppScope.kt
+// FILE: loggedInGraphFactoryDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: LoggedInGraph.Factory) {
+fun dev_zacsweers_metro_AppScope(contributed: LoggedInGraph.Factory) {
   return error(message = "Never called")
 }
 

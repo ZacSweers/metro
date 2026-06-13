@@ -102,7 +102,7 @@
     "generateContributionProviders": false,
     "enableCircuitCodegen": false,
     "enableHiltInterop": false,
-    "diagnosticsConsole": "PLAIN",
+    "diagnosticsRenderMode": "PLAIN",
     "generateStaticAnnotations": true,
     "bindingContributionsAsContainers": true,
     "memberNamingStrategy": "DESCRIPTIVE"

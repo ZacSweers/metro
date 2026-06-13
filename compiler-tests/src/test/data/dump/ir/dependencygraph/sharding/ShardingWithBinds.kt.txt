@@ -216,10 +216,10 @@ interface TestGraph {
 
 }
 
-// FILE: appModuleAppScope.kt
+// FILE: appModuleDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: AppModule) {
+fun dev_zacsweers_metro_AppScope(contributed: AppModule) {
   return error(message = "Never called")
 }
 

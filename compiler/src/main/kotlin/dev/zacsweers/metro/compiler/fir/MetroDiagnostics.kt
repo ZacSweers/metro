@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_MODULE_SUBCOMPON
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEFAULT_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_MUTABLE_PROPERTY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DESUGARED_PROVIDER_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DESUGARED_PROVIDER_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DUPLICATE_BINDING
@@ -108,6 +109,7 @@ import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.NAME_
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.OVERRIDE_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.PARAMETER_VARARG_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.TYPE_PARAMETERS_LIST
+import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.VAL_OR_VAR_NODE
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.VISIBILITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.error0
 import org.jetbrains.kotlin.diagnostics.error1
@@ -136,6 +138,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
 
   // DependencyGraph errors
   val DEPENDENCY_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val DEPENDENCY_GRAPH_MUTABLE_PROPERTY by error1<KtElement, String>(VAL_OR_VAR_NODE)
   val SCOPED_GRAPH_ACCESSOR by error0<KtElement>(NAME_IDENTIFIER)
   val ADHOC_GRAPH_EXTENSION_FACTORY by error0<KtElement>(NAME_IDENTIFIER)
   val SUSPICIOUS_MEMBER_INJECT_FUNCTION by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -275,6 +278,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
 
         // DependencyGraph errors
         put(DEPENDENCY_GRAPH_ERROR, "{0}", STRING)
+        put(DEPENDENCY_GRAPH_MUTABLE_PROPERTY, "{0}", STRING)
         put(
           SCOPED_GRAPH_ACCESSOR,
           "Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?",

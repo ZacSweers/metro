@@ -7,7 +7,7 @@ Reference for Metro's common graph-validation diagnostics: the messages reported
 
 This is not an exhaustive list of everything Metro reports. Many finer-grained declaration checks, such as annotation misuse and visibility errors, are reported directly in the frontend or IDE without an ID.
 
-Console rendering is controlled by the `diagnosticsConsole` Gradle option: `AUTO`, `PLAIN`, or `RICH`.
+Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option: `AUTO`, `PLAIN`, or `RICH`.
 
 | Diagnostic | Summary |
 |------------|---------|

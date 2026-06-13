@@ -191,17 +191,17 @@ interface ContributedB {
 
 }
 
-// FILE: contributedAAppScope.kt
+// FILE: contributedADev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ContributedA) {
+fun dev_zacsweers_metro_AppScope(contributed: ContributedA) {
   return error(message = "Never called")
 }
 
-// FILE: contributedBAppScope.kt
+// FILE: contributedBDev_zacsweers_metro_AppScope.kt
 package metro.hints
 
-fun AppScope(contributed: ContributedB) {
+fun dev_zacsweers_metro_AppScope(contributed: ContributedB) {
   return error(message = "Never called")
 }
 
