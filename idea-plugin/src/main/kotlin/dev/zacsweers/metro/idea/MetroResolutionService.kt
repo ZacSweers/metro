@@ -26,7 +26,7 @@ import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
-import java.util.concurrent.ConcurrentHashMap
+import java.util.Collections
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
@@ -85,8 +85,16 @@ class MetroResolutionService(private val project: Project) {
 
   // Project-wide indexes deduped by options fingerprint: projects typically share one Metro
   // config across modules, so caching per module would build and retain the same index once per
-  // edited module.
-  private val indexCaches = ConcurrentHashMap<List<String>, CachedValue<MetroBindingIndex>>()
+  // edited module. LRU-bounded so fingerprints orphaned by options changes don't retain their
+  // last aggregate index forever.
+  private val indexCaches: MutableMap<List<String>, CachedValue<MetroBindingIndex>> =
+    Collections.synchronizedMap(
+      object : LinkedHashMap<List<String>, CachedValue<MetroBindingIndex>>(8, 0.75f, true) {
+        override fun removeEldestEntry(
+          eldest: MutableMap.MutableEntry<List<String>, CachedValue<MetroBindingIndex>>
+        ): Boolean = size > 4
+      }
+    )
 
   /**
    * Returns the cached binding index for the module owning [context], or [MetroBindingIndex.EMPTY]
@@ -552,8 +560,7 @@ private class MetroIndexBuilder(
           when (target) {
             // Instance bindings belong to the factory's owning graph
             is KtParameter -> {
-              val factory =
-                (target.ownerFunction as? KtNamedFunction)?.containingClassOrObject
+              val factory = (target.ownerFunction as? KtNamedFunction)?.containingClassOrObject
               (factory?.containingClassOrObject ?: factory)?.getClassId()
             }
             is KtCallableDeclaration -> target.containingClassOrObject?.getClassId()
@@ -683,8 +690,7 @@ private class MetroIndexBuilder(
       val annotations = graphAnnotations + extensionAnnotations
       if (annotations.isEmpty()) return@analyze
       val scopeKeys = annotations.flatMapTo(mutableSetOf()) { metroScopeKeys(it) }
-      val excludes =
-        annotations.flatMapTo(mutableSetOf()) { classListArgument(it, "excludes") }
+      val excludes = annotations.flatMapTo(mutableSetOf()) { classListArgument(it, "excludes") }
       val containerIds =
         annotations.flatMapTo(mutableSetOf()) { classListArgument(it, "bindingContainers") }
       val graphClassId = ktClass.getClassId()
@@ -1261,7 +1267,9 @@ internal fun KaSession.metroScopeAnnotations(
   options: MetroOptions,
 ): List<MetroKaAnnotation> = findAllMetaAnnotated(annotated, options.scopeAnnotations)
 
-/** The `@SingleIn(scope)` implicitly conveyed by a graph annotation's aggregation [scopeClassId]. */
+/**
+ * The `@SingleIn(scope)` implicitly conveyed by a graph annotation's aggregation [scopeClassId].
+ */
 internal fun implicitSingleInAnnotation(scopeClassId: ClassId): MetroKaAnnotation {
   return MetroKaAnnotation(
     MetroClassIds.singleIn,
@@ -1593,7 +1601,8 @@ private fun KaSession.resolveDefaultBindingType(supertypeSymbol: KaClassSymbol):
 
 /** Class-literal list argument values (e.g. `excludes`, `replaces`, `bindingContainers`). */
 private fun classListArgument(annotation: KaAnnotation, name: String): List<ClassId> {
-  val argument = annotation.arguments.firstOrNull { it.name.asString() == name } ?: return emptyList()
+  val argument =
+    annotation.arguments.firstOrNull { it.name.asString() == name } ?: return emptyList()
   return when (val value = argument.expression) {
     is KaAnnotationValue.ArrayValue -> value.values.mapNotNull { classLiteralClassId(it) }
     else -> listOfNotNull(classLiteralClassId(value))
