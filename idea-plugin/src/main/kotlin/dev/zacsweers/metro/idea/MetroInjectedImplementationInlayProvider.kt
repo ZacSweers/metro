@@ -67,7 +67,7 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
         return
       }
       val consumer = index.consumerEntryAt(element) ?: return
-      val providers = index.providersFor(consumer)
+      val providers = index.resolveConsumer(consumer).effective
       if (providers.isEmpty()) return
 
       val contributions = providers.count { it.kind == MetroProviderKind.MULTIBINDING_CONTRIBUTION }

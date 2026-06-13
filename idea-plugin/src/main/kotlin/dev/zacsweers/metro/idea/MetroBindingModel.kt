@@ -187,6 +187,10 @@ internal enum class MetroProviderKind(val label: String) {
   MULTIBINDING_DECLARATION("multibinding declaration"),
   /** An instance binding from a graph factory `@Provides` parameter. */
   INSTANCE("instance binding"),
+  /** An `@AssistedFactory` providing its own type. */
+  ASSISTED_FACTORY("assisted factory"),
+  /** An accessor of an `@Includes` graph dependency. */
+  INCLUDED("included dependency accessor"),
 }
 
 /**
@@ -211,6 +215,18 @@ internal class MetroProviderEntry(
    * prefixed with the map key type for maps. [key] stays the element key as declared.
    */
   val multibindingId: String? = null,
+  /** The contributed/injected class a binding originates from, for excludes/replaces matching. */
+  val originClassId: ClassId? = null,
+  /**
+   * The class whose graph membership gates this binding: the containing binding container for
+   * `@Provides`/`@Binds` callables, the owning graph for instance bindings, or the dependency type
+   * for included accessors. Null for membership-free bindings (injected classes).
+   */
+  val containerId: ClassId? = null,
+  /** Contribution classes this binding replaces in graphs where both are aggregated. */
+  val replaces: Set<ClassId> = emptySet(),
+  /** Scopes this binding is contributed to; empty for non-contributed bindings. */
+  val contributionScopes: Set<ClassId> = emptySet(),
 )
 
 /** A site that consumes a binding for [key]: an injected parameter/property or graph accessor. */
@@ -241,11 +257,48 @@ internal class MetroAssistedSite(
   val isImplicit: Boolean,
 )
 
-/** A `@DependencyGraph`-annotated class and its aggregation scope classes. */
+/** A `@DependencyGraph`/`@GraphExtension`-annotated class and its aggregation metadata. */
 internal class MetroGraphEntry(
   val pointer: SmartPsiElementPointer<KtClassOrObject>,
   val scopeKeys: Set<ClassId>,
-)
+  val classId: ClassId? = null,
+  /** Contribution classes excluded via the graph annotation's `excludes`. */
+  val excludes: Set<ClassId> = emptySet(),
+  /** Binding containers wired via the graph annotation's `bindingContainers`. */
+  val bindingContainers: Set<ClassId> = emptySet(),
+  /** Graph dependencies wired via factory `@Includes` parameters. */
+  val includedDependencies: Set<ClassId> = emptySet(),
+  /** True for `@GraphExtension` declarations, which inherit their parent graphs' bindings. */
+  val isExtension: Boolean = false,
+  /** This graph's class plus nested factory classes, used for parent/extension matching. */
+  val selfIds: Set<ClassId> = emptySet(),
+  /** Class ids referenced by this graph's accessors, used to find extensions it instantiates. */
+  val accessorTypeIds: Set<ClassId> = emptySet(),
+) {
+  val name: String?
+    get() = classId?.shortClassName?.asString()
+}
+
+/** A `@BindingContainer`-annotated class and the containers it transitively includes. */
+internal class MetroBindingContainerEntry(val classId: ClassId, val includes: Set<ClassId>)
+
+/**
+ * The aggregated view a single graph (plus its parent chain, for extensions) has of the project:
+ * the inputs to per-graph binding membership.
+ */
+internal class MetroGraphContext(
+  /** The graph itself followed by its parent chain, nearest first. */
+  val chain: List<MetroGraphEntry>,
+  val scopes: Set<ClassId>,
+  val excludes: Set<ClassId>,
+  /** Transitively expanded binding containers, including contributed ones. */
+  val containers: Set<ClassId>,
+  val includedDependencies: Set<ClassId>,
+  val graphClassIds: Set<ClassId>,
+) {
+  val graph: MetroGraphEntry
+    get() = chain.first()
+}
 
 /**
  * A declaration contributing to aggregation scopes: a `@Contributes*`-annotated class or a
@@ -254,6 +307,7 @@ internal class MetroGraphEntry(
 internal class MetroContributionEntry(
   val pointer: SmartPsiElementPointer<out KtElement>,
   val scopeKeys: Set<ClassId>,
+  val classId: ClassId? = null,
 )
 
 /**
@@ -268,7 +322,12 @@ internal class MetroBindingIndex(
   val graphs: List<MetroGraphEntry>,
   val contributions: List<MetroContributionEntry>,
   val assistedSites: List<MetroAssistedSite> = emptyList(),
+  val bindingContainers: List<MetroBindingContainerEntry> = emptyList(),
 ) {
+  private val containersById: Map<ClassId, MetroBindingContainerEntry> by lazy {
+    bindingContainers.associateBy { it.classId }
+  }
+  private val graphContexts = java.util.concurrent.ConcurrentHashMap<MetroGraphEntry, MetroGraphContext>()
   // Contributions are keyed solely by multibindingId, mirroring the compiler's
   // @MultibindingElement qualifier swap — their element key must not satisfy plain consumers.
   private val providersByKey: Map<KaTypeKey, List<MetroProviderEntry>> by lazy {
@@ -310,6 +369,121 @@ internal class MetroBindingIndex(
     val direct = providersByKey[consumer.key].orEmpty()
     val contributions = consumer.multibindingId?.let { contributionsByMultibindingId[it] }.orEmpty()
     return direct + contributions
+  }
+
+  /** [providersFor] filtered to bindings that are members of [context]'s graph. */
+  fun providersFor(
+    consumer: MetroConsumerEntry,
+    context: MetroGraphContext,
+  ): List<MetroProviderEntry> {
+    return applyReplaces(providersFor(consumer).filter { isInContext(it, context) })
+  }
+
+  /**
+   * Per-graph resolution of [consumer]: which bindings satisfy it in each graph that can resolve
+   * it, plus the unfiltered project-wide candidates as a fallback for projects without graphs.
+   */
+  fun resolveConsumer(consumer: MetroConsumerEntry): MetroConsumerResolution {
+    val global = providersFor(consumer)
+    if (global.isEmpty() || graphs.isEmpty()) {
+      return MetroConsumerResolution(global, emptyMap())
+    }
+    val perGraph = LinkedHashMap<MetroGraphEntry, List<MetroProviderEntry>>()
+    for (graph in graphs) {
+      val filtered = providersFor(consumer, contextFor(graph))
+      if (filtered.isNotEmpty()) {
+        perGraph[graph] = filtered
+      }
+    }
+    return MetroConsumerResolution(global, perGraph)
+  }
+
+  /** The aggregated context of [graph], following extension parent chains. */
+  fun contextFor(graph: MetroGraphEntry): MetroGraphContext {
+    return graphContexts.computeIfAbsent(graph) { buildContext(it) }
+  }
+
+  /** Contributions aggregated by [context]'s graph: scope-matched minus excluded. */
+  fun contributionsFor(context: MetroGraphContext): List<MetroContributionEntry> {
+    return contributionsForScopes(context.scopes).filter { it.classId !in context.excludes }
+  }
+
+  private fun buildContext(graph: MetroGraphEntry): MetroGraphContext {
+    // Walk extension -> parent chains; a parent is any graph whose accessors reference this
+    // graph's class or one of its nested factories.
+    val chain = mutableListOf(graph)
+    val visited = hashSetOf(graph)
+    var current = graph
+    while (current.isExtension) {
+      val parent =
+        graphs.firstOrNull { candidate ->
+          candidate !in visited && candidate.accessorTypeIds.any { it in current.selfIds }
+        } ?: break
+      chain += parent
+      visited += parent
+      current = parent
+    }
+    val scopes = chain.flatMapTo(hashSetOf()) { it.scopeKeys }
+    val excludes = chain.flatMapTo(hashSetOf()) { it.excludes }
+    val graphClassIds = chain.flatMapTo(hashSetOf()) { it.selfIds }
+    val includedDependencies = chain.flatMapTo(hashSetOf()) { it.includedDependencies }
+    // Containers: declared on the graphs, contributed into scope, or transitively included
+    val containerRoots = chain.flatMapTo(hashSetOf()) { it.bindingContainers }
+    contributions
+      .asSequence()
+      .filter { it.classId != null && it.classId in containersById }
+      .filter { it.scopeKeys.any(scopes::contains) && it.classId !in excludes }
+      .mapTo(containerRoots) { it.classId!! }
+    val containers = hashSetOf<ClassId>()
+    val queue = ArrayDeque(containerRoots)
+    while (queue.isNotEmpty()) {
+      val id = queue.removeFirst()
+      if (!containers.add(id)) continue
+      containersById[id]?.includes?.forEach(queue::add)
+    }
+    return MetroGraphContext(
+      chain = chain,
+      scopes = scopes,
+      excludes = excludes,
+      containers = containers,
+      includedDependencies = includedDependencies,
+      graphClassIds = graphClassIds,
+    )
+  }
+
+  private fun isInContext(entry: MetroProviderEntry, context: MetroGraphContext): Boolean {
+    if (entry.originClassId != null && entry.originClassId in context.excludes) return false
+    if (
+      entry.contributionScopes.isNotEmpty() &&
+        entry.contributionScopes.none { it in context.scopes }
+    ) {
+      return false
+    }
+    return when (entry.kind) {
+      // Container callables are only live in graphs that wire their container in (or that
+      // declare them directly on the graph)
+      MetroProviderKind.PROVIDES,
+      MetroProviderKind.BINDS,
+      MetroProviderKind.MULTIBINDING_DECLARATION -> {
+        entry.contributionScopes.isNotEmpty() ||
+          entry.containerId == null ||
+          entry.containerId in context.graphClassIds ||
+          entry.containerId in context.containers
+      }
+      MetroProviderKind.INSTANCE -> entry.containerId in context.graphClassIds
+      MetroProviderKind.INCLUDED -> entry.containerId in context.includedDependencies
+      // Injected classes are implicit bindings; contributed bindings already passed the
+      // scope/excludes checks above
+      else -> true
+    }
+  }
+
+  /** Drops bindings replaced by other surviving contributions, mirroring compiler aggregation. */
+  private fun applyReplaces(entries: List<MetroProviderEntry>): List<MetroProviderEntry> {
+    if (entries.size < 2) return entries
+    val replaced = entries.flatMapTo(hashSetOf()) { it.replaces }
+    if (replaced.isEmpty()) return entries
+    return entries.filter { it.originClassId == null || it.originClassId !in replaced }
   }
 
   /** Sites consuming any of [providerEntries], joining multibinding contributions by id. */
@@ -354,4 +528,16 @@ internal class MetroBindingIndex(
   companion object {
     val EMPTY = MetroBindingIndex(emptyList(), emptyList(), emptyList(), emptyList())
   }
+}
+
+/** The result of resolving a consumer against every graph in the project. */
+internal class MetroConsumerResolution(
+  /** Unfiltered project-wide candidates. */
+  val global: List<MetroProviderEntry>,
+  /** Graph-filtered candidates per graph that can resolve the consumer. */
+  val perGraph: Map<MetroGraphEntry, List<MetroProviderEntry>>,
+) {
+  /** The deduplicated union of per-graph results, or [global] when no graph resolves it. */
+  val effective: List<MetroProviderEntry> =
+    if (perGraph.isEmpty()) global else perGraph.values.flatten().distinct()
 }
