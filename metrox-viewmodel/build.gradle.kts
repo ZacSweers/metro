@@ -14,16 +14,9 @@ kotlin {
     commonMain {
       dependencies {
         api(project(":runtime"))
-        api(libs.kotlin.stdlib.published)
         api(libs.jetbrains.lifecycle.viewmodel)
       }
     }
     commonTest { dependencies { implementation(libs.kotlin.test) } }
-    webMain {
-      dependencies {
-        // https://youtrack.jetbrains.com/issue/KT-84582
-        api(libs.kotlin.stdlib)
-      }
-    }
   }
 }

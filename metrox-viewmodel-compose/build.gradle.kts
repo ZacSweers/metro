@@ -16,14 +16,7 @@ kotlin {
     commonMain {
       dependencies {
         api(project(":metrox-viewmodel"))
-        api(libs.kotlin.stdlib.published)
         api(libs.jetbrains.lifecycle.viewmodel.compose)
-      }
-    }
-    webMain {
-      dependencies {
-        // https://youtrack.jetbrains.com/issue/KT-84582
-        api(libs.kotlin.stdlib)
       }
     }
     commonTest { dependencies { api(libs.compose.ui.test) } }

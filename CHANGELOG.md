@@ -317,6 +317,7 @@ _Changes since RC4_
 
 ### Changes
 
+- JS runtime targets now only require Kotlin stdlib `2.2.20` again.
 - **[compiler]** Test Kotlin `2.3.21`.
 - **[ide]** Test IntelliJ `2026.1.1`.
 - **[ide]** Test Android Studio Panda 4.
