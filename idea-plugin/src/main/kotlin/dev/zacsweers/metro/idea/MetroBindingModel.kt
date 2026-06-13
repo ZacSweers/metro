@@ -274,6 +274,13 @@ internal class MetroGraphEntry(
   val selfIds: Set<ClassId> = emptySet(),
   /** Class ids referenced by this graph's accessors, used to find extensions it instantiates. */
   val accessorTypeIds: Set<ClassId> = emptySet(),
+  /**
+   * The scope annotations this graph declares: explicit scope annotations on the class plus the
+   * implicit `@SingleIn(X::class)` conveyed by each aggregation scope in the graph annotation
+   * (`@DependencyGraph(AppScope::class)` implies `@SingleIn(AppScope::class)`). Scoped bindings are
+   * only members of graphs whose declared scopes include theirs.
+   */
+  val scopingAnnotations: Set<MetroKaAnnotation> = emptySet(),
 ) {
   val name: String?
     get() = classId?.shortClassName?.asString()
@@ -290,6 +297,8 @@ internal class MetroGraphContext(
   /** The graph itself followed by its parent chain, nearest first. */
   val chain: List<MetroGraphEntry>,
   val scopes: Set<ClassId>,
+  /** Declared scope annotations across the chain, gating scoped-binding membership. */
+  val scopingAnnotations: Set<MetroKaAnnotation>,
   val excludes: Set<ClassId>,
   /** Transitively expanded binding containers, including contributed ones. */
   val containers: Set<ClassId>,
@@ -403,9 +412,26 @@ internal class MetroBindingIndex(
     return graphContexts.computeIfAbsent(graph) { buildContext(it) }
   }
 
-  /** Contributions aggregated by [context]'s graph: scope-matched minus excluded. */
+  /**
+   * Contributions aggregated by [context]'s graph itself: matched against the graph's own
+   * aggregation scopes, minus excluded. Contributions a graph extension sees through its parent
+   * chain are reported separately by [inheritedContributionsFor].
+   */
   fun contributionsFor(context: MetroGraphContext): List<MetroContributionEntry> {
-    return contributionsForScopes(context.scopes).filter { it.classId !in context.excludes }
+    return contributionsForScopes(context.graph.scopeKeys).filter {
+      it.classId !in context.excludes
+    }
+  }
+
+  /**
+   * Contributions [context]'s graph receives from its parent chain rather than aggregating itself:
+   * matched against ancestor scopes only, minus excluded. Empty for non-extension graphs.
+   */
+  fun inheritedContributionsFor(context: MetroGraphContext): List<MetroContributionEntry> {
+    val inheritedScopes = context.scopes - context.graph.scopeKeys
+    return contributionsForScopes(inheritedScopes).filter {
+      it.classId !in context.excludes && it.scopeKeys.none(context.graph.scopeKeys::contains)
+    }
   }
 
   private fun buildContext(graph: MetroGraphEntry): MetroGraphContext {
@@ -444,6 +470,7 @@ internal class MetroBindingIndex(
     return MetroGraphContext(
       chain = chain,
       scopes = scopes,
+      scopingAnnotations = chain.flatMapTo(hashSetOf()) { it.scopingAnnotations },
       excludes = excludes,
       containers = containers,
       includedDependencies = includedDependencies,
@@ -453,6 +480,9 @@ internal class MetroBindingIndex(
 
   private fun isInContext(entry: MetroProviderEntry, context: MetroGraphContext): Boolean {
     if (entry.originClassId != null && entry.originClassId in context.excludes) return false
+    // Scoped bindings only live in graphs declaring a matching scope (explicitly or implicitly
+    // via the aggregation scope's conveyed @SingleIn)
+    if (entry.scope != null && entry.scope !in context.scopingAnnotations) return false
     if (
       entry.contributionScopes.isNotEmpty() &&
         entry.contributionScopes.none { it in context.scopes }

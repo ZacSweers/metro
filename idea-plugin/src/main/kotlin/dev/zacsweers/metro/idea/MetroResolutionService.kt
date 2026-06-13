@@ -52,6 +52,7 @@ import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
 import org.jetbrains.kotlin.idea.stubindex.KotlinTopLevelFunctionFqnNameIndex
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
@@ -720,6 +721,19 @@ private class MetroIndexBuilder(
             if (symbol.modality != KaSymbolModality.ABSTRACT) continue
             if (symbol.hasAnyAnnotation(nonAccessorCallableAnnotations(options))) continue
             if (symbol.returnType.isUnitType) continue
+            // Accessors of a @GraphExtension (or its factory) are creation points of the child
+            // graph, not dependencies on a binding; they only anchor the extension's parent chain.
+            val returnClassType = symbol.returnType.fullyExpandedType as? KaClassType
+            val returnClassSymbol = returnClassType?.symbol
+            if (
+              returnClassSymbol != null &&
+                returnClassSymbol.hasAnyAnnotation(
+                  options.graphExtensionAnnotations + options.graphExtensionFactoryAnnotations
+                )
+            ) {
+              accessorTypeIds += returnClassType.classId
+              continue
+            }
             val site = metroConsumedSite(symbol, options)
             consumers +=
               MetroConsumerEntry(
@@ -735,6 +749,13 @@ private class MetroIndexBuilder(
         }
       }
 
+      // Each aggregation scope implicitly conveys @SingleIn(scope) on the graph, alongside any
+      // explicitly declared scope annotations
+      val scopingAnnotations = buildSet {
+        scopeKeys.mapTo(this, ::implicitSingleInAnnotation)
+        addAll(metroScopeAnnotations(classSymbol, options))
+      }
+
       graphs +=
         MetroGraphEntry(
           pointerManager.createSmartPsiElementPointer(ktClass),
@@ -746,6 +767,7 @@ private class MetroIndexBuilder(
           isExtension = graphAnnotations.isEmpty(),
           selfIds = setOfNotNull(graphClassId) + nestedClassIds,
           accessorTypeIds = accessorTypeIds,
+          scopingAnnotations = scopingAnnotations,
         )
     }
   }
@@ -1187,7 +1209,9 @@ private fun KaAnnotationValue.toMetroValue(): MetroKaAnnotationValue {
   return when (this) {
     is KaAnnotationValue.ConstantValue -> MetroKaAnnotationValue.Literal(value.value)
     is KaAnnotationValue.EnumEntryValue -> MetroKaAnnotationValue.EnumEntry(callableId)
-    is KaAnnotationValue.ClassLiteralValue -> MetroKaAnnotationValue.KClassRef(classId)
+    // classId may be unpopulated for binary-deserialized values; the type still carries it
+    is KaAnnotationValue.ClassLiteralValue ->
+      MetroKaAnnotationValue.KClassRef(classId ?: (type as? KaClassType)?.classId)
     is KaAnnotationValue.ArrayValue ->
       MetroKaAnnotationValue.Array(values.map { it.toMetroValue() })
     is KaAnnotationValue.NestedAnnotationValue ->
@@ -1201,15 +1225,22 @@ private fun KaAnnotationValue.toMetroValue(): MetroKaAnnotationValue {
 private fun KaSession.findMetaAnnotated(
   annotated: KaAnnotated,
   metaAnnotations: Set<ClassId>,
-): MetroKaAnnotation? {
-  for (annotation in annotated.annotations) {
-    val classId = annotation.classId ?: continue
-    val annotationClass = findClass(classId) ?: continue
+): MetroKaAnnotation? = findAllMetaAnnotated(annotated, metaAnnotations).firstOrNull()
+
+/** Finds all annotations whose classes are meta-annotated with any of [metaAnnotations]. */
+private fun KaSession.findAllMetaAnnotated(
+  annotated: KaAnnotated,
+  metaAnnotations: Set<ClassId>,
+): List<MetroKaAnnotation> {
+  return annotated.annotations.mapNotNull { annotation ->
+    val classId = annotation.classId ?: return@mapNotNull null
+    val annotationClass = findClass(classId) ?: return@mapNotNull null
     if (annotationClass.annotations.any { it.classId in metaAnnotations }) {
-      return annotation.toMetroKaAnnotation()
+      annotation.toMetroKaAnnotation()
+    } else {
+      null
     }
   }
-  return null
 }
 
 /** Finds the first qualifier annotation (an annotation meta-annotated with `@Qualifier`). */
@@ -1223,6 +1254,20 @@ internal fun KaSession.metroScopeAnnotation(
   annotated: KaAnnotated,
   options: MetroOptions,
 ): MetroKaAnnotation? = findMetaAnnotated(annotated, options.scopeAnnotations)
+
+/** Finds all scope annotations (annotations meta-annotated with `@Scope`). */
+internal fun KaSession.metroScopeAnnotations(
+  annotated: KaAnnotated,
+  options: MetroOptions,
+): List<MetroKaAnnotation> = findAllMetaAnnotated(annotated, options.scopeAnnotations)
+
+/** The `@SingleIn(scope)` implicitly conveyed by a graph annotation's aggregation [scopeClassId]. */
+internal fun implicitSingleInAnnotation(scopeClassId: ClassId): MetroKaAnnotation {
+  return MetroKaAnnotation(
+    MetroClassIds.singleIn,
+    listOf(Name.identifier("scope") to MetroKaAnnotationValue.KClassRef(scopeClassId)),
+  )
+}
 
 /** Extracts `scope`/`additionalScopes` class-literal arguments. */
 internal fun metroScopeKeys(annotation: KaAnnotation): Set<ClassId> {

@@ -83,12 +83,22 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
 
     val graph = (declaration as? KtClassOrObject)?.let { index.graphEntryAt(it) }
     if (graph != null) {
-      val contributions = index.contributionsForScopes(graph.scopeKeys)
+      val context = index.contextFor(graph)
+      val contributions = index.contributionsFor(context)
+      val inherited = index.inheritedContributionsFor(context)
       val scopes = graph.scopeKeys.joinToString { it.shortClassName.asString() }
+      val text = buildString {
+        append(countText(contributions.size, "contribution"))
+        if (inherited.isNotEmpty()) {
+          append(" (+")
+          append(inherited.size)
+          append(" inherited)")
+        }
+      }
       entries +=
         declaration.textRange to
           entry(
-            text = countText(contributions.size, "contribution"),
+            text = text,
             tooltip = "Metro contributions to $scopes",
             targets = contributions.map { it.pointer },
             popupTitle = "Contributions to $scopes",
