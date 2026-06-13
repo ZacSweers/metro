@@ -976,10 +976,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#console-modes" class="md-nav__link">
+  <a href="#render-modes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Console modes
+        Render modes
       </span>
     </span>
   </a>
@@ -1854,10 +1854,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#console-modes" class="md-nav__link">
+  <a href="#render-modes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Console modes
+        Render modes
       </span>
     </span>
   </a>
@@ -1933,18 +1933,18 @@
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
 </code></pre></div>
 <p>Output wraps to a fixed 100-column budget. Identifiers are never truncated, so type names stay grep-able.</p>
-<h2 id="console-modes">Console modes<a class="headerlink" href="#console-modes" title="Permanent link">&para;</a></h2>
-<p>The <code>diagnosticsConsole</code> Gradle option controls rendering:</p>
+<h2 id="render-modes">Render modes<a class="headerlink" href="#render-modes" title="Permanent link">&para;</a></h2>
+<p>The <code>diagnosticsRenderMode</code> Gradle option controls rendering:</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="n">diagnosticsConsole</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">ConsoleMode</span><span class="p">.</span><span class="na">RICH</span><span class="p">)</span>
+<span class="w">  </span><span class="n">diagnosticsRenderMode</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">DiagnosticsRenderMode</span><span class="p">.</span><span class="na">RICH</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
 <ul>
 <li><code>PLAIN</code> — the layout above: ASCII structure, no ANSI codes. Safe for any log consumer.</li>
 <li><code>RICH</code> — the same layout with Unicode glyphs (<code>╭─▶ Double → String → Int ─╮</code>), ANSI color/styling, and source snippets: real source lines with the relevant spans underlined, e.g. the injection site of a missing binding or each conflicting declaration of a duplicate binding.</li>
-<li><code>AUTO</code> (default) — resolved at configuration time. <code>CI</code>, <code>NO_COLOR</code>, <code>--console=plain</code>, and IDE-invoked builds (whose build output windows don&rsquo;t render ANSI) get <code>PLAIN</code>; other builds get <code>RICH</code>.</li>
+<li><code>AUTO</code> (default) — resolved at configuration time. <code>NO_COLOR</code>, <code>--console=plain</code>, and IDE-invoked builds (whose build output windows don&rsquo;t render ANSI) get <code>PLAIN</code>; other builds, including CI builds, get <code>RICH</code>.</li>
 </ul>
-<p>The mode can also be set via the <code>diagnosticsConsole</code> Gradle property or the <code>metro.diagnosticsConsole</code> system property (which the compiler reads directly and wins over everything). Because rendering is presentation-only, the resolved mode is excluded from compilation task inputs — switching between IDE, CLI, and CI never invalidates compilation or splits build caches.</p>
+<p>The mode can also be set via the <code>diagnosticsRenderMode</code> Gradle property or the <code>metro.diagnosticsRenderMode</code> system property (which the compiler reads directly and wins over everything). Because rendering is presentation-only, the resolved mode is excluded from compilation task inputs — switching between IDE and CLI never invalidates compilation or splits build caches.</p>
 <p>Note that binding graph resolution currently only happens in the compiler IR backend, but maybe someday we can move this to FIR to get errors in the IDE.</p>
 
 

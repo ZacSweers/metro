@@ -7043,9 +7043,9 @@
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 </code></pre></div></p>
 <ul>
-<li><strong>[gradle]</strong> Add a <code>diagnosticsConsole</code> Gradle option (<code>AUTO</code>/<code>PLAIN</code>/<code>RICH</code>) for diagnostic rendering.</li>
-<li><code>AUTO</code> defaults to rich output only for terminal builds and falls back to plain output for CI, <code>NO_COLOR</code>, <code>--console=plain</code>, and IDE-invoked builds.</li>
-<li>The resolved mode is passed as a non-input compiler option, so console changes do not invalidate compilation or poison build caches.</li>
+<li><strong>[gradle]</strong> Add a <code>diagnosticsRenderMode</code> Gradle option (<code>AUTO</code>/<code>PLAIN</code>/<code>RICH</code>) for diagnostic rendering.</li>
+<li><code>AUTO</code> defaults to rich output and falls back to plain output for <code>NO_COLOR</code>, <code>--console=plain</code>, and IDE-invoked builds.</li>
+<li>The resolved mode is passed as a non-input compiler option, so render-mode changes do not invalidate compilation or poison build caches.</li>
 <li><strong>[docs]</strong> Add a generated <a href="https://zacsweers.github.io/metro/latest/diagnostics/">Diagnostics Reference</a> docs page for Metro&rsquo;s common graph validation diagnostics.</li>
 </ul>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
@@ -7089,7 +7089,7 @@
 </ul>
 <h3 id="changes_1">Changes<a class="headerlink" href="#changes_1" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>[gradle]</strong> Replace the <code>rich-diagnostics</code> compiler option and <code>metro.richDiagnostics</code> system property with <code>diagnostics-console</code> and <code>metro.diagnosticsConsole</code>.</li>
+<li><strong>[gradle]</strong> Replace the <code>rich-diagnostics</code> compiler option and <code>metro.richDiagnostics</code> system property with <code>diagnostics-render-mode</code> and <code>metro.diagnosticsRenderMode</code>.</li>
 <li>Test Kotlin <code>2.4.20-dev-6138</code>.</li>
 <li>Test IntelliJ <code>2026.2</code> EAPs.</li>
 </ul>
