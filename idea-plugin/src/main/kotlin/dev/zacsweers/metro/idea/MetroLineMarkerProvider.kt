@@ -7,6 +7,11 @@ import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
+import com.intellij.icons.AllIcons
+import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.platform.backend.presentation.TargetPresentation
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
@@ -181,7 +186,21 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     targets: List<SmartPsiElementPointer<out PsiElement>>,
   ): RelatedItemLineMarkerInfo<*> {
     return NavigationGutterIconBuilder.create(icon)
-      .setTargets(NotNullLazyValue.lazy { targets.mapNotNull { it.element } })
+      .setTargets(
+        NotNullLazyValue.lazy {
+          // Cluster KMP source sets in hierarchy order: commonMain first, then intermediate
+          // source sets (e.g. nativeMain), then leaf platforms; alphabetical within each.
+          targets
+            .mapNotNull { it.element }
+            .sortedWith(
+              compareBy(
+                { sourceSetDepth(it) },
+                { ModuleUtilCore.findModuleForPsiElement(it)?.name.orEmpty() },
+                { (it as? KtNamedDeclaration)?.name.orEmpty() },
+              )
+            )
+        }
+      )
       .setTooltipText(tooltip)
       .setPopupTitle(popupTitle)
       .setEmptyPopupText(emptyText)
@@ -199,8 +218,35 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
   }
 }
 
-/** Renders navigation popup rows as the declaration text plus its grayed container location. */
+/**
+ * The element's position in the KMP source-set hierarchy: 0 for commonMain, increasing through
+ * intermediate source sets (nativeMain) to leaf platforms (iosArm64Main), via `dependsOn` edges.
+ */
+private fun sourceSetDepth(element: PsiElement): Int {
+  val module =
+    KaModuleProvider.getModule(element.project, element, useSiteModule = null) as? KaSourceModule
+      ?: return 0
+  return module.transitiveDependsOnDependencies.size
+}
+
+/**
+ * Renders navigation popup rows as the declaration text plus its grayed container location, with
+ * the owning module (KMP source set) right-aligned.
+ */
 internal class MetroTargetRenderer : PsiTargetPresentationRenderer<PsiElement>() {
+  override fun getPresentation(element: PsiElement): TargetPresentation {
+    val builder =
+      TargetPresentation.builder(getElementText(element))
+        .containerText(getContainerText(element))
+        .icon(element.getIcon(0))
+    val module = ModuleUtilCore.findModuleForPsiElement(element)
+    return if (module != null) {
+      builder.locationText(module.name, AllIcons.Nodes.Module).presentation()
+    } else {
+      builder.presentation()
+    }
+  }
+
   override fun getElementText(element: PsiElement): String {
     return when (element) {
       is KtCallableDeclaration -> {
