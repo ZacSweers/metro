@@ -73,8 +73,8 @@ import org.jetbrains.kotlin.types.Variance
  * Shared resolution service powering Metro's line markers, code vision, and inlay hints.
  *
  * Builds a project-wide [MetroBindingIndex] from Kotlin stub indexes plus the K2 Analysis API and
- * caches it per module (Metro options are configured per module). Resolution is key-based across
- * the whole project; per-graph membership (includes/excludes/replaces) is not modeled yet.
+ * caches it by Metro option fingerprint. Resolution is key-based across the whole project, then
+ * filtered through graph contexts for membership-sensitive editor features.
  */
 @Service(Service.Level.PROJECT)
 class MetroResolutionService(private val project: Project) {
@@ -168,7 +168,7 @@ class MetroResolutionService(private val project: Project) {
   /** Files containing any Metro-relevant annotation by short name, via stub indexes. */
   private fun candidateFiles(options: MetroOptions): Set<KtFile> {
     val shortNames =
-      sweepAnnotationIds(options).mapTo(sortedSetOf()) { it.shortClassName.asString() }
+      projectSweepAnnotationIds(options).mapTo(sortedSetOf()) { it.shortClassName.asString() }
     val searchScope = GlobalSearchScope.projectScope(project)
     val files = LinkedHashSet<KtFile>()
     for (shortName in shortNames) {
@@ -178,6 +178,19 @@ class MetroResolutionService(private val project: Project) {
       }
     }
     return files
+  }
+
+  private fun projectSweepAnnotationIds(fallbackOptions: MetroOptions): Set<ClassId> {
+    val ids = linkedSetOf<ClassId>()
+    ids += sweepAnnotationIds(fallbackOptions)
+    val service = project.service<MetroIdeProjectService>()
+    for (module in ModuleManager.getInstance(project).modules) {
+      val state = service.state(module)
+      if (state.options.enabled) {
+        ids += sweepAnnotationIds(state.options)
+      }
+    }
+    return ids
   }
 
   private fun shardFor(file: KtFile): MetroFileShard {
@@ -917,7 +930,8 @@ private class MetroIndexBuilder(
     annotation: KaAnnotation,
     factoryClassId: ClassId,
   ) {
-    contributions += MetroContributionEntry(ptr(declaration), metroScopeKeys(annotation))
+    val scopes = metroScopeKeys(annotation)
+    contributions += MetroContributionEntry(ptr(declaration), scopes)
     val factoryType = (findClass(factoryClassId) as? KaNamedClassSymbol)?.defaultType ?: return
     val elementKey = metroKey(factoryType, null)
     providers +=
@@ -928,6 +942,7 @@ private class MetroIndexBuilder(
         null,
         declaration.name,
         multibindingId = elementKey.computeMultibindingId(),
+        contributionScopes = scopes,
       )
   }
 

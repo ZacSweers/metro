@@ -323,8 +323,8 @@ internal class MetroContributionEntry(
 /**
  * Project-wide snapshot of Metro declarations, built from stub indexes + the Analysis API.
  *
- * Resolution is key-based across the whole project; per-graph membership (replacements, exclusions,
- * includes) is not modeled.
+ * Resolution starts with project-wide key matches, then filters those candidates through each
+ * graph's aggregation context for editor features that need graph membership.
  */
 internal class MetroBindingIndex(
   val providers: List<MetroProviderEntry>,
@@ -338,7 +338,7 @@ internal class MetroBindingIndex(
     bindingContainers.associateBy { it.classId }
   }
   private val graphContexts =
-    java.util.concurrent.ConcurrentHashMap<MetroGraphEntry, MetroGraphContext>()
+    java.util.concurrent.ConcurrentHashMap<MetroGraphEntry, List<MetroGraphContext>>()
   // Contributions are keyed solely by multibindingId, mirroring the compiler's
   // @MultibindingElement qualifier swap — their element key must not satisfy plain consumers.
   private val providersByKey: Map<KaTypeKey, List<MetroProviderEntry>> by lazy {
@@ -400,7 +400,8 @@ internal class MetroBindingIndex(
     }
     val perGraph = LinkedHashMap<MetroGraphEntry, List<MetroProviderEntry>>()
     for (graph in graphs) {
-      val filtered = providersFor(consumer, contextFor(graph))
+      val filtered =
+        contextsFor(graph).flatMap { context -> providersFor(consumer, context) }.distinct()
       if (filtered.isNotEmpty()) {
         perGraph[graph] = filtered
       }
@@ -410,7 +411,30 @@ internal class MetroBindingIndex(
 
   /** The aggregated context of [graph], following extension parent chains. */
   fun contextFor(graph: MetroGraphEntry): MetroGraphContext {
-    return graphContexts.computeIfAbsent(graph) { buildContext(it) }
+    val contexts = contextsFor(graph)
+    if (contexts.size == 1) return contexts.single()
+
+    val orderedChain = contexts.flatMap { it.chain }.distinct()
+    val chain =
+      if (orderedChain.firstOrNull() == graph) {
+        orderedChain
+      } else {
+        listOf(graph) + orderedChain.filter { it != graph }
+      }
+    return MetroGraphContext(
+      chain = chain,
+      scopes = contexts.flatMapTo(hashSetOf()) { it.scopes },
+      scopingAnnotations = contexts.flatMapTo(hashSetOf()) { it.scopingAnnotations },
+      excludes = contexts.flatMapTo(hashSetOf()) { it.excludes },
+      containers = contexts.flatMapTo(hashSetOf()) { it.containers },
+      includedDependencies = contexts.flatMapTo(hashSetOf()) { it.includedDependencies },
+      graphClassIds = contexts.flatMapTo(hashSetOf()) { it.graphClassIds },
+    )
+  }
+
+  /** Every valid aggregation context for [graph]. Extensions can have multiple parent paths. */
+  fun contextsFor(graph: MetroGraphEntry): List<MetroGraphContext> {
+    return graphContexts.computeIfAbsent(graph) { buildContexts(it) }
   }
 
   /**
@@ -435,21 +459,32 @@ internal class MetroBindingIndex(
     }
   }
 
-  private fun buildContext(graph: MetroGraphEntry): MetroGraphContext {
-    // Walk extension -> parent chains; a parent is any graph whose accessors reference this
-    // graph's class or one of its nested factories.
-    val chain = mutableListOf(graph)
-    val visited = hashSetOf(graph)
-    var current = graph
-    while (current.isExtension) {
-      val parent =
-        graphs.firstOrNull { candidate ->
-          candidate !in visited && candidate.accessorTypeIds.any { it in current.selfIds }
-        } ?: break
-      chain += parent
-      visited += parent
-      current = parent
+  private fun buildContexts(graph: MetroGraphEntry): List<MetroGraphContext> {
+    return buildChains(graph, visited = setOf(graph)).map(::buildContext)
+  }
+
+  private fun buildChains(
+    graph: MetroGraphEntry,
+    visited: Set<MetroGraphEntry>,
+  ): List<List<MetroGraphEntry>> {
+    if (!graph.isExtension) return listOf(listOf(graph))
+
+    val parents = graphs.filter { candidate ->
+      candidate !in visited && candidate.accessorTypeIds.any { it in graph.selfIds }
     }
+    if (parents.isEmpty()) return listOf(listOf(graph))
+
+    val chains = mutableListOf<List<MetroGraphEntry>>()
+    for (parent in parents) {
+      val parentChains = buildChains(parent, visited + parent)
+      for (parentChain in parentChains) {
+        chains += listOf(graph) + parentChain
+      }
+    }
+    return chains
+  }
+
+  private fun buildContext(chain: List<MetroGraphEntry>): MetroGraphContext {
     val scopes = chain.flatMapTo(hashSetOf()) { it.scopeKeys }
     val excludes = chain.flatMapTo(hashSetOf()) { it.excludes }
     val graphClassIds = chain.flatMapTo(hashSetOf()) { it.selfIds }
@@ -519,12 +554,23 @@ internal class MetroBindingIndex(
 
   /** Sites consuming any of [providerEntries], joining multibinding contributions by id. */
   fun consumersFor(providerEntries: Collection<MetroProviderEntry>): List<MetroConsumerEntry> {
+    val providerSet = providerEntries.toSet()
     val result = LinkedHashSet<MetroConsumerEntry>()
-    for (entry in providerEntries) {
+    val candidates = LinkedHashSet<MetroConsumerEntry>()
+    for (entry in providerSet) {
       if (entry.multibindingId != null) {
-        result += consumersByMultibindingId[entry.multibindingId].orEmpty()
+        candidates += consumersByMultibindingId[entry.multibindingId].orEmpty()
       } else {
-        result += consumersByKey[entry.key].orEmpty()
+        candidates += consumersByKey[entry.key].orEmpty()
+      }
+    }
+    if (graphs.isEmpty()) return candidates.toList()
+
+    for (consumer in candidates) {
+      val resolution = resolveConsumer(consumer)
+      val graphProviders = resolution.perGraph.values.flatten()
+      if (graphProviders.any { it in providerSet }) {
+        result += consumer
       }
     }
     return result.toList()
