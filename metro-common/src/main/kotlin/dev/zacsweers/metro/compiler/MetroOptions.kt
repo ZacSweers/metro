@@ -1012,6 +1012,16 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_RUNTIME_TRACING(
+    RawMetroOption.boolean(
+      name = "enable-runtime-tracing",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enables bytecode/IR tracing for binding injections using androidx.tracing.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   MEMBER_NAMING_STRATEGY(
     RawMetroOption(
       name = "member-naming-strategy",
@@ -1215,6 +1225,8 @@ public class MetroOptions(
     MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
   public val bindingContributionsAsContainers: Boolean =
     MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS.raw.defaultValue.expectAs(),
+  public val enableRuntimeTracing: Boolean =
+    MetroOption.ENABLE_RUNTIME_TRACING.raw.defaultValue.expectAs(),
   public val memberNamingStrategy: MemberNamingStrategy =
     MetroOption.MEMBER_NAMING_STRATEGY.raw.defaultValue.expectAs<String>().let {
       MemberNamingStrategy.valueOf(it.uppercase(Locale.US))
@@ -1514,6 +1526,7 @@ public class MetroOptions(
     public var diagnosticsRenderMode: DiagnosticsRenderMode = base.diagnosticsRenderMode
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
     public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
+    public var enableRuntimeTracing: Boolean = base.enableRuntimeTracing
     public var memberNamingStrategy: MemberNamingStrategy = base.memberNamingStrategy
 
     public fun debug(debug: Boolean): Builder = apply {
@@ -1866,6 +1879,7 @@ public class MetroOptions(
         MetroOption.GENERATE_STATIC_ANNOTATIONS -> generateStaticAnnotations = value.expectAs()
         MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS ->
           bindingContributionsAsContainers = value.expectAs()
+        MetroOption.ENABLE_RUNTIME_TRACING -> enableRuntimeTracing = value.expectAs()
         MetroOption.MEMBER_NAMING_STRATEGY ->
           memberNamingStrategy =
             MemberNamingStrategy.valueOf(value.expectAs<String>().uppercase(Locale.US))
@@ -1956,6 +1970,7 @@ public class MetroOptions(
         diagnosticsRenderMode = diagnosticsRenderMode,
         generateStaticAnnotations = generateStaticAnnotations,
         bindingContributionsAsContainers = bindingContributionsAsContainers,
+        enableRuntimeTracing = enableRuntimeTracing,
         memberNamingStrategy = memberNamingStrategy,
       )
     }

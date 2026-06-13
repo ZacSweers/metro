@@ -167,6 +167,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
     stringDirective(
       "Relative path to a directory to dump Metro trace files. Example: 'metro/traces'."
     )
+  val ENABLE_RUNTIME_TRACING by directive("Enables bytecode/IR tracing for binding injections using androidx.tracing.")
   val CHECK_TRACES by
     directive(
       "Verifies that Metro trace files were generated and follow the expected naming pattern. " +

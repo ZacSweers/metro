@@ -373,6 +373,9 @@ abstract class MetroCompilerTest {
               DIAGNOSTICS_RENDER_MODE -> {
                 processor.option(entry.raw.cliOption, diagnosticsRenderMode)
               }
+              ENABLE_RUNTIME_TRACING -> {
+                processor.option(entry.raw.cliOption, enableRuntimeTracing)
+              }
               GENERATE_STATIC_ANNOTATIONS -> {
                 processor.option(
                   entry.raw.cliOption,

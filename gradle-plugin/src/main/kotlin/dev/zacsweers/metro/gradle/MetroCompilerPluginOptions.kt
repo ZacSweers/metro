@@ -147,6 +147,7 @@ internal fun Project.metroCompilerPluginOptions(
       )
     )
     add(metroOption(MetroOption.ENABLE_CIRCUIT_CODEGEN, extension.enableCircuitCodegen))
+    add(metroOption(MetroOption.ENABLE_RUNTIME_TRACING, extension.enableRuntimeTracing))
     add(
       MetroCompilerPluginOption(
         MetroOption.PLUGIN_ORDER_SET.raw.name,
