@@ -157,13 +157,24 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     graph: MetroGraphEntry,
     index: MetroBindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
-    val targets = index.contributionsFor(index.contextFor(graph)).map { it.pointer }
+    val context = index.contextFor(graph)
+    val targets = index.contributionsFor(context).map { it.pointer }
     val scopesDisplay = graph.scopeKeys.joinToString { it.shortClassName.asString() }
     val tooltip = buildString {
-      append("Metro dependency graph")
+      append(if (graph.isExtension) "Metro graph extension" else "Metro dependency graph")
       if (graph.scopeKeys.isNotEmpty()) {
         append(" · aggregating ")
         append(scopesDisplay)
+      }
+      context.chain.getOrNull(1)?.let { parent ->
+        append(" · extends ")
+        append(parent.name ?: "parent graph")
+        val inherited = index.inheritedContributionsFor(context).size
+        if (inherited > 0) {
+          append(" (inherits ")
+          append(inherited)
+          append(if (inherited == 1) " contribution)" else " contributions)")
+        }
       }
     }
     return navMarker(

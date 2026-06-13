@@ -995,11 +995,17 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         @GraphExtension(ChildScope::class)
         interface ChildGraph {
           val thing: Thing
+
+          @GraphExtension.Factory
+          interface Factory {
+            fun create(): ChildGraph
+          }
         }
 
         @DependencyGraph(AppScope::class)
         interface ParentGraph {
           val childGraph: ChildGraph
+          val childFactory: ChildGraph.Factory
         }
         """
           .trimIndent(),
@@ -1020,6 +1026,76 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // But the parent context does not include child-scoped bindings beyond its own scope
     val parent = index.contextFor(index.graphEntryAt(declarations.klass("ParentGraph"))!!)
     assertEquals(1, parent.chain.size)
+
+    // Extension (and extension factory) accessors are creation points, not consumers
+    assertNull(index.consumerEntryAt(declarations.property("childGraph")))
+    assertNull(index.consumerEntryAt(declarations.property("childFactory")))
+
+    // The child aggregates only its own scope; parent-scope contributions are inherited
+    assertTrue(index.contributionsFor(context).isEmpty())
+    assertEquals(1, index.inheritedContributionsFor(context).size)
+    assertEquals(1, index.contributionsFor(parent).size)
+    assertTrue(index.inheritedContributionsFor(parent).isEmpty())
+  }
+
+  fun testScopedBindingsRequireMatchingGraphScope() {
+    val file =
+      myFixture.configureByText(
+        "Scoped.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Inject
+        import dev.zacsweers.metro.SingleIn
+
+        abstract class OtherScope
+
+        @SingleIn(AppScope::class)
+        @Inject
+        class Repo
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val appRepo: Repo
+        }
+
+        @DependencyGraph(OtherScope::class)
+        interface OtherGraph {
+          val otherRepo: Repo
+        }
+
+        @SingleIn(AppScope::class)
+        @DependencyGraph
+        interface ExplicitGraph {
+          val explicitRepo: Repo
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+    val consumer = index.consumerEntryAt(declarations.property("appRepo"))!!
+
+    // @DependencyGraph(AppScope::class) implicitly conveys @SingleIn(AppScope::class)
+    val appContext = index.contextFor(index.graphEntryAt(declarations.klass("AppGraph"))!!)
+    assertEquals(
+      listOf(MetroProviderKind.INJECT),
+      index.providersFor(consumer, appContext).map { it.kind },
+    )
+
+    // A graph with a different scope is not a home for this binding
+    val otherContext = index.contextFor(index.graphEntryAt(declarations.klass("OtherGraph"))!!)
+    assertTrue(index.providersFor(consumer, otherContext).isEmpty())
+
+    // Explicitly declared scope annotations on the graph also count
+    val explicitContext =
+      index.contextFor(index.graphEntryAt(declarations.klass("ExplicitGraph"))!!)
+    assertEquals(
+      listOf(MetroProviderKind.INJECT),
+      index.providersFor(consumer, explicitContext).map { it.kind },
+    )
   }
 
   fun testIndexIsEmptyWhenMetroDisabled() {
