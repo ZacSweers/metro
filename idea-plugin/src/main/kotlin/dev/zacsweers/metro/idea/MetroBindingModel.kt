@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
@@ -336,7 +337,8 @@ internal class MetroBindingIndex(
   private val containersById: Map<ClassId, MetroBindingContainerEntry> by lazy {
     bindingContainers.associateBy { it.classId }
   }
-  private val graphContexts = java.util.concurrent.ConcurrentHashMap<MetroGraphEntry, MetroGraphContext>()
+  private val graphContexts =
+    java.util.concurrent.ConcurrentHashMap<MetroGraphEntry, MetroGraphContext>()
   // Contributions are keyed solely by multibindingId, mirroring the compiler's
   // @MultibindingElement qualifier swap — their element key must not satisfy plain consumers.
   private val providersByKey: Map<KaTypeKey, List<MetroProviderEntry>> by lazy {
@@ -353,21 +355,20 @@ internal class MetroBindingIndex(
   }
 
   // PSI-identity lookups for editor features classifying the element under the caret/pass.
-  // Pointers deref to stable PSI within one index lifetime (the index invalidates on any
-  // out-of-block change). Must be accessed in a read action.
-  private val providersByElement: Map<PsiElement, List<MetroProviderEntry>> by lazy {
-    providers
-      .mapNotNull { entry -> entry.pointer.element?.let { it to entry } }
-      .groupBy({ it.first }, { it.second })
+  // Bucketed by the pointers' virtual files (no PSI dereference) so the index never pins PSI
+  // project-wide; only the queried file's bucket dereferences its pointers. Must be accessed in
+  // a read action.
+  private val providersByFile: Map<VirtualFile, List<MetroProviderEntry>> by lazy {
+    providers.groupByFile { it.pointer }
   }
-  private val consumersByElement: Map<KtElement, MetroConsumerEntry> by lazy {
-    consumers.mapNotNull { entry -> entry.pointer.element?.let { it to entry } }.toMap()
+  private val consumersByFile: Map<VirtualFile, List<MetroConsumerEntry>> by lazy {
+    consumers.groupByFile { it.pointer }
   }
-  private val graphsByElement: Map<KtClassOrObject, MetroGraphEntry> by lazy {
-    graphs.mapNotNull { entry -> entry.pointer.element?.let { it to entry } }.toMap()
+  private val graphsByFile: Map<VirtualFile, List<MetroGraphEntry>> by lazy {
+    graphs.groupByFile { it.pointer }
   }
-  private val assistedSitesByElement: Map<KtElement, MetroAssistedSite> by lazy {
-    assistedSites.mapNotNull { site -> site.pointer.element?.let { it to site } }.toMap()
+  private val assistedSitesByFile: Map<VirtualFile, List<MetroAssistedSite>> by lazy {
+    assistedSites.groupByFile { it.pointer }
   }
 
   /**
@@ -530,19 +531,23 @@ internal class MetroBindingIndex(
   }
 
   fun providerEntriesAt(element: KtElement): List<MetroProviderEntry> {
-    return providersByElement[element].orEmpty()
+    val file = element.containingFile?.virtualFile ?: return emptyList()
+    return providersByFile[file].orEmpty().filter { it.pointer.element === element }
   }
 
   fun consumerEntryAt(element: KtElement): MetroConsumerEntry? {
-    return consumersByElement[element]
+    val file = element.containingFile?.virtualFile ?: return null
+    return consumersByFile[file].orEmpty().firstOrNull { it.pointer.element === element }
   }
 
   fun graphEntryAt(element: KtElement): MetroGraphEntry? {
-    return graphsByElement[element]
+    val file = element.containingFile?.virtualFile ?: return null
+    return graphsByFile[file].orEmpty().firstOrNull { it.pointer.element === element }
   }
 
   fun assistedSiteAt(element: KtElement): MetroAssistedSite? {
-    return assistedSitesByElement[element]
+    val file = element.containingFile?.virtualFile ?: return null
+    return assistedSitesByFile[file].orEmpty().firstOrNull { it.pointer.element === element }
   }
 
   fun contributionsForScopes(scopeKeys: Set<ClassId>): List<MetroContributionEntry> {
@@ -558,6 +563,18 @@ internal class MetroBindingIndex(
   companion object {
     val EMPTY = MetroBindingIndex(emptyList(), emptyList(), emptyList(), emptyList())
   }
+}
+
+/** Groups entries by their pointers' virtual files without dereferencing any PSI. */
+private inline fun <T> List<T>.groupByFile(
+  pointer: (T) -> SmartPsiElementPointer<*>
+): Map<VirtualFile, List<T>> {
+  val result = HashMap<VirtualFile, MutableList<T>>()
+  for (entry in this) {
+    val file = pointer(entry).virtualFile ?: continue
+    result.getOrPut(file, ::mutableListOf) += entry
+  }
+  return result
 }
 
 /** The result of resolving a consumer against every graph in the project. */
