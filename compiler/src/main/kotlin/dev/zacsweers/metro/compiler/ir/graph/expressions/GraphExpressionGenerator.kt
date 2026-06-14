@@ -110,12 +110,33 @@ private constructor(
   private val wrappedTypeGenerators = listOf(IrOptionalExpressionGenerator).associateBy { it.key }
   private val multibindingExpressionGenerator by memoize { MultibindingExpressionGenerator(this) }
 
+  override val traceGraphName: String by memoize { node.originalTypeKey.render(short = true) }
+
+  override val traceGraphPath: String by memoize {
+    val graphPath = generateSequence<GraphNode>(node) { it.parentGraph }.toList().asReversed()
+    graphPath.joinToString(separator = "/") { it.originalTypeKey.render(short = true) }
+  }
+
+  /** Resolves the existing graph binding for AndroidX's tracer input. */
   context(scope: IrBuilderWithScope)
   override fun generateTracerBindingCode(): IrExpression {
-    val tracerTypeKey = IrTypeKey(metroSymbols.tracer.defaultType)
-    val tracerBinding = bindingGraph.findBinding(tracerTypeKey)
-      ?: reportCompilerBug("Runtime tracing is enabled but no Tracer binding was provided in the graph.")
-    return generateBindingCode(tracerBinding, tracerBinding.contextualTypeKey, AccessType.INSTANCE, null)
+    val tracer =
+      metroSymbols.tracer
+        ?: reportCompilerBug(
+          "Runtime tracing is enabled but androidx.tracing.Tracer is missing from the classpath."
+        )
+    val tracerTypeKey = IrTypeKey(tracer.defaultType)
+    val tracerBinding =
+      bindingGraph.findBinding(tracerTypeKey)
+        ?: reportCompilerBug(
+          "Runtime tracing is enabled but no Tracer binding was provided in the graph."
+        )
+    return generateBindingCode(
+      tracerBinding,
+      tracerBinding.contextualTypeKey,
+      AccessType.INSTANCE,
+      null,
+    )
   }
 
   context(scope: IrBuilderWithScope)
@@ -173,33 +194,35 @@ private constructor(
               codegenStats?.run { classConstructorDirectInvocations++ }
               // Call constructor directly
               val targetConstructor = classFactory.targetConstructor!!
-              val directExpr = irCallConstructor(
-                  targetConstructor.symbol,
-                  binding.type.typeParameters.map { it.defaultType },
-                )
-                .apply {
-                  val args =
-                    generateBindingArguments(
-                      targetParams = classFactory.targetFunctionParameters,
-                      function = targetConstructor,
-                      binding = binding,
-                      fieldInitKey = fieldInitKey,
-                    )
-                  for ((i, arg) in args.withIndex()) {
-                    if (arg == null) continue
-                    arguments[i] = arg
+              val directExpr =
+                irCallConstructor(
+                    targetConstructor.symbol,
+                    binding.type.typeParameters.map { it.defaultType },
+                  )
+                  .apply {
+                    val args =
+                      generateBindingArguments(
+                        targetParams = classFactory.targetFunctionParameters,
+                        function = targetConstructor,
+                        binding = binding,
+                        fieldInitKey = fieldInitKey,
+                      )
+                    for ((i, arg) in args.withIndex()) {
+                      if (arg == null) continue
+                      arguments[i] = arg
+                    }
                   }
-                }
               maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             } else {
               codegenStats?.run { classConstructorNewInstanceCalls++ }
               // Constructor isn't public - call newInstance() on the factory object instead
               // Example_Factory.newInstance(...)
-              val directExpr = classFactory
-                .invokeNewInstanceExpression(binding.typeKey, Symbols.Names.newInstance) {
-                  newInstanceFunction,
-                  parameters ->
+              val directExpr =
+                classFactory.invokeNewInstanceExpression(
+                  binding.typeKey,
+                  Symbols.Names.newInstance,
+                ) { newInstanceFunction, parameters ->
                   generateBindingArguments(
                     targetParams = parameters,
                     function = newInstanceFunction,
@@ -331,16 +354,18 @@ private constructor(
                   fieldInitKey = fieldInitKey,
                 )
 
-              val directExpr = irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
+              val directExpr =
+                irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
               maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             } else {
               codegenStats?.run { providerNewInstanceCalls++ }
               // Function isn't public - call factory's static newInstance() method instead
-              val directExpr = providerFactory
-                .invokeNewInstanceExpression(binding.typeKey, providerFactory.newInstanceName) {
-                  newInstanceFunction,
-                  params ->
+              val directExpr =
+                providerFactory.invokeNewInstanceExpression(
+                  binding.typeKey,
+                  providerFactory.newInstanceName,
+                ) { newInstanceFunction, params ->
                   generateBindingArguments(
                     targetParams = params,
                     function = newInstanceFunction,

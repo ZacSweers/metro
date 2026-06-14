@@ -59,6 +59,12 @@ internal class MultibindingExpressionGenerator(
   override val bindingGraph: IrBindingGraph
     get() = parentGenerator.bindingGraph
 
+  override val traceGraphName: String
+    get() = parentGenerator.traceGraphName
+
+  override val traceGraphPath: String
+    get() = parentGenerator.traceGraphPath
+
   context(scope: IrBuilderWithScope)
   override fun generateTracerBindingCode(): IrExpression {
     return parentGenerator.generateTracerBindingCode()

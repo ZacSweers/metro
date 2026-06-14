@@ -2,12 +2,24 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
-import dev.zacsweers.metro.compiler.ir.*
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
+import dev.zacsweers.metro.compiler.ir.instanceFactory
+import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.supportsTracing
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import org.jetbrains.kotlin.ir.builders.*
+import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
+import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -22,6 +34,8 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
 ) : IrMetroContext by context, TraceScope by traceScope {
   abstract val thisReceiver: IrValueParameter
   abstract val bindingGraph: IrBindingGraph
+  abstract val traceGraphName: String
+  abstract val traceGraphPath: String
 
   enum class AccessType {
     INSTANCE,
@@ -110,25 +124,9 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
         }
       }
 
-    // Wrap in TracedProvider if runtime tracing is enabled.
     val maybeTraced =
-      if (
-        options.enableRuntimeTracing &&
-          requested == AccessType.PROVIDER &&
-          contextualTypeKey.typeKey.classId != metroSymbols.tracer
-      ) {
-        with(scope) {
-          val tracerInstance = generateTracerBindingCode()
-          irCallConstructor(
-              metroSymbols.tracedProvider.constructors.first { it.owner.isPrimary },
-              listOf(contextualTypeKey.typeKey.type),
-            )
-            .apply {
-              arguments[0] = tracerInstance
-              arguments[1] = irString(contextualTypeKey.typeKey.toString())
-              arguments[2] = accessTransformed
-            }
-        }
+      if (shouldTraceProvider(contextualTypeKey, requested)) {
+        accessTransformed.wrapInTracedProvider(contextualTypeKey) ?: accessTransformed
       } else {
         accessTransformed
       }
@@ -144,6 +142,13 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     }
   }
 
+  /**
+   * Emits IR for the AndroidX tracer value used by runtime tracing.
+   *
+   * This should resolve a normal graph binding supplied by user code; Metro does not synthesize a
+   * tracer binding. Callers should only invoke this after [tracingAvailable] has confirmed the
+   * tracing symbols are present.
+   */
   context(scope: IrBuilderWithScope)
   abstract fun generateTracerBindingCode(): IrExpression
 
@@ -184,25 +189,91 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     directExpr: IrExpression,
     contextualTypeKey: IrContextualTypeKey,
   ): IrExpression {
-    if (!options.enableRuntimeTracing || contextualTypeKey.typeKey.classId == metroSymbols.tracer.owner.classId) {
+    if (!shouldTraceDirectExpression(contextualTypeKey)) {
       return directExpr
     }
 
     return with(scope) {
-      // Wrap the expression in the provider
       val lambdaProvider = wrapInProviderFunction(contextualTypeKey.typeKey.type) { directExpr }
-
-      // Invoke the TracedProvider
-      val tracerInstance = generateTracerBindingCode()
-      val tracedProvider = irCallConstructor(
-        metroSymbols.tracedProvider.owner.constructors.first { it.isPrimary }.symbol,
-        listOf(contextualTypeKey.typeKey.type)
-      ).apply {
-        arguments[0] = tracerInstance
-        arguments[1] = irString(contextualTypeKey.typeKey.toString())
-        arguments[2] = lambdaProvider
-      }
+      val tracedProvider =
+        lambdaProvider.wrapInTracedProvider(contextualTypeKey) ?: return directExpr
       tracedProvider.unwrapProvider(contextualTypeKey.typeKey.type)
+    }
+  }
+
+  private fun shouldTraceProvider(
+    contextualTypeKey: IrContextualTypeKey,
+    requested: AccessType,
+  ): Boolean {
+    val providerRequested = requested == AccessType.PROVIDER
+    if (!providerRequested) return false
+    if (!tracingAvailable()) return false
+    return !contextualTypeKey.isTracingInfrastructure
+  }
+
+  private fun shouldTraceDirectExpression(contextualTypeKey: IrContextualTypeKey): Boolean {
+    if (!tracingAvailable()) return false
+    return !contextualTypeKey.isTracingInfrastructure
+  }
+
+  private fun tracingAvailable(): Boolean {
+    if (!options.enableRuntimeTracing) return false
+    if (!platform.supportsTracing()) return false
+    if (metroSymbols.tracer == null) return false
+    if (metroSymbols.metroTraceContext == null) return false
+    if (metroSymbols.tracedProvider == null) return false
+    return true
+  }
+
+  private val IrContextualTypeKey.isTracingInfrastructure: Boolean
+    get() {
+      val classId = typeKey.classId
+      return classId == Symbols.ClassIds.tracer || classId == Symbols.ClassIds.metroTraceContext
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun IrExpression.wrapInTracedProvider(
+    contextualTypeKey: IrContextualTypeKey
+  ): IrExpression? {
+    val tracedProvider = metroSymbols.tracedProvider ?: return null
+    val traceContext = generateTraceContextCode() ?: return null
+    return with(scope) {
+      irCallConstructor(
+          tracedProvider.constructors.first { it.owner.isPrimary },
+          listOf(contextualTypeKey.typeKey.type),
+        )
+        .apply {
+          // traceContext
+          arguments[0] = traceContext
+          // name
+          arguments[1] = irString(contextualTypeKey.render(short = true, includeQualifier = true))
+          // provider
+          arguments[2] = this@wrapInTracedProvider
+        }
+    }
+  }
+
+  /**
+   * Emits a temporary `MetroTraceContext` instance for traced provider wrappers.
+   *
+   * TODO replace this per-use construction with a generated graph field. For now, this keeps the
+   * cleanup focused while still passing graph metadata into the runtime helper.
+   */
+  context(scope: IrBuilderWithScope)
+  private fun generateTraceContextCode(): IrExpression? {
+    val metroTraceContext = metroSymbols.metroTraceContext ?: return null
+    return with(scope) {
+      irCallConstructor(metroTraceContext.constructors.first { it.owner.isPrimary }, emptyList())
+        .apply {
+          // tracer
+          arguments[0] = generateTracerBindingCode()
+          // category
+          arguments[1] = irString("dev.zacsweers.metro")
+          // graphName
+          arguments[2] = irString(traceGraphName)
+          // graphPath
+          arguments[3] = irString(traceGraphPath)
+        }
     }
   }
 }
