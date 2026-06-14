@@ -64,6 +64,7 @@ import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
+import dev.zacsweers.metro.compiler.ir.runtimeTracingAvailable
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
@@ -90,6 +91,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
 import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -613,6 +615,12 @@ internal class DependencyGraphTransformer(
             scopeNames = child.node.aggregationScopes,
           )
         }
+
+    if (runtimeTracingAvailable()) {
+      val tracerType = metroSymbols.tracer!!.defaultType
+      val tracerContextKey = IrContextualTypeKey(IrTypeKey(tracerType))
+      bindingGraph.keep(tracerContextKey, IrBindingStack.Entry.simpleTypeRef(tracerContextKey))
+    }
 
     val sealResult =
       bindingGraph.seal(childGraphScopes) { errors ->
