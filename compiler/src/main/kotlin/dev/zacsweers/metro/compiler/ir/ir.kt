@@ -1979,6 +1979,15 @@ internal fun TargetPlatform?.supportsTracing(): Boolean {
   return this != null && isJvm()
 }
 
+internal fun IrMetroContext.runtimeTracingAvailable(): Boolean {
+  if (!options.enableRuntimeTracing) return false
+  if (!platform.supportsTracing()) return false
+  if (metroSymbols.tracer == null) return false
+  if (metroSymbols.metroTraceContext == null) return false
+  if (metroSymbols.tracedProvider == null) return false
+  return true
+}
+
 context(context: IrMetroContext)
 private fun reportMirrorParamMismatch(
   function: IrFunction?,
