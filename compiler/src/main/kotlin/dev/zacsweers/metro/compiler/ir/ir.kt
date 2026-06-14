@@ -1975,6 +1975,10 @@ internal fun TargetPlatform?.usesKlib(): Boolean {
   return this != null && (isNative() || isWasm() || isJs())
 }
 
+internal fun TargetPlatform?.supportsTracing(): Boolean {
+  return this != null && isJvm()
+}
+
 context(context: IrMetroContext)
 private fun reportMirrorParamMismatch(
   function: IrFunction?,
