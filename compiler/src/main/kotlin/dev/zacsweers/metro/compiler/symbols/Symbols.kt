@@ -111,6 +111,7 @@ internal class Symbols(
   }
 
   object FqNames {
+    val androidxTracing = FqName("androidx.tracing")
     val composeRuntime = FqName("androidx.compose.runtime")
     val javaUtil = FqName("java.util")
     val kotlinCollectionsPackageFqn = StandardClassIds.BASE_COLLECTIONS_PACKAGE
@@ -200,8 +201,10 @@ internal class Symbols(
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())
     val metroInstanceFactory =
       ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
-    val tracer = ClassId(FqNames.metroRuntimePackage, "Tracer".asName())
-    val tracedProvider = ClassId(FqNames.metroRuntimePackage, "TracedProvider".asName())
+    val metroTraceContext =
+      ClassId(FqNames.metroRuntimeInternalPackage, "MetroTraceContext".asName())
+    val tracer = ClassId(FqNames.androidxTracing, "Tracer".asName())
+    val tracedProvider = ClassId(FqNames.metroRuntimeInternalPackage, "TracedProvider".asName())
 
     val function0 = StandardClassIds.FunctionN(0)
 
@@ -392,12 +395,16 @@ internal class Symbols(
     return metroFrameworkSymbols
   }
 
-  val tracer: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.tracer)!!
+  val metroTraceContext: IrClassSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.metroTraceContext)
   }
 
-  val tracedProvider: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.tracedProvider)!!
+  val tracer: IrClassSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.tracer)
+  }
+
+  val tracedProvider: IrClassSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.tracedProvider)
   }
 
   val asContribution: IrSimpleFunctionSymbol by lazy {
