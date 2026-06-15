@@ -616,10 +616,20 @@ internal class DependencyGraphTransformer(
           )
         }
 
-    if (runtimeTracingAvailable()) {
+    if (runtimeTracingAvailable() && parentContextReader == null) {
       val tracerType = metroSymbols.tracer!!.defaultType
       val tracerContextKey = IrContextualTypeKey(IrTypeKey(tracerType))
-      bindingGraph.keep(tracerContextKey, IrBindingStack.Entry.simpleTypeRef(tracerContextKey))
+      if (bindingGraph.findBinding(tracerContextKey.typeKey, allowLookup = true) == null) {
+        reportCompat(
+          node.sourceGraph,
+          MetroDiagnostics.METRO_TRACE_ERROR,
+          "Runtime tracing is enabled but this graph does not bind androidx.tracing.Tracer. " +
+            "Add it as a graph input or provide a binding for it.",
+        )
+        hasErrors = true
+      } else {
+        bindingGraph.keep(tracerContextKey, IrBindingStack.Entry.simpleTypeRef(tracerContextKey))
+      }
     }
 
     val sealResult =
