@@ -5,11 +5,13 @@ package dev.zacsweers.metro.compiler.ir.graph.expressions
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
+import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -128,7 +130,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
       if (traceContext == null) {
         accessTransformed
       } else {
-        accessTransformed.wrapInTracedProvider(contextualTypeKey, traceContext) ?: accessTransformed
+        accessTransformed.toTracedMetroProvider(contextualTypeKey, traceContext)
       }
 
     // Convert provider if needed (e.g., Metro -> Dagger)
@@ -270,16 +272,66 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
       return classId == Symbols.ClassIds.tracer || classId == Symbols.ClassIds.metroTraceContext
     }
 
+  /**
+   * Converts a provider-valued expression to Metro's `Provider` type before tracing it.
+   *
+   * `TracedProvider` delegates to Metro `Provider<T>`, so provider expressions from Dagger, Javax,
+   * Jakarta, Guice, or function providers must be normalized before decoration. `toTargetType()`
+   * converts the traced Metro provider back to the requested provider or lazy type afterward.
+   */
+  context(scope: IrBuilderWithScope)
+  private fun IrExpression.toTracedMetroProvider(
+    contextualTypeKey: IrContextualTypeKey,
+    traceContext: IrExpression,
+  ): IrExpression {
+    val providerValueType = contextualTypeKey.providerValueType()
+    val canonicalTraceProviderTarget =
+      contextualTypeKey.canonicalTraceProviderTarget(providerValueType)
+    val metroProvider =
+      with(scope) {
+        with(metroSymbols.providerTypeConverter) {
+          this@toTracedMetroProvider.convertTo(canonicalTraceProviderTarget)
+        }
+      }
+    return metroProvider.wrapInTracedProvider(
+      contextualTypeKey = contextualTypeKey,
+      providerValueType = providerValueType,
+      traceContext = traceContext,
+    ) ?: metroProvider
+  }
+
+  /** Returns `Lazy<T>` for `Provider<Lazy<T>>`; otherwise returns the canonical binding type. */
+  private fun IrContextualTypeKey.providerValueType(): IrType {
+    return if (isLazyWrappedInProvider) {
+      typeKey.type.wrapInLazy(metroSymbols)
+    } else {
+      typeKey.type
+    }
+  }
+
+  private fun IrContextualTypeKey.canonicalTraceProviderTarget(
+    providerValueType: IrType
+  ): IrContextualTypeKey {
+    val providerType = providerValueType.wrapInProvider(metroSymbols.metroProvider)
+    return providerType.asContextualTypeKey(
+      qualifierAnnotation = typeKey.qualifier,
+      hasDefault = false,
+      patchMutableCollections = false,
+      declaration = null,
+    )
+  }
+
   context(scope: IrBuilderWithScope)
   private fun IrExpression.wrapInTracedProvider(
     contextualTypeKey: IrContextualTypeKey,
+    providerValueType: IrType,
     traceContext: IrExpression,
   ): IrExpression? {
     val tracedProvider = metroSymbols.tracedProvider ?: return null
     return with(scope) {
       irCallConstructor(
           tracedProvider.constructors.first { it.owner.isPrimary },
-          listOf(contextualTypeKey.typeKey.type),
+          listOf(providerValueType),
         )
         .apply {
           // traceContext
