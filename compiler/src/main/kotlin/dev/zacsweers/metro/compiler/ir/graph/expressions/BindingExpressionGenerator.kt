@@ -217,16 +217,14 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     val traceContext = traceContextFor(contextualTypeKey) ?: return directExpr
     val traceFunction = metroSymbols.metroTraceContextTrace ?: return directExpr
     val bindingType = contextualTypeKey.typeKey.type
-    val traceName = contextualTypeKey.render(short = true, includeQualifier = true)
-    val qualifierName = contextualTypeKey.typeKey.qualifier?.render(short = true)
-    val bindingName = contextualTypeKey.render(short = true, includeQualifier = false)
+    val traceNames = contextualTypeKey.traceNames()
 
     return with(scope) {
       val qualifierExpression =
-        if (qualifierName == null) {
+        if (traceNames.qualifier == null) {
           irNull()
         } else {
-          irString(qualifierName)
+          irString(traceNames.qualifier)
         }
       val traceBlock =
         irLambda(
@@ -246,11 +244,11 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
         args =
           listOf(
             // name
-            irString(traceName),
+            irString(traceNames.name),
             // qualifier
             qualifierExpression,
             // binding
-            irString(bindingName),
+            irString(traceNames.binding),
             // kind
             irNull(),
             // block
@@ -321,6 +319,20 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     )
   }
 
+  private data class TraceNames(val name: String, val qualifier: String?, val binding: String)
+
+  private fun IrContextualTypeKey.traceNames(): TraceNames {
+    val qualifier = typeKey.qualifier?.render(short = true)
+    val binding = render(short = true, includeQualifier = false)
+    val name =
+      if (qualifier == null) {
+        binding
+      } else {
+        "$qualifier $binding"
+      }
+    return TraceNames(name = name, qualifier = qualifier, binding = binding)
+  }
+
   context(scope: IrBuilderWithScope)
   private fun IrExpression.wrapInTracedProvider(
     contextualTypeKey: IrContextualTypeKey,
@@ -328,7 +340,14 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     traceContext: IrExpression,
   ): IrExpression? {
     val tracedProvider = metroSymbols.tracedProvider ?: return null
+    val traceNames = contextualTypeKey.traceNames()
     return with(scope) {
+      val qualifierExpression =
+        if (traceNames.qualifier == null) {
+          irNull()
+        } else {
+          irString(traceNames.qualifier)
+        }
       irCallConstructor(
           tracedProvider.constructors.first { it.owner.isPrimary },
           listOf(providerValueType),
@@ -336,10 +355,14 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
         .apply {
           // traceContext
           arguments[0] = traceContext
-          // name
-          arguments[1] = irString(contextualTypeKey.render(short = true, includeQualifier = true))
+          // qualifier
+          arguments[1] = qualifierExpression
+          // binding
+          arguments[2] = irString(traceNames.binding)
+          // kind
+          arguments[3] = irNull()
           // provider
-          arguments[2] = this@wrapInTracedProvider
+          arguments[4] = this@wrapInTracedProvider
         }
     }
   }
