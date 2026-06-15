@@ -111,7 +111,8 @@ internal class Symbols(
   }
 
   object FqNames {
-    val androidxTracing = FqName("androidx.tracing")
+    // Weird but here to defeat shadow jar
+    val androidxTracing = FqName(listOf("androidx", "tracing").joinToString("."))
     val composeRuntime = FqName("androidx.compose.runtime")
     val javaUtil = FqName("java.util")
     val kotlinCollectionsPackageFqn = StandardClassIds.BASE_COLLECTIONS_PACKAGE
