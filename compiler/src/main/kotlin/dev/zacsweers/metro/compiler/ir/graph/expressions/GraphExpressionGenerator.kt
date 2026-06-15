@@ -214,7 +214,7 @@ private constructor(
                       arguments[i] = arg
                     }
                   }
-              maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             } else {
               codegenStats?.run { classConstructorNewInstanceCalls++ }
@@ -232,7 +232,7 @@ private constructor(
                     fieldInitKey = null,
                   )
                 }
-              maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             }
           } else {
@@ -358,7 +358,7 @@ private constructor(
 
               val directExpr =
                 irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
-              maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             } else {
               codegenStats?.run { providerNewInstanceCalls++ }
@@ -375,7 +375,7 @@ private constructor(
                     fieldInitKey = fieldInitKey,
                   )
                 }
-              maybeWrapInTracedProviderAndInvoke(directExpr, contextualTypeKey)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey)
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             }
           } else {

@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.parent
@@ -195,18 +196,65 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     }
   }
 
+  /**
+   * Wraps a direct instance expression in a `MetroTraceContext.trace` call when tracing is enabled.
+   *
+   * This is only for code paths that already have a `T` expression from direct constructor or
+   * provider-function invocation. Provider-valued access is decorated separately with
+   * `TracedProvider`, so this avoids creating a temporary `Provider<T>` just to trace and invoke
+   * it.
+   *
+   * Returns [directExpr] unchanged when this graph has no trace context or when [contextualTypeKey]
+   * is part of Metro's tracing infrastructure.
+   */
   context(scope: IrBuilderWithScope)
-  protected fun maybeWrapInTracedProviderAndInvoke(
+  protected fun maybeTraceDirectExpression(
     directExpr: IrExpression,
     contextualTypeKey: IrContextualTypeKey,
   ): IrExpression {
     val traceContext = traceContextFor(contextualTypeKey) ?: return directExpr
+    val traceFunction = metroSymbols.metroTraceContextTrace ?: return directExpr
+    val bindingType = contextualTypeKey.typeKey.type
+    val traceName = contextualTypeKey.render(short = true, includeQualifier = true)
+    val qualifierName = contextualTypeKey.typeKey.qualifier?.render(short = true)
+    val bindingName = contextualTypeKey.render(short = true, includeQualifier = false)
 
     return with(scope) {
-      val lambdaProvider = wrapInProviderFunction(contextualTypeKey.typeKey.type) { directExpr }
-      val tracedProvider =
-        lambdaProvider.wrapInTracedProvider(contextualTypeKey, traceContext) ?: return directExpr
-      tracedProvider.unwrapProvider(contextualTypeKey.typeKey.type)
+      val qualifierExpression =
+        if (qualifierName == null) {
+          irNull()
+        } else {
+          irString(qualifierName)
+        }
+      val traceBlock =
+        irLambda(
+          parent = parent,
+          receiverParameter = null,
+          valueParameters = emptyList(),
+          returnType = bindingType,
+          suspend = false,
+        ) {
+          +irReturn(directExpr)
+        }
+      irInvoke(
+        dispatchReceiver = traceContext,
+        callee = traceFunction,
+        typeHint = bindingType,
+        typeArgs = listOf(bindingType),
+        args =
+          listOf(
+            // name
+            irString(traceName),
+            // qualifier
+            qualifierExpression,
+            // binding
+            irString(bindingName),
+            // kind
+            irNull(),
+            // block
+            traceBlock,
+          ),
+      )
     }
   }
 
