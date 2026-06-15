@@ -94,6 +94,7 @@ val metroRuntimeKlibClasspath: Configuration by configurations.creating {
     attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
   }
 }
+val tracingClasspath: Configuration by configurations.creating {}
 val anvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 val kiAnvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 // include transitive in this case to grab compose and circuit runtimes
@@ -217,6 +218,7 @@ dependencies {
 
   metroRuntimeClasspath(project(":runtime"))
   metroRuntimeKlibClasspath(project(path = ":runtime", configuration = "jsRuntimeElements"))
+  tracingClasspath(libs.androidx.tracing)
 
   daggerInteropClasspath(project(":interop-dagger"))
 
@@ -437,6 +439,7 @@ tasks.withType<Test> {
 
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
   systemProperty("metroRuntime.klibClasspath", metroRuntimeKlibClasspath.asPath)
+  systemProperty("androidxTracing.classpath", tracingClasspath.asPath)
   systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
   systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)
   systemProperty("daggerRuntime.classpath", daggerRuntimeClasspath.asPath)
