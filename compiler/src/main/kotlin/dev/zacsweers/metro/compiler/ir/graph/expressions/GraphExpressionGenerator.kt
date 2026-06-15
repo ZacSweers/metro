@@ -164,6 +164,8 @@ private constructor(
         reportCompilerBug("Assisted inject factories should only be accessed as instances")
       }
 
+      val bindingKind = binding.diagnosticTypeName
+
       // If we're initializing the field for this key, don't ever try to reach for an existing
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
@@ -180,6 +182,7 @@ private constructor(
             actual = actual,
             contextualTypeKey = contextualTypeKey,
             allowPropertyGetter = fieldInitKey == null,
+            bindingKind = bindingKind,
           )
         }
       }
@@ -214,8 +217,12 @@ private constructor(
                       arguments[i] = arg
                     }
                   }
-              maybeTraceDirectExpression(directExpr, contextualTypeKey)
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+                .toTargetType(
+                  actual = AccessType.INSTANCE,
+                  contextualTypeKey = contextualTypeKey,
+                  bindingKind = bindingKind,
+                )
             } else {
               codegenStats?.run { classConstructorNewInstanceCalls++ }
               // Constructor isn't public - call newInstance() on the factory object instead
@@ -232,8 +239,12 @@ private constructor(
                     fieldInitKey = null,
                   )
                 }
-              maybeTraceDirectExpression(directExpr, contextualTypeKey)
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+                .toTargetType(
+                  actual = AccessType.INSTANCE,
+                  contextualTypeKey = contextualTypeKey,
+                  bindingKind = bindingKind,
+                )
             }
           } else {
             // Example_Factory.create(...)
@@ -254,6 +265,7 @@ private constructor(
                 factoryInstance.toTargetType(
                   actual = AccessType.PROVIDER,
                   contextualTypeKey = contextualTypeKey,
+                  bindingKind = bindingKind,
                 )
               }
           }
@@ -285,12 +297,17 @@ private constructor(
               actual = AccessType.INSTANCE,
               contextualTypeKey = contextualTypeKey,
               useInstanceFactory = false,
+              bindingKind = bindingKind,
             )
         }
 
         is ObjectClass -> {
           irGetObject(binding.type.symbol)
-            .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+            .toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = bindingKind,
+            )
         }
 
         is Alias -> {
@@ -321,6 +338,7 @@ private constructor(
               return materialized.toTargetType(
                 actual = AccessType.INSTANCE,
                 contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
               )
             }
           }
@@ -358,8 +376,12 @@ private constructor(
 
               val directExpr =
                 irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
-              maybeTraceDirectExpression(directExpr, contextualTypeKey)
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+                .toTargetType(
+                  actual = AccessType.INSTANCE,
+                  contextualTypeKey = contextualTypeKey,
+                  bindingKind = bindingKind,
+                )
             } else {
               codegenStats?.run { providerNewInstanceCalls++ }
               // Function isn't public - call factory's static newInstance() method instead
@@ -375,8 +397,12 @@ private constructor(
                     fieldInitKey = fieldInitKey,
                   )
                 }
-              maybeTraceDirectExpression(directExpr, contextualTypeKey)
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+                .toTargetType(
+                  actual = AccessType.INSTANCE,
+                  contextualTypeKey = contextualTypeKey,
+                  bindingKind = bindingKind,
+                )
             }
           } else {
             // Invoke its factory's create() function
@@ -389,7 +415,11 @@ private constructor(
                   fieldInitKey = fieldInitKey,
                 )
               }
-              .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
+              .toTargetType(
+                actual = AccessType.PROVIDER,
+                contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
+              )
           }
         }
 
@@ -428,6 +458,7 @@ private constructor(
           factoryProvider.toTargetType(
             actual = AccessType.PROVIDER,
             contextualTypeKey = contextualTypeKey,
+            bindingKind = bindingKind,
           )
         }
 
@@ -462,7 +493,11 @@ private constructor(
                 callee = metroSymbols.metroMembersInjectorsNoOp,
                 typeArgs = listOf(injectedType),
               )
-              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              .toTargetType(
+                actual = AccessType.INSTANCE,
+                contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
+              )
           } else {
             val injectorCreatorClass =
               if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
@@ -479,7 +514,11 @@ private constructor(
             // InjectableClass_MembersInjector.create(stringValueProvider,
             // exampleComponentProvider)
             irInvoke(callee = createFunction, args = args)
-              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              .toTargetType(
+                actual = AccessType.INSTANCE,
+                contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
+              )
           }
         }
 
@@ -532,6 +571,7 @@ private constructor(
               instanceExpr.toTargetType(
                 actual = AccessType.INSTANCE,
                 contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
               )
             }
           }
@@ -566,7 +606,11 @@ private constructor(
                 arguments[i + 1] = irGet(functionParams[i])
               }
             }
-            .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+            .toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = bindingKind,
+            )
         }
 
         is GraphExtensionFactory -> {
@@ -602,7 +646,11 @@ private constructor(
                   accessType = AccessType.INSTANCE,
                 )
             }
-            .toTargetType(contextualTypeKey = contextualTypeKey, actual = AccessType.INSTANCE)
+            .toTargetType(
+              contextualTypeKey = contextualTypeKey,
+              actual = AccessType.INSTANCE,
+              bindingKind = bindingKind,
+            )
         }
 
         is GraphDependency -> {
@@ -669,6 +717,7 @@ private constructor(
             actual = actual,
             allowPropertyGetter =
               binding.token?.let { !it.contextKey.isWrappedInProvider } ?: false,
+            bindingKind = bindingKind,
           )
         }
       }
