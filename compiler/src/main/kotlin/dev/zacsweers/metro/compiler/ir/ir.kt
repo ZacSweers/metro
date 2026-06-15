@@ -1976,18 +1976,31 @@ internal fun TargetPlatform?.usesKlib(): Boolean {
 }
 
 internal fun TargetPlatform?.supportsTracing(): Boolean {
-  return this != null && isJvm()
+  return this == null || isJvm()
 }
 
 internal fun IrMetroContext.runtimeTracingAvailable(): Boolean {
-  if (!options.enableRuntimeTracing) return false
-  if (!platform.supportsTracing()) return false
-  if (metroSymbols.tracer == null) return false
-  if (metroSymbols.metroTraceContext == null) return false
-  if (metroSymbols.metroTraceContextTrace == null) return false
-  if (metroSymbols.metroTraceContextChild == null) return false
-  if (metroSymbols.tracedProvider == null) return false
-  return true
+  return runtimeTracingUnavailableReason() == null
+}
+
+internal fun IrMetroContext.runtimeTracingUnavailableReason(): String? {
+  if (!options.enableRuntimeTracing) return "Runtime tracing is not enabled."
+  if (!platform.supportsTracing())
+    return "Runtime tracing is not supported on the given platform ($platform)."
+  if (metroSymbols.tracer == null) return "androidx.tracing.Tracer is missing from the classpath."
+  if (metroSymbols.metroTraceContext == null) {
+    return "Metro tracing infra is missing from the classpath."
+  }
+  if (metroSymbols.metroTraceContextTrace == null) {
+    return "Metro tracing infra is missing from the classpath."
+  }
+  if (metroSymbols.metroTraceContextChild == null) {
+    return "Metro tracing infra is missing from the classpath."
+  }
+  if (metroSymbols.tracedProvider == null) {
+    return "Metro tracing infra is missing from the classpath."
+  }
+  return null
 }
 
 context(context: IrMetroContext)

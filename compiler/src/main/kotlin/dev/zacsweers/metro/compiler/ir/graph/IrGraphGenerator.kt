@@ -9,7 +9,9 @@ import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -43,11 +45,13 @@ import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
-import dev.zacsweers.metro.compiler.ir.runtimeTracingAvailable
+import dev.zacsweers.metro.compiler.ir.runtimeTracingUnavailableReason
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
+import dev.zacsweers.metro.compiler.ir.supportsTracing
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -410,7 +414,14 @@ internal class IrGraphGenerator(
     ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
     parentGraphInstanceProperty: IrProperty?,
   ): IrProperty? {
-    if (!runtimeTracingAvailable()) return null
+    val unavailableReason = runtimeTracingUnavailableReason()
+    if (unavailableReason != null) {
+      if (options.enableRuntimeTracing && platform.supportsTracing()) {
+        reportCompat(node.sourceGraph, MetroDiagnostics.METRO_TRACE_ERROR, unavailableReason)
+        exitProcessing()
+      }
+      return null
+    }
 
     val metroTraceContext = metroSymbols.metroTraceContext ?: return null
     val traceContextType = metroTraceContext.defaultType
