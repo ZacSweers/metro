@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
+import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -25,6 +27,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
@@ -118,14 +121,15 @@ private constructor(
   override fun generateTracerBindingCode(): IrExpression {
     val tracer =
       metroSymbols.tracer
-        ?: reportCompilerBug(
+        ?: reportRuntimeTracingConfigurationError(
           "Runtime tracing is enabled but androidx.tracing.Tracer is missing from the classpath."
         )
     val tracerTypeKey = IrTypeKey(tracer.defaultType)
     val tracerBinding =
       bindingGraph.findBinding(tracerTypeKey)
-        ?: reportCompilerBug(
-          "Runtime tracing is enabled but no Tracer binding was provided in the graph."
+        ?: reportRuntimeTracingConfigurationError(
+          "Runtime tracing is enabled but this graph does not bind androidx.tracing.Tracer. " +
+            "Add it as a graph input or provide a binding for it."
         )
     return generateBindingCode(
       tracerBinding,
@@ -133,6 +137,11 @@ private constructor(
       AccessType.INSTANCE,
       null,
     )
+  }
+
+  private fun reportRuntimeTracingConfigurationError(message: String): Nothing {
+    reportCompat(node.sourceGraph, MetroDiagnostics.METRO_TRACE_ERROR, message)
+    exitProcessing()
   }
 
   context(scope: IrBuilderWithScope)
