@@ -70,6 +70,7 @@ private constructor(
   private val ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
   /** Optional context for generating expressions inside a shard. */
   private val shardContext: ShardExpressionContext?,
+  private val traceContextProperty: IrProperty?,
 ) : BindingExpressionGenerator<IrBinding>(context, traceScope) {
 
   class Factory(
@@ -86,6 +87,7 @@ private constructor(
      * Used to access ancestor bindings in non-shard context.
      */
     private val ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
+    private val traceContextProperty: IrProperty?,
   ) {
     fun create(
       thisReceiver: IrValueParameter,
@@ -103,19 +105,13 @@ private constructor(
         traceScope = traceScope,
         ancestorGraphProperties = ancestorGraphProperties,
         shardContext = shardContext,
+        traceContextProperty = traceContextProperty,
       )
     }
   }
 
   private val wrappedTypeGenerators = listOf(IrOptionalExpressionGenerator).associateBy { it.key }
   private val multibindingExpressionGenerator by memoize { MultibindingExpressionGenerator(this) }
-
-  override val traceGraphName: String by memoize { node.originalTypeKey.render(short = true) }
-
-  override val traceGraphPath: String by memoize {
-    val graphPath = generateSequence<GraphNode>(node) { it.parentGraph }.toList().asReversed()
-    graphPath.joinToString(separator = "/") { it.originalTypeKey.render(short = true) }
-  }
 
   /** Resolves the existing graph binding for AndroidX's tracer input. */
   context(scope: IrBuilderWithScope)
@@ -137,6 +133,12 @@ private constructor(
       AccessType.INSTANCE,
       null,
     )
+  }
+
+  context(scope: IrBuilderWithScope)
+  override fun generateTraceContextCode(): IrExpression? {
+    val traceContextProperty = traceContextProperty ?: return null
+    return generateTraceContextPropertyAccess(traceContextProperty)
   }
 
   context(scope: IrBuilderWithScope)
@@ -892,6 +894,32 @@ private constructor(
       isProviderProperty = bindingProperty.storedKey.isWrappedInProvider,
     )
   }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateTraceContextPropertyAccess(traceContextProperty: IrProperty): IrExpression =
+    with(scope) {
+      fun graphAccess(): IrExpression {
+        val graphProperty =
+          shardContext?.graphProperty
+            ?: reportCompilerBug(
+              "Shard ${shardContext?.currentShardIndex} requires graph access but has no graph property"
+            )
+        return irGetProperty(irGet(thisReceiver), graphProperty)
+      }
+
+      if (shardContext == null) {
+        return@with irGetProperty(irGet(thisReceiver), traceContextProperty)
+      }
+
+      val graph =
+        if (shardContext.isSwitchingProvider) {
+          val base = graphAccess()
+          shardContext.shardGraphProperty?.let { irGetProperty(base, it) } ?: base
+        } else {
+          graphAccess()
+        }
+      irGetProperty(graph, traceContextProperty)
+    }
 
   /**
    * Generates the correct property access expression based on shard context.

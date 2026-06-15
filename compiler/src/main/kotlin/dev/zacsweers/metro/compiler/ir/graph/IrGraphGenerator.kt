@@ -44,6 +44,7 @@ import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
+import dev.zacsweers.metro.compiler.ir.runtimeTracingAvailable
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
@@ -77,6 +78,7 @@ import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irSetField
+import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
@@ -85,6 +87,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -236,22 +239,6 @@ internal class IrGraphGenerator(
           buildAncestorGraphProperties(parentGraphInstanceProperty)
         }
 
-      // Create expression generator factory
-      val expressionGeneratorFactory =
-        trace("Create expression generator factory") {
-          GraphExpressionGenerator.Factory(
-            context = this@IrGraphGenerator,
-            traceScope = this@IrGraphGenerator,
-            node = node,
-            bindingPropertyContext = bindingPropertyContext,
-            ancestorGraphProperties = ancestorGraphProperties,
-            bindingGraph = bindingGraph,
-            metroDeclarations = metroDeclarations,
-            graphExtensionGenerator = graphExtensionGenerator,
-            codegenStats = codegenStats,
-          )
-        }
-
       // Register the parent graph instance property in the binding context (if present)
       trace("Register parent graph property") {
         registerParentGraphPropertyToBindingPropertyContext(
@@ -275,6 +262,16 @@ internal class IrGraphGenerator(
 
       // Set up this graph's self-binding property
       trace("Setup this-graph property") { setupThisGraphProperty(thisReceiverParameter) }
+
+      val traceContextProperty =
+        trace("Setup runtime trace context property") {
+          setupRuntimeTraceContextProperty(thisReceiverParameter, ancestorGraphProperties)
+        }
+
+      val expressionGeneratorFactory =
+        trace("Create expression generator factory") {
+          createExpressionGeneratorFactory(ancestorGraphProperties, traceContextProperty)
+        }
 
       // Filter bindings that need properties
       val collectedBindings =
@@ -384,6 +381,70 @@ internal class IrGraphGenerator(
       }
     }
     return bindingPropertyContext
+  }
+
+  private fun createExpressionGeneratorFactory(
+    ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
+    traceContextProperty: IrProperty?,
+  ): GraphExpressionGenerator.Factory {
+    return GraphExpressionGenerator.Factory(
+      context = this@IrGraphGenerator,
+      traceScope = this@IrGraphGenerator,
+      node = node,
+      bindingPropertyContext = bindingPropertyContext,
+      ancestorGraphProperties = ancestorGraphProperties,
+      traceContextProperty = traceContextProperty,
+      bindingGraph = bindingGraph,
+      metroDeclarations = metroDeclarations,
+      graphExtensionGenerator = graphExtensionGenerator,
+      codegenStats = codegenStats,
+    )
+  }
+
+  private fun IrClass.setupRuntimeTraceContextProperty(
+    thisReceiverParameter: IrValueParameter,
+    ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
+  ): IrProperty? {
+    if (!runtimeTracingAvailable()) return null
+
+    val metroTraceContext = metroSymbols.metroTraceContext ?: return null
+    val traceContextType = metroTraceContext.defaultType
+    val bootstrapExpressionGeneratorFactory =
+      createExpressionGeneratorFactory(
+        ancestorGraphProperties = ancestorGraphProperties,
+        traceContextProperty = null,
+      )
+
+    return addSimpleInstanceProperty(
+      name = "metroTraceContext",
+      typeKey = IrTypeKey(traceContextType),
+      fieldType = traceContextType,
+    ) {
+      val tracerExpression =
+        bootstrapExpressionGeneratorFactory
+          .create(thisReceiverParameter)
+          .generateTracerBindingCode()
+      irCallConstructor(metroTraceContext.constructors.first { it.owner.isPrimary }, emptyList())
+        .apply {
+          // tracer
+          arguments[0] = tracerExpression
+          // category
+          arguments[1] = irString("dev.zacsweers.metro")
+          // graphName
+          arguments[2] = irString(runtimeTraceGraphName())
+          // graphPath
+          arguments[3] = irString(runtimeTraceGraphPath())
+        }
+    }
+  }
+
+  private fun runtimeTraceGraphName(): String {
+    return node.originalTypeKey.render(short = true)
+  }
+
+  private fun runtimeTraceGraphPath(): String {
+    val graphPath = generateSequence<GraphNode>(node) { it.parentGraph }.toList().asReversed()
+    return graphPath.joinToString(separator = "/") { it.originalTypeKey.render(short = true) }
   }
 
   /**
