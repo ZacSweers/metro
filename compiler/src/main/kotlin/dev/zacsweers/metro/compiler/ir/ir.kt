@@ -1985,6 +1985,7 @@ internal fun IrMetroContext.runtimeTracingAvailable(): Boolean {
   if (metroSymbols.tracer == null) return false
   if (metroSymbols.metroTraceContext == null) return false
   if (metroSymbols.metroTraceContextTrace == null) return false
+  if (metroSymbols.metroTraceContextChild == null) return false
   if (metroSymbols.tracedProvider == null) return false
   return true
 }

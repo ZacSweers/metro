@@ -265,7 +265,11 @@ internal class IrGraphGenerator(
 
       val traceContextProperty =
         trace("Setup runtime trace context property") {
-          setupRuntimeTraceContextProperty(thisReceiverParameter, ancestorGraphProperties)
+          setupRuntimeTraceContextProperty(
+            thisReceiverParameter,
+            ancestorGraphProperties,
+            parentGraphInstanceProperty,
+          )
         }
 
       val expressionGeneratorFactory =
@@ -404,6 +408,7 @@ internal class IrGraphGenerator(
   private fun IrClass.setupRuntimeTraceContextProperty(
     thisReceiverParameter: IrValueParameter,
     ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
+    parentGraphInstanceProperty: IrProperty?,
   ): IrProperty? {
     if (!runtimeTracingAvailable()) return null
 
@@ -416,26 +421,63 @@ internal class IrGraphGenerator(
       )
 
     return addSimpleInstanceProperty(
-      name = "metroTraceContext",
-      typeKey = IrTypeKey(traceContextType),
-      fieldType = traceContextType,
-    ) {
-      val tracerExpression =
-        bootstrapExpressionGeneratorFactory
-          .create(thisReceiverParameter)
-          .generateTracerBindingCode()
-      irCallConstructor(metroTraceContext.constructors.first { it.owner.isPrimary }, emptyList())
-        .apply {
-          // tracer
-          arguments[0] = tracerExpression
-          // category
-          arguments[1] = irString("dev.zacsweers.metro")
-          // graphName
-          arguments[2] = irString(runtimeTraceGraphName())
-          // graphPath
-          arguments[3] = irString(runtimeTraceGraphPath())
+        name = "metroTraceContext",
+        typeKey = IrTypeKey(traceContextType),
+        fieldType = traceContextType,
+      ) {
+        val parentTraceContext =
+          parentRuntimeTraceContextChild(
+            thisReceiverParameter = thisReceiverParameter,
+            parentGraphInstanceProperty = parentGraphInstanceProperty,
+            traceContextType = traceContextType,
+          )
+        if (parentTraceContext != null) {
+          return@addSimpleInstanceProperty parentTraceContext
         }
-    }
+
+        val tracerExpression =
+          bootstrapExpressionGeneratorFactory
+            .create(thisReceiverParameter)
+            .generateTracerBindingCode()
+        irCallConstructor(metroTraceContext.constructors.first { it.owner.isPrimary }, emptyList())
+          .apply {
+            // tracer
+            arguments[0] = tracerExpression
+            // category
+            arguments[1] = irString("dev.zacsweers.metro")
+            // graphName
+            arguments[2] = irString(runtimeTraceGraphName())
+            // graphPath
+            arguments[3] = irString(runtimeTraceGraphPath())
+          }
+      }
+      .also { runtimeTraceContextProperty = it }
+  }
+
+  /**
+   * Builds `this.parent.metroTraceContext.child(graphName)` for generated graph extensions.
+   *
+   * Extension impls already store their parent graph instance. When the parent graph has a
+   * generated trace context, using `child()` reuses the same AndroidX tracer and derives this
+   * extension's graph path from the parent context.
+   */
+  private fun IrBuilderWithScope.parentRuntimeTraceContextChild(
+    thisReceiverParameter: IrValueParameter,
+    parentGraphInstanceProperty: IrProperty?,
+    traceContextType: IrType,
+  ): IrExpression? {
+    val parentGraphProperty = parentGraphInstanceProperty ?: return null
+    val childFunction = metroSymbols.metroTraceContextChild ?: return null
+    val parentGraphClass = parentGraphProperty.backingField?.type?.rawTypeOrNull() ?: return null
+    val parentTraceContextProperty = parentGraphClass.runtimeTraceContextProperty ?: return null
+    val parentGraph = irGetProperty(irGet(thisReceiverParameter), parentGraphProperty)
+    val parentTraceContext = irGetProperty(parentGraph, parentTraceContextProperty)
+    return irInvoke(
+      dispatchReceiver = parentTraceContext,
+      callee = childFunction,
+      typeHint = traceContextType,
+      args = listOf(irString(runtimeTraceGraphName())),
+    )
   }
 
   private fun runtimeTraceGraphName(): String {
@@ -1814,6 +1856,9 @@ internal class IrGraphGenerator(
  * bindings.
  */
 internal var IrClass.parentGraphInstanceProperty: IrProperty? by irAttribute(copyByDefault = false)
+
+/** Stores the generated runtime trace context property for graph extension child contexts. */
+internal var IrClass.runtimeTraceContextProperty: IrProperty? by irAttribute(copyByDefault = false)
 
 /**
  * Stores the pre-computed ancestor graph property chains for extension graphs. Maps ancestor graph

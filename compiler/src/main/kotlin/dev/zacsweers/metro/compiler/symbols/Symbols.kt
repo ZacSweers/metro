@@ -403,6 +403,10 @@ internal class Symbols(
     metroTraceContext?.owner?.functions?.single { it.name.asString() == "trace" }?.symbol
   }
 
+  val metroTraceContextChild: IrSimpleFunctionSymbol? by lazy {
+    metroTraceContext?.owner?.functions?.single { it.name.asString() == "child" }?.symbol
+  }
+
   val tracer: IrClassSymbol? by lazy {
     pluginContext.referenceClass(ClassIds.tracer)
   }
