@@ -1,0 +1,1 @@
+/RuntimeTracingRequiresGraphFactory.kt:8:11: error: Runtime tracing is enabled, so root dependency graphs must declare a `@DependencyGraph.Factory` that takes a `@Provides tracer: androidx.tracing.Tracer` input.
