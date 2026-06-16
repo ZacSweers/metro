@@ -43,6 +43,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
     private const val COMPILER_VERSION_OVERRIDE_PROPERTY = "metroCompilerVersionOverride"
     private const val CIRCUIT_ANNOTATIONS_DEP =
       "com.slack.circuit:circuit-codegen-annotations:0.33.0"
+    private const val METRO_GROUP = "dev.zacsweers.metro"
   }
 
   private val problemReporter = problems.reporter
@@ -250,24 +251,28 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
     if (extension.automaticallyAddRuntimeDependencies.get()) {
       val implConfig = kotlinCompilation.defaultSourceSet.implementationConfigurationName
       val circuitEnabled = extension.enableCircuitCodegen.getOrElse(false)
-      project.dependencies.add(implConfig, "dev.zacsweers.metro:runtime:$VERSION")
+      val runtimeTracingEnabled = extension.enableRuntimeTracing.getOrElse(false)
+      project.dependencies.add(implConfig, "$METRO_GROUP:runtime:$VERSION")
       if (circuitEnabled) {
         project.dependencies.add(implConfig, CIRCUIT_ANNOTATIONS_DEP)
       }
 
       if (implConfig == "metadataCompilationImplementation") {
-        project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
+        project.dependencies.add("commonMainImplementation", "$METRO_GROUP:runtime:$VERSION")
         if (circuitEnabled) {
           project.dependencies.add("commonMainImplementation", CIRCUIT_ANNOTATIONS_DEP)
         }
       }
 
       if (isJvmTarget) {
+        if (runtimeTracingEnabled) {
+          project.dependencies.add(implConfig, "$METRO_GROUP:metro-trace:$VERSION")
+        }
         if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
-          project.dependencies.add(implConfig, "dev.zacsweers.metro:interop-dagger:$VERSION")
+          project.dependencies.add(implConfig, "$METRO_GROUP:interop-dagger:$VERSION")
         }
         if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
-          project.dependencies.add(implConfig, "dev.zacsweers.metro:interop-guice:$VERSION")
+          project.dependencies.add(implConfig, "$METRO_GROUP:interop-guice:$VERSION")
         }
       }
     }

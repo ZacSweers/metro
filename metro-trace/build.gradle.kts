@@ -6,6 +6,10 @@ plugins {
 }
 
 dependencies {
+  api(project(":runtime"))
   api(libs.androidx.tracing)
   implementation(libs.androidx.tracing.wire)
+  testImplementation(libs.kotlin.testJunit5)
 }
+
+tasks.withType<Test>().configureEach { useJUnitPlatform() }

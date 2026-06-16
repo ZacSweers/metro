@@ -119,6 +119,7 @@ internal class Symbols(
     val metroHintsPackage = FqName(StringNames.METRO_HINTS_PACKAGE)
     val metroRuntimeInternalPackage = FqName(StringNames.METRO_RUNTIME_INTERNAL_PACKAGE)
     val metroRuntimePackage = FqName(StringNames.METRO_RUNTIME_PACKAGE)
+    val metroTraceInternalPackage = FqName("dev.zacsweers.metro.trace.internal")
     val GraphFactoryInvokeFunctionMarkerClass =
       metroRuntimeInternalPackage.child("GraphFactoryInvokeFunctionMarker".asName())
     val CallableMetadataClass =
@@ -202,10 +203,9 @@ internal class Symbols(
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())
     val metroInstanceFactory =
       ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
-    val metroTraceContext =
-      ClassId(FqNames.metroRuntimeInternalPackage, "MetroTraceContext".asName())
+    val metroTraceContext = ClassId(FqNames.metroTraceInternalPackage, "MetroTraceContext".asName())
     val tracer = ClassId(FqNames.androidxTracing, "Tracer".asName())
-    val tracedProvider = ClassId(FqNames.metroRuntimeInternalPackage, "TracedProvider".asName())
+    val tracedProvider = ClassId(FqNames.metroTraceInternalPackage, "TracedProvider".asName())
 
     val function0 = StandardClassIds.FunctionN(0)
 

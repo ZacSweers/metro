@@ -12,11 +12,6 @@ metroProject { configureCommonKmpTargets("metro-runtime") }
 kotlin {
   sourceSets {
     commonMain { dependencies { api(libs.kotlin.stdlib.published) } }
-    jvmMain {
-      dependencies {
-        api(libs.androidx.tracing)
-      }
-    }
     webMain {
       dependencies {
         // https://youtrack.jetbrains.com/issue/KT-84582
