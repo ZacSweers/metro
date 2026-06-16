@@ -192,6 +192,11 @@ private constructor(
             contextualTypeKey = contextualTypeKey,
             allowPropertyGetter = fieldInitKey == null,
             bindingKind = bindingKind,
+            // This is smelly
+            // Property access has to know whether provider tracing already happened in the
+            // property initializer. A future binding-access pipeline should make provider
+            // decoration a single canonical step so callers do not need this escape hatch.
+            decorateProvider = actual != AccessType.PROVIDER || accessType != AccessType.PROVIDER,
           )
         }
       }
