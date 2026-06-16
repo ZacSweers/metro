@@ -47,6 +47,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphGenerator
+import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
@@ -143,6 +144,7 @@ internal class DependencyGraphTransformer(
   private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
   private val boundTypeResolver: IrBoundTypeResolver,
+  private val bindingExpressionDecorator: BindingExpressionDecorator,
   traceScope: TraceScope,
 ) : IrMetroContext by context, TraceScope by traceScope {
 
@@ -835,6 +837,7 @@ internal class DependencyGraphTransformer(
               sealResult = validationResult.sealResult,
               metroDeclarations = metroDeclarations,
               graphExtensionGenerator = validationResult.graphExtensionGenerator,
+              bindingExpressionDecorator = bindingExpressionDecorator,
               parentBindingContext = parentBindingContext,
             )
           }

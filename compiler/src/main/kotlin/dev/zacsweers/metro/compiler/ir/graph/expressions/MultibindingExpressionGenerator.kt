@@ -52,7 +52,12 @@ import org.jetbrains.kotlin.platform.isJs
 
 internal class MultibindingExpressionGenerator(
   private val parentGenerator: BindingExpressionGenerator<IrBinding>
-) : BindingExpressionGenerator<IrBinding.Multibinding>(parentGenerator, parentGenerator) {
+) :
+  BindingExpressionGenerator<IrBinding.Multibinding>(
+    parentGenerator,
+    parentGenerator,
+    parentGenerator.expressionDecorator,
+  ) {
   override val thisReceiver: IrValueParameter
     get() = parentGenerator.thisReceiver
 
@@ -62,11 +67,6 @@ internal class MultibindingExpressionGenerator(
   context(scope: IrBuilderWithScope)
   override fun generateTracerBindingCode(): IrExpression {
     return parentGenerator.generateTracerBindingCode()
-  }
-
-  context(scope: IrBuilderWithScope)
-  override fun generateTraceContextCode(): IrExpression? {
-    return parentGenerator.generateTraceContextCode()
   }
 
   context(scope: IrBuilderWithScope)

@@ -26,6 +26,7 @@ import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.doubleCheck
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.IrGraphShardGenerator
@@ -125,6 +126,7 @@ internal class IrGraphGenerator(
   private val sealResult: IrBindingGraph.BindingGraphResult,
   private val metroDeclarations: MetroDeclarations,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
+  private val bindingExpressionDecorator: BindingExpressionDecorator,
   /** Parent graph's binding property context for hierarchical lookup. Null for root graphs. */
   parentBindingContext: BindingPropertyContext?,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
@@ -406,6 +408,7 @@ internal class IrGraphGenerator(
       metroDeclarations = metroDeclarations,
       graphExtensionGenerator = graphExtensionGenerator,
       codegenStats = codegenStats,
+      bindingExpressionDecorator = bindingExpressionDecorator,
     )
   }
 

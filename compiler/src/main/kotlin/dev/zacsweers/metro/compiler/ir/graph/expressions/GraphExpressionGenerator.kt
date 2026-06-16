@@ -66,6 +66,7 @@ private constructor(
   private val metroDeclarations: MetroDeclarations,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   private val codegenStats: GraphMetadataReporter.CodegenStats?,
+  private val bindingExpressionDecorator: BindingExpressionDecorator,
   /**
    * For extension graphs, maps ancestor graph type key -> list of properties to chain through. Used
    * to access ancestor bindings in non-shard context.
@@ -74,7 +75,21 @@ private constructor(
   /** Optional context for generating expressions inside a shard. */
   private val shardContext: ShardExpressionContext?,
   private val traceContextProperty: IrProperty?,
-) : BindingExpressionGenerator<IrBinding>(context, traceScope) {
+) :
+  BindingExpressionGenerator<IrBinding>(
+    context,
+    traceScope,
+    bindingExpressionDecorator.forGraph(
+      GraphBindingExpressionScope(
+        GraphTraceContextAccessor(
+          context = context,
+          thisReceiver = thisReceiver,
+          traceContextProperty = traceContextProperty,
+          shardContext = shardContext,
+        )
+      )
+    ),
+  ) {
 
   class Factory(
     private val context: IrMetroContext,
@@ -85,6 +100,7 @@ private constructor(
     private val metroDeclarations: MetroDeclarations,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
     private val codegenStats: GraphMetadataReporter.CodegenStats?,
+    private val bindingExpressionDecorator: BindingExpressionDecorator,
     /**
      * For extension graphs, maps ancestor graph type key -> list of properties to chain through.
      * Used to access ancestor bindings in non-shard context.
@@ -105,6 +121,7 @@ private constructor(
         metroDeclarations = metroDeclarations,
         graphExtensionGenerator = graphExtensionGenerator,
         codegenStats = codegenStats,
+        bindingExpressionDecorator = bindingExpressionDecorator,
         traceScope = traceScope,
         ancestorGraphProperties = ancestorGraphProperties,
         shardContext = shardContext,
@@ -145,12 +162,6 @@ private constructor(
   }
 
   context(scope: IrBuilderWithScope)
-  override fun generateTraceContextCode(): IrExpression? {
-    val traceContextProperty = traceContextProperty ?: return null
-    return generateTraceContextPropertyAccess(traceContextProperty)
-  }
-
-  context(scope: IrBuilderWithScope)
   override fun generateBindingCode(
     binding: IrBinding,
     contextualTypeKey: IrContextualTypeKey,
@@ -187,16 +198,19 @@ private constructor(
           // Determine the correct receiver for property access based on shard context
           val propertyAccess = generatePropertyAccess(property, shardProperty, shardIndex)
 
+          val providerOrigin =
+            if (storedKey.isWrappedInProvider) {
+              ProviderExpressionOrigin.ProviderProperty
+            } else {
+              ProviderExpressionOrigin.NewExpression
+            }
           return propertyAccess.toTargetType(
             actual = actual,
+            requested = accessType,
             contextualTypeKey = contextualTypeKey,
             allowPropertyGetter = fieldInitKey == null,
             bindingKind = bindingKind,
-            // This is smelly
-            // Property access has to know whether provider tracing already happened in the
-            // property initializer. A future binding-access pipeline should make provider
-            // decoration a single canonical step so callers do not need this escape hatch.
-            decorateProvider = actual != AccessType.PROVIDER || accessType != AccessType.PROVIDER,
+            providerOrigin = providerOrigin,
           )
         }
       }
@@ -957,32 +971,6 @@ private constructor(
       isProviderProperty = bindingProperty.storedKey.isWrappedInProvider,
     )
   }
-
-  context(scope: IrBuilderWithScope)
-  private fun generateTraceContextPropertyAccess(traceContextProperty: IrProperty): IrExpression =
-    with(scope) {
-      fun graphAccess(): IrExpression {
-        val graphProperty =
-          shardContext?.graphProperty
-            ?: reportCompilerBug(
-              "Shard ${shardContext?.currentShardIndex} requires graph access but has no graph property"
-            )
-        return irGetProperty(irGet(thisReceiver), graphProperty)
-      }
-
-      if (shardContext == null) {
-        return@with irGetProperty(irGet(thisReceiver), traceContextProperty)
-      }
-
-      val graph =
-        if (shardContext.isSwitchingProvider) {
-          val base = graphAccess()
-          shardContext.shardGraphProperty?.let { irGetProperty(base, it) } ?: base
-        } else {
-          graphAccess()
-        }
-      irGetProperty(graph, traceContextProperty)
-    }
 
   /**
    * Generates the correct property access expression based on shard context.

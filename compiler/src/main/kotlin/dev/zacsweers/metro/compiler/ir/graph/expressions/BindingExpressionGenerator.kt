@@ -11,16 +11,10 @@ import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
-import dev.zacsweers.metro.compiler.ir.stripProvider
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.irCallConstructor
-import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irReturn
-import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -28,11 +22,11 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.constructors
 
 internal abstract class BindingExpressionGenerator<T : IrBinding>(
   context: IrMetroContext,
   traceScope: TraceScope,
+  internal val expressionDecorator: GraphBindingExpressionDecorator,
 ) : IrMetroContext by context, TraceScope by traceScope {
   abstract val thisReceiver: IrValueParameter
   abstract val bindingGraph: IrBindingGraph
@@ -86,10 +80,8 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
    *   is intentional since the getter lazily creates the extension.
    * @param bindingKind Optional diagnostic label for the binding implementation that produced this
    *   expression. When present, it is attached as tracing metadata.
-   * @param decorateProvider Whether this conversion may wrap provider results in `TracedProvider`.
-   *   Smelly bc callers currently use this to avoid redecorating stored provider properties that
-   *   were already traced by their initializer. A future binding-access pipeline should own that
-   *   decision instead of exposing it as a per-call escape hatch.
+   * @param providerOrigin Where a provider-valued result came from. Decorators can use this to
+   *   avoid repeating work that happened while a stored provider property was initialized.
    */
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.toTargetType(
@@ -113,7 +105,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     useInstanceFactory: Boolean = true,
     allowPropertyGetter: Boolean = false,
     bindingKind: String? = null,
-    decorateProvider: Boolean = true,
+    providerOrigin: ProviderExpressionOrigin = ProviderExpressionOrigin.NewExpression,
   ): IrExpression {
     val accessTransformed =
       when (requested) {
@@ -123,7 +115,9 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
             // actual is an instance, wrap it
             wrapInInstanceFactory(contextualTypeKey.typeKey.type, allowPropertyGetter)
           } else {
-            scope.wrapInProviderFunction(contextualTypeKey.typeKey.type) { this@toTargetType }
+            scope.wrapInProviderFunction(contextualTypeKey.typeKey.type) {
+              this@toTargetType
+            }
           }
         }
         INSTANCE -> {
@@ -132,17 +126,18 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
         }
       }
 
-    val traceContext =
-      if (decorateProvider && requested == AccessType.PROVIDER) {
-        traceContextFor(contextualTypeKey)
-      } else {
-        null
-      }
     val maybeTraced =
-      if (traceContext == null) {
-        accessTransformed
+      if (requested == AccessType.PROVIDER) {
+        expressionDecorator.decorateProviderExpression(
+          accessTransformed,
+          ProviderExpressionRequest(
+            contextualTypeKey = contextualTypeKey,
+            bindingKind = bindingKind,
+            origin = providerOrigin,
+          ),
+        )
       } else {
-        accessTransformed.toTracedMetroProvider(contextualTypeKey, traceContext, bindingKind)
+        accessTransformed
       }
 
     // Convert provider if needed (e.g., Metro -> Dagger)
@@ -166,17 +161,6 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
    */
   context(scope: IrBuilderWithScope)
   abstract fun generateTracerBindingCode(): IrExpression
-
-  /**
-   * Returns the IR property access for the generated `metroTraceContext` property.
-   *
-   * `TracedProvider` construction uses this as its `traceContext` argument. Main graph generation
-   * reads `this.metroTraceContext`; shard and switching-provider generation read the same property
-   * through their graph reference. Returns `null` for bootstrap generators that run while
-   * `metroTraceContext` itself is being initialized.
-   */
-  context(scope: IrBuilderWithScope)
-  abstract fun generateTraceContextCode(): IrExpression?
 
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.wrapInInstanceFactory(
@@ -218,8 +202,8 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
    * `TracedProvider`, so this avoids creating a temporary `Provider<T>` just to trace and invoke
    * it.
    *
-   * Returns [directExpr] unchanged when this graph has no trace context or when [contextualTypeKey]
-   * is part of Metro's tracing infrastructure.
+   * Returns [directExpr] unchanged when this graph's expression decorators do not need to observe
+   * the direct value.
    */
   context(scope: IrBuilderWithScope)
   protected fun maybeTraceDirectExpression(
@@ -227,150 +211,12 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     contextualTypeKey: IrContextualTypeKey,
     bindingKind: String?,
   ): IrExpression {
-    val traceContext = traceContextFor(contextualTypeKey) ?: return directExpr
-    val traceFunction = metroSymbols.metroTraceContextTrace ?: return directExpr
-    val bindingType = contextualTypeKey.typeKey.type
-    val traceNames = contextualTypeKey.traceNames()
-
-    return with(scope) {
-      val qualifierExpression = traceNames.qualifier.toNullableStringExpression()
-      val kindExpression = bindingKind.toNullableStringExpression()
-      val traceBlock =
-        irLambda(
-          parent = parent,
-          receiverParameter = null,
-          valueParameters = emptyList(),
-          returnType = bindingType,
-          suspend = false,
-        ) {
-          +irReturn(directExpr)
-        }
-      irInvoke(
-        dispatchReceiver = traceContext,
-        callee = traceFunction,
-        typeHint = bindingType,
-        typeArgs = listOf(bindingType),
-        args =
-          listOf(
-            // name
-            irString(traceNames.name),
-            // qualifier
-            qualifierExpression,
-            // binding
-            irString(traceNames.binding),
-            // kind
-            kindExpression,
-            // block
-            traceBlock,
-          ),
-      )
-    }
-  }
-
-  context(scope: IrBuilderWithScope)
-  private fun traceContextFor(contextualTypeKey: IrContextualTypeKey): IrExpression? {
-    if (contextualTypeKey.isTracingInfrastructure) return null
-    return generateTraceContextCode()
-  }
-
-  private val IrContextualTypeKey.isTracingInfrastructure: Boolean
-    get() {
-      val classId = typeKey.classId
-      return classId == Symbols.ClassIds.tracer || classId == Symbols.ClassIds.metroTraceContext
-    }
-
-  /**
-   * Converts a provider-valued expression to Metro's `Provider` type before tracing it.
-   *
-   * `TracedProvider` delegates to Metro `Provider<T>`, so provider expressions from Dagger, Javax,
-   * Jakarta, Guice, or function providers must be normalized before decoration. `toTargetType()`
-   * converts the traced Metro provider back to the requested provider or lazy type afterward.
-   */
-  context(scope: IrBuilderWithScope)
-  private fun IrExpression.toTracedMetroProvider(
-    contextualTypeKey: IrContextualTypeKey,
-    traceContext: IrExpression,
-    bindingKind: String?,
-  ): IrExpression {
-    val traceContextualTypeKey = contextualTypeKey.providerValueContextualTypeKey()
-    val providerValueType = traceContextualTypeKey.toIrType()
-    val canonicalTraceProviderTarget = traceContextualTypeKey.wrapInProvider()
-    val metroProvider =
-      with(scope) {
-        with(metroSymbols.providerTypeConverter) {
-          this@toTracedMetroProvider.convertTo(canonicalTraceProviderTarget)
-        }
-      }
-    return metroProvider.wrapInTracedProvider(
-      contextualTypeKey = traceContextualTypeKey,
-      providerValueType = providerValueType,
-      traceContext = traceContext,
-      bindingKind = bindingKind,
-    ) ?: metroProvider
-  }
-
-  /** Returns the value key inside a provider request, preserving inner wrappers like `Lazy<T>`. */
-  private fun IrContextualTypeKey.providerValueContextualTypeKey(): IrContextualTypeKey {
-    return if (isWrappedInProvider) {
-      stripProvider()
-    } else {
-      this
-    }
-  }
-
-  private data class TraceNames(val name: String, val qualifier: String?, val binding: String)
-
-  private fun IrContextualTypeKey.traceNames(): TraceNames {
-    val qualifier = typeKey.qualifier?.render(short = true)
-    val binding = render(short = true, includeQualifier = false)
-    val name =
-      if (qualifier == null) {
-        binding
-      } else {
-        "$qualifier $binding"
-      }
-    return TraceNames(name = name, qualifier = qualifier, binding = binding)
-  }
-
-  context(scope: IrBuilderWithScope)
-  private fun String?.toNullableStringExpression(): IrExpression {
-    return with(scope) {
-      if (this@toNullableStringExpression == null) {
-        irNull()
-      } else {
-        irString(this@toNullableStringExpression)
-      }
-    }
-  }
-
-  context(scope: IrBuilderWithScope)
-  private fun IrExpression.wrapInTracedProvider(
-    contextualTypeKey: IrContextualTypeKey,
-    providerValueType: IrType,
-    traceContext: IrExpression,
-    bindingKind: String?,
-  ): IrExpression? {
-    val tracedProvider = metroSymbols.tracedProvider ?: return null
-    val traceNames = contextualTypeKey.traceNames()
-    return with(scope) {
-      val qualifierExpression = traceNames.qualifier.toNullableStringExpression()
-      val kindExpression = bindingKind.toNullableStringExpression()
-      irCallConstructor(
-          tracedProvider.constructors.first { it.owner.isPrimary },
-          listOf(providerValueType),
-        )
-        .apply {
-          // traceContext
-          arguments[0] = traceContext
-          // qualifier
-          arguments[1] = qualifierExpression
-          // binding
-          arguments[2] = irString(traceNames.binding)
-          // kind
-          arguments[3] = kindExpression
-          // provider
-          arguments[4] = this@wrapInTracedProvider
-        }
-    }
+    return expressionDecorator.decorateDirectExpression(
+      directExpr,
+      DirectExpressionRequest(
+        contextualTypeKey = contextualTypeKey,
+        bindingKind = bindingKind,
+      ),
+    )
   }
 }
