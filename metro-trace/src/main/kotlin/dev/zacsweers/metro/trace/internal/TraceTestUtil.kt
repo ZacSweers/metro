@@ -12,87 +12,40 @@ import java.util.concurrent.LinkedBlockingDeque
 import org.jetbrains.annotations.TestOnly
 
 /**
- * Records Metro runtime trace events emitted while [block] runs.
+ * Runs [block] with an AndroidX [Tracer] and assertions for generated Metro runtime trace events.
  *
- * This is primarily intended for functional tests that need to assert Metro's generated tracing
- * calls without writing and parsing Perfetto trace files. The returned [MetroTrace] contains Metro
- * events, identified by the `metro.graph` metadata emitted by generated runtime tracing code.
+ * This is primarily intended for functional tests that need to exercise generated code and assert
+ * its trace events in the same synchronous block. Only Metro events are recorded, identified by the
+ * `metro.graph` metadata emitted by generated runtime tracing code.
  */
 @TestOnly
-public fun recordMetroTrace(block: (Tracer) -> Unit): MetroTrace {
+public fun testMetroTrace(block: MetroTraceTestScope.() -> Unit) {
   val traceSink = RecordingTraceSink()
   val traceDriver = TraceDriver(traceSink)
-  traceDriver.use { traceDriver ->
-    block(traceDriver.tracer)
+  val scope = MetroTraceTestScope(traceDriver, traceSink.events)
+  traceDriver.use {
+    scope.block()
   }
-  return MetroTrace(traceSink.events)
+  scope.assertNoEventsRemaining()
 }
 
 /**
- * A captured Metro trace.
+ * Assertions for Metro trace events recorded while [tracer] is used.
  *
- * [events] is the queue of generated Metro trace events recorded by AndroidX tracing. [test]
- * consumes this queue in order so fixtures can assert the exact sequence of spans emitted by
- * generated code.
+ * [events] is the queue of generated Metro trace events recorded by AndroidX tracing. [assertEvent]
+ * flushes the trace driver, then consumes the next recorded event so tests can assert a span at the
+ * point they expect generated code to have emitted it.
  */
 @TestOnly
-public class MetroTrace(private val events: BlockingDeque<MetroTraceEvent>) {
-  /** Runs ordered assertions against this trace's recorded Metro events. */
-  public fun test(body: TraceTestScope.() -> Unit) {
-    val scope =
-      object : TraceTestScope {
-        override fun assertEvent(
-          name: String,
-          graph: String,
-          path: String,
-          binding: String?,
-          qualifier: String?,
-          kind: String?,
-        ) {
-          val next = events.pollFirst().let { ExpectedMetroTraceEvent(it.name, it.metadata) }
-          val metadata = buildMap {
-            put("metro.graph", graph)
-            put("metro.graph_path", path)
-            binding?.let { put("metro.binding", it) }
-            qualifier?.let { put("metro.qualifier", it) }
-            kind?.let { put("metro.binding_kind", it) }
-          }
-          val expected = ExpectedMetroTraceEvent(name, metadata)
-          check(next == expected) {
-            throw AssertionError(
-              buildString {
-                appendLine("Expected Metro trace events to match exactly.")
-                appendLine("Expected: $expected")
-                appendLine("Actual: $next")
-              }
-            )
-          }
-        }
-      }
-    with(scope) {
-      body()
-    }
-  }
-}
+public class MetroTraceTestScope(
+  private val traceDriver: TraceDriver,
+  private val events: BlockingDeque<MetroTraceEvent>,
+) {
+  public val tracer: Tracer
+    get() = traceDriver.tracer
 
-/** A named trace event and its string metadata. */
-@TestOnly
-public data class MetroTraceEvent(
-  public val name: String,
-  public val metadata: Map<String, String>,
-)
-
-/** Expected trace event used internally by [MetroTrace.test]. */
-@TestOnly
-public data class ExpectedMetroTraceEvent(
-  public val name: String,
-  public val metadata: Map<String, String>,
-)
-
-@TestOnly
-public interface TraceTestScope {
   /**
-   * Asserts that the next recorded event matches a generated Metro runtime trace event.
+   * Asserts that the next generated Metro runtime trace event matches these values.
    *
    * [name] is the visible section name shown in trace viewers. [graph] is the graph that owns the
    * traced binding, while [path] is the slash-separated root-to-current graph path. These are equal
@@ -106,8 +59,60 @@ public interface TraceTestScope {
     binding: String? = null,
     qualifier: String? = null,
     kind: String? = null,
-  )
+  ) {
+    val metadata = buildMap {
+      put("metro.graph", graph)
+      put("metro.graph_path", path)
+      binding?.let { put("metro.binding", it) }
+      qualifier?.let { put("metro.qualifier", it) }
+      kind?.let { put("metro.binding_kind", it) }
+    }
+    val expected = ExpectedMetroTraceEvent(name, metadata)
+    traceDriver.flush()
+    assertNextEvent(expected)
+  }
+
+  private fun assertNextEvent(expected: ExpectedMetroTraceEvent) {
+    val actualEvent = events.pollFirst()
+    val actual = actualEvent?.let { ExpectedMetroTraceEvent(it.name, it.metadata) }
+    check(actual == expected) {
+      throw AssertionError(
+        buildString {
+          appendLine("Expected next Metro trace event to match.")
+          appendLine("Expected: $expected")
+          appendLine("Actual: $actual")
+        }
+      )
+    }
+  }
+
+  internal fun assertNoEventsRemaining() {
+    val remainingEvents = events.toList()
+    check(remainingEvents.isEmpty()) {
+      throw AssertionError(
+        buildString {
+          appendLine("Expected all Metro trace events to be asserted.")
+          appendLine("Remaining:")
+          remainingEvents.forEach { appendLine("  $it") }
+        }
+      )
+    }
+  }
 }
+
+/** A named trace event and its string metadata. */
+@TestOnly
+public data class MetroTraceEvent(
+  public val name: String,
+  public val metadata: Map<String, String>,
+)
+
+/** Expected trace event used internally by [MetroTraceTestScope] assertions. */
+@TestOnly
+public data class ExpectedMetroTraceEvent(
+  public val name: String,
+  public val metadata: Map<String, String>,
+)
 
 @OptIn(DelicateTracingApi::class)
 private class RecordingTraceSink : AbstractTraceSink() {
