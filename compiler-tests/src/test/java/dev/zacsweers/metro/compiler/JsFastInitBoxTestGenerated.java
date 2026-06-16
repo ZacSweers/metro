@@ -2470,4 +2470,42 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       run("ReallyLongPackageNameHandledWhenWritingDebugReports.kt");
     }
   }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/tracing")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Tracing {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/tracing/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInTracing() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/tracing"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingBasic.kt")
+    public void testRuntimeTracingBasic() {
+      run("RuntimeTracingBasic.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingGraphExtension.kt")
+    public void testRuntimeTracingGraphExtension() {
+      run("RuntimeTracingGraphExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingProviderOfLazy.kt")
+    public void testRuntimeTracingProviderOfLazy() {
+      run("RuntimeTracingProviderOfLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingScopedProvider.kt")
+    public void testRuntimeTracingScopedProvider() {
+      run("RuntimeTracingScopedProvider.kt");
+    }
+  }
 }

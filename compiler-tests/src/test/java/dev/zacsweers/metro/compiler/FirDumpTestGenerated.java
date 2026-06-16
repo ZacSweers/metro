@@ -50,12 +50,6 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
   }
 
   @Test
-  @TestMetadata("TopLevelComposableHiddenFromObjC_k22x.kt")
-  public void testTopLevelComposableHiddenFromObjC_k22x() {
-    run("TopLevelComposableHiddenFromObjC_k22x.kt");
-  }
-
-  @Test
   @TestMetadata("TopLevelComposableHiddenFromObjC_k23x.kt")
   public void testTopLevelComposableHiddenFromObjC_k23x() {
     run("TopLevelComposableHiddenFromObjC_k23x.kt");
@@ -108,12 +102,6 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     @TestMetadata("ContributingTypes_k24x.kt")
     public void testContributingTypes_k24x() {
       run("ContributingTypes_k24x.kt");
-    }
-
-    @Test
-    @TestMetadata("FirHintGenerationWorks_k22x.kt")
-    public void testFirHintGenerationWorks_k22x() {
-      run("FirHintGenerationWorks_k22x.kt");
     }
 
     @Test

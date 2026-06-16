@@ -537,6 +537,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("RuntimeTracingRequiresTracerBinding.kt")
+    public void testRuntimeTracingRequiresTracerBinding() {
+      run("RuntimeTracingRequiresTracerBinding.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedGraphInputsAreReported.kt")
     public void testUnusedGraphInputsAreReported() {
       run("UnusedGraphInputsAreReported.kt");
