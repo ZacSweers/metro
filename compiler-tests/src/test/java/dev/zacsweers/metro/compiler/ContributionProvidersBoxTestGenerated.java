@@ -3283,9 +3283,27 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("RuntimeTracingBinds.kt")
+    public void testRuntimeTracingBinds() {
+      run("RuntimeTracingBinds.kt");
+    }
+
+    @Test
     @TestMetadata("RuntimeTracingGraphExtension.kt")
     public void testRuntimeTracingGraphExtension() {
       run("RuntimeTracingGraphExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingMultiLevelGraphExtension.kt")
+    public void testRuntimeTracingMultiLevelGraphExtension() {
+      run("RuntimeTracingMultiLevelGraphExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingMultibindingGetter.kt")
+    public void testRuntimeTracingMultibindingGetter() {
+      run("RuntimeTracingMultibindingGetter.kt");
     }
 
     @Test
