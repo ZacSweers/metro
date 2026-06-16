@@ -72,7 +72,41 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       )
     }
 
-    // Only register analysis tasks when metro's extension is configured
+    // Analysis tasks are registered, but skipped if reportsDestination isn't present.
+    val graphMetadataTask =
+      target.tasks.register(
+        GenerateGraphMetadataTask.NAME,
+        GenerateGraphMetadataTask::class.java,
+      )
+    graphMetadataTask.configure { task ->
+      task.onlyIf("reportsDestination is present") { extension.reportsDestination.isPresent }
+      task.description = "Generates Metro graph metadata for ${target.path}"
+      task.projectPath.convention(target.path)
+      task.outputFile.convention(
+        target.layout.buildDirectory.file("reports/metro/graphMetadata.json")
+      )
+    }
+
+    // Analysis task - comprehensive graph analysis
+    val analyzeTask = target.tasks.register(AnalyzeGraphTask.NAME, AnalyzeGraphTask::class.java)
+    analyzeTask.configure { task ->
+      task.onlyIf("reportsDestination is present") { extension.reportsDestination.isPresent }
+      task.description = "Analyzes Metro dependency graphs and produces a comprehensive report"
+      task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })
+      task.outputFile.convention(target.layout.buildDirectory.file("reports/metro/analysis.json"))
+    }
+
+    // HTML visualization task - interactive ECharts graphs
+    val htmlTask =
+      target.tasks.register(GenerateGraphHtmlTask.NAME, GenerateGraphHtmlTask::class.java)
+    htmlTask.configure { task ->
+      task.onlyIf("reportsDestination is present") { extension.reportsDestination.isPresent }
+      task.description = "Generates interactive HTML visualizations of Metro dependency graphs"
+      task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })
+      task.analysisFile.convention(analyzeTask.flatMap { it.outputFile })
+      task.outputDirectory.convention(target.layout.buildDirectory.dir("reports/metro/html"))
+    }
+
     target.afterEvaluate {
       // Check version and show warning by default.
       val checkVersions =
@@ -142,41 +176,6 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               "$label. $details.\n$solution.\nDocs: $compatibilityUrl\n($disableSolution)"
             )
           }
-        }
-      }
-
-      if (extension.reportsDestination.isPresent) {
-        val graphMetadataTask =
-          target.tasks.register(
-            GenerateGraphMetadataTask.NAME,
-            GenerateGraphMetadataTask::class.java,
-          )
-        graphMetadataTask.configure { task ->
-          task.description = "Generates Metro graph metadata for ${target.path}"
-          task.projectPath.convention(target.path)
-          task.outputFile.convention(
-            target.layout.buildDirectory.file("reports/metro/graphMetadata.json")
-          )
-        }
-
-        // Analysis task - comprehensive graph analysis
-        val analyzeTask = target.tasks.register(AnalyzeGraphTask.NAME, AnalyzeGraphTask::class.java)
-        analyzeTask.configure { task ->
-          task.description = "Analyzes Metro dependency graphs and produces a comprehensive report"
-          task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })
-          task.outputFile.convention(
-            target.layout.buildDirectory.file("reports/metro/analysis.json")
-          )
-        }
-
-        // HTML visualization task - interactive ECharts graphs
-        val htmlTask =
-          target.tasks.register(GenerateGraphHtmlTask.NAME, GenerateGraphHtmlTask::class.java)
-        htmlTask.configure { task ->
-          task.description = "Generates interactive HTML visualizations of Metro dependency graphs"
-          task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })
-          task.analysisFile.convention(analyzeTask.flatMap { it.outputFile })
-          task.outputDirectory.convention(target.layout.buildDirectory.dir("reports/metro/html"))
         }
       }
     }
@@ -289,18 +288,21 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           .fold(baseDir) { dir, segment -> dir.dir(segment) }
       }
 
-    if (extension.reportsDestination.isPresent) {
-      val artifactsTask = MetroArtifactCopyTask.register(project, reportsDir, kotlinCompilation)
+    val artifactsTask = MetroArtifactCopyTask.register(project, reportsDir, kotlinCompilation)
 
-      project.tasks.withType(GenerateGraphMetadataTask::class.java).configureEach { task ->
-        task.projectPath.set(project.path)
-        task.compilationName.set(kotlinCompilation.name)
-        task.graphJsonFiles.from(
-          artifactsTask
-            .flatMap { it.reportsDir.dir("graph-metadata") }
-            .map { it.asFileTree.matching { it.include("*.json") } }
-        )
-      }
+    artifactsTask.configure { task ->
+      task.onlyIf("reportsDestination is present") { extension.reportsDestination.isPresent }
+    }
+
+    project.tasks.withType(GenerateGraphMetadataTask::class.java).configureEach { task ->
+      task.onlyIf("reportsDestination is present") { extension.reportsDestination.isPresent }
+      task.projectPath.set(project.path)
+      task.compilationName.set(kotlinCompilation.name)
+      task.graphJsonFiles.from(
+        artifactsTask
+          .flatMap { it.reportsDir.dir("graph-metadata") }
+          .map { it.asFileTree.matching { it.include("*.json") } }
+      )
     }
 
     val metroOptions =

@@ -8,6 +8,7 @@ import com.autonomousapps.kit.GradleBuilder.build
 import com.google.common.truth.Truth.assertThat
 import kotlin.io.path.exists
 import kotlin.io.path.readText
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.junit.Test
 
@@ -627,5 +628,66 @@ class MetroArtifactsTest {
 
     val htmlFile = reports.htmlFileForGraph("test.AppGraph")
     assertTrue(htmlFile.exists(), "Graph HTML file should exist")
+  }
+
+  @Test
+  fun `reportsDestination directories do not collide across multiplatform targets`() {
+    val fixture =
+      object : MetroProject(multiplatform = true, reportsEnabled = true) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+    val result = build(project.rootDir, "generateMetroGraphHtml", "--console=plain")
+
+    assertThat(result.task(":generateMetroGraphMetadata")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SUCCESS)
+    assertThat(result.task(":analyzeMetroGraph")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SUCCESS)
+    assertThat(result.task(":generateMetroGraphHtml")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SUCCESS)
+
+    val reportingDir = project.rootDir.toPath().resolve("build/tmp/metro/reporting")
+    assertTrue(reportingDir.resolve("${KmpTarget.JVM.gradleTargetName}/main").exists())
+    assertTrue(reportingDir.resolve("${KmpTarget.JS.gradleTargetName}/main").exists())
+  }
+
+  @Test
+  fun `analysis tasks are skipped when reportsDestination is not present`() {
+    val fixture =
+      object : MetroProject(multiplatform = true, reportsEnabled = false) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+    val result = build(project.rootDir, "generateMetroGraphHtml", "--console=plain")
+
+    assertThat(result.task(":generateMetroGraphMetadata")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SKIPPED)
+    assertThat(result.task(":analyzeMetroGraph")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SKIPPED)
+    assertThat(result.task(":generateMetroGraphHtml")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SKIPPED)
+
+    val reportingDir = project.rootDir.toPath().resolve("build/tmp/metro/reporting")
+    assertFalse(reportingDir.exists())
   }
 }
