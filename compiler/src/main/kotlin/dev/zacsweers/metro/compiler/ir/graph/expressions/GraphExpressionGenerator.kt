@@ -146,7 +146,7 @@ private constructor(
       bindingGraph.findBinding(tracerTypeKey)
         ?: reportRuntimeTracingConfigurationError(
           "Runtime tracing is enabled but this graph does not bind androidx.tracing.Tracer. " +
-            "Add it as a graph input or provide a binding for it."
+            "Add it as a graph input."
         )
     return generateBindingCode(
       tracerBinding,

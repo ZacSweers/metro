@@ -6,6 +6,10 @@ Changelog
 
 ### New
 
+- **[runtime/JVM]** Add experimental runtime tracing for generated graph code, backed by AndroidX Tracing 2.x. Enable it with `metro.enableRuntimeTracing`.
+  - Metro will add the JVM-only `metro-trace` runtime helper artifact.
+  - Graphs must bind an `androidx.tracing.Tracer` instances as a graph input as a parent tracer.
+  - This is experimental as AndroidX Tracing 2.x is still actively being developed.
 - **[IR]** Revamp graph-validation diagnostics with structured output. Taking some inspiration from Rust error messages.
   - Stable diagnostic IDs
   - Compact dependency chains

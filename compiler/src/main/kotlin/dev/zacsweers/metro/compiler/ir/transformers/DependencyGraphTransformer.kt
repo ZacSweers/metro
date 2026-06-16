@@ -626,7 +626,7 @@ internal class DependencyGraphTransformer(
           node.sourceGraph,
           MetroDiagnostics.METRO_TRACE_ERROR,
           "Runtime tracing is enabled but this graph does not bind androidx.tracing.Tracer. " +
-            "Add it as a graph input or provide a binding for it.",
+            "Add it as a graph input.",
         )
         hasErrors = true
       } else {
