@@ -148,11 +148,17 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.ClassIdBasedLocality
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.TargetPlatform
+import org.jetbrains.kotlin.platform.jvm.isJvm
 import org.jetbrains.kotlin.types.ConstantValueKind
 
 @OptIn(UnresolvedExpressionTypeAccess::class)
 internal val FirExpression.isResolved: Boolean
   get() = coneTypeOrNull != null
+
+internal fun TargetPlatform?.supportsTracing(): Boolean {
+  return this == null || isJvm()
+}
 
 internal fun FirBasedSymbol<*>.isAnnotatedInject(session: FirSession): Boolean {
   return isAnnotatedWithAny(session, session.classIds.injectAnnotations)
@@ -1863,3 +1869,6 @@ internal fun ClassId?.isIntrinsicType(session: FirSession): Boolean {
     else -> false
   }
 }
+
+internal fun FirSession.shouldCheckRuntimeTracingGraphInputs(): Boolean =
+  metroFirBuiltIns.options.enableRuntimeTracing

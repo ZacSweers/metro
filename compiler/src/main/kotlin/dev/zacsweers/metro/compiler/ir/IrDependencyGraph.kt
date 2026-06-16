@@ -112,10 +112,10 @@ internal interface IrDependencyGraph {
   @Provides
   @SingleIn(IrScope::class)
   fun provideBindingExpressionDecorator(
-    context: IrMetroContext,
+    tracingAvailability: RuntimeTracingAvailability,
     realDecorator: () -> RuntimeTracingBindingExpressionDecorator,
   ): BindingExpressionDecorator {
-    return if (context.runtimeTracingAvailable()) {
+    return if (tracingAvailability.isAvailable()) {
       realDecorator()
     } else {
       BindingExpressionDecorator.None

@@ -205,7 +205,7 @@ private class TraceExpressionDecorator(
     request: DirectExpressionRequest,
   ): IrExpression {
     val traceContext = traceContextFor(request.contextualTypeKey) ?: return expression
-    val traceFunction = metroSymbols.metroTraceContextTrace ?: return expression
+    val traceFunction = metroSymbols.metroTraceContextTrace!!
     val bindingType = request.contextualTypeKey.typeKey.type
     val traceNames = request.contextualTypeKey.traceNames()
 
@@ -298,7 +298,7 @@ private class TraceExpressionDecorator(
       providerValueType = providerValueType,
       traceContext = traceContext,
       bindingKind = bindingKind,
-    ) ?: metroProvider
+    )
   }
 
   /** Returns the value key inside a provider request, preserving inner wrappers like `Lazy<T>`. */
@@ -340,8 +340,8 @@ private class TraceExpressionDecorator(
     providerValueType: IrType,
     traceContext: IrExpression,
     bindingKind: String?,
-  ): IrExpression? {
-    val tracedProvider = metroSymbols.tracedProvider ?: return null
+  ): IrExpression {
+    val tracedProvider = metroSymbols.tracedProvider!!
     val traceNames = contextualTypeKey.traceNames()
     return with(scope) {
       val qualifierExpression = traceNames.qualifier.toNullableStringExpression()

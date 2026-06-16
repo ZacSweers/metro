@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
-import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -27,7 +25,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
@@ -136,17 +133,12 @@ private constructor(
   /** Resolves the existing graph binding for AndroidX's tracer input. */
   context(scope: IrBuilderWithScope)
   override fun generateTracerBindingCode(): IrExpression {
-    val tracer =
-      metroSymbols.tracer
-        ?: reportRuntimeTracingConfigurationError(
-          "Runtime tracing is enabled but androidx.tracing.Tracer is missing from the classpath."
-        )
+    val tracer = metroSymbols.tracer!!
     val tracerTypeKey = IrTypeKey(tracer.defaultType)
     val tracerBinding =
       bindingGraph.findBinding(tracerTypeKey)
-        ?: reportRuntimeTracingConfigurationError(
-          "Runtime tracing is enabled but this graph does not bind androidx.tracing.Tracer. " +
-            "Add it as a graph input."
+        ?: reportCompilerBug(
+          "Runtime tracing reached IR without an androidx.tracing.Tracer graph input."
         )
     return generateBindingCode(
       tracerBinding,
@@ -154,11 +146,6 @@ private constructor(
       AccessType.INSTANCE,
       null,
     )
-  }
-
-  private fun reportRuntimeTracingConfigurationError(message: String): Nothing {
-    reportCompat(node.sourceGraph, MetroDiagnostics.METRO_TRACE_ERROR, message)
-    exitProcessing()
   }
 
   context(scope: IrBuilderWithScope)

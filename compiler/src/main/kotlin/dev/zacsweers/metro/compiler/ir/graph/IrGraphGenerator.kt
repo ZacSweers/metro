@@ -9,14 +9,13 @@ import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
-import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MemberNamer
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
+import dev.zacsweers.metro.compiler.ir.RuntimeTracingAvailability
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.allocateName
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
@@ -46,13 +45,10 @@ import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
-import dev.zacsweers.metro.compiler.ir.runtimeTracingUnavailableReason
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
-import dev.zacsweers.metro.compiler.ir.supportsTracing
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -127,6 +123,7 @@ internal class IrGraphGenerator(
   private val metroDeclarations: MetroDeclarations,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   private val bindingExpressionDecorator: BindingExpressionDecorator,
+  private val runtimeTracingAvailability: RuntimeTracingAvailability,
   /** Parent graph's binding property context for hierarchical lookup. Null for root graphs. */
   parentBindingContext: BindingPropertyContext?,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
@@ -417,16 +414,9 @@ internal class IrGraphGenerator(
     ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
     parentGraphInstanceProperty: IrProperty?,
   ): IrProperty? {
-    val unavailableReason = runtimeTracingUnavailableReason()
-    if (unavailableReason != null) {
-      if (options.enableRuntimeTracing && platform.supportsTracing()) {
-        reportCompat(node.sourceGraph, MetroDiagnostics.METRO_TRACE_ERROR, unavailableReason)
-        exitProcessing()
-      }
-      return null
-    }
+    if (!runtimeTracingAvailability.isAvailable()) return null
 
-    val metroTraceContext = metroSymbols.metroTraceContext ?: return null
+    val metroTraceContext = metroSymbols.metroTraceContext!!
     val traceContextType = metroTraceContext.defaultType
     val bootstrapExpressionGeneratorFactory =
       createExpressionGeneratorFactory(
@@ -481,7 +471,7 @@ internal class IrGraphGenerator(
     traceContextType: IrType,
   ): IrExpression? {
     val parentGraphProperty = parentGraphInstanceProperty ?: return null
-    val childFunction = metroSymbols.metroTraceContextChild ?: return null
+    val childFunction = metroSymbols.metroTraceContextChild!!
     val parentGraphClass = parentGraphProperty.backingField?.type?.rawTypeOrNull() ?: return null
     val parentTraceContextProperty = parentGraphClass.runtimeTraceContextProperty ?: return null
     val parentGraph = irGetProperty(irGet(thisReceiverParameter), parentGraphProperty)
