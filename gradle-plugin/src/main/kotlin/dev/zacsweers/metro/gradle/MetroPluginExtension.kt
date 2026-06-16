@@ -421,6 +421,7 @@ constructor(
    *
    * Disabled by default.
    */
+  @ExperimentalMetroGradleApi
   public val enableRuntimeTracing: Property<Boolean> =
     objects.booleanProperty("metro.enableRuntimeTracing", false)
 
