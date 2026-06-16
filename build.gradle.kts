@@ -54,6 +54,7 @@ apiValidation {
       "dev.zacsweers.metro.compiler.compat",
       "dev.zacsweers.metro.interop.dagger.internal",
       "dev.zacsweers.metro.interop.guice.internal",
+      "dev.zacsweers.metro.trace.internal",
     )
   nonPublicMarkers +=
     listOf(
@@ -92,6 +93,7 @@ dependencies {
   dokka(project(":interop-guice"))
   dokka(project(":interop-jakarta"))
   dokka(project(":interop-javax"))
+  dokka(project(":metro-trace"))
   dokka(project(":metrox-android"))
   dokka(project(":metrox-viewmodel"))
   dokka(project(":metrox-viewmodel-compose"))
