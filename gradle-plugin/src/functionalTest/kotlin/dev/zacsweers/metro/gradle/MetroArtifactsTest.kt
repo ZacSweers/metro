@@ -634,6 +634,13 @@ class MetroArtifactsTest {
   fun `reportsDestination directories do not collide across multiplatform targets`() {
     val fixture =
       object : MetroProject(multiplatform = true, reportsEnabled = true) {
+        override fun multiplatformTargetsBlock(): String = buildString {
+          appendLine("kotlin {")
+          appendLine("  jvm()")
+          appendLine("  ${KmpTarget.NATIVE_HOST.gradleTargetName}()")
+          appendLine("}")
+        }
+
         override fun sources() =
           listOf(
             source(
@@ -657,14 +664,21 @@ class MetroArtifactsTest {
       .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SUCCESS)
 
     val reportingDir = project.rootDir.toPath().resolve("build/tmp/metro/reporting")
-    assertTrue(reportingDir.resolve("${KmpTarget.JVM.gradleTargetName}/main").exists())
-    assertTrue(reportingDir.resolve("${KmpTarget.JS.gradleTargetName}/main").exists())
+    assertTrue(reportingDir.resolve("jvm/main").exists())
+    assertTrue(reportingDir.resolve("${KmpTarget.NATIVE_HOST.gradleTargetName}/main").exists())
   }
 
   @Test
   fun `analysis tasks are skipped when reportsDestination is not present`() {
     val fixture =
       object : MetroProject(multiplatform = true, reportsEnabled = false) {
+        override fun multiplatformTargetsBlock(): String = buildString {
+          appendLine("kotlin {")
+          appendLine("  jvm()")
+          appendLine("  ${KmpTarget.NATIVE_HOST.gradleTargetName}()")
+          appendLine("}")
+        }
+
         override fun sources() =
           listOf(
             source(
