@@ -78,6 +78,7 @@ Example rich output (note that in rich terminals this would have color and marku
 - **[IR/JS]** Fix `Map<K, () -> V>` multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro `Provider` objects.
 - **[IR/KLIB]** Fix generated `@Binds` implementations on KLIB backends. Metro now emits concrete identity bodies for inherited `@Binds` members where JS, Native, and Wasm validate abstract members during deserialization.
 - **[IR/KLIB]** Keep generated graph and shard backing fields private while preserving generated access through properties. This avoids backing-field visibility validation failures on KLIB backends.
+- **[gradle]** Fix multiplatform output collisions in MetroArtifactCopyTask.
 
 ### Changes
 
@@ -89,6 +90,7 @@ Special thanks to the following contributors for contributing to this release!
 
 - [@BraisGabin](https://github.com/BraisGabin)
 - [@ychescale9](https://github.com/ychescale9)
+- [@FletchMcKee](https://github.com/FletchMcKee)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
