@@ -41,23 +41,27 @@ public class MetroTraceContext(
   /**
    * Traces [block] with Metro-specific metadata.
    *
-   * The [name] should be a short, human-readable binding name suitable for scanning in Perfetto.
-   * The remaining parameters are recorded as structured metadata when available.
+   * The visible section name is derived from [qualifier] and [binding].
    */
   public inline fun <T> trace(
-    name: String,
-    qualifier: String? = null,
-    binding: String? = null,
-    kind: String? = null,
+    qualifier: String?,
+    binding: String,
+    kind: String?,
     crossinline block: () -> T,
   ): T {
+    val name =
+      if (qualifier == null) {
+        binding
+      } else {
+        "$qualifier $binding"
+      }
     return tracer.trace(
       category = category,
       name = name,
       metadataBlock = {
         addMetadataEntry("metro.graph", graphName)
         addMetadataEntry("metro.graph_path", graphPath)
-        binding?.let { addMetadataEntry("metro.binding", it) }
+        addMetadataEntry("metro.binding", binding)
         qualifier?.let { addMetadataEntry("metro.qualifier", it) }
         kind?.let { addMetadataEntry("metro.binding_kind", it) }
       },
