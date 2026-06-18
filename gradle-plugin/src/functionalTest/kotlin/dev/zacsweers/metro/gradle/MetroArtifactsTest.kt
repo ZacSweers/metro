@@ -262,6 +262,7 @@ class MetroArtifactsTest {
                 "diagnosticsRenderMode": "PLAIN",
                 "generateStaticAnnotations": true,
                 "bindingContributionsAsContainers": true,
+                "enableRuntimeTracing": false,
                 "memberNamingStrategy": "DESCRIPTIVE"
               },
               "stats": {
