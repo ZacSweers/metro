@@ -5,11 +5,15 @@
 package dev.zacsweers.metro.gradle
 
 import com.autonomousapps.kit.GradleBuilder.build
+import com.autonomousapps.kit.GradleProject
+import com.autonomousapps.kit.GradleProject.DslKind
 import com.google.common.truth.Truth.assertThat
+import java.io.File
 import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class MetroArtifactsTest {
@@ -634,13 +638,6 @@ class MetroArtifactsTest {
   fun `reportsDestination directories do not collide across multiplatform targets`() {
     val fixture =
       object : MetroProject(multiplatform = true, reportsEnabled = true) {
-        override fun multiplatformTargetsBlock(): String = buildString {
-          appendLine("kotlin {")
-          appendLine("  jvm()")
-          appendLine("  ${KmpTarget.NATIVE_HOST.gradleTargetName}()")
-          appendLine("}")
-        }
-
         override fun sources() =
           listOf(
             source(
@@ -651,6 +648,46 @@ class MetroArtifactsTest {
               "AppGraph",
             )
           )
+
+        override fun buildGradleProject(): GradleProject {
+          val projectSources = sources()
+          return newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject {
+              sources = projectSources
+              withBuildScript {
+                plugins(
+                  GradlePlugins.Kotlin.multiplatform(),
+                  GradlePlugins.agpKmp,
+                  GradlePlugins.metro,
+                )
+                withKotlin(
+                  """
+                    kotlin {
+                      jvm()
+
+                      android {
+                        namespace = "com.example.test"
+                        minSdk = 36
+                        compileSdk = 36
+                      }
+                    }
+
+                    ${buildMetroBlock()}
+                  """
+                    .trimIndent()
+                )
+              }
+
+              withMetroSettings()
+
+              val androidHome = System.getProperty("metro.androidHome")
+              assumeTrue(androidHome != null) // skip if environment not set up for Android
+              // Use invariantSeparatorsPath for cross-platform .properties file compatibility
+              val sdkDir = File(androidHome).invariantSeparatorsPath
+              withFile("local.properties", "sdk.dir=$sdkDir")
+            }
+            .write()
+        }
       }
 
     val project = fixture.gradleProject
@@ -665,20 +702,13 @@ class MetroArtifactsTest {
 
     val reportingDir = project.rootDir.toPath().resolve("build/tmp/metro/reporting")
     assertTrue(reportingDir.resolve("jvm/main").exists())
-    assertTrue(reportingDir.resolve("${KmpTarget.NATIVE_HOST.gradleTargetName}/main").exists())
+    assertTrue(reportingDir.resolve("android/main").exists())
   }
 
   @Test
   fun `analysis tasks are skipped when reportsDestination is not present`() {
     val fixture =
-      object : MetroProject(multiplatform = true, reportsEnabled = false) {
-        override fun multiplatformTargetsBlock(): String = buildString {
-          appendLine("kotlin {")
-          appendLine("  jvm()")
-          appendLine("  ${KmpTarget.NATIVE_HOST.gradleTargetName}()")
-          appendLine("}")
-        }
-
+      object : MetroProject(multiplatform = false, reportsEnabled = false) {
         override fun sources() =
           listOf(
             source(
