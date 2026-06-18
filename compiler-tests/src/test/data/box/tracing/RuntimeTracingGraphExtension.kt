@@ -32,6 +32,20 @@ fun box(): String {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
     assertEquals(3, graph.createChildGraph().count)
     assertEvent(
+      name = "ChildGraph",
+      graph = "AppGraph",
+      path = "AppGraph",
+      binding = "ChildGraph",
+      kind = "Accessor",
+    )
+    assertEvent(
+      name = "Int",
+      graph = "ChildGraph",
+      path = "AppGraph/ChildGraph",
+      binding = "Int",
+      kind = "Accessor",
+    )
+    assertEvent(
       name = "Int",
       graph = "ChildGraph",
       path = "AppGraph/ChildGraph",

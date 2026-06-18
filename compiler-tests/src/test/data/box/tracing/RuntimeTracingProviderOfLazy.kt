@@ -25,6 +25,13 @@ fun box(): String {
     val lazyString = graph.lazyStringProvider()
     assertEquals("lazy", lazyString.value)
     assertEvent(
+      name = "Provider<Lazy<String>>",
+      graph = "AppGraph",
+      path = "AppGraph",
+      binding = "Provider<Lazy<String>>",
+      kind = "Accessor",
+    )
+    assertEvent(
       name = "Lazy<String>",
       graph = "AppGraph",
       path = "AppGraph",

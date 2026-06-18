@@ -3,15 +3,19 @@
 
 import androidx.tracing.Tracer
 import dev.zacsweers.metro.DependencyGraph
-import dev.zacsweers.metro.Multibinds
+import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.trace.internal.testMetroTrace
 
+class Target {
+  @Inject lateinit var string: String
+}
+
 @DependencyGraph
 interface AppGraph {
-  val strings: Set<String>
+  fun inject(target: Target)
 
-  @Multibinds(allowEmpty = true) fun bindStrings(): Set<String>
+  @Provides fun provideString(): String = "injected"
 
   @DependencyGraph.Factory
   interface Factory {
@@ -22,20 +26,22 @@ interface AppGraph {
 fun box(): String {
   testMetroTrace {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
-    assertEquals(emptySet<String>(), graph.strings)
+    val target = Target()
+    graph.inject(target)
+    assertEquals("injected", target.string)
     assertEvent(
-      name = "Set<String>",
+      name = "Target",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Set<String>",
-      kind = "Accessor",
+      binding = "Target",
+      kind = "Member Injector",
     )
     assertEvent(
-      name = "Set<String>",
+      name = "String",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Set<String>",
-      kind = "Multibinding",
+      binding = "String",
+      kind = "Provided",
     )
   }
   return "OK"

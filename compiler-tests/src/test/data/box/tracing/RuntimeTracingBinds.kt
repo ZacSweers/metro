@@ -33,6 +33,13 @@ fun box(): String {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
     assertEquals("real", graph.service.value())
     assertEvent(
+      name = "Service",
+      graph = "AppGraph",
+      path = "AppGraph",
+      binding = "Service",
+      kind = "Accessor",
+    )
+    assertEvent(
       name = "RealService",
       graph = "AppGraph",
       path = "AppGraph",

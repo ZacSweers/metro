@@ -5,6 +5,9 @@ package dev.zacsweers.metro.compiler.ir.graph.expressions
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.graph.isRuntimeTracingInfra
+import dev.zacsweers.metro.compiler.ir.graph.runtimeTraceBinding
+import dev.zacsweers.metro.compiler.ir.graph.runtimeTraceQualifier
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -12,7 +15,6 @@ import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.stripProvider
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -207,8 +209,8 @@ private class TraceExpressionDecorator(
     val traceContext = traceContextFor(request.contextualTypeKey) ?: return expression
     val traceFunction = metroSymbols.metroTraceContextTrace!!
     val bindingType = request.contextualTypeKey.typeKey.type
-    val qualifier = request.contextualTypeKey.traceQualifier()
-    val binding = request.contextualTypeKey.renderTraceBinding()
+    val qualifier = request.contextualTypeKey.runtimeTraceQualifier()
+    val binding = request.contextualTypeKey.runtimeTraceBinding()
 
     return with(scope) {
       val qualifierExpression = qualifier.toNullableStringExpression()
@@ -259,15 +261,9 @@ private class TraceExpressionDecorator(
 
   context(scope: IrBuilderWithScope)
   private fun traceContextFor(contextualTypeKey: IrContextualTypeKey): IrExpression? {
-    if (contextualTypeKey.isTracingInfrastructure) return null
+    if (contextualTypeKey.isRuntimeTracingInfra) return null
     return traceContextAccessor.traceContextExpression()
   }
-
-  private val IrContextualTypeKey.isTracingInfrastructure: Boolean
-    get() {
-      val classId = typeKey.classId
-      return classId == Symbols.ClassIds.tracer || classId == Symbols.ClassIds.metroTraceContext
-    }
 
   /**
    * Converts a provider-valued expression to Metro's `Provider` type before tracing it.
@@ -309,24 +305,6 @@ private class TraceExpressionDecorator(
     }
   }
 
-  private fun IrContextualTypeKey.traceQualifier(): String? {
-    val multibindingKeyData = typeKey.multibindingKeyData
-    return if (multibindingKeyData == null) {
-      typeKey.qualifier?.render(short = true, useRelativeClassNames = true)
-    } else {
-      multibindingKeyData.multibindingTypeKey
-        ?.qualifier
-        ?.render(
-          short = true,
-          useRelativeClassNames = true,
-        )
-    }
-  }
-
-  private fun IrContextualTypeKey.renderTraceBinding(): String {
-    return render(short = true, includeQualifier = false, useRelativeClassNames = true)
-  }
-
   context(scope: IrBuilderWithScope)
   private fun String?.toNullableStringExpression() =
     with(scope) {
@@ -345,8 +323,8 @@ private class TraceExpressionDecorator(
     bindingKind: String?,
   ): IrExpression {
     val tracedProvider = metroSymbols.tracedProvider!!
-    val qualifier = contextualTypeKey.traceQualifier()
-    val binding = contextualTypeKey.renderTraceBinding()
+    val qualifier = contextualTypeKey.runtimeTraceQualifier()
+    val binding = contextualTypeKey.runtimeTraceBinding()
     return with(scope) {
       val qualifierExpression = qualifier.toNullableStringExpression()
       val kindExpression = bindingKind.toNullableStringExpression()

@@ -33,9 +33,23 @@ fun box(): String {
       graph = "AppGraph",
       path = "AppGraph",
       binding = "String",
+      kind = "Accessor",
+    )
+    assertEvent(
+      name = "String",
+      graph = "AppGraph",
+      path = "AppGraph",
+      binding = "String",
       kind = "Provided",
     )
     assertEquals("string", graph.stringProvider())
+    assertEvent(
+      name = "Provider<String>",
+      graph = "AppGraph",
+      path = "AppGraph",
+      binding = "Provider<String>",
+      kind = "Accessor",
+    )
     assertEvent(
       name = "String",
       graph = "AppGraph",
@@ -44,6 +58,14 @@ fun box(): String {
       kind = "Provided",
     )
     assertEquals("qualified", graph.qualifiedStringProvider())
+    assertEvent(
+      name = """@Named("qualified") Provider<String>""",
+      graph = "AppGraph",
+      path = "AppGraph",
+      binding = "Provider<String>",
+      qualifier = """@Named("qualified")""",
+      kind = "Accessor",
+    )
     assertEvent(
       name = """@Named("qualified") String""",
       graph = "AppGraph",

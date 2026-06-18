@@ -33,6 +33,13 @@ fun box(): String {
       graph = "AppGraph",
       path = "AppGraph",
       binding = "Set<String>",
+      kind = "Accessor",
+    )
+    assertEvent(
+      name = "Set<String>",
+      graph = "AppGraph",
+      path = "AppGraph",
+      binding = "Set<String>",
       kind = "Multibinding",
     )
     assertEvent(
@@ -44,6 +51,13 @@ fun box(): String {
     )
 
     assertEquals(mapOf("one" to 1), graph.intsByName)
+    assertEvent(
+      name = "Map<String, Int>",
+      graph = "AppGraph",
+      path = "AppGraph",
+      binding = "Map<String, Int>",
+      kind = "Accessor",
+    )
     assertEvent(
       name = "Map<String, Int>",
       graph = "AppGraph",

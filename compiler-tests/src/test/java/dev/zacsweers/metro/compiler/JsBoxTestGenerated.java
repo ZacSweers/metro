@@ -2503,6 +2503,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("RuntimeTracingMembersInjected.kt")
+    public void testRuntimeTracingMembersInjected() {
+      run("RuntimeTracingMembersInjected.kt");
+    }
+
+    @Test
     @TestMetadata("RuntimeTracingMultiLevelGraphExtension.kt")
     public void testRuntimeTracingMultiLevelGraphExtension() {
       run("RuntimeTracingMultiLevelGraphExtension.kt");

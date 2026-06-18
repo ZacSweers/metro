@@ -37,6 +37,7 @@ import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.metroMetadata
@@ -78,8 +79,11 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irInt
+import org.jetbrains.kotlin.ir.builders.irNull
+import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
@@ -110,6 +114,9 @@ internal typealias PropertyInitializer =
 
 internal typealias InitStatement =
   IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement
+
+private const val TRACE_KIND_ACCESSOR = "Accessor"
+private const val TRACE_KIND_MEMBER_INJECTOR = "Member Injector"
 
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
@@ -500,6 +507,121 @@ internal class IrGraphGenerator(
         includeQualifier = false,
         useRelativeClassNames = true,
       )
+    }
+  }
+
+  /**
+   * Wraps a generated graph API call in one parent runtime trace span.
+   *
+   * The expression inside the block may emit lower-level binding spans. This parent span records
+   * the graph entry point that caused those binding reads, such as an accessor getter.
+   */
+  private fun IrBuilderWithScope.traceGeneratedGraphEntryPoint(
+    thisReceiverParameter: IrValueParameter,
+    contextualTypeKey: IrContextualTypeKey,
+    kind: String,
+    returnType: IrType,
+    expression: IrBuilderWithScope.() -> IrExpression,
+  ): IrExpression {
+    if (contextualTypeKey.isRuntimeTracingInfra) return expression()
+    val traceContextProperty = graphClass.runtimeTraceContextProperty ?: return expression()
+    val traceBlock =
+      irLambda(
+        parent = parent,
+        receiverParameter = null,
+        valueParameters = emptyList(),
+        returnType = returnType,
+        suspend = false,
+      ) {
+        +irReturn(expression())
+      }
+    return runtimeTraceCall(
+      thisReceiverParameter = thisReceiverParameter,
+      traceContextProperty = traceContextProperty,
+      contextualTypeKey = contextualTypeKey,
+      kind = kind,
+      returnType = returnType,
+      traceBlock = traceBlock,
+    )
+  }
+
+  /**
+   * Emits [content] inside a parent runtime trace span for a generated `Unit` graph API call.
+   *
+   * Member-injection functions generate statement bodies rather than a single expression. This
+   * helper keeps that body structure while still tracing the function as the parent operation.
+   */
+  private fun IrBlockBodyBuilder.traceGeneratedGraphEntryPoint(
+    thisReceiverParameter: IrValueParameter,
+    contextualTypeKey: IrContextualTypeKey,
+    kind: String,
+    content: IrBlockBodyBuilder.() -> Unit,
+  ) {
+    if (contextualTypeKey.isRuntimeTracingInfra) {
+      content()
+      return
+    }
+    val traceContextProperty = graphClass.runtimeTraceContextProperty
+    if (traceContextProperty == null) {
+      content()
+      return
+    }
+    val traceBlock =
+      irLambda(
+        parent = parent,
+        receiverParameter = null,
+        valueParameters = emptyList(),
+        returnType = irBuiltIns.unitType,
+        suspend = false,
+      ) {
+        content()
+      }
+    +runtimeTraceCall(
+      thisReceiverParameter = thisReceiverParameter,
+      traceContextProperty = traceContextProperty,
+      contextualTypeKey = contextualTypeKey,
+      kind = kind,
+      returnType = irBuiltIns.unitType,
+      traceBlock = traceBlock,
+    )
+  }
+
+  /** Builds `this.metroTraceContext.trace(qualifier, binding, kind) { ... }`. */
+  private fun IrBuilderWithScope.runtimeTraceCall(
+    thisReceiverParameter: IrValueParameter,
+    traceContextProperty: IrProperty,
+    contextualTypeKey: IrContextualTypeKey,
+    kind: String,
+    returnType: IrType,
+    traceBlock: IrExpression,
+  ): IrExpression {
+    val traceContext = irGetProperty(irGet(thisReceiverParameter), traceContextProperty)
+    val qualifier = contextualTypeKey.runtimeTraceQualifier()
+    val binding = contextualTypeKey.runtimeTraceBinding()
+    return irInvoke(
+      dispatchReceiver = traceContext,
+      callee = metroSymbols.metroTraceContextTrace!!,
+      typeHint = returnType,
+      typeArgs = listOf(returnType),
+      args =
+        listOf(
+          // qualifier
+          nullableString(qualifier),
+          // binding
+          irString(binding),
+          // kind
+          nullableString(kind),
+          // block
+          traceBlock,
+        ),
+    )
+  }
+
+  private fun IrBuilderWithScope.nullableString(value: String?): IrExpression {
+    return if (value == null) {
+      irNull()
+    } else {
+      irString(value)
     }
   }
 
@@ -1686,14 +1808,21 @@ internal class IrGraphGenerator(
         body =
           withIrBuilder(symbol) {
             irExprBodySafe(
-              typeAsProviderArgument(
-                contextualTypeKey,
-                expressionGeneratorFactory
-                  .create(irFunction.dispatchReceiverParameter!!)
-                  .generateBindingCode(binding, contextualTypeKey = contextualTypeKey),
-                isAssisted = false,
-                isGraphInstance = false,
-              )
+              traceGeneratedGraphEntryPoint(
+                thisReceiverParameter = irFunction.dispatchReceiverParameter!!,
+                contextualTypeKey = contextualTypeKey,
+                kind = TRACE_KIND_ACCESSOR,
+                returnType = irFunction.returnType,
+              ) {
+                typeAsProviderArgument(
+                  contextualTypeKey,
+                  expressionGeneratorFactory
+                    .create(irFunction.dispatchReceiverParameter!!)
+                    .generateBindingCode(binding, contextualTypeKey = contextualTypeKey),
+                  isAssisted = false,
+                  isGraphInstance = false,
+                )
+              }
             )
           }
       }
@@ -1707,87 +1836,95 @@ internal class IrGraphGenerator(
         val targetParam = regularParameters[0]
         val binding = bindingGraph.requireBinding(contextKey) as IrBinding.MembersInjected
 
+        // Extract the type from MembersInjector<T>
+        val wrappedType =
+          typeKey.copy(typeKey.type.requireSimpleType(targetParam).arguments[0].typeOrFail)
+        val injectionTraceKey = IrContextualTypeKey(wrappedType)
+
         // We don't get a MembersInjector instance/provider from the graph. Instead, we call
         // all the target inject functions directly
         body =
           createIrBuilder(symbol).irBlockBody {
-            // TODO reuse, consolidate calling code with how we implement this in
-            //  constructor inject code gen
-            // val injectors =
-            // metroDeclarations.findAllInjectorsFor(declaration)
-            // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten()
-            // }
+            traceGeneratedGraphEntryPoint(
+              thisReceiverParameter = overriddenFunction.ir.dispatchReceiverParameter!!,
+              contextualTypeKey = injectionTraceKey,
+              kind = TRACE_KIND_MEMBER_INJECTOR,
+            ) {
+              // TODO reuse, consolidate calling code with how we implement this in
+              //  constructor inject code gen
+              // val injectors =
+              // metroDeclarations.findAllInjectorsFor(declaration)
+              // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten()
+              // }
 
-            // Extract the type from MembersInjector<T>
-            val wrappedType =
-              typeKey.copy(typeKey.type.requireSimpleType(targetParam).arguments[0].typeOrFail)
+              val targetClass = graphClass.lookupClass(binding.targetClassId)!!.owner
 
-            val targetClass = graphClass.lookupClass(binding.targetClassId)!!.owner
-
-            // Create a single deep remapper from the target class - this handles the entire
-            // type hierarchy correctly (e.g., ExampleClass<Int> -> Parent<Int, String> ->
-            // GrandParent<String, Int>)
-            val remapper =
-              if (typeKey.hasTypeArgs) {
-                targetClass.deepRemapperFor(wrappedType.type)
-              } else {
-                null
-              }
-
-            for (type in
-              targetClass.allSupertypesSequence(excludeSelf = false, excludeAny = true)) {
-
-              val clazz = type.rawType()
-              val generatedInjector = metroDeclarations.findInjector(clazz) ?: continue
-              for ((function, unmappedParams) in generatedInjector.declaredInjectFunctions) {
-                val parameters =
-                  if (remapper != null) {
-                    unmappedParams.remapTypes(remapper)
-                  } else {
-                    unmappedParams
-                  }
-                // Record for IC
-                trackFunctionCall(this@apply, function)
-
-                var isOptional = false
-
-                val args = buildList {
-                  add(irGet(targetParam))
-                  for (parameter in parameters.regularParameters) {
-                    val paramBinding = bindingGraph.requireBinding(parameter.contextualTypeKey)
-                    if (paramBinding is IrBinding.Absent) {
-                      isOptional = true
-                      if (parameters.regularParameters.size > 1) {
-                        reportCompilerBug(
-                          "Unexpected multiple parameters for member injection: $contextKey"
-                        )
-                      }
-                      break
-                    } else {
-                      add(
-                        typeAsProviderArgument(
-                          parameter.contextualTypeKey,
-                          expressionGeneratorFactory
-                            .create(overriddenFunction.ir.dispatchReceiverParameter!!)
-                            .generateBindingCode(
-                              paramBinding,
-                              contextualTypeKey = parameter.contextualTypeKey,
-                            ),
-                          isAssisted = false,
-                          isGraphInstance = false,
-                        )
-                      )
-                    }
-                  }
+              // Create a single deep remapper from the target class - this handles the entire
+              // type hierarchy correctly (e.g., ExampleClass<Int> -> Parent<Int, String> ->
+              // GrandParent<String, Int>)
+              val remapper =
+                if (typeKey.hasTypeArgs) {
+                  targetClass.deepRemapperFor(wrappedType.type)
+                } else {
+                  null
                 }
 
-                // If it's a simple property with a default value and absent, omit injecting it here
-                if (isOptional) continue
+              for (type in
+                targetClass.allSupertypesSequence(excludeSelf = false, excludeAny = true)) {
 
-                +irInvoke(
-                  callee = function.symbol,
-                  args = args,
-                )
+                val clazz = type.rawType()
+                val generatedInjector = metroDeclarations.findInjector(clazz) ?: continue
+                for ((function, unmappedParams) in generatedInjector.declaredInjectFunctions) {
+                  val parameters =
+                    if (remapper != null) {
+                      unmappedParams.remapTypes(remapper)
+                    } else {
+                      unmappedParams
+                    }
+                  // Record for IC
+                  trackFunctionCall(this@apply, function)
+
+                  var isOptional = false
+
+                  val args = buildList {
+                    add(irGet(targetParam))
+                    for (parameter in parameters.regularParameters) {
+                      val paramBinding = bindingGraph.requireBinding(parameter.contextualTypeKey)
+                      if (paramBinding is IrBinding.Absent) {
+                        isOptional = true
+                        if (parameters.regularParameters.size > 1) {
+                          reportCompilerBug(
+                            "Unexpected multiple parameters for member injection: $contextKey"
+                          )
+                        }
+                        break
+                      } else {
+                        add(
+                          typeAsProviderArgument(
+                            parameter.contextualTypeKey,
+                            expressionGeneratorFactory
+                              .create(overriddenFunction.ir.dispatchReceiverParameter!!)
+                              .generateBindingCode(
+                                paramBinding,
+                                contextualTypeKey = parameter.contextualTypeKey,
+                              ),
+                            isAssisted = false,
+                            isGraphInstance = false,
+                          )
+                        )
+                      }
+                    }
+                  }
+
+                  // If it's a simple property with a default value and absent, omit injecting it
+                  // here
+                  if (isOptional) continue
+
+                  +irInvoke(
+                    callee = function.symbol,
+                    args = args,
+                  )
+                }
               }
             }
           }
@@ -1852,9 +1989,16 @@ internal class IrGraphGenerator(
             body =
               createIrBuilder(symbol).run {
                 irExprBodySafe(
-                  expressionGeneratorFactory
-                    .create(irFunction.dispatchReceiverParameter!!)
-                    .generateBindingCode(binding = binding, contextualTypeKey = contextKey)
+                  traceGeneratedGraphEntryPoint(
+                    thisReceiverParameter = irFunction.dispatchReceiverParameter!!,
+                    contextualTypeKey = contextKey,
+                    kind = TRACE_KIND_ACCESSOR,
+                    returnType = irFunction.returnType,
+                  ) {
+                    expressionGeneratorFactory
+                      .create(irFunction.dispatchReceiverParameter!!)
+                      .generateBindingCode(binding = binding, contextualTypeKey = contextKey)
+                  }
                 )
               }
           }

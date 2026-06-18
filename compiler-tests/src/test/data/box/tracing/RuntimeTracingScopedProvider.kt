@@ -29,6 +29,13 @@ fun box(): String {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
     assertEquals(0, graph.intProvider())
     assertEvent(
+      name = "Provider<Int>",
+      graph = "AppGraph",
+      path = "AppGraph",
+      binding = "Provider<Int>",
+      kind = "Accessor",
+    )
+    assertEvent(
       name = "Int",
       graph = "AppGraph",
       path = "AppGraph",
@@ -36,6 +43,13 @@ fun box(): String {
       kind = "Provided",
     )
     assertEquals(0, graph.intProvider())
+    assertEvent(
+      name = "Provider<Int>",
+      graph = "AppGraph",
+      path = "AppGraph",
+      binding = "Provider<Int>",
+      kind = "Accessor",
+    )
     assertEquals(1, graph.count)
   }
   return "OK"
