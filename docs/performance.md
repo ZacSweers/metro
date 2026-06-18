@@ -261,7 +261,7 @@ Each root graph should take an AndroidX `Tracer` as a graph input. Metro uses th
 interface AppGraph {
   @DependencyGraph.Factory
   interface Factory {
-    fun create(@Provides @SingleIn(AppScope::class) tracer: Tracer): AppGraph
+    fun create(@Provides tracer: Tracer): AppGraph
   }
 }
 ```
@@ -280,3 +280,10 @@ Here is what an example of what a trace looks like.
 ![Runtime Tracing of the Metro Sample app](performance_assets/runtime_tracing.png)
 
 [Here is the link to the sample app](https://github.com/ZacSweers/metro/tree/main/samples/android-app) with the right setup for runtime tracing.
+
+!!! note "Flushing traces"
+
+    The sample app has UI affordance to flush traces manually. However you can also flush traces programmatically by doing something like:
+    ```bash
+    adb shell am broadcast -a androidx.tracing.profiler.action.FLUSH_TRACES_GET_PATH <targetPackage>/androidx.tracing.profiler.ConnectedProfilerTracingReceiver
+    ```

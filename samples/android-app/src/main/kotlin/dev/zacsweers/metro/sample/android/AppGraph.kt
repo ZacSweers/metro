@@ -11,7 +11,6 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.Provides
-import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metrox.android.MetroAppComponentProviders
 import dev.zacsweers.metrox.viewmodel.ViewModelGraph
 import kotlin.reflect.KClass
@@ -30,15 +29,15 @@ interface AppGraph : MetroAppComponentProviders, ViewModelGraph {
 
   @Multibinds
   val workerProviders:
-      Map<KClass<out ListenableWorker>, () -> MetroWorkerFactory.WorkerInstanceFactory<*>>
+    Map<KClass<out ListenableWorker>, () -> MetroWorkerFactory.WorkerInstanceFactory<*>>
 
   val workerFactory: MetroWorkerFactory
 
   @DependencyGraph.Factory
   fun interface Factory {
     fun create(
-        @Provides application: Application,
-        @Provides @SingleIn(AppScope::class) tracer: Tracer,
+      @Provides application: Application,
+      @Provides tracer: Tracer,
     ): AppGraph
   }
 }
