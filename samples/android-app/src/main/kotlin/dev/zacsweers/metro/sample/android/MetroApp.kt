@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.sample.android
 
 import android.app.Application
+import androidx.tracing.AbstractTraceDriver
 import androidx.tracing.DelicateTracingApi
 import androidx.tracing.Tracer
 import androidx.tracing.wire.TraceDriver
@@ -15,7 +16,8 @@ import dev.zacsweers.metro.createGraphFactory
 import dev.zacsweers.metrox.android.MetroAppComponentProviders
 import dev.zacsweers.metrox.android.MetroApplication
 
-class MetroApp : Application(), MetroApplication, Configuration.Provider {
+class MetroApp :
+  Application(), MetroApplication, Configuration.Provider, AbstractTraceDriver.Factory {
 
   // The TraceSink
   internal val sink = TraceSink(context = this)
@@ -43,19 +45,26 @@ class MetroApp : Application(), MetroApplication, Configuration.Provider {
 
   private fun scheduleBackgroundWork() {
     val workRequest =
-        OneTimeWorkRequestBuilder<SampleWorker>()
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            .setInputData(Data.Builder().putString("workName", "onCreate").build())
-            .build()
+      OneTimeWorkRequestBuilder<SampleWorker>()
+        .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+        .setInputData(Data.Builder().putString("workName", "onCreate").build())
+        .build()
 
     appGraph.workManager.enqueue(workRequest)
 
     val secondWorkRequest =
-        OneTimeWorkRequestBuilder<SecondWorker>()
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            .setInputData(Data.Builder().putString("workName", "onCreate").build())
-            .build()
+      OneTimeWorkRequestBuilder<SecondWorker>()
+        .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+        .setInputData(Data.Builder().putString("workName", "onCreate").build())
+        .build()
 
     appGraph.workManager.enqueue(secondWorkRequest)
+  }
+
+  override fun create(): AbstractTraceDriver {
+    // This ensures that the rest of the application can discover the right TraceDriver instance
+    // to do things like flush traces for e.g. Especially relevant when using broadcasts to flush
+    // traces.
+    return driver
   }
 }
