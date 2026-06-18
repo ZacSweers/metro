@@ -345,6 +345,33 @@ to measure Metro's impact on Android app startup time. The app calls `createAndI
 The benchmark measures cold startup - when the app is launched after being killed. This includes all
 class loading, Metro graph creation, and initialization.
 
+### Runtime Tracing
+
+Metro startup benchmarks can opt into generated runtime tracing with `--enable-runtime-tracing`.
+This mode is Metro-only. The runner rejects non-Metro modes because Dagger, Koin, and kotlin-inject
+do not generate Metro trace sections.
+
+```bash
+# Generate a Metro benchmark project whose AppComponent is runtime-traceable
+kotlin generate-projects.main.kts --mode metro --count 500 --enable-runtime-tracing
+
+# Run traced JVM startup benchmarks
+./run_startup_benchmarks.sh jvm --modes metro --enable-runtime-tracing
+
+# Run traced Android startup benchmarks and save generated trace files
+./run_startup_benchmarks.sh android --modes metro --include-macrobenchmark --enable-runtime-tracing
+```
+
+When enabled, the generated Metro `AppComponent` uses a `@DependencyGraph.Factory` that accepts an
+AndroidX `Tracer`. JVM benchmarks create a `TraceDriver` automatically and copy trace files into the
+benchmark result directory under `metro-runtime-traces/`. Android macrobenchmarks write runtime
+trace files through the benchmark APK's additional-output provider, and microbenchmarks write
+directly to their additional-output directory. UTP then copies those files into the Android result
+tree under `metro-runtime-traces/`.
+
+This is a diagnostic mode. Runtime tracing adds trace recording, serialization, and flush work to the
+measured path, so use it to inspect startup behavior rather than to compare framework timings.
+
 ### Running All Startup Benchmarks
 
 Use the `run_startup_benchmarks.sh` script to run all startup benchmarks and aggregate results:
@@ -365,6 +392,9 @@ Use the `run_startup_benchmarks.sh` script to run all startup benchmarks and agg
 
 # Run only Android benchmarks (requires device)
 ./run_startup_benchmarks.sh android
+
+# Run Metro benchmarks with generated runtime tracing enabled
+./run_startup_benchmarks.sh jvm --modes metro --enable-runtime-tracing
 
 # Results are saved to startup-benchmark-results/
 ```

@@ -39,6 +39,11 @@ MULTIPLATFORM_TARGET="all"
 # Feature flags for Metro (empty string means use default/auto)
 ENABLE_GRAPH_SHARDING=""
 ENABLE_SWITCHING_PROVIDERS=""
+ENABLE_RUNTIME_TRACING=false
+ANDROID_TARGET_PACKAGE="dev.zacsweers.metro.benchmark.startup.android"
+ANDROID_MICROBENCHMARK_PACKAGE="dev.zacsweers.metro.benchmark.startup.android.microbenchmark"
+ANDROID_APP_TRACE_DIR="/sdcard/Android/media/$ANDROID_TARGET_PACKAGE/metro-runtime-traces"
+ANDROID_MICROBENCHMARK_TRACE_DIR="/sdcard/Android/media/$ANDROID_MICROBENCHMARK_PACKAGE/metro-runtime-traces"
 
 # Script-specific print functions (styles differ from run_benchmarks.sh)
 print_header() {
@@ -63,6 +68,52 @@ print_success() {
 
 print_info() {
     echo -e "${BLUE}ℹ $1${NC}"
+}
+
+validate_runtime_tracing_options() {
+    if [ "$ENABLE_RUNTIME_TRACING" != true ]; then
+        return
+    fi
+
+    IFS=',' read -ra MODE_ARRAY <<< "$MODES"
+    for mode in "${MODE_ARRAY[@]}"; do
+        if [ "$mode" != "metro" ]; then
+            print_error "--enable-runtime-tracing is only supported with --modes metro"
+            exit 1
+        fi
+    done
+}
+
+runtime_tracing_gradle_args() {
+    if [ "$ENABLE_RUNTIME_TRACING" = true ]; then
+        echo "-Pmetro.benchmark.runtimeTracing=true"
+    fi
+}
+
+copy_jvm_runtime_traces() {
+    if [ "$ENABLE_RUNTIME_TRACING" != true ]; then
+        return
+    fi
+
+    local output_dir="$1"
+    local trace_dir="app/component/build/metro-runtime-traces"
+    if [ ! -d "$trace_dir" ]; then
+        print_error "Runtime trace directory not found: $trace_dir"
+        return
+    fi
+
+    local destination="$output_dir/metro-runtime-traces"
+    mkdir -p "$destination"
+    cp -r "$trace_dir"/* "$destination/" 2>/dev/null || true
+    print_success "Copied JVM runtime traces to $destination"
+}
+
+clear_android_runtime_traces() {
+    if [ "$ENABLE_RUNTIME_TRACING" != true ]; then
+        return
+    fi
+
+    adb shell rm -rf "$ANDROID_APP_TRACE_DIR" "$ANDROID_MICROBENCHMARK_TRACE_DIR" >/dev/null 2>&1 || true
 }
 
 # Print final results with duration
@@ -122,6 +173,7 @@ show_usage() {
     echo "  --no-enable-graph-sharding  Disable Metro graph sharding"
     echo "  --enable-switching-providers Enable Metro switching providers (deferred class loading)"
     echo "                              Also enables Dagger fastInit when running Dagger modes"
+    echo "  --enable-runtime-tracing     Enable Metro-generated runtime tracing (Metro mode only)"
     echo ""
     echo "Single Options:"
     echo "  --ref <ref>         Git ref (branch name/commit) or Metro version (e.g., 1.0.0)"
@@ -184,6 +236,7 @@ show_usage() {
     echo "  $0 compare --ref1 1.0.0 --ref2 main   # Compare release to git branch"
     echo ""
     echo "  $0 jvm --enable-switching-providers   # Single run with switching providers enabled"
+    echo "  $0 jvm --modes metro --enable-runtime-tracing"
     echo ""
     echo "Results will be saved to: $RESULTS_DIR/"
 }
@@ -226,6 +279,10 @@ get_generator_args() {
         if [ "$ENABLE_SWITCHING_PROVIDERS" = "true" ]; then
             args="$args --enable-switching-providers"
         fi
+
+        if [ "$ENABLE_RUNTIME_TRACING" = true ]; then
+            args="$args --enable-runtime-tracing"
+        fi
     fi
 
     # Add switching providers flag for Dagger modes (Dagger calls this fastInit)
@@ -257,6 +314,11 @@ get_gradle_args() {
             args=""
             ;;
     esac
+
+    local runtime_tracing_args=$(runtime_tracing_gradle_args)
+    if [ -n "$runtime_tracing_args" ]; then
+        args="$args $runtime_tracing_args"
+    fi
 
     echo "$args"
 }
@@ -522,10 +584,14 @@ run_diffuse_diff() {
 setup_for_mode() {
     local mode="$1"
     clean_build_artifacts
+    rm -rf app/component/build/metro-runtime-traces
 
     print_step "Generating project for $mode..."
     local gen_args=$(get_generator_args "$mode")
-    kotlin generate-projects.main.kts $gen_args --count "$MODULE_COUNT" > /dev/null
+    if ! kotlin generate-projects.main.kts $gen_args --count "$MODULE_COUNT" > /dev/null; then
+        print_error "Failed to generate project for $mode"
+        return 1
+    fi
 }
 
 # Run JMH benchmark only (no clean/generate)
@@ -536,6 +602,9 @@ run_jvm_benchmark_only() {
     mkdir -p "$output_dir"
 
     local gradle_args=$(get_gradle_args "$mode")
+    if [ "$ENABLE_RUNTIME_TRACING" = true ]; then
+        gradle_args="$gradle_args -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true"
+    fi
 
     if [ "$BINARY_METRICS_ONLY" = true ]; then
         # Binary metrics only mode - build classes and JAR, skip JMH
@@ -574,6 +643,7 @@ run_jvm_benchmark_only() {
             # Extract class metrics from compiled AppComponent classes
             print_step "Extracting class metrics for $mode..."
             extract_class_metrics "app/component/build/classes/kotlin/main" "$output_dir/class-metrics.json"
+            copy_jvm_runtime_traces "$output_dir"
 
             print_success "JMH benchmark complete for $mode"
         else
@@ -597,12 +667,13 @@ run_jvm_r8_benchmark_only() {
     local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${output_suffix}"
     mkdir -p "$output_dir"
 
+    local gradle_args=$(get_gradle_args "$mode")
     local jar_file="startup-jvm/minified-jar/build/libs/minified-jar.jar"
 
     if [ "$BINARY_METRICS_ONLY" = true ]; then
         # Binary metrics only mode - just build minified jar, skip JMH
         print_step "Building minified JAR for $mode (binary metrics only)..."
-        if ./gradlew --quiet :startup-jvm:minified-jar:r8 2>&1 | tee "$output_dir/build-output.txt"; then
+        if ./gradlew --quiet $gradle_args :startup-jvm:minified-jar:r8 2>&1 | tee "$output_dir/build-output.txt"; then
             # Extract JAR metrics from minified jar
             print_step "Extracting R8 JAR metrics for $mode..."
             mkdir -p "$output_dir/diffuse"
@@ -619,7 +690,7 @@ run_jvm_r8_benchmark_only() {
         print_step "Running JMH R8 benchmark for $mode (minified)..."
 
         # Run JMH with R8-minified classes and capture output
-        if ./gradlew --quiet :startup-jvm-minified:jmh 2>&1 | tee "$output_dir/jmh-output.txt"; then
+        if ./gradlew --quiet $gradle_args :startup-jvm-minified:jmh 2>&1 | tee "$output_dir/jmh-output.txt"; then
             # Copy JMH results
             if [ -d "startup-jvm-minified/build/results/jmh" ]; then
                 cp -r startup-jvm-minified/build/results/jmh/* "$output_dir/" 2>/dev/null || true
@@ -631,6 +702,7 @@ run_jvm_r8_benchmark_only() {
             extract_jar_metrics "$jar_file" "$output_dir/jar-metrics.json" "$output_dir/diffuse/diffuse-jar-${mode}.txt"
             # Copy JAR file to results directory for later diffuse comparison
             cp "$jar_file" "$output_dir/minified-jar.jar" 2>/dev/null || true
+            copy_jvm_runtime_traces "$output_dir"
 
             print_success "JMH R8 benchmark complete for $mode"
         else
@@ -800,7 +872,8 @@ run_android_benchmark_only() {
         # Run macrobenchmark only if enabled
         if [ "$INCLUDE_MACROBENCHMARK" = true ]; then
             print_step "Running Android macrobenchmark for $mode (requires connected device)..."
-            if ./gradlew --quiet :startup-android:benchmark:connectedBenchmarkAndroidTest 2>&1 | tee "$output_dir/macro-benchmark-output.txt"; then
+            clear_android_runtime_traces
+            if ./gradlew --quiet $gradle_args :startup-android:benchmark:connectedBenchmarkAndroidTest 2>&1 | tee "$output_dir/macro-benchmark-output.txt"; then
                 # Copy macrobenchmark results
                 local macro_output="startup-android/benchmark/build/outputs/connected_android_test_additional_output"
                 if [ -d "$macro_output" ]; then
@@ -814,7 +887,8 @@ run_android_benchmark_only() {
         fi
 
         print_step "Running Android microbenchmark for $mode..."
-        if ./gradlew --quiet :startup-android:microbenchmark:connectedBenchmarkAndroidTest 2>&1 | tee "$output_dir/micro-benchmark-output.txt"; then
+        clear_android_runtime_traces
+        if ./gradlew --quiet $gradle_args :startup-android:microbenchmark:connectedBenchmarkAndroidTest 2>&1 | tee "$output_dir/micro-benchmark-output.txt"; then
             # Copy microbenchmark results
             local micro_output="startup-android/microbenchmark/build/outputs/connected_android_test_additional_output"
             if [ -d "$micro_output" ]; then
@@ -4305,6 +4379,7 @@ run_single() {
     fi
     print_info "Benchmark type: $benchmark_type"
     print_info "Modes: $MODES"
+    print_info "Runtime tracing: $ENABLE_RUNTIME_TRACING"
     echo ""
 
     # Create safe label for directory name
@@ -4390,6 +4465,7 @@ run_compare() {
     print_info "Compare (ref2):  $COMPARE_REF2 ($(get_ref_type_description "$COMPARE_REF2"))"
     print_info "Benchmark type:  $benchmark_type"
     print_info "Modes:           $MODES"
+    print_info "Runtime tracing: $ENABLE_RUNTIME_TRACING"
     if [ "$RERUN_NON_METRO" = true ]; then
         print_info "Re-run non-metro on ref2: yes"
     else
@@ -4500,6 +4576,10 @@ main() {
                 ENABLE_SWITCHING_PROVIDERS="true"
                 shift
                 ;;
+            --enable-runtime-tracing)
+                ENABLE_RUNTIME_TRACING=true
+                shift
+                ;;
             *)
                 print_error "Unknown option: $1"
                 show_usage
@@ -4507,6 +4587,8 @@ main() {
                 ;;
         esac
     done
+
+    validate_runtime_tracing_options
 
     mkdir -p "$RESULTS_DIR/${TIMESTAMP}"
 
