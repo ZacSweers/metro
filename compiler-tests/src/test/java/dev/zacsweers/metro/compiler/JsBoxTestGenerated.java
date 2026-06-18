@@ -2509,9 +2509,21 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("RuntimeTracingMultibindingElements.kt")
+    public void testRuntimeTracingMultibindingElements() {
+      run("RuntimeTracingMultibindingElements.kt");
+    }
+
+    @Test
     @TestMetadata("RuntimeTracingMultibindingGetter.kt")
     public void testRuntimeTracingMultibindingGetter() {
       run("RuntimeTracingMultibindingGetter.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingNestedNames.kt")
+    public void testRuntimeTracingNestedNames() {
+      run("RuntimeTracingNestedNames.kt");
     }
 
     @Test
