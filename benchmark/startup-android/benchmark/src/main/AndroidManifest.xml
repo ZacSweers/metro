@@ -7,4 +7,12 @@
         <package android:name="dev.zacsweers.metro.benchmark.startup.android" />
     </queries>
 
+    <application>
+        <provider
+            android:name="dev.zacsweers.metro.benchmark.startup.android.RuntimeTraceFileProvider"
+            android:authorities="dev.zacsweers.metro.benchmark.startup.android.benchmark.runtime-traces"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+    </application>
+
 </manifest>
