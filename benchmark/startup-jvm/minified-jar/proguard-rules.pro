@@ -1,6 +1,7 @@
-# Keep the createAndInitialize function as the entry point for benchmarks
+# Keep the generated top-level functions used by the JMH harness.
 -keep class dev.zacsweers.metro.benchmark.app.component.AppComponentKt {
     public static *** createAndInitialize();
+    public static *** traceNextCreateAndInitialize();
 }
 
 # Don't warn about missing classes
