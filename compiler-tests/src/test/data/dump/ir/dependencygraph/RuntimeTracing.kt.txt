@@ -13,7 +13,7 @@ interface AppGraph : ChildGraph.Factory {
       field = MetroTraceContext(tracer = <this>.#tracerInstance, category = "dev.zacsweers.metro", graphName = "AppGraph", graphPath = "AppGraph")
 
     private val provideStringProvider: Provider<String>
-      field = TracedProvider<String>(traceContext = <this>.#metroTraceContext, qualifier = null, binding = "String", kind = "Provided", provider = ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
+      field = TracedProvider<String>(traceContext = <this>.#metroTraceContext, qualifier = null, type = "String", kind = "Provided", provider = ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
 
     @DependencyGraph
     private class ChildGraphImpl : ChildGraph {
@@ -34,8 +34,11 @@ interface AppGraph : ChildGraph.Factory {
 
       override val count: Int
         override get(): Int {
-          return <this>.#metroTraceContext.trace<Int>(name = "Int", qualifier = null, binding = "Int", kind = "Provided", block = local fun <anonymous>(): Int {
-            return <this>.#thisGraphInstance.provideCount()
+          return <this>.#metroTraceContext.trace<Int>(qualifier = null, type = "Int", contextualType = "Int", kind = "Accessor", block = local fun <anonymous>(): Int {
+            return <this>.#metroTraceContext.trace<Int>(qualifier = null, type = "Int", contextualType = "Int", kind = "Provided", block = local fun <anonymous>(): Int {
+              return <this>.#thisGraphInstance.provideCount()
+            }
+)
           }
 )
         }
@@ -49,26 +52,38 @@ interface AppGraph : ChildGraph.Factory {
     }
 
     override fun createChildGraph(): ChildGraph {
-      return ChildGraphImpl(appGraphImpl = <this>)
+      return <this>.#metroTraceContext.trace<ChildGraph>(qualifier = null, type = "ChildGraph", contextualType = "ChildGraph", kind = "Accessor", block = local fun <anonymous>(): ChildGraph {
+        return AppGraph.Impl.ChildGraphImpl(appGraphImpl = <this>)
+      }
+)
     }
 
     @Named(name = "special")
     override val qualifiedString: String
       override get(): String {
-        return <this>.#metroTraceContext.trace<String>(name = "@Named(\"special\") String", qualifier = "@Named(\"special\")", binding = "String", kind = "Provided", block = local fun <anonymous>(): String {
-          return <this>.#thisGraphInstance.provideQualifiedString()
+        return <this>.#metroTraceContext.trace<String>(qualifier = "@Named(\"special\")", type = "String", contextualType = "String", kind = "Accessor", block = local fun <anonymous>(): String {
+          return <this>.#metroTraceContext.trace<String>(qualifier = "@Named(\"special\")", type = "String", contextualType = "String", kind = "Provided", block = local fun <anonymous>(): String {
+            return <this>.#thisGraphInstance.provideQualifiedString()
+          }
+)
         }
 )
       }
 
     override val string: String
       override get(): String {
-        return <this>.#provideStringProvider.invoke()
+        return <this>.#metroTraceContext.trace<String>(qualifier = null, type = "String", contextualType = "String", kind = "Accessor", block = local fun <anonymous>(): String {
+          return <this>.#provideStringProvider.invoke()
+        }
+)
       }
 
     override val stringProvider: Provider<String>
       override get(): Provider<String> {
-        return <this>.#provideStringProvider
+        return <this>.#metroTraceContext.trace<Provider<String>>(qualifier = null, type = "String", contextualType = "Provider<String>", kind = "Accessor", block = local fun <anonymous>(): Provider<String> {
+          return <this>.#provideStringProvider
+        }
+)
       }
 
     override val tracer: Tracer
@@ -301,3 +316,4 @@ interface ChildGraph {
     abstract get
 
 }
+
