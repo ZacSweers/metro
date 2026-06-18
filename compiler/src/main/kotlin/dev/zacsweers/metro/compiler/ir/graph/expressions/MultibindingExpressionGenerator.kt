@@ -81,6 +81,20 @@ internal class MultibindingExpressionGenerator(
       contextualTypeKey.letIf(contextualTypeKey.requiresProviderInstance) {
         contextualTypeKey.stripIfLazy().wrapInProvider()
       }
+    if (accessType == AccessType.INSTANCE && expressionDecorator.decoratesExpressions) {
+      // Runtime tracing decorates provider expressions with TracedProvider. Use that route for
+      // direct multibinding access too, so aggregate and element spans are traced by providers
+      // instead of nesting trace lambdas around generated buildSet/buildMap lambdas.
+      val providerContextKey = transformedContextKey.wrapInProvider()
+      val providerExpression =
+        generateBindingCode(
+          binding,
+          providerContextKey,
+          accessType = AccessType.PROVIDER,
+          fieldInitKey = fieldInitKey,
+        )
+      return providerExpression.unwrapProvider(contextualTypeKey.typeKey.type)
+    }
     return if (binding.isSet) {
       generateSetMultibindingExpression(binding, accessType, transformedContextKey, fieldInitKey)
     } else {
@@ -134,6 +148,7 @@ internal class MultibindingExpressionGenerator(
     return maybeTracedInstance.toTargetType(
       actual = actualAccessType,
       contextualTypeKey = contextualTypeKey,
+      bindingKind = binding.diagnosticTypeName,
     )
   }
 
@@ -719,7 +734,11 @@ internal class MultibindingExpressionGenerator(
           // in GraphExpressionGenerator, so trace the aggregate Map getter here.
           maybeTraceDirectExpression(emptyMap, contextualTypeKey, binding.diagnosticTypeName)
         } else {
-          emptyMap.toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
+          emptyMap.toTargetType(
+            actual = AccessType.PROVIDER,
+            contextualTypeKey = contextualTypeKey,
+            bindingKind = binding.diagnosticTypeName,
+          )
         }
       }
 
@@ -822,6 +841,7 @@ internal class MultibindingExpressionGenerator(
             return singletonProvider.toTargetType(
               actual = AccessType.PROVIDER,
               contextualTypeKey = contextualTypeKey,
+              bindingKind = binding.diagnosticTypeName,
             )
           }
           val builderFunction =
@@ -951,6 +971,7 @@ internal class MultibindingExpressionGenerator(
       return providerInstance.toTargetType(
         actual = AccessType.PROVIDER,
         contextualTypeKey = contextualTypeKey,
+        bindingKind = binding.diagnosticTypeName,
       )
     }
 
@@ -1069,6 +1090,10 @@ internal class MultibindingExpressionGenerator(
           )
         }
     }
+
+  /** True when generated expressions should flow through decorator hooks before being returned. */
+  private val GraphBindingExpressionDecorator.decoratesExpressions: Boolean
+    get() = this !== GraphBindingExpressionDecorator.None
 
   /**
    * Function symbols needed to materialize an empty `Map*Factory`. [empty] is null when the

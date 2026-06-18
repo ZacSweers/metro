@@ -44,14 +44,7 @@ public class MetroTraceTestScope(
   public val tracer: Tracer
     get() = traceDriver.tracer
 
-  /**
-   * Asserts that the next generated Metro runtime trace event matches these values.
-   *
-   * [name] is the visible section name shown in trace viewers. [graph] is the graph that owns the
-   * traced binding, while [path] is the slash-separated root-to-current graph path. These are equal
-   * for root graph bindings and differ for graph extension bindings, such as `AppGraph/ChildGraph`.
-   * The remaining parameters map to optional metadata generated for the traced binding.
-   */
+  /** Flushes tracing and asserts the next generated Metro event. */
   public fun assertEvent(
     name: String,
     graph: String,

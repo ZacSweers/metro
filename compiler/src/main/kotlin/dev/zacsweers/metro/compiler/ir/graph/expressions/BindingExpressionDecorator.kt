@@ -207,10 +207,11 @@ private class TraceExpressionDecorator(
     val traceContext = traceContextFor(request.contextualTypeKey) ?: return expression
     val traceFunction = metroSymbols.metroTraceContextTrace!!
     val bindingType = request.contextualTypeKey.typeKey.type
-    val traceNames = request.contextualTypeKey.traceNames()
+    val qualifier = request.contextualTypeKey.traceQualifier()
+    val binding = request.contextualTypeKey.renderTraceBinding()
 
     return with(scope) {
-      val qualifierExpression = traceNames.qualifier.toNullableStringExpression()
+      val qualifierExpression = qualifier.toNullableStringExpression()
       val kindExpression = request.bindingKind.toNullableStringExpression()
       val traceBlock =
         irLambda(
@@ -229,12 +230,10 @@ private class TraceExpressionDecorator(
         typeArgs = listOf(bindingType),
         args =
           listOf(
-            // name
-            irString(traceNames.name),
             // qualifier
             qualifierExpression,
             // binding
-            irString(traceNames.binding),
+            irString(binding),
             // kind
             kindExpression,
             // block
@@ -310,18 +309,22 @@ private class TraceExpressionDecorator(
     }
   }
 
-  private data class TraceNames(val name: String, val qualifier: String?, val binding: String)
+  private fun IrContextualTypeKey.traceQualifier(): String? {
+    val multibindingKeyData = typeKey.multibindingKeyData
+    return if (multibindingKeyData == null) {
+      typeKey.qualifier?.render(short = true, useRelativeClassNames = true)
+    } else {
+      multibindingKeyData.multibindingTypeKey
+        ?.qualifier
+        ?.render(
+          short = true,
+          useRelativeClassNames = true,
+        )
+    }
+  }
 
-  private fun IrContextualTypeKey.traceNames(): TraceNames {
-    val qualifier = typeKey.qualifier?.render(short = true)
-    val binding = render(short = true, includeQualifier = false)
-    val name =
-      if (qualifier == null) {
-        binding
-      } else {
-        "$qualifier $binding"
-      }
-    return TraceNames(name = name, qualifier = qualifier, binding = binding)
+  private fun IrContextualTypeKey.renderTraceBinding(): String {
+    return render(short = true, includeQualifier = false, useRelativeClassNames = true)
   }
 
   context(scope: IrBuilderWithScope)
@@ -342,9 +345,10 @@ private class TraceExpressionDecorator(
     bindingKind: String?,
   ): IrExpression {
     val tracedProvider = metroSymbols.tracedProvider!!
-    val traceNames = contextualTypeKey.traceNames()
+    val qualifier = contextualTypeKey.traceQualifier()
+    val binding = contextualTypeKey.renderTraceBinding()
     return with(scope) {
-      val qualifierExpression = traceNames.qualifier.toNullableStringExpression()
+      val qualifierExpression = qualifier.toNullableStringExpression()
       val kindExpression = bindingKind.toNullableStringExpression()
       irCallConstructor(
           tracedProvider.constructors.first { it.owner.isPrimary },
@@ -356,7 +360,7 @@ private class TraceExpressionDecorator(
           // qualifier
           arguments[1] = qualifierExpression
           // binding
-          arguments[2] = irString(traceNames.binding)
+          arguments[2] = irString(binding)
           // kind
           arguments[3] = kindExpression
           // provider
