@@ -14,7 +14,7 @@ internal class StringTypeKey(override val type: String, override val qualifier: 
   override fun copy(type: String, qualifier: String?): StringTypeKey =
     StringTypeKey(type, qualifier)
 
-  override fun render(short: Boolean, includeQualifier: Boolean) =
+  override fun render(short: Boolean, includeQualifier: Boolean, useRelativeClassNames: Boolean) =
     if (short) type else qualifier?.let { "$it:$type" } ?: type
 
   override fun compareTo(other: StringTypeKey): Int {
