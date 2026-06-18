@@ -110,7 +110,9 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Install aria2 and xvfb
-        run: sudo apt-get install -y aria2 xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y aria2 xvfb
 
       - name: Filter IDE version for this matrix entry
         run: |
