@@ -3,6 +3,10 @@
 package dev.zacsweers.metro.sample.android
 
 import android.app.Application
+import androidx.tracing.DelicateTracingApi
+import androidx.tracing.Tracer
+import androidx.tracing.wire.TraceDriver
+import androidx.tracing.wire.TraceSink
 import androidx.work.Configuration
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
@@ -12,7 +16,18 @@ import dev.zacsweers.metrox.android.MetroAppComponentProviders
 import dev.zacsweers.metrox.android.MetroApplication
 
 class MetroApp : Application(), MetroApplication, Configuration.Provider {
-  private val appGraph by lazy { createGraphFactory<AppGraph.Factory>().create(this) }
+
+  // The TraceSink
+  internal val sink = TraceSink(context = this)
+
+  // The TraceDriver
+  internal val driver = TraceDriver(context = this, sink = sink, isCategoryEnabled = { true })
+
+  @OptIn(DelicateTracingApi::class)
+  private val appGraph by lazy {
+    Tracer.setGlobalTracer(driver.tracer)
+    createGraphFactory<AppGraph.Factory>().create(this, driver.tracer)
+  }
 
   override val appComponentProviders: MetroAppComponentProviders
     get() = appGraph
@@ -28,18 +43,18 @@ class MetroApp : Application(), MetroApplication, Configuration.Provider {
 
   private fun scheduleBackgroundWork() {
     val workRequest =
-      OneTimeWorkRequestBuilder<SampleWorker>()
-        .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-        .setInputData(Data.Builder().putString("workName", "onCreate").build())
-        .build()
+        OneTimeWorkRequestBuilder<SampleWorker>()
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .setInputData(Data.Builder().putString("workName", "onCreate").build())
+            .build()
 
     appGraph.workManager.enqueue(workRequest)
 
     val secondWorkRequest =
-      OneTimeWorkRequestBuilder<SecondWorker>()
-        .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-        .setInputData(Data.Builder().putString("workName", "onCreate").build())
-        .build()
+        OneTimeWorkRequestBuilder<SecondWorker>()
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .setInputData(Data.Builder().putString("workName", "onCreate").build())
+            .build()
 
     appGraph.workManager.enqueue(secondWorkRequest)
   }

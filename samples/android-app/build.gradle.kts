@@ -1,3 +1,7 @@
+@file:OptIn(ExperimentalMetroGradleApi::class)
+
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
+
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 plugins {
@@ -19,9 +23,15 @@ android {
   testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
+metro {
+  enableRuntimeTracing = true
+}
+
 dependencies {
   implementation("dev.zacsweers.metro:metrox-android")
   implementation("dev.zacsweers.metro:metrox-viewmodel")
+  // Picking the latest snapshot. Once alpha09 is out, this is no longer necessary.
+  implementation("androidx.tracing:tracing-wire:2.0.0-SNAPSHOT")
   implementation(libs.androidx.appcompat)
   implementation(libs.androidx.core)
   implementation(libs.androidx.fragment)

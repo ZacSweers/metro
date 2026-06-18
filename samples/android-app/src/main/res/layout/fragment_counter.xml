@@ -41,4 +41,14 @@
     app:layout_constraintStart_toStartOf="parent"
     app:layout_constraintTop_toBottomOf="@+id/increment_button"/>
 
+  <Button
+      android:id="@+id/flush_button"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:text="Flush Traces"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@+id/decrement_button" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

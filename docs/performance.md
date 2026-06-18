@@ -261,7 +261,7 @@ Each root graph should take an AndroidX `Tracer` as a graph input. Metro uses th
 interface AppGraph {
   @DependencyGraph.Factory
   interface Factory {
-    fun create(@Provides tracer: Tracer): AppGraph
+    fun create(@Provides @SingleIn(AppScope::class) tracer: Tracer): AppGraph
   }
 }
 ```
@@ -274,3 +274,9 @@ Generated trace sections use the short rendered binding name, including the qual
 - `metro.contextual_type`: the requested unqualified type, when it differs from `metro.type`, such as `Provider<T>` or `Lazy<T>`. Only present for accessors.
 - `metro.qualifier`: the binding qualifier, when present.
 - `metro.binding_kind`: the generated binding implementation kind, such as `Provided`, `ConstructorInjected`, or `Multibinding`.
+
+Here is what an example of what a trace looks like.
+
+![Runtime Tracing of the Metro Sample app](performance_assets/runtime_tracing.png)
+
+[Here is the link to the sample app](https://github.com/ZacSweers/metro/tree/main/samples/android-app) with the right setup for runtime tracing.

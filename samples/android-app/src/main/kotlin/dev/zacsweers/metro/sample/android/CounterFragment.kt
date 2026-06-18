@@ -17,8 +17,9 @@ import dev.zacsweers.metro.Inject
 @ContributesIntoMap(AppScope::class)
 @FragmentKey(CounterFragment::class)
 @Inject
-class CounterFragment(private val viewModelFactory: ViewModelProvider.Factory) :
-  Fragment(R.layout.fragment_counter) {
+class CounterFragment(
+    private val viewModelFactory: ViewModelProvider.Factory,
+) : Fragment(R.layout.fragment_counter) {
 
   override val defaultViewModelProviderFactory: ViewModelProvider.Factory
     get() = viewModelFactory
@@ -30,6 +31,7 @@ class CounterFragment(private val viewModelFactory: ViewModelProvider.Factory) :
     val counterText = view.findViewById<TextView>(R.id.counter_text)
     val incrementButton = view.findViewById<Button>(R.id.increment_button)
     val decrementButton = view.findViewById<Button>(R.id.decrement_button)
+    val flushButton = view.findViewById<Button>(R.id.flush_button)
 
     counterViewModel.count.observe(viewLifecycleOwner) { count ->
       @Suppress("SetTextI18n")
@@ -38,5 +40,9 @@ class CounterFragment(private val viewModelFactory: ViewModelProvider.Factory) :
 
     incrementButton.setOnClickListener { counterViewModel.increment() }
     decrementButton.setOnClickListener { counterViewModel.decrement() }
+    flushButton.setOnClickListener {
+      val application = context?.applicationContext as? MetroApp
+      application?.driver?.flush()
+    }
   }
 }

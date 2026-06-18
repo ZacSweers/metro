@@ -25,6 +25,8 @@ dependencyResolutionManagement {
     mavenCentral()
     google()
     mavenLocal()
+    // AndroidX Snapshots for Tracing 2.0 snapshots
+    maven("https://androidx.dev/snapshots/builds/15673131/artifacts/repository")
     maven("https://redirector.kotlinlang.org/maven/bootstrap")
     maven("https://redirector.kotlinlang.org/maven/dev/")
     // Publications used by IJ
