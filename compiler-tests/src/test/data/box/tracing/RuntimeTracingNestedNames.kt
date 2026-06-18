@@ -31,14 +31,14 @@ fun box(): String {
       name = "Types.Factory",
       graph = "Graphs.AppGraph",
       path = "Graphs.AppGraph",
-      binding = "Types.Factory",
+      type = "Types.Factory",
       kind = "Accessor",
     )
     assertEvent(
       name = "Types.Factory",
       graph = "Graphs.AppGraph",
       path = "Graphs.AppGraph",
-      binding = "Types.Factory",
+      type = "Types.Factory",
       kind = "ConstructorInjected",
     )
   }

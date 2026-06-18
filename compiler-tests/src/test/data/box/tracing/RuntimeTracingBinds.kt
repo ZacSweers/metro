@@ -36,14 +36,14 @@ fun box(): String {
       name = "Service",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Service",
+      type = "Service",
       kind = "Accessor",
     )
     assertEvent(
       name = "RealService",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "RealService",
+      type = "RealService",
       kind = "ConstructorInjected",
     )
   }

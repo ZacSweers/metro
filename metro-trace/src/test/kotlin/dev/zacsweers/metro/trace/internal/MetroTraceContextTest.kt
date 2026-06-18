@@ -43,7 +43,7 @@ class MetroTraceContextTest {
       TracedProvider<String>(
         traceContext = traceContext(),
         qualifier = null,
-        binding = "String",
+        type = "String",
         kind = "Provided",
         provider = { throw exception },
       )

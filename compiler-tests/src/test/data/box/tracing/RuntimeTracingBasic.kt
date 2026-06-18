@@ -32,14 +32,14 @@ fun box(): String {
       name = "String",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "String",
+      type = "String",
       kind = "Accessor",
     )
     assertEvent(
       name = "String",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "String",
+      type = "String",
       kind = "Provided",
     )
     assertEquals("string", graph.stringProvider())
@@ -47,14 +47,15 @@ fun box(): String {
       name = "Provider<String>",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Provider<String>",
+      type = "String",
+      contextualType = "Provider<String>",
       kind = "Accessor",
     )
     assertEvent(
       name = "String",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "String",
+      type = "String",
       kind = "Provided",
     )
     assertEquals("qualified", graph.qualifiedStringProvider())
@@ -62,7 +63,8 @@ fun box(): String {
       name = """@Named("qualified") Provider<String>""",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Provider<String>",
+      type = "String",
+      contextualType = "Provider<String>",
       qualifier = """@Named("qualified")""",
       kind = "Accessor",
     )
@@ -70,7 +72,7 @@ fun box(): String {
       name = """@Named("qualified") String""",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "String",
+      type = "String",
       qualifier = """@Named("qualified")""",
       kind = "Provided",
     )

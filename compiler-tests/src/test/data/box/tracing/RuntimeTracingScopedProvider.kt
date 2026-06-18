@@ -32,14 +32,15 @@ fun box(): String {
       name = "Provider<Int>",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Provider<Int>",
+      type = "Int",
+      contextualType = "Provider<Int>",
       kind = "Accessor",
     )
     assertEvent(
       name = "Int",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Int",
+      type = "Int",
       kind = "Provided",
     )
     assertEquals(0, graph.intProvider())
@@ -47,7 +48,8 @@ fun box(): String {
       name = "Provider<Int>",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Provider<Int>",
+      type = "Int",
+      contextualType = "Provider<Int>",
       kind = "Accessor",
     )
     assertEquals(1, graph.count)

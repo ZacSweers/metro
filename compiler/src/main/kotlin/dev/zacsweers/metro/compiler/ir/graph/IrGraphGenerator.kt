@@ -586,7 +586,7 @@ internal class IrGraphGenerator(
     )
   }
 
-  /** Builds `this.metroTraceContext.trace(qualifier, binding, kind) { ... }`. */
+  /** Builds `this.metroTraceContext.trace(qualifier, type, contextualType, kind) { ... }`. */
   private fun IrBuilderWithScope.runtimeTraceCall(
     thisReceiverParameter: IrValueParameter,
     traceContextProperty: IrProperty,
@@ -597,7 +597,8 @@ internal class IrGraphGenerator(
   ): IrExpression {
     val traceContext = irGetProperty(irGet(thisReceiverParameter), traceContextProperty)
     val qualifier = contextualTypeKey.runtimeTraceQualifier()
-    val binding = contextualTypeKey.runtimeTraceBinding()
+    val type = contextualTypeKey.runtimeTraceType()
+    val contextualType = contextualTypeKey.runtimeTraceContextualType()
     return irInvoke(
       dispatchReceiver = traceContext,
       callee = metroSymbols.metroTraceContextTrace!!,
@@ -607,8 +608,10 @@ internal class IrGraphGenerator(
         listOf(
           // qualifier
           nullableString(qualifier),
-          // binding
-          irString(binding),
+          // type
+          irString(type),
+          // contextualType
+          nullableString(contextualType),
           // kind
           nullableString(kind),
           // block

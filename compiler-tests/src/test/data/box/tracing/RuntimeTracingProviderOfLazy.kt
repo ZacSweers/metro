@@ -28,14 +28,15 @@ fun box(): String {
       name = "Provider<Lazy<String>>",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Provider<Lazy<String>>",
+      type = "String",
+      contextualType = "Provider<Lazy<String>>",
       kind = "Accessor",
     )
     assertEvent(
-      name = "Lazy<String>",
+      name = "String",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Lazy<String>",
+      type = "String",
       kind = "Provided",
     )
   }

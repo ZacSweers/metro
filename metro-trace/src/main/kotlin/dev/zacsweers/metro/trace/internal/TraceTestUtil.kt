@@ -49,14 +49,16 @@ public class MetroTraceTestScope(
     name: String,
     graph: String,
     path: String,
-    binding: String? = null,
+    type: String,
+    contextualType: String? = null,
     qualifier: String? = null,
     kind: String? = null,
   ) {
     val metadata = buildMap {
       put("metro.graph", graph)
       put("metro.graph_path", path)
-      binding?.let { put("metro.binding", it) }
+      put("metro.type", type)
+      contextualType?.let { put("metro.contextual_type", it) }
       qualifier?.let { put("metro.qualifier", it) }
       kind?.let { put("metro.binding_kind", it) }
     }

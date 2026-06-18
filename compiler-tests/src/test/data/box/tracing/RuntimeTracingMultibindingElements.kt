@@ -32,21 +32,21 @@ fun box(): String {
       name = "Set<String>",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Set<String>",
+      type = "Set<String>",
       kind = "Accessor",
     )
     assertEvent(
       name = "Set<String>",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Set<String>",
+      type = "Set<String>",
       kind = "Multibinding",
     )
     assertEvent(
       name = "String",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "String",
+      type = "String",
       kind = "Provided",
     )
 
@@ -55,21 +55,21 @@ fun box(): String {
       name = "Map<String, Int>",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Map<String, Int>",
+      type = "Map<String, Int>",
       kind = "Accessor",
     )
     assertEvent(
       name = "Map<String, Int>",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Map<String, Int>",
+      type = "Map<String, Int>",
       kind = "Multibinding",
     )
     assertEvent(
       name = "Int",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Int",
+      type = "Int",
       kind = "Provided",
     )
   }

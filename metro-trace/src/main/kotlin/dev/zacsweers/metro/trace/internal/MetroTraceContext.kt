@@ -41,19 +41,23 @@ public class MetroTraceContext(
   /**
    * Traces [block] with Metro-specific metadata.
    *
-   * The visible section name is derived from [qualifier] and [binding].
+   * The visible section name is derived from [qualifier] and the requested [contextualType],
+   * falling back to [type] when the contextual type is the same as the canonical type.
    */
   public inline fun <T> trace(
     qualifier: String?,
-    binding: String,
+    type: String,
+    contextualType: String?,
     kind: String?,
     crossinline block: () -> T,
   ): T {
+    val renderedContextualType = contextualType?.takeIf { it != type }
+    val nameType = renderedContextualType ?: type
     val name =
       if (qualifier == null) {
-        binding
+        nameType
       } else {
-        "$qualifier $binding"
+        "$qualifier $nameType"
       }
     return tracer.trace(
       category = category,
@@ -61,7 +65,8 @@ public class MetroTraceContext(
       metadataBlock = {
         addMetadataEntry("metro.graph", graphName)
         addMetadataEntry("metro.graph_path", graphPath)
-        addMetadataEntry("metro.binding", binding)
+        addMetadataEntry("metro.type", type)
+        renderedContextualType?.let { addMetadataEntry("metro.contextual_type", it) }
         qualifier?.let { addMetadataEntry("metro.qualifier", it) }
         kind?.let { addMetadataEntry("metro.binding_kind", it) }
       },

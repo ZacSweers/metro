@@ -27,14 +27,14 @@ fun box(): String {
       name = "Set<String>",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Set<String>",
+      type = "Set<String>",
       kind = "Accessor",
     )
     assertEvent(
       name = "Set<String>",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "Set<String>",
+      type = "Set<String>",
       kind = "Multibinding",
     )
   }

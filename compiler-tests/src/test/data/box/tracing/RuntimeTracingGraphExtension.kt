@@ -35,21 +35,21 @@ fun box(): String {
       name = "ChildGraph",
       graph = "AppGraph",
       path = "AppGraph",
-      binding = "ChildGraph",
+      type = "ChildGraph",
       kind = "Accessor",
     )
     assertEvent(
       name = "Int",
       graph = "ChildGraph",
       path = "AppGraph/ChildGraph",
-      binding = "Int",
+      type = "Int",
       kind = "Accessor",
     )
     assertEvent(
       name = "Int",
       graph = "ChildGraph",
       path = "AppGraph/ChildGraph",
-      binding = "Int",
+      type = "Int",
       kind = "Provided",
     )
   }

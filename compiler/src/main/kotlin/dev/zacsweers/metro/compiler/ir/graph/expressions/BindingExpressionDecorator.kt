@@ -6,8 +6,9 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.graph.isRuntimeTracingInfra
-import dev.zacsweers.metro.compiler.ir.graph.runtimeTraceBinding
+import dev.zacsweers.metro.compiler.ir.graph.runtimeTraceContextualType
 import dev.zacsweers.metro.compiler.ir.graph.runtimeTraceQualifier
+import dev.zacsweers.metro.compiler.ir.graph.runtimeTraceType
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -119,8 +120,9 @@ internal interface GraphBindingExpressionDecorator {
 /**
  * Describes the binding value represented by a direct expression.
  *
- * [contextualTypeKey] supplies the trace-visible binding name and qualifier. [bindingKind] is the
- * implementation kind, such as `Provided` or `ConstructorInjected`, recorded as optional metadata.
+ * [contextualTypeKey] supplies the canonical trace type, the requested contextual type, and the
+ * qualifier. [bindingKind] is the implementation kind, such as `Provided` or `ConstructorInjected`,
+ * recorded as optional metadata.
  */
 internal data class DirectExpressionRequest(
   val contextualTypeKey: IrContextualTypeKey,
@@ -210,10 +212,12 @@ private class TraceExpressionDecorator(
     val traceFunction = metroSymbols.metroTraceContextTrace!!
     val bindingType = request.contextualTypeKey.typeKey.type
     val qualifier = request.contextualTypeKey.runtimeTraceQualifier()
-    val binding = request.contextualTypeKey.runtimeTraceBinding()
+    val type = request.contextualTypeKey.runtimeTraceType()
+    val contextualType = request.contextualTypeKey.runtimeTraceContextualType()
 
     return with(scope) {
       val qualifierExpression = qualifier.toNullableStringExpression()
+      val contextualTypeExpression = contextualType.toNullableStringExpression()
       val kindExpression = request.bindingKind.toNullableStringExpression()
       val traceBlock =
         irLambda(
@@ -234,8 +238,10 @@ private class TraceExpressionDecorator(
           listOf(
             // qualifier
             qualifierExpression,
-            // binding
-            irString(binding),
+            // type
+            irString(type),
+            // contextualType
+            contextualTypeExpression,
             // kind
             kindExpression,
             // block
@@ -324,7 +330,7 @@ private class TraceExpressionDecorator(
   ): IrExpression {
     val tracedProvider = metroSymbols.tracedProvider!!
     val qualifier = contextualTypeKey.runtimeTraceQualifier()
-    val binding = contextualTypeKey.runtimeTraceBinding()
+    val type = contextualTypeKey.runtimeTraceType()
     return with(scope) {
       val qualifierExpression = qualifier.toNullableStringExpression()
       val kindExpression = bindingKind.toNullableStringExpression()
@@ -337,8 +343,8 @@ private class TraceExpressionDecorator(
           arguments[0] = traceContext
           // qualifier
           arguments[1] = qualifierExpression
-          // binding
-          arguments[2] = irString(binding)
+          // type
+          arguments[2] = irString(type)
           // kind
           arguments[3] = kindExpression
           // provider

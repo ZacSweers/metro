@@ -270,6 +270,7 @@ Generated trace sections use the short rendered binding name, including the qual
 
 - `metro.graph`: the graph that owns the binding.
 - `metro.graph_path`: the root-to-current graph path, useful for graph extensions.
-- `metro.binding`: the unqualified binding name.
+- `metro.type`: the canonical unqualified type.
+- `metro.contextual_type`: the requested unqualified type, when it differs from `metro.type`, such as `Provider<T>` or `Lazy<T>`. Only present for accessors.
 - `metro.qualifier`: the binding qualifier, when present.
 - `metro.binding_kind`: the generated binding implementation kind, such as `Provided`, `ConstructorInjected`, or `Multibinding`.
