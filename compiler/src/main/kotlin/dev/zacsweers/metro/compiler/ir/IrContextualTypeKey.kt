@@ -45,13 +45,17 @@ internal class IrContextualTypeKey(
     )
   }
 
-  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
+  override fun render(
+    short: Boolean,
+    includeQualifier: Boolean,
+    useRelativeClassNames: Boolean,
+  ): String = buildString {
     append(
       wrappedType.render { type ->
         if (type == typeKey.type) {
-          typeKey.render(short, includeQualifier)
+          typeKey.render(short, includeQualifier, useRelativeClassNames)
         } else {
-          type.render(short)
+          type.render(short, useRelativeClassNames = useRelativeClassNames)
         }
       }
     )

@@ -485,12 +485,22 @@ internal class IrGraphGenerator(
   }
 
   private fun runtimeTraceGraphName(): String {
-    return node.originalTypeKey.render(short = true)
+    return node.originalTypeKey.render(
+      short = true,
+      includeQualifier = false,
+      useRelativeClassNames = true,
+    )
   }
 
   private fun runtimeTraceGraphPath(): String {
     val graphPath = generateSequence<GraphNode>(node) { it.parentGraph }.toList().asReversed()
-    return graphPath.joinToString(separator = "/") { it.originalTypeKey.render(short = true) }
+    return graphPath.joinToString(separator = "/") {
+      it.originalTypeKey.render(
+        short = true,
+        includeQualifier = false,
+        useRelativeClassNames = true,
+      )
+    }
   }
 
   /**

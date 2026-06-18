@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.expressions.IrVararg
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -35,27 +36,41 @@ internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation
 
   override fun compareTo(other: IrAnnotation): Int = cachedToString.compareTo(other.cachedToString)
 
-  fun render(short: Boolean = true, useSiteTarget: String? = null): String {
+  fun render(
+    short: Boolean = true,
+    useSiteTarget: String? = null,
+    useRelativeClassNames: Boolean = false,
+  ): String {
     return buildString {
       append('@')
       useSiteTarget?.let {
         append(it)
         append(":")
       }
-      renderAsAnnotation(ir, short)
+      renderAsAnnotation(ir, short, useRelativeClassNames)
     }
   }
 }
 
 internal fun IrConstructorCall.asIrAnnotation() = IrAnnotation(this)
 
-private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall, short: Boolean) {
+private fun StringBuilder.renderAsAnnotation(
+  irAnnotation: IrConstructorCall,
+  short: Boolean,
+  useRelativeClassNames: Boolean,
+) {
   val annotationClassName =
     irAnnotation.symbol
       .takeIf { it.isBound }
       ?.owner
       ?.parentAsClass
-      ?.let { if (short) it.name.asString() else it.kotlinFqName.asString() } ?: "<unbound>"
+      ?.let {
+        when {
+          !short -> it.kotlinFqName.asString()
+          useRelativeClassNames -> it.classId?.relativeClassName?.asString() ?: it.name.asString()
+          else -> it.name.asString()
+        }
+      } ?: "<unbound>"
   append(annotationClassName)
 
   if (irAnnotation.typeArguments.isNotEmpty()) {
@@ -69,7 +84,7 @@ private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall, sh
       if (typeArg == null) {
         append("null")
       } else {
-        typeArg.renderTo(this, short = short)
+        typeArg.renderTo(this, short = short, useRelativeClassNames = useRelativeClassNames)
       }
     }
   }
@@ -82,31 +97,41 @@ private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall, sh
     prefix = "(",
     postfix = ")",
   ) { index ->
-    renderAsAnnotationArgument(irAnnotation.arguments[index], short)
+    renderAsAnnotationArgument(irAnnotation.arguments[index], short, useRelativeClassNames)
   }
 }
 
-private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?, short: Boolean) {
+private fun StringBuilder.renderAsAnnotationArgument(
+  irElement: IrElement?,
+  short: Boolean,
+  useRelativeClassNames: Boolean,
+) {
   when (irElement) {
     null -> append("<null>")
-    is IrConstructorCall -> renderAsAnnotation(irElement, short)
+    is IrConstructorCall -> renderAsAnnotation(irElement, short, useRelativeClassNames)
     is IrConst -> renderIrConstAsAnnotationArgument(irElement)
     is IrVararg -> {
       appendIterableWith(irElement.elements, prefix = "[", postfix = "]", separator = ", ") {
-        renderAsAnnotationArgument(it, short)
+        renderAsAnnotationArgument(it, short, useRelativeClassNames)
       }
     }
     is IrClassReference -> {
-      irElement.classType.renderTo(this, short = short)
+      irElement.classType.renderTo(
+        this,
+        short = short,
+        useRelativeClassNames = useRelativeClassNames,
+      )
       append("::class")
     }
     is IrGetEnumValue -> {
       val parent = irElement.symbol.owner.parentAsClass.classIdOrFail
-      if (short) {
-        append(parent.shortClassName)
-      } else {
-        append(parent.asSingleFqName())
-      }
+      val enumClassName =
+        when {
+          !short -> parent.asSingleFqName().asString()
+          useRelativeClassNames -> parent.relativeClassName.asString()
+          else -> parent.shortClassName.asString()
+        }
+      append(enumClassName)
       append('.')
       append(irElement.symbol.owner.name.asString())
     }

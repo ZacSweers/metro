@@ -9,5 +9,9 @@ internal interface BaseTypeKey<Type, Qualifier, Subtype : BaseTypeKey<Type, Qual
 
   fun copy(type: Type = this.type, qualifier: Qualifier? = this.qualifier): Subtype
 
-  fun render(short: Boolean, includeQualifier: Boolean = true): String
+  fun render(
+    short: Boolean,
+    includeQualifier: Boolean = true,
+    useRelativeClassNames: Boolean = false,
+  ): String
 }

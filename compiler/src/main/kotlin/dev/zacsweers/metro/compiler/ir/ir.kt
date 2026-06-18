@@ -1190,16 +1190,34 @@ internal fun IrFunction.buildBlockBody(blockBody: IrBlockBodyBuilder.() -> Unit)
   body = context.createIrBuilder(symbol).irBlockBody(body = blockBody)
 }
 
-internal fun IrType.render(short: Boolean, includeAnnotations: Boolean = false): String {
-  return buildString { renderTo(this, short, includeAnnotations) }
+internal fun IrType.render(
+  short: Boolean,
+  includeAnnotations: Boolean = false,
+  useRelativeClassNames: Boolean = false,
+): String {
+  return buildString { renderTo(this, short, includeAnnotations, useRelativeClassNames) }
 }
 
-internal fun IrTypeArgument.render(short: Boolean, includeAnnotations: Boolean = false): String {
+internal fun IrTypeArgument.render(
+  short: Boolean,
+  includeAnnotations: Boolean = false,
+  useRelativeClassNames: Boolean = false,
+): String {
   return buildString {
-    when (this@render) {
-      is IrStarProjection -> append("*")
-      is IrTypeProjection -> type.renderTo(this, short, includeAnnotations)
-    }
+    renderTo(this, short, includeAnnotations, useRelativeClassNames)
+  }
+}
+
+internal fun IrTypeArgument.renderTo(
+  appendable: Appendable,
+  short: Boolean,
+  includeAnnotations: Boolean = false,
+  useRelativeClassNames: Boolean = false,
+) {
+  when (this) {
+    is IrStarProjection -> appendable.append("*")
+    is IrTypeProjection ->
+      type.renderTo(appendable, short, includeAnnotations, useRelativeClassNames)
   }
 }
 
@@ -1207,11 +1225,12 @@ internal fun IrType.renderTo(
   appendable: Appendable,
   short: Boolean,
   includeAnnotations: Boolean = false,
+  useRelativeClassNames: Boolean = false,
 ) {
   val type = this
   if (includeAnnotations && type.annotations.isNotEmpty()) {
     type.annotations.joinTo(appendable, separator = " ", postfix = " ") {
-      IrAnnotation(it).render(short)
+      IrAnnotation(it).render(short, useRelativeClassNames = useRelativeClassNames)
     }
   }
   when (type) {
@@ -1225,10 +1244,12 @@ internal fun IrType.renderTo(
       val name =
         when (val classifier = type.classifier) {
           is IrClassSymbol ->
-            if (short) {
-              classifier.owner.name.asString()
-            } else {
-              classifier.owner.kotlinFqName.asString()
+            when {
+              !short -> classifier.owner.kotlinFqName.asString()
+              useRelativeClassNames ->
+                classifier.owner.classId?.relativeClassName?.asString()
+                  ?: classifier.owner.name.asString()
+              else -> classifier.owner.name.asString()
             }
 
           is IrScriptSymbol ->
@@ -1259,7 +1280,11 @@ internal fun IrType.renderTo(
                 IN_VARIANCE -> appendable.append("in ")
                 OUT_VARIANCE -> appendable.append("out ")
               }
-              typeArg.type.renderTo(appendable, short)
+              typeArg.type.renderTo(
+                appendable,
+                short,
+                useRelativeClassNames = useRelativeClassNames,
+              )
             }
           }
         }
