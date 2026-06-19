@@ -171,18 +171,39 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     }
 
     val functionSubstitutor = substitutorByMap(factorySubstitutionMap, session)
+    val functionDeclaredInFactory = function.callableId.classId == declaration.symbol.classId
+    val factoryParams = functionParams.map { param ->
+      FactoryParameter(
+        param,
+        param.toAssistedParameterKey(
+          session,
+          FirTypeKey.from(session, param, functionSubstitutor),
+        ),
+      )
+    }
 
-    val (factoryKeys, dupeFactoryKeys) =
-      functionParams.mapToSetWithDupes {
-        it.toAssistedParameterKey(session, FirTypeKey.from(session, it, functionSubstitutor))
-      }
+    val (factoryKeys, dupeFactoryKeys) = factoryParams.mapToSetWithDupes { it.key }
 
     if (dupeFactoryKeys.isNotEmpty()) {
-      reporter.reportOn(
-        targetType.source,
-        ASSISTED_INJECTION_ERROR,
-        "Assisted factory parameters must be unique. Found duplicates: ${dupeFactoryKeys.joinToString(", ")}",
-      )
+      if (functionDeclaredInFactory) {
+        for (factoryParam in factoryParams) {
+          if (factoryParam.key !in dupeFactoryKeys) continue
+          reporter.reportOn(
+            factoryParam.symbol.source,
+            ASSISTED_INJECTION_ERROR,
+            "Assisted factory parameters must be unique. Found duplicate: ${factoryParam.key}",
+          )
+        }
+      } else {
+        val message =
+          "Assisted factory parameters must be unique, but inherited factory function " +
+            "'${function.name.asString()}' has duplicates: ${dupeFactoryKeys.joinToString(", ")}"
+        reporter.reportOn(
+          source,
+          ASSISTED_INJECTION_ERROR,
+          message,
+        )
+      }
     }
 
     val constructorSubstitutor = substitutorByMap(targetSubstitutionMap, session)
@@ -206,25 +227,68 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     // check non-matching keys
     if (factoryKeys != constructorKeys) {
-      val missingFromFactory = constructorKeys.subtract(factoryKeys).joinToString()
-      val missingFromConstructor = factoryKeys.subtract(constructorKeys).joinToString()
-      reporter.reportOn(
-        targetType.source,
-        ASSISTED_INJECTION_ERROR,
-        buildString {
-          appendLine(
-            "Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:"
+      val missingFromFactory = constructorKeys - factoryKeys
+      val missingFromConstructor = factoryKeys - constructorKeys
+
+      if (missingFromConstructor.isNotEmpty()) {
+        if (functionDeclaredInFactory) {
+          for (factoryParam in factoryParams) {
+            if (factoryParam.key !in missingFromConstructor) continue
+            val message =
+              "Assisted factory parameter '${factoryParam.renderForDiagnostic()}' has no " +
+                "matching @Assisted constructor parameter."
+            reporter.reportOn(
+              factoryParam.symbol.source,
+              ASSISTED_INJECTION_ERROR,
+              message,
+            )
+          }
+        } else {
+          val mismatchedParams =
+            factoryParams
+              .filter { it.key in missingFromConstructor }
+              .joinToString { it.renderForDiagnostic() }
+          val message =
+            "Inherited assisted factory function '${function.name.asString()}' has parameters " +
+              "with no matching @Assisted constructor parameters: $mismatchedParams"
+          reporter.reportOn(
+            source,
+            ASSISTED_INJECTION_ERROR,
+            message,
           )
-          if (missingFromFactory.isNotEmpty()) {
-            append("  Missing from factory: ")
-            appendLine(missingFromFactory)
-          }
-          if (missingFromConstructor.isNotEmpty()) {
-            append("  Missing from constructor: ")
-            appendLine(missingFromConstructor)
-          }
-        },
-      )
+        }
+      }
+
+      if (missingFromFactory.isNotEmpty()) {
+        val message =
+          "Assisted factory function '${function.name.asString()}' is missing parameters for " +
+            "@Assisted constructor parameters: ${missingFromFactory.joinToString()}"
+        val reportSource = if (functionDeclaredInFactory) function.source else source
+        reporter.reportOn(
+          reportSource,
+          ASSISTED_INJECTION_ERROR,
+          message,
+        )
+      }
+    }
+  }
+
+  private data class FactoryParameter(
+    val symbol: FirValueParameterSymbol,
+    val key: FirAssistedParameterKey,
+  ) {
+    fun renderForDiagnostic(): String {
+      val paramName = symbol.name.asString()
+      return buildString {
+        append(paramName)
+        append(": ")
+        append(key.typeKey.render(short = true))
+        if (key.assistedIdentifier != paramName) {
+          append(" (")
+          append(key.assistedIdentifier)
+          append(")")
+        }
+      }
     }
   }
 
