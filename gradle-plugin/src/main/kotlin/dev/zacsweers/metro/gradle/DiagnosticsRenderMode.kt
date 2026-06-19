@@ -8,7 +8,7 @@ public enum class DiagnosticsRenderMode {
   /**
    * Resolved to [PLAIN] or [RICH] at configuration time:
    * - [PLAIN] when
-   *     - The `NO_COLOR` environment variable is set
+   *     - The `NO_COLOR` environment variable is set and non-empty
    *     - The build runs with `--console=plain`
    *     - The build is invoked from an IDE (`idea.active` system property, because IDE build output
    *       windows do not render ANSI escape codes).
