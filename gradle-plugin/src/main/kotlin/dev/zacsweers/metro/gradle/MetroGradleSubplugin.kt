@@ -288,21 +288,18 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           .fold(baseDir) { dir, segment -> dir.dir(segment) }
       }
 
-    val artifactsTask = MetroArtifactCopyTask.register(project, reportsDir, kotlinCompilation)
+    if (extension.reportsDestination.isPresent) {
+      val artifactsTask = MetroArtifactCopyTask.register(project, reportsDir, kotlinCompilation)
 
-    artifactsTask.configure { task ->
-      task.onlyIf("reportsDestination is present") { extension.reportsDestination.isPresent }
-    }
-
-    project.tasks.withType(GenerateGraphMetadataTask::class.java).configureEach { task ->
-      task.onlyIf("reportsDestination is present") { extension.reportsDestination.isPresent }
-      task.projectPath.set(project.path)
-      task.compilationName.set(kotlinCompilation.name)
-      task.graphJsonFiles.from(
-        artifactsTask
-          .flatMap { it.reportsDir.dir("graph-metadata") }
-          .map { it.asFileTree.matching { it.include("*.json") } }
-      )
+      project.tasks.withType(GenerateGraphMetadataTask::class.java).configureEach { task ->
+        task.projectPath.set(project.path)
+        task.compilationName.set(kotlinCompilation.name)
+        task.graphJsonFiles.from(
+          artifactsTask
+            .flatMap { it.reportsDir.dir("graph-metadata") }
+            .map { it.asFileTree.matching { it.include("*.json") } }
+        )
+      }
     }
 
     val metroOptions =
