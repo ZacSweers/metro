@@ -65,6 +65,7 @@ Example rich output (note that in rich terminals this would have color and marku
 ### Enhancements
 
 - **[FIR]** Add a diagnostic to report mutable graph accessor properties.
+- **[FIR]** Add a diagnostic to report scope annotations on graph factory parameters.
 - **[IR]** Add cycle-breaking `help:` guidance for dependency cycle errors, suggesting deferred types such as `() -> T` or `Lazy<T>`.
 - **[IR/reporting]** Collapse sibling missing-binding errors with identical trace tails to a `... same as for X` continuation, and fully qualify type names only when two distinct types in one diagnostic share a simple name.
 
