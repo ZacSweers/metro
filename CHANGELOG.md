@@ -58,7 +58,7 @@ Example rich output (note that in rich terminals this would have color and marku
 ```
 
 - **[gradle]** Add a `diagnosticsRenderMode` Gradle option (`AUTO`/`PLAIN`/`RICH`) for diagnostic rendering.
-  - `AUTO` defaults to rich output and falls back to plain output for `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
+  - `AUTO` defaults to rich output and falls back to plain output for non-empty `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
   - The resolved mode is passed as a non-input compiler option, so render-mode changes do not invalidate compilation or poison build caches.
 - **[docs]** Add a generated [Diagnostics Reference](https://zacsweers.github.io/metro/latest/diagnostics/) docs page for Metro's common graph validation diagnostics.
 

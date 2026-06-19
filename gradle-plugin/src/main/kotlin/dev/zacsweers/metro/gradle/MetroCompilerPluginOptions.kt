@@ -254,9 +254,14 @@ internal fun Project.metroCompilerPluginOptions(
 }
 
 /**
- * Resolves [DiagnosticsRenderMode.AUTO] to a concrete mode at configuration time. The compiler runs
- * in a daemon with no terminal information, so console detection must happen here: `NO_COLOR`,
- * `--console=plain`, or an IDE-invoked build (IntelliJ/Android Studio pass `-Didea.active=true`;
+ * Resolves [DiagnosticsRenderMode.AUTO] to a concrete mode at configuration time.
+ *
+ * The compiler runs in a daemon with no terminal information, so console detection must happen
+ * here:
+ * - non-empty `NO_COLOR`
+ * - `--console=plain`
+ * - an IDE-invoked build (IntelliJ/Android Studio pass `-Didea.active=true`
+ *
  * IDE build output windows do not interpret ANSI escape codes) force [DiagnosticsRenderMode.PLAIN];
  * otherwise AUTO resolves to [DiagnosticsRenderMode.RICH].
  */
