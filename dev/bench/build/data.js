@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781887186606,
+  "lastUpdate": 1781908541987,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -17584,6 +17584,62 @@ window.BENCHMARK_DATA = {
             "value": 15775.2,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +4.89%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f494b7d3~1",
+          "message": "[before] Improve assisted factory param locations (#2461)",
+          "timestamp": "2026-06-19T22:01:04Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f494b7d33f75c6b346eb6533a71e9dd883e97644"
+        },
+        "date": 1781908541987,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18605.376,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f494b7d33f75c6b346eb6533a71e9dd883e97644",
+          "message": "[after] Improve assisted factory param locations (#2461)",
+          "timestamp": "2026-06-19T22:01:04Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f494b7d33f75c6b346eb6533a71e9dd883e97644"
+        },
+        "date": 1781908541988,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18556.776,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.26%"
           }
         ]
       }
