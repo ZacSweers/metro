@@ -89,8 +89,8 @@ Example rich output (note that in rich terminals this would have color and marku
 Special thanks to the following contributors for contributing to this release!
 
 - [@BraisGabin](https://github.com/BraisGabin)
-- [@ychescale9](https://github.com/ychescale9)
 - [@FletchMcKee](https://github.com/FletchMcKee)
+- [@ychescale9](https://github.com/ychescale9)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
