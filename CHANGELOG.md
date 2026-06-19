@@ -84,6 +84,7 @@ Example rich output (note that in rich terminals this would have color and marku
 ### Changes
 
 - Run Metro's functional compiler unit tests on JS.
+- **[gradle]** Build against Gradle `9.6.0`.
 
 ### Contributors
 
