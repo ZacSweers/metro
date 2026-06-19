@@ -84,55 +84,64 @@ buildConfig {
   }
 }
 
-val metroRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
-val metroRuntimeKlibClasspath: Configuration by configurations.creating {
-  isTransitive = false
-  attributes {
-    attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
-    attribute(Usage.USAGE_ATTRIBUTE, objects.named(KotlinUsages.KOTLIN_RUNTIME))
-    attribute(KotlinPlatformType.attribute, KotlinPlatformType.js)
-    attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
+val metroRuntimeClasspath = configurations.create("metroRuntimeClasspath") { isTransitive = false }
+val metroRuntimeKlibClasspath =
+  configurations.create("metroRuntimeKlibClasspath") {
+    isTransitive = false
+    attributes {
+      attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
+      attribute(Usage.USAGE_ATTRIBUTE, objects.named(KotlinUsages.KOTLIN_RUNTIME))
+      attribute(KotlinPlatformType.attribute, KotlinPlatformType.js)
+      attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
+    }
   }
 }
-val runtimeTracingClasspath: Configuration by configurations.creating {}
-val anvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
-val kiAnvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
+val runtimeTracingClasspath = configurations.create("runtimeTracingClasspath")
+val anvilRuntimeClasspath = configurations.create("anvilRuntimeClasspath") { isTransitive = false }
+val kiAnvilRuntimeClasspath =
+  configurations.create("kiAnvilRuntimeClasspath") { isTransitive = false }
 // include transitive in this case to grab compose and circuit runtimes
-val circuitRuntimeClasspath: Configuration by configurations.creating {
-  attributes {
-    // Force JVM variants
-    // TODO in future non-jvm tests we need others
-    attribute(KotlinPlatformType.attribute, KotlinPlatformType.jvm)
+val circuitRuntimeClasspath =
+  configurations.create("circuitRuntimeClasspath") {
+    attributes {
+      // Force JVM variants
+      // TODO in future non-jvm tests we need others
+      attribute(KotlinPlatformType.attribute, KotlinPlatformType.jvm)
+    }
   }
-}
-val circuitRuntimeKlibClasspath: Configuration by configurations.creating {
-  exclude(group = "org.jetbrains.kotlin")
-  attributes {
-    attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
-    attribute(Usage.USAGE_ATTRIBUTE, objects.named(KotlinUsages.KOTLIN_RUNTIME))
-    attribute(KotlinPlatformType.attribute, KotlinPlatformType.js)
-    attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
+val circuitRuntimeKlibClasspath =
+  configurations.create("circuitRuntimeKlibClasspath") {
+    exclude(group = "org.jetbrains.kotlin")
+    attributes {
+      attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
+      attribute(Usage.USAGE_ATTRIBUTE, objects.named(KotlinUsages.KOTLIN_RUNTIME))
+      attribute(KotlinPlatformType.attribute, KotlinPlatformType.js)
+      attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
+    }
   }
-}
 
 // include transitive in this case to grab jakarta and javax
-val daggerRuntimeClasspath: Configuration by configurations.creating {}
-val daggerInteropClasspath: Configuration by configurations.creating { isTransitive = false }
-val hiltCoreClasspath: Configuration by configurations.creating { isTransitive = false }
+val daggerRuntimeClasspath = configurations.create("daggerRuntimeClasspath") {}
+val daggerInteropClasspath =
+  configurations.create("daggerInteropClasspath") { isTransitive = false }
+val hiltCoreClasspath = configurations.create("hiltCoreClasspath") { isTransitive = false }
 // include transitive in this case to grab jakarta and javax
-val guiceClasspath: Configuration by configurations.creating {}
-val javaxInteropClasspath: Configuration by configurations.creating { isTransitive = false }
-val jakartaInteropClasspath: Configuration by configurations.creating { isTransitive = false }
-val jsKlibClasspath: Configuration by configurations.creating {
-  isTransitive = false
-  attributes { attribute(KotlinPlatformType.attribute, KotlinPlatformType.js) }
-}
-val wasmKlibClasspath: Configuration by configurations.creating {
-  isTransitive = false
-  attributes {
-    attribute(Attribute.of("org.jetbrains.kotlin.platform.type", String::class.java), "wasm")
+val guiceClasspath = configurations.create("guiceClasspath") {}
+val javaxInteropClasspath = configurations.create("javaxInteropClasspath") { isTransitive = false }
+val jakartaInteropClasspath =
+  configurations.create("jakartaInteropClasspath") { isTransitive = false }
+val jsKlibClasspath =
+  configurations.create("jsKlibClasspath") {
+    isTransitive = false
+    attributes { attribute(KotlinPlatformType.attribute, KotlinPlatformType.js) }
   }
-}
+val wasmKlibClasspath =
+  configurations.create("wasmKlibClasspath") {
+    isTransitive = false
+    attributes {
+      attribute(Attribute.of("org.jetbrains.kotlin.platform.type", String::class.java), "wasm")
+    }
+  }
 
 // IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
 // needed for those tests

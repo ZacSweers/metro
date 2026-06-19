@@ -76,4 +76,7 @@
 # Android Studio Quail 2 | 2026.1.2 Canary 6 (canary)
 # Android Studio Quail 2 | 2026.1.2 Canary 7 (canary)
 # Android Studio Quail 1 | 2026.1.1 Patch 1 (stable)
+# Android Studio Quail 1 | 2026.1.1 Patch 2 (stable)
+# Android Studio Quail 2 | 2026.1.2 RC 1 (beta)
+# Android Studio Quail 3 | 2026.1.3 Canary 1 (canary)
 2.4.255-dev-255=2.4.0-dev-2633

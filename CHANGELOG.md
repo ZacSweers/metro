@@ -62,13 +62,15 @@ Example rich output (note that in rich terminals this would have color and marku
 ```
 
 - **[gradle]** Add a `diagnosticsRenderMode` Gradle option (`AUTO`/`PLAIN`/`RICH`) for diagnostic rendering.
-  - `AUTO` defaults to rich output and falls back to plain output for `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
+  - `AUTO` defaults to rich output and falls back to plain output for non-empty `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
   - The resolved mode is passed as a non-input compiler option, so render-mode changes do not invalidate compilation or poison build caches.
 - **[docs]** Add a generated [Diagnostics Reference](https://zacsweers.github.io/metro/latest/diagnostics/) docs page for Metro's common graph validation diagnostics.
 
 ### Enhancements
 
 - **[FIR]** Add a diagnostic to report mutable graph accessor properties.
+- **[FIR]** Add a diagnostic to report `open` classes annotated with `@BindingContainer`.
+- **[FIR]** Add a diagnostic to report scope annotations on graph factory parameters.
 - **[IR]** Add cycle-breaking `help:` guidance for dependency cycle errors, suggesting deferred types such as `() -> T` or `Lazy<T>`.
 - **[IR/reporting]** Collapse sibling missing-binding errors with identical trace tails to a `... same as for X` continuation, and fully qualify type names only when two distinct types in one diagnostic share a simple name.
 
@@ -78,20 +80,24 @@ Example rich output (note that in rich terminals this would have color and marku
 - **[IR]** Preserve substituted generic type arguments when generating assisted factory delegate parameters and dynamic graph container inputs.
 - **[IR]** Forward extension and context receivers when generated binding-container factories invoke the original binding function.
 - **[IR]** Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.
+- **[IR]** Manage transitive simple class binding containers included by contributed binding containers when they have instance providers.
 - **[IR]** Patch declaration parents for generated `@Binds` mirror declarations so copied declarations remain attached to the correct generated class.
 - **[IR/JS]** Fix `Map<K, () -> V>` multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro `Provider` objects.
 - **[IR/KLIB]** Fix generated `@Binds` implementations on KLIB backends. Metro now emits concrete identity bodies for inherited `@Binds` members where JS, Native, and Wasm validate abstract members during deserialization.
 - **[IR/KLIB]** Keep generated graph and shard backing fields private while preserving generated access through properties. This avoids backing-field visibility validation failures on KLIB backends.
+- **[gradle]** Fix multiplatform output collisions in MetroArtifactCopyTask.
 
 ### Changes
 
 - Run Metro's functional compiler unit tests on JS.
+- **[gradle]** Build against Gradle `9.6.0`.
 
 ### Contributors
 
 Special thanks to the following contributors for contributing to this release!
 
 - [@BraisGabin](https://github.com/BraisGabin)
+- [@FletchMcKee](https://github.com/FletchMcKee)
 - [@ychescale9](https://github.com/ychescale9)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)

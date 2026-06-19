@@ -86,6 +86,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_GRAPH_ACCESSOR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_GRAPH_FACTORY_PARAMETER
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_ERROR
@@ -141,6 +142,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val DEPENDENCY_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val DEPENDENCY_GRAPH_MUTABLE_PROPERTY by error1<KtElement, String>(VAL_OR_VAR_NODE)
   val SCOPED_GRAPH_ACCESSOR by error0<KtElement>(NAME_IDENTIFIER)
+  val SCOPED_GRAPH_FACTORY_PARAMETER by error0<KtElement>(NAME_IDENTIFIER)
   val ADHOC_GRAPH_EXTENSION_FACTORY by error0<KtElement>(NAME_IDENTIFIER)
   val SUSPICIOUS_MEMBER_INJECT_FUNCTION by warning1<KtElement, String>(NAME_IDENTIFIER)
   val UNUSED_GRAPH_INPUT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -284,6 +286,10 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(
           SCOPED_GRAPH_ACCESSOR,
           "Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?",
+        )
+        put(
+          SCOPED_GRAPH_FACTORY_PARAMETER,
+          "Graph factory parameters should not have scope annotations. Inputs are implicitly scoped to the graph they are passed to.",
         )
         put(
           ADHOC_GRAPH_EXTENSION_FACTORY,
