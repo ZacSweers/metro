@@ -7065,6 +7065,7 @@
 <li><strong>[IR/JS]</strong> Fix <code>Map&lt;K, () -&gt; V&gt;</code> multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro <code>Provider</code> objects.</li>
 <li><strong>[IR/KLIB]</strong> Fix generated <code>@Binds</code> implementations on KLIB backends. Metro now emits concrete identity bodies for inherited <code>@Binds</code> members where JS, Native, and Wasm validate abstract members during deserialization.</li>
 <li><strong>[IR/KLIB]</strong> Keep generated graph and shard backing fields private while preserving generated access through properties. This avoids backing-field visibility validation failures on KLIB backends.</li>
+<li><strong>[gradle]</strong> Fix multiplatform output collisions in MetroArtifactCopyTask.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
@@ -7074,6 +7075,7 @@
 <p>Special thanks to the following contributors for contributing to this release!</p>
 <ul>
 <li><a href="https://github.com/BraisGabin">@BraisGabin</a></li>
+<li><a href="https://github.com/FletchMcKee">@FletchMcKee</a></li>
 <li><a href="https://github.com/ychescale9">@ychescale9</a></li>
 </ul>
 <h3 id="consider-sponsoring-metros-development"><a href="https://www.zacsweers.dev/sponsoring-metro/">Consider sponsoring Metro&rsquo;s development</a><a class="headerlink" href="#consider-sponsoring-metros-development" title="Permanent link">&para;</a></h3>
