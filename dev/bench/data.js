@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781856399325,
+  "lastUpdate": 1781887186461,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -17528,6 +17528,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2249834006028762,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.24%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "28aa1b44~1",
+          "message": "[before] Fix transitive managed containers from instance co",
+          "timestamp": "2026-06-19T16:10:23Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/28aa1b440d6ed0e3e412ea58308b16a5027405b0"
+        },
+        "date": 1781887186461,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2124112276484964,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "28aa1b440d6ed0e3e412ea58308b16a5027405b0",
+          "message": "[after] Fix transitive managed containers from instance co",
+          "timestamp": "2026-06-19T16:10:23Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/28aa1b440d6ed0e3e412ea58308b16a5027405b0"
+        },
+        "date": 1781887186462,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21587325471544103,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.63%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

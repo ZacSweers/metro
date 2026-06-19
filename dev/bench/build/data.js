@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781856399473,
+  "lastUpdate": 1781887186606,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -17528,6 +17528,62 @@ window.BENCHMARK_DATA = {
             "value": 18761.522,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -4.34%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "28aa1b44~1",
+          "message": "[before] Fix transitive managed containers from instance co",
+          "timestamp": "2026-06-19T16:10:23Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/28aa1b440d6ed0e3e412ea58308b16a5027405b0"
+        },
+        "date": 1781887186606,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 15039.446,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brais Gab\u00edn",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "28aa1b440d6ed0e3e412ea58308b16a5027405b0",
+          "message": "[after] Fix transitive managed containers from instance co",
+          "timestamp": "2026-06-19T16:10:23Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/28aa1b440d6ed0e3e412ea58308b16a5027405b0"
+        },
+        "date": 1781887186607,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 15775.2,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +4.89%"
           }
         ]
       }
