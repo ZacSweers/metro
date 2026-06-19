@@ -124,11 +124,12 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
         return
       }
 
-      if (
+      val isDaggerModule =
         session.metroFirBuiltIns.options.enableDaggerRuntimeInterop &&
           bindingContainerAnno.toAnnotationClassIdSafe(session) ==
             DaggerSymbols.ClassIds.DAGGER_MODULE
-      ) {
+
+      if (isDaggerModule) {
         val subcomponentsArg = bindingContainerAnno.subcomponentsArgument(session)
         if (subcomponentsArg != null && subcomponentsArg.argumentList.arguments.isNotEmpty()) {
           reporter.reportOn(
@@ -136,6 +137,15 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
             DAGGER_MODULE_SUBCOMPONENTS_WARNING,
           )
         }
+      } else if (
+        declaration.classKind == ClassKind.CLASS && declaration.modality == Modality.OPEN
+      ) {
+        reporter.reportOn(
+          bindingContainerAnno.source ?: source,
+          BINDING_CONTAINER_ERROR,
+          "Concrete binding containers must be effectively final. Remove `open`, make the class abstract, or use an interface/object instead.",
+        )
+        return
       }
     }
 

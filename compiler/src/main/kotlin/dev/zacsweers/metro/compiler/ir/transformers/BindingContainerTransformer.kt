@@ -266,7 +266,8 @@ internal class BindingContainerTransformer(
       BindingContainer(
         isGraph = isGraph,
         canBeManaged =
-          bindingContainerAnnotation != null && declaration.isManageableBindingContainerClass(),
+          bindingContainerAnnotation != null &&
+            declaration.isManageableBindingContainerClass(requireFinal = true),
         ir = declaration,
         includes = includes.orEmpty(),
         providerFactories = providerFactories,
@@ -988,7 +989,7 @@ internal class BindingContainerTransformer(
           val container =
             BindingContainer(
               isGraph = false,
-              canBeManaged = false,
+              canBeManaged = declaration.isManageableBindingContainerClass(requireFinal = false),
               ir = declaration,
               includes = includedModules,
               providerFactories = providerFactories,
@@ -1061,7 +1062,8 @@ internal class BindingContainerTransformer(
       BindingContainer(
         isGraph = graphProto.is_graph,
         canBeManaged =
-          declaration.isBindingContainer() && declaration.isManageableBindingContainerClass(),
+          declaration.isBindingContainer() &&
+            declaration.isManageableBindingContainerClass(requireFinal = true),
         ir = declaration,
         includes = includedBindingContainers,
         providerFactories = providerFactories,
@@ -1418,9 +1420,13 @@ private fun IrOverridableDeclaration<*>.daggerProviderSourceName(): String {
   }
 }
 
-private fun IrClass.isManageableBindingContainerClass(): Boolean {
+private fun IrClass.isManageableBindingContainerClass(requireFinal: Boolean): Boolean {
   if (kind != ClassKind.CLASS) return false
-  if (modality != Modality.FINAL) return false
+  if (requireFinal) {
+    if (modality != Modality.FINAL) return false
+  } else if (modality == Modality.ABSTRACT) {
+    return false
+  }
   return constructors.any { constructor ->
     constructor.parameters.isEmpty() && constructor.visibility == DescriptorVisibilities.PUBLIC
   }
