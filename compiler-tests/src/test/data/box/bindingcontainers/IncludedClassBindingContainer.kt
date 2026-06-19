@@ -1,3 +1,4 @@
+// https://github.com/ZacSweers/metro/pull/2458
 class Foo
 
 @DependencyGraph(AppScope::class)

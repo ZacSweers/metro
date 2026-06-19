@@ -120,6 +120,7 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
@@ -264,6 +265,8 @@ internal class BindingContainerTransformer(
     val container =
       BindingContainer(
         isGraph = isGraph,
+        canBeManaged =
+          bindingContainerAnnotation != null && declaration.isManageableBindingContainerClass(),
         ir = declaration,
         includes = includes.orEmpty(),
         providerFactories = providerFactories,
@@ -984,11 +987,12 @@ internal class BindingContainerTransformer(
 
           val container =
             BindingContainer(
-              false,
-              declaration,
-              includedModules,
-              providerFactories,
-              bindsCollector.buildMirror(declaration),
+              isGraph = false,
+              canBeManaged = false,
+              ir = declaration,
+              includes = includedModules,
+              providerFactories = providerFactories,
+              bindsMirror = bindsCollector.buildMirror(declaration),
             )
           val existing = cache.putIfAbsent(declarationFqName, Optional.of(container))
           generatedFactories.putAll(providerFactories)
@@ -1055,11 +1059,13 @@ internal class BindingContainerTransformer(
 
     val container =
       BindingContainer(
-        graphProto.is_graph,
-        declaration,
-        includedBindingContainers,
-        providerFactories,
-        bindsMirror,
+        isGraph = graphProto.is_graph,
+        canBeManaged =
+          declaration.isBindingContainer() && declaration.isManageableBindingContainerClass(),
+        ir = declaration,
+        includes = includedBindingContainers,
+        providerFactories = providerFactories,
+        bindsMirror = bindsMirror,
       )
 
     // Cache the results (putIfAbsent so a concurrent caller doesn't lose their entry).
@@ -1291,6 +1297,7 @@ internal class BindingContainerTransformer(
 
 internal class BindingContainer(
   val isGraph: Boolean,
+  val canBeManaged: Boolean,
   val ir: IrClass,
   val includes: Set<ClassId>,
   /** Mapping of provider factories by their [CallableId]. */
@@ -1300,12 +1307,6 @@ internal class BindingContainer(
   val typeKey by memoize { IrTypeKey(ir.defaultType) }
 
   private val classId = ir.classIdOrFail
-
-  /**
-   * Simple classes with a public, no-arg constructor can be managed directly by the consuming
-   * graph.
-   */
-  val canBeManaged by memoize { ir.kind == ClassKind.CLASS && ir.modality != Modality.ABSTRACT }
 
   fun isEmpty() =
     includes.isEmpty() && providerFactories.isEmpty() && (bindsMirror?.isEmpty() ?: true)
@@ -1333,6 +1334,7 @@ internal class BindingContainer(
     }
     return BindingContainer(
       isGraph = isGraph,
+      canBeManaged = canBeManaged,
       ir = ir,
       includes = includes,
       providerFactories = remappedFactories,
@@ -1413,5 +1415,13 @@ private fun IrOverridableDeclaration<*>.daggerProviderSourceName(): String {
     name.removePrefix("<get-").removeSuffix(">")
   } else {
     name
+  }
+}
+
+private fun IrClass.isManageableBindingContainerClass(): Boolean {
+  if (kind != ClassKind.CLASS) return false
+  if (modality != Modality.FINAL) return false
+  return constructors.any { constructor ->
+    constructor.parameters.isEmpty() && constructor.visibility == DescriptorVisibilities.PUBLIC
   }
 }
