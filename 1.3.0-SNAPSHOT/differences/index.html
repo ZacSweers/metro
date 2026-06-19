@@ -1831,6 +1831,7 @@
 <li><code>@Binds</code> and <code>@Provides</code> declarations can be added directly within graphs and their supertypes.<ul>
 <li><code>@BindingContainer</code> is the Metro equivalent of a Dagger <code>@Module</code> but it should rarely be used.</li>
 <li><code>@BindingContainer</code> cannot declare graph extensions in the way <code>@Module</code> can declare subcomponents. Use contributed graph extensions.</li>
+<li>Concrete <code>@BindingContainer</code> classes must be effectively final. Kotlin classes are final by default; Dagger <code>@Module</code> classes used through interop may still be non-final.</li>
 </ul>
 </li>
 <li>There is no Producers support.</li>

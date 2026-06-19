@@ -7051,6 +7051,7 @@
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR]</strong> Add a diagnostic to report mutable graph accessor properties.</li>
+<li><strong>[FIR]</strong> Add a diagnostic to report <code>open</code> classes annotated with <code>@BindingContainer</code>.</li>
 <li><strong>[FIR]</strong> Add a diagnostic to report scope annotations on graph factory parameters.</li>
 <li><strong>[IR]</strong> Add cycle-breaking <code>help:</code> guidance for dependency cycle errors, suggesting deferred types such as <code>() -&gt; T</code> or <code>Lazy&lt;T&gt;</code>.</li>
 <li><strong>[IR/reporting]</strong> Collapse sibling missing-binding errors with identical trace tails to a <code>... same as for X</code> continuation, and fully qualify type names only when two distinct types in one diagnostic share a simple name.</li>
@@ -7061,6 +7062,7 @@
 <li><strong>[IR]</strong> Preserve substituted generic type arguments when generating assisted factory delegate parameters and dynamic graph container inputs.</li>
 <li><strong>[IR]</strong> Forward extension and context receivers when generated binding-container factories invoke the original binding function.</li>
 <li><strong>[IR]</strong> Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.</li>
+<li><strong>[IR]</strong> Manage transitive simple class binding containers included by contributed binding containers when they have instance providers.</li>
 <li><strong>[IR]</strong> Patch declaration parents for generated <code>@Binds</code> mirror declarations so copied declarations remain attached to the correct generated class.</li>
 <li><strong>[IR/JS]</strong> Fix <code>Map&lt;K, () -&gt; V&gt;</code> multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro <code>Provider</code> objects.</li>
 <li><strong>[IR/KLIB]</strong> Fix generated <code>@Binds</code> implementations on KLIB backends. Metro now emits concrete identity bodies for inherited <code>@Binds</code> members where JS, Native, and Wasm validate abstract members during deserialization.</li>
