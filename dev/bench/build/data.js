@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781764098113,
+  "lastUpdate": 1781830642250,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -17416,6 +17416,62 @@ window.BENCHMARK_DATA = {
             "value": 19374.265999999996,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -14.58%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "93a001e4~1",
+          "message": "[before] Add a diagnostic to report scope annotations on gr",
+          "timestamp": "2026-06-19T00:21:47Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/93a001e43863142e3100b15e97f3aa09de3f52fa"
+        },
+        "date": 1781830642250,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20598.05,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "93a001e43863142e3100b15e97f3aa09de3f52fa",
+          "message": "[after] Add a diagnostic to report scope annotations on gr",
+          "timestamp": "2026-06-19T00:21:47Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/93a001e43863142e3100b15e97f3aa09de3f52fa"
+        },
+        "date": 1781830642251,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19947.656,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.16%"
           }
         ]
       }
