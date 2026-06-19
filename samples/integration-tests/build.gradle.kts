@@ -66,10 +66,8 @@ kotlin {
     compilations.configureEach {
       compileTaskProvider.configure {
         compilerOptions.freeCompilerArgs.addAll(
-          // Big yikes in how this was rolled out as noisy compiler warnings
-          "-Xannotation-default-target=param-property",
           // This is irrelevant for these tests and creates a bit of noise
-          "-Xwarning-level=SUSPICIOUS_UNUSED_MULTIBINDING:disabled",
+          "-Xwarning-level=SUSPICIOUS_UNUSED_MULTIBINDING:disabled"
         )
       }
     }
