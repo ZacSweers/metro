@@ -25,7 +25,8 @@ class GraphInitRuntimeTracing(
     if (!BuildConfig.METRO_RUNTIME_TRACING) {
       null
     } else {
-      val directory = outputDirectory ?: context.externalMediaDirs.firstOrNull()?.resolve("metro-runtime-traces")
+      val directory =
+        outputDirectory ?: context.externalMediaDirs.firstOrNull()?.resolve("metro-runtime-traces")
       directory?.apply { mkdirs() }
     }
 

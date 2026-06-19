@@ -59,19 +59,18 @@ class RuntimeTraceFileProvider : ContentProvider() {
   }
 
   private fun traceFile(uri: Uri): File {
-    val fileName = requireNotNull(uri.lastPathSegment) { "Trace file URI must include a file name." }
+    val fileName =
+      requireNotNull(uri.lastPathSegment) { "Trace file URI must include a file name." }
     require('/' !in fileName) { "Trace file name cannot contain path separators." }
 
     val context = requireNotNull(context)
     val outputDir =
-      context.externalMediaDirs.firstOrNull()?.resolve("additional_test_output")
-        ?: context.filesDir
+      context.externalMediaDirs.firstOrNull()?.resolve("additional_test_output") ?: context.filesDir
     return outputDir.resolve("metro-runtime-traces").resolve(fileName)
   }
 
   companion object {
-    const val AUTHORITY =
-      "dev.zacsweers.metro.benchmark.startup.android.benchmark.runtime-traces"
+    const val AUTHORITY = "dev.zacsweers.metro.benchmark.startup.android.benchmark.runtime-traces"
 
     fun uriFor(fileName: String): Uri {
       return Uri.Builder()

@@ -17,9 +17,8 @@ import dev.zacsweers.metro.Inject
 @ContributesIntoMap(AppScope::class)
 @FragmentKey(CounterFragment::class)
 @Inject
-class CounterFragment(
-    private val viewModelFactory: ViewModelProvider.Factory,
-) : Fragment(R.layout.fragment_counter) {
+class CounterFragment(private val viewModelFactory: ViewModelProvider.Factory) :
+  Fragment(R.layout.fragment_counter) {
 
   override val defaultViewModelProviderFactory: ViewModelProvider.Factory
     get() = viewModelFactory

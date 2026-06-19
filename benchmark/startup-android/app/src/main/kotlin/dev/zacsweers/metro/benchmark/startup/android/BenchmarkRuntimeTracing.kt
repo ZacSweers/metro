@@ -17,8 +17,8 @@ import java.io.File
  * Owns the optional Android runtime trace driver for startup benchmarks.
  *
  * The generated component API decides whether the tracer argument is used. Non-traced builds pass
- * `null`, which every non-traced generated component ignores. Traced builds write to external
- * media so benchmark instrumentation can copy files before test cleanup runs.
+ * `null`, which every non-traced generated component ignores. Traced builds write to external media
+ * so benchmark instrumentation can copy files before test cleanup runs.
  */
 class BenchmarkRuntimeTracing(private val context: Context) {
   private var traceUri: Uri? = null
@@ -27,10 +27,7 @@ class BenchmarkRuntimeTracing(private val context: Context) {
     if (!BuildConfig.METRO_RUNTIME_TRACING) {
       null
     } else {
-      context.externalMediaDirs
-        .firstOrNull()
-        ?.resolve("metro-runtime-traces")
-        ?.apply { mkdirs() }
+      context.externalMediaDirs.firstOrNull()?.resolve("metro-runtime-traces")?.apply { mkdirs() }
     }
 
   private val traceDriver: TraceDriver? by lazy {

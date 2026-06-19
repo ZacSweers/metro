@@ -53,10 +53,7 @@ class StartupBenchmarks {
     val instrumentation = InstrumentationRegistry.getInstrumentation()
     val traceUri = RuntimeTraceFileProvider.uriFor("perfetto-${System.nanoTime()}.perfetto-trace")
     val intent =
-      instrumentation
-        .context
-        .packageManager
-        .getLaunchIntentForPackage(PACKAGE_NAME)
+      instrumentation.context.packageManager.getLaunchIntentForPackage(PACKAGE_NAME)
         ?: error("Could not resolve launcher intent for $PACKAGE_NAME")
     intent.putExtra(EXTRA_RUNTIME_TRACE_URI, traceUri.toString())
     intent.clipData =
@@ -68,9 +65,7 @@ class StartupBenchmarks {
   /** Flushes the target app's AndroidX trace driver before UTP copies additional output. */
   private fun flushRuntimeTraces() {
     val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-    device.executeShellCommand(
-      "am broadcast -a $TRACE_FLUSH_ACTION $PACKAGE_NAME/$TRACE_RECEIVER"
-    )
+    device.executeShellCommand("am broadcast -a $TRACE_FLUSH_ACTION $PACKAGE_NAME/$TRACE_RECEIVER")
   }
 
   companion object {

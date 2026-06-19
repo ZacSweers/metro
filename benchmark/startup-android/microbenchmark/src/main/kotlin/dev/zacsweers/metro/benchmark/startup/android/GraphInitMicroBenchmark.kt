@@ -34,9 +34,9 @@ class GraphInitMicroBenchmark {
   fun graphCreationAndInitialization() {
     val instrumentation = InstrumentationRegistry.getInstrumentation()
     val outputDirectory =
-      InstrumentationRegistry.getArguments()
-        .getString("additionalTestOutputDir")
-        ?.let { File(it, "metro-runtime-traces") }
+      InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let {
+        File(it, "metro-runtime-traces")
+      }
     val runtimeTracing = GraphInitRuntimeTracing(instrumentation.context, outputDirectory)
     benchmarkRule.measureRepeated { runtimeTracing.createAndInitializeGraph() }
   }
