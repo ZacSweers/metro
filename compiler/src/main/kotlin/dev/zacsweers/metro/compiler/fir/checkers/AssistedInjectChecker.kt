@@ -173,7 +173,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     val functionSubstitutor = substitutorByMap(factorySubstitutionMap, session)
     val functionDeclaredInFactory = function.callableId.classId == declaration.symbol.classId
     val factoryParams = functionParams.map { param ->
-      FactoryParameter(
+      AssistedParameter(
         param,
         param.toAssistedParameterKey(
           session,
@@ -207,10 +207,16 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     }
 
     val constructorSubstitutor = substitutorByMap(targetSubstitutionMap, session)
-    val (constructorKeys, dupeConstructorKeys) =
-      constructorAssistedParams.mapToSetWithDupes {
-        it.toAssistedParameterKey(session, FirTypeKey.from(session, it, constructorSubstitutor))
-      }
+    val constructorParams = constructorAssistedParams.map { param ->
+      AssistedParameter(
+        param,
+        param.toAssistedParameterKey(
+          session,
+          FirTypeKey.from(session, param, constructorSubstitutor),
+        ),
+      )
+    }
+    val (constructorKeys, dupeConstructorKeys) = constructorParams.mapToSetWithDupes { it.key }
 
     if (dupeConstructorKeys.isNotEmpty()) {
       reporter.reportOn(
@@ -229,11 +235,26 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     if (factoryKeys != constructorKeys) {
       val missingFromFactory = constructorKeys - factoryKeys
       val missingFromConstructor = factoryKeys - constructorKeys
+      val hasTwoSidedMismatch =
+        missingFromFactory.isNotEmpty() && missingFromConstructor.isNotEmpty()
+      val missingFromFactoryParams = constructorParams.filter { it.key in missingFromFactory }
+      val missingFromConstructorParams = factoryParams.filter { it.key in missingFromConstructor }
 
-      if (missingFromConstructor.isNotEmpty()) {
+      if (hasTwoSidedMismatch) {
+        val reportSource =
+          if (functionDeclaredInFactory) {
+            function.source ?: source
+          } else {
+            source
+          }
+        reporter.reportOn(
+          reportSource,
+          ASSISTED_INJECTION_ERROR,
+          parameterMismatchMessage(missingFromFactoryParams, missingFromConstructorParams),
+        )
+      } else if (missingFromConstructor.isNotEmpty()) {
         if (functionDeclaredInFactory) {
-          for (factoryParam in factoryParams) {
-            if (factoryParam.key !in missingFromConstructor) continue
+          for (factoryParam in missingFromConstructorParams) {
             val message =
               "Assisted factory parameter '${factoryParam.renderForDiagnostic()}' has no " +
                 "matching @Assisted constructor parameter."
@@ -244,10 +265,9 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             )
           }
         } else {
-          val mismatchedParams =
-            factoryParams
-              .filter { it.key in missingFromConstructor }
-              .joinToString { it.renderForDiagnostic() }
+          val mismatchedParams = missingFromConstructorParams.joinToString {
+            it.renderForDiagnostic()
+          }
           val message =
             "Inherited assisted factory function '${function.name.asString()}' has parameters " +
               "with no matching @Assisted constructor parameters: $mismatchedParams"
@@ -257,12 +277,11 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             message,
           )
         }
-      }
-
-      if (missingFromFactory.isNotEmpty()) {
+      } else if (missingFromFactory.isNotEmpty()) {
+        val missingParams = missingFromFactoryParams.joinToString { it.renderForDiagnostic() }
         val message =
           "Assisted factory function '${function.name.asString()}' is missing parameters for " +
-            "@Assisted constructor parameters: ${missingFromFactory.joinToString()}"
+            "@Assisted constructor parameters: $missingParams"
         val reportSource = if (functionDeclaredInFactory) function.source else source
         reporter.reportOn(
           reportSource,
@@ -273,7 +292,40 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     }
   }
 
-  private data class FactoryParameter(
+  private fun parameterMismatchMessage(
+    missingFromFactory: List<AssistedParameter>,
+    missingFromConstructor: List<AssistedParameter>,
+  ): String {
+    return buildString {
+      appendLine(
+        "Parameter mismatch. Assisted factory and assisted inject constructor parameters must " +
+          "match (name and type) but found differences:"
+      )
+      appendLine("  Missing from factory:")
+      for (param in missingFromFactory) {
+        appendLine("    - ${param.renderForDiagnostic()}")
+      }
+      appendLine("  Missing from constructor:")
+      for (param in missingFromConstructor) {
+        appendLine("    - ${param.renderForDiagnostic()}")
+      }
+
+      val factoryIdentifiers =
+        missingFromFactory.mapTo(mutableSetOf()) { it.key.assistedIdentifier }
+      val constructorIdentifiers =
+        missingFromConstructor.mapTo(mutableSetOf()) { it.key.assistedIdentifier }
+      val overlappingIdentifiers = factoryIdentifiers intersect constructorIdentifiers
+      if (overlappingIdentifiers.isNotEmpty()) {
+        appendLine()
+        val renderedIdentifiers = overlappingIdentifiers.joinToString { "`$it`" }
+        val parameterLabel = if (overlappingIdentifiers.size == 1) "parameter" else "parameters"
+        val verb = if (overlappingIdentifiers.size == 1) "appears" else "appear"
+        append("  help: $renderedIdentifiers $parameterLabel $verb in both but has different types")
+      }
+    }
+  }
+
+  private data class AssistedParameter(
     val symbol: FirValueParameterSymbol,
     val key: FirAssistedParameterKey,
   ) {

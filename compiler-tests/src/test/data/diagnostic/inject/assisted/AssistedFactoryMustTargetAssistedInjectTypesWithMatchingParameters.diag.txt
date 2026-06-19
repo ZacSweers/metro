@@ -1,1 +1,1 @@
-/AssistedFactoryMustTargetAssistedInjectTypesWithMatchingParameters.kt:11:7: error: Assisted factory function 'create' is missing parameters for @Assisted constructor parameters: kotlin.String (message)
+/AssistedFactoryMustTargetAssistedInjectTypesWithMatchingParameters.kt:11:7: error: Assisted factory function 'create' is missing parameters for @Assisted constructor parameters: message: String
