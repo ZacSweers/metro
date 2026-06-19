@@ -1,0 +1,1 @@
+/InheritedAssistedFactoryParamMismatchReportsOnFactory.kt:13:11: error: Inherited assisted factory function 'create' has parameters with no matching @Assisted constructor parameters: message: String
