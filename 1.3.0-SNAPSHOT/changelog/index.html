@@ -7044,7 +7044,7 @@
 </code></pre></div></p>
 <ul>
 <li><strong>[gradle]</strong> Add a <code>diagnosticsRenderMode</code> Gradle option (<code>AUTO</code>/<code>PLAIN</code>/<code>RICH</code>) for diagnostic rendering.</li>
-<li><code>AUTO</code> defaults to rich output and falls back to plain output for <code>NO_COLOR</code>, <code>--console=plain</code>, and IDE-invoked builds.</li>
+<li><code>AUTO</code> defaults to rich output and falls back to plain output for non-empty <code>NO_COLOR</code>, <code>--console=plain</code>, and IDE-invoked builds.</li>
 <li>The resolved mode is passed as a non-input compiler option, so render-mode changes do not invalidate compilation or poison build caches.</li>
 <li><strong>[docs]</strong> Add a generated <a href="https://zacsweers.github.io/metro/latest/diagnostics/">Diagnostics Reference</a> docs page for Metro&rsquo;s common graph validation diagnostics.</li>
 </ul>
@@ -7070,6 +7070,7 @@
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Run Metro&rsquo;s functional compiler unit tests on JS.</li>
+<li><strong>[gradle]</strong> Build against Gradle <code>9.6.0</code>.</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
 <p>Special thanks to the following contributors for contributing to this release!</p>
