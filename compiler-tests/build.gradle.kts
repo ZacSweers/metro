@@ -95,7 +95,7 @@ val metroRuntimeKlibClasspath =
       attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
     }
   }
-}
+
 val runtimeTracingClasspath = configurations.create("runtimeTracingClasspath")
 val anvilRuntimeClasspath = configurations.create("anvilRuntimeClasspath") { isTransitive = false }
 val kiAnvilRuntimeClasspath =
