@@ -87,7 +87,11 @@ internal abstract class MetroArtifactCopyTask : DefaultTask(), MetroArtifacts {
         task.compilationName.set(sourceCompilation.name)
         task.kotlincReportsDir.set(reportsDir)
         task.reportsDir.set(
-          project.layout.buildDirectory.dir("tmp/metro/reporting/${sourceCompilation.name}")
+          listOf(sourceCompilation.target.name, sourceCompilation.name)
+            .filter(String::isNotBlank)
+            .fold(project.layout.buildDirectory.dir("tmp/metro/reporting")) { dir, segment ->
+              dir.map { it.dir(segment) }
+            }
         )
         task.dependsOn(sourceCompilation.compileTaskProvider)
       }

@@ -5,10 +5,15 @@
 package dev.zacsweers.metro.gradle
 
 import com.autonomousapps.kit.GradleBuilder.build
+import com.autonomousapps.kit.GradleProject
+import com.autonomousapps.kit.GradleProject.DslKind
 import com.google.common.truth.Truth.assertThat
+import java.io.File
 import kotlin.io.path.exists
 import kotlin.io.path.readText
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class MetroArtifactsTest {
@@ -627,5 +632,106 @@ class MetroArtifactsTest {
 
     val htmlFile = reports.htmlFileForGraph("test.AppGraph")
     assertTrue(htmlFile.exists(), "Graph HTML file should exist")
+  }
+
+  @Test
+  fun `reportsDestination directories do not collide across multiplatform targets`() {
+    val fixture =
+      object : MetroProject(multiplatform = true, reportsEnabled = true) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+
+        override fun buildGradleProject(): GradleProject {
+          val projectSources = sources()
+          return newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject {
+              sources = projectSources
+              withBuildScript {
+                plugins(
+                  GradlePlugins.Kotlin.multiplatform(),
+                  GradlePlugins.agpKmp,
+                  GradlePlugins.metro,
+                )
+                withKotlin(
+                  """
+                    kotlin {
+                      jvm()
+
+                      android {
+                        namespace = "com.example.test"
+                        minSdk = 36
+                        compileSdk = 36
+                      }
+                    }
+
+                    ${buildMetroBlock()}
+                  """
+                    .trimIndent()
+                )
+              }
+
+              withMetroSettings()
+
+              val androidHome = System.getProperty("metro.androidHome")
+              assumeTrue(androidHome != null) // skip if environment not set up for Android
+              // Use invariantSeparatorsPath for cross-platform .properties file compatibility
+              val sdkDir = File(androidHome).invariantSeparatorsPath
+              withFile("local.properties", "sdk.dir=$sdkDir")
+            }
+            .write()
+        }
+      }
+
+    val project = fixture.gradleProject
+    val result = build(project.rootDir, "generateMetroGraphHtml", "--console=plain")
+
+    assertThat(result.task(":generateMetroGraphMetadata")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SUCCESS)
+    assertThat(result.task(":analyzeMetroGraph")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SUCCESS)
+    assertThat(result.task(":generateMetroGraphHtml")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SUCCESS)
+
+    val reportingDir = project.rootDir.toPath().resolve("build/tmp/metro/reporting")
+    assertTrue(reportingDir.resolve("jvm/main").exists())
+    assertTrue(reportingDir.resolve("android/main").exists())
+  }
+
+  @Test
+  fun `analysis tasks are skipped when reportsDestination is not present`() {
+    val fixture =
+      object : MetroProject(multiplatform = false, reportsEnabled = false) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+    val result = build(project.rootDir, "generateMetroGraphHtml", "--console=plain")
+
+    assertThat(result.task(":generateMetroGraphMetadata")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SKIPPED)
+    assertThat(result.task(":analyzeMetroGraph")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SKIPPED)
+    assertThat(result.task(":generateMetroGraphHtml")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SKIPPED)
+
+    val reportingDir = project.rootDir.toPath().resolve("build/tmp/metro/reporting")
+    assertFalse(reportingDir.exists())
   }
 }
