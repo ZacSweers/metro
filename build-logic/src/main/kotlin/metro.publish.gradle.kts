@@ -18,14 +18,13 @@ extension.name.convention(project.name)
 
 extension.description.convention(providers.gradleProperty("POM_DESCRIPTION"))
 
-extension.packaging.convention("jar")
-
 afterEvaluate {
   extensions.configure<PublishingExtension> {
     publications.withType<MavenPublication>().configureEach {
       val publicationArtifactId = artifactId
       val metroArtifactId = extension.artifactId.get()
       val hasProjectNamePrefix = publicationArtifactId.startsWith("${project.name}-")
+      val isGradlePluginMarker = publicationArtifactId.endsWith(".gradle.plugin")
       artifactId =
         when {
           publicationArtifactId == project.name -> metroArtifactId
@@ -36,7 +35,9 @@ afterEvaluate {
       pom {
         name.set(extension.name)
         description.set(extension.description)
-        packaging = extension.packaging.get()
+        if (!isGradlePluginMarker && extension.packaging.isPresent) {
+          packaging = extension.packaging.get()
+        }
       }
     }
   }
@@ -60,14 +61,9 @@ tasks
   .matching { it.name == "publishTestKitSupportForJavaPublicationToMavenCentralRepository" }
   .configureEach { enabled = false }
 
-// Conversely, when `testKitSupportForJava` exists, disable the `maven` -> FunctionalTest task so
-// the two don't overwrite each other in the local repo. autonomousapps only creates this pub when
-// the existing `maven` pub's GAV differs from `(group, project.name, version)` -- which happens
-// for compat modules where metroArtifact's artifactId != project.name. Modules without the testkit
-// pub
-// (e.g. `:compiler`) need the `maven` -> FunctionalTest task to stay enabled; otherwise nothing
-// installs them. autonomousapps creates the pub inside its own `afterEvaluate`, so check from a
-// later one.
+// When TestKit adds its coordinate-correcting publication, it replaces the local `maven` publish.
+// Modules whose existing coordinates already match `(group, project.name, version)` keep the
+// original task. TestKit creates the extra publication in `afterEvaluate`, so check after it.
 afterEvaluate {
   val publishing = extensions.findByType(PublishingExtension::class.java) ?: return@afterEvaluate
   if (publishing.publications.findByName("testKitSupportForJava") != null) {
