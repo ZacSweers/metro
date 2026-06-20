@@ -364,10 +364,10 @@ kotlin generate-projects.main.kts --mode metro --count 500 --enable-runtime-trac
 
 When enabled, the generated Metro `AppComponent` uses a `@DependencyGraph.Factory` that accepts an
 AndroidX `Tracer`. JVM benchmarks create a `TraceDriver` automatically and copy trace files into the
-benchmark result directory under `metro-runtime-traces/`. Android macrobenchmarks write runtime
-trace files through the benchmark APK's additional-output provider, and microbenchmarks write
-directly to their additional-output directory. UTP then copies those files into the Android result
-tree under `metro-runtime-traces/`.
+benchmark result directory under `metro-runtime-traces/`. Android macrobenchmarks launch the target
+app normally, flush the app-owned AndroidX trace driver after each startup iteration, and pull trace
+files from the target app's external media directory into the Android result tree. Microbenchmarks
+write directly to their additional-output directory.
 
 This is a diagnostic mode. Runtime tracing adds trace recording, serialization, and flush work to the
 measured path, so use it to inspect startup behavior rather than to compare framework timings.

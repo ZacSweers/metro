@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.benchmark.startup.android
 
-import android.content.ClipData
-import android.content.Intent
 import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.StartupTimingMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
@@ -44,22 +42,9 @@ class StartupBenchmarks {
       startupMode = StartupMode.COLD,
     ) {
       pressHome()
-      startActivityAndWait(runtimeTracedLaunchIntent())
+      startActivityAndWait()
       flushRuntimeTraces()
     }
-  }
-
-  private fun runtimeTracedLaunchIntent(): Intent {
-    val instrumentation = InstrumentationRegistry.getInstrumentation()
-    val traceUri = RuntimeTraceFileProvider.uriFor("perfetto-${System.nanoTime()}.perfetto-trace")
-    val intent =
-      instrumentation.context.packageManager.getLaunchIntentForPackage(PACKAGE_NAME)
-        ?: error("Could not resolve launcher intent for $PACKAGE_NAME")
-    intent.putExtra(EXTRA_RUNTIME_TRACE_URI, traceUri.toString())
-    intent.clipData =
-      ClipData.newUri(instrumentation.context.contentResolver, "metro-runtime-trace", traceUri)
-    intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-    return intent
   }
 
   /** Flushes the target app's AndroidX trace driver before UTP copies additional output. */
@@ -70,8 +55,6 @@ class StartupBenchmarks {
 
   companion object {
     private const val PACKAGE_NAME = "dev.zacsweers.metro.benchmark.startup.android"
-    private const val EXTRA_RUNTIME_TRACE_URI =
-      "dev.zacsweers.metro.benchmark.startup.android.RUNTIME_TRACE_URI"
     private const val TRACE_FLUSH_ACTION = "androidx.tracing.profiler.action.FLUSH_TRACES_GET_PATH"
     private const val TRACE_RECEIVER = "androidx.tracing.profiler.ConnectedProfilerTracingReceiver"
   }

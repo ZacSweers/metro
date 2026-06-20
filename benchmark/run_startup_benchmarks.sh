@@ -116,6 +116,26 @@ clear_android_runtime_traces() {
     adb shell rm -rf "$ANDROID_APP_TRACE_DIR" "$ANDROID_MICROBENCHMARK_TRACE_DIR" >/dev/null 2>&1 || true
 }
 
+copy_android_macro_runtime_traces() {
+    if [ "$ENABLE_RUNTIME_TRACING" != true ]; then
+        return
+    fi
+
+    local output_dir="$1"
+    local destination="$output_dir/metro-runtime-traces"
+    if ! adb shell "[ -d '$ANDROID_APP_TRACE_DIR' ]" >/dev/null 2>&1; then
+        print_error "Android runtime trace directory not found: $ANDROID_APP_TRACE_DIR"
+        return
+    fi
+
+    rm -rf "$destination"
+    if adb pull "$ANDROID_APP_TRACE_DIR" "$output_dir/" >/dev/null; then
+        print_success "Copied Android runtime traces to $destination"
+    else
+        print_error "Failed to copy Android runtime traces from $ANDROID_APP_TRACE_DIR"
+    fi
+}
+
 # Print final results with duration
 print_final_results() {
     local results_dir="$1"
@@ -879,6 +899,7 @@ run_android_benchmark_only() {
                 if [ -d "$macro_output" ]; then
                     cp -r "$macro_output"/* "$output_dir/" 2>/dev/null || true
                 fi
+                copy_android_macro_runtime_traces "$output_dir"
                 print_success "Android macrobenchmark complete for $mode"
             else
                 print_error "Android macrobenchmark failed for $mode (is a device connected?)"

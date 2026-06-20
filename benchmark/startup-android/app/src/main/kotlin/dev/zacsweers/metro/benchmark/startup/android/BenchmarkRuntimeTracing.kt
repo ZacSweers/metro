@@ -3,27 +3,23 @@
 package dev.zacsweers.metro.benchmark.startup.android
 
 import android.content.Context
-import android.net.Uri
 import androidx.tracing.AbstractTraceDriver
-import androidx.tracing.AbstractTraceSink
 import androidx.tracing.wire.TraceDriver
 import androidx.tracing.wire.TraceSink
 import androidx.tracing.wire.createPerfettoFile
 import dev.zacsweers.metro.benchmark.app.component.AppComponent
 import dev.zacsweers.metro.benchmark.app.component.createAndInitializeForBenchmarkTracing
-import java.io.File
 
 /**
  * Owns the optional Android runtime trace driver for startup benchmarks.
  *
  * The generated component API decides whether the tracer argument is used. Non-traced builds pass
- * `null`, which every non-traced generated component ignores. Traced builds write to external media
- * so benchmark instrumentation can copy files before test cleanup runs.
+ * `null`, which every non-traced generated component ignores. Traced builds write to the target
+ * app's external media directory; the macrobenchmark flushes the AndroidX trace driver after each
+ * launch, and the benchmark script pulls the finalized trace files.
  */
 class BenchmarkRuntimeTracing(private val context: Context) {
-  private var traceUri: Uri? = null
-
-  private val traceDirectory: File? =
+  private val traceDirectory =
     if (!BuildConfig.METRO_RUNTIME_TRACING) {
       null
     } else {
@@ -31,27 +27,12 @@ class BenchmarkRuntimeTracing(private val context: Context) {
     }
 
   private val traceDriver: TraceDriver? by lazy {
-    createTraceSink()?.let { sink ->
-      TraceDriver(context, sink, isCategoryEnabled = { true })
-    }
-  }
-
-  fun setTraceUri(uri: Uri?) {
-    traceUri = uri
-  }
-
-  private fun createTraceSink(): AbstractTraceSink? {
-    val uri = traceUri
-    if (uri != null) {
-      val outputStream = context.contentResolver.openOutputStream(uri) ?: return null
-      return TraceSink(context, outputStream)
-    }
-
     val directory = traceDirectory
-    return if (directory == null) {
+    if (directory == null) {
       null
     } else {
-      TraceSink(context, traceFile = directory.createPerfettoFile())
+      val sink = TraceSink(context, traceFile = directory.createPerfettoFile())
+      TraceDriver(context, sink, isCategoryEnabled = { true })
     }
   }
 
@@ -62,10 +43,6 @@ class BenchmarkRuntimeTracing(private val context: Context) {
     }
 
     return createAndInitializeForBenchmarkTracing(driver.tracer)
-  }
-
-  fun flush() {
-    traceDriver?.flush()
   }
 
   fun createTraceDriver(): AbstractTraceDriver {
