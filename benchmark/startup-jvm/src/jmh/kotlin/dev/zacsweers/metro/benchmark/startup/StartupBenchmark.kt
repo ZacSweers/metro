@@ -37,8 +37,15 @@ import org.openjdk.jmh.runner.IterationType
 open class StartupBenchmark {
   private var runtimeTraceCaptured = false
 
+  /**
+   * Requests exactly one runtime trace from the generated component during measurement.
+   *
+   * Runtime tracing is diagnostic output, not part of the benchmark score. Waiting for the first
+   * measurement iteration keeps warmup noise out of the Perfetto file while still capturing a
+   * representative graph initialization.
+   */
   @Setup(Level.Iteration)
-  fun armRuntimeTrace(iterationParams: IterationParams) {
+  fun runtimeTraceSetup(iterationParams: IterationParams) {
     if (runtimeTraceCaptured) {
       return
     }
