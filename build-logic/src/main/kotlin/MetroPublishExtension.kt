@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import org.gradle.api.provider.Property
 
-interface MetroPublishExtension {
+interface MetroArtifactExtension {
   val artifactId: Property<String>
+  val name: Property<String>
+  val description: Property<String>
+  val packaging: Property<String>
 }

@@ -30,6 +30,11 @@ plugins {
   alias(libs.plugins.metro)
 }
 
+metroArtifact {
+  artifactId.set("compiler")
+  name.set("Metro Compiler")
+}
+
 metro {
   @OptIn(RequiresIdeSupport::class) generateAssistedFactories.set(true)
   // We embed and shade the runtime in the compiler's shadow JAR

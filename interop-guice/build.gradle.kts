@@ -5,6 +5,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("interop-guice")
+  name.set("Metro Guice Interop")
+}
+
 dependencies {
   api(project(":runtime"))
   // Guice dropped javax.inject in 7.0

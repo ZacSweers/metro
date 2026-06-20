@@ -10,6 +10,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("metro-common")
+  name.set("Metro Common")
+}
+
 poko {
   firIdeMode.set(PokoFirIdeMode.NONE)
 }

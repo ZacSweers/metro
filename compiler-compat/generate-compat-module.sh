@@ -271,6 +271,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("compiler-compat-$MODULE_NAME")
+  name.set("Metro Compiler Compat (Kotlin $KOTLIN_VERSION)")
+}
+
 dependencies {
   val kotlinVersion =
     providers.fileContents(layout.projectDirectory.file("version.txt")).asText.map { it.trim() }
@@ -290,6 +295,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("compiler-compat-$MODULE_NAME")
+  name.set("Metro Compiler Compat (Kotlin $KOTLIN_VERSION)")
+}
+
 dependencies {
   val kotlinVersion = providers.fileContents(layout.projectDirectory.file("version.txt")).asText.map { it.trim() }
   compileOnly(kotlinVersion.map { "org.jetbrains.kotlin:kotlin-compiler:\$it" })
@@ -299,12 +309,8 @@ dependencies {
 EOF
 fi
 
-# Generate gradle.properties for publishing
+# Generate gradle.properties
 cat > "$MODULE_DIR/gradle.properties" << EOF
-POM_NAME=Metro Compiler Compat (Kotlin $KOTLIN_VERSION)
-POM_ARTIFACT_ID=compiler-compat-$MODULE_NAME
-POM_PACKAGING=jar
-
 # kotlinc imposes its own
 kotlin.stdlib.default.dependency=false
 EOF
