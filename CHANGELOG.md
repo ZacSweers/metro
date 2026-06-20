@@ -99,6 +99,7 @@ Special thanks to the following contributors for contributing to this release!
 
 - [@BraisGabin](https://github.com/BraisGabin)
 - [@FletchMcKee](https://github.com/FletchMcKee)
+- [@tikurahul](https://github.com/tikurahul)
 - [@ychescale9](https://github.com/ychescale9)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
