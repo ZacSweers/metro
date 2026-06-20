@@ -149,12 +149,16 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     }
 
     val targetGraphScopes = targetGraphAnnotation?.allScopeClassIds(session).orEmpty()
+    val isDependencyGraphFactory = annotationClassId in classIds.dependencyGraphFactoryAnnotations
+    val createsDependencyGraph =
+      targetGraphAnnotation?.toAnnotationClassId(session) in classIds.dependencyGraphAnnotations
+    val checksRuntimeTracingInputs = session.shouldCheckRuntimeTracingGraphInputs()
+    val missingRuntimeTracerInput = !createFunction.hasRuntimeTracerGraphInput(session)
     if (
-      annotationClassId in classIds.dependencyGraphFactoryAnnotations &&
-        targetGraphAnnotation?.toAnnotationClassId(session) in
-          classIds.dependencyGraphAnnotations &&
-        session.shouldCheckRuntimeTracingGraphInputs() &&
-        !createFunction.hasRuntimeTracerGraphInput(session)
+      isDependencyGraphFactory &&
+        createsDependencyGraph &&
+        checksRuntimeTracingInputs &&
+        missingRuntimeTracerInput
     ) {
       reporter.reportOn(
         createFunction.source ?: declaration.source,
