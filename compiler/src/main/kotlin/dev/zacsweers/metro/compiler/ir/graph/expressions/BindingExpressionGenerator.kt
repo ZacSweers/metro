@@ -107,8 +107,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     bindingKind: String? = null,
     providerOrigin: ProviderExpressionOrigin = ProviderExpressionOrigin.NewExpression,
   ): IrExpression {
-    // First produce the Metro expression shape the caller requested: either a direct instance or a
-    // Metro Provider. Later steps decorate or convert that shape.
+    // Step 1: Transform access type (INSTANCE <-> PROVIDER)
     val accessTransformed =
       when (requested) {
         actual -> this
@@ -128,8 +127,8 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
         }
       }
 
-    // Provider decorators must see the Metro Provider before any interop conversion. Runtime
-    // tracing uses this point to wrap provider-valued bindings in TracedProvider.
+    // Step 2: Convert provider if needed (e.g., Metro -> Dagger)
+    // Only do this if we're in PROVIDER mode (or transformed to it)
     val maybeTraced =
       if (requested == AccessType.PROVIDER) {
         expressionDecorator.decorateProviderExpression(
@@ -144,7 +143,6 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
         accessTransformed
       }
 
-    // Convert provider if needed after decoration (e.g., Metro -> Dagger).
     val finalAccessType = if (requested == AccessType.PROVIDER) requested else actual
     return if (finalAccessType == AccessType.PROVIDER) {
       with(scope) {
