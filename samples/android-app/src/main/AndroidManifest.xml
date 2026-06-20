@@ -31,7 +31,7 @@
           android:name="androidx.work.WorkManagerInitializer"
           android:value="androidx.startup"
           tools:node="remove" />
-      <!-- Remove to use Application traceDriver  -->
+      <!-- Use MetroApp's trace driver so sample traces and profiler broadcasts share one sink. -->
       <meta-data
           android:name="androidx.tracing.profiler.ConnectedProfilerTracingInitializer"
           android:value="androidx.startup"

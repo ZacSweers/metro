@@ -30,7 +30,8 @@ metro {
 dependencies {
   implementation("dev.zacsweers.metro:metrox-android")
   implementation("dev.zacsweers.metro:metrox-viewmodel")
-  // Picking the latest snapshot. Once alpha09 is out, this is no longer necessary.
+  // Uses post-alpha08 process-wide tracing APIs: AbstractTraceDriver.Factory without a type
+  // argument and Tracer.setGlobalTracer(...).
   implementation("androidx.tracing:tracing-wire:2.0.0-SNAPSHOT")
   implementation(libs.androidx.appcompat)
   implementation(libs.androidx.core)
