@@ -85,7 +85,7 @@ plugins.withType<KotlinBasePlugin> {
       if (this is KotlinJvmCompilerOptions) {
         jvmTarget.convention(metroExtension.jvmTarget.map(JvmTarget::fromTarget))
         jvmDefault.convention(JvmDefaultMode.NO_COMPATIBILITY)
-        freeCompilerArgs.addAll("-Xassertions=jvm", "-Xannotation-default-target=param-property")
+        freeCompilerArgs.add("-Xassertions=jvm")
         if (isCompilerProject) {
           freeCompilerArgs.addAll(
             "-Xreturn-value-checker=full",
