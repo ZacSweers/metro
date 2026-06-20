@@ -4,8 +4,8 @@ package test
 
 import dev.zacsweers.metro.*
 
-// METRO_DIAGNOSTIC: ASSISTED_INJECTION_ERROR,ERROR,AssistedWithMismatchedParams factory is missing
-// 'name' parameter
+// METRO_DIAGNOSTIC: ASSISTED_INJECTION_ERROR,ERROR,Assisted factory function 'create' is missing
+// parameters for @Assisted constructor parameters: name: String
 @AssistedInject
 class AssistedWithMismatchedParams(@Assisted val id: Int, @Assisted val name: String) {
   @AssistedFactory
