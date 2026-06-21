@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782025692073,
+  "lastUpdate": 1782070090035,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -17696,6 +17696,62 @@ window.BENCHMARK_DATA = {
             "value": 18159.424,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.77%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5f7e1a9a~1",
+          "message": "[before] Enable NO_IMPLICIT_LOOKUP_IN_PARENT_PROJECTS previ",
+          "timestamp": "2026-06-21T18:56:01Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5f7e1a9a884f86d914fad6b73aa5695e57e86153"
+        },
+        "date": 1782070090035,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17624.314000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5f7e1a9a884f86d914fad6b73aa5695e57e86153",
+          "message": "[after] Enable NO_IMPLICIT_LOOKUP_IN_PARENT_PROJECTS previ",
+          "timestamp": "2026-06-21T18:56:01Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5f7e1a9a884f86d914fad6b73aa5695e57e86153"
+        },
+        "date": 1782070090036,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17964.46,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.93%"
           }
         ]
       }
