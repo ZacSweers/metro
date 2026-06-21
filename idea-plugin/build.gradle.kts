@@ -88,7 +88,9 @@ val metroRuntimeClasspath: Configuration by configurations.creating {
 
 // A compiled "library" with Metro-annotated classes + handwritten contribution hint functions,
 // used by tests covering resolution from binary dependencies.
-val libFixture: SourceSet by sourceSets.creating
+val libFixture: SourceSet by sourceSets.creating {
+  kotlin.srcDir("src/test/data/libFixtures/kotlin")
+}
 
 val libFixtureJar =
   tasks.register<Jar>("libFixtureJar") {
