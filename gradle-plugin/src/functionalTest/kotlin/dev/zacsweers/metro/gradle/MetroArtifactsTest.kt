@@ -266,7 +266,6 @@ class MetroArtifactsTest {
                 "enableHiltInterop": false,
                 "diagnosticsRenderMode": "PLAIN",
                 "generateStaticAnnotations": true,
-                "bindingContributionsAsContainers": true,
                 "memberNamingStrategy": "DESCRIPTIVE"
               },
               "stats": {
