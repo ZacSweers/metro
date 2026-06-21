@@ -1,7 +1,7 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-import foundry.gradle.properties.PropertyResolver
 import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
@@ -10,12 +10,38 @@ apply(plugin = "com.vanniktech.maven.publish")
 
 apply(plugin = "com.autonomousapps.testkit")
 
-val extension = project.extensions.create<MetroPublishExtension>("metroPublish")
+val extension = project.extensions.create<MetroArtifactExtension>("metroArtifact")
 
-val artifactIdProvider =
-  PropertyResolver(project).optionalStringProvider("POM_ARTIFACT_ID", project.name)
+extension.artifactId.convention(project.name)
 
-extension.artifactId.convention(artifactIdProvider)
+extension.name.convention(project.name)
+
+extension.description.convention(providers.gradleProperty("POM_DESCRIPTION"))
+
+afterEvaluate {
+  extensions.configure<PublishingExtension> {
+    publications.withType<MavenPublication>().configureEach {
+      val publicationArtifactId = artifactId
+      val metroArtifactId = extension.artifactId.get()
+      val hasProjectNamePrefix = publicationArtifactId.startsWith("${project.name}-")
+      val isGradlePluginMarker = publicationArtifactId.endsWith(".gradle.plugin")
+      artifactId =
+        when {
+          publicationArtifactId == project.name -> metroArtifactId
+          hasProjectNamePrefix -> metroArtifactId + publicationArtifactId.removePrefix(project.name)
+          else -> publicationArtifactId
+        }
+
+      pom {
+        name.set(extension.name)
+        description.set(extension.description)
+        if (!isGradlePluginMarker && extension.packaging.isPresent) {
+          packaging = extension.packaging.get()
+        }
+      }
+    }
+  }
+}
 
 // Compiler-compat artifacts get explicit API mode too; only the main :compiler module is exempt.
 if (project.path != ":compiler") {
@@ -35,13 +61,9 @@ tasks
   .matching { it.name == "publishTestKitSupportForJavaPublicationToMavenCentralRepository" }
   .configureEach { enabled = false }
 
-// Conversely, when `testKitSupportForJava` exists, disable the `maven` -> FunctionalTest task so
-// the two don't overwrite each other in the local repo. autonomousapps only creates this pub when
-// the existing `maven` pub's GAV differs from `(group, project.name, version)` -- which happens
-// for compat modules where POM_ARTIFACT_ID != project.name. Modules without the testkit pub
-// (e.g. `:compiler`) need the `maven` -> FunctionalTest task to stay enabled; otherwise nothing
-// installs them. autonomousapps creates the pub inside its own `afterEvaluate`, so check from a
-// later one.
+// When TestKit adds its coordinate-correcting publication, it replaces the local `maven` publish.
+// Modules whose existing coordinates already match `(group, project.name, version)` keep the
+// original task. TestKit creates the extra publication in `afterEvaluate`, so check after it.
 afterEvaluate {
   val publishing = extensions.findByType(PublishingExtension::class.java) ?: return@afterEvaluate
   if (publishing.publications.findByName("testKitSupportForJava") != null) {

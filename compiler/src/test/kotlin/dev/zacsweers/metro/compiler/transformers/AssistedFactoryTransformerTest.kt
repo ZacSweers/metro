@@ -130,8 +130,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
-          Missing from factory: kotlin.Int (count)
+        e: ExampleClass.kt:11:9 Assisted factory function 'create' is missing parameters for @Assisted constructor parameters: count: Int
         """
           .trimIndent()
       )
@@ -159,8 +158,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
-          Missing from factory: kotlin.String (message)
+        e: ExampleClass.kt:12:9 Assisted factory function 'create' is missing parameters for @Assisted constructor parameters: message: String
         """
           .trimIndent()
       )
@@ -187,9 +185,13 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
-          Missing from factory: kotlin.String (count)
-          Missing from constructor: kotlin.Int (count)
+        e: ExampleClass.kt:11:9 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
+          Missing from factory:
+            - count: String
+          Missing from constructor:
+            - count: Int
+
+          help: `count` parameter appears in both but has different types
         """
           .trimIndent()
       )
@@ -217,9 +219,11 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
-          Missing from factory: kotlin.String (count)
-          Missing from constructor: kotlin.Int (notcount)
+        e: ExampleClass.kt:12:9 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
+          Missing from factory:
+            - count: String
+          Missing from constructor:
+            - notcount: Int
         """
           .trimIndent()
       )
@@ -247,9 +251,13 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
-          Missing from factory: kotlin.String (count)
-          Missing from constructor: kotlin.Int (count)
+        e: ExampleClass.kt:12:9 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
+          Missing from factory:
+            - count: String
+          Missing from constructor:
+            - count: Int
+
+          help: `count` parameter appears in both but has different types
         """
           .trimIndent()
       )

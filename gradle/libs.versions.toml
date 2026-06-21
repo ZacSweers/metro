@@ -16,7 +16,7 @@
 agp = "9.0.1"
 android-compileSdk = "36"
 androidx-lifecycle = "2.10.0"
-androidx-lint-gradle = "1.0.0-rc01"
+androidx-lint-gradle = "1.0.0"
 annotation = "1.10.0"
 anvil = "0.5.4"
 circuit = "0.34.0"
@@ -75,7 +75,7 @@ kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.re
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlinx-benchmark = { id = "org.jetbrains.kotlinx.benchmark", version.ref = "kotlinx-benchmark" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.37.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
 shadow = { id = "com.gradleup.shadow", version = "9.4.2" }

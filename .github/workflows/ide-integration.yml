@@ -25,7 +25,7 @@ jobs:
     outputs:
       ide-matrix: ${{ steps.matrix.outputs.ide-matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Generate IDE matrix
         id: matrix
@@ -49,7 +49,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
@@ -95,7 +95,7 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
       - name: Download Metro artifacts
         uses: actions/download-artifact@v8
@@ -110,7 +110,9 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Install aria2 and xvfb
-        run: sudo apt-get install -y aria2 xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y aria2 xvfb
 
       - name: Filter IDE version for this matrix entry
         run: |

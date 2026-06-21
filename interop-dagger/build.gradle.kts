@@ -5,6 +5,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("interop-dagger")
+  name.set("Metro Dagger Inteorp")
+}
+
 dependencies {
   api(project(":runtime"))
   api(project(":interop-javax"))

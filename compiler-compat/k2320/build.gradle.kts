@@ -5,6 +5,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("compiler-compat-k2320")
+  name.set("Metro Compiler Compat (Kotlin 2.3.20)")
+}
+
 dependencies {
   val kotlinVersion =
     providers.fileContents(layout.projectDirectory.file("version.txt")).asText.map { it.trim() }

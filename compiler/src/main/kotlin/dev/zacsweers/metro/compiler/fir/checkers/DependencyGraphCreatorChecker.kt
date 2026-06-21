@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.fir.isIntrinsicType
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
+import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
@@ -203,6 +204,14 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
             isGraphPrivate = true
           }
         }
+      }
+
+      for (scopeAnnotation in
+        param.resolvedCompilerAnnotationsWithClassIds.scopeAnnotations(session)) {
+        reporter.reportOn(
+          scopeAnnotation.fir.source,
+          MetroDiagnostics.SCOPED_GRAPH_FACTORY_PARAMETER,
+        )
       }
 
       // @GraphPrivate on a factory parameter requires @Provides

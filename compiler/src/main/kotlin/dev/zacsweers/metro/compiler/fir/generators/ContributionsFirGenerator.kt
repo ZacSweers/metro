@@ -953,9 +953,7 @@ internal class ContributionsFirGenerator(
     }
 
     val contributions = findContributions(owner) ?: return null
-    val generateAsContainer =
-      session.metroFirBuiltIns.options.bindingContributionsAsContainers &&
-        contributions.none { it is Contribution.ContributesTo }
+    val generateAsContainer = contributions.none { it is Contribution.ContributesTo }
     return createMetroContributionClass(
       owner,
       name,

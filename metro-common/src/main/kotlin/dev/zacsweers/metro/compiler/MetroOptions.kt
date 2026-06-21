@@ -1000,19 +1000,6 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  BINDING_CONTRIBUTIONS_AS_CONTAINERS(
-    RawMetroOption.boolean(
-      name = "binding-contributions-as-containers",
-      defaultValue = true,
-      valueDescription = "<true | false>",
-      description =
-        "Route pure binding contributions (`@ContributesBinding`, `@ContributesIntoSet`, and " +
-          "`@ContributesIntoMap` without `@ContributesTo`) through a `@BindingContainer` instead " +
-          "of merging them into graphs as supertypes. Disable to restore supertype merging.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   MEMBER_NAMING_STRATEGY(
     RawMetroOption(
       name = "member-naming-strategy",
@@ -1214,8 +1201,6 @@ public class MetroOptions(
       .let(DiagnosticsRenderMode::parse),
   public val generateStaticAnnotations: Boolean =
     MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
-  public val bindingContributionsAsContainers: Boolean =
-    MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS.raw.defaultValue.expectAs(),
   public val memberNamingStrategy: MemberNamingStrategy =
     MetroOption.MEMBER_NAMING_STRATEGY.raw.defaultValue.expectAs<String>().let {
       MemberNamingStrategy.valueOf(it.uppercase(Locale.US))
@@ -1514,7 +1499,6 @@ public class MetroOptions(
     public var enableHiltInterop: Boolean = base.enableHiltInterop
     public var diagnosticsRenderMode: DiagnosticsRenderMode = base.diagnosticsRenderMode
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
-    public var bindingContributionsAsContainers: Boolean = base.bindingContributionsAsContainers
     public var memberNamingStrategy: MemberNamingStrategy = base.memberNamingStrategy
 
     public fun debug(debug: Boolean): Builder = apply {
@@ -1865,8 +1849,6 @@ public class MetroOptions(
         MetroOption.DIAGNOSTICS_RENDER_MODE ->
           diagnosticsRenderMode = DiagnosticsRenderMode.parse(value.expectAs<String>())
         MetroOption.GENERATE_STATIC_ANNOTATIONS -> generateStaticAnnotations = value.expectAs()
-        MetroOption.BINDING_CONTRIBUTIONS_AS_CONTAINERS ->
-          bindingContributionsAsContainers = value.expectAs()
         MetroOption.MEMBER_NAMING_STRATEGY ->
           memberNamingStrategy =
             MemberNamingStrategy.valueOf(value.expectAs<String>().uppercase(Locale.US))
@@ -1956,7 +1938,6 @@ public class MetroOptions(
         enableHiltInterop = enableHiltInterop,
         diagnosticsRenderMode = diagnosticsRenderMode,
         generateStaticAnnotations = generateStaticAnnotations,
-        bindingContributionsAsContainers = bindingContributionsAsContainers,
         memberNamingStrategy = memberNamingStrategy,
       )
     }

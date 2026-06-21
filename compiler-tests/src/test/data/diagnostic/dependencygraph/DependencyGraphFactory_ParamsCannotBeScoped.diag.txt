@@ -1,0 +1,3 @@
+/DependencyGraphFactory_ParamsCannotBeScoped.kt:11:17: error: Graph factory parameters should not have scope annotations. Inputs are implicitly scoped to the graph they are passed to.
+
+/DependencyGraphFactory_ParamsCannotBeScoped.kt:12:17: error: Graph factory parameters should not have scope annotations. Inputs are implicitly scoped to the graph they are passed to.

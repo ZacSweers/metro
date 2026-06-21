@@ -85,7 +85,7 @@ plugins.withType<KotlinBasePlugin> {
       if (this is KotlinJvmCompilerOptions) {
         jvmTarget.convention(metroExtension.jvmTarget.map(JvmTarget::fromTarget))
         jvmDefault.convention(JvmDefaultMode.NO_COMPATIBILITY)
-        freeCompilerArgs.addAll("-Xassertions=jvm", "-Xannotation-default-target=param-property")
+        freeCompilerArgs.add("-Xassertions=jvm")
         if (isCompilerProject) {
           freeCompilerArgs.addAll(
             "-Xreturn-value-checker=full",
@@ -117,12 +117,12 @@ pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
 }
 
 pluginManager.withPlugin("metro.publish") {
-  val metroPublish = extensions.getByType<MetroPublishExtension>()
+  val metroArtifact = extensions.getByType<MetroArtifactExtension>()
   tasks.withType<KotlinCompilationTask<*>>().configureEach {
     compilerOptions {
       if (this is KotlinJvmCompilerOptions) {
         // Configuration required to produce unique META-INF/*.kotlin_module file names
-        moduleName.set(metroPublish.artifactId)
+        moduleName.set(metroArtifact.artifactId)
       }
     }
   }

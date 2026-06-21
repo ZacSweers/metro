@@ -811,6 +811,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("IncludedClassBindingContainer.kt")
+    public void testIncludedClassBindingContainer() {
+      run("IncludedClassBindingContainer.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindsOnlyInContainer.kt")
     public void testMultibindsOnlyInContainer() {
       run("MultibindsOnlyInContainer.kt");

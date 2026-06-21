@@ -18,6 +18,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("gradle-plugin")
+  name.set("Metro Gradle Plugin")
+}
+
 metroProject {
   jvmTarget.set(libs.versions.compilerJvmTarget)
   // Lower version for Gradle compat
@@ -78,9 +83,9 @@ kotlin.compilerOptions.optIn.add("dev.zacsweers.metro.gradle.DelicateMetroGradle
  * We shade guava and graph-support to avoid conflicts with other Gradle plugins that may use
  * different versions.
  */
-val embedded by configurations.dependencyScope("embedded")
+val embedded = configurations.dependencyScope("embedded")
 
-val embeddedClasspath by configurations.resolvable("embeddedClasspath") { extendsFrom(embedded) }
+val embeddedClasspath = configurations.resolvable("embeddedClasspath") { extendsFrom(embedded) }
 
 configurations.named("compileOnly").configure { extendsFrom(embedded) }
 
@@ -93,7 +98,7 @@ tasks.jar.configure { enabled = false }
 val shadowJar =
   tasks.register<ShadowJar>("shadowJar") {
     from(java.sourceSets.main.map { it.output })
-    configurations = listOf(embeddedClasspath)
+    configurations.add(embeddedClasspath)
 
     dependencies {
       exclude(dependency("org.jetbrains:.*"))

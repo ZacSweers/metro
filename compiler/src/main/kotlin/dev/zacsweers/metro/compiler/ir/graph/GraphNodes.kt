@@ -584,6 +584,13 @@ internal class GraphNodes(
       qualifierMismatches.clear()
     }
 
+    private fun manageBindingContainer(container: BindingContainer) {
+      linkDeclarationsInCompilation(graphDeclaration, container.ir)
+      if (container.canBeManaged) {
+        managedBindingContainers += container.ir
+      }
+    }
+
     context(traceScope: TraceScope)
     fun build(diagnosticTag: String): GraphNode {
       if (graphDeclaration.isExternalParent || !isGraph) {
@@ -1180,13 +1187,7 @@ internal class GraphNodes(
         }
       bindingContainers += resolvedContainers
       resolvedBindingContainers += resolvedContainers
-      resolvedContainers.forEach { container ->
-        linkDeclarationsInCompilation(graphDeclaration, container.ir)
-        // Annotation-included containers may need to be managed directly
-        if (container.canBeManaged) {
-          managedBindingContainers += container.ir
-        }
-      }
+      resolvedContainers.forEach(::manageBindingContainer)
 
       // For regular graphs (not generated extensions/dynamic), aggregate binding containers
       // from scopes using IrContributionMerger to handle merging. This can't be done in FIR
@@ -1215,13 +1216,7 @@ internal class GraphNodes(
               bindingContainers +=
                 containers
                   .mapNotNull { metroDeclarations.findBindingContainer(it) }
-                  .onEach { container ->
-                    linkDeclarationsInCompilation(graphDeclaration, container.ir)
-                    // Annotation-included containers may need to be managed directly
-                    if (container.canBeManaged) {
-                      managedBindingContainers += container.ir
-                    }
-                  }
+                  .onEach(::manageBindingContainer)
             }
         }
       } else {
@@ -1237,6 +1232,7 @@ internal class GraphNodes(
             if (it in resolvedBindingContainers) null else it.ir
           }
           val newlyResolved = bindingContainerResolver.resolve(unresolvedRoots)
+          newlyResolved.forEach(::manageBindingContainer)
           resolvedBindingContainers + newlyResolved
         }
 

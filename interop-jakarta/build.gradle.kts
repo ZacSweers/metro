@@ -5,6 +5,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("interop-jakarta")
+  name.set("Metro Jakarta Interop")
+}
+
 dependencies {
   api(project(":runtime"))
   api(libs.jakartaInject)

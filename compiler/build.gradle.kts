@@ -30,6 +30,11 @@ plugins {
   alias(libs.plugins.metro)
 }
 
+metroArtifact {
+  artifactId.set("compiler")
+  name.set("Metro Compiler")
+}
+
 metro {
   @OptIn(RequiresIdeSupport::class) generateAssistedFactories.set(true)
   // We embed and shade the runtime in the compiler's shadow JAR
@@ -90,9 +95,10 @@ val diagnosticsDocsFile = rootProject.layout.projectDirectory.file("docs/diagnos
 // The compiler module's stdlib and kotlin-compiler are compileOnly (kotlinc provides them at
 // runtime), so the doc generator needs them added back for plain JavaExec. kotlin-compiler is
 // needed because MetroDiagnosticId entries reference their KtDiagnosticFactory transport.
-val diagnosticsDocsRuntime: Configuration by configurations.creating {
-  isCanBeConsumed = false
-}
+val diagnosticsDocsRuntime =
+  configurations.create("diagnosticsDocsRuntime") {
+    isCanBeConsumed = false
+  }
 
 dependencies {
   diagnosticsDocsRuntime(libs.kotlin.stdlib)
@@ -128,9 +134,9 @@ wire { kotlin { javaInterop = false } }
  * In order to do this, we replace the default jar task with a shadowJar task that embeds the
  * dependencies from the "embedded" configuration.
  */
-val embedded by configurations.dependencyScope("embedded")
+val embedded = configurations.dependencyScope("embedded")
 
-val embeddedClasspath by configurations.resolvable("embeddedClasspath") { extendsFrom(embedded) }
+val embeddedClasspath = configurations.resolvable("embeddedClasspath") { extendsFrom(embedded) }
 
 configurations.named("compileOnly").configure { extendsFrom(embedded) }
 

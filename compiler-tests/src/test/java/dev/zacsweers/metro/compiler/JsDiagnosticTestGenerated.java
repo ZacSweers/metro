@@ -367,6 +367,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DependencyGraphFactory_ParamsCannotBeScoped.kt")
+    public void testDependencyGraphFactory_ParamsCannotBeScoped() {
+      run("DependencyGraphFactory_ParamsCannotBeScoped.kt");
+    }
+
+    @Test
     @TestMetadata("DependencyGraphFactory_ProvidesParamCannotBeIntrinsic.kt")
     public void testDependencyGraphFactory_ProvidesParamCannotBeIntrinsic() {
       run("DependencyGraphFactory_ProvidesParamCannotBeIntrinsic.kt");
@@ -529,6 +535,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       @TestMetadata("ExtensionsWithFactoriesMustUseThem.kt")
       public void testExtensionsWithFactoriesMustUseThem() {
         run("ExtensionsWithFactoriesMustUseThem.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphExtensionFactory_ParamsCannotBeScoped.kt")
+      public void testGraphExtensionFactory_ParamsCannotBeScoped() {
+        run("GraphExtensionFactory_ParamsCannotBeScoped.kt");
       }
 
       @Test
@@ -876,6 +888,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("AssistedFactoryExtraParamReportsOnParam.kt")
+      public void testAssistedFactoryExtraParamReportsOnParam() {
+        run("AssistedFactoryExtraParamReportsOnParam.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedFactoryMustTargetAssistedInjectTypesButMissingConstructor.kt")
       public void testAssistedFactoryMustTargetAssistedInjectTypesButMissingConstructor() {
         run("AssistedFactoryMustTargetAssistedInjectTypesButMissingConstructor.kt");
@@ -909,6 +927,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       @TestMetadata("ContributesAnnotationsNotAllowedOnAssistedInjectClasses.kt")
       public void testContributesAnnotationsNotAllowedOnAssistedInjectClasses() {
         run("ContributesAnnotationsNotAllowedOnAssistedInjectClasses.kt");
+      }
+
+      @Test
+      @TestMetadata("InheritedAssistedFactoryParamMismatchReportsOnFactory.kt")
+      public void testInheritedAssistedFactoryParamMismatchReportsOnFactory() {
+        run("InheritedAssistedFactoryParamMismatchReportsOnFactory.kt");
       }
 
       @Test
