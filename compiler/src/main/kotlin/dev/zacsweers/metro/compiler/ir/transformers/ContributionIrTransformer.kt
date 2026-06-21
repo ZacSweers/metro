@@ -275,8 +275,7 @@ internal class ContributionIrTransformer(
         } else {
           // Regular IR-only contribution markers mirror the old FIR-generated declarations. They
           // are metadata-visible but hidden from users with Deprecated(HIDDEN).
-          val generateAsContainer =
-            shouldGenerateIrContributionMarkerAsContainer(scopedContributions)
+          val generateAsContainer = scopedContributions.none { it is Contribution.ContributesTo }
           val marker =
             declaration.getOrCreateIrContributionMarker(
               scope,
@@ -301,13 +300,6 @@ internal class ContributionIrTransformer(
     if (isBindingContainer()) return false
     if (isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)) return false
     return scopedContributions.any { it is Contribution.ContributesTo }
-  }
-
-  private fun shouldGenerateIrContributionMarkerAsContainer(
-    scopedContributions: List<Contribution>
-  ): Boolean {
-    return options.bindingContributionsAsContainers &&
-      scopedContributions.none { it is Contribution.ContributesTo }
   }
 
   /** Creates the IR-only equivalent of FIR's generated contribution-provider holder/container. */
