@@ -89,12 +89,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val entry = index.providerEntriesAt(declarations.function("bindService")).single()
     assertEquals(MetroProviderKind.BINDS, entry.kind)
-    assertEquals("test.Service", entry.key.type)
+    assertEquals("test.Service", entry.key.renderedType)
     assertEquals("ServiceImpl", entry.implementationName)
 
     // The @Binds impl parameter consumes the impl binding
     val implParam = declarations.parameter("impl")
-    assertEquals("test.ServiceImpl", index.consumerEntryAt(implParam)?.key?.type)
+    assertEquals("test.ServiceImpl", index.consumerEntryAt(implParam)?.key?.renderedType)
   }
 
   fun testInjectedClassProvidesItsOwnTypeAndConsumesConstructorParams() {
@@ -104,10 +104,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val entry = index.providerEntriesAt(declarations.klass("Consumer")).single()
     assertEquals(MetroProviderKind.INJECT, entry.kind)
-    assertEquals("test.Consumer", entry.key.type)
+    assertEquals("test.Consumer", entry.key.renderedType)
 
     val serviceParam = index.consumerEntryAt(declarations.parameter("service"))!!
-    assertEquals("test.Service", serviceParam.key.type)
+    assertEquals("test.Service", serviceParam.key.renderedType)
     assertTrue(serviceParam.isAbstractType)
 
     // The consumer's Service key resolves to the @Binds provider
@@ -122,7 +122,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val entries = index.providerEntriesAt(declarations.klass("RealHttpApi"))
     val contributed = entries.single { it.kind == MetroProviderKind.CONTRIBUTED }
-    assertEquals("test.HttpApi", contributed.key.type)
+    assertEquals("test.HttpApi", contributed.key.renderedType)
     assertEquals("RealHttpApi", contributed.implementationName)
     assertEquals("@SingleIn(scope = AppScope::class)", contributed.scope?.render(short = true))
 
@@ -136,14 +136,14 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val analyticsParam = index.consumerEntryAt(declarations.parameter("analytics"))!!
-    assertEquals("kotlin.collections.Set<test.Analytics>", analyticsParam.key.type)
+    assertEquals("kotlin.collections.Set<test.Analytics>", analyticsParam.key.renderedType)
     assertEquals("test.Analytics", analyticsParam.multibindingId)
 
     // Contributions keep their element key, mirroring the compiler's @MultibindingElement model
     val contributors = index.providersFor(analyticsParam)
     assertEquals(2, contributors.size)
     assertTrue(contributors.all { it.kind == MetroProviderKind.MULTIBINDING_CONTRIBUTION })
-    assertTrue(contributors.all { it.key.type == "test.Analytics" })
+    assertTrue(contributors.all { it.key.renderedType == "test.Analytics" })
 
     // And the reverse direction: a contribution's consumers include the aggregate site
     val debugAnalytics = index.providerEntriesAt(declarations.klass("DebugAnalytics"))
@@ -157,7 +157,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val handlersParam = index.consumerEntryAt(declarations.parameter("handlers"))!!
-    assertEquals("kotlin.collections.Map<kotlin.String, test.Service>", handlersParam.key.type)
+    assertEquals(
+      "kotlin.collections.Map<kotlin.String, test.Service>",
+      handlersParam.key.renderedType,
+    )
     assertEquals("kotlin.String_test.Service", handlersParam.multibindingId)
 
     val contributors = index.providersFor(handlersParam)
@@ -247,7 +250,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     // The accessor property is a consumer of Consumer
     val accessor = index.consumerEntryAt(declarations.property("consumer"))!!
-    assertEquals("test.Consumer", accessor.key.type)
+    assertEquals("test.Consumer", accessor.key.renderedType)
 
     val contributions =
       index.contributionsForScopes(graph.scopeKeys).mapNotNull {
@@ -307,10 +310,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // Both functions contribute generated factories into the scope's factory sets
     val presenterEntry = index.providerEntriesAt(declarations.function("HomePresenter")).single()
     assertEquals(MetroProviderKind.MULTIBINDING_CONTRIBUTION, presenterEntry.kind)
-    assertEquals("com.slack.circuit.runtime.presenter.Presenter.Factory", presenterEntry.key.type)
+    assertEquals(
+      "com.slack.circuit.runtime.presenter.Presenter.Factory",
+      presenterEntry.key.renderedType,
+    )
 
     val uiEntry = index.providerEntriesAt(declarations.function("HomeUi")).single()
-    assertEquals("com.slack.circuit.runtime.ui.Ui.Factory", uiEntry.key.type)
+    assertEquals("com.slack.circuit.runtime.ui.Ui.Factory", uiEntry.key.renderedType)
 
     // The graph's factory set accessors resolve to the contributions
     val presenterFactories = index.consumerEntryAt(declarations.property("presenterFactories"))!!
@@ -458,7 +464,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertNull(index.consumerEntryAt(factoryParam))
     val instanceEntry = index.providerEntriesAt(factoryParam).single()
     assertEquals(MetroProviderKind.INSTANCE, instanceEntry.kind)
-    assertEquals("test.Config", instanceEntry.key.type)
+    assertEquals("test.Config", instanceEntry.key.renderedType)
 
     // And consumers of its type resolve to it
     val configParam = index.consumerEntryAt(declarations.parameter("config"))!!

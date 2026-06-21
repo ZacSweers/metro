@@ -11,6 +11,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.idea.facet.getMergedCompilerArguments
@@ -45,7 +46,7 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
       addAll(options.multibindsAnnotations)
       addAll(options.injectAnnotations)
       if (options.enableCircuitCodegen) {
-        add(CircuitIds.CIRCUIT_INJECT)
+        add(CircuitClassIds.CircuitInject)
       }
     }
   }
@@ -74,7 +75,7 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
       addAll(options.assistedInjectAnnotations)
       if (options.enableCircuitCodegen) {
         // @CircuitInject classes are consumed through their generated circuit factory
-        add(CircuitIds.CIRCUIT_INJECT)
+        add(CircuitClassIds.CircuitInject)
       }
     }
   }

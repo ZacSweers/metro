@@ -2,12 +2,33 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
-internal interface BaseTypeKey<Type, Qualifier, Subtype : BaseTypeKey<Type, Qualifier, Subtype>> :
+public interface BaseTypeKey<Type, Qualifier, Subtype : BaseTypeKey<Type, Qualifier, Subtype>> :
   Comparable<Subtype> {
-  val type: Type
-  val qualifier: Qualifier?
+  public val type: Type
+  public val qualifier: Qualifier?
 
-  fun copy(type: Type = this.type, qualifier: Qualifier? = this.qualifier): Subtype
+  public fun copy(type: Type = this.type, qualifier: Qualifier? = this.qualifier): Subtype
 
-  fun render(short: Boolean, includeQualifier: Boolean = true): String
+  public fun render(short: Boolean, includeQualifier: Boolean = true): String
+}
+
+/**
+ * The ID of the multibinding this key's element belongs to: the qualifier + type render.
+ *
+ * For Set multibindings, this is the element type key. For Map multibindings, it composes with the
+ * rendered map key type via [createMapBindingId].
+ *
+ * Examples:
+ * - `okhttp3.Interceptor`
+ * - `@NetworkInterceptor okhttp3.Interceptor`
+ */
+public fun BaseTypeKey<*, *, *>.computeMultibindingId(): String =
+  render(short = false, includeQualifier = true)
+
+/** The composite multibinding ID of a Map multibinding entry. */
+public fun createMapBindingId(
+  renderedMapKeyType: String,
+  elementTypeKey: BaseTypeKey<*, *, *>,
+): String {
+  return "${renderedMapKeyType}_${elementTypeKey.computeMultibindingId()}"
 }
