@@ -324,9 +324,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     setMetroOptions("enable-circuit-codegen" to "true")
     myFixture.enableInspections(UnusedSymbolInspection())
     val declarations = circuitFileDeclarations()
-    myFixture.configureFromExistingVirtualFile(
-      declarations.first().containingFile.virtualFile
-    )
+    myFixture.configureFromExistingVirtualFile(declarations.first().containingFile.virtualFile)
 
     val warnings = myFixture.doHighlighting(HighlightSeverity.WARNING)
     val warningText = warnings.joinToString("\n") { "${it.text}: ${it.description}" }
