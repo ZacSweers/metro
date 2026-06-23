@@ -266,6 +266,31 @@ interface AppGraph {
 }
 ```
 
+On Android, prefer owning a single app-level `TraceDriver` and passing its tracer into the root graph from `Application.onCreate()`:
+
+```kotlin
+class MyApplication : Application(), AbstractTraceDriver.Factory {
+  private val sink = TraceSink(context = this)
+  private val driver = TraceDriver(context = this, sink = sink, isCategoryEnabled = { true })
+
+  lateinit var appGraph: AppGraph
+    private set
+
+  @OptIn(DelicateTracingApi::class)
+  override fun onCreate() {
+    super.onCreate()
+    Tracer.setGlobalTracer(driver.tracer)
+    appGraph = createGraphFactory<AppGraph.Factory>().create(driver.tracer)
+  }
+
+  override fun create(): AbstractTraceDriver = driver
+}
+```
+
+`AbstractTraceDriver.Factory` lets AndroidX's profiler tooling discover the same driver that Metro uses. `Tracer.setGlobalTracer(...)` also makes the tracer available to other libraries using AndroidX's global tracer discovery.
+
+With AndroidX Tracing 2.0.0-alpha09 and newer, `TraceSink` defers file setup. Graph creation no longer needs to be delayed with `lazy` just to avoid early trace output initialization.
+
 Generated trace sections use the short rendered binding name, including the qualifier when present. Metro also attaches string metadata for filtering and grouping:
 
 - `metro.graph`: the graph that owns the binding.
@@ -275,7 +300,7 @@ Generated trace sections use the short rendered binding name, including the qual
 - `metro.qualifier`: the binding qualifier, when present.
 - `metro.binding_kind`: the generated binding implementation kind, such as `Provided`, `ConstructorInjected`, or `Multibinding`.
 
-Here is what an example of what a trace looks like.
+Here is what a trace looks like.
 
 ![Runtime Tracing of the Metro Sample app](performance_assets/runtime_tracing.png)
 
