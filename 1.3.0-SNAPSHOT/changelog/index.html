@@ -7068,6 +7068,7 @@
 <li><strong>[IR]</strong> Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.</li>
 <li><strong>[IR]</strong> Manage transitive simple class binding containers included by contributed binding containers when they have instance providers.</li>
 <li><strong>[IR]</strong> Patch declaration parents for generated <code>@Binds</code> mirror declarations so copied declarations remain attached to the correct generated class.</li>
+<li><strong>[IR/Dagger interop]</strong> Fix an IR gen crash when an unscoped parent <code>@Provides</code> binding is injected as <code>dagger.Lazy&lt;T&gt;</code> from a child graph.</li>
 <li><strong>[IR/JS]</strong> Fix <code>Map&lt;K, () -&gt; V&gt;</code> multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro <code>Provider</code> objects.</li>
 <li><strong>[IR/KLIB]</strong> Fix generated <code>@Binds</code> implementations on KLIB backends. Metro now emits concrete identity bodies for inherited <code>@Binds</code> members where JS, Native, and Wasm validate abstract members during deserialization.</li>
 <li><strong>[IR/KLIB]</strong> Keep generated graph and shard backing fields private while preserving generated access through properties. This avoids backing-field visibility validation failures on KLIB backends.</li>
