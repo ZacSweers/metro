@@ -2721,6 +2721,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
         public void testInheritedBindingsDoNotCauseDuplicates2() {
           run("InheritedBindingsDoNotCauseDuplicates2.kt");
         }
+
+        @Test
+        @TestMetadata("UnscopedParentProvidesAsDaggerLazyInChildGraph.kt")
+        public void testUnscopedParentProvidesAsDaggerLazyInChildGraph() {
+          run("UnscopedParentProvidesAsDaggerLazyInChildGraph.kt");
+        }
       }
     }
 

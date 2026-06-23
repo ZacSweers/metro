@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.ParentContext
+import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.GraphMetadataReporter
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
@@ -23,6 +24,7 @@ import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider as wrapTypeInProvider
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -341,8 +343,8 @@ private constructor(
             }
           } else {
             // Invoke its factory's create() function
-            providerFactory
-              .invokeCreateExpression(binding.typeKey) { createFunction, params ->
+            val factoryProvider =
+              providerFactory.invokeCreateExpression(binding.typeKey) { createFunction, params ->
                 generateBindingArguments(
                   targetParams = params,
                   function = createFunction,
@@ -350,7 +352,18 @@ private constructor(
                   fieldInitKey = fieldInitKey,
                 )
               }
-              .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
+
+            if (providerFactory is ProviderFactory.Metro) {
+              val providerType = binding.typeKey.type.wrapTypeInProvider(metroSymbols.metroProvider)
+              with(metroSymbols.providerTypeConverter) {
+                factoryProvider.convertTo(contextualTypeKey, providerType = providerType)
+              }
+            } else {
+              factoryProvider.toTargetType(
+                actual = AccessType.PROVIDER,
+                contextualTypeKey = contextualTypeKey,
+              )
+            }
           }
         }
 
