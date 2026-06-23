@@ -49,7 +49,7 @@ okhttp = "5.4.0"
 okio = "3.17.0"
 pluginId = "dev.zacsweers.metro.compiler"
 poko = "0.23.1"
-wire = "6.4.0"
+wire = "6.4.1"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
