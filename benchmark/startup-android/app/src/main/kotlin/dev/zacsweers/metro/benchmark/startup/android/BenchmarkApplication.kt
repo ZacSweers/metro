@@ -6,10 +6,16 @@ import android.app.Application
 import androidx.tracing.AbstractTraceDriver
 import dev.zacsweers.metro.benchmark.app.component.AppComponent
 
-class BenchmarkApplication : Application(), AbstractTraceDriver.Factory<AbstractTraceDriver> {
+class BenchmarkApplication : Application(), AbstractTraceDriver.Factory {
   val runtimeTracing by lazy { BenchmarkRuntimeTracing(this) }
 
-  val appGraph: AppComponent by lazy { runtimeTracing.createAndInitializeGraph() }
+  lateinit var appGraph: AppComponent
+    private set
+
+  override fun onCreate() {
+    super.onCreate()
+    appGraph = runtimeTracing.createAndInitializeGraph()
+  }
 
   override fun create(): AbstractTraceDriver {
     return runtimeTracing.createTraceDriver()

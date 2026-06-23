@@ -34,7 +34,8 @@ class GraphInitRuntimeTracing(
     if (traceDirectory == null) {
       null
     } else {
-      val sink = TraceSink(context, traceFile = traceDirectory.createPerfettoFile())
+      val sink =
+        TraceSink(context = context, fileProvider = { traceDirectory.createPerfettoFile() })
       TraceDriver(context, sink, isCategoryEnabled = { true })
     }
   }

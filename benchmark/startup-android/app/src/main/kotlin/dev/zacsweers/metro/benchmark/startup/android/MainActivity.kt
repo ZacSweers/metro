@@ -8,8 +8,6 @@ import android.os.Bundle
 class MainActivity : Activity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    val benchmarkApplication = application as BenchmarkApplication
-    benchmarkApplication.appGraph
     // Signal that the app is fully drawn for startup benchmarking
     reportFullyDrawn()
   }

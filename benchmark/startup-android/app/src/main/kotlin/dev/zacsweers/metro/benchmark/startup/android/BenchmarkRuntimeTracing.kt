@@ -31,7 +31,7 @@ class BenchmarkRuntimeTracing(private val context: Context) {
     if (directory == null) {
       null
     } else {
-      val sink = TraceSink(context, traceFile = directory.createPerfettoFile())
+      val sink = TraceSink(context = context, fileProvider = { directory.createPerfettoFile() })
       TraceDriver(context, sink, isCategoryEnabled = { true })
     }
   }
