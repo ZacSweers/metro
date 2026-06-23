@@ -31,7 +31,7 @@ jobs:
           java-version-file: .github/workflows/.java-version
 
       - name: Cache kempt formatter binaries
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.kempt/cache
           key: kempt-${{ hashFiles('.kempt.toml') }}

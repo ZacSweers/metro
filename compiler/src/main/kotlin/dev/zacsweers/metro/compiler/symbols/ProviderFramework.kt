@@ -64,6 +64,9 @@ internal sealed interface ProviderFramework {
   /**
    * Converts a Metro provider to this framework's equivalent type.
    *
+   * @param providerType the semantic provider type to use for framework selection. This can differ
+   *   from the provider expression's concrete type when generated metadata only exposes a concrete
+   *   factory class.
    * @param targetClassId the ClassId of the target type
    */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
@@ -71,12 +74,15 @@ internal sealed interface ProviderFramework {
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
     targetClassId: ClassId?,
+    providerType: IrType = provider.type,
   ): IrExpression
 
   /**
    * Converts this framework's provider to a Metro provider.
    *
-   * @param sourceClassId the ClassId of the source expression's type
+   * @param providerType the semantic provider type to convert from. This can differ from the
+   *   expression's concrete type when generated metadata only exposes a factory class.
+   * @param sourceClassId the ClassId of [providerType]
    */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
   fun IrExpression.toMetroProvider(providerType: IrType, sourceClassId: ClassId?): IrExpression
@@ -87,7 +93,7 @@ internal sealed interface ProviderFramework {
    * [this] may be from any framework.
    */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  fun IrExpression.toLazy(targetKey: IrContextualTypeKey): IrExpression
+  fun IrExpression.toLazy(targetKey: IrContextualTypeKey, providerType: IrType = type): IrExpression
 }
 
 /**
@@ -152,10 +158,11 @@ internal class MetroProviderFramework(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
     targetClassId: ClassId?,
+    providerType: IrType,
   ): IrExpression {
     // Metro Provider -> Kotlin Lazy
     if (targetClassId == kotlinLazyClassId) {
-      return provider.toLazy(targetKey)
+      return provider.toLazy(targetKey, providerType)
     }
 
     // Metro Provider -> Function0
@@ -235,7 +242,10 @@ internal class MetroProviderFramework(
   }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  override fun IrExpression.toLazy(targetKey: IrContextualTypeKey): IrExpression =
+  override fun IrExpression.toLazy(
+    targetKey: IrContextualTypeKey,
+    providerType: IrType,
+  ): IrExpression =
     with(scope) {
       val provider = this@toLazy
       return irInvoke(
@@ -243,7 +253,7 @@ internal class MetroProviderFramework(
         callee = metroFrameworkSymbols.doubleCheckLazy,
         args = listOf(provider),
         typeHint = targetKey.toIrType(),
-        typeArgs = listOf(provider.type, targetKey.typeKey.type),
+        typeArgs = listOf(providerType, targetKey.typeKey.type),
       )
     }
 }
@@ -270,6 +280,7 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
     targetClassId: ClassId?,
+    providerType: IrType,
   ): IrExpression =
     with(scope) {
       return irInvoke(
@@ -301,7 +312,10 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
     }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  override fun IrExpression.toLazy(targetKey: IrContextualTypeKey): IrExpression {
+  override fun IrExpression.toLazy(
+    targetKey: IrContextualTypeKey,
+    providerType: IrType,
+  ): IrExpression {
     // Javax has no Lazy concept, this should be handled by another interop
     reportCompilerBug(
       "Javax providers do not support lazy without Dagger interop enabled. " +
@@ -332,6 +346,7 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
     targetClassId: ClassId?,
+    providerType: IrType,
   ): IrExpression =
     with(scope) {
       return irInvoke(
@@ -363,7 +378,10 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
     }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  override fun IrExpression.toLazy(targetKey: IrContextualTypeKey): IrExpression {
+  override fun IrExpression.toLazy(
+    targetKey: IrContextualTypeKey,
+    providerType: IrType,
+  ): IrExpression {
     // Javax has no Lazy concept, this should be handled by another interop
     reportCompilerBug(
       "Jakarta providers do not support lazy without Dagger interop enabled. " +
@@ -411,6 +429,7 @@ internal class GuiceProviderFramework(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
     targetClassId: ClassId?,
+    providerType: IrType,
   ): IrExpression =
     with(scope) {
       // Handle Guice's own provider type
@@ -423,7 +442,7 @@ internal class GuiceProviderFramework(
       }
 
       // Delegate to base class for javax/jakarta
-      return super.fromMetroProvider(provider, targetKey, targetClassId)
+      return super.fromMetroProvider(provider, targetKey, targetClassId, providerType)
     }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
@@ -448,7 +467,10 @@ internal class GuiceProviderFramework(
     }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  override fun IrExpression.toLazy(targetKey: IrContextualTypeKey): IrExpression =
+  override fun IrExpression.toLazy(
+    targetKey: IrContextualTypeKey,
+    providerType: IrType,
+  ): IrExpression =
     with(scope) {
       val provider = this@toLazy
       val targetClassId = targetKey.rawType?.classOrNull?.owner?.classId
@@ -462,7 +484,7 @@ internal class GuiceProviderFramework(
 
       // Determine which lazy function to use based on the provider type
       val lazyFunction =
-        provider.type.rawTypeOrNull()?.let { rawType ->
+        providerType.rawTypeOrNull()?.let { rawType ->
           rawType
             .allSupertypesSequence(excludeSelf = false, excludeAny = true)
             .firstNotNullOfOrNull { type ->
@@ -472,14 +494,14 @@ internal class GuiceProviderFramework(
                 else -> null
               }
             }
-        } ?: reportCompilerBug("Unexpected provider type: ${provider.type.dumpKotlinLike()}")
+        } ?: reportCompilerBug("Unexpected provider type: ${providerType.dumpKotlinLike()}")
 
       return irInvoke(
         dispatchReceiver = irGetObject(symbols.guiceDoubleCheckCompanionObject),
         callee = lazyFunction,
         args = listOf(provider),
         typeHint = targetKey.toIrType(),
-        typeArgs = listOf(provider.type, targetKey.typeKey.type),
+        typeArgs = listOf(providerType, targetKey.typeKey.type),
       )
     }
 }
@@ -498,6 +520,7 @@ internal abstract class BaseDelegatingProviderFramework(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
     targetClassId: ClassId?,
+    providerType: IrType,
   ): IrExpression =
     with(scope) {
       val resolvedTargetClassId =
@@ -506,7 +529,9 @@ internal abstract class BaseDelegatingProviderFramework(
       delegates
         .find { it.isApplicable(resolvedTargetClassId) }
         ?.let { delegate ->
-          return with(delegate) { fromMetroProvider(provider, targetKey, targetClassId) }
+          return with(delegate) {
+            fromMetroProvider(provider, targetKey, targetClassId, providerType)
+          }
         }
 
       reportCompilerBug("No delegate found for target type $resolvedTargetClassId")
@@ -576,11 +601,12 @@ internal class DaggerProviderFramework(
     provider: IrExpression,
     targetKey: IrContextualTypeKey,
     targetClassId: ClassId?,
+    providerType: IrType,
   ): IrExpression =
     with(scope) {
       // Handle Dagger's Lazy type specially
       if (targetClassId == DaggerSymbols.ClassIds.DAGGER_LAZY_CLASS_ID) {
-        return provider.toLazy(targetKey)
+        return provider.toLazy(targetKey, providerType)
       }
 
       // Convert to dagger.internal.Provider
@@ -593,7 +619,7 @@ internal class DaggerProviderFramework(
       }
 
       // Delegate to base class for javax/jakarta
-      return super.fromMetroProvider(provider, targetKey, targetClassId)
+      return super.fromMetroProvider(provider, targetKey, targetClassId, providerType)
     }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
@@ -611,7 +637,7 @@ internal class DaggerProviderFramework(
           )
 
       val implementsJakarta =
-        provider.type.implements(JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID)
+        providerType.implements(JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID)
 
       if (implementsJakarta) {
         return irInvoke(
@@ -635,13 +661,16 @@ internal class DaggerProviderFramework(
     }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  override fun IrExpression.toLazy(targetKey: IrContextualTypeKey): IrExpression =
+  override fun IrExpression.toLazy(
+    targetKey: IrContextualTypeKey,
+    providerType: IrType,
+  ): IrExpression =
     with(scope) {
       val provider = this@toLazy
 
       // Determine which lazy function to use based on the provider type
       val lazyFunction =
-        provider.type.rawTypeOrNull()?.let { rawType ->
+        providerType.rawTypeOrNull()?.let { rawType ->
           rawType
             .allSupertypesSequence(excludeSelf = false, excludeAny = true)
             .firstNotNullOfOrNull { type ->
@@ -653,14 +682,14 @@ internal class DaggerProviderFramework(
                 else -> null
               }
             }
-        } ?: reportCompilerBug("Unexpected provider type: ${provider.type.dumpKotlinLike()}")
+        } ?: reportCompilerBug("Unexpected provider type: ${providerType.dumpKotlinLike()}")
 
       return irInvoke(
         dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
         callee = lazyFunction,
         args = listOf(provider),
         typeHint = targetKey.toIrType(),
-        typeArgs = listOf(provider.type, targetKey.typeKey.type),
+        typeArgs = listOf(providerType, targetKey.typeKey.type),
       )
     }
 }

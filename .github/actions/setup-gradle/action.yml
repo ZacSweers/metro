@@ -43,7 +43,7 @@ runs:
           wrapper/dists
 
     - name: Cache Gradle wrapper
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/.gradle/wrapper/dists
         key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
@@ -64,14 +64,14 @@ runs:
     # actions/cache silently ignores missing paths.
     - name: Cache konan toolchain (shared)
       if: inputs.konan == 'true'
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/.konan/dependencies
         key: ${{ runner.os }}-konan-deps-v1
 
     - name: Cache konan klibs (per Kotlin version)
       if: inputs.konan == 'true'
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: |
           ~/.konan/cache

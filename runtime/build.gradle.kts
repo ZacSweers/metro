@@ -7,6 +7,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("runtime")
+  name.set("Metro Runtime")
+}
+
 metroProject { configureCommonKmpTargets("metro-runtime") }
 
 kotlin {

@@ -51,3 +51,5 @@ develocity {
     }
   }
 }
+
+enableFeaturePreview("NO_IMPLICIT_LOOKUP_IN_PARENT_PROJECTS")

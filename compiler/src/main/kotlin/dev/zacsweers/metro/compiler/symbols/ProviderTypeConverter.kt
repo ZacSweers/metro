@@ -58,8 +58,16 @@ internal class ProviderTypeConverter(
     // Source -> Metro -> Target
     val metroProvider =
       with(sourceFramework) { provider.toMetroProvider(providerType, sourceClassId) }
+    val metroProviderType =
+      if (sourceFramework == metroFramework && sourceClassId != Symbols.ClassIds.function0) {
+        providerType
+      } else {
+        metroProvider.type
+      }
 
-    return with(targetFramework) { fromMetroProvider(metroProvider, targetKey, targetClassId) }
+    return with(targetFramework) {
+      fromMetroProvider(metroProvider, targetKey, targetClassId, metroProviderType)
+    }
   }
 
   // TODO this currently only checks raw class IDs and not supertypes

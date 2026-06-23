@@ -9,6 +9,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("metrox-viewmodel-compose")
+  name.set("Metrox ViewModel Compose")
+}
+
 metroProject { configureCommonKmpTargets("metrox-viewmodel-compose", isComposeTarget = true) }
 
 kotlin {

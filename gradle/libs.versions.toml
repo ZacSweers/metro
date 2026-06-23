@@ -50,7 +50,7 @@ okio = "3.17.0"
 pluginId = "dev.zacsweers.metro.compiler"
 poko = "0.23.1"
 tracing = "2.0.0-alpha09"
-wire = "6.4.0"
+wire = "6.4.1"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -76,7 +76,7 @@ kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.re
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlinx-benchmark = { id = "org.jetbrains.kotlinx.benchmark", version.ref = "kotlinx-benchmark" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.37.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
 shadow = { id = "com.gradleup.shadow", version = "9.4.2" }

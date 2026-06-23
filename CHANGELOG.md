@@ -18,48 +18,47 @@ Changelog
   - `help:`/`note:` guidance in messages (replaces the previous `(hint)` sections)
   - Per-diagnostic docs links
   - Diagnostics now wrap to 100 columns and start on their own line after the compiler location prefix
-
-Example plain output
-```
-ExampleGraph.kt:7:11: error: 
-[Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
-
-  cycle:
-      +-> Double -> String -> Int --+
-      +-----------------------------+
-
-  trace (in test.ExampleGraph):
-      Double is injected at test.ExampleGraph.provideInt(…, double)
-      String is injected at test.ExampleGraph.provideDouble(…, string)
-      Int is injected at test.ExampleGraph.provideString(…, int)
-      Double is injected at test.ExampleGraph.provideInt(…, double)
-      ...
-
-  help: break the cycle by injecting a deferred type at one edge, e.g. `() -> Double` or
-        `Lazy<Double>`
-  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
-```
-
-Example rich output (note that in rich terminals this would have color and markup too!)
-```
-[Metro/MissingBinding] No binding found for String
-
-    ╭─[ /Users/zacsweers/dev/android/personal/FieldSpottr/shared/src/commonMain/kotlin/dev/zacsweers/example/ExampleGraph.kt:9:3 ]
-  9 │   val a: String
-    │   ─────────────
-    ╰─
-
-  trace (in dev.zacsweers.example.ExampleGraph):
-      String is requested at dev.zacsweers.example.ExampleGraph.a
-
-  similar bindings:
-      • CharSequence (Supertype. Type: Provided) — ExampleGraph.kt:12:3
-
-  help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
-        declaration visible to ExampleGraph
-  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
-
-```
+  - **Example plain output**
+    ```
+    ExampleGraph.kt:7:11: error: 
+    [Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
+    
+      cycle:
+          +-> Double -> String -> Int --+
+          +-----------------------------+
+    
+      trace (in test.ExampleGraph):
+          Double is injected at test.ExampleGraph.provideInt(…, double)
+          String is injected at test.ExampleGraph.provideDouble(…, string)
+          Int is injected at test.ExampleGraph.provideString(…, int)
+          Double is injected at test.ExampleGraph.provideInt(…, double)
+          ...
+    
+      help: break the cycle by injecting a deferred type at one edge, e.g. `() -> Double` or
+            `Lazy<Double>`
+      docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+    ```
+  - **Example rich output**
+    
+    _(note that in rich terminals this would have color and markup too!)_
+    ```
+    [Metro/MissingBinding] No binding found for String
+    
+        ╭─[ /.../src/commonMain/kotlin/dev/zacsweers/example/ExampleGraph.kt:9:3 ]
+      9 │   val a: String
+        │   ─────────────
+        ╰─
+    
+      trace (in dev.zacsweers.example.ExampleGraph):
+          String is requested at dev.zacsweers.example.ExampleGraph.a
+    
+      similar bindings:
+          • CharSequence (Supertype. Type: Provided) — ExampleGraph.kt:12:3
+    
+      help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+            declaration visible to ExampleGraph
+      docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+    ```
 
 - **[gradle]** Add a `diagnosticsRenderMode` Gradle option (`AUTO`/`PLAIN`/`RICH`) for diagnostic rendering.
   - `AUTO` defaults to rich output and falls back to plain output for non-empty `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
@@ -83,6 +82,7 @@ Example rich output (note that in rich terminals this would have color and marku
 - **[IR]** Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.
 - **[IR]** Manage transitive simple class binding containers included by contributed binding containers when they have instance providers.
 - **[IR]** Patch declaration parents for generated `@Binds` mirror declarations so copied declarations remain attached to the correct generated class.
+- **[IR/Dagger interop]** Fix an IR gen crash when an unscoped parent `@Provides` binding is injected as `dagger.Lazy<T>` from a child graph.
 - **[IR/JS]** Fix `Map<K, () -> V>` multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro `Provider` objects.
 - **[IR/KLIB]** Fix generated `@Binds` implementations on KLIB backends. Metro now emits concrete identity bodies for inherited `@Binds` members where JS, Native, and Wasm validate abstract members during deserialization.
 - **[IR/KLIB]** Keep generated graph and shard backing fields private while preserving generated access through properties. This avoids backing-field visibility validation failures on KLIB backends.
@@ -91,6 +91,8 @@ Example rich output (note that in rich terminals this would have color and marku
 ### Changes
 
 - Run Metro's functional compiler unit tests on JS.
+- Redundant checksum files are no longer published: checksums of `.asc` signature files ([gradle/gradle#20232](https://github.com/gradle/gradle/issues/20232)) and the `sha256`/`sha512`. If you rely on these, let me know.
+- Remove `binding-contributions-as-containers` flag, only `binding-contributions-as-containers` is supported going forward.
 - **[gradle]** Build against Gradle `9.6.0`.
 
 ### Contributors

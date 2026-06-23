@@ -29,3 +29,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "metro-ide-test-project"
+
+enableFeaturePreview("NO_IMPLICIT_LOOKUP_IN_PARENT_PROJECTS")

@@ -18,6 +18,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("gradle-plugin")
+  name.set("Metro Gradle Plugin")
+}
+
 metroProject {
   jvmTarget.set(libs.versions.compilerJvmTarget)
   // Lower version for Gradle compat

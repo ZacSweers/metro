@@ -90,6 +90,10 @@ private data class ExpectedInlay(
   val expectedLine: Int,
 )
 
+// Expected diagnostic comments sit above the source they cover. Keep a small window so diagnostics
+// can point at nested declarations without matching unrelated highlights elsewhere in the fixture.
+private const val EXPECTED_DIAGNOSTIC_LINE_WINDOW = 8
+
 /** Builds a lookup from character offset to 0-indexed line number. */
 private fun buildLineOffsets(sourceText: String): List<Int> {
   val lineStarts = mutableListOf(0)
@@ -100,6 +104,28 @@ private fun buildLineOffsets(sourceText: String): List<Int> {
 private fun offsetToLine(lineStarts: List<Int>, offset: Int): Int {
   val idx = lineStarts.binarySearch(offset)
   return if (idx >= 0) idx else -(idx + 1) - 1
+}
+
+private fun String.normalizedForDiagnosticMatching(): String {
+  return lineSequence().joinToString(" ") { it.trim() }.replace(Regex("\\s+"), " ")
+}
+
+/**
+ * Returns source lines containing [highlightedText].
+ *
+ * The Driver SDK highlight type exposes the highlighted text and message, but not a source offset
+ * in the version compiled here. This gives us a lightweight locality check without depending on IDE
+ * internals: a diagnostic can match only if its highlighted token appears near the expectation
+ * marker, unless the IDE returns no highlighted text.
+ */
+private fun sourceLinesForHighlightedText(
+  sourceLines: List<String>,
+  highlightedText: String?,
+): List<Int> {
+  if (highlightedText.isNullOrBlank()) return emptyList()
+  return sourceLines.mapIndexedNotNull { index, line ->
+    if (line.contains(highlightedText)) index else null
+  }
 }
 
 /** Parses `// METRO_DIAGNOSTIC: DIAGNOSTIC_ID,SEVERITY,description` comments from a source file. */
@@ -193,6 +219,8 @@ class MetroIdeSmokeTest {
 
     // Parse expected diagnostics and inlays from the test source file
     val sourceText = testProject.resolve("src/main/kotlin/TestSources.kt").readText()
+    val lineStarts = buildLineOffsets(sourceText)
+    val sourceLines = sourceText.lines()
     val expectedDiagnostics = parseExpectedDiagnostics(sourceText)
     val expectedInlays = parseExpectedInlays(sourceText)
 
@@ -275,6 +303,7 @@ class MetroIdeSmokeTest {
       val severity: String,
       val description: String?,
       val highlightedText: String?,
+      val highlightedTextLines: List<Int>,
     )
     data class InlayData(val offset: Int, val text: String?, val isBlock: Boolean)
 
@@ -309,7 +338,12 @@ class MetroIdeSmokeTest {
         // Collect highlights
         val highlights = getHighlights(document, project)
         collectedHighlights += highlights.map {
-          HighlightData(it.getSeverity().getName(), it.getDescription(), it.getText())
+          HighlightData(
+            severity = it.getSeverity().getName(),
+            description = it.getDescription(),
+            highlightedText = it.getText(),
+            highlightedTextLines = sourceLinesForHighlightedText(sourceLines, it.getText()),
+          )
         }
 
         // Collect inlays (both inline and block)
@@ -379,22 +413,30 @@ class MetroIdeSmokeTest {
 
     val errors = mutableListOf<String>()
 
-    // Match a highlight to an expected diagnostic. Tries multiple strategies since the
-    // diagnostic ID format varies across IDE versions:
-    //  1. Highlight description contains "[ID]" (local IJ with bracketed format)
-    //  2. Highlight description contains the ID as plain text
-    //  3. Highlighted text appears in the expected description (works on CI where IDs are absent)
+    // A diagnostic ID alone is not enough here. Some IDE versions include Metro's diagnostic ID in
+    // highlight descriptions, which proves the diagnostic kind but not the message or source range.
+    // We still require the expected message snippet and a nearby highlighted token so fixture drift
+    // fails loudly when a checker moves or rewrites a diagnostic.
     fun highlightMatchesDiagnostic(h: HighlightData, expected: ExpectedDiagnostic): Boolean {
       if (h.severity != expected.severity) return false
       val desc = h.description ?: return false
-      if (desc.contains("[${expected.diagnosticId}]") || desc.contains(expected.diagnosticId)) {
-        return true
-      }
-      // Fallback: check if the highlighted source text appears in our expected description.
-      // e.g., highlighted text "AssistedWithMismatchedParams" in expected description
-      // "AssistedWithMismatchedParams factory is missing 'name' parameter"
-      val text = h.highlightedText ?: return false
-      return expected.description.contains(text)
+      val lineIsClose =
+        h.highlightedTextLines.isEmpty() ||
+          h.highlightedTextLines.any { line ->
+            line >= expected.expectedLine &&
+              line <= expected.expectedLine + EXPECTED_DIAGNOSTIC_LINE_WINDOW
+          }
+      if (!lineIsClose) return false
+
+      val actualDescription = desc.normalizedForDiagnosticMatching()
+      val expectedDescription = expected.description.normalizedForDiagnosticMatching()
+      val messageMatches = actualDescription.contains(expectedDescription)
+      if (!messageMatches) return false
+
+      val hasDiagnosticId =
+        desc.contains("[${expected.diagnosticId}]") || desc.contains(expected.diagnosticId)
+      val highlightedText = h.highlightedText ?: return hasDiagnosticId
+      return hasDiagnosticId || expectedDescription.contains(highlightedText)
     }
 
     // Verify expected diagnostics are present
@@ -426,12 +468,13 @@ class MetroIdeSmokeTest {
     // TODO Assert on companion object inlay once we have a test case for it
 
     if (errors.isNotEmpty()) {
-      val lineStarts = buildLineOffsets(sourceText)
       val allHighlightsSummary =
         collectedHighlights
           .filter { it.description != null }
           .joinToString("\n") {
-            "  [${it.severity}] ${it.description} (text='${it.highlightedText}')"
+            val lines =
+              it.highlightedTextLines.joinToString { line -> (line + 1).toString() }.ifEmpty { "?" }
+            "  [${it.severity} lines $lines] ${it.description} (text='${it.highlightedText}')"
           }
       val allInlaySummary =
         collectedInlays.joinToString("\n") {

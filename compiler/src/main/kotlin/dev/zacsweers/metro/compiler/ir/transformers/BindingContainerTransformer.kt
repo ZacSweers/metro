@@ -165,6 +165,7 @@ internal class BindingContainerTransformer(
    */
   private val cache = ConcurrentHashMap<FqName, Optional<BindingContainer>>()
 
+  @IgnorableReturnValue
   fun findContainer(
     declaration: IrClass,
     declarationFqName: FqName = declaration.kotlinFqName,

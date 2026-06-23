@@ -5,6 +5,12 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("metrox-android")
+  name.set("Metrox Android")
+  packaging.set("aar")
+}
+
 android {
   namespace = "dev.zacsweers.metrox.android"
 

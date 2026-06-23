@@ -14,8 +14,7 @@ class AssistedWithMismatchedParams(@Assisted val id: Int, @Assisted val name: St
   }
 }
 
-// METRO_DIAGNOSTIC: SUGGEST_CLASS_INJECTION,WARNING,SuggestClassInject has @Inject on constructor
-// should be on class
+// METRO_DIAGNOSTIC: SUGGEST_CLASS_INJECTION,WARNING,There is only one @Inject-annotated constructor
 class SuggestClassInject @Inject constructor(val dep: String)
 
 // METRO_INLAY: AssistedFactory

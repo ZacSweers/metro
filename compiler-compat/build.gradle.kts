@@ -6,6 +6,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("compiler-compat")
+  name.set("Metro Compiler Compat")
+}
+
 buildConfig {
   packageName("dev.zacsweers.metro.compiler.compat")
   kotlin {

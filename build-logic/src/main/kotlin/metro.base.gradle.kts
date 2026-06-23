@@ -117,12 +117,12 @@ pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
 }
 
 pluginManager.withPlugin("metro.publish") {
-  val metroPublish = extensions.getByType<MetroPublishExtension>()
+  val metroArtifact = extensions.getByType<MetroArtifactExtension>()
   tasks.withType<KotlinCompilationTask<*>>().configureEach {
     compilerOptions {
       if (this is KotlinJvmCompilerOptions) {
         // Configuration required to produce unique META-INF/*.kotlin_module file names
-        moduleName.set(metroPublish.artifactId)
+        moduleName.set(metroArtifact.artifactId)
       }
     }
   }

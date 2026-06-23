@@ -104,7 +104,6 @@
     "enableHiltInterop": false,
     "diagnosticsRenderMode": "PLAIN",
     "generateStaticAnnotations": true,
-    "bindingContributionsAsContainers": true,
     "enableRuntimeTracing": false,
     "memberNamingStrategy": "DESCRIPTIVE"
   },
