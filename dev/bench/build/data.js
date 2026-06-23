@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782070549426,
+  "lastUpdate": 1782250140362,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -17808,6 +17808,62 @@ window.BENCHMARK_DATA = {
             "value": 19745.71,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.83%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "71a8174a~1",
+          "message": "[before] Fix type mismatch for dagger.Lazy interop (#2478)",
+          "timestamp": "2026-06-23T20:50:07Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/71a8174a9dd32e610678e6ab6504170acec259af"
+        },
+        "date": 1782250140362,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20971.822,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "71a8174a9dd32e610678e6ab6504170acec259af",
+          "message": "[after] Fix type mismatch for dagger.Lazy interop (#2478)",
+          "timestamp": "2026-06-23T20:50:07Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/71a8174a9dd32e610678e6ab6504170acec259af"
+        },
+        "date": 1782250140363,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21207.992,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.13%"
           }
         ]
       }
