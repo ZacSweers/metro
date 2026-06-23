@@ -25,11 +25,7 @@ class MetroApp :
   // The TraceDriver
   internal val driver = TraceDriver(context = this, sink = sink, isCategoryEnabled = { true })
 
-  @OptIn(DelicateTracingApi::class)
-  private val appGraph by lazy {
-    Tracer.setGlobalTracer(driver.tracer)
-    createGraphFactory<AppGraph.Factory>().create(this, driver.tracer)
-  }
+  private lateinit var appGraph: AppGraph
 
   override val appComponentProviders: MetroAppComponentProviders
     get() = appGraph
@@ -37,9 +33,12 @@ class MetroApp :
   override val workManagerConfiguration: Configuration
     get() = Configuration.Builder().setWorkerFactory(appGraph.workerFactory).build()
 
+  @OptIn(DelicateTracingApi::class)
   override fun onCreate() {
     super.onCreate()
 
+    Tracer.setGlobalTracer(driver.tracer)
+    appGraph = createGraphFactory<AppGraph.Factory>().create(this, driver.tracer)
     scheduleBackgroundWork()
   }
 
