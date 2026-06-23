@@ -27,7 +27,11 @@ import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
+import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphBindingExpressionScope
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
+import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphTraceContextAccessor
+import dev.zacsweers.metro.compiler.ir.graph.expressions.ProviderExpressionOrigin
+import dev.zacsweers.metro.compiler.ir.graph.expressions.ProviderExpressionRequest
 import dev.zacsweers.metro.compiler.ir.graph.sharding.IrGraphShardGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.Shard
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardBinding
@@ -260,9 +264,16 @@ internal class IrGraphGenerator(
       // Collect bindings and their dependencies for provider property ordering
       val (initOrder, cachedProviderContextKeys) = collectBindingProperties()
 
-      // Process creator parameters and set up bound instance properties
+      // Process non-graph creator parameters first so the tracer input is available when the
+      // runtime trace context property is initialized below.
       trace("Process creator parameters") {
-        processCreatorParameters(ctor, thisReceiverParameter, cachedProviderContextKeys)
+        processCreatorParameters(
+          ctor,
+          thisReceiverParameter,
+          cachedProviderContextKeys,
+          processGraphDependencies = false,
+          traceContextProperty = null,
+        )
       }
 
       // Create managed binding containers instance properties if used
@@ -281,6 +292,19 @@ internal class IrGraphGenerator(
             parentGraphInstanceProperty,
           )
         }
+
+      // Included graph dependencies can need local provider fields for child graph access. Those
+      // provider initializers need the runtime trace context, so they run after the trace context
+      // property exists.
+      trace("Process graph dependency parameters") {
+        processCreatorParameters(
+          ctor,
+          thisReceiverParameter,
+          cachedProviderContextKeys,
+          processGraphDependencies = true,
+          traceContextProperty = traceContextProperty,
+        )
+      }
 
       val expressionGeneratorFactory =
         trace("Create expression generator factory") {
@@ -820,6 +844,8 @@ internal class IrGraphGenerator(
     ctor: IrConstructor,
     thisReceiverParameter: IrValueParameter,
     cachedProviderContextKeys: Set<IrContextualTypeKey>,
+    processGraphDependencies: Boolean,
+    traceContextProperty: IrProperty?,
   ) {
     val creator = node.creator ?: return
 
@@ -834,7 +860,10 @@ internal class IrGraphGenerator(
 
       val isDynamic = irParam.origin == Origins.DynamicContainerParam
       val isBindingContainer = creator.bindingContainersParameterIndices.isSet(i)
-      if (isBindsInstance || isBindingContainer || isDynamic) {
+      val isGraphDependency = !isBindsInstance && !isBindingContainer && !isDynamic
+      if (isGraphDependency != processGraphDependencies) continue
+
+      if (!isGraphDependency) {
         if (!isDynamic && param.typeKey in node.dynamicTypeKeys) {
           // Don't add it if there's a dynamic replacement
           continue
@@ -856,6 +885,7 @@ internal class IrGraphGenerator(
           irParam,
           thisReceiverParameter,
           cachedProviderContextKeys,
+          traceContextProperty,
         )
       }
     }
@@ -871,6 +901,7 @@ internal class IrGraphGenerator(
     irParam: IrValueParameter,
     thisReceiverParameter: IrValueParameter,
     cachedProviderContextKeys: Set<IrContextualTypeKey>,
+    traceContextProperty: IrProperty?,
   ) {
     val graphDep =
       node.includedGraphNodes[param.typeKey]
@@ -892,23 +923,43 @@ internal class IrGraphGenerator(
     bindingPropertyContext.put(IrContextualTypeKey(param.typeKey), graphDepProperty)
     bindingPropertyContext.put(IrContextualTypeKey(graphDep.typeKey), graphDepProperty)
 
-    // Expose the graph dep as a provider property only if it was reserved by a child graph
-    val graphDepProviderType = metroSymbols.metroProvider.typeWith(param.typeKey.type)
+    // Expose the graph dep as a provider property only if it was reserved by a child graph.
     val graphDepProviderContextKey =
-      IrContextualTypeKey.create(
-        param.typeKey,
-        isWrappedInProvider = true,
-        rawType = graphDepProviderType,
-      )
+      param.contextualTypeKey.stripOuterProviderOrLazy().wrapInProvider()
     // Only create the provider property if it was reserved (requested by a child graph)
     if (bindingGraph.isContextKeyReserved(graphDepProviderContextKey)) {
       val providerInitializer =
         createIrBuilder(thisReceiverParameter.symbol).run {
-          instanceFactory(
-            param.typeKey.type,
-            irGetProperty(irGet(thisReceiverParameter), graphDepProperty),
+          val provider =
+            instanceFactory(
+              param.typeKey.type,
+              irGetProperty(irGet(thisReceiverParameter), graphDepProperty),
+            )
+
+          val graphDecorator =
+            bindingExpressionDecorator.forGraph(
+              GraphBindingExpressionScope(
+                GraphTraceContextAccessor(
+                  context = this@IrGraphGenerator,
+                  thisReceiver = thisReceiverParameter,
+                  traceContextProperty = traceContextProperty,
+                  shardContext = null,
+                )
+              )
+            )
+
+          // Later reads use ProviderExpressionOrigin.ProviderProperty and intentionally skip
+          // decoration, so this initializer is where the local @Includes provider gets traced.
+          graphDecorator.decorateProviderExpression(
+            provider,
+            ProviderExpressionRequest(
+              contextualTypeKey = graphDepProviderContextKey,
+              bindingKind = "BoundInstance",
+              origin = ProviderExpressionOrigin.NewExpression,
+            ),
           )
         }
+
       val providerWrapperProperty =
         createBindingProperty(
           graphDepProviderContextKey,
