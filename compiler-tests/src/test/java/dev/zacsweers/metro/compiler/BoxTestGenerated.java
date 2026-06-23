@@ -3307,6 +3307,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("RuntimeTracingIncludedGraphProvider.kt")
+    public void testRuntimeTracingIncludedGraphProvider() {
+      run("RuntimeTracingIncludedGraphProvider.kt");
+    }
+
+    @Test
     @TestMetadata("RuntimeTracingMembersInjected.kt")
     public void testRuntimeTracingMembersInjected() {
       run("RuntimeTracingMembersInjected.kt");
