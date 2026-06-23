@@ -25,9 +25,6 @@ dependencyResolutionManagement {
     mavenCentral()
     google()
     mavenLocal()
-    // Uses post-alpha08 process-wide tracing APIs in the android-app sample:
-    // AbstractTraceDriver.Factory without a type argument and Tracer.setGlobalTracer(...).
-    maven("https://androidx.dev/snapshots/builds/15673131/artifacts/repository")
     maven("https://redirector.kotlinlang.org/maven/bootstrap")
     maven("https://redirector.kotlinlang.org/maven/dev/")
     // Publications used by IJ
