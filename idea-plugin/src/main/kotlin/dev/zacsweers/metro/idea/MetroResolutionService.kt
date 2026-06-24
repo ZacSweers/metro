@@ -1235,9 +1235,26 @@ internal fun KaSession.consumedSite(
   return ConsumedSite(
     contextKey,
     isAbstract,
-    aggregateMultibindingId(returnType as? KaClassType, contextKey, options),
+    aggregateMultibindingId(
+      (returnType as? KaClassType)?.aggregateType(options),
+      contextKey,
+      options,
+    ),
     contextKey.typeKey.type.classId,
   )
+}
+
+/**
+ * Peels `Provider`/`Lazy` wrappers to the underlying aggregate type, so wrapped multibinding
+ * consumers (`Provider<Set<E>>`, `Lazy<Map<K, V>>`, etc.) are detected just like bare ones.
+ */
+private fun KaClassType.aggregateType(options: MetroOptions): KaClassType {
+  val classId = this.classId
+  if (classId in options.providerTypes || classId in options.lazyTypes) {
+    val inner = typeArguments.firstOrNull()?.type?.fullyExpandedType as? KaClassType ?: return this
+    return inner.aggregateType(options)
+  }
+  return this
 }
 
 /** Computes the multibinding id collected by a `Set<E>`/`Map<K, V>` consumer site, if any. */
@@ -1254,7 +1271,11 @@ private fun KaSession.aggregateMultibindingId(
       contextKey.typeKey.copy(type = elementKeyType).computeMultibindingId()
     }
     MAP_CLASS_ID -> {
-      val wrappedMap = contextKey.wrappedType as? WrappedType.Map ?: return null
+      // The Map node may sit under Provider/Lazy wrappers in the contextual key's wrapped type.
+      val wrappedMap =
+        contextKey.wrappedType.innerTypesSequence
+          .filterIsInstance<WrappedType.Map<KaTypeSnapshot>>()
+          .firstOrNull() ?: return null
       val valueType = wrappedMap.valueType.canonicalType()
       createMapBindingId(wrappedMap.keyType.renderedType, contextKey.typeKey.copy(type = valueType))
     }
