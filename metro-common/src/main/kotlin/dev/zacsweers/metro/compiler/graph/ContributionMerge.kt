@@ -50,14 +50,14 @@ public fun computeMergePlan(
   }
 
   // Replaces are collected only from survivors, mirroring the compiler: excluded contributions
-  // don't get their `replaces` honored.
+  // don't get their `replaces` honored, and replacement matching is against the post-exclude set.
   val survivors = presentIds - removed
   val replaced = survivors.flatMapTo(mutableSetOf()) { replacesOf(it) }
 
   val unmatchedReplacements = mutableSetOf<ClassId>()
   for (target in replaced) {
     // Replacements don't expand through the nested-marker shape (matches the compiler).
-    val matched = removeTarget(target, presentIds, originToIds, { emptySet() }, removed)
+    val matched = removeTarget(target, survivors, originToIds, { emptySet() }, removed)
     if (!matched) unmatchedReplacements += target
   }
 
