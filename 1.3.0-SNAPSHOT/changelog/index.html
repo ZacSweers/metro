@@ -7045,8 +7045,12 @@
 </code></pre></div></p>
 </li>
 <li>
-<p><strong>[gradle]</strong> Add a <code>diagnosticsRenderMode</code> Gradle option (<code>AUTO</code>/<code>PLAIN</code>/<code>RICH</code>) for diagnostic rendering.</p>
+<p><strong>[runtime/JVM]</strong> Add experimental runtime tracing for generated graph code, backed by AndroidX Tracing 2.x. Enable it with <code>metro.enableRuntimeTracing</code>.</p>
 </li>
+<li>Metro will add the JVM-only <code>metro-trace</code> runtime helper artifact.</li>
+<li>Graphs must bind an <code>androidx.tracing.Tracer</code> instances as a graph input as a parent tracer.</li>
+<li>This is experimental as AndroidX Tracing 2.x is still actively being developed.</li>
+<li><strong>[gradle]</strong> Add a <code>diagnosticsRenderMode</code> Gradle option (<code>AUTO</code>/<code>PLAIN</code>/<code>RICH</code>) for diagnostic rendering.</li>
 <li><code>AUTO</code> defaults to rich output and falls back to plain output for non-empty <code>NO_COLOR</code>, <code>--console=plain</code>, and IDE-invoked builds.</li>
 <li>The resolved mode is passed as a non-input compiler option, so render-mode changes do not invalidate compilation or poison build caches.</li>
 <li><strong>[docs]</strong> Add a generated <a href="https://zacsweers.github.io/metro/latest/diagnostics/">Diagnostics Reference</a> docs page for Metro&rsquo;s common graph validation diagnostics.</li>
@@ -7086,6 +7090,7 @@
 <ul>
 <li><a href="https://github.com/BraisGabin">@BraisGabin</a></li>
 <li><a href="https://github.com/FletchMcKee">@FletchMcKee</a></li>
+<li><a href="https://github.com/tikurahul">@tikurahul</a></li>
 <li><a href="https://github.com/ychescale9">@ychescale9</a></li>
 </ul>
 <h3 id="consider-sponsoring-metros-development"><a href="https://www.zacsweers.dev/sponsoring-metro/">Consider sponsoring Metro&rsquo;s development</a><a class="headerlink" href="#consider-sponsoring-metros-development" title="Permanent link">&para;</a></h3>

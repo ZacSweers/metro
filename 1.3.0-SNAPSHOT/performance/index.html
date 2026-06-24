@@ -1544,6 +1544,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Tracing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compiler-tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Compiler tracing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Runtime tracing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2330,6 +2358,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Tracing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compiler-tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Compiler tracing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Runtime tracing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2589,6 +2645,7 @@
 <p><strong>Builds shrunk by R8/ProGuard:</strong> Private generated field names are renamed/inlined/etc by the shrinker regardless of what Metro emits. There is effectively no artifact-size difference between <code>DESCRIPTIVE</code>, <code>TYPED</code>, and <code>MINIMAL</code> once R8 has run. The option is most useful for pipelines that ship un-minified bytecode (pure JVM server apps, distributed library AARs at author dev time, debug Android builds).</p>
 <p>Default is <code>DESCRIPTIVE</code> so generated code stays readable. Opt in only if you have a specific size constraint that benefits.</p>
 <h2 id="tracing">Tracing<a class="headerlink" href="#tracing" title="Permanent link">&para;</a></h2>
+<h3 id="compiler-tracing">Compiler tracing<a class="headerlink" href="#compiler-tracing" title="Permanent link">&para;</a></h3>
 <p>If you want to investigate the performance of Metro&rsquo;s compiler pipeline, you can enable tracing in the Gradle DSL.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">traceDestination</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">layout</span><span class="p">.</span><span class="na">buildDirectory</span><span class="p">.</span><span class="na">dir</span><span class="p">(</span><span class="s">&quot;metro/trace&quot;</span><span class="p">))</span>
@@ -2600,6 +2657,65 @@
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Note that file option inputs like <code>traceDestination</code> are <em>not</em> tracked as inputs to the kotlin compilation, so you should run your target kotlin compilation task with <code>--rerun</code> (not <code>--rerun-tasks</code>!) to ensure it it&rsquo;s not cached.</p>
+</div>
+<h3 id="runtime-tracing">Runtime tracing<a class="headerlink" href="#runtime-tracing" title="Permanent link">&para;</a></h3>
+<p>Metro can also emit traces from generated graph code. For example, this is useful when you want to see which bindings are created or invoked during app startup or another measured runtime path.</p>
+<div class="admonition warning">
+<p class="admonition-title">Experimental</p>
+<p>Runtime tracing is experimental. It currently targets JVM/Android graph code and integrates with AndroidX Tracing 2.x, which is still actively being developed. Expect the generated metadata and runtime helper APIs to change as AndroidX Tracing 2.x evolves.</p>
+</div>
+<p>Enable it in the Gradle DSL:</p>
+<div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">enableRuntimeTracing</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>When automatic runtime dependencies are enabled, Metro adds the JVM-only <code>metro-trace</code> helper artifact to JVM/Android JVM compilations.</p>
+<p>Each root graph should take an AndroidX <code>Tracer</code> as a graph input. Metro uses this input while initializing the graph&rsquo;s trace context, before ordinary binding traces can be emitted:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@DependencyGraph.Factory</span>
+<span class="w">  </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="nd">@Provides</span><span class="w"> </span><span class="n">tracer</span><span class="p">:</span><span class="w"> </span><span class="n">Tracer</span><span class="p">):</span><span class="w"> </span><span class="n">AppGraph</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>On Android, prefer owning a single app-level <code>TraceDriver</code> and passing its tracer into the root graph from <code>Application.onCreate()</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">class</span><span class="w"> </span><span class="nc">MyApplication</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Application</span><span class="p">(),</span><span class="w"> </span><span class="n">AbstractTraceDriver</span><span class="p">.</span><span class="na">Factory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">sink</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TraceSink</span><span class="p">(</span><span class="n">context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">this</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TraceDriver</span><span class="p">(</span><span class="n">context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="n">sink</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sink</span><span class="p">,</span><span class="w"> </span><span class="n">isCategoryEnabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">})</span>
+
+<span class="w">  </span><span class="kd">lateinit</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">appGraph</span><span class="p">:</span><span class="w"> </span><span class="n">AppGraph</span>
+<span class="w">    </span><span class="n">private</span><span class="w"> </span><span class="k">set</span>
+
+<span class="w">  </span><span class="nd">@OptIn</span><span class="p">(</span><span class="n">DelicateTracingApi</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">override</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">onCreate</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">super</span><span class="p">.</span><span class="na">onCreate</span><span class="p">()</span>
+<span class="w">    </span><span class="n">Tracer</span><span class="p">.</span><span class="na">setGlobalTracer</span><span class="p">(</span><span class="n">driver</span><span class="p">.</span><span class="na">tracer</span><span class="p">)</span>
+<span class="w">    </span><span class="n">appGraph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createGraphFactory</span><span class="o">&lt;</span><span class="n">AppGraph</span><span class="p">.</span><span class="na">Factory</span><span class="o">&gt;</span><span class="p">().</span><span class="na">create</span><span class="p">(</span><span class="n">driver</span><span class="p">.</span><span class="na">tracer</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="kd">override</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">create</span><span class="p">():</span><span class="w"> </span><span class="n">AbstractTraceDriver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>AbstractTraceDriver.Factory</code> lets AndroidX&rsquo;s profiler tooling discover the same driver that Metro uses. <code>Tracer.setGlobalTracer(...)</code> also makes the tracer available to other libraries using AndroidX&rsquo;s global tracer discovery.</p>
+<p>With AndroidX Tracing 2.0.0-alpha09 and newer, <code>TraceSink</code> defers file setup. Graph creation no longer needs to be delayed with <code>lazy</code> just to avoid early trace output initialization.</p>
+<p>Generated trace sections use the short rendered binding name, including the qualifier when present. Metro also attaches string metadata for filtering and grouping:</p>
+<ul>
+<li><code>metro.graph</code>: the graph that owns the binding.</li>
+<li><code>metro.graph_path</code>: the root-to-current graph path, useful for graph extensions.</li>
+<li><code>metro.type</code>: the canonical unqualified type.</li>
+<li><code>metro.contextual_type</code>: the requested unqualified type, when it differs from <code>metro.type</code>, such as <code>Provider&lt;T&gt;</code> or <code>Lazy&lt;T&gt;</code>. Only present for accessors.</li>
+<li><code>metro.qualifier</code>: the binding qualifier, when present.</li>
+<li><code>metro.binding_kind</code>: the generated binding implementation kind, such as <code>Provided</code>, <code>ConstructorInjected</code>, or <code>Multibinding</code>.</li>
+</ul>
+<p>Here is what a trace looks like.</p>
+<p><img alt="Runtime Tracing of the Metro Sample app" src="../performance_assets/runtime_tracing.png" /></p>
+<p><a href="https://github.com/ZacSweers/metro/tree/main/samples/android-app">Here is the link to the sample app</a> with the right setup for runtime tracing.</p>
+<div class="admonition note">
+<p class="admonition-title">Flushing traces</p>
+<p>The sample app has UI affordance to flush traces manually. However you can also flush traces programmatically by doing something like:<br />
+<div class="highlight"><pre><span></span><code>adb<span class="w"> </span>shell<span class="w"> </span>am<span class="w"> </span>broadcast<span class="w"> </span>-a<span class="w"> </span>androidx.tracing.profiler.action.FLUSH_TRACES_GET_PATH<span class="w"> </span>&lt;targetPackage&gt;/androidx.tracing.profiler.ConnectedProfilerTracingReceiver
+</code></pre></div></p>
 </div>
 
 
