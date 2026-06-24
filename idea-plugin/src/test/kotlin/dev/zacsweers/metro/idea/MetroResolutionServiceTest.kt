@@ -939,6 +939,40 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals("test.BaseFactory<*>", contributors.single().key.renderedType)
   }
 
+  fun testAmbiguousDefaultBindingsLeaveContributionUnresolved() {
+    val file =
+      myFixture.configureByText(
+        "AmbiguousDefaults.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.ContributesBinding
+        import dev.zacsweers.metro.DefaultBinding
+        import dev.zacsweers.metro.Inject
+
+        @DefaultBinding<MarkerA>
+        interface MarkerA
+
+        @DefaultBinding<MarkerB>
+        interface MarkerB
+
+        @ContributesBinding(AppScope::class)
+        @Inject
+        class Impl : MarkerA, MarkerB
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    // Two supertypes both declare @DefaultBinding, so the bound type is ambiguous — no contributed
+    // binding is originated (matching the compiler, rather than arbitrarily picking the first).
+    val entries = index.bindingEntriesAt(declarations.klass("Impl"))
+    assertTrue(entries.any { it.kind == BindingKind.INJECT })
+    assertTrue(entries.none { it.kind == BindingKind.CONTRIBUTED })
+  }
+
   fun testClassKeyMapContributionsResolve() {
     val file =
       myFixture.configureByText(

@@ -4,8 +4,10 @@ package dev.zacsweers.metro.idea.index
 
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.graph.BoundTypeResolution
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
+import dev.zacsweers.metro.compiler.graph.resolveImplicitBoundType
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
@@ -387,17 +389,18 @@ private fun KaSession.contributedBoundType(
   if (explicitTypeRef != null) {
     return explicitTypeRef.type
   }
+  // The implicit bound type (supertype @DefaultBinding, else sole supertype) is resolved by the
+  // shared decision so the IDE and compiler agree on ambiguity. Ambiguous/multiple → unresolved.
   val superTypes = classSymbol.superTypes.filterNot { it.isAnyType }
-  // A supertype's @DefaultBinding<T> supplies an implicit bound type, checked before the
-  // sole-supertype fallback (mirrors ContributionsFirGenerator)
-  for (superType in superTypes) {
-    val supertypeSymbol =
-      (superType.fullyExpandedType as? KaClassType)?.symbol as? KaClassSymbol ?: continue
-    resolveDefaultBindingType(supertypeSymbol)?.let {
-      return it
+  val resolution =
+    resolveImplicitBoundType(superTypes) { superType ->
+      val supertypeSymbol = (superType.fullyExpandedType as? KaClassType)?.symbol as? KaClassSymbol
+      supertypeSymbol?.let { resolveDefaultBindingType(it) }
     }
+  return when (resolution) {
+    is BoundTypeResolution.Resolved -> resolution.type
+    else -> null
   }
-  return superTypes.singleOrNull()
 }
 
 /**
