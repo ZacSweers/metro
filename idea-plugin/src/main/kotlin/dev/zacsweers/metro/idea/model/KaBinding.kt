@@ -6,11 +6,12 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.graph.MergeContribution
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.psi.KtElement
 
 /**
  * A declaration that originates a binding for [key]. The pointer usually targets a source
- * [org.jetbrains.kotlin.psi.KtElement], but may target a decompiled library declaration for
- * externally-resolved inject classes.
+ * [KtElement], but may target a decompiled library declaration for externally-resolved inject
+ * classes.
  */
 internal class KaBinding(
   val pointer: SmartPsiElementPointer<out PsiElement>,
