@@ -271,6 +271,9 @@ On Android, prefer owning a single app-level `TraceDriver` and passing its trace
 ```kotlin
 class MyApplication : Application(), AbstractTraceDriver.Factory {
   private val sink = TraceSink(context = this)
+  // isCategoryEnabled = { true } here means that Tracing is unconditionally enabled.
+  // This makes local iteration fast and easy. In production, you might want to use another explicit signal
+  // (or UI affordance) to turn on in-process tracing.
   private val driver = TraceDriver(context = this, sink = sink, isCategoryEnabled = { true })
 
   lateinit var appGraph: AppGraph
@@ -288,6 +291,15 @@ class MyApplication : Application(), AbstractTraceDriver.Factory {
 ```
 
 `AbstractTraceDriver.Factory` lets AndroidX's profiler tooling discover the same driver that Metro uses. `Tracer.setGlobalTracer(...)` also makes the tracer available to other libraries using AndroidX's global tracer discovery.
+Also, disable the default `TraceDriver` initialization hook (`androidx.tracing.profiler.ConnectedProfilerTracingInitializer`) so it does not eagerly set `Tracer.setGlobalTracer(...)`.
+
+```xml
+<!-- Use MyApplications's TraceDriver so sample traces and profiler broadcasts share one sink and is always enabled. -->
+<meta-data
+    android:name="androidx.tracing.profiler.ConnectedProfilerTracingInitializer"
+    android:value="androidx.startup"
+    tools:node="remove" />
+`
 
 With AndroidX Tracing 2.0.0-alpha09 and newer, `TraceSink` defers file setup. Graph creation no longer needs to be delayed with `lazy` just to avoid early trace output initialization.
 
