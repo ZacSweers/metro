@@ -11,8 +11,8 @@ import org.jetbrains.kotlin.name.ClassId
  * - its own class (or the `@Origin` class it stands in for) is explicitly excluded, or
  * - another *surviving* contribution declares it (or its origin) in `replaces`.
  *
- * Excludes are applied before replaces are collected so an excluded contribution never gets to
- * replace anything ([replacesOf] is only consulted for survivors).
+ * Excludes are applied before replaces are collected, so an excluded contribution never gets to
+ * replace anything.
  */
 public class MergePlan(
   /** Every contribution id that should be dropped from the aggregation. */
