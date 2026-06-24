@@ -9,7 +9,6 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
@@ -35,6 +34,7 @@ import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotationValue
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KaTypeRendererForSource
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
@@ -46,7 +46,6 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
-import org.jetbrains.kotlin.idea.base.projectStructure.toKaSourceModules
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
 import org.jetbrains.kotlin.idea.stubindex.KotlinTopLevelFunctionFqnNameIndex
@@ -379,15 +378,9 @@ private class MetroIndexBuilder(
       graphs.firstNotNullOfOrNull { it.pointer.element }
         ?: contributions.firstNotNullOfOrNull { it.pointer.element }
         ?: return
+    val useSiteModulesByScope = useSiteModulesByScope()
     val fileIndex = ProjectFileIndex.getInstance(project)
     val allScope = GlobalSearchScope.allScope(project)
-    val friendModules: Set<KaModule> by
-      lazy(LazyThreadSafetyMode.NONE) {
-        ModuleManager.getInstance(project)
-          .modules
-          .flatMap { it.toKaSourceModules() }
-          .flatMapTo(hashSetOf()) { it.directFriendDependencies }
-      }
     for (scopeId in scopeIds) {
       ProgressManager.checkCanceled()
       val hintFqName = MetroHints.hintCallableId(scopeId).asSingleFqName().asString()
@@ -396,17 +389,33 @@ private class MetroIndexBuilder(
         // Project-source contributions are already covered by the annotation sweeps; hints only
         // exist as generated declarations in binaries.
         if (fileIndex.isInContent(virtualFile)) continue
-        // Mirrors the compiler's visibility filtering: internal hints are only visible to their
-        // own module and friend modules (test source sets, KMP sibling compilations).
+        // Mirrors the compiler's visibility filtering: internal hints are visible only from their
+        // own module and formal friend/associated compilations.
         if (
           hintFunction.hasModifier(KtTokens.INTERNAL_KEYWORD) &&
-            !isFriendHint(hintFunction, virtualFile, friendModules)
+            !isVisibleInternalHint(hintFunction, useSiteModulesByScope[scopeId].orEmpty())
         ) {
           continue
         }
         processLibraryHint(hintFunction, scopeId, context)
       }
     }
+  }
+
+  private fun useSiteModulesByScope(): Map<ClassId, Set<KaModule>> {
+    val result = mutableMapOf<ClassId, MutableSet<KaModule>>()
+
+    fun addUseSite(element: PsiElement?, scopeKeys: Set<ClassId>) {
+      if (element !is KtElement) return
+      val module = KaModuleProvider.getModule(project, element, useSiteModule = null)
+      for (scopeKey in scopeKeys) {
+        result.getOrPut(scopeKey, ::mutableSetOf) += module
+      }
+    }
+
+    graphs.forEach { addUseSite(it.pointer.element, it.scopeKeys) }
+    contributions.forEach { addUseSite(it.pointer.element, it.scopeKeys) }
+    return result
   }
 
   private fun processLibraryHint(
@@ -484,20 +493,19 @@ private class MetroIndexBuilder(
     }
   }
 
-  /** Whether an internal [hintFunction] is visible via friend-module relationships. */
-  private fun isFriendHint(
+  /** Whether an internal [hintFunction] is visible from a formal friend/associated use site. */
+  private fun isVisibleInternalHint(
     hintFunction: KtNamedFunction,
-    virtualFile: VirtualFile,
-    friendModules: Set<KaModule>,
+    useSiteModules: Set<KaModule>,
   ): Boolean {
-    // Friendship recorded in the project model
-    if (KaModuleProvider.getModule(project, hintFunction, useSiteModule = null) in friendModules) {
-      return true
+    for (useSiteModule in useSiteModules) {
+      val hintModule = KaModuleProvider.getModule(project, hintFunction, useSiteModule)
+      if (hintModule == useSiteModule) return true
+      if (useSiteModule is KaSourceModule && hintModule in useSiteModule.directFriendDependencies) {
+        return true
+      }
     }
-    // Gradle import only records friend edges between source modules, so the project's own
-    // compiled outputs attached as binaries carry none; fall back to project-path ownership.
-    val basePath = project.basePath ?: return false
-    return virtualFile.path.startsWith("$basePath/")
+    return false
   }
 
   /**

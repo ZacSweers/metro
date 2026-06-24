@@ -670,7 +670,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(index.providersFor(consumer).isEmpty())
   }
 
-  fun testInternalHintsFromProjectOwnedBinariesAreHonored() {
+  fun testInternalHintsFromProjectOwnedBinariesAreFilteredWithoutFriendship() {
     module.withMetroLibFixtureLibrary(withinProject = true) {
       val file =
         myFixture.configureByText(
@@ -692,11 +692,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val index = MetroResolutionService.getInstance(project).index(file)
       val declarations = file.declarationsIncludingNested()
 
-      // The hint is internal, but the binary belongs to this project (friend-module
-      // approximation), so the contribution resolves
+      // Project-path ownership is not a visibility relationship; internal hints still require a
+      // formal friend/associated compilation relationship.
       val hiddenAccessor = index.consumerEntryAt(declarations.property("hidden"))!!
-      val providers = index.providersFor(hiddenAccessor)
-      assertEquals(listOf("LibHiddenImpl"), providers.map { it.implementationName })
+      assertTrue(index.providersFor(hiddenAccessor).isEmpty())
     }
   }
 

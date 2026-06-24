@@ -72,24 +72,10 @@ class CheckoutFlow(
 Single resolved implementations are clickable and navigate to the provider. Multibindings show the
 number of contributed elements or map entries. Implicitly assisted parameters, such as
 Circuit-provided `Screen`/`Navigator` parameters, can show an `assisted` inlay because they are
-supplied at runtime rather than injected from the graph. Explicit `@Assisted` parameters already
-read as assisted in source, so they get no inlay.
+supplied at runtime rather than injected from the graph (explicit `@Assisted` parameters already
+read as assisted in source, so they get no inlay).
 
 > TODO: Add a GIF showing an implementation inlay and click-through navigation.
-
-### Library Resolution
-
-Project _source_ is indexed from Metro-relevant annotations. _Compiled_ dependencies are covered where
-the compiler exposes enough metadata:
-
-- Constructor-injected classes resolve on demand from library metadata.
-- Contributions are discovered from generated Metro hint functions (matching how metroc discovers them).
-- Contribution-provider container objects are attributed through `@Origin`.
-- Internal contribution hints are honored when the binary belongs to this project (approximating
-  the compiler's friend-module visibility, e.g., test/main and KMP sibling compilations) and
-  filtered from external libraries.
-
-> TODO: Add a screenshot from a sample project showing navigation into a library contribution.
 
 ## Settings
 
@@ -101,6 +87,19 @@ Project settings live under `Settings > Tools > Metro`.
 - Show "assisted" inlay hints for Circuit implicit assisted types
 
 Gutter marker categories are also toggleable under IntelliJ's gutter icon settings.
+
+### Library Resolution
+
+Project _source_ is indexed from Metro-relevant annotations. _Compiled_ dependencies are covered where
+the compiler exposes enough metadata:
+
+- Constructor-injected classes resolve on demand from library metadata.
+- Contributions are discovered from generated Metro hint functions (matching how metroc discovers them).
+- Contribution-provider container objects are attributed through `@Origin`.
+- `internal` contribution hints respect the compiler's formal friend/associated compilation
+  visibility and are filtered from non-friend external libraries.
+
+> TODO: Add a screenshot from a sample project showing navigation into a library contribution.
 
 ## Current Limits
 
@@ -114,7 +113,6 @@ fall back to the global view otherwise.
 
 Not yet modeled:
 
-- Contribution `rank` resolution.
 - Pinnable graph context (results are unioned across graphs rather than scoped to a chosen one).
 - Exact compiler graph validation parity.
 - Tool window and graph diagram views.

@@ -65,8 +65,8 @@ internal fun Module.withMetroLibFixtureLibrary(
 ) {
   val jar =
     if (withinProject) {
-      // Simulates a binary produced by the project itself (e.g. its own compiled outputs), which
-      // the internal-hint friend-module approximation admits.
+      // Simulates a binary produced under the project path. Project ownership alone must not make
+      // internal hints visible without a formal friend/associated compilation relationship.
       val base = Path.of(checkNotNull(project.basePath) { "No project base path" })
       Files.createDirectories(base)
       val copy = Files.createTempFile(base, "metro-lib-fixture", ".jar")
