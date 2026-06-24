@@ -23,8 +23,10 @@ import dev.zacsweers.metro.compiler.MetroHints
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.buildWrappedType
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
+import dev.zacsweers.metro.compiler.graph.mapTypes
 import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.BindingIndex
@@ -1212,36 +1214,23 @@ internal fun KaSession.contextualTypeKey(
 
 context(session: KaSession)
 private fun KaType.asWrappedType(options: MetroOptions): WrappedType<KaTypeSnapshot> {
-  val expanded = with(session) { fullyExpandedType }
-  val rawSnapshot = session.typeSnapshot(expanded)
-  val classType = expanded as? KaClassType ?: return WrappedType.Canonical(rawSnapshot)
-  val classId = classType.classId ?: return WrappedType.Canonical(rawSnapshot)
-
-  if (classId == MAP_CLASS_ID) {
-    val keyType = classType.typeArguments.getOrNull(0)?.type
-    val valueType = classType.typeArguments.getOrNull(1)?.type
-    if (keyType != null && valueType != null) {
-      return WrappedType.Map(session.typeSnapshot(keyType), valueType.asWrappedType(options)) {
-        rawSnapshot
-      }
-    }
-  }
-
-  if (classId in options.providerTypes) {
-    val innerType = classType.typeArguments.firstOrNull()?.type
-    if (innerType != null) {
-      return WrappedType.Provider(innerType.asWrappedType(options), classId)
-    }
-  }
-
-  if (classId in options.lazyTypes) {
-    val innerType = classType.typeArguments.firstOrNull()?.type
-    if (innerType != null) {
-      return WrappedType.Lazy(innerType.asWrappedType(options), classId)
-    }
-  }
-
-  return WrappedType.Canonical(rawSnapshot)
+  // Navigate over live KaTypes via the shared algorithm, then snapshot each node so the result can
+  // outlive the analysis session. Mirrors FirContextualTypeKey/IrContextualTypeKey's asWrappedType.
+  val wrapped =
+    buildWrappedType(
+      type = with(session) { fullyExpandedType },
+      mapClassId = MAP_CLASS_ID,
+      providerTypes = options.providerTypes,
+      lazyTypes = options.lazyTypes,
+      classIdOf = { (it as? KaClassType)?.classId },
+      argumentsOf = { type ->
+        (type as? KaClassType)
+          ?.typeArguments
+          ?.mapNotNull { arg -> arg.type?.let { with(session) { it.fullyExpandedType } } }
+          .orEmpty()
+      },
+    )
+  return wrapped.mapTypes { session.typeSnapshot(it) }
 }
 
 internal fun KaSession.consumedSite(

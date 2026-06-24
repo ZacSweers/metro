@@ -192,3 +192,57 @@ public sealed interface WrappedType<T : Any> {
         is Provider -> sequenceOf<WrappedType<T>>(this) + innerType.innerTypesSequence
       }
 }
+
+/**
+ * Structurally maps every stored type in this wrapped type with [transform], preserving the
+ * Provider/Lazy/Map structure. Useful when the navigated and stored type representations differ
+ * (e.g. building a snapshot tree from live compiler types).
+ */
+public fun <T : Any, R : Any> WrappedType<T>.mapTypes(transform: (T) -> R): WrappedType<R> =
+  when (this) {
+    is WrappedType.Canonical -> WrappedType.Canonical(transform(type))
+    is WrappedType.Provider -> WrappedType.Provider(innerType.mapTypes(transform), providerType)
+    is WrappedType.Lazy -> WrappedType.Lazy(innerType.mapTypes(transform), lazyType)
+    is WrappedType.Map -> {
+      val mappedKey = transform(keyType)
+      val mappedValue = valueType.mapTypes(transform)
+      val mappedCanonical = transform(type())
+      WrappedType.Map(mappedKey, mappedValue) { mappedCanonical }
+    }
+  }
+
+/**
+ * Recursively classifies a type's Provider/Lazy/Map wrapping into a [WrappedType], navigating the
+ * platform's type representation through [classIdOf] and [argumentsOf]. The compiler frontends and
+ * the IDE Analysis API layer can supply their own navigators over this one algorithm.
+ */
+public fun <T : Any> buildWrappedType(
+  type: T,
+  mapClassId: ClassId,
+  providerTypes: Set<ClassId>,
+  lazyTypes: Set<ClassId>,
+  classIdOf: (T) -> ClassId?,
+  argumentsOf: (T) -> List<T>,
+): WrappedType<T> {
+  fun recurse(inner: T) =
+    buildWrappedType(inner, mapClassId, providerTypes, lazyTypes, classIdOf, argumentsOf)
+
+  val classId = classIdOf(type)
+  if (classId == mapClassId) {
+    val arguments = argumentsOf(type)
+    if (arguments.size >= 2) {
+      return WrappedType.Map(arguments[0], recurse(arguments[1])) { type }
+    }
+  }
+  if (classId != null && classId in providerTypes) {
+    argumentsOf(type).firstOrNull()?.let {
+      return WrappedType.Provider(recurse(it), classId)
+    }
+  }
+  if (classId != null && classId in lazyTypes) {
+    argumentsOf(type).firstOrNull()?.let {
+      return WrappedType.Lazy(recurse(it), classId)
+    }
+  }
+  return WrappedType.Canonical(type)
+}
