@@ -581,6 +581,25 @@ private class IndexBuilder(
     return pointerManager.createSmartPsiElementPointer(element)
   }
 
+  /**
+   * The graph an instance binding (a `@Provides` factory parameter) belongs to: the factory's
+   * enclosing graph when the factory is nested, otherwise the graph type the factory's creator
+   * function returns (top-level `createGraphFactory`-style factories).
+   */
+  private fun KaSession.instanceBindingContainerId(parameter: KtParameter): ClassId? {
+    val createFunction = parameter.ownerFunction as? KtNamedFunction ?: return null
+    val factory = createFunction.containingClassOrObject
+    factory?.containingClassOrObject?.getClassId()?.let {
+      return it
+    }
+    val returnType =
+      (createFunction.symbol as? KaNamedFunctionSymbol)?.returnType?.fullyExpandedType
+    (returnType as? KaClassType)?.classId?.let {
+      return it
+    }
+    return factory?.getClassId()
+  }
+
   /** `@Provides`/`@Binds`/`@Multibinds` callables, including instance-binding factory params. */
   private fun processBindingCallable(declaration: KtDeclaration) {
     val target =
@@ -593,17 +612,13 @@ private class IndexBuilder(
       is KtProperty,
       is KtParameter -> {
         if (!processedBindingCallables.add(target)) return
-        val containerId =
-          when (target) {
-            // Instance bindings belong to the factory's owning graph
-            is KtParameter -> {
-              val factory = (target.ownerFunction as? KtNamedFunction)?.containingClassOrObject
-              (factory?.containingClassOrObject ?: factory)?.getClassId()
-            }
-            is KtCallableDeclaration -> target.containingClassOrObject?.getClassId()
-            else -> null
-          }
         analyze(target) {
+          val containerId =
+            when (target) {
+              is KtParameter -> instanceBindingContainerId(target)
+              is KtCallableDeclaration -> target.containingClassOrObject?.getClassId()
+              else -> null
+            }
           val dataEntries = bindingData(target, options)
           val consumerOriginClassId = dataEntries.firstNotNullOfOrNull { it.originClassId }
           val consumerContributionScopes =
@@ -1036,6 +1051,8 @@ private class IndexBuilder(
     ktClass: KtClassOrObject,
     classSymbol: KaNamedClassSymbol,
   ): KtConstructor<*>? {
+    // Non-injectable kinds have no graph-resolved constructor, so they originate no consumers.
+    if (!classSymbol.isInjectableKind()) return null
     val injectish = options.allInjectAnnotations
     val classLevel =
       classSymbol.hasAnyAnnotation(injectish) ||
@@ -1131,6 +1148,15 @@ private fun nonAccessorCallableAnnotations(options: MetroOptions): Set<ClassId> 
 
 internal fun KaAnnotated.hasAnyAnnotation(classIds: Set<ClassId>): Boolean {
   return annotations.any { it.classId in classIds }
+}
+
+/**
+ * Mirrors the compiler's `findInjectConstructorsImpl`: only regular (non-sealed, non-abstract)
+ * classes are constructor-injectable, regardless of where the inject annotation sits.
+ */
+internal fun KaNamedClassSymbol.isInjectableKind(): Boolean {
+  return classKind == KaClassKind.CLASS &&
+    (modality == KaSymbolModality.FINAL || modality == KaSymbolModality.OPEN)
 }
 
 /** Renders a type as a stable, fully-qualified binding key string. */
@@ -1560,14 +1586,9 @@ private fun KaSession.classBindingData(
   val contributesAnnotations =
     classSymbol.annotations.filter { it.classId in bindingContributionAnnotations(options) }
 
-  // Mirrors the compiler's findInjectConstructorsImpl: only regular, non-sealed classes are
-  // injectable. Assisted-injected classes are consumed through their factory, not their own type.
-  val isInjectableKind =
-    classSymbol.classKind == KaClassKind.CLASS &&
-      (classSymbol.modality == KaSymbolModality.FINAL ||
-        classSymbol.modality == KaSymbolModality.OPEN)
+  // Assisted-injected classes are consumed through their factory, not their own type.
   val isInjectable =
-    isInjectableKind &&
+    classSymbol.isInjectableKind() &&
       (hasInject || (options.contributesAsInject && contributesAnnotations.isNotEmpty()))
   val originClassId = ktClass.getClassId()
   if (isInjectable && !isAssisted) {
