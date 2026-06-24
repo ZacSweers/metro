@@ -28,14 +28,14 @@ Metro IDE support for Kotlin dependency injection projects.
     <errorHandler implementation="dev.zacsweers.metro.idea.MetroErrorHandler"/>
     <codeInsight.lineMarkerProvider
         language="kotlin"
-        implementationClass="dev.zacsweers.metro.idea.MetroLineMarkerProvider"/>
+        implementationClass="dev.zacsweers.metro.idea.index.MetroLineMarkerProvider"/>
     <codeInsight.daemonBoundCodeVisionProvider
-        implementation="dev.zacsweers.metro.idea.MetroCodeVisionProvider"/>
+        implementation="dev.zacsweers.metro.idea.index.MetroCodeVisionProvider"/>
     <config.codeVisionGroupSettingProvider
-        implementation="dev.zacsweers.metro.idea.MetroCodeVisionGroupSettingProvider"/>
+        implementation="dev.zacsweers.metro.idea.index.MetroCodeVisionGroupSettingProvider"/>
     <codeInsight.declarativeInlayProvider
         language="kotlin"
-        implementationClass="dev.zacsweers.metro.idea.MetroInjectedImplementationInlayProvider"
+        implementationClass="dev.zacsweers.metro.idea.index.MetroInjectedImplementationInlayProvider"
         isEnabledByDefault="true"
         group="OTHER_GROUP"
         providerId="metro.injected.implementation"

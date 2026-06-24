@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.idea
+package dev.zacsweers.metro.idea.index
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -16,6 +16,9 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
+import dev.zacsweers.metro.idea.MetroIdeProjectService
+import dev.zacsweers.metro.idea.MetroSettings
+import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.BindingIndex

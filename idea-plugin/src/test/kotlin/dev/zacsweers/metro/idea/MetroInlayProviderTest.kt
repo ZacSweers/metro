@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.testFramework.utils.inlays.declarative.DeclarativeInlayHintsProviderTestCase
+import dev.zacsweers.metro.idea.index.MetroInjectedImplementationInlayProvider
 
 class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
 

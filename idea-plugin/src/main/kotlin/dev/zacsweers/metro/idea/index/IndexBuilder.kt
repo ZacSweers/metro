@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.idea
+package dev.zacsweers.metro.idea.index
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -16,6 +16,10 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.OptionalBindingBehavior
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
+import dev.zacsweers.metro.idea.annotationScopeKeys
+import dev.zacsweers.metro.idea.classLiteralClassId
+import dev.zacsweers.metro.idea.hasAnyAnnotation
+import dev.zacsweers.metro.idea.implicitSingleInAnnotation
 import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.BindingKind
@@ -26,6 +30,9 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.qualifierAnnotation
+import dev.zacsweers.metro.idea.scopeAnnotation
+import dev.zacsweers.metro.idea.scopeAnnotations
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
