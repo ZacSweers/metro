@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea.model
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.graph.MergeContribution
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -37,7 +38,11 @@ internal class KaBinding(
    */
   val containerId: ClassId? = null,
   /** Contribution classes this binding replaces in graphs where both are aggregated. */
-  val replaces: Set<ClassId> = emptySet(),
+  override val replaces: Set<ClassId> = emptySet(),
   /** Scopes this binding is contributed to; empty for non-contributed bindings. */
   val contributionScopes: Set<ClassId> = emptySet(),
-)
+) : MergeContribution {
+  /** A binding is excluded/replaced by its originating contribution class. */
+  override val mergeId: ClassId?
+    get() = originClassId
+}

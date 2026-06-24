@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea.model
 
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.graph.applyExcludesAndReplaces
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
@@ -340,12 +341,9 @@ internal class BindingIndex(
     }
   }
 
-  /** Drops bindings replaced by other surviving contributions, mirroring compiler aggregation. */
+  /** Drops bindings replaced by other surviving contributions, via the shared merge engine. */
   private fun applyReplaces(entries: List<KaBinding>): List<KaBinding> {
-    if (entries.size < 2) return entries
-    val replaced = entries.flatMapTo(hashSetOf()) { it.replaces }
-    if (replaced.isEmpty()) return entries
-    return entries.filter { it.originClassId == null || it.originClassId !in replaced }
+    return applyExcludesAndReplaces(entries)
   }
 
   /** Sites consuming any of [bindingEntries], joining multibinding contributions by id. */

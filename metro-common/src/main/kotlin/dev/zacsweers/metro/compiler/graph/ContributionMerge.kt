@@ -91,31 +91,20 @@ public interface MergeContribution {
 }
 
 /**
- * Returns [items] with excluded and replaced contributions removed. A convenience over
- * [computeMergePlan] for callers that hold their contributions as a simple list keyed by
- * [MergeContribution.mergeId] (the IDE's binding model).
+ * Returns [items] with excluded and replaced contributions removed, matching [computeMergePlan]'s
+ * excludes-first ordering. A convenience for callers that hold their contributions as a simple list
+ * keyed by [MergeContribution.mergeId] (the IDE's binding model), where each item already stands
+ * for its own origin so no origin/nested indirection is needed.
  */
 public fun <T : MergeContribution> applyExcludesAndReplaces(
   items: List<T>,
   excluded: Set<ClassId> = emptySet(),
 ): List<T> {
-  if (items.size < 2 && excluded.isEmpty()) return items
-  val replacesById = mutableMapOf<ClassId, MutableSet<ClassId>>()
-  val presentIds = mutableSetOf<ClassId>()
-  for (item in items) {
-    val id = item.mergeId ?: continue
-    presentIds += id
-    if (item.replaces.isNotEmpty()) {
-      replacesById.getOrPut(id, ::mutableSetOf) += item.replaces
-    }
-  }
-  if (excluded.isEmpty() && replacesById.isEmpty()) return items
-  val plan =
-    computeMergePlan(
-      presentIds = presentIds,
-      excluded = excluded,
-      replacesOf = { replacesById[it].orEmpty() },
-    )
-  if (plan.removed.isEmpty()) return items
-  return items.filter { it.mergeId == null || it.mergeId !in plan.removed }
+  val afterExcludes =
+    if (excluded.isEmpty()) items
+    else items.filter { it.mergeId == null || it.mergeId !in excluded }
+  if (afterExcludes.size < 2) return afterExcludes
+  val replaced = afterExcludes.flatMapTo(hashSetOf()) { it.replaces }
+  if (replaced.isEmpty()) return afterExcludes
+  return afterExcludes.filter { it.mergeId == null || it.mergeId !in replaced }
 }
