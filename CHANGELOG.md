@@ -95,6 +95,8 @@ Changelog
 - Remove `binding-contributions-as-containers` flag, only `binding-contributions-as-containers` is supported going forward.
 - **[gradle]** Build against Gradle `9.6.0`.
 - Test Kotlin `2.4.20-Beta1`.
+- Test Android Studio Quail 2 RCs.
+- Test Android Studio Quail 3 canaries.
 
 ### Contributors
 
