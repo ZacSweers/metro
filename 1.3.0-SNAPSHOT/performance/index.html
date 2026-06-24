@@ -2702,13 +2702,12 @@
 </code></pre></div>
 <p><code>AbstractTraceDriver.Factory</code> lets AndroidX&rsquo;s profiler tooling discover the same driver that Metro uses. <code>Tracer.setGlobalTracer(...)</code> also makes the tracer available to other libraries using AndroidX&rsquo;s global tracer discovery.<br />
 Also, disable the default <code>TraceDriver</code> initialization hook (<code>androidx.tracing.profiler.ConnectedProfilerTracingInitializer</code>) so it does not eagerly set <code>Tracer.setGlobalTracer(...)</code>.</p>
-<p>```xml</p>
-<!-- Use MyApplications's TraceDriver so sample traces and profiler broadcasts share one sink and is always enabled. -->
-<p><meta-data
-    android:name="androidx.tracing.profiler.ConnectedProfilerTracingInitializer"
-    android:value="androidx.startup"
-    tools:node="remove" /><br />
-`</p>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- Use MyApplications&#39;s TraceDriver so sample traces and profiler broadcasts share one sink and is always enabled. --&gt;</span>
+<span class="nt">&lt;meta-data</span>
+<span class="w">    </span><span class="na">android:name=</span><span class="s">&quot;androidx.tracing.profiler.ConnectedProfilerTracingInitializer&quot;</span>
+<span class="w">    </span><span class="na">android:value=</span><span class="s">&quot;androidx.startup&quot;</span>
+<span class="w">    </span><span class="na">tools:node=</span><span class="s">&quot;remove&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
+</code></pre></div>
 <p>With AndroidX Tracing 2.0.0-alpha09 and newer, <code>TraceSink</code> defers file setup. Graph creation no longer needs to be delayed with <code>lazy</code> just to avoid early trace output initialization.</p>
 <p>Generated trace sections use the short rendered binding name, including the qualifier when present. Metro also attaches string metadata for filtering and grouping:</p>
 <ul>
@@ -2725,8 +2724,8 @@ Also, disable the default <code>TraceDriver</code> initialization hook (<code>an
 <div class="admonition note">
 <p class="admonition-title">Flushing traces</p>
 <p>The sample app has UI affordance to flush traces manually. However you can also flush traces programmatically by doing something like:<br />
-<code>bash
-adb shell am broadcast -a androidx.tracing.profiler.action.FLUSH_TRACES_GET_PATH &lt;targetPackage&gt;/androidx.tracing.profiler.ConnectedProfilerTracingReceiver</code></p>
+<div class="highlight"><pre><span></span><code>adb<span class="w"> </span>shell<span class="w"> </span>am<span class="w"> </span>broadcast<span class="w"> </span>-a<span class="w"> </span>androidx.tracing.profiler.action.FLUSH_TRACES_GET_PATH<span class="w"> </span>&lt;targetPackage&gt;/androidx.tracing.profiler.ConnectedProfilerTracingReceiver
+</code></pre></div></p>
 </div>
 
 
