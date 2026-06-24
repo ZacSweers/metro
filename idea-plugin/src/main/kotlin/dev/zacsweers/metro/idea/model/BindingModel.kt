@@ -25,6 +25,12 @@ internal class ConsumerEntry(
   val containerId: ClassId? = null,
   /** Owning graph class for graph accessor consumers. */
   val graphClassId: ClassId? = null,
+  /**
+   * Whether absence is allowed: a native `@OptionalBinding`/`@OptionalDependency` site, or a
+   * defaulted parameter under `DEFAULT` optional-binding behavior. An unresolved optional site is
+   * not an error.
+   */
+  val isOptional: Boolean = false,
 )
 
 /**

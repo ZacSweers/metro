@@ -735,6 +735,73 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(index.bindingEntriesAt(declarations.function("optionalService")).isEmpty())
   }
 
+  fun testOptionalBindingMarksConsumersOptional() {
+    val file =
+      myFixture.configureByText(
+        "OptionalMarker.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Inject
+        import dev.zacsweers.metro.OptionalBinding
+
+        interface HttpClient
+
+        @DependencyGraph
+        interface AppGraph {
+          @OptionalBinding val httpClient: HttpClient? get() = null
+        }
+
+        @Inject
+        class Consumer(
+          val flag: Boolean = false,
+          val required: HttpClient,
+        )
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    // The @OptionalBinding accessor is a consumer (despite its default body) and is optional.
+    val accessor = index.consumerEntryAt(declarations.property("httpClient"))!!
+    assertTrue(accessor.isOptional)
+
+    // Under DEFAULT behavior, a defaulted parameter is optional; a required one is not.
+    assertTrue(index.consumerEntryAt(declarations.parameter("flag"))!!.isOptional)
+    assertFalse(index.consumerEntryAt(declarations.parameter("required"))!!.isOptional)
+  }
+
+  fun testRequireOptionalBindingIgnoresBareDefaults() {
+    project.setMetroOptions("optional-binding-behavior" to "REQUIRE_OPTIONAL_BINDING")
+    val file =
+      myFixture.configureByText(
+        "RequireOptional.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Inject
+        import dev.zacsweers.metro.OptionalBinding
+
+        interface HttpClient
+
+        @Inject
+        class Consumer(
+          val bare: Boolean = false,
+          @OptionalBinding val marked: HttpClient,
+        )
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    // A bare default no longer counts; only the explicit annotation does.
+    assertFalse(index.consumerEntryAt(declarations.parameter("bare"))!!.isOptional)
+    assertTrue(index.consumerEntryAt(declarations.parameter("marked"))!!.isOptional)
+  }
+
   fun testFunctionTypesAreNotUnwrappedWhenFunctionProvidersAreDisabled() {
     project.setMetroOptions("enable-function-providers" to "false")
     val file =

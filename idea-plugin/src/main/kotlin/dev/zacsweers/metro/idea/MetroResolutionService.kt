@@ -21,6 +21,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroHints
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.OptionalBindingBehavior
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.buildWrappedType
@@ -807,7 +808,10 @@ private class IndexBuilder(
             if (member !is KtNamedFunction && member !is KtProperty) continue
             if (member.receiverTypeReference != null) continue
             val symbol = member.symbol as? KaCallableSymbol ?: continue
-            if (symbol.modality != KaSymbolModality.ABSTRACT) continue
+            // @OptionalBinding accessors carry a default body, so they're concrete but still
+            // consume.
+            val isOptionalAccessor = isOptionalConsumer(symbol)
+            if (symbol.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) continue
             if (symbol.hasAnyAnnotation(nonAccessorCallableAnnotations(options))) continue
             if (symbol.returnType.isUnitType) continue
             // Accessors of a @GraphExtension (or its factory) are creation points of the child
@@ -832,6 +836,7 @@ private class IndexBuilder(
                 site.multibindingId,
                 site.typeClassId,
                 graphClassId = graphClassId,
+                isOptional = isOptionalAccessor,
               )
           }
           else -> {}
@@ -1111,7 +1116,23 @@ private class IndexBuilder(
         originClassId = originClassId,
         contributionScopes = contributionScopes,
         containerId = containerId,
+        isOptional = isOptionalConsumer(symbol),
       )
+  }
+
+  /**
+   * Whether a consumer permits absence: a native `@OptionalBinding`/`@OptionalDependency` marker,
+   * or a defaulted parameter under `DEFAULT` behavior. Under `REQUIRE_OPTIONAL_BINDING` only the
+   * annotation counts; `DISABLED` never treats a site as optional.
+   */
+  private fun isOptionalConsumer(symbol: KaCallableSymbol): Boolean {
+    val behavior = options.optionalBindingBehavior
+    if (behavior == OptionalBindingBehavior.DISABLED) return false
+    if (symbol.hasAnyAnnotation(options.optionalBindingAnnotations)) return true
+    if (!behavior.requiresAnnotatedParameters) {
+      return (symbol as? KaValueParameterSymbol)?.hasDefaultValue == true
+    }
+    return false
   }
 
   private fun KtCallableDeclaration.hasAnyOfAnnotations(classIds: Set<ClassId>): Boolean {

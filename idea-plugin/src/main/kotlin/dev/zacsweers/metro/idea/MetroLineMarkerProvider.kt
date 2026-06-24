@@ -147,13 +147,21 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
       }
       if (bindings.isEmpty()) {
-        append(" · no binding found in project sources (may come from a library, generated code,")
-        append(" or an instance binding)")
+        if (consumer.isOptional) {
+          // An absent optional binding is by design, not a missing-binding error.
+          append(" · optional, no binding (uses default/absent)")
+        } else {
+          append(" · no binding found in project sources (may come from a library, generated code,")
+          append(" or an instance binding)")
+        }
       }
     }
+    // An absent optional dependency is legitimate, so don't flag it with the unresolved icon.
+    val unresolvedIcon =
+      if (consumer.isOptional) MetroIcons.CONSUMER else MetroIcons.CONSUMER_UNRESOLVED
     return navMarker(
       anchor = anchor,
-      icon = if (bindings.isEmpty()) MetroIcons.CONSUMER_UNRESOLVED else MetroIcons.CONSUMER,
+      icon = if (bindings.isEmpty()) unresolvedIcon else MetroIcons.CONSUMER,
       tooltip = tooltip,
       popupTitle = "Bindings for ${consumer.key.render(short = true)}",
       emptyText = "No Metro binding found for ${consumer.key.render(short = true)}",
