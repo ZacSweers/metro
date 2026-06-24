@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.idea
+package dev.zacsweers.metro.idea.unused
 
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
 import com.intellij.psi.PsiClass
@@ -9,6 +9,9 @@ import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.idea.MetroIdeAnnotationClassIds
+import dev.zacsweers.metro.idea.MetroSettings
+import dev.zacsweers.metro.idea.metroIdeState
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.types.KaClassType

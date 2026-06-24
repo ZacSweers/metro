@@ -24,7 +24,7 @@ Metro IDE support for Kotlin dependency injection projects.
         id="dev.zacsweers.metro.idea.settings"
         displayName="Metro"
         instance="dev.zacsweers.metro.idea.MetroSettingsConfigurable"/>
-    <implicitUsageProvider implementation="dev.zacsweers.metro.idea.MetroImplicitUsageProvider"/>
+    <implicitUsageProvider implementation="dev.zacsweers.metro.idea.unused.MetroImplicitUsageProvider"/>
     <errorHandler implementation="dev.zacsweers.metro.idea.MetroErrorHandler"/>
     <codeInsight.lineMarkerProvider
         language="kotlin"
@@ -44,11 +44,11 @@ Metro IDE support for Kotlin dependency injection projects.
         descriptionKey="metro.inlay.injected.implementation.description"/>
     <lang.inspectionSuppressor
         language="kotlin"
-        implementationClass="dev.zacsweers.metro.idea.MetroUnusedDeclarationInspectionSuppressor"
+        implementationClass="dev.zacsweers.metro.idea.unused.MetroUnusedDeclarationInspectionSuppressor"
         order="first"/>
     <lang.inspectionSuppressor
         language="JAVA"
-        implementationClass="dev.zacsweers.metro.idea.MetroUnusedDeclarationInspectionSuppressor"
+        implementationClass="dev.zacsweers.metro.idea.unused.MetroUnusedDeclarationInspectionSuppressor"
         order="first"/>
   </extensions>
 </idea-plugin>

@@ -4,6 +4,8 @@ package dev.zacsweers.metro.idea
 
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import dev.zacsweers.metro.idea.unused.MetroUnusedDeclarationInspectionSuppressor
+import dev.zacsweers.metro.idea.unused.isMetroImplicitUsage
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.jetbrains.kotlin.idea.k2.codeinsight.inspections.UnusedSymbolInspection
