@@ -2,21 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.model
 
-import org.jetbrains.kotlin.analysis.api.types.KaType
-import org.jetbrains.kotlin.analysis.api.types.KaTypePointer
 import org.jetbrains.kotlin.name.ClassId
 
 /**
  * A session-free snapshot of a [org.jetbrains.kotlin.analysis.api.types.KaType].
  *
- * [pointer] can restore the semantic type inside a [org.jetbrains.kotlin.analysis.api.KaSession],
- * while [renderedType] and [shortType] give cached keys and UI text to cross-session indexes.
- * Equality is structural by [renderedType]; Analysis API pointers are intentionally excluded
- * because two pointers can point at equivalent type renderings while still being different pointer
- * objects.
+ * [renderedType] and [shortType] give cached keys and UI text to cross-session indexes, and
+ * [classId] the type's class for key matching. Equality is structural by [renderedType], so a
+ * snapshot can outlive the [org.jetbrains.kotlin.analysis.api.KaSession] it was built in.
  */
 internal class KaTypeSnapshot(
-  val pointer: KaTypePointer<KaType>,
   val renderedType: String,
   val shortType: String = renderedType,
   val classId: ClassId?,

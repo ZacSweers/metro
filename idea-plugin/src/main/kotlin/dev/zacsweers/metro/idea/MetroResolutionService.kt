@@ -1158,7 +1158,6 @@ internal fun KaSession.typeKey(type: KaType, qualifier: KaAnnotationSnapshot?): 
 internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
   val expanded = type.fullyExpandedType
   return KaTypeSnapshot(
-    expanded.createPointer(),
     renderKeyType(expanded),
     renderShortKeyType(expanded),
     (expanded as? KaClassType)?.classId,
