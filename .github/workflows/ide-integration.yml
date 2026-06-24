@@ -130,8 +130,20 @@ jobs:
         run: ide-integration-tests/download-ides.sh
 
       - name: Run IDE tests
+        # The :intellijPlatformTestRuntimeClasspath resolution flakes with a
+        # ClosedFileSystemException (IO/download issue), so retry once. The retry adds --stacktrace to
+        # pin down where the failure originates if it recurs.
         run: |
+          set +e
           ./gradlew -p ide-integration-tests test --quiet
+          status=$?
+          if [ $status -ne 0 ]; then
+            echo "::warning::IDE tests failed (exit $status); retrying once"
+            sleep 15
+            ./gradlew -p ide-integration-tests test --quiet --stacktrace
+            status=$?
+          fi
+          exit $status
 
       - name: Upload logs
         if: failure()
