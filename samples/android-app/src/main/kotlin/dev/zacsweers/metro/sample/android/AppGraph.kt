@@ -4,6 +4,7 @@ package dev.zacsweers.metro.sample.android
 
 import android.app.Application
 import android.content.Context
+import androidx.tracing.Tracer
 import androidx.work.ListenableWorker
 import androidx.work.WorkManager
 import dev.zacsweers.metro.AppScope
@@ -34,6 +35,9 @@ interface AppGraph : MetroAppComponentProviders, ViewModelGraph {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(@Provides application: Application): AppGraph
+    fun create(
+      @Provides application: Application,
+      @Provides tracer: Tracer,
+    ): AppGraph
   }
 }

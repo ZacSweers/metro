@@ -20,6 +20,10 @@ private val metroRuntimeKlibClasspath =
   System.getProperty("metroRuntime.klibClasspath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'metroRuntime.klibClasspath' property")
 
+private val runtimeTracingClasspath =
+  System.getProperty("runtimeTracing.classpath")?.split(File.pathSeparator)?.map(::File)
+    ?: error("Unable to get a valid classpath from 'runtimeTracing.classpath' property")
+
 internal fun TestServices.isJsBackend(): Boolean {
   val targetBackend = defaultsProvider.targetBackend
   return targetBackend == TargetBackend.JS_IR || targetBackend == TargetBackend.JS_IR_ES6
@@ -36,12 +40,23 @@ class MetroRuntimeEnvironmentConfigurator(testServices: TestServices) :
     for (file in metroRuntimeClasspath) {
       configuration.addJvmClasspathRoot(file)
     }
+    if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {
+      for (file in runtimeTracingClasspath) {
+        configuration.addJvmClasspathRoot(file)
+      }
+    }
   }
 }
 
 class MetroRuntimeClassPathProvider(testServices: TestServices) :
   RuntimeClasspathProvider(testServices) {
   override fun runtimeClassPaths(module: TestModule): List<File> {
-    return if (testServices.isJsBackend()) metroRuntimeKlibClasspath else metroRuntimeClasspath
+    if (testServices.isJsBackend()) return metroRuntimeKlibClasspath
+    return buildList {
+      addAll(metroRuntimeClasspath)
+      if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {
+        addAll(runtimeTracingClasspath)
+      }
+    }
   }
 }

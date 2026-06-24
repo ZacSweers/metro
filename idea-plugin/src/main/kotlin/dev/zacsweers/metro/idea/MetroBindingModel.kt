@@ -43,17 +43,27 @@ internal data class MetroKaAnnotation(
   val classId: ClassId,
   val arguments: List<Pair<Name, MetroKaAnnotationValue>>,
 ) {
-  fun render(short: Boolean): String = buildString {
+  fun render(short: Boolean, useRelativeClassNames: Boolean = false): String = buildString {
     append('@')
-    append(if (short) classId.shortClassName.asString() else classId.asFqNameString())
+    append(
+      when {
+        short -> classId.shortClassName.asString()
+        useRelativeClassNames -> classId.relativeClassName.asString()
+        else -> classId.asFqNameString()
+      }
+    )
     if (arguments.isNotEmpty()) {
       arguments.joinTo(this, separator = ", ", prefix = "(", postfix = ")") { (name, value) ->
-        "${name.asString()} = ${renderValue(value, short)}"
+        "${name.asString()} = ${renderValue(value, short, useRelativeClassNames)}"
       }
     }
   }
 
-  private fun renderValue(value: MetroKaAnnotationValue, short: Boolean): String {
+  private fun renderValue(
+    value: MetroKaAnnotationValue,
+    short: Boolean,
+    useRelativeClassNames: Boolean,
+  ): String {
     return when (value) {
       is MetroKaAnnotationValue.Literal ->
         when (val literal = value.value) {
@@ -67,14 +77,19 @@ internal data class MetroKaAnnotation(
         } ?: "<error>"
       is MetroKaAnnotationValue.KClassRef ->
         value.classId?.let {
-          val name = if (short) it.shortClassName.asString() else it.asFqNameString()
+          val name =
+            when {
+              short -> it.shortClassName.asString()
+              useRelativeClassNames -> it.relativeClassName.asString()
+              else -> it.asFqNameString()
+            }
           "$name::class"
         } ?: "<error>"
       is MetroKaAnnotationValue.Array ->
         value.values.joinToString(separator = ", ", prefix = "[", postfix = "]") {
-          renderValue(it, short)
+          renderValue(it, short, useRelativeClassNames)
         }
-      is MetroKaAnnotationValue.Nested -> value.annotation.render(short)
+      is MetroKaAnnotationValue.Nested -> value.annotation.render(short, useRelativeClassNames)
       is MetroKaAnnotationValue.Unsupported -> "..."
     }
   }
@@ -117,14 +132,18 @@ internal class KaTypeKey(
     return KaTypeKey(type, qualifier)
   }
 
-  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
+  override fun render(
+    short: Boolean,
+    includeQualifier: Boolean,
+    useRelativeClassNames: Boolean,
+  ): String = buildString {
     if (includeQualifier) {
       qualifier?.let {
-        append(it.render(short))
+        append(it.render(short, useRelativeClassNames))
         append(' ')
       }
     }
-    append(if (short) type.shortType else renderedType)
+    append(if (short || useRelativeClassNames) type.shortType else renderedType)
   }
 
   override fun equals(other: Any?): Boolean {
@@ -150,11 +169,15 @@ internal class KaContextualTypeKey(
   override val hasDefault: Boolean = false,
   override val rawType: KaTypeSnapshot? = null,
 ) : BaseContextualTypeKey<KaTypeSnapshot, KaTypeKey, KaContextualTypeKey> {
-  override fun render(short: Boolean, includeQualifier: Boolean): String {
+  override fun render(
+    short: Boolean,
+    includeQualifier: Boolean,
+    useRelativeClassNames: Boolean,
+  ): String {
     return wrappedType.render { snapshot ->
       if (snapshot == typeKey.type) {
-        typeKey.render(short, includeQualifier)
-      } else if (short) {
+        typeKey.render(short, includeQualifier, useRelativeClassNames)
+      } else if (short || useRelativeClassNames) {
         snapshot.shortType
       } else {
         snapshot.renderedType

@@ -451,6 +451,18 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("RuntimeTracingRequiresGraphFactory.kt")
+    public void testRuntimeTracingRequiresGraphFactory() {
+      run("RuntimeTracingRequiresGraphFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingRequiresTracerFactoryInput.kt")
+    public void testRuntimeTracingRequiresTracerFactoryInput() {
+      run("RuntimeTracingRequiresTracerFactoryInput.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedGraphInputsAreReported.kt")
     public void testUnusedGraphInputsAreReported() {
       run("UnusedGraphInputsAreReported.kt");

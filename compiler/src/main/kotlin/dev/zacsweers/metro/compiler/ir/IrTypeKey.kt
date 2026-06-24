@@ -66,13 +66,23 @@ private constructor(
     originalType: IrType = this.originalType,
   ): IrTypeKey = IrTypeKey(type, qualifier, multibindingKeyData, originalType)
 
-  override fun render(short: Boolean, includeQualifier: Boolean): String =
-    renderForDiagnostic(short, includeQualifier, false)
+  override fun render(
+    short: Boolean,
+    includeQualifier: Boolean,
+    useRelativeClassNames: Boolean,
+  ): String =
+    renderForDiagnostic(
+      short = short,
+      includeQualifier = includeQualifier,
+      useOriginalQualifier = false,
+      useRelativeClassNames = useRelativeClassNames,
+    )
 
   fun renderForDiagnostic(
     short: Boolean,
     includeQualifier: Boolean = true,
     useOriginalQualifier: Boolean = includeQualifier,
+    useRelativeClassNames: Boolean = false,
   ): String = buildString {
     if (includeQualifier) {
       var qualifierToRender = qualifier
@@ -82,11 +92,11 @@ private constructor(
         multibindingKeyData?.multibindingTypeKey?.let { qualifierToRender = it.qualifier }
       }
       qualifierToRender?.let {
-        append(it.render(short))
+        append(it.render(short, useRelativeClassNames = useRelativeClassNames))
         append(" ")
       }
     }
-    type.renderTo(this, short)
+    type.renderTo(this, short, useRelativeClassNames = useRelativeClassNames)
   }
 
   override fun toString(): String {

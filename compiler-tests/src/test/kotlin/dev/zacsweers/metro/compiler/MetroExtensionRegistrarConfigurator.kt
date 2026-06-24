@@ -236,6 +236,10 @@ class MetroExtensionRegistrarConfigurator(
       if (MetroDirectives.ENABLE_HILT_INTEROP in module.directives) {
         includeHiltAnnotations()
       }
+
+      if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {
+        enableRuntimeTracing = true
+      }
     }
 
     if (!options.enabled) return

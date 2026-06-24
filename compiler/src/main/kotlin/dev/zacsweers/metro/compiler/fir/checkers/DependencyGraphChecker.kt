@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
+import dev.zacsweers.metro.compiler.fir.shouldCheckRuntimeTracingGraphInputs
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.toSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
@@ -103,6 +104,22 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
     val dependencyGraphAnno = dependencyGraphAnnos.first()
     val graphAnnotationClassId = dependencyGraphAnno.toAnnotationClassIdSafe(session) ?: return
+    if (
+      graphAnnotationClassId in classIds.dependencyGraphAnnotations &&
+        session.shouldCheckRuntimeTracingGraphInputs()
+    ) {
+      val hasFactory =
+        declaration.symbol.nestedClasses().any { nestedClass ->
+          nestedClass.isAnnotatedWithAny(session, classIds.dependencyGraphFactoryAnnotations)
+        }
+      if (!hasFactory) {
+        reporter.reportOn(
+          declaration.source,
+          MetroDiagnostics.METRO_TRACE_ERROR,
+          "Runtime tracing is enabled, so root dependency graphs must declare a `@DependencyGraph.Factory` that takes a `@Provides tracer: androidx.tracing.Tracer` input.",
+        )
+      }
+    }
 
     // Ensure scope is defined if any additionalScopes are defined
     val scope =

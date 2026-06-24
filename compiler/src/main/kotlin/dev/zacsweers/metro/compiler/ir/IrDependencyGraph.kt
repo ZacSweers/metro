@@ -17,6 +17,8 @@ import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
 import dev.zacsweers.metro.compiler.diagnostics.render.SourceFileCache
 import dev.zacsweers.metro.compiler.diagnostics.render.renderProfileFor
 import dev.zacsweers.metro.compiler.diagnostics.render.resolveDiagnosticsRenderMode
+import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
+import dev.zacsweers.metro.compiler.ir.graph.expressions.RuntimeTracingBindingExpressionDecorator
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.nio.file.Path
@@ -106,6 +108,19 @@ internal interface IrDependencyGraph {
       MemberNamingStrategy.TYPED -> MemberNamer.Typed
       MemberNamingStrategy.MINIMAL -> MemberNamer.Minimal
     }
+
+  @Provides
+  @SingleIn(IrScope::class)
+  fun provideBindingExpressionDecorator(
+    tracingAvailability: RuntimeTracingAvailability,
+    realDecorator: () -> RuntimeTracingBindingExpressionDecorator,
+  ): BindingExpressionDecorator {
+    return if (tracingAvailability.isAvailable()) {
+      realDecorator()
+    } else {
+      BindingExpressionDecorator.None
+    }
+  }
 
   @Provides
   @SingleIn(IrScope::class)

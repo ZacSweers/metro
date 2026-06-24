@@ -9,7 +9,11 @@ public interface BaseTypeKey<Type, Qualifier, Subtype : BaseTypeKey<Type, Qualif
 
   public fun copy(type: Type = this.type, qualifier: Qualifier? = this.qualifier): Subtype
 
-  public fun render(short: Boolean, includeQualifier: Boolean = true): String
+  public fun render(
+    short: Boolean,
+    includeQualifier: Boolean = true,
+    useRelativeClassNames: Boolean = false,
+  ): String
 }
 
 /**

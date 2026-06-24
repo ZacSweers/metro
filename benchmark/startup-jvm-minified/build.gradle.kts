@@ -26,4 +26,8 @@ jmh {
   iterations = 10
   fork = 2
   resultFormat = "JSON"
+  jvmArgs =
+    listOf(
+      "-Dmetro.benchmark.runtimeTraceDir=${rootProject.layout.projectDirectory.dir("app/component/build/metro-runtime-traces").asFile.absolutePath}"
+    )
 }

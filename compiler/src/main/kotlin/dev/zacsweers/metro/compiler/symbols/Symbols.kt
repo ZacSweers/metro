@@ -111,12 +111,15 @@ internal class Symbols(
   }
 
   object FqNames {
+    // Weird but here to defeat shadow jar
+    val androidxTracing = FqName(listOf("androidx", "tracing").joinToString("."))
     val composeRuntime = FqName("androidx.compose.runtime")
     val javaUtil = FqName("java.util")
     val kotlinCollectionsPackageFqn = StandardClassIds.BASE_COLLECTIONS_PACKAGE
     val metroHintsPackage = MetroHints.packageFqName
     val metroRuntimeInternalPackage = FqName(StringNames.METRO_RUNTIME_INTERNAL_PACKAGE)
     val metroRuntimePackage = FqName(StringNames.METRO_RUNTIME_PACKAGE)
+    val metroTraceInternalPackage = FqName("dev.zacsweers.metro.trace.internal")
     val GraphFactoryInvokeFunctionMarkerClass =
       metroRuntimeInternalPackage.child("GraphFactoryInvokeFunctionMarker".asName())
     val CallableMetadataClass =
@@ -200,6 +203,9 @@ internal class Symbols(
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())
     val metroInstanceFactory =
       ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
+    val metroTraceContext = ClassId(FqNames.metroTraceInternalPackage, "MetroTraceContext".asName())
+    val tracer = ClassId(FqNames.androidxTracing, "Tracer".asName())
+    val tracedProvider = ClassId(FqNames.metroTraceInternalPackage, "TracedProvider".asName())
 
     val function0 = StandardClassIds.FunctionN(0)
 
@@ -388,6 +394,26 @@ internal class Symbols(
     }
 
     return metroFrameworkSymbols
+  }
+
+  val metroTraceContext: IrClassSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.metroTraceContext)
+  }
+
+  val metroTraceContextTrace: IrSimpleFunctionSymbol? by lazy {
+    metroTraceContext?.owner?.functions?.single { it.name.asString() == "trace" }?.symbol
+  }
+
+  val metroTraceContextChild: IrSimpleFunctionSymbol? by lazy {
+    metroTraceContext?.owner?.functions?.single { it.name.asString() == "child" }?.symbol
+  }
+
+  val tracer: IrClassSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.tracer)
+  }
+
+  val tracedProvider: IrClassSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.tracedProvider)
   }
 
   val asContribution: IrSimpleFunctionSymbol by lazy {

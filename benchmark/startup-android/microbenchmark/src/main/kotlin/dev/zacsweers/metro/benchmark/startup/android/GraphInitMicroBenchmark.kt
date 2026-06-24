@@ -5,7 +5,8 @@ package dev.zacsweers.metro.benchmark.startup.android
 import androidx.benchmark.junit4.BenchmarkRule
 import androidx.benchmark.junit4.measureRepeated
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.zacsweers.metro.benchmark.app.component.createAndInitialize
+import androidx.test.platform.app.InstrumentationRegistry
+import java.io.File
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,11 +27,17 @@ class GraphInitMicroBenchmark {
   /**
    * Measures the time to create and fully initialize a dependency graph.
    *
-   * This calls `createAndInitialize()` which creates the graph and accesses all multibindings to
-   * force full initialization.
+   * The generated component entry point creates the graph and accesses all multibindings to force
+   * full initialization.
    */
   @Test
   fun graphCreationAndInitialization() {
-    benchmarkRule.measureRepeated { createAndInitialize() }
+    val instrumentation = InstrumentationRegistry.getInstrumentation()
+    val outputDirectory =
+      InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let {
+        File(it, "metro-runtime-traces")
+      }
+    val runtimeTracing = GraphInitRuntimeTracing(instrumentation.context, outputDirectory)
+    benchmarkRule.measureRepeated { runtimeTracing.createAndInitializeGraph() }
   }
 }

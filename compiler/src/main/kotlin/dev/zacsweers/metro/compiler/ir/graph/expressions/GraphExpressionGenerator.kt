@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.ParentContext
+import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.GraphMetadataReporter
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
@@ -23,6 +24,7 @@ import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider as wrapTypeInProvider
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -63,6 +65,7 @@ private constructor(
   private val metroDeclarations: MetroDeclarations,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   private val codegenStats: GraphMetadataReporter.CodegenStats?,
+  private val bindingExpressionDecorator: BindingExpressionDecorator,
   /**
    * For extension graphs, maps ancestor graph type key -> list of properties to chain through. Used
    * to access ancestor bindings in non-shard context.
@@ -70,7 +73,22 @@ private constructor(
   private val ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
   /** Optional context for generating expressions inside a shard. */
   private val shardContext: ShardExpressionContext?,
-) : BindingExpressionGenerator<IrBinding>(context, traceScope) {
+  private val traceContextProperty: IrProperty?,
+) :
+  BindingExpressionGenerator<IrBinding>(
+    context,
+    traceScope,
+    bindingExpressionDecorator.forGraph(
+      GraphBindingExpressionScope(
+        GraphTraceContextAccessor(
+          context = context,
+          thisReceiver = thisReceiver,
+          traceContextProperty = traceContextProperty,
+          shardContext = shardContext,
+        )
+      )
+    ),
+  ) {
 
   class Factory(
     private val context: IrMetroContext,
@@ -81,11 +99,13 @@ private constructor(
     private val metroDeclarations: MetroDeclarations,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
     private val codegenStats: GraphMetadataReporter.CodegenStats?,
+    private val bindingExpressionDecorator: BindingExpressionDecorator,
     /**
      * For extension graphs, maps ancestor graph type key -> list of properties to chain through.
      * Used to access ancestor bindings in non-shard context.
      */
     private val ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
+    private val traceContextProperty: IrProperty?,
   ) {
     fun create(
       thisReceiver: IrValueParameter,
@@ -100,15 +120,35 @@ private constructor(
         metroDeclarations = metroDeclarations,
         graphExtensionGenerator = graphExtensionGenerator,
         codegenStats = codegenStats,
+        bindingExpressionDecorator = bindingExpressionDecorator,
         traceScope = traceScope,
         ancestorGraphProperties = ancestorGraphProperties,
         shardContext = shardContext,
+        traceContextProperty = traceContextProperty,
       )
     }
   }
 
   private val wrappedTypeGenerators = listOf(IrOptionalExpressionGenerator).associateBy { it.key }
   private val multibindingExpressionGenerator by memoize { MultibindingExpressionGenerator(this) }
+
+  /** Resolves the existing graph binding for AndroidX's tracer input. */
+  context(scope: IrBuilderWithScope)
+  override fun generateTracerBindingCode(): IrExpression {
+    val tracer = metroSymbols.tracer!!
+    val tracerTypeKey = IrTypeKey(tracer.defaultType)
+    val tracerBinding =
+      bindingGraph.findBinding(tracerTypeKey)
+        ?: reportCompilerBug(
+          "Runtime tracing reached IR without an androidx.tracing.Tracer graph input."
+        )
+    return generateBindingCode(
+      tracerBinding,
+      tracerBinding.contextualTypeKey,
+      AccessType.INSTANCE,
+      null,
+    )
+  }
 
   context(scope: IrBuilderWithScope)
   override fun generateBindingCode(
@@ -133,6 +173,7 @@ private constructor(
         reportCompilerBug("Assisted inject factories should only be accessed as instances")
       }
 
+      val bindingKind = binding.diagnosticTypeName
       // If we're initializing the field for this key, don't ever try to reach for an existing
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
@@ -145,10 +186,19 @@ private constructor(
           // Determine the correct receiver for property access based on shard context
           val propertyAccess = generatePropertyAccess(property, shardProperty, shardIndex)
 
+          val providerOrigin =
+            if (storedKey.isWrappedInProvider) {
+              ProviderExpressionOrigin.ProviderProperty
+            } else {
+              ProviderExpressionOrigin.NewExpression
+            }
           return propertyAccess.toTargetType(
             actual = actual,
+            requested = accessType,
             contextualTypeKey = contextualTypeKey,
             allowPropertyGetter = fieldInitKey == null,
+            bindingKind = bindingKind,
+            providerOrigin = providerOrigin,
           )
         }
       }
@@ -165,32 +215,39 @@ private constructor(
               codegenStats?.run { classConstructorDirectInvocations++ }
               // Call constructor directly
               val targetConstructor = classFactory.targetConstructor!!
-              irCallConstructor(
-                  targetConstructor.symbol,
-                  binding.type.typeParameters.map { it.defaultType },
-                )
-                .apply {
-                  val args =
-                    generateBindingArguments(
-                      targetParams = classFactory.targetFunctionParameters,
-                      function = targetConstructor,
-                      binding = binding,
-                      fieldInitKey = fieldInitKey,
-                    )
-                  for ((i, arg) in args.withIndex()) {
-                    if (arg == null) continue
-                    arguments[i] = arg
+              val directExpr =
+                irCallConstructor(
+                    targetConstructor.symbol,
+                    binding.type.typeParameters.map { it.defaultType },
+                  )
+                  .apply {
+                    val args =
+                      generateBindingArguments(
+                        targetParams = classFactory.targetFunctionParameters,
+                        function = targetConstructor,
+                        binding = binding,
+                        fieldInitKey = fieldInitKey,
+                      )
+                    for ((i, arg) in args.withIndex()) {
+                      if (arg == null) continue
+                      arguments[i] = arg
+                    }
                   }
-                }
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+                .toTargetType(
+                  actual = AccessType.INSTANCE,
+                  contextualTypeKey = contextualTypeKey,
+                  bindingKind = bindingKind,
+                )
             } else {
               codegenStats?.run { classConstructorNewInstanceCalls++ }
               // Constructor isn't public - call newInstance() on the factory object instead
               // Example_Factory.newInstance(...)
-              classFactory
-                .invokeNewInstanceExpression(binding.typeKey, Symbols.Names.newInstance) {
-                  newInstanceFunction,
-                  parameters ->
+              val directExpr =
+                classFactory.invokeNewInstanceExpression(
+                  binding.typeKey,
+                  Symbols.Names.newInstance,
+                ) { newInstanceFunction, parameters ->
                   generateBindingArguments(
                     targetParams = parameters,
                     function = newInstanceFunction,
@@ -198,7 +255,12 @@ private constructor(
                     fieldInitKey = null,
                   )
                 }
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+                .toTargetType(
+                  actual = AccessType.INSTANCE,
+                  contextualTypeKey = contextualTypeKey,
+                  bindingKind = bindingKind,
+                )
             }
           } else {
             // Example_Factory.create(...)
@@ -219,6 +281,7 @@ private constructor(
                 factoryInstance.toTargetType(
                   actual = AccessType.PROVIDER,
                   contextualTypeKey = contextualTypeKey,
+                  bindingKind = bindingKind,
                 )
               }
           }
@@ -250,12 +313,17 @@ private constructor(
               actual = AccessType.INSTANCE,
               contextualTypeKey = contextualTypeKey,
               useInstanceFactory = false,
+              bindingKind = bindingKind,
             )
         }
 
         is ObjectClass -> {
           irGetObject(binding.type.symbol)
-            .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+            .toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = bindingKind,
+            )
         }
 
         is Alias -> {
@@ -286,6 +354,7 @@ private constructor(
               return materialized.toTargetType(
                 actual = AccessType.INSTANCE,
                 contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
               )
             }
           }
@@ -321,15 +390,22 @@ private constructor(
                   fieldInitKey = fieldInitKey,
                 )
 
-              irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              val directExpr =
+                irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+                .toTargetType(
+                  actual = AccessType.INSTANCE,
+                  contextualTypeKey = contextualTypeKey,
+                  bindingKind = bindingKind,
+                )
             } else {
               codegenStats?.run { providerNewInstanceCalls++ }
               // Function isn't public - call factory's static newInstance() method instead
-              providerFactory
-                .invokeNewInstanceExpression(binding.typeKey, providerFactory.newInstanceName) {
-                  newInstanceFunction,
-                  params ->
+              val directExpr =
+                providerFactory.invokeNewInstanceExpression(
+                  binding.typeKey,
+                  providerFactory.newInstanceName,
+                ) { newInstanceFunction, params ->
                   generateBindingArguments(
                     targetParams = params,
                     function = newInstanceFunction,
@@ -337,12 +413,17 @@ private constructor(
                     fieldInitKey = fieldInitKey,
                   )
                 }
-                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+                .toTargetType(
+                  actual = AccessType.INSTANCE,
+                  contextualTypeKey = contextualTypeKey,
+                  bindingKind = bindingKind,
+                )
             }
           } else {
             // Invoke its factory's create() function
-            providerFactory
-              .invokeCreateExpression(binding.typeKey) { createFunction, params ->
+            val factoryProvider =
+              providerFactory.invokeCreateExpression(binding.typeKey) { createFunction, params ->
                 generateBindingArguments(
                   targetParams = params,
                   function = createFunction,
@@ -350,7 +431,22 @@ private constructor(
                   fieldInitKey = fieldInitKey,
                 )
               }
-              .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
+
+            if (providerFactory is ProviderFactory.Metro) {
+              val providerType = binding.typeKey.type.wrapTypeInProvider(metroSymbols.metroProvider)
+              factoryProvider.toTargetType(
+                actual = AccessType.PROVIDER,
+                contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
+                providerType = providerType,
+              )
+            } else {
+              factoryProvider.toTargetType(
+                actual = AccessType.PROVIDER,
+                contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
+              )
+            }
           }
         }
 
@@ -389,6 +485,7 @@ private constructor(
           factoryProvider.toTargetType(
             actual = AccessType.PROVIDER,
             contextualTypeKey = contextualTypeKey,
+            bindingKind = bindingKind,
           )
         }
 
@@ -423,7 +520,11 @@ private constructor(
                 callee = metroSymbols.metroMembersInjectorsNoOp,
                 typeArgs = listOf(injectedType),
               )
-              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              .toTargetType(
+                actual = AccessType.INSTANCE,
+                contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
+              )
           } else {
             val injectorCreatorClass =
               if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
@@ -440,7 +541,11 @@ private constructor(
             // InjectableClass_MembersInjector.create(stringValueProvider,
             // exampleComponentProvider)
             irInvoke(callee = createFunction, args = args)
-              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+              .toTargetType(
+                actual = AccessType.INSTANCE,
+                contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
+              )
           }
         }
 
@@ -493,6 +598,7 @@ private constructor(
               instanceExpr.toTargetType(
                 actual = AccessType.INSTANCE,
                 contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
               )
             }
           }
@@ -527,7 +633,11 @@ private constructor(
                 arguments[i + 1] = irGet(functionParams[i])
               }
             }
-            .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+            .toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = bindingKind,
+            )
         }
 
         is GraphExtensionFactory -> {
@@ -563,7 +673,11 @@ private constructor(
                   accessType = AccessType.INSTANCE,
                 )
             }
-            .toTargetType(contextualTypeKey = contextualTypeKey, actual = AccessType.INSTANCE)
+            .toTargetType(
+              contextualTypeKey = contextualTypeKey,
+              actual = AccessType.INSTANCE,
+              bindingKind = bindingKind,
+            )
         }
 
         is GraphDependency -> {
@@ -630,6 +744,7 @@ private constructor(
             actual = actual,
             allowPropertyGetter =
               binding.token?.let { !it.contextKey.isWrappedInProvider } ?: false,
+            bindingKind = bindingKind,
           )
         }
       }

@@ -62,6 +62,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_DECLARATION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_DECLARATION_VISIBILITY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_TRACE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MISSING_BINDING
@@ -239,6 +240,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val EMPTY_MULTIBINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val QUALIFIER_OVERRIDE_MISMATCH by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val METRO_TRACE_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val KNOWN_KOTLINC_BUG_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val KNOWN_KOTLINC_BUG_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -405,6 +407,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
 
         // IR diagnostics
         put(METRO_ERROR, "{0}", TO_STRING)
+        put(METRO_TRACE_ERROR, "{0}", TO_STRING)
         put(METRO_WARNING, "{0}", TO_STRING)
         put(KNOWN_KOTLINC_BUG_ERROR, "{0}", TO_STRING)
         put(KNOWN_KOTLINC_BUG_WARNING, "{0}", TO_STRING)

@@ -95,6 +95,8 @@ val metroRuntimeKlibClasspath =
       attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
     }
   }
+
+val runtimeTracingClasspath = configurations.create("runtimeTracingClasspath")
 val anvilRuntimeClasspath = configurations.create("anvilRuntimeClasspath") { isTransitive = false }
 val kiAnvilRuntimeClasspath =
   configurations.create("kiAnvilRuntimeClasspath") { isTransitive = false }
@@ -225,6 +227,7 @@ dependencies {
 
   metroRuntimeClasspath(project(":runtime"))
   metroRuntimeKlibClasspath(project(path = ":runtime", configuration = "jsRuntimeElements"))
+  runtimeTracingClasspath(project(":metro-trace"))
 
   daggerInteropClasspath(project(":interop-dagger"))
 
@@ -303,6 +306,7 @@ val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPr
 
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
+  dependsOn(runtimeTracingClasspath)
 
   // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
   minHeapSize = "512m"
@@ -445,6 +449,7 @@ tasks.withType<Test> {
 
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
   systemProperty("metroRuntime.klibClasspath", metroRuntimeKlibClasspath.asPath)
+  systemProperty("runtimeTracing.classpath", runtimeTracingClasspath.asPath)
   systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
   systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)
   systemProperty("daggerRuntime.classpath", daggerRuntimeClasspath.asPath)

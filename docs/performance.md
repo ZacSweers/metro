@@ -216,6 +216,8 @@ Default is `DESCRIPTIVE` so generated code stays readable. Opt in only if you ha
 
 ## Tracing
 
+### Compiler tracing
+
 If you want to investigate the performance of Metro's compiler pipeline, you can enable tracing in the Gradle DSL.
 
 ```kotlin
@@ -233,3 +235,80 @@ Note that these traces probably do require a bit of familiarity with the Metro c
 !!! warning
 
     Note that file option inputs like `traceDestination` are _not_ tracked as inputs to the kotlin compilation, so you should run your target kotlin compilation task with `--rerun` (not `--rerun-tasks`!) to ensure it it's not cached.
+
+### Runtime tracing
+
+Metro can also emit traces from generated graph code. For example, this is useful when you want to see which bindings are created or invoked during app startup or another measured runtime path.
+
+!!! warning "Experimental"
+
+    Runtime tracing is experimental. It currently targets JVM/Android graph code and integrates with AndroidX Tracing 2.x, which is still actively being developed. Expect the generated metadata and runtime helper APIs to change as AndroidX Tracing 2.x evolves.
+
+Enable it in the Gradle DSL:
+
+```kotlin
+metro {
+  enableRuntimeTracing.set(true)
+}
+```
+
+When automatic runtime dependencies are enabled, Metro adds the JVM-only `metro-trace` helper artifact to JVM/Android JVM compilations.
+
+Each root graph should take an AndroidX `Tracer` as a graph input. Metro uses this input while initializing the graph's trace context, before ordinary binding traces can be emitted:
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  @DependencyGraph.Factory
+  interface Factory {
+    fun create(@Provides tracer: Tracer): AppGraph
+  }
+}
+```
+
+On Android, prefer owning a single app-level `TraceDriver` and passing its tracer into the root graph from `Application.onCreate()`:
+
+```kotlin
+class MyApplication : Application(), AbstractTraceDriver.Factory {
+  private val sink = TraceSink(context = this)
+  private val driver = TraceDriver(context = this, sink = sink, isCategoryEnabled = { true })
+
+  lateinit var appGraph: AppGraph
+    private set
+
+  @OptIn(DelicateTracingApi::class)
+  override fun onCreate() {
+    super.onCreate()
+    Tracer.setGlobalTracer(driver.tracer)
+    appGraph = createGraphFactory<AppGraph.Factory>().create(driver.tracer)
+  }
+
+  override fun create(): AbstractTraceDriver = driver
+}
+```
+
+`AbstractTraceDriver.Factory` lets AndroidX's profiler tooling discover the same driver that Metro uses. `Tracer.setGlobalTracer(...)` also makes the tracer available to other libraries using AndroidX's global tracer discovery.
+
+With AndroidX Tracing 2.0.0-alpha09 and newer, `TraceSink` defers file setup. Graph creation no longer needs to be delayed with `lazy` just to avoid early trace output initialization.
+
+Generated trace sections use the short rendered binding name, including the qualifier when present. Metro also attaches string metadata for filtering and grouping:
+
+- `metro.graph`: the graph that owns the binding.
+- `metro.graph_path`: the root-to-current graph path, useful for graph extensions.
+- `metro.type`: the canonical unqualified type.
+- `metro.contextual_type`: the requested unqualified type, when it differs from `metro.type`, such as `Provider<T>` or `Lazy<T>`. Only present for accessors.
+- `metro.qualifier`: the binding qualifier, when present.
+- `metro.binding_kind`: the generated binding implementation kind, such as `Provided`, `ConstructorInjected`, or `Multibinding`.
+
+Here is what a trace looks like.
+
+![Runtime Tracing of the Metro Sample app](performance_assets/runtime_tracing.png)
+
+[Here is the link to the sample app](https://github.com/ZacSweers/metro/tree/main/samples/android-app) with the right setup for runtime tracing.
+
+!!! note "Flushing traces"
+
+    The sample app has UI affordance to flush traces manually. However you can also flush traces programmatically by doing something like:
+    ```bash
+    adb shell am broadcast -a androidx.tracing.profiler.action.FLUSH_TRACES_GET_PATH <targetPackage>/androidx.tracing.profiler.ConnectedProfilerTracingReceiver
+    ```

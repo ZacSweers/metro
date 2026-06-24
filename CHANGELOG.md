@@ -56,6 +56,10 @@ Changelog
       docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
     ```
 
+- **[runtime/JVM]** Add experimental runtime tracing for generated graph code, backed by AndroidX Tracing 2.x. Enable it with `metro.enableRuntimeTracing`.
+  - Metro will add the JVM-only `metro-trace` runtime helper artifact.
+  - Graphs must bind an `androidx.tracing.Tracer` instances as a graph input as a parent tracer.
+  - This is experimental as AndroidX Tracing 2.x is still actively being developed.
 - **[gradle]** Add a `diagnosticsRenderMode` Gradle option (`AUTO`/`PLAIN`/`RICH`) for diagnostic rendering.
   - `AUTO` defaults to rich output and falls back to plain output for non-empty `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
   - The resolved mode is passed as a non-input compiler option, so render-mode changes do not invalidate compilation or poison build caches.
@@ -78,6 +82,7 @@ Changelog
 - **[IR]** Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.
 - **[IR]** Manage transitive simple class binding containers included by contributed binding containers when they have instance providers.
 - **[IR]** Patch declaration parents for generated `@Binds` mirror declarations so copied declarations remain attached to the correct generated class.
+- **[IR/Dagger interop]** Fix an IR gen crash when an unscoped parent `@Provides` binding is injected as `dagger.Lazy<T>` from a child graph.
 - **[IR/JS]** Fix `Map<K, () -> V>` multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro `Provider` objects.
 - **[IR/KLIB]** Fix generated `@Binds` implementations on KLIB backends. Metro now emits concrete identity bodies for inherited `@Binds` members where JS, Native, and Wasm validate abstract members during deserialization.
 - **[IR/KLIB]** Keep generated graph and shard backing fields private while preserving generated access through properties. This avoids backing-field visibility validation failures on KLIB backends.
@@ -96,6 +101,7 @@ Special thanks to the following contributors for contributing to this release!
 
 - [@BraisGabin](https://github.com/BraisGabin)
 - [@FletchMcKee](https://github.com/FletchMcKee)
+- [@tikurahul](https://github.com/tikurahul)
 - [@ychescale9](https://github.com/ychescale9)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)

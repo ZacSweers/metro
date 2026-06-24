@@ -289,6 +289,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("RuntimeTracing.kt")
+    public void testRuntimeTracing() {
+      run("RuntimeTracing.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt")
     public void testUnusedInstanceBindingsInUnextendedGraphGetNoProviderFields() {
       run("UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt");

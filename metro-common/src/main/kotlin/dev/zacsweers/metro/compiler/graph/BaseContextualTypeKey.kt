@@ -43,5 +43,9 @@ public interface BaseContextualTypeKey<
       return valueType is WrappedType.Provider && valueType.innerType is WrappedType.Lazy
     }
 
-  public fun render(short: Boolean, includeQualifier: Boolean = true): String
+  public fun render(
+    short: Boolean,
+    includeQualifier: Boolean = true,
+    useRelativeClassNames: Boolean = false,
+  ): String
 }

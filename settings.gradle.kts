@@ -40,6 +40,7 @@ include(
   ":interop-javax",
   ":interop-jakarta",
   ":interop-guice",
+  ":metro-trace",
   ":metro-common",
   ":metrox-android",
   ":metrox-viewmodel",

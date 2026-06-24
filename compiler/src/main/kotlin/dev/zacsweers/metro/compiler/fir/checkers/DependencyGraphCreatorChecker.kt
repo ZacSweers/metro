@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
+import dev.zacsweers.metro.compiler.fir.shouldCheckRuntimeTracingGraphInputs
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
@@ -27,6 +28,7 @@ import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -38,6 +40,7 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.name.ClassId
 
@@ -146,6 +149,23 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     }
 
     val targetGraphScopes = targetGraphAnnotation?.allScopeClassIds(session).orEmpty()
+    val isDependencyGraphFactory = annotationClassId in classIds.dependencyGraphFactoryAnnotations
+    val createsDependencyGraph =
+      targetGraphAnnotation?.toAnnotationClassId(session) in classIds.dependencyGraphAnnotations
+    val checksRuntimeTracingInputs = session.shouldCheckRuntimeTracingGraphInputs()
+    val missingRuntimeTracerInput = !createFunction.hasRuntimeTracerGraphInput(session)
+    if (
+      isDependencyGraphFactory &&
+        createsDependencyGraph &&
+        checksRuntimeTracingInputs &&
+        missingRuntimeTracerInput
+    ) {
+      reporter.reportOn(
+        createFunction.source ?: declaration.source,
+        MetroDiagnostics.METRO_TRACE_ERROR,
+        "Runtime tracing is enabled, so @DependencyGraph.Factory create functions must take a `@Provides tracer: androidx.tracing.Tracer` input.",
+      )
+    }
 
     if (isContributedExtensionFactory) {
       val contributedScopes = contributesToAnno.flatMapToSet { it.allScopeClassIds(session) }
@@ -301,6 +321,22 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           reportAnnotationCountError()
         }
       }
+    }
+  }
+
+  /**
+   * Returns true when the factory create method has the root graph input Metro uses to seed
+   * tracing.
+   */
+  private fun FirNamedFunctionSymbol.hasRuntimeTracerGraphInput(session: FirSession): Boolean {
+    return valueParameterSymbols.any { parameter ->
+      val parameterClassId = parameter.resolvedReturnTypeRef.coneType.fullyExpandedClassId(session)
+      val isTracer = parameterClassId == Symbols.ClassIds.tracer
+      val isGraphInput =
+        parameter.resolvedCompilerAnnotationsWithClassIds
+          .annotationsIn(session, session.classIds.providesAnnotations)
+          .any()
+      isTracer && isGraphInput
     }
   }
 }

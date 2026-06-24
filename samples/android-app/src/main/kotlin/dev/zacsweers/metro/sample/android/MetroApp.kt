@@ -3,6 +3,11 @@
 package dev.zacsweers.metro.sample.android
 
 import android.app.Application
+import androidx.tracing.AbstractTraceDriver
+import androidx.tracing.DelicateTracingApi
+import androidx.tracing.Tracer
+import androidx.tracing.wire.TraceDriver
+import androidx.tracing.wire.TraceSink
 import androidx.work.Configuration
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
@@ -11,8 +16,16 @@ import dev.zacsweers.metro.createGraphFactory
 import dev.zacsweers.metrox.android.MetroAppComponentProviders
 import dev.zacsweers.metrox.android.MetroApplication
 
-class MetroApp : Application(), MetroApplication, Configuration.Provider {
-  private val appGraph by lazy { createGraphFactory<AppGraph.Factory>().create(this) }
+class MetroApp :
+  Application(), MetroApplication, Configuration.Provider, AbstractTraceDriver.Factory {
+
+  // The TraceSink
+  internal val sink = TraceSink(context = this)
+
+  // The TraceDriver
+  internal val driver = TraceDriver(context = this, sink = sink, isCategoryEnabled = { true })
+
+  private lateinit var appGraph: AppGraph
 
   override val appComponentProviders: MetroAppComponentProviders
     get() = appGraph
@@ -20,9 +33,12 @@ class MetroApp : Application(), MetroApplication, Configuration.Provider {
   override val workManagerConfiguration: Configuration
     get() = Configuration.Builder().setWorkerFactory(appGraph.workerFactory).build()
 
+  @OptIn(DelicateTracingApi::class)
   override fun onCreate() {
     super.onCreate()
 
+    Tracer.setGlobalTracer(driver.tracer)
+    appGraph = createGraphFactory<AppGraph.Factory>().create(this, driver.tracer)
     scheduleBackgroundWork()
   }
 
@@ -42,5 +58,12 @@ class MetroApp : Application(), MetroApplication, Configuration.Provider {
         .build()
 
     appGraph.workManager.enqueue(secondWorkRequest)
+  }
+
+  override fun create(): AbstractTraceDriver {
+    // This ensures that the rest of the application can discover the right TraceDriver instance
+    // to do things like flush traces for e.g. Especially relevant when using broadcasts to flush
+    // traces.
+    return driver
   }
 }

@@ -52,12 +52,22 @@ import org.jetbrains.kotlin.platform.isJs
 
 internal class MultibindingExpressionGenerator(
   private val parentGenerator: BindingExpressionGenerator<IrBinding>
-) : BindingExpressionGenerator<IrBinding.Multibinding>(parentGenerator, parentGenerator) {
+) :
+  BindingExpressionGenerator<IrBinding.Multibinding>(
+    parentGenerator,
+    parentGenerator,
+    parentGenerator.expressionDecorator,
+  ) {
   override val thisReceiver: IrValueParameter
     get() = parentGenerator.thisReceiver
 
   override val bindingGraph: IrBindingGraph
     get() = parentGenerator.bindingGraph
+
+  context(scope: IrBuilderWithScope)
+  override fun generateTracerBindingCode(): IrExpression {
+    return parentGenerator.generateTracerBindingCode()
+  }
 
   context(scope: IrBuilderWithScope)
   override fun generateBindingCode(
@@ -71,6 +81,20 @@ internal class MultibindingExpressionGenerator(
       contextualTypeKey.letIf(contextualTypeKey.requiresProviderInstance) {
         contextualTypeKey.stripIfLazy().wrapInProvider()
       }
+    if (accessType == AccessType.INSTANCE && expressionDecorator.decoratesExpressions) {
+      // Runtime tracing decorates provider expressions with TracedProvider. Use that route for
+      // direct multibinding access too, so aggregate and element spans are traced by providers
+      // instead of nesting trace lambdas around generated buildSet/buildMap lambdas.
+      val providerContextKey = transformedContextKey.wrapInProvider()
+      val providerExpression =
+        generateBindingCode(
+          binding,
+          providerContextKey,
+          accessType = AccessType.PROVIDER,
+          fieldInitKey = fieldInitKey,
+        )
+      return providerExpression.unwrapProvider(contextualTypeKey.typeKey.type)
+    }
     return if (binding.isSet) {
       generateSetMultibindingExpression(binding, accessType, transformedContextKey, fieldInitKey)
     } else {
@@ -113,7 +137,19 @@ internal class MultibindingExpressionGenerator(
           fieldInitKey,
         )
       }
-    return instance.toTargetType(actual = actualAccessType, contextualTypeKey = contextualTypeKey)
+    val maybeTracedInstance =
+      if (actualAccessType == AccessType.INSTANCE) {
+        // Direct multibinding getters do not flow through the normal direct-construction branches
+        // in GraphExpressionGenerator, so trace the aggregate Set getter here.
+        maybeTraceDirectExpression(instance, contextualTypeKey, binding.diagnosticTypeName)
+      } else {
+        instance
+      }
+    return maybeTracedInstance.toTargetType(
+      actual = actualAccessType,
+      contextualTypeKey = contextualTypeKey,
+      bindingKind = binding.diagnosticTypeName,
+    )
   }
 
   context(scope: IrBuilderWithScope)
@@ -681,17 +717,29 @@ internal class MultibindingExpressionGenerator(
       */
 
       if (size == 0) {
-        return generateEmptyMapExpression(
-          keyType,
-          rawValueType,
-          mapProviderType,
-          valueIsWrappedInProvider,
-          valueIsWrappedInLazy,
-          valueIsProviderLazy,
-          useMapFunctionFactory,
-          valueProviderSymbols,
-          accessType,
-        )
+        val emptyMap =
+          generateEmptyMapExpression(
+            keyType,
+            rawValueType,
+            mapProviderType,
+            valueIsWrappedInProvider,
+            valueIsWrappedInLazy,
+            valueIsProviderLazy,
+            useMapFunctionFactory,
+            valueProviderSymbols,
+            accessType,
+          )
+        return if (accessType == AccessType.INSTANCE) {
+          // Direct multibinding getters do not flow through the normal direct-construction branches
+          // in GraphExpressionGenerator, so trace the aggregate Map getter here.
+          maybeTraceDirectExpression(emptyMap, contextualTypeKey, binding.diagnosticTypeName)
+        } else {
+          emptyMap.toTargetType(
+            actual = AccessType.PROVIDER,
+            contextualTypeKey = contextualTypeKey,
+            bindingKind = binding.diagnosticTypeName,
+          )
+        }
       }
 
       val sourceBindings =
@@ -711,23 +759,31 @@ internal class MultibindingExpressionGenerator(
           //   Use the original context key directly
           val needsManualLazyWrap = valueIsWrappedInLazy
           val needsAnyLazyWrap = needsManualLazyWrap || valueIsProviderLazy
-          return generateMapBuilderExpression(
-            sourceBindings = sourceBindings,
-            keyType = keyType,
-            valueType = valueWrappedType.toIrType(),
-            canonicalValueContextKey =
-              if (needsAnyLazyWrap) canonicalValueContextKey else originalValueContextKey,
-            valueAccessType =
-              when {
-                // For any lazy maps, we need Provider<canonical> to wrap
-                needsAnyLazyWrap -> AccessType.PROVIDER
-                valueIsWrappedInProvider -> AccessType.PROVIDER
-                else -> AccessType.INSTANCE
-              },
-            wrapInLazy = needsManualLazyWrap,
-            wrapInProviderLazy = valueIsProviderLazy,
-            valueFrameworkSymbols = valueProviderSymbols,
-            fieldInitKey = fieldInitKey,
+          val mapBuilder =
+            generateMapBuilderExpression(
+              sourceBindings = sourceBindings,
+              keyType = keyType,
+              valueType = valueWrappedType.toIrType(),
+              canonicalValueContextKey =
+                if (needsAnyLazyWrap) canonicalValueContextKey else originalValueContextKey,
+              valueAccessType =
+                when {
+                  // For any lazy maps, we need Provider<canonical> to wrap
+                  needsAnyLazyWrap -> AccessType.PROVIDER
+                  valueIsWrappedInProvider -> AccessType.PROVIDER
+                  else -> AccessType.INSTANCE
+                },
+              wrapInLazy = needsManualLazyWrap,
+              wrapInProviderLazy = valueIsProviderLazy,
+              valueFrameworkSymbols = valueProviderSymbols,
+              fieldInitKey = fieldInitKey,
+            )
+          // Direct multibinding getters do not flow through the normal direct-construction branches
+          // in GraphExpressionGenerator, so trace the aggregate Map getter here.
+          return maybeTraceDirectExpression(
+            mapBuilder,
+            contextualTypeKey,
+            binding.diagnosticTypeName,
           )
         } else {
           // Multiple elements and it's a Provider type
@@ -778,9 +834,15 @@ internal class MultibindingExpressionGenerator(
                     ),
                   ),
               )
-            return with(metroSymbols.providerTypeConverter) {
-              singletonInvoke.convertTo(contextualTypeKey)
-            }
+            val singletonProvider =
+              with(metroSymbols.providerTypeConverter) {
+                singletonInvoke.convertTo(contextualTypeKey)
+              }
+            return singletonProvider.toTargetType(
+              actual = AccessType.PROVIDER,
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = binding.diagnosticTypeName,
+            )
           }
           val builderFunction =
             when {
@@ -790,6 +852,7 @@ internal class MultibindingExpressionGenerator(
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderFunction
               else -> valueProviderSymbols.mapFactoryBuilderFunction
             }
+
           val builderType =
             when {
               useMapFunctionFactory -> metroFrameworkSymbols.mapFunctionFactoryBuilder
@@ -902,11 +965,14 @@ internal class MultibindingExpressionGenerator(
           }
         }
 
-      // Always a provider instance in this branch, no need to transform access type
+      // Always a provider instance in this branch, no need to transform access type.
       val providerTypeConverter = metroSymbols.providerTypeConverter
       val providerInstance = with(providerTypeConverter) { instance.convertTo(contextualTypeKey) }
-
-      return providerInstance
+      return providerInstance.toTargetType(
+        actual = AccessType.PROVIDER,
+        contextualTypeKey = contextualTypeKey,
+        bindingKind = binding.diagnosticTypeName,
+      )
     }
 
   context(scope: IrBuilderWithScope)
@@ -1024,6 +1090,10 @@ internal class MultibindingExpressionGenerator(
           )
         }
     }
+
+  /** True when generated expressions should flow through decorator hooks before being returned. */
+  private val GraphBindingExpressionDecorator.decoratesExpressions: Boolean
+    get() = this !== GraphBindingExpressionDecorator.None
 
   /**
    * Function symbols needed to materialize an empty `Map*Factory`. [empty] is null when the

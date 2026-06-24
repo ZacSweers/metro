@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -29,6 +30,7 @@ import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
+import dev.zacsweers.metro.compiler.ir.RuntimeTracingAvailability
 import dev.zacsweers.metro.compiler.ir.UsedKeyCollector
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.chunkSupertypesIfNeeded
@@ -47,6 +49,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphGenerator
+import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
@@ -65,6 +68,7 @@ import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
+import dev.zacsweers.metro.compiler.ir.supportsTracing
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -90,6 +94,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
 import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -141,6 +146,8 @@ internal class DependencyGraphTransformer(
   private val metroDeclarations: MetroDeclarations,
   private val bindingContainerResolver: IrBindingContainerResolver,
   private val boundTypeResolver: IrBoundTypeResolver,
+  private val bindingExpressionDecorator: BindingExpressionDecorator,
+  private val runtimeTracingAvailability: RuntimeTracingAvailability,
   traceScope: TraceScope,
 ) : IrMetroContext by context, TraceScope by traceScope {
 
@@ -151,6 +158,8 @@ internal class DependencyGraphTransformer(
 
   private val graphNodes =
     GraphNodes(this, metroDeclarations, bindingContainerResolver, contributionMerger)
+
+  private var reportedRuntimeTracingUnavailable = false
 
   internal fun processGraph(
     dependencyGraphDeclaration: IrClass,
@@ -614,6 +623,12 @@ internal class DependencyGraphTransformer(
           )
         }
 
+    if (runtimeTracingAvailability.isAvailable() && parentContextReader == null) {
+      val tracerType = metroSymbols.tracer!!.defaultType
+      val tracerContextKey = IrContextualTypeKey(IrTypeKey(tracerType))
+      bindingGraph.keep(tracerContextKey, IrBindingStack.Entry.simpleTypeRef(tracerContextKey))
+    }
+
     val sealResult =
       bindingGraph.seal(childGraphScopes) { errors ->
         errors
@@ -801,6 +816,7 @@ internal class DependencyGraphTransformer(
 
     trace("[${metroGraph.kotlinFqName.shortName().asString()}] Generate graph") {
       try {
+        reportRuntimeTracingUnavailableOnce(metroGraph)
         // Generate this graph's implementation. The generator's constructor does non-trivial
         // work (name-allocator preallocation over graph properties/nested classes), so trace it
         // separately from generate() to keep that cost visible instead of an opaque leading gap.
@@ -817,6 +833,8 @@ internal class DependencyGraphTransformer(
               sealResult = validationResult.sealResult,
               metroDeclarations = metroDeclarations,
               graphExtensionGenerator = validationResult.graphExtensionGenerator,
+              bindingExpressionDecorator = bindingExpressionDecorator,
+              runtimeTracingAvailability = runtimeTracingAvailability,
               parentBindingContext = parentBindingContext,
             )
           }
@@ -885,6 +903,16 @@ internal class DependencyGraphTransformer(
     ) {
       metroGraph.metroDumpKotlinLike()
     }
+  }
+
+  private fun reportRuntimeTracingUnavailableOnce(metroGraph: IrClass) {
+    val reason = runtimeTracingAvailability.unavailableReason ?: return
+    if (!options.enableRuntimeTracing || !platform.supportsTracing()) return
+    if (!reportedRuntimeTracingUnavailable) {
+      reportCompat(metroGraph, MetroDiagnostics.METRO_TRACE_ERROR, reason)
+      reportedRuntimeTracingUnavailable = true
+    }
+    exitProcessing()
   }
 
   private fun implementCreatorFunctions(

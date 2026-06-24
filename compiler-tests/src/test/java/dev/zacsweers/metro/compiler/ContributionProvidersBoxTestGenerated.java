@@ -2721,6 +2721,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
         public void testInheritedBindingsDoNotCauseDuplicates2() {
           run("InheritedBindingsDoNotCauseDuplicates2.kt");
         }
+
+        @Test
+        @TestMetadata("UnscopedParentProvidesAsDaggerLazyInChildGraph.kt")
+        public void testUnscopedParentProvidesAsDaggerLazyInChildGraph() {
+          run("UnscopedParentProvidesAsDaggerLazyInChildGraph.kt");
+        }
       }
     }
 
@@ -3266,6 +3272,86 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("ReallyLongPackageNameHandledWhenWritingDebugReports.kt")
     public void testReallyLongPackageNameHandledWhenWritingDebugReports() {
       run("ReallyLongPackageNameHandledWhenWritingDebugReports.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/tracing")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Tracing {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/tracing/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInTracing() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/tracing"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingBasic.kt")
+    public void testRuntimeTracingBasic() {
+      run("RuntimeTracingBasic.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingBinds.kt")
+    public void testRuntimeTracingBinds() {
+      run("RuntimeTracingBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingGraphExtension.kt")
+    public void testRuntimeTracingGraphExtension() {
+      run("RuntimeTracingGraphExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingIncludedGraphProvider.kt")
+    public void testRuntimeTracingIncludedGraphProvider() {
+      run("RuntimeTracingIncludedGraphProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingMembersInjected.kt")
+    public void testRuntimeTracingMembersInjected() {
+      run("RuntimeTracingMembersInjected.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingMultiLevelGraphExtension.kt")
+    public void testRuntimeTracingMultiLevelGraphExtension() {
+      run("RuntimeTracingMultiLevelGraphExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingMultibindingElements.kt")
+    public void testRuntimeTracingMultibindingElements() {
+      run("RuntimeTracingMultibindingElements.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingMultibindingGetter.kt")
+    public void testRuntimeTracingMultibindingGetter() {
+      run("RuntimeTracingMultibindingGetter.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingNestedNames.kt")
+    public void testRuntimeTracingNestedNames() {
+      run("RuntimeTracingNestedNames.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingProviderOfLazy.kt")
+    public void testRuntimeTracingProviderOfLazy() {
+      run("RuntimeTracingProviderOfLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingScopedProvider.kt")
+    public void testRuntimeTracingScopedProvider() {
+      run("RuntimeTracingScopedProvider.kt");
     }
   }
 }
