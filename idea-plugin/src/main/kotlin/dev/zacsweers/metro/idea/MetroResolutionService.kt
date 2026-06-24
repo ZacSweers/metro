@@ -471,13 +471,9 @@ private class IndexBuilder(
           .flatMapTo(hashSetOf()) { classListArgument(it, "replaces") }
       for (data in bindingData(ktClass, options)) {
         bindings +=
-          KaBinding(
+          bindingFrom(
             ptr(ktClass),
-            data.key,
-            data.kind,
-            data.scope,
-            data.implementationName,
-            data.multibindingId,
+            data,
             originClassId = data.originClassId ?: contributedClassId,
             replaces = data.replaces + classReplaces,
             contributionScopes = data.contributionScopes.ifEmpty { setOf(scopeId) },
@@ -492,14 +488,12 @@ private class IndexBuilder(
         for (member in holder.declarations.filterIsInstance<KtCallableDeclaration>()) {
           for (data in bindingData(member, options)) {
             bindings +=
-              KaBinding(
+              bindingFrom(
                 ptr(member),
-                data.key,
-                data.kind,
-                data.scope,
-                data.implementationName ?: originClassId?.shortClassName?.asString(),
-                data.multibindingId,
+                data,
                 originClassId = contributedClassId,
+                implementationName =
+                  data.implementationName ?: originClassId?.shortClassName?.asString(),
                 replaces = classReplaces,
                 contributionScopes = setOf(scopeId),
               )
@@ -582,6 +576,33 @@ private class IndexBuilder(
   }
 
   /**
+   * Builds a [KaBinding] from a [BindingData], anchoring it at [pointer]. Callers override only the
+   * fields that differ from the computed data (e.g. contribution-derived origin/scopes).
+   */
+  private fun bindingFrom(
+    pointer: SmartPsiElementPointer<out PsiElement>,
+    data: BindingData,
+    containerId: ClassId? = null,
+    originClassId: ClassId? = data.originClassId,
+    implementationName: String? = data.implementationName,
+    replaces: Set<ClassId> = data.replaces,
+    contributionScopes: Set<ClassId> = data.contributionScopes,
+  ): KaBinding {
+    return KaBinding(
+      pointer,
+      data.key,
+      data.kind,
+      data.scope,
+      implementationName,
+      data.multibindingId,
+      originClassId = originClassId,
+      containerId = containerId,
+      replaces = replaces,
+      contributionScopes = contributionScopes,
+    )
+  }
+
+  /**
    * The graph an instance binding (a `@Provides` factory parameter) belongs to: the factory's
    * enclosing graph when the factory is nested, otherwise the graph type the factory's creator
    * function returns (top-level `createGraphFactory`-style factories).
@@ -624,19 +645,7 @@ private class IndexBuilder(
           val consumerContributionScopes =
             dataEntries.flatMapTo(mutableSetOf()) { it.contributionScopes }
           for (data in dataEntries) {
-            bindings +=
-              KaBinding(
-                ptr(target),
-                data.key,
-                data.kind,
-                data.scope,
-                data.implementationName,
-                data.multibindingId,
-                originClassId = data.originClassId,
-                containerId = containerId,
-                replaces = data.replaces,
-                contributionScopes = data.contributionScopes,
-              )
+            bindings += bindingFrom(ptr(target), data, containerId = containerId)
             // The @Binds source/impl side is itself a consumer of the impl binding.
             if (data.consumedKey != null) {
               val consumerAnchor =
@@ -712,18 +721,7 @@ private class IndexBuilder(
       val consumerContributionScopes =
         dataEntries.flatMapTo(mutableSetOf()) { it.contributionScopes }
       for (data in dataEntries) {
-        bindings +=
-          KaBinding(
-            ptr(ktClass),
-            data.key,
-            data.kind,
-            data.scope,
-            data.implementationName,
-            data.multibindingId,
-            originClassId = data.originClassId,
-            replaces = data.replaces,
-            contributionScopes = data.contributionScopes,
-          )
+        bindings += bindingFrom(ptr(ktClass), data)
       }
       val injectConstructor = findInjectConstructor(ktClass, classSymbol)
       for (parameter in injectConstructor?.valueParameters.orEmpty()) {
