@@ -7,12 +7,12 @@ import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 /** The Analysis API analog of the compiler's `FirTypeKey`/`IrTypeKey`. */
 internal class KaTypeKey(
   override val type: KaTypeSnapshot,
-  override val qualifier: MetroKaAnnotation? = null,
-) : BaseTypeKey<KaTypeSnapshot, MetroKaAnnotation, KaTypeKey> {
+  override val qualifier: KaAnnotationSnapshot? = null,
+) : BaseTypeKey<KaTypeSnapshot, KaAnnotationSnapshot, KaTypeKey> {
   val renderedType: String
     get() = type.renderedType
 
-  override fun copy(type: KaTypeSnapshot, qualifier: MetroKaAnnotation?): KaTypeKey {
+  override fun copy(type: KaTypeSnapshot, qualifier: KaAnnotationSnapshot?): KaTypeKey {
     return KaTypeKey(type, qualifier)
   }
 

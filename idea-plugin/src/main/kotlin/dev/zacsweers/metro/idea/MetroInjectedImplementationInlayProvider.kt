@@ -15,7 +15,7 @@ import com.intellij.codeInsight.hints.declarative.SharedBypassCollector
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import dev.zacsweers.metro.idea.model.MetroProviderKind
+import dev.zacsweers.metro.idea.model.BindingKind
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -68,10 +68,10 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
         return
       }
       val consumer = index.consumerEntryAt(element) ?: return
-      val providers = index.resolveConsumer(consumer).effective
-      if (providers.isEmpty()) return
+      val bindings = index.resolveConsumer(consumer).effective
+      if (bindings.isEmpty()) return
 
-      val contributions = providers.count { it.kind == MetroProviderKind.MULTIBINDING_CONTRIBUTION }
+      val contributions = bindings.count { it.kind == BindingKind.MULTIBINDING_CONTRIBUTION }
       val hint: String
       val target: PsiPointerInlayActionPayload?
       if (contributions > 0) {
@@ -83,10 +83,10 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
             else -> "elements"
           }
         hint = "$contributions $noun"
-        target = providers.singleOrNull()?.let { PsiPointerInlayActionPayload(it.pointer) }
+        target = bindings.singleOrNull()?.let { PsiPointerInlayActionPayload(it.pointer) }
       } else {
         if (!consumer.isAbstractType) return
-        val binding = providers.singleOrNull() ?: return
+        val binding = bindings.singleOrNull() ?: return
         val implementationName = binding.implementationName ?: return
         // An injected class consumed as its own type isn't worth an inlay.
         if (implementationName == consumer.key.render(short = true, includeQualifier = false)) {

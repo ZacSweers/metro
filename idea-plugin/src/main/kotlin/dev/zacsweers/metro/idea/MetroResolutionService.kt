@@ -25,19 +25,19 @@ import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
+import dev.zacsweers.metro.idea.model.AssistedSite
+import dev.zacsweers.metro.idea.model.BindingContainerEntry
+import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.BindingKind
+import dev.zacsweers.metro.idea.model.ConsumerEntry
+import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
+import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
+import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
+import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
-import dev.zacsweers.metro.idea.model.MetroAssistedSite
-import dev.zacsweers.metro.idea.model.MetroBindingContainerEntry
-import dev.zacsweers.metro.idea.model.MetroBindingIndex
-import dev.zacsweers.metro.idea.model.MetroConsumerEntry
-import dev.zacsweers.metro.idea.model.MetroContributionEntry
-import dev.zacsweers.metro.idea.model.MetroGraphEntry
-import dev.zacsweers.metro.idea.model.MetroKaAnnotation
-import dev.zacsweers.metro.idea.model.MetroKaAnnotationValue
-import dev.zacsweers.metro.idea.model.MetroProviderEntry
-import dev.zacsweers.metro.idea.model.MetroProviderKind
 import java.util.Collections
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -84,10 +84,9 @@ import org.jetbrains.kotlin.types.Variance
 /**
  * Shared resolution service powering Metro's line markers, code vision, and inlay hints.
  *
- * Builds a project-wide [dev.zacsweers.metro.idea.model.MetroBindingIndex] from Kotlin stub indexes
- * plus the K2 Analysis API and caches it by Metro option fingerprint. Resolution is key-based
- * across the whole project, then filtered through graph contexts for membership-sensitive editor
- * features.
+ * Builds a project-wide [dev.zacsweers.metro.idea.model.BindingIndex] from Kotlin stub indexes plus
+ * the K2 Analysis API and caches it by Metro option fingerprint. Resolution is key-based across the
+ * whole project, then filtered through graph contexts for membership-sensitive editor features.
  */
 @Service(Service.Level.PROJECT)
 class MetroResolutionService(private val project: Project) {
@@ -100,30 +99,30 @@ class MetroResolutionService(private val project: Project) {
   // config across modules, so caching per module would build and retain the same index once per
   // edited module. LRU-bounded so fingerprints orphaned by options changes don't retain their
   // last aggregate index forever.
-  private val indexCaches: MutableMap<List<String>, CachedValue<MetroBindingIndex>> =
+  private val indexCaches: MutableMap<List<String>, CachedValue<BindingIndex>> =
     Collections.synchronizedMap(
-      object : LinkedHashMap<List<String>, CachedValue<MetroBindingIndex>>(8, 0.75f, true) {
+      object : LinkedHashMap<List<String>, CachedValue<BindingIndex>>(8, 0.75f, true) {
         override fun removeEldestEntry(
-          eldest: MutableMap.MutableEntry<List<String>, CachedValue<MetroBindingIndex>>
+          eldest: MutableMap.MutableEntry<List<String>, CachedValue<BindingIndex>>
         ): Boolean = size > 4
       }
     )
 
   /**
-   * Returns the cached binding index for the module owning [context], or [MetroBindingIndex.EMPTY]
-   * when Metro is disabled or the element has no module.
+   * Returns the cached binding index for the module owning [context], or [BindingIndex.EMPTY] when
+   * Metro is disabled or the element has no module.
    *
    * Must be called under a read action — building the index performs Analysis API resolution.
    * Normally that happens on background highlighting passes; EDT analysis is permitted for the
    * platform flows (and tests) that compute markers on the EDT.
    */
-  internal fun index(context: PsiElement): MetroBindingIndex {
+  internal fun index(context: PsiElement): BindingIndex {
     if (!MetroSettings.getInstance(project).state.enableBindingResolution) {
-      return MetroBindingIndex.EMPTY
+      return BindingIndex.EMPTY
     }
-    val module = ModuleUtilCore.findModuleForPsiElement(context) ?: return MetroBindingIndex.EMPTY
+    val module = ModuleUtilCore.findModuleForPsiElement(context) ?: return BindingIndex.EMPTY
     val state = project.service<MetroIdeProjectService>().state(module)
-    if (!state.options.enabled) return MetroBindingIndex.EMPTY
+    if (!state.options.enabled) return BindingIndex.EMPTY
     val options = state.options
     return allowAnalysisOnEdt {
       indexCaches
@@ -148,17 +147,17 @@ class MetroResolutionService(private val project: Project) {
    * Aggregates per-file shards (each cached against its own file's modification stamp) and runs the
    * cross-file passes on the merged result.
    */
-  private fun buildProjectIndex(options: MetroOptions): MetroBindingIndex {
-    val providers = mutableListOf<MetroProviderEntry>()
-    val consumers = mutableListOf<MetroConsumerEntry>()
-    val graphs = mutableListOf<MetroGraphEntry>()
-    val contributions = mutableListOf<MetroContributionEntry>()
-    val assistedSites = mutableListOf<MetroAssistedSite>()
-    val bindingContainers = mutableListOf<MetroBindingContainerEntry>()
+  private fun buildProjectIndex(options: MetroOptions): BindingIndex {
+    val bindings = mutableListOf<KaBinding>()
+    val consumers = mutableListOf<ConsumerEntry>()
+    val graphs = mutableListOf<KaGraphNode>()
+    val contributions = mutableListOf<ContributionEntry>()
+    val assistedSites = mutableListOf<AssistedSite>()
+    val bindingContainers = mutableListOf<BindingContainerEntry>()
     for (file in candidateFiles(options)) {
       ProgressManager.checkCanceled()
       val shard = shardFor(file)
-      providers += shard.providers
+      bindings += shard.bindings
       consumers += shard.consumers
       graphs += shard.graphs
       contributions += shard.contributions
@@ -166,10 +165,10 @@ class MetroResolutionService(private val project: Project) {
       bindingContainers += shard.bindingContainers
     }
     if (MetroSettings.getInstance(project).state.resolveFromLibraries) {
-      MetroIndexBuilder(project, options, providers, consumers, graphs, contributions).postProcess()
+      IndexBuilder(project, options, bindings, consumers, graphs, contributions).postProcess()
     }
-    return MetroBindingIndex(
-      providers,
+    return BindingIndex(
+      bindings,
       consumers,
       graphs,
       contributions,
@@ -206,16 +205,16 @@ class MetroResolutionService(private val project: Project) {
     return ids
   }
 
-  private fun shardFor(file: KtFile): MetroFileShard {
+  private fun shardFor(file: KtFile): FileShard {
     return CachedValuesManager.getCachedValue(file) {
       // Shards use the owning file's module options, so files keep their own module's semantics
       // even when the requesting module's config differs.
       val state = file.metroIdeState()
       val shard =
         if (state.options.enabled) {
-          MetroIndexBuilder(file.project, state.options).buildShard(file)
+          IndexBuilder(file.project, state.options).buildShard(file)
         } else {
-          MetroFileShard.EMPTY
+          FileShard.EMPTY
         }
       CachedValueProvider.Result.create(
         shard,
@@ -243,7 +242,7 @@ private fun sweepAnnotationIds(options: MetroOptions): Set<ClassId> {
 }
 
 /** Key plus display metadata for a consuming site. */
-internal class MetroConsumedSite(
+internal class ConsumedSite(
   val contextKey: KaContextualTypeKey,
   val isAbstractType: Boolean,
   /** For `Set`/`Map` aggregate sites, the multibinding id collecting contributed elements. */
@@ -256,20 +255,20 @@ internal class MetroConsumedSite(
 }
 
 /** Key plus display metadata for a single binding originated by a provider declaration. */
-internal class MetroProviderData(
+internal class BindingData(
   val key: KaTypeKey,
-  val kind: MetroProviderKind,
-  val scope: MetroKaAnnotation?,
+  val kind: BindingKind,
+  val scope: KaAnnotationSnapshot?,
   val implementationName: String?,
   /** For `@Binds`-style bindings, the key of the source/impl binding this delegates to. */
   val consumedKey: KaTypeKey? = null,
-  /** For multibinding contributions, the aggregate binding id. See [MetroProviderEntry]. */
+  /** For multibinding contributions, the aggregate binding id. See [KaBinding]. */
   val multibindingId: String? = null,
-  /** See [MetroProviderEntry.originClassId]. */
+  /** See [KaBinding.originClassId]. */
   val originClassId: ClassId? = null,
-  /** See [MetroProviderEntry.replaces]. */
+  /** See [KaBinding.replaces]. */
   val replaces: Set<ClassId> = emptySet(),
-  /** See [MetroProviderEntry.contributionScopes]. */
+  /** See [KaBinding.contributionScopes]. */
   val contributionScopes: Set<ClassId> = emptySet(),
 )
 
@@ -278,17 +277,17 @@ internal class MetroProviderData(
 // ---------------------------------------------------------------------------------------------
 
 /** The Metro declarations extracted from a single file, cached against that file's PSI. */
-internal class MetroFileShard(
-  val providers: List<MetroProviderEntry>,
-  val consumers: List<MetroConsumerEntry>,
-  val graphs: List<MetroGraphEntry>,
-  val contributions: List<MetroContributionEntry>,
-  val assistedSites: List<MetroAssistedSite>,
-  val bindingContainers: List<MetroBindingContainerEntry>,
+internal class FileShard(
+  val bindings: List<KaBinding>,
+  val consumers: List<ConsumerEntry>,
+  val graphs: List<KaGraphNode>,
+  val contributions: List<ContributionEntry>,
+  val assistedSites: List<AssistedSite>,
+  val bindingContainers: List<BindingContainerEntry>,
 ) {
   companion object {
     val EMPTY =
-      MetroFileShard(
+      FileShard(
         emptyList(),
         emptyList(),
         emptyList(),
@@ -304,19 +303,19 @@ internal class MetroFileShard(
  * the resolution service), and [postProcess] runs the cross-file library passes over the merged
  * shard accumulators passed in via the constructor.
  */
-private class MetroIndexBuilder(
+private class IndexBuilder(
   private val project: Project,
   private val options: MetroOptions,
-  private val providers: MutableList<MetroProviderEntry> = mutableListOf(),
-  private val consumers: MutableList<MetroConsumerEntry> = mutableListOf(),
-  private val graphs: MutableList<MetroGraphEntry> = mutableListOf(),
-  private val contributions: MutableList<MetroContributionEntry> = mutableListOf(),
-  private val assistedSites: MutableList<MetroAssistedSite> = mutableListOf(),
-  private val bindingContainerEntries: MutableList<MetroBindingContainerEntry> = mutableListOf(),
+  private val bindings: MutableList<KaBinding> = mutableListOf(),
+  private val consumers: MutableList<ConsumerEntry> = mutableListOf(),
+  private val graphs: MutableList<KaGraphNode> = mutableListOf(),
+  private val contributions: MutableList<ContributionEntry> = mutableListOf(),
+  private val assistedSites: MutableList<AssistedSite> = mutableListOf(),
+  private val bindingContainerEntries: MutableList<BindingContainerEntry> = mutableListOf(),
 ) {
   private val pointerManager = SmartPointerManager.getInstance(project)
 
-  private val processedProviders = HashSet<KtDeclaration>()
+  private val processedBindingCallables = HashSet<KtDeclaration>()
   private val processedInjectClasses = HashSet<KtClassOrObject>()
   private val processedMemberInjects = HashSet<KtDeclaration>()
   private val processedContributions = HashSet<KtClassOrObject>()
@@ -325,8 +324,8 @@ private class MetroIndexBuilder(
   private val processedAssistedFactories = HashSet<KtClassOrObject>()
   private val processedContainers = HashSet<KtClassOrObject>()
 
-  fun buildShard(file: KtFile): MetroFileShard {
-    val providerCallableNames =
+  fun buildShard(file: KtFile): FileShard {
+    val bindingCallableNames =
       shortNames(
         options.providesAnnotations + options.bindsAnnotations + options.multibindsAnnotations
       )
@@ -342,7 +341,7 @@ private class MetroIndexBuilder(
       ProgressManager.checkCanceled()
       val shortName = entry.shortName?.asString() ?: continue
       val declaration = entry.getStrictParentOfType<KtDeclaration>() ?: continue
-      if (shortName in providerCallableNames) processProviderCallable(declaration)
+      if (shortName in bindingCallableNames) processBindingCallable(declaration)
       if (shortName in injectNames) processInjectAnnotated(declaration)
       if (shortName in contributesNames) processContribution(declaration)
       if (shortName in graphNames) processGraph(declaration)
@@ -352,8 +351,8 @@ private class MetroIndexBuilder(
         processCircuitInject(declaration)
       }
     }
-    return MetroFileShard(
-      providers,
+    return FileShard(
+      bindings,
       consumers,
       graphs,
       contributions,
@@ -371,7 +370,7 @@ private class MetroIndexBuilder(
     // Seed dedup with classes already contributed from project sources
     contributions.mapNotNullTo(processedContributions) { it.pointer.element as? KtClassOrObject }
     scanLibraryContributionHints()
-    resolveLibraryInjectProviders()
+    resolveLibraryInjectBindings()
   }
 
   /**
@@ -458,7 +457,7 @@ private class MetroIndexBuilder(
 
       val contributedClassId = originClassId ?: ktClass.getClassId()
       contributions +=
-        MetroContributionEntry(
+        ContributionEntry(
           pointerManager.createSmartPsiElementPointer(contributionAnchor),
           setOf(scopeId),
           contributedClassId,
@@ -467,9 +466,9 @@ private class MetroIndexBuilder(
         classSymbol.annotations
           .filter { it.classId in options.allContributesAnnotations }
           .flatMapTo(hashSetOf()) { classListArgument(it, "replaces") }
-      for (data in metroProviderData(ktClass, options)) {
-        providers +=
-          MetroProviderEntry(
+      for (data in bindingData(ktClass, options)) {
+        bindings +=
+          KaBinding(
             ptr(ktClass),
             data.key,
             data.kind,
@@ -488,9 +487,9 @@ private class MetroIndexBuilder(
       val memberHolders = listOf(ktClass) + ktClass.declarations.filterIsInstance<KtClassOrObject>()
       for (holder in memberHolders) {
         for (member in holder.declarations.filterIsInstance<KtCallableDeclaration>()) {
-          for (data in metroProviderData(member, options)) {
-            providers +=
-              MetroProviderEntry(
+          for (data in bindingData(member, options)) {
+            bindings +=
+              KaBinding(
                 ptr(member),
                 data.key,
                 data.kind,
@@ -526,17 +525,17 @@ private class MetroIndexBuilder(
    * Demand-driven resolution of constructor-injected classes from compiled dependencies: the
    * annotation sweeps only cover project sources, but inject annotations survive in library
    * metadata. For each consumer key with no project-source binding, checks whether the consumed
-   * class itself is injectable and synthesizes a provider entry targeting the library declaration.
+   * class itself is injectable and synthesizes a binding entry targeting the library declaration.
    */
-  private fun resolveLibraryInjectProviders() {
-    val providerKeys = providers.mapTo(HashSet()) { it.key }
+  private fun resolveLibraryInjectBindings() {
+    val bindingKeys = bindings.mapTo(HashSet()) { it.key }
     val unresolved =
       consumers
         .filter {
           it.multibindingId == null &&
             it.typeClassId != null &&
             it.key.qualifier == null &&
-            it.key !in providerKeys
+            it.key !in bindingKeys
         }
         .groupBy { it.key }
     if (unresolved.isEmpty()) return
@@ -563,12 +562,12 @@ private class MetroIndexBuilder(
             constructors.any { it.hasAnyAnnotation(options.assistedInjectAnnotations) }
         if (!hasInject || isAssisted) return@analyze
 
-        providers +=
-          MetroProviderEntry(
+        bindings +=
+          KaBinding(
             pointerManager.createSmartPsiElementPointer(psi),
             key,
-            MetroProviderKind.INJECT,
-            metroScopeAnnotation(classSymbol, options),
+            BindingKind.INJECT,
+            scopeAnnotation(classSymbol, options),
             classSymbol.name.asString(),
           )
       }
@@ -580,7 +579,7 @@ private class MetroIndexBuilder(
   }
 
   /** `@Provides`/`@Binds`/`@Multibinds` callables, including instance-binding factory params. */
-  private fun processProviderCallable(declaration: KtDeclaration) {
+  private fun processBindingCallable(declaration: KtDeclaration) {
     val target =
       when (declaration) {
         is KtPropertyAccessor -> declaration.property
@@ -590,7 +589,7 @@ private class MetroIndexBuilder(
       is KtNamedFunction,
       is KtProperty,
       is KtParameter -> {
-        if (!processedProviders.add(target)) return
+        if (!processedBindingCallables.add(target)) return
         val containerId =
           when (target) {
             // Instance bindings belong to the factory's owning graph
@@ -602,9 +601,9 @@ private class MetroIndexBuilder(
             else -> null
           }
         analyze(target) {
-          for (data in metroProviderData(target, options)) {
-            providers +=
-              MetroProviderEntry(
+          for (data in bindingData(target, options)) {
+            bindings +=
+              KaBinding(
                 ptr(target),
                 data.key,
                 data.kind,
@@ -622,7 +621,7 @@ private class MetroIndexBuilder(
                 (target as? KtNamedFunction)?.valueParameters?.singleOrNull()
                   ?: (target as? KtCallableDeclaration)?.receiverTypeReference
                   ?: target
-              consumers += MetroConsumerEntry(ptr(consumerAnchor), data.consumedKey)
+              consumers += ConsumerEntry(ptr(consumerAnchor), data.consumedKey)
             }
           }
           // Provider function parameters are consumers themselves.
@@ -672,11 +671,11 @@ private class MetroIndexBuilder(
     if (!processedInjectClasses.add(ktClass)) return
     analyze(ktClass) {
       val classSymbol = ktClass.symbol as? KaNamedClassSymbol ?: return@analyze
-      // metroProviderData verifies injectability/contributions itself; classes without an explicit
+      // bindingData verifies injectability/contributions itself; classes without an explicit
       // primary constructor still provide their own type.
-      for (data in metroProviderData(ktClass, options)) {
-        providers +=
-          MetroProviderEntry(
+      for (data in bindingData(ktClass, options)) {
+        bindings +=
+          KaBinding(
             ptr(ktClass),
             data.key,
             data.kind,
@@ -702,7 +701,7 @@ private class MetroIndexBuilder(
       val classSymbol = ktClass.symbol as? KaNamedClassSymbol ?: return@analyze
       val scopeKeys = scopeKeysFor(classSymbol, options.allContributesAnnotations) ?: return@analyze
       contributions +=
-        MetroContributionEntry(
+        ContributionEntry(
           pointerManager.createSmartPsiElementPointer(ktClass),
           scopeKeys,
           ktClass.getClassId(),
@@ -724,7 +723,7 @@ private class MetroIndexBuilder(
         classSymbol.annotations.filter { it.classId in options.graphExtensionAnnotations }
       val annotations = graphAnnotations + extensionAnnotations
       if (annotations.isEmpty()) return@analyze
-      val scopeKeys = annotations.flatMapTo(mutableSetOf()) { metroScopeKeys(it) }
+      val scopeKeys = annotations.flatMapTo(mutableSetOf()) { annotationScopeKeys(it) }
       val excludes = annotations.flatMapTo(mutableSetOf()) { classListArgument(it, "excludes") }
       val containerIds =
         annotations.flatMapTo(mutableSetOf()) { classListArgument(it, "bindingContainers") }
@@ -775,9 +774,9 @@ private class MetroIndexBuilder(
               accessorTypeIds += returnClassType.classId
               continue
             }
-            val site = metroConsumedSite(symbol, options)
+            val site = consumedSite(symbol, options)
             consumers +=
-              MetroConsumerEntry(
+              ConsumerEntry(
                 ptr(member),
                 site.key,
                 site.isAbstractType,
@@ -794,11 +793,11 @@ private class MetroIndexBuilder(
       // explicitly declared scope annotations
       val scopingAnnotations = buildSet {
         scopeKeys.mapTo(this, ::implicitSingleInAnnotation)
-        addAll(metroScopeAnnotations(classSymbol, options))
+        addAll(scopeAnnotations(classSymbol, options))
       }
 
       graphs +=
-        MetroGraphEntry(
+        KaGraphNode(
           pointerManager.createSmartPsiElementPointer(ktClass),
           scopeKeys,
           classId = graphClassId,
@@ -821,11 +820,11 @@ private class MetroIndexBuilder(
       if (callable is KaNamedFunctionSymbol && callable.valueParameters.isNotEmpty()) continue
       if (callable.returnType.isUnitType) continue
       val psi = callable.psi as? KtElement ?: continue
-      providers +=
-        MetroProviderEntry(
+      bindings +=
+        KaBinding(
           ptr(psi),
-          metroKey(callable.returnType, metroQualifier(callable, options)),
-          MetroProviderKind.INCLUDED,
+          typeKey(callable.returnType, qualifierAnnotation(callable, options)),
+          BindingKind.INCLUDED,
           null,
           null,
           containerId = depClassId,
@@ -849,12 +848,12 @@ private class MetroIndexBuilder(
           ?.classId
           ?.shortClassName
           ?.asString()
-      providers +=
-        MetroProviderEntry(
+      bindings +=
+        KaBinding(
           ptr(ktClass),
-          metroKey(classSymbol.defaultType, metroQualifier(classSymbol, options)),
-          MetroProviderKind.ASSISTED_FACTORY,
-          metroScopeAnnotation(classSymbol, options),
+          typeKey(classSymbol.defaultType, qualifierAnnotation(classSymbol, options)),
+          BindingKind.ASSISTED_FACTORY,
+          scopeAnnotation(classSymbol, options),
           createdName,
           originClassId = ktClass.getClassId(),
         )
@@ -872,7 +871,7 @@ private class MetroIndexBuilder(
         classSymbol.annotations.firstOrNull { it.classId in options.bindingContainerAnnotations }
           ?: return@analyze
       bindingContainerEntries +=
-        MetroBindingContainerEntry(
+        BindingContainerEntry(
           classId,
           classListArgument(containerAnnotation, "includes").toSet(),
         )
@@ -889,7 +888,7 @@ private class MetroIndexBuilder(
   ): Set<ClassId>? {
     val annotations = annotated.annotations.filter { it.classId in annotationClassIds }
     if (annotations.isEmpty()) return null
-    return annotations.flatMapTo(mutableSetOf()) { metroScopeKeys(it) }
+    return annotations.flatMapTo(mutableSetOf()) { annotationScopeKeys(it) }
   }
 
   /**
@@ -952,15 +951,15 @@ private class MetroIndexBuilder(
     annotation: KaAnnotation,
     factoryClassId: ClassId,
   ) {
-    val scopes = metroScopeKeys(annotation)
-    contributions += MetroContributionEntry(ptr(declaration), scopes)
+    val scopes = annotationScopeKeys(annotation)
+    contributions += ContributionEntry(ptr(declaration), scopes)
     val factoryType = (findClass(factoryClassId) as? KaNamedClassSymbol)?.defaultType ?: return
-    val elementKey = metroKey(factoryType, null)
-    providers +=
-      MetroProviderEntry(
+    val elementKey = typeKey(factoryType, null)
+    bindings +=
+      KaBinding(
         ptr(declaration),
         elementKey,
-        MetroProviderKind.MULTIBINDING_CONTRIBUTION,
+        BindingKind.MULTIBINDING_CONTRIBUTION,
         null,
         declaration.name,
         multibindingId = elementKey.computeMultibindingId(),
@@ -971,11 +970,11 @@ private class MetroIndexBuilder(
   private fun KaSession.addCircuitParameterConsumer(parameter: KtParameter) {
     val symbol = parameter.symbol as? KaValueParameterSymbol ?: return
     if (symbol.hasAnyAnnotation(options.assistedAnnotations)) {
-      assistedSites += MetroAssistedSite(ptr(parameter), "@Assisted", isImplicit = false)
+      assistedSites += AssistedSite(ptr(parameter), "@Assisted", isImplicit = false)
       return
     }
     if (isCircuitProvidedType(symbol.returnType)) {
-      assistedSites += MetroAssistedSite(ptr(parameter), "Circuit", isImplicit = true)
+      assistedSites += AssistedSite(ptr(parameter), "Circuit", isImplicit = true)
       return
     }
     addConsumer(parameter, symbol)
@@ -1021,7 +1020,7 @@ private class MetroIndexBuilder(
   private fun KaSession.addParameterConsumer(parameter: KtParameter) {
     val symbol = parameter.symbol as? KaValueParameterSymbol ?: return
     if (symbol.hasAnyAnnotation(options.assistedAnnotations)) {
-      assistedSites += MetroAssistedSite(ptr(parameter), "@Assisted", isImplicit = false)
+      assistedSites += AssistedSite(ptr(parameter), "@Assisted", isImplicit = false)
       return
     }
     if (symbol.hasAnyAnnotation(options.providesAnnotations)) return // instance binding param
@@ -1029,9 +1028,9 @@ private class MetroIndexBuilder(
   }
 
   private fun KaSession.addConsumer(element: KtElement, symbol: KaCallableSymbol) {
-    val site = metroConsumedSite(symbol, options)
+    val site = consumedSite(symbol, options)
     consumers +=
-      MetroConsumerEntry(
+      ConsumerEntry(
         ptr(element),
         site.key,
         site.isAbstractType,
@@ -1084,7 +1083,7 @@ internal fun KaAnnotated.hasAnyAnnotation(classIds: Set<ClassId>): Boolean {
 }
 
 /** Renders a type as a stable, fully-qualified binding key string. */
-internal fun KaSession.renderMetroKeyType(type: KaType): String {
+internal fun KaSession.renderKeyType(type: KaType): String {
   return type.fullyExpandedType.render(
     KaTypeRendererForSource.WITH_QUALIFIED_NAMES,
     position = Variance.INVARIANT,
@@ -1092,7 +1091,7 @@ internal fun KaSession.renderMetroKeyType(type: KaType): String {
 }
 
 /** Renders a type with short names for display purposes. */
-internal fun KaSession.renderMetroKeyTypeShort(type: KaType): String {
+internal fun KaSession.renderShortKeyType(type: KaType): String {
   return type.fullyExpandedType.render(
     KaTypeRendererForSource.WITH_SHORT_NAMES,
     position = Variance.INVARIANT,
@@ -1100,29 +1099,29 @@ internal fun KaSession.renderMetroKeyTypeShort(type: KaType): String {
 }
 
 /** Builds a [KaTypeKey] for [type], capturing a restorable pointer and both renderings. */
-internal fun KaSession.metroKey(type: KaType, qualifier: MetroKaAnnotation?): KaTypeKey {
-  return KaTypeKey(metroTypeSnapshot(type), qualifier)
+internal fun KaSession.typeKey(type: KaType, qualifier: KaAnnotationSnapshot?): KaTypeKey {
+  return KaTypeKey(typeSnapshot(type), qualifier)
 }
 
 /** Builds a session-free type snapshot for the current analysis session. */
-internal fun KaSession.metroTypeSnapshot(type: KaType): KaTypeSnapshot {
+internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
   val expanded = type.fullyExpandedType
   return KaTypeSnapshot(
     expanded.createPointer(),
-    renderMetroKeyType(expanded),
-    renderMetroKeyTypeShort(expanded),
+    renderKeyType(expanded),
+    renderShortKeyType(expanded),
     (expanded as? KaClassType)?.classId,
   )
 }
 
 /** Builds a contextual key that preserves provider/lazy/map wrapper structure. */
-internal fun KaSession.metroContextualTypeKey(
+internal fun KaSession.contextualTypeKey(
   type: KaType,
-  qualifier: MetroKaAnnotation?,
+  qualifier: KaAnnotationSnapshot?,
   options: MetroOptions,
 ): KaContextualTypeKey {
   val declaredType = type.fullyExpandedType
-  val rawSnapshot = metroTypeSnapshot(declaredType)
+  val rawSnapshot = typeSnapshot(declaredType)
   val wrappedType = declaredType.asWrappedType(options)
   val keySnapshot =
     when (wrappedType) {
@@ -1140,7 +1139,7 @@ internal fun KaSession.metroContextualTypeKey(
 context(session: KaSession)
 private fun KaType.asWrappedType(options: MetroOptions): WrappedType<KaTypeSnapshot> {
   val expanded = with(session) { fullyExpandedType }
-  val rawSnapshot = session.metroTypeSnapshot(expanded)
+  val rawSnapshot = session.typeSnapshot(expanded)
   val classType = expanded as? KaClassType ?: return WrappedType.Canonical(rawSnapshot)
   val classId = classType.classId ?: return WrappedType.Canonical(rawSnapshot)
 
@@ -1148,7 +1147,7 @@ private fun KaType.asWrappedType(options: MetroOptions): WrappedType<KaTypeSnaps
     val keyType = classType.typeArguments.getOrNull(0)?.type
     val valueType = classType.typeArguments.getOrNull(1)?.type
     if (keyType != null && valueType != null) {
-      return WrappedType.Map(session.metroTypeSnapshot(keyType), valueType.asWrappedType(options)) {
+      return WrappedType.Map(session.typeSnapshot(keyType), valueType.asWrappedType(options)) {
         rawSnapshot
       }
     }
@@ -1171,19 +1170,19 @@ private fun KaType.asWrappedType(options: MetroOptions): WrappedType<KaTypeSnaps
   return WrappedType.Canonical(rawSnapshot)
 }
 
-internal fun KaSession.metroConsumedSite(
+internal fun KaSession.consumedSite(
   symbol: KaCallableSymbol,
   options: MetroOptions,
-): MetroConsumedSite {
+): ConsumedSite {
   val returnType = symbol.returnType.fullyExpandedType
-  val qualifier = metroQualifier(symbol, options)
-  val contextKey = metroContextualTypeKey(returnType, qualifier, options)
+  val qualifier = qualifierAnnotation(symbol, options)
+  val contextKey = contextualTypeKey(returnType, qualifier, options)
   val classSymbol = contextKey.typeKey.type.classId?.let { findClass(it) } as? KaClassSymbol
   val isAbstract =
     classSymbol != null &&
       (classSymbol.classKind == KaClassKind.INTERFACE ||
         classSymbol.modality == KaSymbolModality.ABSTRACT)
-  return MetroConsumedSite(
+  return ConsumedSite(
     contextKey,
     isAbstract,
     aggregateMultibindingId(returnType as? KaClassType, contextKey, options),
@@ -1218,7 +1217,7 @@ private fun KaSession.aggregateMultibindingId(
  * the compiler's `mapKeyType`: the annotation's single member type when the `@MapKey`
  * meta-annotation has `unwrapValue = true` (the default), otherwise the annotation type itself.
  */
-internal fun KaSession.metroMapKeyType(annotated: KaAnnotated, options: MetroOptions): String? {
+internal fun KaSession.mapKeyType(annotated: KaAnnotated, options: MetroOptions): String? {
   for (annotation in annotated.annotations) {
     val classId = annotation.classId ?: continue
     val annotationClass = findClass(classId) as? KaNamedClassSymbol ?: continue
@@ -1237,30 +1236,30 @@ internal fun KaSession.metroMapKeyType(annotated: KaAnnotated, options: MetroOpt
       } else {
         annotationClass.defaultType
       }
-    return renderMetroKeyType(keyType)
+    return renderKeyType(keyType)
   }
   return null
 }
 
 /** Converts a resolved [KaAnnotation] to its session-free structured snapshot. */
-internal fun KaAnnotation.toMetroKaAnnotation(): MetroKaAnnotation? {
+internal fun KaAnnotation.toKaAnnotationSnapshot(): KaAnnotationSnapshot? {
   val classId = classId ?: return null
-  return MetroKaAnnotation(classId, arguments.map { it.name to it.expression.toMetroValue() })
+  return KaAnnotationSnapshot(classId, arguments.map { it.name to it.expression.toValueSnapshot() })
 }
 
-private fun KaAnnotationValue.toMetroValue(): MetroKaAnnotationValue {
+private fun KaAnnotationValue.toValueSnapshot(): KaAnnotationValueSnapshot {
   return when (this) {
-    is KaAnnotationValue.ConstantValue -> MetroKaAnnotationValue.Literal(value.value)
-    is KaAnnotationValue.EnumEntryValue -> MetroKaAnnotationValue.EnumEntry(callableId)
+    is KaAnnotationValue.ConstantValue -> KaAnnotationValueSnapshot.Literal(value.value)
+    is KaAnnotationValue.EnumEntryValue -> KaAnnotationValueSnapshot.EnumEntry(callableId)
     // classId may be unpopulated for binary-deserialized values; the type still carries it
     is KaAnnotationValue.ClassLiteralValue ->
-      MetroKaAnnotationValue.KClassRef(classId ?: (type as? KaClassType)?.classId)
+      KaAnnotationValueSnapshot.KClassRef(classId ?: (type as? KaClassType)?.classId)
     is KaAnnotationValue.ArrayValue ->
-      MetroKaAnnotationValue.Array(values.map { it.toMetroValue() })
+      KaAnnotationValueSnapshot.Array(values.map { it.toValueSnapshot() })
     is KaAnnotationValue.NestedAnnotationValue ->
-      annotation.toMetroKaAnnotation()?.let { MetroKaAnnotationValue.Nested(it) }
-        ?: MetroKaAnnotationValue.Unsupported
-    else -> MetroKaAnnotationValue.Unsupported
+      annotation.toKaAnnotationSnapshot()?.let { KaAnnotationValueSnapshot.Nested(it) }
+        ?: KaAnnotationValueSnapshot.Unsupported
+    else -> KaAnnotationValueSnapshot.Unsupported
   }
 }
 
@@ -1268,18 +1267,18 @@ private fun KaAnnotationValue.toMetroValue(): MetroKaAnnotationValue {
 private fun KaSession.findMetaAnnotated(
   annotated: KaAnnotated,
   metaAnnotations: Set<ClassId>,
-): MetroKaAnnotation? = findAllMetaAnnotated(annotated, metaAnnotations).firstOrNull()
+): KaAnnotationSnapshot? = findAllMetaAnnotated(annotated, metaAnnotations).firstOrNull()
 
 /** Finds all annotations whose classes are meta-annotated with any of [metaAnnotations]. */
 private fun KaSession.findAllMetaAnnotated(
   annotated: KaAnnotated,
   metaAnnotations: Set<ClassId>,
-): List<MetroKaAnnotation> {
+): List<KaAnnotationSnapshot> {
   return annotated.annotations.mapNotNull { annotation ->
     val classId = annotation.classId ?: return@mapNotNull null
     val annotationClass = findClass(classId) ?: return@mapNotNull null
     if (annotationClass.annotations.any { it.classId in metaAnnotations }) {
-      annotation.toMetroKaAnnotation()
+      annotation.toKaAnnotationSnapshot()
     } else {
       null
     }
@@ -1287,35 +1286,35 @@ private fun KaSession.findAllMetaAnnotated(
 }
 
 /** Finds the first qualifier annotation (an annotation meta-annotated with `@Qualifier`). */
-internal fun KaSession.metroQualifier(
+internal fun KaSession.qualifierAnnotation(
   annotated: KaAnnotated,
   options: MetroOptions,
-): MetroKaAnnotation? = findMetaAnnotated(annotated, options.qualifierAnnotations)
+): KaAnnotationSnapshot? = findMetaAnnotated(annotated, options.qualifierAnnotations)
 
 /** Finds the first scope annotation (an annotation meta-annotated with `@Scope`). */
-internal fun KaSession.metroScopeAnnotation(
+internal fun KaSession.scopeAnnotation(
   annotated: KaAnnotated,
   options: MetroOptions,
-): MetroKaAnnotation? = findMetaAnnotated(annotated, options.scopeAnnotations)
+): KaAnnotationSnapshot? = findMetaAnnotated(annotated, options.scopeAnnotations)
 
 /** Finds all scope annotations (annotations meta-annotated with `@Scope`). */
-internal fun KaSession.metroScopeAnnotations(
+internal fun KaSession.scopeAnnotations(
   annotated: KaAnnotated,
   options: MetroOptions,
-): List<MetroKaAnnotation> = findAllMetaAnnotated(annotated, options.scopeAnnotations)
+): List<KaAnnotationSnapshot> = findAllMetaAnnotated(annotated, options.scopeAnnotations)
 
 /**
  * The `@SingleIn(scope)` implicitly conveyed by a graph annotation's aggregation [scopeClassId].
  */
-internal fun implicitSingleInAnnotation(scopeClassId: ClassId): MetroKaAnnotation {
-  return MetroKaAnnotation(
+internal fun implicitSingleInAnnotation(scopeClassId: ClassId): KaAnnotationSnapshot {
+  return KaAnnotationSnapshot(
     MetroClassIds.singleIn,
-    listOf(Name.identifier("scope") to MetroKaAnnotationValue.KClassRef(scopeClassId)),
+    listOf(Name.identifier("scope") to KaAnnotationValueSnapshot.KClassRef(scopeClassId)),
   )
 }
 
 /** Extracts `scope`/`additionalScopes` class-literal arguments. */
-internal fun metroScopeKeys(annotation: KaAnnotation): Set<ClassId> {
+internal fun annotationScopeKeys(annotation: KaAnnotation): Set<ClassId> {
   val result = mutableSetOf<ClassId>()
   for (argument in annotation.arguments) {
     when (argument.name.asString()) {
@@ -1340,25 +1339,25 @@ private fun classLiteralClassId(value: KaAnnotationValue): ClassId? {
  * Computes the bindings originated by [declaration]: `@Provides`/`@Binds`/`@Multibinds` callables,
  * injected classes, contributed bindings, and instance-binding factory parameters.
  */
-internal fun KaSession.metroProviderData(
+internal fun KaSession.bindingData(
   declaration: KtDeclaration,
   options: MetroOptions,
-): List<MetroProviderData> {
+): List<BindingData> {
   return when (declaration) {
-    is KtPropertyAccessor -> metroProviderData(declaration.property, options)
+    is KtPropertyAccessor -> bindingData(declaration.property, options)
     is KtNamedFunction,
-    is KtProperty -> callableProviderData(declaration as KtCallableDeclaration, options)
+    is KtProperty -> callableBindingData(declaration as KtCallableDeclaration, options)
     is KtParameter -> instanceBindingData(declaration, options)
-    is KtClassOrObject -> classProviderData(declaration, options)
-    is KtConstructor<*> -> classProviderData(declaration.getContainingClassOrObject(), options)
+    is KtClassOrObject -> classBindingData(declaration, options)
+    is KtConstructor<*> -> classBindingData(declaration.getContainingClassOrObject(), options)
     else -> emptyList()
   }
 }
 
-private fun KaSession.callableProviderData(
+private fun KaSession.callableBindingData(
   declaration: KtCallableDeclaration,
   options: MetroOptions,
-): List<MetroProviderData> {
+): List<BindingData> {
   val symbol = declaration.symbol as? KaCallableSymbol ?: return emptyList()
   val getterSymbol = (symbol as? KaPropertySymbol)?.getter
 
@@ -1366,8 +1365,8 @@ private fun KaSession.callableProviderData(
     return symbol.hasAnyAnnotation(classIds) || getterSymbol?.hasAnyAnnotation(classIds) == true
   }
 
-  val qualifier = metroQualifier(symbol, options)
-  val scope = metroScopeAnnotation(symbol, options)
+  val qualifier = qualifierAnnotation(symbol, options)
+  val scope = scopeAnnotation(symbol, options)
   val returnType = symbol.returnType
 
   // Mirrors the compiler's transformIfIntoMultibinding: a contribution keeps its element key as
@@ -1376,8 +1375,8 @@ private fun KaSession.callableProviderData(
     return when {
       has(options.intoMapAnnotations) -> {
         val mapKeyType =
-          metroMapKeyType(symbol, options)
-            ?: getterSymbol?.let { metroMapKeyType(it, options) }
+          mapKeyType(symbol, options)
+            ?: getterSymbol?.let { mapKeyType(it, options) }
             ?: return null
         createMapBindingId(mapKeyType, elementKey)
       }
@@ -1394,18 +1393,18 @@ private fun KaSession.callableProviderData(
           ?: (symbol as? KaNamedFunctionSymbol)?.valueParameters?.singleOrNull()?.returnType
           ?: return emptyList()
       val sourceParam = (symbol as? KaNamedFunctionSymbol)?.valueParameters?.singleOrNull()
-      val consumedKey = metroKey(sourceType, sourceParam?.let { metroQualifier(it, options) })
+      val consumedKey = typeKey(sourceType, sourceParam?.let { qualifierAnnotation(it, options) })
       val implementationName =
         (sourceType.fullyExpandedType as? KaClassType)?.classId?.shortClassName?.asString()
-      val elementKey = metroKey(returnType, qualifier)
+      val elementKey = typeKey(returnType, qualifier)
       val multibindingId = multibindingId(elementKey)
       listOf(
-        MetroProviderData(
+        BindingData(
           elementKey,
           if (multibindingId != null) {
-            MetroProviderKind.MULTIBINDING_CONTRIBUTION
+            BindingKind.MULTIBINDING_CONTRIBUTION
           } else {
-            MetroProviderKind.BINDS
+            BindingKind.BINDS
           },
           scope,
           implementationName,
@@ -1416,9 +1415,9 @@ private fun KaSession.callableProviderData(
     }
     has(options.multibindsAnnotations) ->
       listOf(
-        MetroProviderData(
-          metroKey(returnType, qualifier),
-          MetroProviderKind.MULTIBINDING_DECLARATION,
+        BindingData(
+          typeKey(returnType, qualifier),
+          BindingKind.MULTIBINDING_DECLARATION,
           scope,
           null,
         )
@@ -1432,15 +1431,15 @@ private fun KaSession.callableProviderData(
         } else {
           returnType
         }
-      val elementKey = metroKey(elementType, qualifier)
+      val elementKey = typeKey(elementType, qualifier)
       val multibindingId = multibindingId(elementKey)
       listOf(
-        MetroProviderData(
+        BindingData(
           elementKey,
           if (multibindingId != null) {
-            MetroProviderKind.MULTIBINDING_CONTRIBUTION
+            BindingKind.MULTIBINDING_CONTRIBUTION
           } else {
-            MetroProviderKind.PROVIDES
+            BindingKind.PROVIDES
           },
           scope,
           null,
@@ -1455,27 +1454,27 @@ private fun KaSession.callableProviderData(
 private fun KaSession.instanceBindingData(
   parameter: KtParameter,
   options: MetroOptions,
-): List<MetroProviderData> {
+): List<BindingData> {
   val symbol = parameter.symbol as? KaValueParameterSymbol ?: return emptyList()
   if (!symbol.hasAnyAnnotation(options.providesAnnotations)) return emptyList()
   return listOf(
-    MetroProviderData(
-      metroKey(symbol.returnType, metroQualifier(symbol, options)),
-      MetroProviderKind.INSTANCE,
+    BindingData(
+      typeKey(symbol.returnType, qualifierAnnotation(symbol, options)),
+      BindingKind.INSTANCE,
       null,
       null,
     )
   )
 }
 
-private fun KaSession.classProviderData(
+private fun KaSession.classBindingData(
   ktClass: KtClassOrObject,
   options: MetroOptions,
-): List<MetroProviderData> {
+): List<BindingData> {
   val classSymbol = ktClass.symbol as? KaNamedClassSymbol ?: return emptyList()
-  val result = mutableListOf<MetroProviderData>()
-  val qualifier = metroQualifier(classSymbol, options)
-  val scope = metroScopeAnnotation(classSymbol, options)
+  val result = mutableListOf<BindingData>()
+  val qualifier = qualifierAnnotation(classSymbol, options)
+  val scope = scopeAnnotation(classSymbol, options)
   val constructors = listOfNotNull(ktClass.primaryConstructor) + ktClass.secondaryConstructors
 
   fun hasOnClassOrConstructor(classIds: Set<ClassId>): Boolean {
@@ -1502,9 +1501,9 @@ private fun KaSession.classProviderData(
   val originClassId = ktClass.getClassId()
   if (isInjectable && !isAssisted) {
     result +=
-      MetroProviderData(
-        metroKey(classSymbol.defaultType, qualifier),
-        MetroProviderKind.INJECT,
+      BindingData(
+        typeKey(classSymbol.defaultType, qualifier),
+        BindingKind.INJECT,
         scope,
         ktClass.name,
         originClassId = originClassId,
@@ -1516,15 +1515,15 @@ private fun KaSession.classProviderData(
   for (annotation in contributesAnnotations) {
     val classId = annotation.classId ?: continue
     val boundType = contributedBoundType(ktClass, classSymbol, annotation) ?: continue
-    val elementKey = metroKey(boundType, qualifier)
-    val contributionScopes = metroScopeKeys(annotation)
+    val elementKey = typeKey(boundType, qualifier)
+    val contributionScopes = annotationScopeKeys(annotation)
     val replaces = classListArgument(annotation, "replaces").toSet()
     when (classId) {
       in options.contributesBindingAnnotations ->
         result +=
-          MetroProviderData(
+          BindingData(
             elementKey,
-            MetroProviderKind.CONTRIBUTED,
+            BindingKind.CONTRIBUTED,
             scope,
             ktClass.name,
             originClassId = originClassId,
@@ -1534,9 +1533,9 @@ private fun KaSession.classProviderData(
 
       in intoSetIds ->
         result +=
-          MetroProviderData(
+          BindingData(
             elementKey,
-            MetroProviderKind.MULTIBINDING_CONTRIBUTION,
+            BindingKind.MULTIBINDING_CONTRIBUTION,
             scope,
             ktClass.name,
             multibindingId = elementKey.computeMultibindingId(),
@@ -1546,11 +1545,11 @@ private fun KaSession.classProviderData(
           )
 
       in options.contributesIntoMapAnnotations -> {
-        val mapKeyType = metroMapKeyType(classSymbol, options) ?: continue
+        val mapKeyType = mapKeyType(classSymbol, options) ?: continue
         result +=
-          MetroProviderData(
+          BindingData(
             elementKey,
-            MetroProviderKind.MULTIBINDING_CONTRIBUTION,
+            BindingKind.MULTIBINDING_CONTRIBUTION,
             scope,
             ktClass.name,
             multibindingId = createMapBindingId(mapKeyType, elementKey),

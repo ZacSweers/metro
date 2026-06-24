@@ -14,7 +14,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
-import dev.zacsweers.metro.idea.model.MetroBindingIndex
+import dev.zacsweers.metro.idea.model.BindingIndex
 import java.awt.event.MouseEvent
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
@@ -27,7 +27,7 @@ import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 internal const val METRO_CODE_VISION_GROUP_ID = "metro"
 
 /**
- * Code vision headers above Metro declarations: consumer counts above providers and contribution
+ * Code vision headers above Metro declarations: consumer counts above bindings and contribution
  * counts above graphs. Clicking opens the same grouped navigation popup as the gutter icons.
  */
 class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
@@ -65,13 +65,13 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
 
   private fun collectFor(
     declaration: KtNamedDeclaration,
-    index: MetroBindingIndex,
+    index: BindingIndex,
     entries: MutableList<Pair<TextRange, CodeVisionEntry>>,
   ) {
-    val providerEntries = index.providerEntriesAt(declaration)
-    if (providerEntries.isNotEmpty()) {
-      val consumers = index.consumersFor(providerEntries)
-      val key = providerEntries.first().key.render(short = true)
+    val bindingEntries = index.bindingEntriesAt(declaration)
+    if (bindingEntries.isNotEmpty()) {
+      val consumers = index.consumersFor(bindingEntries)
+      val key = bindingEntries.first().key.render(short = true)
       entries +=
         declaration.textRange to
           entry(
@@ -150,5 +150,5 @@ class MetroCodeVisionGroupSettingProvider : CodeVisionGroupSettingProvider {
   override val groupId: String = METRO_CODE_VISION_GROUP_ID
   override val groupName: String = "Metro"
   override val description: String =
-    "Shows consumer counts above Metro providers and contribution counts above dependency graphs."
+    "Shows consumer counts above Metro bindings and contribution counts above dependency graphs."
 }

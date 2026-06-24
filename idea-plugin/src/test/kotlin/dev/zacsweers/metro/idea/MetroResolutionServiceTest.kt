@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import dev.zacsweers.metro.idea.model.MetroProviderKind
+import dev.zacsweers.metro.idea.model.BindingKind
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
@@ -81,13 +81,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     ) as KtFile
   }
 
-  fun testBindsProviderIsIndexedWithImplementation() {
+  fun testBindsBindingIsIndexedWithImplementation() {
     val file = configure()
     val index = MetroResolutionService.getInstance(project).index(file)
     val declarations = file.declarationsIncludingNested()
 
-    val entry = index.providerEntriesAt(declarations.function("bindService")).single()
-    assertEquals(MetroProviderKind.BINDS, entry.kind)
+    val entry = index.bindingEntriesAt(declarations.function("bindService")).single()
+    assertEquals(BindingKind.BINDS, entry.kind)
     assertEquals("test.Service", entry.key.renderedType)
     assertEquals("ServiceImpl", entry.implementationName)
 
@@ -101,8 +101,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val index = MetroResolutionService.getInstance(project).index(file)
     val declarations = file.declarationsIncludingNested()
 
-    val entry = index.providerEntriesAt(declarations.klass("Consumer")).single()
-    assertEquals(MetroProviderKind.INJECT, entry.kind)
+    val entry = index.bindingEntriesAt(declarations.klass("Consumer")).single()
+    assertEquals(BindingKind.INJECT, entry.kind)
     assertEquals("test.Consumer", entry.key.renderedType)
 
     val serviceParam = index.consumerEntryAt(declarations.parameter("service"))!!
@@ -110,8 +110,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(serviceParam.isAbstractType)
 
     // The consumer's Service key resolves to the @Binds provider
-    val providers = index.providersFor(serviceParam)
-    assertEquals(listOf(MetroProviderKind.BINDS), providers.map { it.kind })
+    val bindings = index.bindingsFor(serviceParam)
+    assertEquals(listOf(BindingKind.BINDS), bindings.map { it.kind })
   }
 
   fun testContributedBindingBindsItsSoleSupertypeWithScope() {
@@ -119,14 +119,14 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val index = MetroResolutionService.getInstance(project).index(file)
     val declarations = file.declarationsIncludingNested()
 
-    val entries = index.providerEntriesAt(declarations.klass("RealHttpApi"))
-    val contributed = entries.single { it.kind == MetroProviderKind.CONTRIBUTED }
+    val entries = index.bindingEntriesAt(declarations.klass("RealHttpApi"))
+    val contributed = entries.single { it.kind == BindingKind.CONTRIBUTED }
     assertEquals("test.HttpApi", contributed.key.renderedType)
     assertEquals("RealHttpApi", contributed.implementationName)
     assertEquals("@SingleIn(scope = AppScope::class)", contributed.scope?.render(short = true))
 
     val apiParam = index.consumerEntryAt(declarations.parameter("api"))!!
-    assertEquals(listOf("RealHttpApi"), index.providersFor(apiParam).map { it.implementationName })
+    assertEquals(listOf("RealHttpApi"), index.bindingsFor(apiParam).map { it.implementationName })
   }
 
   fun testSetMultibindingContributionsJoinTheirAggregateConsumer() {
@@ -139,13 +139,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals("test.Analytics", analyticsParam.multibindingId)
 
     // Contributions keep their element key, mirroring the compiler's @MultibindingElement model
-    val contributors = index.providersFor(analyticsParam)
+    val contributors = index.bindingsFor(analyticsParam)
     assertEquals(2, contributors.size)
-    assertTrue(contributors.all { it.kind == MetroProviderKind.MULTIBINDING_CONTRIBUTION })
+    assertTrue(contributors.all { it.kind == BindingKind.MULTIBINDING_CONTRIBUTION })
     assertTrue(contributors.all { it.key.renderedType == "test.Analytics" })
 
     // And the reverse direction: a contribution's consumers include the aggregate site
-    val debugAnalytics = index.providerEntriesAt(declarations.klass("DebugAnalytics"))
+    val debugAnalytics = index.bindingEntriesAt(declarations.klass("DebugAnalytics"))
     val consumers = index.consumersFor(debugAnalytics)
     assertTrue(consumers.any { it.pointer.element === declarations.parameter("analytics") })
   }
@@ -162,9 +162,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     )
     assertEquals("kotlin.String_test.Service", handlersParam.multibindingId)
 
-    val contributors = index.providersFor(handlersParam)
+    val contributors = index.bindingsFor(handlersParam)
     assertEquals(2, contributors.size)
-    assertTrue(contributors.all { it.kind == MetroProviderKind.MULTIBINDING_CONTRIBUTION })
+    assertTrue(contributors.all { it.kind == BindingKind.MULTIBINDING_CONTRIBUTION })
     assertEquals(
       setOf("handlerA", "handlerB"),
       contributors.mapNotNull { (it.pointer.element as? KtNamedDeclaration)?.name }.toSet(),
@@ -172,7 +172,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     // The plain Service consumer is not polluted by map contributions
     val serviceParam = index.consumerEntryAt(declarations.parameter("service"))!!
-    assertEquals(listOf(MetroProviderKind.BINDS), index.providersFor(serviceParam).map { it.kind })
+    assertEquals(listOf(BindingKind.BINDS), index.bindingsFor(serviceParam).map { it.kind })
   }
 
   fun testQualifiersDisambiguateKeys() {
@@ -187,9 +187,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       cdnParam.key.render(short = false),
     )
 
-    val providers = index.providersFor(cdnParam)
-    assertEquals(1, providers.size)
-    assertEquals("provideCdnUrl", (providers.single().pointer.element as? KtNamedDeclaration)?.name)
+    val bindings = index.bindingsFor(cdnParam)
+    assertEquals(1, bindings.size)
+    assertEquals("provideCdnUrl", (bindings.single().pointer.element as? KtNamedDeclaration)?.name)
   }
 
   fun testConcreteInjectedClassConsumersAcrossInjectionShapes() {
@@ -222,8 +222,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val index = MetroResolutionService.getInstance(project).index(file)
     val declarations = file.declarationsIncludingNested()
 
-    val repositoryEntries = index.providerEntriesAt(declarations.klass("Repository"))
-    assertEquals(listOf(MetroProviderKind.INJECT), repositoryEntries.map { it.kind })
+    val repositoryEntries = index.bindingEntriesAt(declarations.klass("Repository"))
+    assertEquals(listOf(BindingKind.INJECT), repositoryEntries.map { it.kind })
 
     val consumerElements =
       index.consumersFor(repositoryEntries).mapNotNull {
@@ -302,9 +302,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // The exact inputs the implementation inlay needs
     val consumer = index.consumerEntryAt(declarations.parameter("repo"))!!
     assertTrue(consumer.isAbstractType)
-    val providers = index.providersFor(consumer)
-    assertEquals(1, providers.size)
-    assertEquals("RepoImpl", providers.single().implementationName)
+    val bindings = index.bindingsFor(consumer)
+    assertEquals(1, bindings.size)
+    assertEquals("RepoImpl", bindings.single().implementationName)
   }
 
   fun testCircuitInjectDeclarationsContributeFactoriesAndConsumeParameters() {
@@ -360,14 +360,14 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     // Both functions contribute generated factories into the scope's factory sets
-    val presenterEntry = index.providerEntriesAt(declarations.function("HomePresenter")).single()
-    assertEquals(MetroProviderKind.MULTIBINDING_CONTRIBUTION, presenterEntry.kind)
+    val presenterEntry = index.bindingEntriesAt(declarations.function("HomePresenter")).single()
+    assertEquals(BindingKind.MULTIBINDING_CONTRIBUTION, presenterEntry.kind)
     assertEquals(
       "com.slack.circuit.runtime.presenter.Presenter.Factory",
       presenterEntry.key.renderedType,
     )
 
-    val uiEntry = index.providerEntriesAt(declarations.function("HomeUi")).single()
+    val uiEntry = index.bindingEntriesAt(declarations.function("HomeUi")).single()
     assertEquals("com.slack.circuit.runtime.ui.Ui.Factory", uiEntry.key.renderedType)
     assertEquals(
       setOf(ClassId.topLevel(FqName("dev.zacsweers.metro.AppScope"))),
@@ -378,25 +378,25 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val presenterFactories = index.consumerEntryAt(declarations.property("presenterFactories"))!!
     assertEquals(
       listOf("HomePresenter"),
-      index.providersFor(presenterFactories).mapNotNull {
+      index.bindingsFor(presenterFactories).mapNotNull {
         (it.pointer.element as? KtNamedDeclaration)?.name
       },
     )
     val uiFactories = index.consumerEntryAt(declarations.property("uiFactories"))!!
     assertEquals(
       listOf("HomeUi"),
-      index.providersFor(uiFactories).mapNotNull {
+      index.bindingsFor(uiFactories).mapNotNull {
         (it.pointer.element as? KtNamedDeclaration)?.name
       },
     )
 
     val otherGraph = index.contextFor(index.graphEntryAt(declarations.klass("OtherCircuitGraph"))!!)
     val otherUiFactories = index.consumerEntryAt(declarations.property("otherUiFactories"))!!
-    assertTrue(index.providersFor(otherUiFactories, otherGraph).isEmpty())
+    assertTrue(index.bindingsFor(otherUiFactories, otherGraph).isEmpty())
 
     // Injected params are consumers; circuit-provided params (navigator/screen/state/modifier)
     // are assisted sites instead
-    val repositoryEntries = index.providerEntriesAt(declarations.klass("Repository"))
+    val repositoryEntries = index.bindingEntriesAt(declarations.klass("Repository"))
     val repositoryConsumers =
       index.consumersFor(repositoryEntries).mapNotNull {
         (it.pointer.element as? KtNamedDeclaration)?.name
@@ -451,15 +451,15 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // The factory's @Provides param is an instance binding, not a consumer
     val factoryParam = declarations.parameter("providedConfig")
     assertNull(index.consumerEntryAt(factoryParam))
-    val instanceEntry = index.providerEntriesAt(factoryParam).single()
-    assertEquals(MetroProviderKind.INSTANCE, instanceEntry.kind)
+    val instanceEntry = index.bindingEntriesAt(factoryParam).single()
+    assertEquals(BindingKind.INSTANCE, instanceEntry.kind)
     assertEquals("test.Config", instanceEntry.key.renderedType)
 
     // And consumers of its type resolve to it
     val configParam = index.consumerEntryAt(declarations.parameter("config"))!!
-    val providers = index.providersFor(configParam)
-    assertEquals(listOf(MetroProviderKind.INSTANCE), providers.map { it.kind })
-    assertTrue(providers.single().pointer.element === factoryParam)
+    val bindings = index.bindingsFor(configParam)
+    assertEquals(listOf(BindingKind.INSTANCE), bindings.map { it.kind })
+    assertTrue(bindings.single().pointer.element === factoryParam)
   }
 
   fun testLibraryInjectClassesResolveOnDemand() {
@@ -481,13 +481,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val declarations = file.declarationsIncludingNested()
 
       val clientParam = index.consumerEntryAt(declarations.parameter("client"))!!
-      val providers = index.providersFor(clientParam)
-      assertEquals(listOf(MetroProviderKind.INJECT), providers.map { it.kind })
-      val target = providers.single().pointer.element
+      val bindings = index.bindingsFor(clientParam)
+      assertEquals(listOf(BindingKind.INJECT), bindings.map { it.kind })
+      val target = bindings.single().pointer.element
       assertEquals("LibHttpClient", (target as? KtNamedDeclaration)?.name)
       assertEquals(
         "@SingleIn(scope = AppScope::class)",
-        providers.single().scope?.render(short = true),
+        bindings.single().scope?.render(short = true),
       )
     }
   }
@@ -523,35 +523,35 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val declarations = file.declarationsIncludingNested()
 
       val serviceAccessor = index.consumerEntryAt(declarations.property("service"))!!
-      val serviceProviders = index.providersFor(serviceAccessor)
-      assertEquals(listOf(MetroProviderKind.CONTRIBUTED), serviceProviders.map { it.kind })
-      assertEquals("LibServiceImpl", serviceProviders.single().implementationName)
+      val serviceBindings = index.bindingsFor(serviceAccessor)
+      assertEquals(listOf(BindingKind.CONTRIBUTED), serviceBindings.map { it.kind })
+      assertEquals("LibServiceImpl", serviceBindings.single().implementationName)
 
       val analyticsAccessor = index.consumerEntryAt(declarations.property("analytics"))!!
-      val analyticsProviders = index.providersFor(analyticsAccessor)
+      val analyticsBindings = index.bindingsFor(analyticsAccessor)
       assertEquals(
-        listOf(MetroProviderKind.MULTIBINDING_CONTRIBUTION),
-        analyticsProviders.map { it.kind },
+        listOf(BindingKind.MULTIBINDING_CONTRIBUTION),
+        analyticsBindings.map { it.kind },
       )
-      assertEquals("LibAnalyticsImpl", analyticsProviders.single().implementationName)
+      assertEquals("LibAnalyticsImpl", analyticsBindings.single().implementationName)
 
       // Explicit binding<T>() bound types aren't recoverable from binary annotations; they
       // resolve through the generated nested MetroContribution @Binds members instead
       val explicitAccessor = index.consumerEntryAt(declarations.property("explicit"))!!
-      val explicitProviders = index.providersFor(explicitAccessor)
-      assertEquals(listOf(MetroProviderKind.BINDS), explicitProviders.map { it.kind })
-      assertEquals("LibExplicitImpl", explicitProviders.single().implementationName)
+      val explicitBindings = index.bindingsFor(explicitAccessor)
+      assertEquals(listOf(BindingKind.BINDS), explicitBindings.map { it.kind })
+      assertEquals("LibExplicitImpl", explicitBindings.single().implementationName)
 
       // Contribution-provider container objects expose their @Provides members, attributed to
       // the @Origin class
       val containedAccessor = index.consumerEntryAt(declarations.property("contained"))!!
-      val containedProviders = index.providersFor(containedAccessor)
-      assertEquals(listOf(MetroProviderKind.PROVIDES), containedProviders.map { it.kind })
-      assertEquals("LibContainedImpl", containedProviders.single().implementationName)
+      val containedBindings = index.bindingsFor(containedAccessor)
+      assertEquals(listOf(BindingKind.PROVIDES), containedBindings.map { it.kind })
+      assertEquals("LibContainedImpl", containedBindings.single().implementationName)
 
       // Internal hints from non-friend modules are filtered, mirroring the compiler
       val hiddenAccessor = index.consumerEntryAt(declarations.property("hidden"))!!
-      assertTrue(index.providersFor(hiddenAccessor).isEmpty())
+      assertTrue(index.bindingsFor(hiddenAccessor).isEmpty())
 
       // Library contributions also appear in the graph's contribution list
       val graph = index.graphEntryAt(declarations.klass("LibGraph"))!!
@@ -589,7 +589,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         val index = MetroResolutionService.getInstance(project).index(file)
         val declarations = file.declarationsIncludingNested()
         val clientParam = index.consumerEntryAt(declarations.parameter("client"))!!
-        assertTrue(index.providersFor(clientParam).isEmpty())
+        assertTrue(index.bindingsFor(clientParam).isEmpty())
       }
     } finally {
       settings.resolveFromLibraries = true
@@ -634,7 +634,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     for (name in listOf("serviceProvider", "serviceLazy")) {
       val consumer = index.consumerEntryAt(declarations.parameter(name))!!
       assertEquals("test.Service", consumer.key.renderedType)
-      assertEquals(listOf(MetroProviderKind.BINDS), index.providersFor(consumer).map { it.kind })
+      assertEquals(listOf(BindingKind.BINDS), index.bindingsFor(consumer).map { it.kind })
     }
   }
 
@@ -664,7 +664,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val consumer = index.consumerEntryAt(declarations.parameter("serviceFactory"))!!
-    assertTrue(index.providersFor(consumer).isEmpty())
+    assertTrue(index.bindingsFor(consumer).isEmpty())
   }
 
   fun testInternalHintsFromProjectOwnedBinariesAreFilteredWithoutFriendship() {
@@ -692,7 +692,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       // Project-path ownership is not a visibility relationship; internal hints still require a
       // formal friend/associated compilation relationship.
       val hiddenAccessor = index.consumerEntryAt(declarations.property("hidden"))!!
-      assertTrue(index.providersFor(hiddenAccessor).isEmpty())
+      assertTrue(index.bindingsFor(hiddenAccessor).isEmpty())
     }
   }
 
@@ -722,15 +722,15 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val index = MetroResolutionService.getInstance(project).index(file)
     val declarations = file.declarationsIncludingNested()
 
-    val factoryEntry = index.providerEntriesAt(declarations.klass("EngineFactory")).single()
-    assertEquals(MetroProviderKind.ASSISTED_FACTORY, factoryEntry.kind)
+    val factoryEntry = index.bindingEntriesAt(declarations.klass("EngineFactory")).single()
+    assertEquals(BindingKind.ASSISTED_FACTORY, factoryEntry.kind)
     assertEquals("test.EngineFactory", factoryEntry.key.renderedType)
     assertEquals("Engine", factoryEntry.implementationName)
 
     val factoryParam = index.consumerEntryAt(declarations.parameter("factory"))!!
     assertEquals(
-      listOf(MetroProviderKind.ASSISTED_FACTORY),
-      index.providersFor(factoryParam).map { it.kind },
+      listOf(BindingKind.ASSISTED_FACTORY),
+      index.bindingsFor(factoryParam).map { it.kind },
     )
   }
 
@@ -768,7 +768,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     // Two supertypes, no explicit binding<T>() — the @DefaultBinding supertype decides
     val accessor = index.consumerEntryAt(declarations.property("factories"))!!
-    val contributors = index.providersFor(accessor)
+    val contributors = index.bindingsFor(accessor)
     assertEquals(listOf("HomeFactory"), contributors.map { it.implementationName })
     assertEquals("test.BaseFactory<*>", contributors.single().key.renderedType)
   }
@@ -804,8 +804,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val handlersParam = index.consumerEntryAt(declarations.parameter("handlers"))!!
-    val contributors = index.providersFor(handlersParam)
-    assertEquals(listOf(MetroProviderKind.MULTIBINDING_CONTRIBUTION), contributors.map { it.kind })
+    val contributors = index.bindingsFor(handlersParam)
+    assertEquals(listOf(BindingKind.MULTIBINDING_CONTRIBUTION), contributors.map { it.kind })
   }
 
   fun testReplacedContributionsLosePerGraph() {
@@ -847,12 +847,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(listOf("FakeRepo"), resolution.effective.map { it.implementationName })
 
     val realEntry =
-      index.providerEntriesAt(declarations.klass("RealRepo")).single {
-        it.kind == MetroProviderKind.CONTRIBUTED
+      index.bindingEntriesAt(declarations.klass("RealRepo")).single {
+        it.kind == BindingKind.CONTRIBUTED
       }
     val fakeEntry =
-      index.providerEntriesAt(declarations.klass("FakeRepo")).single {
-        it.kind == MetroProviderKind.CONTRIBUTED
+      index.bindingEntriesAt(declarations.klass("FakeRepo")).single {
+        it.kind == BindingKind.CONTRIBUTED
       }
     assertTrue(index.consumersFor(listOf(realEntry)).isEmpty())
     assertEquals(
@@ -896,13 +896,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(context.excludes.isNotEmpty())
 
     val accessor = index.consumerEntryAt(declarations.property("thing"))!!
-    assertTrue(index.providersFor(accessor, context).isEmpty())
+    assertTrue(index.bindingsFor(accessor, context).isEmpty())
     assertTrue(index.contributionsFor(context).isEmpty())
     // Global resolution still sees it as a candidate
     assertEquals(1, index.resolveConsumer(accessor).global.size)
   }
 
-  fun testBindingContainersGateProvidersPerGraph() {
+  fun testBindingContainersGateBindingsPerGraph() {
     val file =
       myFixture.configureByText(
         "Containers.kt",
@@ -947,11 +947,11 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // Transitive container includes are expanded
     assertEquals(2, wired.containers.size)
     val clientAccessor = index.consumerEntryAt(declarations.property("client"))!!
-    assertEquals(1, index.providersFor(clientAccessor, wired).size)
+    assertEquals(1, index.bindingsFor(clientAccessor, wired).size)
 
     val unwired = index.contextFor(index.graphEntryAt(declarations.klass("UnwiredGraph"))!!)
     val unwiredAccessor = index.consumerEntryAt(declarations.property("unwiredClient"))!!
-    assertTrue(index.providersFor(unwiredAccessor, unwired).isEmpty())
+    assertTrue(index.bindingsFor(unwiredAccessor, unwired).isEmpty())
   }
 
   fun testIncludedDependencyAccessorsProvide() {
@@ -991,12 +991,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(1, context.includedDependencies.size)
 
     val accessor = index.consumerEntryAt(declarations.property("graphClient"))!!
-    val providers = index.providersFor(accessor, context)
-    assertEquals(listOf(MetroProviderKind.INCLUDED), providers.map { it.kind })
+    val bindings = index.bindingsFor(accessor, context)
+    assertEquals(listOf(BindingKind.INCLUDED), bindings.map { it.kind })
     // Anchored at the dependency's accessor declaration
     assertEquals(
       "client",
-      (providers.single().pointer.element as? KtNamedDeclaration)?.name,
+      (bindings.single().pointer.element as? KtNamedDeclaration)?.name,
     )
   }
 
@@ -1060,10 +1060,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     // The child's accessor resolves through every parent scope that creates it
     val accessor = index.consumerEntryAt(declarations.property("thing"))!!
-    val providers = childContexts.flatMap { childContext ->
-      index.providersFor(accessor, childContext)
+    val bindings = childContexts.flatMap { childContext ->
+      index.bindingsFor(accessor, childContext)
     }
-    assertEquals(setOf("RealThing", "OtherThing"), providers.map { it.implementationName }.toSet())
+    assertEquals(setOf("RealThing", "OtherThing"), bindings.map { it.implementationName }.toSet())
 
     // But parent contexts do not include child-scoped bindings beyond their own scope
     val parent = index.contextFor(index.graphEntryAt(declarations.klass("ParentGraph"))!!)
@@ -1130,20 +1130,20 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // @DependencyGraph(AppScope::class) implicitly conveys @SingleIn(AppScope::class)
     val appContext = index.contextFor(index.graphEntryAt(declarations.klass("AppGraph"))!!)
     assertEquals(
-      listOf(MetroProviderKind.INJECT),
-      index.providersFor(consumer, appContext).map { it.kind },
+      listOf(BindingKind.INJECT),
+      index.bindingsFor(consumer, appContext).map { it.kind },
     )
 
     // A graph with a different scope is not a home for this binding
     val otherContext = index.contextFor(index.graphEntryAt(declarations.klass("OtherGraph"))!!)
-    assertTrue(index.providersFor(consumer, otherContext).isEmpty())
+    assertTrue(index.bindingsFor(consumer, otherContext).isEmpty())
 
     // Explicitly declared scope annotations on the graph also count
     val explicitContext =
       index.contextFor(index.graphEntryAt(declarations.klass("ExplicitGraph"))!!)
     assertEquals(
-      listOf(MetroProviderKind.INJECT),
-      index.providersFor(consumer, explicitContext).map { it.kind },
+      listOf(BindingKind.INJECT),
+      index.bindingsFor(consumer, explicitContext).map { it.kind },
     )
   }
 
@@ -1151,7 +1151,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     project.setMetroOptions("enabled" to "false")
     val file = configure()
     val index = MetroResolutionService.getInstance(project).index(file)
-    assertTrue(index.providers.isEmpty())
+    assertTrue(index.bindings.isEmpty())
     assertTrue(index.consumers.isEmpty())
     assertTrue(index.graphs.isEmpty())
   }

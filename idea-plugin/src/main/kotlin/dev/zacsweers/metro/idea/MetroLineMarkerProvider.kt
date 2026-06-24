@@ -15,10 +15,10 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
-import dev.zacsweers.metro.idea.model.MetroBindingIndex
-import dev.zacsweers.metro.idea.model.MetroConsumerEntry
-import dev.zacsweers.metro.idea.model.MetroGraphEntry
-import dev.zacsweers.metro.idea.model.MetroProviderEntry
+import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.ConsumerEntry
+import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaGraphNode
 import javax.swing.Icon
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
@@ -28,11 +28,11 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 /**
- * Adds provider/consumer/graph gutter icons to Metro declarations, with navigation to the
+ * Adds binding/consumer/graph gutter icons to Metro declarations, with navigation to the
  * counterpart binding sites. Each marker type can be toggled in Settings > Editor > General >
  * Gutter Icons.
  *
- * Classification is a [dev.zacsweers.metro.idea.model.MetroBindingIndex] lookup by PSI identity.
+ * Classification is a [dev.zacsweers.metro.idea.model.BindingIndex] lookup by PSI identity.
  * Navigation targets are captured as smart pointers at marker creation (background pass) so
  * clicking never triggers resolution on the EDT.
  */
@@ -41,7 +41,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
   override fun getName(): String = "Metro bindings"
 
   override fun getOptions(): Array<GutterIconDescriptor.Option> =
-    arrayOf(PROVIDER_OPTION, CONSUMER_OPTION, GRAPH_OPTION)
+    arrayOf(BINDING_OPTION, CONSUMER_OPTION, GRAPH_OPTION)
 
   override fun collectNavigationMarkers(
     element: PsiElement,
@@ -63,10 +63,10 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
     }
 
-    if (PROVIDER_OPTION.isEnabled) {
-      val providerEntries = index.providerEntriesAt(declaration)
-      if (providerEntries.isNotEmpty()) {
-        result += providerMarker(element, providerEntries, index)
+    if (BINDING_OPTION.isEnabled) {
+      val bindingEntries = index.bindingEntriesAt(declaration)
+      if (bindingEntries.isNotEmpty()) {
+        result += bindingMarker(element, bindingEntries, index)
       }
     }
 
@@ -77,10 +77,10 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
   }
 
-  private fun providerMarker(
+  private fun bindingMarker(
     anchor: PsiElement,
-    entries: List<MetroProviderEntry>,
-    index: MetroBindingIndex,
+    entries: List<KaBinding>,
+    index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
     val targets = index.consumersFor(entries).map { it.pointer }
     val tooltip =
@@ -108,17 +108,17 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
   private fun consumerMarker(
     anchor: PsiElement,
-    consumer: MetroConsumerEntry,
-    index: MetroBindingIndex,
+    consumer: ConsumerEntry,
+    index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
     val resolution = index.resolveConsumer(consumer)
-    val providers = resolution.effective
-    val targets = providers.map { it.pointer }
+    val bindings = resolution.effective
+    val targets = bindings.map { it.pointer }
     val tooltip = buildString {
       append("Metro dependency: ")
       append(consumer.key.render(short = true))
-      providers.singleOrNull()?.let { provider ->
-        provider.implementationName
+      bindings.singleOrNull()?.let { binding ->
+        binding.implementationName
           // An implementation matching the declared type adds nothing
           ?.takeIf { it != consumer.key.render(short = true, includeQualifier = false) }
           ?.let {
@@ -130,9 +130,9 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
           append(it)
         }
       }
-      if (providers.size > 1) {
+      if (bindings.size > 1) {
         append(" · ")
-        append(providers.size)
+        append(bindings.size)
         append(" bindings")
         if (resolution.perGraph.size > 1) {
           append(" across ")
@@ -140,14 +140,14 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
           append(" graphs")
         }
       }
-      if (providers.isEmpty()) {
+      if (bindings.isEmpty()) {
         append(" · no binding found in project sources (may come from a library, generated code,")
         append(" or an instance binding)")
       }
     }
     return navMarker(
       anchor = anchor,
-      icon = if (providers.isEmpty()) MetroIcons.CONSUMER_UNRESOLVED else MetroIcons.CONSUMER,
+      icon = if (bindings.isEmpty()) MetroIcons.CONSUMER_UNRESOLVED else MetroIcons.CONSUMER,
       tooltip = tooltip,
       popupTitle = "Bindings for ${consumer.key.render(short = true)}",
       emptyText = "No Metro binding found for ${consumer.key.render(short = true)}",
@@ -157,8 +157,8 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
   private fun graphMarker(
     anchor: PsiElement,
-    graph: MetroGraphEntry,
-    index: MetroBindingIndex,
+    graph: KaGraphNode,
+    index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
     val context = index.contextFor(graph)
     val contributions = index.contributionsFor(context)
@@ -224,8 +224,8 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
   }
 
   companion object {
-    private val PROVIDER_OPTION =
-      GutterIconDescriptor.Option("metro.provider", "Metro provider", MetroIcons.PROVIDER)
+    private val BINDING_OPTION =
+      GutterIconDescriptor.Option("metro.provider", "Metro binding", MetroIcons.PROVIDER)
     private val CONSUMER_OPTION =
       GutterIconDescriptor.Option("metro.consumer", "Metro consumer", MetroIcons.CONSUMER)
     private val GRAPH_OPTION =

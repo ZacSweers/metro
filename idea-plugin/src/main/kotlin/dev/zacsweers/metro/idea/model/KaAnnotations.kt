@@ -7,18 +7,18 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 /** A structured, session-free snapshot of a resolved annotation argument value. */
-internal sealed interface MetroKaAnnotationValue {
-  data class Literal(val value: Any?) : MetroKaAnnotationValue
+internal sealed interface KaAnnotationValueSnapshot {
+  data class Literal(val value: Any?) : KaAnnotationValueSnapshot
 
-  data class EnumEntry(val callableId: CallableId?) : MetroKaAnnotationValue
+  data class EnumEntry(val callableId: CallableId?) : KaAnnotationValueSnapshot
 
-  data class KClassRef(val classId: ClassId?) : MetroKaAnnotationValue
+  data class KClassRef(val classId: ClassId?) : KaAnnotationValueSnapshot
 
-  data class Array(val values: List<MetroKaAnnotationValue>) : MetroKaAnnotationValue
+  data class Array(val values: List<KaAnnotationValueSnapshot>) : KaAnnotationValueSnapshot
 
-  data class Nested(val annotation: MetroKaAnnotation) : MetroKaAnnotationValue
+  data class Nested(val annotation: KaAnnotationSnapshot) : KaAnnotationValueSnapshot
 
-  data object Unsupported : MetroKaAnnotationValue
+  data object Unsupported : KaAnnotationValueSnapshot
 }
 
 /**
@@ -28,9 +28,9 @@ internal sealed interface MetroKaAnnotationValue {
  * built from the structured resolved argument values rather than source text, so spelling
  * differences (named vs positional args, import styles) don't break identity.
  */
-internal data class MetroKaAnnotation(
+internal data class KaAnnotationSnapshot(
   val classId: ClassId,
-  val arguments: List<Pair<Name, MetroKaAnnotationValue>>,
+  val arguments: List<Pair<Name, KaAnnotationValueSnapshot>>,
 ) {
   fun render(short: Boolean, useRelativeClassNames: Boolean = false): String = buildString {
     append('@')
@@ -49,22 +49,22 @@ internal data class MetroKaAnnotation(
   }
 
   private fun renderValue(
-    value: MetroKaAnnotationValue,
+    value: KaAnnotationValueSnapshot,
     short: Boolean,
     useRelativeClassNames: Boolean,
   ): String {
     return when (value) {
-      is MetroKaAnnotationValue.Literal ->
+      is KaAnnotationValueSnapshot.Literal ->
         when (val literal = value.value) {
           is String -> "\"$literal\""
           is Char -> "'$literal'"
           else -> literal.toString()
         }
-      is MetroKaAnnotationValue.EnumEntry ->
+      is KaAnnotationValueSnapshot.EnumEntry ->
         value.callableId?.let {
           if (short) it.callableName.asString() else it.asSingleFqName().asString()
         } ?: "<error>"
-      is MetroKaAnnotationValue.KClassRef ->
+      is KaAnnotationValueSnapshot.KClassRef ->
         value.classId?.let {
           val name =
             when {
@@ -74,12 +74,12 @@ internal data class MetroKaAnnotation(
             }
           "$name::class"
         } ?: "<error>"
-      is MetroKaAnnotationValue.Array ->
+      is KaAnnotationValueSnapshot.Array ->
         value.values.joinToString(separator = ", ", prefix = "[", postfix = "]") {
           renderValue(it, short, useRelativeClassNames)
         }
-      is MetroKaAnnotationValue.Nested -> value.annotation.render(short, useRelativeClassNames)
-      is MetroKaAnnotationValue.Unsupported -> "..."
+      is KaAnnotationValueSnapshot.Nested -> value.annotation.render(short, useRelativeClassNames)
+      is KaAnnotationValueSnapshot.Unsupported -> "..."
     }
   }
 }
