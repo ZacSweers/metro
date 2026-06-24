@@ -638,6 +638,103 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testBindsOptionalOfExposesOptionalBinding() {
+    project.setMetroOptions("enable-dagger-runtime-interop" to "true")
+    myFixture.addFileToProject(
+      "dagger/BindsOptionalOf.kt",
+      """
+      package dagger
+
+      annotation class BindsOptionalOf
+      """
+        .trimIndent(),
+    )
+    // The light test fixture's mock JDK lacks java.util.Optional; stub it so it resolves.
+    myFixture.addFileToProject(
+      "java/util/Optional.kt",
+      """
+      package java.util
+
+      class Optional<T>
+      """
+        .trimIndent(),
+    )
+    val file =
+      myFixture.configureByText(
+        "Optionals.kt",
+        """
+        package test
+
+        import dagger.BindsOptionalOf
+        import dev.zacsweers.metro.BindingContainer
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Inject
+        import java.util.Optional
+
+        interface Service
+
+        @BindingContainer
+        interface ServiceBindings {
+          @BindsOptionalOf fun optionalService(): Service
+        }
+
+        @DependencyGraph(bindingContainers = [ServiceBindings::class])
+        interface AppGraph {
+          val service: Optional<Service>
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    // The @BindsOptionalOf declaration exposes an Optional<Service> binding.
+    val optionalBinding = index.bindingEntriesAt(declarations.function("optionalService")).single()
+    assertEquals(BindingKind.OPTIONAL, optionalBinding.kind)
+    assertEquals("java.util.Optional<test.Service>", optionalBinding.key.renderedType)
+
+    val consumer = index.consumerEntryAt(declarations.property("service"))!!
+    assertEquals("java.util.Optional<test.Service>", consumer.key.renderedType)
+    assertEquals(listOf(BindingKind.OPTIONAL), index.bindingsFor(consumer).map { it.kind })
+    val context = index.contextFor(index.graphEntryAt(declarations.klass("AppGraph"))!!)
+    assertEquals(
+      listOf(BindingKind.OPTIONAL),
+      index.bindingsFor(consumer, context).map { it.kind },
+    )
+  }
+
+  fun testBindsOptionalOfIgnoredWithoutDaggerInterop() {
+    myFixture.addFileToProject(
+      "dagger/BindsOptionalOf.kt",
+      """
+      package dagger
+
+      annotation class BindsOptionalOf
+      """
+        .trimIndent(),
+    )
+    val file =
+      myFixture.configureByText(
+        "OptionalsOff.kt",
+        """
+        package test
+
+        import dagger.BindsOptionalOf
+        import java.util.Optional
+
+        interface Service
+
+        interface ServiceBindings {
+          @BindsOptionalOf fun optionalService(): Service
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+    assertTrue(index.bindingEntriesAt(declarations.function("optionalService")).isEmpty())
+  }
+
   fun testFunctionTypesAreNotUnwrappedWhenFunctionProvidersAreDisabled() {
     project.setMetroOptions("enable-function-providers" to "false")
     val file =

@@ -317,7 +317,8 @@ internal class BindingIndex(
       // declare them directly on the graph)
       BindingKind.PROVIDES,
       BindingKind.BINDS,
-      BindingKind.MULTIBINDING_DECLARATION -> {
+      BindingKind.MULTIBINDING_DECLARATION,
+      BindingKind.OPTIONAL -> {
         entry.contributionScopes.isNotEmpty() ||
           entry.containerId == null ||
           entry.containerId in context.graphClassIds ||

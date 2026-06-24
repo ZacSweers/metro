@@ -21,4 +21,6 @@ internal enum class BindingKind(val label: String) {
   ASSISTED_FACTORY("assisted factory"),
   /** An accessor of an `@Includes` graph dependency. */
   INCLUDED("included dependency accessor"),
+  /** A `@BindsOptionalOf` (Dagger interop) binding exposing `Optional<T>`. */
+  OPTIONAL("optional binding"),
 }

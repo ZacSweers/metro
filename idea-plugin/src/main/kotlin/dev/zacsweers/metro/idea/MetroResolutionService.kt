@@ -240,6 +240,7 @@ private fun sweepAnnotationIds(options: MetroOptions): Set<ClassId> {
     addAll(options.graphExtensionAnnotations)
     addAll(options.assistedFactoryAnnotations)
     addAll(options.bindingContainerAnnotations)
+    addAll(bindsOptionalOfAnnotations(options))
     add(CircuitClassIds.CircuitInject)
   }
 }
@@ -331,7 +332,10 @@ private class IndexBuilder(
   fun buildShard(file: KtFile): FileShard {
     val bindingCallableNames =
       shortNames(
-        options.providesAnnotations + options.bindsAnnotations + options.multibindsAnnotations
+        options.providesAnnotations +
+          options.bindsAnnotations +
+          options.multibindsAnnotations +
+          bindsOptionalOfAnnotations(options)
       )
     val injectNames = shortNames(options.injectAnnotations + options.assistedInjectAnnotations)
     val contributesNames = shortNames(options.allContributesAnnotations)
@@ -1124,6 +1128,15 @@ private class IndexBuilder(
 
 internal val SET_CLASS_ID = ClassId.fromString("kotlin/collections/Set")
 internal val MAP_CLASS_ID = ClassId.fromString("kotlin/collections/Map")
+// Dagger interop: `@BindsOptionalOf fun foo(): Foo` makes `java.util.Optional<Foo>` available,
+// mirroring the compiler's IrBinding.CustomWrapper. Only active when Dagger runtime interop is on.
+private val DAGGER_BINDS_OPTIONAL_OF = ClassId.fromString("dagger/BindsOptionalOf")
+internal val JAVA_OPTIONAL_CLASS_ID = ClassId.fromString("java/util/Optional")
+
+internal fun bindsOptionalOfAnnotations(options: MetroOptions): Set<ClassId> {
+  return if (options.enableDaggerRuntimeInterop) setOf(DAGGER_BINDS_OPTIONAL_OF) else emptySet()
+}
+
 private val COLLECTION_LIKE_CLASS_IDS =
   setOf(
     SET_CLASS_ID,
@@ -1181,6 +1194,26 @@ internal fun KaSession.renderShortKeyType(type: KaType): String {
 /** Builds a [KaTypeKey] for [type], capturing a restorable pointer and both renderings. */
 internal fun KaSession.typeKey(type: KaType, qualifier: KaAnnotationSnapshot?): KaTypeKey {
   return KaTypeKey(typeSnapshot(type), qualifier)
+}
+
+/**
+ * The `java.util.Optional<inner>` key a `@BindsOptionalOf` declaration exposes. Both the binding
+ * and its consumers route through this one formula (see [consumedSite]) so the binding and consumer
+ * keys are identical regardless of how the platform renders `java.util.Optional` for synthesized vs
+ * source types.
+ */
+internal fun KaSession.optionalTypeKey(
+  innerType: KaType,
+  qualifier: KaAnnotationSnapshot?,
+): KaTypeKey {
+  val inner = innerType.fullyExpandedType
+  val snapshot =
+    KaTypeSnapshot(
+      "${JAVA_OPTIONAL_CLASS_ID.asFqNameString()}<${renderKeyType(inner)}>",
+      "${JAVA_OPTIONAL_CLASS_ID.shortClassName.asString()}<${renderShortKeyType(inner)}>",
+      JAVA_OPTIONAL_CLASS_ID,
+    )
+  return KaTypeKey(snapshot, qualifier)
 }
 
 /** Builds a session-free type snapshot for the current analysis session. */
@@ -1242,6 +1275,21 @@ internal fun KaSession.consumedSite(
 ): ConsumedSite {
   val returnType = symbol.returnType.fullyExpandedType
   val qualifier = qualifierAnnotation(symbol, options)
+
+  // A consumer of Optional<X> resolves to a @BindsOptionalOf (Dagger interop) binding. Key it with
+  // the same formula the binding uses so the two can't desync on Optional rendering.
+  val optionalInner = optionalInnerType(returnType, options)
+  if (optionalInner != null) {
+    val optionalKey = optionalTypeKey(optionalInner, qualifier)
+    val contextKey =
+      KaContextualTypeKey(
+        optionalKey,
+        WrappedType.Canonical(optionalKey.type),
+        rawType = optionalKey.type,
+      )
+    return ConsumedSite(contextKey, isAbstractType = false, typeClassId = JAVA_OPTIONAL_CLASS_ID)
+  }
+
   val contextKey = contextualTypeKey(returnType, qualifier, options)
   val classSymbol = contextKey.typeKey.type.classId?.let { findClass(it) } as? KaClassSymbol
   val isAbstract =
@@ -1258,6 +1306,14 @@ internal fun KaSession.consumedSite(
     ),
     contextKey.typeKey.type.classId,
   )
+}
+
+/** The `X` of a `java.util.Optional<X>` consumed type, when Dagger interop is enabled. */
+private fun optionalInnerType(type: KaType, options: MetroOptions): KaType? {
+  if (!options.enableDaggerRuntimeInterop) return null
+  val classType = type as? KaClassType ?: return null
+  if (classType.classId != JAVA_OPTIONAL_CLASS_ID) return null
+  return classType.typeArguments.firstOrNull()?.type
 }
 
 /**
@@ -1499,6 +1555,20 @@ private fun KaSession.callableBindingData(
           implementationName,
           consumedKey,
           multibindingId,
+        )
+      )
+    }
+    has(bindsOptionalOfAnnotations(options)) -> {
+      // `@BindsOptionalOf fun foo(): Foo` exposes `Optional<Foo>`, present when Foo is bound and
+      // absent otherwise. Mirrors the compiler's IrBinding.CustomWrapper. Wrappers carry no scope.
+      val implementationName =
+        (returnType.fullyExpandedType as? KaClassType)?.classId?.shortClassName?.asString()
+      listOf(
+        BindingData(
+          optionalTypeKey(returnType, qualifier),
+          BindingKind.OPTIONAL,
+          null,
+          implementationName,
         )
       )
     }
