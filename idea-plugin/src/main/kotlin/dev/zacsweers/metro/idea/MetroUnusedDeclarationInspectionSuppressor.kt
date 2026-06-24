@@ -27,6 +27,11 @@ class MetroUnusedDeclarationInspectionSuppressor : InspectionSuppressor {
   }
 }
 
+// The unused-declaration inspection short names across IntelliJ and the Kotlin K1/K2 plugins. A
+// substring match would over-suppress unrelated inspections (e.g. unused imports/parameters).
+private val UNUSED_DECLARATION_TOOL_IDS =
+  setOf("unused", "UnusedSymbol", "UnusedDeclaration", "KotlinUnusedSymbol")
+
 private fun String.isUnusedDeclarationInspection(): Boolean {
-  return equals("unused", ignoreCase = true) || contains("unused", ignoreCase = true)
+  return UNUSED_DECLARATION_TOOL_IDS.any { equals(it, ignoreCase = true) }
 }
