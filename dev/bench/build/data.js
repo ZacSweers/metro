@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782263375347,
+  "lastUpdate": 1782276765345,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -17920,6 +17920,62 @@ window.BENCHMARK_DATA = {
             "value": 18580.43,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.66%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Rahul Ravikumar",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Rahul Ravikumar",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "292c7a8d~1",
+          "message": "[before] Add runtime tracing (#2354)",
+          "timestamp": "2026-06-23T20:33:53-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/292c7a8ddec5c4bbb9c4b31e78cb8ee792084dce"
+        },
+        "date": 1782276765345,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18855.092,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Rahul Ravikumar",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Rahul Ravikumar",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "292c7a8ddec5c4bbb9c4b31e78cb8ee792084dce",
+          "message": "[after] Add runtime tracing (#2354)",
+          "timestamp": "2026-06-23T20:33:53-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/292c7a8ddec5c4bbb9c4b31e78cb8ee792084dce"
+        },
+        "date": 1782276765346,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20018.701999999997,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +6.17%"
           }
         ]
       }
