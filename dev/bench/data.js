@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782250140131,
+  "lastUpdate": 1782263375206,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -17864,6 +17864,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21813275883912125,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.19%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Rahul Ravikumar",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Rahul Ravikumar",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "292c7a8d~1",
+          "message": "[before] Add runtime tracing (#2354)",
+          "timestamp": "2026-06-23T20:33:53-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/292c7a8ddec5c4bbb9c4b31e78cb8ee792084dce"
+        },
+        "date": 1782263375206,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21060828849930463,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Rahul Ravikumar",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Rahul Ravikumar",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "292c7a8ddec5c4bbb9c4b31e78cb8ee792084dce",
+          "message": "[after] Add runtime tracing (#2354)",
+          "timestamp": "2026-06-23T20:33:53-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/292c7a8ddec5c4bbb9c4b31e78cb8ee792084dce"
+        },
+        "date": 1782263375207,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21328910249165628,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.27%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
