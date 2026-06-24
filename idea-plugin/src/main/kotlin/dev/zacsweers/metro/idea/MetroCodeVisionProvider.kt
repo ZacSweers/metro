@@ -14,6 +14,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.idea.model.MetroBindingIndex
 import java.awt.event.MouseEvent
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration

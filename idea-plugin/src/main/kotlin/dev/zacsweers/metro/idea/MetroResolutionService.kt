@@ -25,6 +25,19 @@ import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
+import dev.zacsweers.metro.idea.model.KaContextualTypeKey
+import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.KaTypeSnapshot
+import dev.zacsweers.metro.idea.model.MetroAssistedSite
+import dev.zacsweers.metro.idea.model.MetroBindingContainerEntry
+import dev.zacsweers.metro.idea.model.MetroBindingIndex
+import dev.zacsweers.metro.idea.model.MetroConsumerEntry
+import dev.zacsweers.metro.idea.model.MetroContributionEntry
+import dev.zacsweers.metro.idea.model.MetroGraphEntry
+import dev.zacsweers.metro.idea.model.MetroKaAnnotation
+import dev.zacsweers.metro.idea.model.MetroKaAnnotationValue
+import dev.zacsweers.metro.idea.model.MetroProviderEntry
+import dev.zacsweers.metro.idea.model.MetroProviderKind
 import java.util.Collections
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -71,9 +84,10 @@ import org.jetbrains.kotlin.types.Variance
 /**
  * Shared resolution service powering Metro's line markers, code vision, and inlay hints.
  *
- * Builds a project-wide [MetroBindingIndex] from Kotlin stub indexes plus the K2 Analysis API and
- * caches it by Metro option fingerprint. Resolution is key-based across the whole project, then
- * filtered through graph contexts for membership-sensitive editor features.
+ * Builds a project-wide [dev.zacsweers.metro.idea.model.MetroBindingIndex] from Kotlin stub indexes
+ * plus the K2 Analysis API and caches it by Metro option fingerprint. Resolution is key-based
+ * across the whole project, then filtered through graph contexts for membership-sensitive editor
+ * features.
  */
 @Service(Service.Level.PROJECT)
 class MetroResolutionService(private val project: Project) {

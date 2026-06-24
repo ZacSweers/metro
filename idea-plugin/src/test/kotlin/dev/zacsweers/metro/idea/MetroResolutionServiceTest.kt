@@ -3,10 +3,7 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import dev.zacsweers.metro.idea.model.MetroProviderKind
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile

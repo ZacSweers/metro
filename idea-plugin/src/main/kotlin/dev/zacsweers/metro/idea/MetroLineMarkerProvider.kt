@@ -15,6 +15,10 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
+import dev.zacsweers.metro.idea.model.MetroBindingIndex
+import dev.zacsweers.metro.idea.model.MetroConsumerEntry
+import dev.zacsweers.metro.idea.model.MetroGraphEntry
+import dev.zacsweers.metro.idea.model.MetroProviderEntry
 import javax.swing.Icon
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
@@ -28,9 +32,9 @@ import org.jetbrains.kotlin.psi.KtNamedDeclaration
  * counterpart binding sites. Each marker type can be toggled in Settings > Editor > General >
  * Gutter Icons.
  *
- * Classification is a [MetroBindingIndex] lookup by PSI identity. Navigation targets are captured
- * as smart pointers at marker creation (background pass) so clicking never triggers resolution on
- * the EDT.
+ * Classification is a [dev.zacsweers.metro.idea.model.MetroBindingIndex] lookup by PSI identity.
+ * Navigation targets are captured as smart pointers at marker creation (background pass) so
+ * clicking never triggers resolution on the EDT.
  */
 class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
 

@@ -1,200 +1,14 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.idea
+package dev.zacsweers.metro.idea.model
 
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
-import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
-import dev.zacsweers.metro.compiler.graph.BaseTypeKey
-import dev.zacsweers.metro.compiler.graph.WrappedType
-import org.jetbrains.kotlin.analysis.api.KaSession
-import org.jetbrains.kotlin.analysis.api.types.KaType
-import org.jetbrains.kotlin.analysis.api.types.KaTypePointer
-import org.jetbrains.kotlin.name.CallableId
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
-
-/** A structured, session-free snapshot of a resolved annotation argument value. */
-internal sealed interface MetroKaAnnotationValue {
-  data class Literal(val value: Any?) : MetroKaAnnotationValue
-
-  data class EnumEntry(val callableId: CallableId?) : MetroKaAnnotationValue
-
-  data class KClassRef(val classId: ClassId?) : MetroKaAnnotationValue
-
-  data class Array(val values: List<MetroKaAnnotationValue>) : MetroKaAnnotationValue
-
-  data class Nested(val annotation: MetroKaAnnotation) : MetroKaAnnotationValue
-
-  data object Unsupported : MetroKaAnnotationValue
-}
-
-/**
- * An annotation participating in key/scope identity (a qualifier like `@Named("cdn")` or a scope
- * like `@SingleIn(AppScope::class)`). The Analysis API analog of the compiler's
- * `MetroFirAnnotation`/`IrAnnotation`, with the same canonical-render equality semantics — but
- * built from the structured resolved argument values rather than source text, so spelling
- * differences (named vs positional args, import styles) don't break identity.
- */
-internal data class MetroKaAnnotation(
-  val classId: ClassId,
-  val arguments: List<Pair<Name, MetroKaAnnotationValue>>,
-) {
-  fun render(short: Boolean, useRelativeClassNames: Boolean = false): String = buildString {
-    append('@')
-    append(
-      when {
-        short -> classId.shortClassName.asString()
-        useRelativeClassNames -> classId.relativeClassName.asString()
-        else -> classId.asFqNameString()
-      }
-    )
-    if (arguments.isNotEmpty()) {
-      arguments.joinTo(this, separator = ", ", prefix = "(", postfix = ")") { (name, value) ->
-        "${name.asString()} = ${renderValue(value, short, useRelativeClassNames)}"
-      }
-    }
-  }
-
-  private fun renderValue(
-    value: MetroKaAnnotationValue,
-    short: Boolean,
-    useRelativeClassNames: Boolean,
-  ): String {
-    return when (value) {
-      is MetroKaAnnotationValue.Literal ->
-        when (val literal = value.value) {
-          is String -> "\"$literal\""
-          is Char -> "'$literal'"
-          else -> literal.toString()
-        }
-      is MetroKaAnnotationValue.EnumEntry ->
-        value.callableId?.let {
-          if (short) it.callableName.asString() else it.asSingleFqName().asString()
-        } ?: "<error>"
-      is MetroKaAnnotationValue.KClassRef ->
-        value.classId?.let {
-          val name =
-            when {
-              short -> it.shortClassName.asString()
-              useRelativeClassNames -> it.relativeClassName.asString()
-              else -> it.asFqNameString()
-            }
-          "$name::class"
-        } ?: "<error>"
-      is MetroKaAnnotationValue.Array ->
-        value.values.joinToString(separator = ", ", prefix = "[", postfix = "]") {
-          renderValue(it, short, useRelativeClassNames)
-        }
-      is MetroKaAnnotationValue.Nested -> value.annotation.render(short, useRelativeClassNames)
-      is MetroKaAnnotationValue.Unsupported -> "..."
-    }
-  }
-}
-
-/**
- * A session-free snapshot of a [KaType].
- *
- * [pointer] can restore the semantic type inside a [KaSession], while [renderedType] and
- * [shortType] give cached keys and UI text to cross-session indexes. Equality is structural by
- * [renderedType]; Analysis API pointers are intentionally excluded because two pointers can point
- * at equivalent type renderings while still being different pointer objects.
- */
-internal class KaTypeSnapshot(
-  val pointer: KaTypePointer<KaType>,
-  val renderedType: String,
-  val shortType: String = renderedType,
-  val classId: ClassId?,
-) {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (other !is KaTypeSnapshot) return false
-    return renderedType == other.renderedType
-  }
-
-  override fun hashCode(): Int = renderedType.hashCode()
-
-  override fun toString(): String = renderedType
-}
-
-/** The Analysis API analog of the compiler's `FirTypeKey`/`IrTypeKey`. */
-internal class KaTypeKey(
-  override val type: KaTypeSnapshot,
-  override val qualifier: MetroKaAnnotation? = null,
-) : BaseTypeKey<KaTypeSnapshot, MetroKaAnnotation, KaTypeKey> {
-  val renderedType: String
-    get() = type.renderedType
-
-  override fun copy(type: KaTypeSnapshot, qualifier: MetroKaAnnotation?): KaTypeKey {
-    return KaTypeKey(type, qualifier)
-  }
-
-  override fun render(
-    short: Boolean,
-    includeQualifier: Boolean,
-    useRelativeClassNames: Boolean,
-  ): String = buildString {
-    if (includeQualifier) {
-      qualifier?.let {
-        append(it.render(short, useRelativeClassNames))
-        append(' ')
-      }
-    }
-    append(if (short || useRelativeClassNames) type.shortType else renderedType)
-  }
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (other !is KaTypeKey) return false
-    return renderedType == other.renderedType && qualifier == other.qualifier
-  }
-
-  override fun hashCode(): Int = 31 * renderedType.hashCode() + (qualifier?.hashCode() ?: 0)
-
-  override fun toString(): String = render(short = false)
-
-  override fun compareTo(other: KaTypeKey): Int {
-    if (this == other) return 0
-    return toString().compareTo(other.toString())
-  }
-}
-
-/** The Analysis API analog of the compiler's contextual type key. */
-internal class KaContextualTypeKey(
-  override val typeKey: KaTypeKey,
-  override val wrappedType: WrappedType<KaTypeSnapshot>,
-  override val hasDefault: Boolean = false,
-  override val rawType: KaTypeSnapshot? = null,
-) : BaseContextualTypeKey<KaTypeSnapshot, KaTypeKey, KaContextualTypeKey> {
-  override fun render(
-    short: Boolean,
-    includeQualifier: Boolean,
-    useRelativeClassNames: Boolean,
-  ): String {
-    return wrappedType.render { snapshot ->
-      if (snapshot == typeKey.type) {
-        typeKey.render(short, includeQualifier, useRelativeClassNames)
-      } else if (short || useRelativeClassNames) {
-        snapshot.shortType
-      } else {
-        snapshot.renderedType
-      }
-    }
-  }
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (other !is KaContextualTypeKey) return false
-    return typeKey == other.typeKey && wrappedType == other.wrappedType
-  }
-
-  override fun hashCode(): Int = 31 * typeKey.hashCode() + wrappedType.hashCode()
-
-  override fun toString(): String = render(short = false)
-}
 
 internal enum class MetroProviderKind(val label: String) {
   /** A `@Provides` callable. */
@@ -360,8 +174,7 @@ internal class MetroBindingIndex(
   private val containersById: Map<ClassId, MetroBindingContainerEntry> by lazy {
     bindingContainers.associateBy { it.classId }
   }
-  private val graphContexts =
-    java.util.concurrent.ConcurrentHashMap<MetroGraphEntry, List<MetroGraphContext>>()
+  private val graphContexts = ConcurrentHashMap<MetroGraphEntry, List<MetroGraphContext>>()
   // Contributions are keyed solely by multibindingId, mirroring the compiler's
   // @MultibindingElement qualifier swap — their element key must not satisfy plain consumers.
   private val providersByKey: Map<KaTypeKey, List<MetroProviderEntry>> by lazy {
