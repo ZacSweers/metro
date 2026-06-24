@@ -36,12 +36,21 @@ The plugin adds gutter icons for the standard Metro binding relationships:
 - Consumer markers on injected parameters, member-injected properties, and graph accessor members.
 - Graph markers on `@DependencyGraph` declarations.
 
-Provider markers navigate to known consumers. Consumer markers navigate to matching providers or
-show an unresolved marker when no binding is present in the current IDE index. Graph markers list
-the contributions the graph itself aggregates; graph extensions additionally report their parent
-graph and inherited contribution counts in the marker tooltip and code vision. Accessors returning
-a `@GraphExtension` (or its factory) are creation points of the child graph, not dependencies, so
-they get no consumer marker.
+Provider markers navigate to known consumers. Consumer markers navigate to the matching providers,
+or show an unresolved marker when the IDE index has no binding for the key.
+
+Optional dependencies are handled two ways:
+
+- An injection site is treated as optional when it carries `@OptionalBinding`/`@OptionalDependency` 
+  or when it is a parameter with a default value under the default optional-binding behavior. An 
+  optional site with no binding reads as optional rather than unresolved.
+- `@BindsOptionalOf` (Dagger interop) exposes an `Optional<T>` binding, so a site injecting
+  `Optional<T>` resolves to it.
+
+Graph markers list the contributions a graph aggregates. A graph extension also reports its parent
+graph and inherited contribution count in the tooltip and code vision. An accessor that returns a
+`@GraphExtension` (or its factory) is a creation point for the child graph rather than a dependency,
+so it gets no consumer marker.
 
 > TODO: Add a screenshot of a consumer marker popup resolving an interface to a concrete binding.
 
