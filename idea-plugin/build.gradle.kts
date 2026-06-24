@@ -43,9 +43,76 @@ val propertyResolver =
 
 val metroBootstrapVersion = propertyResolver.requiredStringProvider("METRO_BOOTSTRAP_VERSION").get()
 
+val explicitReleaseBuild =
+  providers
+    .gradleProperty("metroIdeaReleaseBuild")
+    .map { it.toBooleanStrictOrNull() == true }
+    .orElse(false)
+
+val publishingTaskRequested = providers.provider {
+  gradle.startParameter.taskNames
+    .map { it.substringAfterLast(':') }
+    .any { it == "publishPlugin" || it == "signPlugin" }
+}
+
+val isReleaseOrPublishingBuild =
+  explicitReleaseBuild.zip(publishingTaskRequested) { explicitRelease, publishRequested ->
+    explicitRelease || publishRequested
+  }
+
+val releaseGitSha =
+  providers.of(GitCommitValueSource::class.java) {
+    parameters.projectDirectory.set(layout.projectDirectory.dir(".."))
+  }
+
+val gitSha = isReleaseOrPublishingBuild.flatMap { isReleaseBuild ->
+  if (isReleaseBuild) {
+    releaseGitSha.orElse("")
+  } else {
+    providers.provider { "" }
+  }
+}
+
 group = propertyResolver.requiredStringProvider("GROUP").get()
 
-version = propertyResolver.requiredStringProvider("VERSION_NAME").get()
+val versionProvider = propertyResolver.requiredStringProvider("VERSION_NAME")
+
+version = versionProvider.get()
+
+val isSnapshotVersion = versionProvider.map { it.contains("SNAPSHOT") }
+
+val pluginVersion =
+  isReleaseOrPublishingBuild.zip(versionProvider) { releaseOrPublishing, versionName ->
+    if (releaseOrPublishing && versionName.contains("SNAPSHOT")) {
+      "$versionName-${System.currentTimeMillis()}"
+    } else {
+      versionName
+    }
+  }
+
+val defaultPublishingChannels = isSnapshotVersion.map { snapshotVersion ->
+  if (snapshotVersion) {
+    listOf("EAP")
+  } else {
+    listOf("Stable")
+  }
+}
+
+val configuredPublishingChannels =
+  propertyResolver.optionalStringProvider("intellijPlatformPublishingChannels").map { channels ->
+    channels.split(',').map(String::trim).filter(String::isNotEmpty)
+  }
+
+val publishingChannels =
+  configuredPublishingChannels
+    .flatMap { channels ->
+      if (channels.isEmpty()) {
+        defaultPublishingChannels
+      } else {
+        providers.provider { channels }
+      }
+    }
+    .orElse(defaultPublishingChannels)
 
 metroProject { jvmTarget.set(libs.versions.ideaJvmTarget) }
 
@@ -79,36 +146,52 @@ buildConfig {
     }
   }
   buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
+  buildConfigField("String", "VERSION", providers.provider { "\"$version\"" })
+  buildConfigField(
+    "String",
+    "BUGSNAG_KEY",
+    propertyResolver
+      .optionalStringProvider("MetroIntellijBugsnagKey")
+      .map { "\"$it\"" }
+      .orElse("\"\""),
+  )
+  buildConfigField("String", "GIT_SHA", gitSha.map { "\"$it\"" })
 }
 
-val metroRuntimeClasspath: Configuration by configurations.creating {
-  isTransitive = false
-  resolutionStrategy.useGlobalDependencySubstitutionRules = false
-}
+val metroRuntime = configurations.dependencyScope("metroRuntime")
+
+val metroRuntimeClasspath =
+  configurations.resolvable("metroRuntimeClasspath") {
+    extendsFrom(metroRuntime)
+    isTransitive = false
+    resolutionStrategy.useGlobalDependencySubstitutionRules = false
+  }
 
 // A compiled "library" with Metro-annotated classes + handwritten contribution hint functions,
 // used by tests covering resolution from binary dependencies.
-val libFixture: SourceSet by sourceSets.creating {
-  kotlin.srcDir("src/test/data/libFixtures/kotlin")
-}
+val libFixture =
+  sourceSets.register("libFixture") {
+    kotlin.srcDir("src/test/data/libFixtures/kotlin")
+  }
 
 val libFixtureJar =
   tasks.register<Jar>("libFixtureJar") {
     archiveClassifier.set("lib-fixture")
-    from(libFixture.output)
+    from(libFixture.map { it.output })
   }
 
-val shaded: Configuration by configurations.creating
+val shaded = configurations.dependencyScope("shaded")
+
+val shadedClasspath = configurations.resolvable("shadedClasspath") { extendsFrom(shaded) }
 
 // Runs a sandboxed IDE with the plugin installed from source: ./gradlew runLocalIde
-// To use a locally installed IDE (e.g. Android Studio) instead of the default target:
+// To use a locally installed IDE (e.g., Android Studio) instead of the default target:
 // ./gradlew runLocalIde "-PintellijPlatformTesting.idePath=/Applications/Android Studio.app"
-val runLocalIde by
-  intellijPlatformTesting.runIde.registering {
-    providers.gradleProperty("intellijPlatformTesting.idePath").orNull?.let {
-      localPath.set(file(it))
-    }
+intellijPlatformTesting.runIde.register("runLocalIde") {
+  providers.gradleProperty("intellijPlatformTesting.idePath").orNull?.let {
+    localPath.set(file(it))
   }
+}
 
 dependencies {
   intellijPlatform {
@@ -119,10 +202,14 @@ dependencies {
     zipSigner()
   }
 
-  metroRuntimeClasspath("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
-  "libFixtureCompileOnly"("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
+  add(metroRuntime.name, "dev.zacsweers.metro:runtime:$metroBootstrapVersion")
+  add(
+    libFixture.get().compileOnlyConfigurationName,
+    "dev.zacsweers.metro:runtime:$metroBootstrapVersion",
+  )
+  implementation(libs.bugsnag) { exclude(group = "org.slf4j") }
   compileOnly("dev.zacsweers.metro:metro-common")
-  shaded("dev.zacsweers.metro:metro-common")
+  add(shaded.name, "dev.zacsweers.metro:metro-common")
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
   testImplementation("dev.zacsweers.metro:metro-common")
@@ -130,7 +217,7 @@ dependencies {
 
 tasks.jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-  from(shaded.elements.map { files -> files.map { zipTree(it.asFile) } })
+  from(shadedClasspath.flatMap { it.elements }.map { files -> files.map { zipTree(it.asFile) } })
   exclude("META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.SF")
 }
 
@@ -138,7 +225,7 @@ intellijPlatform {
   pluginConfiguration {
     id.set("dev.zacsweers.metro.idea")
     name.set("Metro")
-    version.set(providers.provider { project.version.toString() })
+    version.set(pluginVersion)
     description.set("Additional IDE support and features for projects using Metro.")
 
     ideaVersion {
@@ -156,6 +243,15 @@ intellijPlatform {
 
   publishing {
     token.set(propertyResolver.optionalStringProvider("intellijPlatformPublishingToken"))
+
+    channels.set(publishingChannels)
+
+    // Boolean for whether to mark this release as hidden
+    hidden.set(
+      propertyResolver
+        .optionalStringProvider("intellijPlatformPublishingHidden")
+        .map(String::toBoolean)
+    )
   }
 
   pluginVerification {
@@ -174,11 +270,11 @@ tasks.withType<VerifyPluginTask>().configureEach {
 tasks.test {
   dependsOn(metroRuntimeClasspath)
   dependsOn(libFixtureJar)
-  systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
   jvmArgumentProviders.add(
     CommandLineArgumentProvider {
       listOf(
-        "-DmetroLibFixture.classpath=${libFixtureJar.get().archiveFile.get().asFile.absolutePath}"
+        "-DmetroRuntime.classpath=${metroRuntimeClasspath.get().asPath}",
+        "-DmetroLibFixture.classpath=${libFixtureJar.get().archiveFile.get().asFile.absolutePath}",
       )
     }
   )
