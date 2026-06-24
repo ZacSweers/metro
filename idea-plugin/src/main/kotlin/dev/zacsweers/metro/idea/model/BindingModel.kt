@@ -17,6 +17,14 @@ internal class ConsumerEntry(
   val multibindingId: String? = null,
   /** The consumed type's class, when it is a class type. Used to resolve library inject classes. */
   val typeClassId: ClassId? = null,
+  /** The contributed/injected class this consumer belongs to, for excludes/replaces matching. */
+  val originClassId: ClassId? = null,
+  /** Scopes that make the owning contributed declaration live. Empty for non-contributed sites. */
+  val contributionScopes: Set<ClassId> = emptySet(),
+  /** Binding container or graph class whose membership gates this consumer. */
+  val containerId: ClassId? = null,
+  /** Owning graph class for graph accessor consumers. */
+  val graphClassId: ClassId? = null,
 )
 
 /**
@@ -50,8 +58,8 @@ internal class KaGraphNode(
   val isExtension: Boolean = false,
   /** This graph's class plus nested factory classes, used for parent/extension matching. */
   val selfIds: Set<ClassId> = emptySet(),
-  /** Class ids referenced by this graph's accessors, used to find extensions it instantiates. */
-  val accessorTypeIds: Set<ClassId> = emptySet(),
+  /** Extension or extension factory ids created by this graph's accessors. */
+  val extensionCreationIds: Set<ClassId> = emptySet(),
   /**
    * The scope annotations this graph declares: explicit scope annotations on the class plus the
    * implicit `@SingleIn(X::class)` conveyed by each aggregation scope in the graph annotation
@@ -86,6 +94,17 @@ internal class GraphContext(
   val graph: KaGraphNode
     get() = chain.first()
 }
+
+/**
+ * A concrete graph-analysis view for a single use-site module.
+ *
+ * The declaration shards remain project-wide and reusable, while query contexts apply the same kind
+ * of graph/use-site filtering the shared compiler graph can eventually consume.
+ */
+internal class GraphQueryContext(
+  val graphContext: GraphContext,
+  val useSiteModule: org.jetbrains.kotlin.analysis.api.projectStructure.KaModule?,
+)
 
 /**
  * A declaration contributing to aggregation scopes: a `@Contributes*`-annotated class or a

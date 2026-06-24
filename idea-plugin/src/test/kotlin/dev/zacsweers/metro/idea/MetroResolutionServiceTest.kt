@@ -1087,6 +1087,146 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(index.inheritedContributionsFor(otherParent).isEmpty())
   }
 
+  fun testConsumerResolutionIsScopedToOwningGraph() {
+    val file =
+      myFixture.configureByText(
+        "ScopedConsumers.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.ContributesBinding
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Inject
+
+        abstract class OtherScope
+
+        interface Repo
+
+        @ContributesBinding(AppScope::class)
+        @Inject
+        class AppRepo : Repo
+
+        @ContributesBinding(OtherScope::class)
+        @Inject
+        class OtherRepo : Repo
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val appRepo: Repo
+        }
+
+        @DependencyGraph(OtherScope::class)
+        interface OtherGraph {
+          val otherRepo: Repo
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val appRepo = index.consumerEntryAt(declarations.property("appRepo"))!!
+    val appResolution = index.resolveConsumer(appRepo)
+    assertEquals(listOf("AppRepo"), appResolution.effective.map { it.implementationName })
+    assertEquals(listOf("AppGraph"), appResolution.perGraph.keys.map { it.name })
+
+    val otherRepo = index.consumerEntryAt(declarations.property("otherRepo"))!!
+    val otherResolution = index.resolveConsumer(otherRepo)
+    assertEquals(listOf("OtherRepo"), otherResolution.effective.map { it.implementationName })
+    assertEquals(listOf("OtherGraph"), otherResolution.perGraph.keys.map { it.name })
+  }
+
+  fun testGraphExtensionParentsOnlyComeFromExtensionCreationAccessors() {
+    val file =
+      myFixture.configureByText(
+        "ExtensionParents.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.ContributesBinding
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.GraphExtension
+        import dev.zacsweers.metro.Inject
+
+        abstract class ChildScope
+
+        interface Thing
+
+        @ContributesBinding(AppScope::class)
+        @Inject
+        class RealThing : Thing
+
+        @GraphExtension(ChildScope::class)
+        interface ChildGraph {
+          class Token
+          val thing: Thing
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface ParentGraph {
+          val token: ChildGraph.Token
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = MetroResolutionService.getInstance(project).index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val child = index.graphEntryAt(declarations.klass("ChildGraph"))!!
+    val childContexts = index.contextsFor(child)
+    assertEquals(1, childContexts.size)
+    assertEquals(1, childContexts.single().chain.size)
+
+    val thing = index.consumerEntryAt(declarations.property("thing"))!!
+    assertTrue(index.resolveConsumer(thing).effective.isEmpty())
+  }
+
+  fun testLibraryContributionHintsCanContributeSameProviderToMultipleScopes() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureByText(
+          "LibMultiScopeHints.kt",
+          """
+          package test
+
+          import dev.zacsweers.metro.AppScope
+          import dev.zacsweers.metro.DependencyGraph
+          import libtest.LibDual
+          import libtest.LibScope
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val appDual: LibDual
+          }
+
+          @DependencyGraph(LibScope::class)
+          interface LibGraph {
+            val libDual: LibDual
+          }
+          """
+            .trimIndent(),
+        ) as KtFile
+      val index = MetroResolutionService.getInstance(project).index(file)
+      val declarations = file.declarationsIncludingNested()
+
+      val appContext = index.contextFor(index.graphEntryAt(declarations.klass("AppGraph"))!!)
+      val appDual = index.consumerEntryAt(declarations.property("appDual"))!!
+      assertEquals(
+        listOf("LibDualImpl"),
+        index.bindingsFor(appDual, appContext).map { it.implementationName },
+      )
+
+      val libContext = index.contextFor(index.graphEntryAt(declarations.klass("LibGraph"))!!)
+      val libDual = index.consumerEntryAt(declarations.property("libDual"))!!
+      assertEquals(
+        listOf("LibDualImpl"),
+        index.bindingsFor(libDual, libContext).map { it.implementationName },
+      )
+    }
+  }
+
   fun testScopedBindingsRequireMatchingGraphScope() {
     val file =
       myFixture.configureByText(

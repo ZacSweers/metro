@@ -83,9 +83,9 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
 
     val graph = (declaration as? KtClassOrObject)?.let { index.graphEntryAt(it) }
     if (graph != null) {
-      val context = index.contextFor(graph)
-      val contributions = index.contributionsFor(context)
-      val inherited = index.inheritedContributionsFor(context)
+      val contexts = index.contextsFor(graph)
+      val contributions = contexts.flatMap { index.contributionsFor(it) }.distinct()
+      val inherited = contexts.flatMap { index.inheritedContributionsFor(it) }.distinct()
       val scopes = graph.scopeKeys.joinToString { it.shortClassName.asString() }
       val text = buildString {
         append(countText(contributions.size, "contribution"))

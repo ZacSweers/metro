@@ -85,8 +85,9 @@ import org.jetbrains.kotlin.types.Variance
  * Shared resolution service powering Metro's line markers, code vision, and inlay hints.
  *
  * Builds a project-wide [dev.zacsweers.metro.idea.model.BindingIndex] from Kotlin stub indexes plus
- * the K2 Analysis API and caches it by Metro option fingerprint. Resolution is key-based across the
- * whole project, then filtered through graph contexts for membership-sensitive editor features.
+ * the K2 Analysis API and caches it by Metro option fingerprint. Declaration shards are reusable
+ * across modules; resolution runs through use-site graph contexts so editor features model the same
+ * kind of graph membership that future shared validation will need.
  */
 @Service(Service.Level.PROJECT)
 class MetroResolutionService(private val project: Project) {
@@ -319,6 +320,7 @@ private class IndexBuilder(
   private val processedInjectClasses = HashSet<KtClassOrObject>()
   private val processedMemberInjects = HashSet<KtDeclaration>()
   private val processedContributions = HashSet<KtClassOrObject>()
+  private val processedLibraryContributionScopes = HashMap<KtClassOrObject, MutableSet<ClassId>>()
   private val processedGraphs = HashSet<KtClassOrObject>()
   private val processedCircuitInjects = HashSet<KtDeclaration>()
   private val processedAssistedFactories = HashSet<KtClassOrObject>()
@@ -442,7 +444,8 @@ private class IndexBuilder(
         symbol.valueParameters.singleOrNull()?.returnType?.fullyExpandedType ?: return@analyze
       val classSymbol = (contributedType as? KaClassType)?.symbol as? KaNamedClassSymbol
       val ktClass = classSymbol?.psi as? KtClassOrObject ?: return@analyze
-      if (!processedContributions.add(ktClass)) return@analyze
+      val processedScopes = processedLibraryContributionScopes.getOrPut(ktClass) { mutableSetOf() }
+      if (!processedScopes.add(scopeId)) return@analyze
 
       // Contribution-provider containers carry @Origin pointing back at the real contributing
       // class; prefer it for presentation and as the contribution anchor.
@@ -601,7 +604,11 @@ private class IndexBuilder(
             else -> null
           }
         analyze(target) {
-          for (data in bindingData(target, options)) {
+          val dataEntries = bindingData(target, options)
+          val consumerOriginClassId = dataEntries.firstNotNullOfOrNull { it.originClassId }
+          val consumerContributionScopes =
+            dataEntries.flatMapTo(mutableSetOf()) { it.contributionScopes }
+          for (data in dataEntries) {
             bindings +=
               KaBinding(
                 ptr(target),
@@ -621,13 +628,25 @@ private class IndexBuilder(
                 (target as? KtNamedFunction)?.valueParameters?.singleOrNull()
                   ?: (target as? KtCallableDeclaration)?.receiverTypeReference
                   ?: target
-              consumers += ConsumerEntry(ptr(consumerAnchor), data.consumedKey)
+              consumers +=
+                ConsumerEntry(
+                  ptr(consumerAnchor),
+                  data.consumedKey,
+                  originClassId = consumerOriginClassId,
+                  contributionScopes = consumerContributionScopes,
+                  containerId = containerId,
+                )
             }
           }
           // Provider function parameters are consumers themselves.
           if (target is KtNamedFunction && !target.hasAnyOfAnnotations(options.bindsAnnotations)) {
             for (parameter in target.valueParameters) {
-              addParameterConsumer(parameter)
+              addParameterConsumer(
+                parameter,
+                originClassId = consumerOriginClassId,
+                contributionScopes = consumerContributionScopes,
+                containerId = containerId,
+              )
             }
           }
         }
@@ -673,7 +692,11 @@ private class IndexBuilder(
       val classSymbol = ktClass.symbol as? KaNamedClassSymbol ?: return@analyze
       // bindingData verifies injectability/contributions itself; classes without an explicit
       // primary constructor still provide their own type.
-      for (data in bindingData(ktClass, options)) {
+      val dataEntries = bindingData(ktClass, options)
+      val originClassId = ktClass.getClassId()
+      val consumerContributionScopes =
+        dataEntries.flatMapTo(mutableSetOf()) { it.contributionScopes }
+      for (data in dataEntries) {
         bindings +=
           KaBinding(
             ptr(ktClass),
@@ -689,7 +712,11 @@ private class IndexBuilder(
       }
       val injectConstructor = findInjectConstructor(ktClass, classSymbol)
       for (parameter in injectConstructor?.valueParameters.orEmpty()) {
-        addParameterConsumer(parameter)
+        addParameterConsumer(
+          parameter,
+          originClassId = originClassId,
+          contributionScopes = consumerContributionScopes,
+        )
       }
     }
   }
@@ -732,7 +759,7 @@ private class IndexBuilder(
         options.dependencyGraphFactoryAnnotations + options.graphExtensionFactoryAnnotations
       val nestedClassIds = mutableSetOf<ClassId>()
       val includedDependencies = mutableSetOf<ClassId>()
-      val accessorTypeIds = mutableSetOf<ClassId>()
+      val extensionCreationIds = mutableSetOf<ClassId>()
 
       for (member in ktClass.declarations) {
         when (member) {
@@ -771,7 +798,7 @@ private class IndexBuilder(
                   options.graphExtensionAnnotations + options.graphExtensionFactoryAnnotations
                 )
             ) {
-              accessorTypeIds += returnClassType.classId
+              extensionCreationIds += returnClassType.classId
               continue
             }
             val site = consumedSite(symbol, options)
@@ -782,8 +809,8 @@ private class IndexBuilder(
                 site.isAbstractType,
                 site.multibindingId,
                 site.typeClassId,
+                graphClassId = graphClassId,
               )
-            site.typeClassId?.let(accessorTypeIds::add)
           }
           else -> {}
         }
@@ -806,7 +833,7 @@ private class IndexBuilder(
           includedDependencies = includedDependencies,
           isExtension = graphAnnotations.isEmpty(),
           selfIds = setOfNotNull(graphClassId) + nestedClassIds,
-          accessorTypeIds = accessorTypeIds,
+          extensionCreationIds = extensionCreationIds,
           scopingAnnotations = scopingAnnotations,
         )
     }
@@ -915,10 +942,11 @@ private class IndexBuilder(
               else -> return@analyze
             }
 
-          addCircuitContribution(declaration, annotation, factoryClassId)
+          val scopes = annotationScopeKeys(annotation)
+          addCircuitContribution(declaration, scopes, factoryClassId)
 
           for (parameter in declaration.valueParameters) {
-            addCircuitParameterConsumer(parameter)
+            addCircuitParameterConsumer(parameter, contributionScopes = scopes)
           }
         }
       }
@@ -937,7 +965,8 @@ private class IndexBuilder(
               CircuitClassIds.Presenter in supertypeIds -> CircuitClassIds.PresenterFactory
               else -> return@analyze
             }
-          addCircuitContribution(declaration, annotation, factoryClassId)
+          val scopes = annotationScopeKeys(annotation)
+          addCircuitContribution(declaration, scopes, factoryClassId)
         }
         // Constructor dependencies are covered by the regular inject sweep when annotated
         processInjectClass(declaration)
@@ -948,10 +977,9 @@ private class IndexBuilder(
 
   private fun KaSession.addCircuitContribution(
     declaration: KtDeclaration,
-    annotation: KaAnnotation,
+    scopes: Set<ClassId>,
     factoryClassId: ClassId,
   ) {
-    val scopes = annotationScopeKeys(annotation)
     contributions += ContributionEntry(ptr(declaration), scopes)
     val factoryType = (findClass(factoryClassId) as? KaNamedClassSymbol)?.defaultType ?: return
     val elementKey = typeKey(factoryType, null)
@@ -967,7 +995,10 @@ private class IndexBuilder(
       )
   }
 
-  private fun KaSession.addCircuitParameterConsumer(parameter: KtParameter) {
+  private fun KaSession.addCircuitParameterConsumer(
+    parameter: KtParameter,
+    contributionScopes: Set<ClassId>,
+  ) {
     val symbol = parameter.symbol as? KaValueParameterSymbol ?: return
     if (symbol.hasAnyAnnotation(options.assistedAnnotations)) {
       assistedSites += AssistedSite(ptr(parameter), "@Assisted", isImplicit = false)
@@ -977,7 +1008,7 @@ private class IndexBuilder(
       assistedSites += AssistedSite(ptr(parameter), "Circuit", isImplicit = true)
       return
     }
-    addConsumer(parameter, symbol)
+    addConsumer(parameter, symbol, contributionScopes = contributionScopes)
   }
 
   /**
@@ -1017,17 +1048,34 @@ private class IndexBuilder(
     return annotatedConstructor ?: if (classLevel) ktClass.primaryConstructor else null
   }
 
-  private fun KaSession.addParameterConsumer(parameter: KtParameter) {
+  private fun KaSession.addParameterConsumer(
+    parameter: KtParameter,
+    originClassId: ClassId? = null,
+    contributionScopes: Set<ClassId> = emptySet(),
+    containerId: ClassId? = null,
+  ) {
     val symbol = parameter.symbol as? KaValueParameterSymbol ?: return
     if (symbol.hasAnyAnnotation(options.assistedAnnotations)) {
       assistedSites += AssistedSite(ptr(parameter), "@Assisted", isImplicit = false)
       return
     }
     if (symbol.hasAnyAnnotation(options.providesAnnotations)) return // instance binding param
-    addConsumer(parameter, symbol)
+    addConsumer(
+      parameter,
+      symbol,
+      originClassId = originClassId,
+      contributionScopes = contributionScopes,
+      containerId = containerId,
+    )
   }
 
-  private fun KaSession.addConsumer(element: KtElement, symbol: KaCallableSymbol) {
+  private fun KaSession.addConsumer(
+    element: KtElement,
+    symbol: KaCallableSymbol,
+    originClassId: ClassId? = null,
+    contributionScopes: Set<ClassId> = emptySet(),
+    containerId: ClassId? = null,
+  ) {
     val site = consumedSite(symbol, options)
     consumers +=
       ConsumerEntry(
@@ -1036,6 +1084,9 @@ private class IndexBuilder(
         site.isAbstractType,
         site.multibindingId,
         site.typeClassId,
+        originClassId = originClassId,
+        contributionScopes = contributionScopes,
+        containerId = containerId,
       )
   }
 

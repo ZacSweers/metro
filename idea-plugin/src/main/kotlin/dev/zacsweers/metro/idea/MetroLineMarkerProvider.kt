@@ -166,9 +166,9 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     graph: KaGraphNode,
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
-    val context = index.contextFor(graph)
-    val contributions = index.contributionsFor(context)
-    val inherited = index.inheritedContributionsFor(context)
+    val contexts = index.contextsFor(graph)
+    val contributions = contexts.flatMap { index.contributionsFor(it) }.distinct()
+    val inherited = contexts.flatMap { index.inheritedContributionsFor(it) }.distinct()
     val targets = (contributions + inherited).map { it.pointer }
     val scopesDisplay = graph.scopeKeys.joinToString { it.shortClassName.asString() }
     val tooltip = buildString {
@@ -177,7 +177,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
         append(" · aggregating ")
         append(scopesDisplay)
       }
-      context.chain.getOrNull(1)?.let { parent ->
+      contexts.firstOrNull()?.chain?.getOrNull(1)?.let { parent ->
         append(" · extends ")
         append(parent.name ?: "parent graph")
         if (inherited.isNotEmpty()) {

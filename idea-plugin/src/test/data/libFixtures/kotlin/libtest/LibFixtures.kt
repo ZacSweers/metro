@@ -52,6 +52,19 @@ abstract class LibContainedImplContributions {
   }
 }
 
+abstract class LibScope
+
+interface LibDual
+
+internal class LibDualImpl : LibDual
+
+abstract class LibDualImplContributions {
+  @Origin(LibDualImpl::class)
+  object ToScopes {
+    @Provides fun provideLibDual(): LibDual = LibDualImpl()
+  }
+}
+
 // Contributed only via an internal hint, which consuming modules must not see
 interface LibHidden
 

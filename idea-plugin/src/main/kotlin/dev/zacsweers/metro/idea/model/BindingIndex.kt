@@ -5,6 +5,9 @@ package dev.zacsweers.metro.idea.model
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.SmartPsiElementPointer
 import java.util.concurrent.ConcurrentHashMap
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtElement
 
@@ -27,6 +30,8 @@ internal class BindingIndex(
   }
 
   private val graphContexts = ConcurrentHashMap<KaGraphNode, List<GraphContext>>()
+  private val replacedOriginsByContext = ConcurrentHashMap<GraphContext, Set<ClassId>>()
+  private val consumerResolutions = ConcurrentHashMap<ConsumerEntry, ConsumerResolution>()
 
   // Contributions are keyed solely by multibindingId, mirroring the compiler's
   // @MultibindingElement qualifier swap — their element key must not satisfy plain consumers.
@@ -71,9 +76,7 @@ internal class BindingIndex(
    * multibinding contributions collected into them.
    */
   fun bindingsFor(consumer: ConsumerEntry): List<KaBinding> {
-    val direct = bindingsByKey[consumer.key].orEmpty()
-    val contributions = consumer.multibindingId?.let { contributionsByMultibindingId[it] }.orEmpty()
-    return direct + contributions
+    return candidateBindingsFor(consumer)
   }
 
   /** [bindingsFor] filtered to bindings that are members of [context]'s graph. */
@@ -81,27 +84,47 @@ internal class BindingIndex(
     consumer: ConsumerEntry,
     context: GraphContext,
   ): List<KaBinding> {
-    return applyReplaces(bindingsFor(consumer).filter { isInContext(it, context) })
+    val queryContext = GraphQueryContext(context, useSiteModule(consumer.pointer.element))
+    return bindingsFor(consumer, queryContext)
   }
 
   /**
    * Per-graph resolution of [consumer]: which bindings satisfy it in each graph that can resolve
-   * it, plus the unfiltered project-wide candidates as a fallback for projects without graphs.
+   * it, plus the use-site-visible candidates as a fallback for files/projects without graphs.
    */
   fun resolveConsumer(consumer: ConsumerEntry): ConsumerResolution {
-    val global = bindingsFor(consumer)
-    if (global.isEmpty() || graphs.isEmpty()) {
-      return ConsumerResolution(global, emptyMap())
-    }
+    return consumerResolutions.computeIfAbsent(consumer, ::buildConsumerResolution)
+  }
+
+  private fun buildConsumerResolution(consumer: ConsumerEntry): ConsumerResolution {
+    val useSiteModule = useSiteModule(consumer.pointer.element)
+    val global = visibleBindingsFor(consumer, useSiteModule)
+    if (graphs.isEmpty()) return ConsumerResolution(global, emptyMap(), hasGraphs = false)
+
     val perGraph = LinkedHashMap<KaGraphNode, List<KaBinding>>()
     for (graph in graphs) {
       val filtered =
-        contextsFor(graph).flatMap { context -> bindingsFor(consumer, context) }.distinct()
+        contextsFor(graph)
+          .map { GraphQueryContext(it, useSiteModule) }
+          .flatMap { queryContext -> bindingsFor(consumer, queryContext) }
+          .distinct()
       if (filtered.isNotEmpty()) {
         perGraph[graph] = filtered
       }
     }
-    return ConsumerResolution(global, perGraph)
+    return ConsumerResolution(global, perGraph, hasGraphs = true)
+  }
+
+  private fun bindingsFor(
+    consumer: ConsumerEntry,
+    queryContext: GraphQueryContext,
+  ): List<KaBinding> {
+    if (!isConsumerInContext(consumer, queryContext)) return emptyList()
+    val context = queryContext.graphContext
+    val useSiteModule = queryContext.useSiteModule
+    val candidates =
+      visibleBindingsFor(consumer, useSiteModule).filter { isBindingInContext(it, context) }
+    return applyReplaces(candidates)
   }
 
   /** The aggregated context of [graph], following extension parent chains. */
@@ -166,7 +189,7 @@ internal class BindingIndex(
     if (!graph.isExtension) return listOf(listOf(graph))
 
     val parents = graphs.filter { candidate ->
-      candidate !in visited && candidate.accessorTypeIds.any { it in graph.selfIds }
+      candidate !in visited && candidate.extensionCreationIds.any { it in graph.selfIds }
     }
     if (parents.isEmpty()) return listOf(listOf(graph))
 
@@ -213,7 +236,63 @@ internal class BindingIndex(
     )
   }
 
-  private fun isInContext(entry: KaBinding, context: GraphContext): Boolean {
+  private fun visibleBindingsFor(
+    consumer: ConsumerEntry,
+    useSiteModule: KaModule?,
+  ): List<KaBinding> {
+    return candidateBindingsFor(consumer).filter { isVisibleFrom(it.pointer, useSiteModule) }
+  }
+
+  private fun candidateBindingsFor(consumer: ConsumerEntry): List<KaBinding> {
+    val direct = bindingsByKey[consumer.key].orEmpty()
+    val contributions = consumer.multibindingId?.let { contributionsByMultibindingId[it] }.orEmpty()
+    return direct + contributions
+  }
+
+  private fun isConsumerInContext(
+    consumer: ConsumerEntry,
+    queryContext: GraphQueryContext,
+  ): Boolean {
+    if (!isVisibleFrom(consumer.pointer, queryContext.useSiteModule)) return false
+    val context = queryContext.graphContext
+    val originClassId = consumer.originClassId
+    if (originClassId != null) {
+      if (originClassId in context.excludes) return false
+      if (originClassId in replacedOrigins(context)) return false
+    }
+
+    val graphClassId = consumer.graphClassId
+    if (graphClassId != null) return graphClassId in context.graphClassIds
+
+    val containerId = consumer.containerId
+    if (containerId != null) {
+      return containerId in context.graphClassIds || containerId in context.containers
+    }
+
+    if (consumer.contributionScopes.isNotEmpty()) {
+      return consumer.contributionScopes.any { it in context.scopes }
+    }
+
+    if (originClassId != null) {
+      return hasOriginBindingInContext(originClassId, context)
+    }
+
+    return true
+  }
+
+  private fun hasOriginBindingInContext(originClassId: ClassId, context: GraphContext): Boolean {
+    return bindings.any { binding ->
+      binding.originClassId == originClassId && isBindingInContext(binding, context)
+    }
+  }
+
+  private fun isBindingInContext(entry: KaBinding, context: GraphContext): Boolean {
+    if (!isBindingCandidateInContext(entry, context)) return false
+    val originClassId = entry.originClassId ?: return true
+    return originClassId !in replacedOrigins(context)
+  }
+
+  private fun isBindingCandidateInContext(entry: KaBinding, context: GraphContext): Boolean {
     if (entry.originClassId != null && entry.originClassId in context.excludes) return false
     // Scoped bindings only live in graphs declaring a matching scope (explicitly or implicitly
     // via the aggregation scope's conveyed @SingleIn)
@@ -240,6 +319,16 @@ internal class BindingIndex(
       // Injected classes are implicit bindings; contributed bindings already passed the
       // scope/excludes checks above
       else -> true
+    }
+  }
+
+  private fun replacedOrigins(context: GraphContext): Set<ClassId> {
+    return replacedOriginsByContext.computeIfAbsent(context) {
+      bindings
+        .asSequence()
+        .filter { binding -> isBindingCandidateInContext(binding, context) }
+        .flatMap { binding -> binding.replaces.asSequence() }
+        .toSet()
     }
   }
 
@@ -328,8 +417,46 @@ internal class ConsumerResolution(
   val global: List<KaBinding>,
   /** Graph-filtered candidates per graph that can resolve the consumer. */
   val perGraph: Map<KaGraphNode, List<KaBinding>>,
+  private val hasGraphs: Boolean,
 ) {
-  /** The deduplicated union of per-graph results, or [global] when no graph resolves it. */
-  val effective: List<KaBinding> =
-    if (perGraph.isEmpty()) global else perGraph.values.flatten().distinct()
+  /** The deduplicated union of per-graph results, or [global] for graphless files/projects. */
+  val effective: List<KaBinding> = if (hasGraphs) perGraph.values.flatten().distinct() else global
+}
+
+private fun useSiteModule(element: KtElement?): KaModule? {
+  return element?.let { KaModuleProvider.getModule(it.project, it, useSiteModule = null) }
+}
+
+private fun isVisibleFrom(
+  pointer: SmartPsiElementPointer<*>,
+  useSiteModule: KaModule?,
+): Boolean {
+  if (useSiteModule == null) return true
+  val element = pointer.element as? KtElement ?: return true
+  val declarationModule = KaModuleProvider.getModule(element.project, element, useSiteModule)
+  return useSiteModule.canReach(declarationModule)
+}
+
+private fun KaModule.canReach(target: KaModule): Boolean {
+  if (this == target) return true
+  val visited = hashSetOf<KaModule>()
+  val queue = ArrayDeque<KaModule>()
+  queue += this
+  while (queue.isNotEmpty()) {
+    val module = queue.removeFirst()
+    if (!visited.add(module)) continue
+    if (module == target) return true
+    queue += module.directVisibleDependencies()
+  }
+  return false
+}
+
+private fun KaModule.directVisibleDependencies(): List<KaModule> {
+  val dependencies = mutableListOf<KaModule>()
+  dependencies += directRegularDependencies
+  if (this is KaSourceModule) {
+    dependencies += directDependsOnDependencies
+    dependencies += directFriendDependencies
+  }
+  return dependencies
 }

@@ -11,6 +11,7 @@ package metro.hints
 
 import libtest.LibAnalyticsImpl
 import libtest.LibContainedImplContributions
+import libtest.LibDualImplContributions
 import libtest.LibExplicitImpl
 import libtest.LibHiddenImpl
 import libtest.LibServiceImpl
@@ -22,5 +23,9 @@ fun dev_zacsweers_metro_AppScope(contributed: LibAnalyticsImpl) {}
 fun dev_zacsweers_metro_AppScope(contributed: LibExplicitImpl) {}
 
 fun dev_zacsweers_metro_AppScope(contributed: LibContainedImplContributions.ToAppScope) {}
+
+fun dev_zacsweers_metro_AppScope(contributed: LibDualImplContributions.ToScopes) {}
+
+fun libtest_LibScope(contributed: LibDualImplContributions.ToScopes) {}
 
 internal fun dev_zacsweers_metro_AppScope(contributed: LibHiddenImpl) {}
