@@ -98,6 +98,7 @@ internal class BindingIndex(
 
   private fun buildConsumerResolution(consumer: ConsumerEntry): ConsumerResolution {
     val useSiteModule = useSiteModule(consumer.pointer.element)
+    // The visible candidate set is invariant across graphs/contexts, so compute it once.
     val global = visibleBindingsFor(consumer, useSiteModule)
     if (graphs.isEmpty()) return ConsumerResolution(global, emptyMap(), hasGraphs = false)
 
@@ -106,7 +107,7 @@ internal class BindingIndex(
       val filtered =
         contextsFor(graph)
           .map { GraphQueryContext(it, useSiteModule) }
-          .flatMap { queryContext -> bindingsFor(consumer, queryContext) }
+          .flatMap { queryContext -> bindingsInContext(global, consumer, queryContext) }
           .distinct()
       if (filtered.isNotEmpty()) {
         perGraph[graph] = filtered
@@ -119,12 +120,19 @@ internal class BindingIndex(
     consumer: ConsumerEntry,
     queryContext: GraphQueryContext,
   ): List<KaBinding> {
+    val visible = visibleBindingsFor(consumer, queryContext.useSiteModule)
+    return bindingsInContext(visible, consumer, queryContext)
+  }
+
+  /** Filters precomputed [visible] candidates to those live in [queryContext]'s graph. */
+  private fun bindingsInContext(
+    visible: List<KaBinding>,
+    consumer: ConsumerEntry,
+    queryContext: GraphQueryContext,
+  ): List<KaBinding> {
     if (!isConsumerInContext(consumer, queryContext)) return emptyList()
     val context = queryContext.graphContext
-    val useSiteModule = queryContext.useSiteModule
-    val candidates =
-      visibleBindingsFor(consumer, useSiteModule).filter { isBindingInContext(it, context) }
-    return applyReplaces(candidates)
+    return applyReplaces(visible.filter { isBindingInContext(it, context) })
   }
 
   /** The aggregated context of [graph], following extension parent chains. */
@@ -356,8 +364,9 @@ internal class BindingIndex(
 
     for (consumer in candidates) {
       val resolution = resolveConsumer(consumer)
-      val graphBindings = resolution.perGraph.values.flatten()
-      if (graphBindings.any { it in bindingSet }) {
+      val resolvesToEntry =
+        resolution.perGraph.values.any { graphBindings -> graphBindings.any { it in bindingSet } }
+      if (resolvesToEntry) {
         result += consumer
       }
     }
