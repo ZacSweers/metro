@@ -1261,10 +1261,12 @@ internal fun KaSession.consumedSite(
  * Peels `Provider`/`Lazy` wrappers to the underlying aggregate type, so wrapped multibinding
  * consumers (`Provider<Set<E>>`, `Lazy<Map<K, V>>`, etc.) are detected just like bare ones.
  */
+context(session: KaSession)
 private fun KaClassType.aggregateType(options: MetroOptions): KaClassType {
   val classId = this.classId
   if (classId in options.providerTypes || classId in options.lazyTypes) {
-    val inner = typeArguments.firstOrNull()?.type?.fullyExpandedType as? KaClassType ?: return this
+    val innerType = typeArguments.firstOrNull()?.type ?: return this
+    val inner = with(session) { innerType.fullyExpandedType } as? KaClassType ?: return this
     return inner.aggregateType(options)
   }
   return this
