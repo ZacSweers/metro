@@ -114,10 +114,10 @@ internal fun IrClass.getOrCreateGraphImplClassShell(): IrClass {
       context.metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(this)
       if (primaryConstructor == null) {
         addConstructor {
-            visibility = DescriptorVisibilities.PRIVATE
-            isPrimary = true
-            origin = Origins.Default
-          }
+          visibility = DescriptorVisibilities.PRIVATE
+          isPrimary = true
+          origin = Origins.Default
+        }
           .apply {
             creatorFunction?.let {
               for (param in it.regularParameters) {

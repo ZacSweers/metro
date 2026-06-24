@@ -111,33 +111,33 @@ class WeatherApp(private val repository: WeatherRepository) {
 
   private fun formatHourlyForecast(forecast: List<HourlyForecastInfo>): String {
     return table {
-        cellStyle {
-          border = true
-          alignment = TextAlignment.MiddleCenter
-        }
+      cellStyle {
+        border = true
+        alignment = TextAlignment.MiddleCenter
+      }
 
-        header {
-          row {
-            cell("Time") { alignment = TextAlignment.MiddleCenter }
-            cell("Temperature")
-            cell("Conditions") { alignment = TextAlignment.MiddleCenter }
-          }
+      header {
+        row {
+          cell("Time") { alignment = TextAlignment.MiddleCenter }
+          cell("Temperature")
+          cell("Conditions") { alignment = TextAlignment.MiddleCenter }
         }
+      }
 
-        forecast.take(24).forEach { hour ->
-          val localTime = hour.time.toLocalDateTime(TimeZone.currentSystemDefault())
-          val timeStr =
-            "${localTime.hour.toString().padStart(2, '0')}:${
+      forecast.take(24).forEach { hour ->
+        val localTime = hour.time.toLocalDateTime(TimeZone.currentSystemDefault())
+        val timeStr =
+          "${localTime.hour.toString().padStart(2, '0')}:${
           localTime.minute.toString().padStart(2, '0')
         }"
 
-          row {
-            cell(timeStr)
-            cell("${hour.temperature}°C")
-            cell(hour.description)
-          }
+        row {
+          cell(timeStr)
+          cell("${hour.temperature}°C")
+          cell(hour.description)
         }
       }
+    }
       .toString()
   }
 }

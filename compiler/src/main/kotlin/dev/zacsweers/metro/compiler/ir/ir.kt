@@ -1371,11 +1371,11 @@ private fun IrSimpleType.patchMutableCollections(): IrSimpleType {
 internal val IrProperty.allAnnotations: List<IrConstructorCall>
   get() {
     return buildList {
-        addAll(annotationsCompat())
-        getter?.let { addAll(it.annotationsCompat()) }
-        setter?.let { addAll(it.annotationsCompat()) }
-        backingField?.let { addAll(it.annotationsCompat()) }
-      }
+      addAll(annotationsCompat())
+      getter?.let { addAll(it.annotationsCompat()) }
+      setter?.let { addAll(it.annotationsCompat()) }
+      backingField?.let { addAll(it.annotationsCompat()) }
+    }
       .distinct()
   }
 
@@ -2357,24 +2357,23 @@ internal fun IrType.requireSimpleType(
     val isExternalStub =
       declaration?.origin == IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB ||
         declaration?.origin == IrDeclarationOrigin.IR_EXTERNAL_JAVA_DECLARATION_STUB
-    val message =
-      buildString {
-          appendLine(
-            "Encountered an unexpected error while processing type: '${render(short = false)}'"
-          )
-          if (isExternalStub) {
-            appendLine(
-              "- Note: the IR compiler may be omitting required generic arguments from the render"
-            )
-          }
-          appendLine("- Make sure you don't have any missing dependencies or imports")
-          if (isExternalStub) {
-            appendLine(
-              "- This type appears to be from a library. If so, make sure the library exposes this type as a visible dependency (i.e. \"api\" dependency in Gradle)."
-            )
-          }
-        }
-        .trimEnd()
+    val message = buildString {
+      appendLine(
+        "Encountered an unexpected error while processing type: '${render(short = false)}'"
+      )
+      if (isExternalStub) {
+        appendLine(
+          "- Note: the IR compiler may be omitting required generic arguments from the render"
+        )
+      }
+      appendLine("- Make sure you don't have any missing dependencies or imports")
+      if (isExternalStub) {
+        appendLine(
+          "- This type appears to be from a library. If so, make sure the library exposes this type as a visible dependency (i.e. \"api\" dependency in Gradle)."
+        )
+      }
+    }
+      .trimEnd()
     if (context != null) {
       context.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message, extraContext)
       // Bomb out early because we don't wanna poison the binding graph construction later

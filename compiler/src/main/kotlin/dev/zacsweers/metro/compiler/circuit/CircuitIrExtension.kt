@@ -365,10 +365,10 @@ private class CircuitIrTransformer(
         addFactoryAnnotations(target)
         markAsDeprecatedHidden()
         addConstructor {
-            this.origin = CircuitOrigins.IrFactoryConstructor
-            isPrimary = true
-            visibility = DescriptorVisibilities.PUBLIC
-          }
+          this.origin = CircuitOrigins.IrFactoryConstructor
+          isPrimary = true
+          visibility = DescriptorVisibilities.PUBLIC
+        }
           .apply constructor@{
             for (param in target.constructorParams) {
               addValueParameter(param.name, param.type).apply {

@@ -384,12 +384,11 @@ internal class ContributedInterfaceSupertypeGenerator(
   ): List<ConeKotlinType> {
     val graphAnnotation = classLikeDeclaration.graphAnnotation() ?: return emptyList()
 
-    val scopes =
-      buildSet {
-          graphAnnotation.resolvedScopeClassId(session, typeResolver)?.let(::add)
-          graphAnnotation.resolvedAdditionalScopesClassIds(session, typeResolver).let(::addAll)
-        }
-        .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
+    val scopes = buildSet {
+      graphAnnotation.resolvedScopeClassId(session, typeResolver)?.let(::add)
+      graphAnnotation.resolvedAdditionalScopesClassIds(session, typeResolver).let(::addAll)
+    }
+      .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
     for (classId in scopes) {
       session.lookupTracker?.recordFqNameLookup(

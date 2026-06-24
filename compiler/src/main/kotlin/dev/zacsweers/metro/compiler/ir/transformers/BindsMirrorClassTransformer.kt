@@ -235,30 +235,29 @@ private fun generateMirrorFunction(
   // Create a unique name for this mirror function based on the target function name
   // and qualifier + map key annotations
   val annotations = targetFunction.annotations
-  val mirrorFunctionName =
-    buildString {
-        val sourceDeclaration = targetFunction.ir.propertyIfAccessor
-        append(sourceDeclaration.expectAs<IrDeclarationWithName>().name)
-        if (sourceDeclaration is IrProperty) {
-          append("_property")
-        }
-        annotations.qualifier?.hashCode()?.toUInt()?.let(::append)
-        annotations.mapKey?.hashCode()?.toUInt()?.let(::append)
-        annotations.multibinds?.hashCode()?.toUInt()?.let(::append)
+  val mirrorFunctionName = buildString {
+    val sourceDeclaration = targetFunction.ir.propertyIfAccessor
+    append(sourceDeclaration.expectAs<IrDeclarationWithName>().name)
+    if (sourceDeclaration is IrProperty) {
+      append("_property")
+    }
+    annotations.qualifier?.hashCode()?.toUInt()?.let(::append)
+    annotations.mapKey?.hashCode()?.toUInt()?.let(::append)
+    annotations.multibinds?.hashCode()?.toUInt()?.let(::append)
 
-        if (annotations.isBindsOptionalOf) {
-          append("_opt")
-        }
+    if (annotations.isBindsOptionalOf) {
+      append("_opt")
+    }
 
-        if (annotations.isIntoSet) {
-          append("_intoset")
-        } else if (annotations.isElementsIntoSet) {
-          append("_elementsintoset")
-        } else if (annotations.isIntoMap) {
-          append("_intomap")
-        }
-      }
-      .asName()
+    if (annotations.isIntoSet) {
+      append("_intoset")
+    } else if (annotations.isElementsIntoSet) {
+      append("_elementsintoset")
+    } else if (annotations.isIntoMap) {
+      append("_intomap")
+    }
+  }
+    .asName()
 
   val mirrorFunction =
     mirrorClass

@@ -447,9 +447,9 @@ internal class IrBindingGraph(
         if (unusedMultibindingElements.isNotEmpty()) {
           val allMultibindings by memoize {
             buildList {
-                realGraph.bindings.forEachValue { b -> if (b is IrBinding.Multibinding) add(b) }
-                addAll(bindingLookup.getAvailableMultibindings().values)
-              }
+              realGraph.bindings.forEachValue { b -> if (b is IrBinding.Multibinding) add(b) }
+              addAll(bindingLookup.getAvailableMultibindings().values)
+            }
               .distinctBy { it.typeKey }
           }
           val suspiciousDiagnostics = mutableListOf<MetroDiagnostic>()

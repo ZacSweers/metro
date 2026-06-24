@@ -1084,8 +1084,8 @@ internal class ContributionsFirGenerator(
   private fun buildContributesToAnnotation(scopeArg: FirGetClassCall?): FirAnnotation {
     val classId = ClassId(Symbols.FqNames.metroRuntimePackage, Name.identifier("ContributesTo"))
     return buildSimpleAnnotation {
-        session.symbolProvider.getClassLikeSymbolByClassId(classId) as FirRegularClassSymbol
-      }
+      session.symbolProvider.getClassLikeSymbolByClassId(classId) as FirRegularClassSymbol
+    }
       .apply {
         if (scopeArg != null) {
           replaceArgumentMapping(

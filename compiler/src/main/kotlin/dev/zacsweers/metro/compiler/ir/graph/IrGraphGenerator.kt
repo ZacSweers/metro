@@ -224,15 +224,14 @@ internal class IrGraphGenerator(
     propertyKind: PropertyKind,
     visibility: DescriptorVisibility = DescriptorVisibilities.PRIVATE,
   ): IrProperty {
-    val property =
-      addProperty {
-          this.name = propertyNameAllocator.newName(name)
-          this.visibility = visibility
-        }
-        .apply {
-          graphPropertyData = GraphPropertyData(contextKey, type)
-          contextKey.typeKey.qualifier?.ir?.let { addAnnotationCompat(it.deepCopyWithSymbols()) }
-        }
+    val property = addProperty {
+      this.name = propertyNameAllocator.newName(name)
+      this.visibility = visibility
+    }
+      .apply {
+        graphPropertyData = GraphPropertyData(contextKey, type)
+        contextKey.typeKey.qualifier?.ir?.let { addAnnotationCompat(it.deepCopyWithSymbols()) }
+      }
 
     return property.ensureInitialized(propertyKind, type)
   }
@@ -672,19 +671,19 @@ internal class IrGraphGenerator(
       if (parentGraphParam != null) {
         val parentGraphType = parentGraphParam.type
         addProperty {
-            name =
-              propertyNameAllocator
-                .allocateName(memberNamer, MemberNamer.Kind.INSTANCE) {
-                  parentGraphParam.name.asString()
-                }
-                .asName()
-            visibility = DescriptorVisibilities.PRIVATE
-          }
+          name =
+            propertyNameAllocator
+              .allocateName(memberNamer, MemberNamer.Kind.INSTANCE) {
+                parentGraphParam.name.asString()
+              }
+              .asName()
+          visibility = DescriptorVisibilities.PRIVATE
+        }
           .apply {
             addBackingFieldCompat {
-                type = parentGraphType
-                visibility = DescriptorVisibilities.PRIVATE
-              }
+              type = parentGraphType
+              visibility = DescriptorVisibilities.PRIVATE
+            }
               .apply {
                 initializer = createIrBuilder(symbol).run { irExprBody(irGet(parentGraphParam)) }
               }
@@ -721,27 +720,27 @@ internal class IrGraphGenerator(
     val parentImplClass = parentImplType.rawTypeOrNull()
 
     return buildMap {
-        if (parentImplClass != null) {
-          // Use the same key construction as GraphNode.typeKey:
-          // - Synthetic graphs use the impl
-          // - Non-synthetic graphs use sourceGraphIfMetroGraph (the interface)
-          val keyClass =
-            if (parentImplClass.origin.isSyntheticGeneratedGraph) {
-              parentImplClass
-            } else {
-              parentImplClass.sourceGraphIfMetroGraph
-            }
-          put(IrTypeKey(keyClass.typeWith()), listOf(parentGraphInstanceProperty))
-        }
-
-        // For chained extensions, copy parent's ancestor chains with our property prepended.
-        // This avoids walking the chain - parent already computed its ancestors.
-        parentImplClass?.ancestorGraphPropertiesMap?.let { parentAncestors ->
-          for ((ancestorKey, ancestorChain) in parentAncestors) {
-            put(ancestorKey, listOf(parentGraphInstanceProperty) + ancestorChain)
+      if (parentImplClass != null) {
+        // Use the same key construction as GraphNode.typeKey:
+        // - Synthetic graphs use the impl
+        // - Non-synthetic graphs use sourceGraphIfMetroGraph (the interface)
+        val keyClass =
+          if (parentImplClass.origin.isSyntheticGeneratedGraph) {
+            parentImplClass
+          } else {
+            parentImplClass.sourceGraphIfMetroGraph
           }
+        put(IrTypeKey(keyClass.typeWith()), listOf(parentGraphInstanceProperty))
+      }
+
+      // For chained extensions, copy parent's ancestor chains with our property prepended.
+      // This avoids walking the chain - parent already computed its ancestors.
+      parentImplClass?.ancestorGraphPropertiesMap?.let { parentAncestors ->
+        for ((ancestorKey, ancestorChain) in parentAncestors) {
+          put(ancestorKey, listOf(parentGraphInstanceProperty) + ancestorChain)
         }
       }
+    }
       .also {
         // Store on graph class so child extensions can access it
         graphClass.ancestorGraphPropertiesMap = it
@@ -1188,17 +1187,16 @@ internal class IrGraphGenerator(
     if (!shardResult.isGraphAsShard) {
       val result = MutableIntObjectMap<IrProperty>(shardResult.shards.size)
       shardResult.shards.forEach { shard ->
-        val shardField =
-          addProperty {
-              name = propertyNameAllocator.newName("shard${shard.index + 1}").asName()
-              visibility = DescriptorVisibilities.INTERNAL
+        val shardField = addProperty {
+          name = propertyNameAllocator.newName("shard${shard.index + 1}").asName()
+          visibility = DescriptorVisibilities.INTERNAL
+        }
+          .apply {
+            addBackingFieldCompat {
+              type = shard.shardClass.typeWith()
+              visibility = DescriptorVisibilities.PRIVATE
             }
-            .apply {
-              addBackingFieldCompat {
-                type = shard.shardClass.typeWith()
-                visibility = DescriptorVisibilities.PRIVATE
-              }
-            }
+          }
         result[shard.index] = shardField
       }
       result
@@ -1830,13 +1828,12 @@ internal class IrGraphGenerator(
     typeKey: IrTypeKey,
     fieldType: IrType = typeKey.type,
     initializerExpression: IrBuilderWithScope.() -> IrExpression,
-  ): IrProperty =
-    addProperty {
-        this.name = name.decapitalizeUS().asName()
-        this.visibility = DescriptorVisibilities.PRIVATE
-      }
-      .apply { this.addBackingFieldCompat { this.type = fieldType } }
-      .initFinal { initializerExpression() }
+  ): IrProperty = addProperty {
+    this.name = name.decapitalizeUS().asName()
+    this.visibility = DescriptorVisibilities.PRIVATE
+  }
+    .apply { this.addBackingFieldCompat { this.type = fieldType } }
+    .initFinal { initializerExpression() }
 
   private fun GraphNode.Local.implementOverrides(
     expressionGeneratorFactory: GraphExpressionGenerator.Factory

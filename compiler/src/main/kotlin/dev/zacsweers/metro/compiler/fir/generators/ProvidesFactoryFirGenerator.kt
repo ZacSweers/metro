@@ -124,12 +124,11 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
         .mapNotNullToSet { providesCallable ->
           val providerCallable =
             providesCallable.asProviderCallable(classSymbol) ?: return@mapNotNullToSet null
-          val simpleName =
-            buildString {
-                append(providerCallable.name.capitalizeUS())
-                append(Symbols.Names.MetroFactory.asString())
-              }
-              .asName()
+          val simpleName = buildString {
+            append(providerCallable.name.capitalizeUS())
+            append(Symbols.Names.MetroFactory.asString())
+          }
+            .asName()
           simpleName.also {
             providerFactoryClassIdsToCallables[
               classSymbol.classId.createNestedClassId(simpleName)] = providerCallable

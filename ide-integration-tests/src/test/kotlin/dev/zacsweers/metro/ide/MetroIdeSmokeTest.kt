@@ -534,15 +534,14 @@ private fun findMetroLogCrashes(logsDir: Path): String? {
   if (metroIndices.isEmpty()) return null
 
   // Collect context windows around each Metro mention, merging overlaps
-  val contextLines =
-    buildSet {
-        for (idx in metroIndices) {
-          for (i in maxOf(0, idx - 5)..minOf(lines.lastIndex, idx + 2)) {
-            add(i)
-          }
-        }
+  val contextLines = buildSet {
+    for (idx in metroIndices) {
+      for (i in maxOf(0, idx - 5)..minOf(lines.lastIndex, idx + 2)) {
+        add(i)
       }
-      .sorted()
+    }
+  }
+    .sorted()
 
   return contextLines.joinToString("\n") { lines[it] }
 }
