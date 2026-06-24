@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
@@ -125,6 +126,10 @@ internal fun List<KtDeclaration>.property(name: String): KtProperty {
 
 internal fun List<KtDeclaration>.klass(name: String): KtClass {
   return filterIsInstance<KtClass>().single { it.name == name }
+}
+
+internal fun List<KtDeclaration>.obj(name: String): KtObjectDeclaration {
+  return filterIsInstance<KtObjectDeclaration>().single { it.name == name }
 }
 
 internal fun List<KtDeclaration>.parameter(name: String): KtParameter {

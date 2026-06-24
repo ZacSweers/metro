@@ -36,6 +36,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertTrue(declarations.klass("ContributedBindingService").isMetroImplicitUsage())
     assertTrue(declarations.klass("ContributedSetService").isMetroImplicitUsage())
     assertTrue(declarations.klass("ContributedMapService").isMetroImplicitUsage())
+    assertTrue(declarations.obj("ContributedObjectService").isMetroImplicitUsage())
     assertTrue(
       declarations
         .klass("ConstructorAssistedInjectedService")
@@ -393,6 +394,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       @ContributesBinding(AppScope::class) class ContributedBindingService : Service
       @ContributesIntoSet(AppScope::class) class ContributedSetService : Service
       @ContributesIntoMap(AppScope::class) class ContributedMapService : Service
+      @ContributesBinding(AppScope::class) object ContributedObjectService : Service
       @OptIn(ExperimentalMetroApi::class)
       @ExposeImplBinding
       @ContributesBinding(AppScope::class)
