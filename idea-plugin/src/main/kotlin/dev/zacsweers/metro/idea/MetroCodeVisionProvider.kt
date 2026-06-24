@@ -15,7 +15,6 @@ import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.idea.model.BindingIndex
-import java.awt.event.MouseEvent
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtElement
@@ -120,18 +119,16 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
     return ClickableTextCodeVisionEntry(
       text = text,
       providerId = id,
-      onClick = { event, editor -> navigate(event, editor, targets, popupTitle) },
+      onClick = { _, editor -> navigate(editor, targets, popupTitle) },
       tooltip = tooltip,
     )
   }
 
   private fun navigate(
-    event: MouseEvent?,
     editor: Editor,
     targets: List<SmartPsiElementPointer<out KtElement>>,
     popupTitle: String,
   ) {
-    val project = editor.project ?: return
     val elements = targets.mapNotNull { it.element }
     when {
       elements.isEmpty() -> {}

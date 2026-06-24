@@ -27,6 +27,13 @@ import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
+private val BINDING_OPTION =
+  GutterIconDescriptor.Option("metro.provider", "Metro binding", MetroIcons.PROVIDER)
+private val CONSUMER_OPTION =
+  GutterIconDescriptor.Option("metro.consumer", "Metro consumer", MetroIcons.CONSUMER)
+private val GRAPH_OPTION =
+  GutterIconDescriptor.Option("metro.graph", "Metro graph", MetroIcons.GRAPH)
+
 /**
  * Adds binding/consumer/graph gutter icons to Metro declarations, with navigation to the
  * counterpart binding sites. Each marker type can be toggled in Settings > Editor > General >
@@ -40,8 +47,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
   override fun getName(): String = "Metro bindings"
 
-  override fun getOptions(): Array<GutterIconDescriptor.Option> =
-    arrayOf(BINDING_OPTION, CONSUMER_OPTION, GRAPH_OPTION)
+  override fun getOptions(): Array<Option> = arrayOf(BINDING_OPTION, CONSUMER_OPTION, GRAPH_OPTION)
 
   override fun collectNavigationMarkers(
     element: PsiElement,
@@ -221,15 +227,6 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       .setEmptyPopupText(emptyText)
       .setTargetRenderer { MetroTargetRenderer() }
       .createLineMarkerInfo(anchor)
-  }
-
-  companion object {
-    private val BINDING_OPTION =
-      GutterIconDescriptor.Option("metro.provider", "Metro binding", MetroIcons.PROVIDER)
-    private val CONSUMER_OPTION =
-      GutterIconDescriptor.Option("metro.consumer", "Metro consumer", MetroIcons.CONSUMER)
-    private val GRAPH_OPTION =
-      GutterIconDescriptor.Option("metro.graph", "Metro graph", MetroIcons.GRAPH)
   }
 }
 
