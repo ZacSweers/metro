@@ -72,10 +72,10 @@ fun box(): String {
     )
     assertEvent(
       name = "SourceGraph",
-      graph = "AppGraph",
-      path = "AppGraph",
+      graph = "ChildGraph",
+      path = "AppGraph/ChildGraph",
       type = "SourceGraph",
-      kind = "BoundInstance",
+      kind = "GraphDependency",
     )
     assertEvent(
       name = "String",

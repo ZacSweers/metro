@@ -174,7 +174,6 @@ private constructor(
       }
 
       val bindingKind = binding.diagnosticTypeName
-
       // If we're initializing the field for this key, don't ever try to reach for an existing
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
@@ -435,9 +434,12 @@ private constructor(
 
             if (providerFactory is ProviderFactory.Metro) {
               val providerType = binding.typeKey.type.wrapTypeInProvider(metroSymbols.metroProvider)
-              with(metroSymbols.providerTypeConverter) {
-                factoryProvider.convertTo(contextualTypeKey, providerType = providerType)
-              }
+              factoryProvider.toTargetType(
+                actual = AccessType.PROVIDER,
+                contextualTypeKey = contextualTypeKey,
+                bindingKind = bindingKind,
+                providerType = providerType,
+              )
             } else {
               factoryProvider.toTargetType(
                 actual = AccessType.PROVIDER,

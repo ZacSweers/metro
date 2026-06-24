@@ -141,6 +141,7 @@ internal data class ProviderExpressionRequest(
   val contextualTypeKey: IrContextualTypeKey,
   val bindingKind: String?,
   val origin: ProviderExpressionOrigin,
+  val providerType: IrType? = null,
 )
 
 /**
@@ -262,6 +263,7 @@ private class TraceExpressionDecorator(
       contextualTypeKey = request.contextualTypeKey,
       traceContext = traceContext,
       bindingKind = request.bindingKind,
+      providerType = request.providerType,
     )
   }
 
@@ -284,6 +286,7 @@ private class TraceExpressionDecorator(
     contextualTypeKey: IrContextualTypeKey,
     traceContext: IrExpression,
     bindingKind: String?,
+    providerType: IrType?,
   ): IrExpression {
     val traceContextualTypeKey = contextualTypeKey.providerValueContextualTypeKey()
     val providerValueType = traceContextualTypeKey.toIrType()
@@ -291,7 +294,14 @@ private class TraceExpressionDecorator(
     val metroProvider =
       with(scope) {
         with(metroSymbols.providerTypeConverter) {
-          this@toTracedMetroProvider.convertTo(canonicalTraceProviderTarget)
+          if (providerType == null) {
+            this@toTracedMetroProvider.convertTo(canonicalTraceProviderTarget)
+          } else {
+            this@toTracedMetroProvider.convertTo(
+              canonicalTraceProviderTarget,
+              providerType = providerType,
+            )
+          }
         }
       }
     return metroProvider.wrapInTracedProvider(

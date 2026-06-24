@@ -1436,7 +1436,7 @@ internal class IrGraphGenerator(
       }
 
       // For field properties, add to initializers list for potential chunking
-      shardPropertiesToTypeKeys[property] = contextKey.typeKey
+      shardPropertiesToTypeKeys[property] = binding.typeKey
 
       if (isDeferred) {
         // Deferred properties are initialized with empty DelegateFactory(),

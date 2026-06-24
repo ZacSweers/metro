@@ -106,6 +106,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     allowPropertyGetter: Boolean = false,
     bindingKind: String? = null,
     providerOrigin: ProviderExpressionOrigin = ProviderExpressionOrigin.NewExpression,
+    providerType: IrType? = null,
   ): IrExpression {
     // Step 1: Transform access type (INSTANCE <-> PROVIDER)
     val accessTransformed =
@@ -137,6 +138,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
             contextualTypeKey = contextualTypeKey,
             bindingKind = bindingKind,
             origin = providerOrigin,
+            providerType = providerType,
           ),
         )
       } else {
@@ -146,7 +148,13 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     val finalAccessType = if (requested == AccessType.PROVIDER) requested else actual
     return if (finalAccessType == AccessType.PROVIDER) {
       with(scope) {
-        with(metroSymbols.providerTypeConverter) { maybeTraced.convertTo(contextualTypeKey) }
+        with(metroSymbols.providerTypeConverter) {
+          if (providerType == null) {
+            maybeTraced.convertTo(contextualTypeKey)
+          } else {
+            maybeTraced.convertTo(contextualTypeKey, providerType = providerType)
+          }
+        }
       }
     } else {
       maybeTraced
