@@ -33,7 +33,11 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         @Binds fun bindService(impl: ServiceImpl): Service
       }
 
-      @Inject class Consumer(val service: Service, val missing: Long)
+      @Inject
+      class Consumer(
+        val service: Service,
+        val missing: Long,
+      )
 
       @AssistedInject class Presenter(@Assisted val id: String, val service: Service)
 

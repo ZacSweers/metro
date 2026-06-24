@@ -79,13 +79,17 @@ internal class BindingIndex(
     return candidateBindingsFor(consumer)
   }
 
-  /** [bindingsFor] filtered to bindings that are members of [context]'s graph. */
+  /**
+   * The bindings for [consumer]'s key that are members of [context]'s graph. This is a
+   * binding-membership query: it does not constrain by whether [consumer]'s own site belongs to the
+   * graph (that is [resolveConsumer]'s job), so a consumer can be used to probe any context.
+   */
   fun bindingsFor(
     consumer: ConsumerEntry,
     context: GraphContext,
   ): List<KaBinding> {
-    val queryContext = GraphQueryContext(context, useSiteModule(consumer.pointer.element))
-    return bindingsFor(consumer, queryContext)
+    val visible = visibleBindingsFor(consumer, useSiteModule(consumer.pointer.element))
+    return applyReplaces(visible.filter { isBindingInContext(it, context) })
   }
 
   /**
@@ -116,15 +120,11 @@ internal class BindingIndex(
     return ConsumerResolution(global, perGraph, hasGraphs = true)
   }
 
-  private fun bindingsFor(
-    consumer: ConsumerEntry,
-    queryContext: GraphQueryContext,
-  ): List<KaBinding> {
-    val visible = visibleBindingsFor(consumer, queryContext.useSiteModule)
-    return bindingsInContext(visible, consumer, queryContext)
-  }
-
-  /** Filters precomputed [visible] candidates to those live in [queryContext]'s graph. */
+  /**
+   * Filters precomputed [visible] candidates to those live in [queryContext]'s graph, gating on
+   * whether [consumer]'s site itself resolves in that graph. Used by [resolveConsumer]'s per-graph
+   * pass; the binding-membership probe [bindingsFor] deliberately skips the consumer-site gate.
+   */
   private fun bindingsInContext(
     visible: List<KaBinding>,
     consumer: ConsumerEntry,

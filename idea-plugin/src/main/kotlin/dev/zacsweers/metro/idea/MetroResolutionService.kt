@@ -719,12 +719,15 @@ private class IndexBuilder(
       // bindingData verifies injectability/contributions itself; classes without an explicit
       // primary constructor still provide their own type.
       val dataEntries = bindingData(ktClass, options)
-      val originClassId = ktClass.getClassId()
       val consumerContributionScopes =
         dataEntries.flatMapTo(mutableSetOf()) { it.contributionScopes }
       for (data in dataEntries) {
         bindings += bindingFrom(ptr(ktClass), data)
       }
+      // Gate the constructor consumers on the owning class's binding only when it originates one.
+      // Assisted-injected classes provide no own-type binding (they're built via their factory), so
+      // gating by origin would wrongly drop their dependencies from every graph.
+      val originClassId = ktClass.getClassId().takeIf { dataEntries.isNotEmpty() }
       val injectConstructor = findInjectConstructor(ktClass, classSymbol)
       for (parameter in injectConstructor?.valueParameters.orEmpty()) {
         addParameterConsumer(
