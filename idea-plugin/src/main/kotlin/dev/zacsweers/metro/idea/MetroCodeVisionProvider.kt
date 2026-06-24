@@ -9,6 +9,7 @@ import com.intellij.codeInsight.codeVision.settings.CodeVisionGroupSettingProvid
 import com.intellij.codeInsight.codeVision.ui.model.ClickableTextCodeVisionEntry
 import com.intellij.codeInsight.hints.codeVision.DaemonBoundCodeVisionProvider
 import com.intellij.codeInsight.navigation.PsiTargetNavigator
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.util.TextRange
 import com.intellij.pom.Navigatable
@@ -46,7 +47,7 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
       return emptyList()
     }
     if (!ktFile.metroIdeState().options.enabled) return emptyList()
-    val index = MetroResolutionService.getInstance(ktFile.project).index(ktFile)
+    val index = ktFile.project.service<MetroResolutionService>().index(ktFile)
 
     val entries = mutableListOf<Pair<TextRange, CodeVisionEntry>>()
     ktFile.accept(

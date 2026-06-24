@@ -94,11 +94,6 @@ import org.jetbrains.kotlin.types.Variance
  */
 @Service(Service.Level.PROJECT)
 class MetroResolutionService(private val project: Project) {
-
-  companion object {
-    fun getInstance(project: Project): MetroResolutionService = project.service()
-  }
-
   // Project-wide indexes deduped by options fingerprint: projects typically share one Metro
   // config across modules, so caching per module would build and retain the same index once per
   // edited module. LRU-bounded so fingerprints orphaned by options changes don't retain their
@@ -113,18 +108,18 @@ class MetroResolutionService(private val project: Project) {
     )
 
   /**
-   * Returns the cached binding index for the module owning [context], or [BindingIndex.EMPTY] when
+   * Returns the cached binding index for the module owning [element], or [BindingIndex.EMPTY] when
    * Metro is disabled or the element has no module.
    *
    * Must be called under a read action — building the index performs Analysis API resolution.
    * Normally that happens on background highlighting passes; EDT analysis is permitted for the
    * platform flows (and tests) that compute markers on the EDT.
    */
-  internal fun index(context: PsiElement): BindingIndex {
+  internal fun index(element: PsiElement): BindingIndex {
     if (!MetroSettings.getInstance(project).state.enableBindingResolution) {
       return BindingIndex.EMPTY
     }
-    val module = ModuleUtilCore.findModuleForPsiElement(context) ?: return BindingIndex.EMPTY
+    val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return BindingIndex.EMPTY
     val state = project.service<MetroIdeProjectService>().state(module)
     if (!state.options.enabled) return BindingIndex.EMPTY
     val options = state.options

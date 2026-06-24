@@ -8,6 +8,7 @@ import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.components.service
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.platform.backend.presentation.TargetPresentation
@@ -59,7 +60,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     if (!MetroSettings.getInstance(element.project).state.enableBindingResolution) return
     if (!declaration.metroIdeState().options.enabled) return
 
-    val index = MetroResolutionService.getInstance(element.project).index(declaration)
+    val index = element.project.service<MetroResolutionService>().index(declaration)
 
     if (GRAPH_OPTION.isEnabled) {
       (declaration as? KtClassOrObject)

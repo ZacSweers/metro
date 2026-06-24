@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.openapi.components.service
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.idea.model.BindingKind
 import org.jetbrains.kotlin.name.ClassId
@@ -83,7 +84,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
   fun testBindsBindingIsIndexedWithImplementation() {
     val file = configure()
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val entry = index.bindingEntriesAt(declarations.function("bindService")).single()
@@ -98,7 +99,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
   fun testInjectedClassProvidesItsOwnTypeAndConsumesConstructorParams() {
     val file = configure()
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val entry = index.bindingEntriesAt(declarations.klass("Consumer")).single()
@@ -116,7 +117,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
   fun testContributedBindingBindsItsSoleSupertypeWithScope() {
     val file = configure()
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val entries = index.bindingEntriesAt(declarations.klass("RealHttpApi"))
@@ -131,7 +132,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
   fun testSetMultibindingContributionsJoinTheirAggregateConsumer() {
     val file = configure()
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val analyticsParam = index.consumerEntryAt(declarations.parameter("analytics"))!!
@@ -152,7 +153,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
   fun testMapMultibindingContributionsJoinTheirAggregateConsumer() {
     val file = configure()
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val handlersParam = index.consumerEntryAt(declarations.parameter("handlers"))!!
@@ -177,7 +178,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
   fun testQualifiersDisambiguateKeys() {
     val file = configure()
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val cdnParam = index.consumerEntryAt(declarations.parameter("cdnUrl"))!!
@@ -219,7 +220,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val repositoryEntries = index.bindingEntriesAt(declarations.klass("Repository"))
@@ -241,7 +242,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
   fun testGraphEntryExposesScopesAccessorsAndContributions() {
     val file = configure()
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val graph = index.graphEntryAt(declarations.klass("AppGraph"))!!
@@ -296,7 +297,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     // The exact inputs the implementation inlay needs
@@ -356,7 +357,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     // Both functions contribute generated factories into the scope's factory sets
@@ -445,7 +446,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     // The factory's @Provides param is an instance binding, not a consumer
@@ -477,7 +478,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           """
             .trimIndent(),
         ) as KtFile
-      val index = MetroResolutionService.getInstance(project).index(file)
+      val index = project.service<MetroResolutionService>().index(file)
       val declarations = file.declarationsIncludingNested()
 
       val clientParam = index.consumerEntryAt(declarations.parameter("client"))!!
@@ -519,7 +520,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           """
             .trimIndent(),
         ) as KtFile
-      val index = MetroResolutionService.getInstance(project).index(file)
+      val index = project.service<MetroResolutionService>().index(file)
       val declarations = file.declarationsIncludingNested()
 
       val serviceAccessor = index.consumerEntryAt(declarations.property("service"))!!
@@ -586,7 +587,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
             """
               .trimIndent(),
           ) as KtFile
-        val index = MetroResolutionService.getInstance(project).index(file)
+        val index = project.service<MetroResolutionService>().index(file)
         val declarations = file.declarationsIncludingNested()
         val clientParam = index.consumerEntryAt(declarations.parameter("client"))!!
         assertTrue(index.bindingsFor(clientParam).isEmpty())
@@ -628,7 +629,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     for (name in listOf("serviceProvider", "serviceLazy")) {
@@ -685,7 +686,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     // The @BindsOptionalOf declaration exposes an Optional<Service> binding.
@@ -730,7 +731,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
     assertTrue(index.bindingEntriesAt(declarations.function("optionalService")).isEmpty())
   }
@@ -761,7 +762,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     // The @OptionalBinding accessor is a consumer (despite its default body) and is optional.
@@ -794,7 +795,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     // A bare default no longer counts; only the explicit annotation does.
@@ -824,7 +825,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val consumer = index.consumerEntryAt(declarations.parameter("serviceFactory"))!!
@@ -850,7 +851,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           """
             .trimIndent(),
         ) as KtFile
-      val index = MetroResolutionService.getInstance(project).index(file)
+      val index = project.service<MetroResolutionService>().index(file)
       val declarations = file.declarationsIncludingNested()
 
       // Project-path ownership is not a visibility relationship; internal hints still require a
@@ -883,7 +884,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val factoryEntry = index.bindingEntriesAt(declarations.klass("EngineFactory")).single()
@@ -927,7 +928,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     // Two supertypes, no explicit binding<T>() — the @DefaultBinding supertype decides
@@ -964,7 +965,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val handlersParam = index.consumerEntryAt(declarations.parameter("handlers"))!!
@@ -1001,7 +1002,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val accessor = index.consumerEntryAt(declarations.property("repo"))!!
@@ -1052,7 +1053,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val graph = index.graphEntryAt(declarations.klass("ExcludesGraph"))!!
@@ -1104,7 +1105,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val wired = index.contextFor(index.graphEntryAt(declarations.klass("WiredGraph"))!!)
@@ -1147,7 +1148,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val graph = index.graphEntryAt(declarations.klass("IncludesGraph"))!!
@@ -1213,7 +1214,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val child = index.graphEntryAt(declarations.klass("ChildGraph"))!!
@@ -1287,7 +1288,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val appRepo = index.consumerEntryAt(declarations.property("appRepo"))!!
@@ -1335,7 +1336,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
     val child = index.graphEntryAt(declarations.klass("ChildGraph"))!!
@@ -1372,7 +1373,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           """
             .trimIndent(),
         ) as KtFile
-      val index = MetroResolutionService.getInstance(project).index(file)
+      val index = project.service<MetroResolutionService>().index(file)
       val declarations = file.declarationsIncludingNested()
 
       val appContext = index.contextFor(index.graphEntryAt(declarations.klass("AppGraph"))!!)
@@ -1427,7 +1428,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
     val consumer = index.consumerEntryAt(declarations.property("appRepo"))!!
 
@@ -1454,7 +1455,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
   fun testIndexIsEmptyWhenMetroDisabled() {
     project.setMetroOptions("enabled" to "false")
     val file = configure()
-    val index = MetroResolutionService.getInstance(project).index(file)
+    val index = project.service<MetroResolutionService>().index(file)
     assertTrue(index.bindings.isEmpty())
     assertTrue(index.consumers.isEmpty())
     assertTrue(index.graphs.isEmpty())

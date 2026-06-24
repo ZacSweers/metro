@@ -12,6 +12,7 @@ import com.intellij.codeInsight.hints.declarative.InlineInlayPosition
 import com.intellij.codeInsight.hints.declarative.PsiPointerInlayActionNavigationHandler
 import com.intellij.codeInsight.hints.declarative.PsiPointerInlayActionPayload
 import com.intellij.codeInsight.hints.declarative.SharedBypassCollector
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -48,7 +49,7 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
     override fun collectFromElement(element: PsiElement, sink: InlayTreeSink) {
       if (element !is KtParameter && element !is KtProperty && element !is KtNamedFunction) return
       element as KtElement
-      val index = MetroResolutionService.getInstance(element.project).index(element)
+      val index = element.project.service<MetroResolutionService>().index(element)
       // Only implicitly assisted parameters get the inlay; explicit @Assisted already reads as
       // assisted in source.
       if (
