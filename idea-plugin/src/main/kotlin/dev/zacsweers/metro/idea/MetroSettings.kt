@@ -83,6 +83,6 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
   override fun apply() {
     super.apply()
     // Re-run highlighting so the gates take effect without further edits
-    DaemonCodeAnalyzer.getInstance(project).restart()
+    DaemonCodeAnalyzer.getInstance(project).restart("MetroSettings applied")
   }
 }
