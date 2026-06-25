@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import com.intellij.openapi.util.TextRange
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
@@ -12,7 +13,9 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.io.File
+import org.jetbrains.kotlin.KtPsiSourceElement
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
+import org.jetbrains.kotlin.diagnostics.PositioningStrategies
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
@@ -25,6 +28,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
@@ -34,7 +38,9 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.ir.util.sourceElement
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.psi.KtDeclaration
 
 internal data class DiagnosticMetadata(val fullPath: String, val metadata: List<String>)
 
@@ -377,6 +383,40 @@ internal fun IrDeclaration.toDiagnosticSpan(
     endColumn = (location as? CompilerMessageLocationWithRange)?.columnEnd ?: location.column,
     displayPath =
       if (shortDisplayPath) location.path.substringAfterLast(File.separatorChar) else location.path,
+  )
+}
+
+internal fun IrDeclaration.toTypeDiagnosticSpan(
+  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+): DiagnosticSpan? {
+  val sourceElement =
+    sourceElement() as? KtPsiSourceElement ?: return toDiagnosticSpan(shortDisplayPath)
+  val sourceDeclaration =
+    sourceElement.psi as? KtDeclaration ?: return toDiagnosticSpan(shortDisplayPath)
+  val textRange =
+    PositioningStrategies.DECLARATION_RETURN_TYPE.mark(sourceDeclaration).firstOrNull()
+      ?: return toDiagnosticSpan(shortDisplayPath)
+  return toDiagnosticSpan(textRange, shortDisplayPath) ?: toDiagnosticSpan(shortDisplayPath)
+}
+
+private fun IrDeclaration.toDiagnosticSpan(
+  textRange: TextRange,
+  shortDisplayPath: Boolean,
+): DiagnosticSpan? {
+  val file = fileOrNull ?: return null
+  val sourceRangeInfo =
+    file.fileEntry.getSourceRangeInfo(
+      beginOffset = textRange.startOffset,
+      endOffset = textRange.endOffset,
+    )
+  val path = sourceRangeInfo.filePath
+  return DiagnosticSpan(
+    filePath = path,
+    line = sourceRangeInfo.startLineNumber + 1,
+    column = sourceRangeInfo.startColumnNumber + 1,
+    endLine = sourceRangeInfo.endLineNumber + 1,
+    endColumn = sourceRangeInfo.endColumnNumber + 1,
+    displayPath = if (shortDisplayPath) path.substringAfterLast(File.separatorChar) else path,
   )
 }
 

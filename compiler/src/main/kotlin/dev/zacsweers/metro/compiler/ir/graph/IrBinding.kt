@@ -35,6 +35,7 @@ import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
 import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
+import dev.zacsweers.metro.compiler.ir.toTypeDiagnosticSpan
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -103,7 +104,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     return LocationDiagnostic(
       locationString,
       renderDescriptionDiagnostic(short = short, underlineTypeKey = underlineTypeKey),
-      reportableDeclaration?.toDiagnosticSpan(shortDisplayPath = shortLocation),
+      reportableDeclaration?.let { declaration ->
+        if (underlineTypeKey) {
+          declaration.toTypeDiagnosticSpan(shortDisplayPath = shortLocation)
+        } else {
+          declaration.toDiagnosticSpan(shortDisplayPath = shortLocation)
+        }
+      },
     )
   }
 

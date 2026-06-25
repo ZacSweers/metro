@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.diagnostics
 
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.metro.compiler.diagnostics.render.AnsiCodes
 import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
 import dev.zacsweers.metro.compiler.diagnostics.render.RenderContext
 import dev.zacsweers.metro.compiler.diagnostics.render.RenderProfile
@@ -101,16 +100,17 @@ class DiagnosticRendererTest {
   @Test
   fun `plain output contains no ansi codes`() {
     val rendered = plain.render(missingBinding())
-    assertThat(rendered).isEqualTo(AnsiCodes.strip(rendered))
+    assertThat(rendered).isEqualTo(stripAnsi(rendered))
   }
 
   @Test
   fun `rich output styles the code tag and strips back to plain layout`() {
     val rendered = rich.render(missingBinding())
-    assertThat(rendered).contains("${AnsiCodes.RED}[Metro/MissingBinding]${AnsiCodes.RESET}")
-    assertThat(rendered).contains("${AnsiCodes.BOLD}Dependency${AnsiCodes.RESET}")
+    assertThat(rendered).isNotEqualTo(stripAnsi(rendered))
     // Same layout as plain modulo glyphs: stripping ANSI yields identical structure.
-    val stripped = AnsiCodes.strip(rendered)
+    val stripped = stripAnsi(rendered)
+    assertThat(stripped).contains("[Metro/MissingBinding]")
+    assertThat(stripped).contains("Dependency")
     assertThat(stripped).contains("AppGraph.repo → RepositoryImpl → Dependency")
     assertThat(stripped.lines().map { it.trimEnd() })
       .containsExactlyElementsIn(
@@ -134,7 +134,10 @@ class DiagnosticRendererTest {
         title = textOf("Unused multibinding"),
         includeDocsUrl = false,
       )
-    assertThat(rich.render(diagnostic)).startsWith(AnsiCodes.YELLOW)
+    val richRendered = rich.render(diagnostic)
+    assertThat(richRendered).isNotEqualTo(stripAnsi(richRendered))
+    assertThat(stripAnsi(richRendered))
+      .startsWith("[Metro/SuspiciousUnusedMultibinding] Unused multibinding")
     assertThat(plain.render(diagnostic))
       .isEqualTo("[Metro/SuspiciousUnusedMultibinding] Unused multibinding")
   }
@@ -212,7 +215,7 @@ class DiagnosticRendererTest {
 
   @Test
   fun `horizontal cycle uses unicode glyphs in rich mode`() {
-    val stripped = AnsiCodes.strip(rich.render(cycleDiagnostic()))
+    val stripped = stripAnsi(rich.render(cycleDiagnostic()))
     assertThat(stripped).contains("╭─▶ B → A ┄▶ FakeA ─╮")
     val top = stripped.lines().first { it.contains("╭─▶") }
     val bottom = stripped.lines().first { it.contains("╰") }
@@ -312,6 +315,98 @@ class DiagnosticRendererTest {
   }
 
   @Test
+  fun `rich locations collapse multiline spans to declaration lines`() {
+    val source =
+      listOf(
+        "@DependencyGraph(Unit::class)",
+        "interface AppGraph {",
+        "  val string: String",
+        "",
+        "  @Provides",
+        "  fun provideString(): String {",
+        "    return \"Hello, World!\"",
+        "  }",
+        "",
+        "  @Provides",
+        "  fun provideString2(): String = \"Hello, World!\"",
+        "}",
+      )
+    val renderer =
+      DiagnosticRenderer(
+        RenderProfile.RICH,
+        sourceLines = { path ->
+          if (path == "/src/ExampleGraph.kt") source else null
+        },
+      )
+    val diagnostic =
+      MetroDiagnostic(
+        id = MetroDiagnosticId.DUPLICATE_BINDING,
+        severity = MetroSeverity.ERROR,
+        title =
+          buildText {
+            append("Multiple bindings found for ")
+            appendType("kotlin.String")
+          },
+        sections =
+          listOf(
+            DiagnosticSection.Locations(
+              header = null,
+              items =
+                listOf(
+                  LocatedItem(
+                    location = "ExampleGraph.kt:6:3",
+                    code =
+                      "@Provides fun provideString(): String\n" +
+                        "                               ~~~~~~",
+                    span =
+                      DiagnosticSpan(
+                        filePath = "/src/ExampleGraph.kt",
+                        line = 6,
+                        column = 24,
+                        endLine = 6,
+                        endColumn = 30,
+                        displayPath = "/src/ExampleGraph.kt",
+                      ),
+                  ),
+                  LocatedItem(
+                    location = "ExampleGraph.kt:11:3",
+                    code =
+                      "@Provides fun provideString2(): String\n" +
+                        "                                ~~~~~~",
+                    span =
+                      DiagnosticSpan(
+                        filePath = "/src/ExampleGraph.kt",
+                        line = 11,
+                        column = 25,
+                        endLine = 11,
+                        endColumn = 31,
+                        displayPath = "/src/ExampleGraph.kt",
+                      ),
+                  ),
+                ),
+            )
+          ),
+        includeDocsUrl = false,
+      )
+
+    val rendered = stripAnsi(renderer.render(diagnostic))
+    assertThat(rendered)
+      .isEqualTo(
+        """
+           ╭─ [Metro/DuplicateBinding] Multiple bindings found for String
+           │ → ExampleGraph.kt:6:24
+           │
+         6 │ @Provides fun provideString(): String
+           │                                ⌃⌃⌃⌃⌃⌃
+        11 │ @Provides fun provideString2(): String
+           │                                 ⌃⌃⌃⌃⌃⌃
+           ╰─
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
   fun `deduped trace renders continuation pointer to sibling`() {
     val diagnostic =
       MetroDiagnostic(
@@ -362,7 +457,7 @@ class DiagnosticRendererTest {
         includeDocsUrl = false,
       )
     assertThat(plain.render(diagnostic)).contains("Use `Provider<Foo>`")
-    assertThat(AnsiCodes.strip(rich.render(diagnostic))).contains("Use `Provider<Foo>`")
+    assertThat(stripAnsi(rich.render(diagnostic))).contains("Use `Provider<Foo>`")
   }
 
   @Test
@@ -392,29 +487,29 @@ class DiagnosticRendererTest {
             endLine = 2,
             endColumn = 41,
             label = textOf("injected here"),
-            displayPath = "RepositoryImpl.kt",
+            displayPath = "/src/RepositoryImpl.kt",
           ),
         includeDocsUrl = false,
       )
 
-    val rendered = AnsiCodes.strip(withSource.render(diagnostic))
+    val rendered = stripAnsi(withSource.render(diagnostic))
     assertThat(rendered)
       .isEqualTo(
         """
-        [Metro/MissingBinding] No binding found for Dependency
-
-            ╭─[ RepositoryImpl.kt:2:22 ]
-          2 │ class RepositoryImpl(val dep: Dependency) : Repository
-            │                      ─────────┬─────────
-            │                               ╰── injected here
-            ╰─
+          ╭─ [Metro/MissingBinding] No binding found for Dependency
+          │ → RepositoryImpl.kt:2:22
+          │
+        2 │ class RepositoryImpl(val dep: Dependency) : Repository
+          │                      ⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃
+          │ ╰── injected here
+          ╰─
         """
           .trimIndent()
       )
 
     // Unreadable source: the frame is silently skipped.
     val withoutSource = DiagnosticRenderer(RenderProfile.RICH)
-    assertThat(AnsiCodes.strip(withoutSource.render(diagnostic)))
+    assertThat(stripAnsi(withoutSource.render(diagnostic)))
       .isEqualTo("[Metro/MissingBinding] No binding found for Dependency")
 
     // PLAIN ignores spans entirely.
@@ -439,4 +534,10 @@ class DiagnosticRendererTest {
         ),
       includeDocsUrl = false,
     )
+
+  private fun stripAnsi(text: String): String = text.replace(ANSI_PATTERN, "")
+
+  private companion object {
+    val ANSI_PATTERN = Regex("\u001B\\[[;:\\d]*m")
+  }
 }

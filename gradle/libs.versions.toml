@@ -45,6 +45,7 @@ kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 ksp = "2.3.9"
 ktor = "3.5.0"
+mordant = "3.0.2"
 okhttp = "5.4.0"
 okio = "3.17.0"
 pluginId = "dev.zacsweers.metro.compiler"
@@ -183,6 +184,8 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 graphSupport = "com.autonomousapps:graph-support:0.12.0"
 
 guava = "com.google.guava:guava:33.6.0-jre"
+
+mordant = { module = "com.github.ajalt.mordant:mordant", version.ref = "mordant" }
 
 ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }

@@ -466,7 +466,13 @@ internal class IrBindingGraph(
                 .sortedBy { it.location }
             val locationItems = buildList {
               for (example in examples.take(MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT)) {
-                add(LocatedItem(location = example.location, code = example.description))
+                add(
+                  LocatedItem(
+                    location = example.location,
+                    code = example.description,
+                    span = example.span,
+                  )
+                )
               }
               if (unusedSources.size > MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT) {
                 val remaining = unusedSources.size - MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT
@@ -802,6 +808,7 @@ internal class IrBindingGraph(
                   LocatedItem(
                     location = locationDiagnostic.location,
                     code = locationDiagnostic.description,
+                    span = locationDiagnostic.span,
                   )
                 ),
             )
@@ -1151,6 +1158,7 @@ internal class IrBindingGraph(
         LocatedItem(
           location = locationDiagnostic.location,
           code = locationDiagnostic.description,
+          span = locationDiagnostic.span,
         )
       }
 

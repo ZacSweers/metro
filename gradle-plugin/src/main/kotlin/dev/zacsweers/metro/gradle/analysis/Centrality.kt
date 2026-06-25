@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.gradle.analysis
 
 import com.google.common.graph.Graph
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 
 /**
  * Computes betweenness centrality for nodes in a directed graph.
@@ -19,6 +20,7 @@ import com.google.common.graph.Graph
  */
 internal class Centrality<N : Any>(graph: Graph<N>) {
 
+  @OptIn(ExperimentalMetroGradleApi::class)
   private val scores: Map<N, Double> by lazy {
     if (graph.nodes().isEmpty()) {
       emptyMap()

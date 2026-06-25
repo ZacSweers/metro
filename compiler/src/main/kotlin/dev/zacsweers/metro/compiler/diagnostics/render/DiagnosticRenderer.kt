@@ -43,33 +43,58 @@ internal class DiagnosticRenderer(
   fun render(diagnostic: MetroDiagnostic, context: RenderContext = RenderContext.EMPTY): String {
     val writer = LineWriter(profile.styler, profile.width)
 
-    val tagStyle =
+    val severityStyle =
       when (diagnostic.severity) {
         MetroSeverity.ERROR -> Style.ERROR
         MetroSeverity.WARNING -> Style.WARNING
       }
 
-    writer.line(
-      buildList {
-        add(Run("[${diagnostic.id.fullId}]", tagStyle))
-        add(Run(" "))
-        addAll(diagnostic.title.resolve(context))
-      },
-      indent = 0,
-      hangingIndent = 4,
-    )
-
-    if (profile.renderSourceSnippets) {
-      diagnostic.primarySpan?.let { span ->
-        if (renderFrames(writer, listOf(span to span.label), context)) {
-          // Primary span frames render before section content.
+    val titleRuns = diagnostic.titleRuns(severityStyle, context)
+    val primaryFrameRendered =
+      if (profile.renderSourceSnippets) {
+        val primarySpan = diagnostic.primarySpan
+        if (primarySpan == null) {
+          false
+        } else {
+          renderFrames(
+            writer = writer,
+            items = listOf(SourceFrameItem(primarySpan, primarySpan.label)),
+            context = context,
+            headerText = titleRuns.joinToString(separator = "") { it.text },
+            severity = diagnostic.severity,
+          )
         }
+      } else {
+        false
       }
+    val locationHeaderSection =
+      if (!primaryFrameRendered && profile.renderSourceSnippets) {
+        diagnostic.sections.firstOrNull { section ->
+          section is DiagnosticSection.Locations &&
+            section.header == null &&
+            section.canRenderLocationFrame()
+        }
+      } else {
+        null
+      }
+
+    if (!primaryFrameRendered && locationHeaderSection == null) {
+      writer.line(titleRuns, indent = 0, hangingIndent = 4)
     }
 
+    var locationHeaderRendered = false
     for (section in diagnostic.sections) {
       writer.blankLine()
-      renderSection(writer, section, context)
+      val locationFrameHeaderText =
+        if (section === locationHeaderSection && !locationHeaderRendered) {
+          titleRuns.joinToString(separator = "") { it.text }
+        } else {
+          null
+        }
+      renderSection(writer, section, context, diagnostic.severity, locationFrameHeaderText)
+      if (locationFrameHeaderText != null) {
+        locationHeaderRendered = true
+      }
     }
 
     if (diagnostic.notes.isNotEmpty() || diagnostic.includeDocsUrl) {
@@ -89,12 +114,15 @@ internal class DiagnosticRenderer(
     writer: LineWriter,
     section: DiagnosticSection,
     context: RenderContext,
+    severity: MetroSeverity,
+    locationFrameHeaderText: String? = null,
   ) {
     when (section) {
       is DiagnosticSection.Chain -> renderChain(writer, section, context)
       is DiagnosticSection.BindingTrace -> renderBindingTrace(writer, section, context)
       is DiagnosticSection.Cycle -> renderCycle(writer, section, context)
-      is DiagnosticSection.Locations -> renderLocations(writer, section, context)
+      is DiagnosticSection.Locations ->
+        renderLocations(writer, section, context, severity, locationFrameHeaderText)
       is DiagnosticSection.SimilarBindings -> renderSimilarBindings(writer, section, context)
       is DiagnosticSection.CodeBlock -> {
         section.location?.let { writer.raw(it, CONTENT_INDENT) }
@@ -253,19 +281,38 @@ internal class DiagnosticRenderer(
     writer: LineWriter,
     section: DiagnosticSection.Locations,
     context: RenderContext,
+    severity: MetroSeverity,
+    frameHeaderText: String? = null,
   ) {
     section.header?.let { writer.line(it.resolve(context), SECTION_INDENT, SECTION_INDENT) }
 
     // Merge spans by file so related locations can share one source frame.
     val framed = mutableSetOf<LocatedItem>()
+    var pendingFrameHeaderText = frameHeaderText
     if (profile.renderSourceSnippets) {
       section.items
         .filter { it.span != null }
         .groupBy { it.span!!.filePath }
         .forEach { (_, items) ->
-          val spans = items.map { it.span!! to (it.span.label ?: it.description) }
-          if (renderFrames(writer, spans, context)) {
+          val frameItems = items.map { item ->
+            SourceFrameItem(
+              span = item.span!!,
+              label = item.span.label ?: item.description,
+              excerpt = item.code?.toSourceExcerpt(),
+            )
+          }
+          if (
+            renderFrames(
+              writer,
+              frameItems,
+              context,
+              headerText = pendingFrameHeaderText,
+              severity = severity,
+              collapseMultilineSpans = true,
+            )
+          ) {
             framed += items
+            pendingFrameHeaderText = null
           }
         }
     }
@@ -289,89 +336,227 @@ internal class DiagnosticRenderer(
     }
   }
 
-  /**
-   * Renders a miette-style source frame for [spans]. All spans must be in the same file.
-   *
-   * Example:
-   * ```
-   *     ╭─[ RepositoryImpl.kt:6:38 ]
-   *   6 │ class RepositoryImpl(val api: Api, val dep: Dependency) : Repository
-   *     │                                             ─────┬────
-   *     │                                                  ╰── Dependency is injected here
-   *     ╰─
-   * ```
-   *
-   * Returns false without writing anything when the source file is unavailable.
-   */
+  private fun DiagnosticSection.Locations.canRenderLocationFrame(): Boolean {
+    return items.any { item ->
+      val span = item.span ?: return@any false
+      item.code?.toSourceExcerpt() != null || sourceLines(span.filePath) != null
+    }
+  }
+
+  /** Renders a Kotlin-toolchain-style source frame for [spans] in the same file. */
   private fun renderFrames(
     writer: LineWriter,
-    spans: List<Pair<DiagnosticSpan, Text?>>,
+    items: List<SourceFrameItem>,
     context: RenderContext,
+    headerText: String? = null,
+    severity: MetroSeverity? = null,
+    collapseMultilineSpans: Boolean = false,
   ): Boolean {
-    val first = spans.first().first
-    val lines = sourceLines(first.filePath) ?: return false
-    val sorted = spans.sortedBy { it.first.line }
-    val gutterWidth = sorted.maxOf { it.first.line }.toString().length
-    val pad = " ".repeat(gutterWidth)
-    val contentBudget = profile.width - SECTION_INDENT - gutterWidth - 3
+    val first = items.first().span
+    val lines = sourceLines(first.filePath)
+    if (lines == null && items.any { it.excerpt == null }) return false
+    val sorted =
+      items
+        .map { item ->
+          val span = item.span.collapseMultilineForLocation(lines, collapseMultilineSpans)
+          item.copy(span = span)
+        }
+        .sortedBy { it.span.line }
+    val maxLineNo = sorted.maxOf { it.span.endLine.coerceAtLeast(it.span.line) }
+    val gutterWidth = maxLineNo.toString().length
+    val borderPrefix = " ".repeat(gutterWidth + 1)
+    val frameIndent = 0
+    val contentBudget = profile.width - frameIndent - gutterWidth - 3
 
     writer.blankLine()
-    val displayPath = first.displayPath ?: first.filePath.substringAfterLast('/')
-    writer.raw(
-      "$pad ${glyphs.frameOpen} $displayPath:${first.line}:${first.column} ]",
-      SECTION_INDENT,
-      Style.DIM,
-    )
-    for ((span, label) in sorted) {
-      val source = lines.getOrNull(span.line - 1) ?: continue
-      val visible =
-        if (source.length > contentBudget) source.take(contentBudget - 1) + "…" else source
+    val displayPath = first.renderDisplayPath()
+    if (headerText == null) {
+      writer.raw(
+        "$borderPrefix${glyphs.frameHeaderOpen} $displayPath:${first.line}:${first.column}",
+        frameIndent,
+        Style.DIM,
+      )
+    } else {
+      writer.rawRuns(
+        buildList {
+          add(Run("$borderPrefix${glyphs.frameHeaderOpen} ", Style.DIM))
+          add(Run(headerText, Style.EMPHASIS))
+        },
+        frameIndent,
+      )
       writer.rawRuns(
         listOf(
-          Run("${span.line.toString().padStart(gutterWidth)} ${glyphs.vbar} ", Style.DIM),
-          Run(visible),
+          Run("$borderPrefix${glyphs.vbar} ${glyphs.arrow} ", Style.DIM),
+          Run("$displayPath:${first.line}:${first.column}"),
         ),
-        SECTION_INDENT,
+        frameIndent,
       )
-      val start = (span.column - 1).coerceIn(0, visible.length)
-      val rawLength =
-        if (span.endLine == span.line && span.endColumn > span.column) {
-          span.endColumn - span.column
-        } else {
-          // Span continues past this line (or has no end): underline to the end of the line.
-          source.trimEnd().length - start
-        }
-      val length = rawLength.coerceIn(1, (visible.length - start).coerceAtLeast(1))
-      val underline =
-        if (label == null) {
-          glyphs.hline.repeat(length)
-        } else {
-          val tee = (length - 1) / 2
-          glyphs.hline.repeat(tee) + glyphs.underlineTee + glyphs.hline.repeat(length - tee - 1)
-        }
-      writer.rawRuns(
-        listOf(
-          Run("$pad ${glyphs.vbar} ", Style.DIM),
-          Run(" ".repeat(start)),
-          Run(underline, Style.DIM),
-        ),
-        SECTION_INDENT,
-      )
-      if (label != null) {
-        val elbowAt = start + (length - 1) / 2
+      writer.raw("$borderPrefix${glyphs.vbar}", frameIndent, Style.DIM)
+    }
+
+    val rangeStyle = severity?.toStyle() ?: Style.DIM
+    for (item in sorted) {
+      val span = item.span
+      val label = item.label
+      val excerpt = item.excerpt
+      val snippet =
+        excerpt?.let { listOf(it.line) } ?: snippetFor(lines.orEmpty(), span, contentBudget)
+      if (snippet.isEmpty()) continue
+      val isMultiLine = snippet.size > 1
+
+      if (isMultiLine) {
+        writer.rawRuns(
+          listOf(
+            Run("$borderPrefix${glyphs.vbar} ", Style.DIM),
+            Run(buildTopPointer(span, snippet.first()), rangeStyle),
+          ),
+          frameIndent,
+        )
+      }
+
+      snippet.forEachIndexed { index, line ->
+        val lineNo = (span.line + index).toString().padStart(gutterWidth)
         writer.rawRuns(
           buildList {
-            add(Run("$pad ${glyphs.vbar} ", Style.DIM))
-            add(Run(" ".repeat(elbowAt)))
+            add(Run("$lineNo ${glyphs.vbar} ", Style.DIM))
+            if (excerpt != null) {
+              addAll(highlightLineRange(line, excerpt.start, excerpt.end, rangeStyle))
+            } else {
+              addAll(highlightRange(line, span, index, snippet.size, rangeStyle))
+            }
+          },
+          frameIndent,
+        )
+      }
+
+      writer.rawRuns(
+        listOf(
+          Run("$borderPrefix${glyphs.vbar} ", Style.DIM),
+          Run(
+            if (excerpt == null) {
+              buildBottomPointer(span, isMultiLine)
+            } else {
+              buildBottomPointer(excerpt.start, excerpt.end)
+            },
+            rangeStyle,
+          ),
+        ),
+        frameIndent,
+      )
+
+      if (label != null) {
+        writer.rawRuns(
+          buildList {
+            add(Run("$borderPrefix${glyphs.vbar} ", Style.DIM))
             add(Run("${glyphs.labelElbow} ", Style.DIM))
             addAll(label.resolve(context))
           },
-          SECTION_INDENT,
+          frameIndent,
         )
       }
     }
-    writer.raw("$pad ${glyphs.frameClose}", SECTION_INDENT, Style.DIM)
+    writer.raw("$borderPrefix${glyphs.frameClose}", frameIndent, Style.DIM)
     return true
+  }
+
+  private fun snippetFor(
+    lines: List<String>,
+    span: DiagnosticSpan,
+    contentBudget: Int,
+  ): List<String> {
+    val endLine = span.endLine.coerceAtLeast(span.line)
+    return (span.line..endLine).mapNotNull { lineNo ->
+      val line = lines.getOrNull(lineNo - 1) ?: return@mapNotNull null
+      if (line.length > contentBudget) line.take(contentBudget - 1) + "…" else line
+    }
+  }
+
+  private fun DiagnosticSpan.collapseMultilineForLocation(
+    lines: List<String>?,
+    collapse: Boolean,
+  ): DiagnosticSpan {
+    if (!collapse || endLine <= line) return this
+    val sourceLine = lines?.getOrNull(line - 1) ?: return copy(endLine = line)
+    return copy(endLine = line, endColumn = sourceLine.trimEnd().length + 1)
+  }
+
+  private fun buildTopPointer(span: DiagnosticSpan, firstLine: String): String {
+    val padding = span.column - 1
+    val length = firstLine.length - padding
+    return " ".repeat(padding) + glyphs.topPointer.repeat(length.coerceAtLeast(1))
+  }
+
+  private fun buildBottomPointer(span: DiagnosticSpan, isMultiLine: Boolean): String {
+    if (isMultiLine) {
+      val length = (span.endColumn - 1).coerceAtLeast(1)
+      return glyphs.bottomPointer.repeat(length)
+    }
+
+    val padding = span.column - 1
+    val length =
+      if (span.endColumn > span.column) {
+        span.endColumn - span.column
+      } else {
+        1
+      }
+    return " ".repeat(padding) + glyphs.bottomPointer.repeat(length)
+  }
+
+  private fun buildBottomPointer(start: Int, end: Int): String {
+    val length = (end - start).coerceAtLeast(1)
+    return " ".repeat(start) + glyphs.bottomPointer.repeat(length)
+  }
+
+  private fun highlightLineRange(line: String, start: Int, end: Int, style: Style): List<Run> {
+    val clampedStart = start.coerceIn(0, line.length)
+    val clampedEnd = end.coerceIn(clampedStart, line.length)
+    return buildList {
+      add(Run(line.substring(0, clampedStart)))
+      add(Run(line.substring(clampedStart, clampedEnd), style))
+      add(Run(line.substring(clampedEnd)))
+    }
+  }
+
+  private fun highlightRange(
+    line: String,
+    span: DiagnosticSpan,
+    lineIndex: Int,
+    totalLines: Int,
+    style: Style,
+  ): List<Run> {
+    val (start, end) =
+      when {
+        totalLines == 1 -> {
+          val start = (span.column - 1).coerceIn(0, line.length)
+          val end =
+            if (span.endColumn > span.column) {
+              (span.endColumn - 1).coerceIn(start, line.length)
+            } else {
+              (start + 1).coerceAtMost(line.length)
+            }
+          start to end
+        }
+        lineIndex == 0 -> {
+          val start = (span.column - 1).coerceIn(0, line.length)
+          start to line.length
+        }
+        lineIndex == totalLines - 1 -> {
+          val end =
+            if (span.endColumn > 0) {
+              (span.endColumn - 1).coerceIn(0, line.length)
+            } else {
+              line.length
+            }
+          0 to end
+        }
+        else -> 0 to line.length
+      }
+
+    return buildList {
+      add(Run(line.substring(0, start)))
+      add(Run(line.substring(start, end), style))
+      add(Run(line.substring(end)))
+    }
   }
 
   private fun renderSimilarBindings(
@@ -400,7 +585,7 @@ internal class DiagnosticRenderer(
   private fun renderNote(writer: LineWriter, note: Note, context: RenderContext) {
     val (label, style) =
       when (note.kind) {
-        NoteKind.HELP -> "help:" to Style.SUCCESS
+        NoteKind.HELP -> "help:" to Style.INFO
         NoteKind.NOTE -> "note:" to Style.DIM
       }
     renderNoteLine(writer, label, style, note.text, context)
@@ -433,6 +618,52 @@ internal class DiagnosticRenderer(
     private const val NESTED_INDENT = 8
   }
 }
+
+private fun MetroDiagnostic.titleRuns(severityStyle: Style, context: RenderContext): List<Run> =
+  buildList {
+    add(Run("[${id.fullId}]", severityStyle))
+    add(Run(" "))
+    addAll(title.resolve(context))
+  }
+
+private data class SourceFrameItem(
+  val span: DiagnosticSpan,
+  val label: Text?,
+  val excerpt: SourceExcerpt? = null,
+)
+
+private data class SourceExcerpt(val line: String, val start: Int, val end: Int)
+
+private fun String.toSourceExcerpt(): SourceExcerpt? {
+  val lines = lines()
+  for (index in 0 until lines.lastIndex) {
+    val markerLine = lines[index + 1]
+    if ('~' !in markerLine) continue
+    if (!markerLine.all { it == ' ' || it == '~' }) continue
+
+    val start = markerLine.indexOf('~')
+    val end = markerLine.lastIndexOf('~') + 1
+    return SourceExcerpt(lines[index], start, end)
+  }
+  return null
+}
+
+private fun DiagnosticSpan.renderDisplayPath(): String {
+  val path = displayPath ?: filePath
+  val normalized = path.removePrefix("file://")
+  val isAbsolute = normalized.startsWith("/") || WINDOWS_ABSOLUTE_PATH.matches(normalized)
+  return if (isAbsolute) normalized.fileName() else normalized
+}
+
+private fun String.fileName(): String = substringAfterLast('/').substringAfterLast('\\')
+
+private val WINDOWS_ABSOLUTE_PATH = Regex("[A-Za-z]:[/\\\\].*")
+
+private fun MetroSeverity.toStyle(): Style =
+  when (this) {
+    MetroSeverity.ERROR -> Style.ERROR
+    MetroSeverity.WARNING -> Style.WARNING
+  }
 
 /** Resolves styled [Text] to layout [Run]s, deciding simple vs fully-qualified type renders. */
 internal fun Text.resolve(context: RenderContext): List<Run> = spans.map { span ->

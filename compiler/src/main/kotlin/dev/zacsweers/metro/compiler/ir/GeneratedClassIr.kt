@@ -153,6 +153,7 @@ internal fun IrClass.getOrCreateGraphFactoryImplShell(): IrClass {
     }
 }
 
+@IgnorableReturnValue
 context(context: IrMetroContext)
 internal fun IrClass.addMetadataVisibleHiddenCompanionObject(): IrClass {
   return getOrCreateMetadataVisibleHiddenNestedClass(

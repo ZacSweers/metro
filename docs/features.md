@@ -52,7 +52,7 @@ Most errors are reported in FIR, which should (eventually) be visible in the K2 
 
 ## Helpful diagnostics
 
-Metro tries its best to give detailed-yet-readable error messages and diagnostics, with stable diagnostic IDs, `help:` suggestions, and links to the [Diagnostics Reference](diagnostics.md). An optional rich console mode adds color, Unicode structure, and underlined source snippets in terminals. See [Validation & Error Reporting](validation-and-error-reporting.md).
+Metro tries its best to give detailed-yet-readable error messages and diagnostics, with stable diagnostic IDs, `help:` suggestions, and links to the [Diagnostics Reference](diagnostics.md). An optional rich console mode adds color, Unicode structure, and highlighted source snippets in terminals. See [Validation & Error Reporting](validation-and-error-reporting.md).
 
 ```
 e: ExampleGraph.kt:8:3 

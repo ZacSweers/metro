@@ -465,7 +465,7 @@ internal open class MutableBindingGraph<
     }
     reportDuplicateBindings(
       key,
-      bindings.map { it.renderLocationDiagnostic() },
+      bindings.map { it.renderLocationDiagnostic(short = true) },
       bindingStack,
       notes,
     )

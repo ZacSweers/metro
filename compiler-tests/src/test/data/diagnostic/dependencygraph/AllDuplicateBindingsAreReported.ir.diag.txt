@@ -2,26 +2,25 @@
 [Metro/DuplicateBinding] Multiple bindings found for String
 
       AllDuplicateBindingsAreReported.kt:10:13
-        @Provides fun provideString1(): kotlin.String
-                                        ~~~~~~~~~~~~~
+        @Provides fun provideString1(): String
+                                        ~~~~~~
 
       AllDuplicateBindingsAreReported.kt:11:13
-        @Provides fun provideString2(): kotlin.String
-                                        ~~~~~~~~~~~~~
+        @Provides fun provideString2(): String
+                                        ~~~~~~
 
       AllDuplicateBindingsAreReported.kt:12:13
-        @Provides fun provideString3(): kotlin.String
-                                        ~~~~~~~~~~~~~
+        @Provides fun provideString3(): String
+                                        ~~~~~~
 
       AllDuplicateBindingsAreReported.kt:13:13
-        @Provides fun provideString4(): kotlin.String
-                                        ~~~~~~~~~~~~~
+        @Provides fun provideString4(): String
+                                        ~~~~~~
 
       AllDuplicateBindingsAreReported.kt:14:13
-        @Provides fun provideString5(): kotlin.String
-                                        ~~~~~~~~~~~~~
+        @Provides fun provideString5(): String
+                                        ~~~~~~
 
   help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
         @IntoSet/@IntoMap if you intended a multibinding
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
-

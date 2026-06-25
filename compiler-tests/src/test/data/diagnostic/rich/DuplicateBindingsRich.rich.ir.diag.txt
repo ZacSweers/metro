@@ -1,14 +1,14 @@
 /DuplicateBindingsRich.kt:12:11: error: 
-<red>[Metro/DuplicateBinding]</> Multiple bindings found for <b>String</>
+<dim>   ╭─ </intensity><b>[Metro/DuplicateBinding] Multiple bindings found for String</intensity>
+<dim>   │ → </intensity>DuplicateBindingsRich.kt:15:13
+<dim>   │</intensity>
+<dim>15 │ </intensity>@Provides fun provideString1(): <red>String</fg>
+<dim>   │ </intensity><red>                                ⌃⌃⌃⌃⌃⌃</fg>
+<dim>16 │ </intensity>@Provides fun provideString2(): <red>String</fg>
+<dim>   │ </intensity><red>                                ⌃⌃⌃⌃⌃⌃</fg>
+<dim>   ╰─</intensity>
 
-  <dim>   ╭─[ DuplicateBindingsRich.kt:15:13 ]</>
-  <dim>15 │ </>  @Provides fun provideString1(): String = "1"
-  <dim>   │ </>            <dim>──────────────────────────────────</>
-  <dim>16 │ </>  @Provides fun provideString2(): String = "2"
-  <dim>   │ </>            <dim>──────────────────────────────────</>
-  <dim>   ╰─</>
-
-  <green>help:</> remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+  <cyan>help:</fg> remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
         @IntoSet/@IntoMap if you intended a multibinding
-  <dim>docs:</> https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
+  <dim>docs:</intensity> https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
 

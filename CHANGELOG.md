@@ -16,34 +16,30 @@ Changelog
   - Diagnostics now wrap to 100 columns and start on their own line after the compiler location prefix
   - **Example plain output**
     ```
-    ExampleGraph.kt:7:11: error: 
-    [Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
+    ExampleGraph.kt:9:3: error: 
+    [Metro/MissingBinding] No binding found for String
     
-      cycle:
-          +-> Double -> String -> Int --+
-          +-----------------------------+
+      trace (in dev.zacsweers.example.ExampleGraph):
+          String is requested at dev.zacsweers.example.ExampleGraph.a
     
-      trace (in test.ExampleGraph):
-          Double is injected at test.ExampleGraph.provideInt(…, double)
-          String is injected at test.ExampleGraph.provideDouble(…, string)
-          Int is injected at test.ExampleGraph.provideString(…, int)
-          Double is injected at test.ExampleGraph.provideInt(…, double)
-          ...
+      similar bindings:
+          - CharSequence (Supertype. Type: Provided) - ExampleGraph.kt:12:3
     
-      help: break the cycle by injecting a deferred type at one edge, e.g. `() -> Double` or
-            `Lazy<Double>`
-      docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+      help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+            declaration visible to ExampleGraph
+      docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
     ```
   - **Example rich output**
     
     _(note that in rich terminals this would have color and markup too!)_
     ```
-    [Metro/MissingBinding] No binding found for String
-    
-        ╭─[ /.../src/commonMain/kotlin/dev/zacsweers/example/ExampleGraph.kt:9:3 ]
-      9 │   val a: String
-        │   ─────────────
-        ╰─
+    ExampleGraph.kt:9:3: error: 
+      ╭─ [Metro/MissingBinding] No binding found for String
+      │ → ExampleGraph.kt:9:3
+      │
+    9 │   val a: String
+      │   ⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃
+      ╰─
     
       trace (in dev.zacsweers.example.ExampleGraph):
           String is requested at dev.zacsweers.example.ExampleGraph.a

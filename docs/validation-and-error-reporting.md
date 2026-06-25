@@ -58,7 +58,7 @@ metro {
 ```
 
 - `PLAIN` — the layout above: ASCII structure, no ANSI codes. Safe for any log consumer.
-- `RICH` — the same layout with Unicode glyphs (`╭─▶ Double → String → Int ─╮`), ANSI color/styling, and source snippets: real source lines with the relevant spans underlined, e.g. the injection site of a missing binding or each conflicting declaration of a duplicate binding.
+- `RICH` — the same layout with Unicode glyphs (`╭─▶ Double → String → Int ─╮`), ANSI color/styling, and source snippets: real source lines with the relevant spans highlighted and marked with `⌃`/`⌄` pointers, e.g. the injection site of a missing binding or each conflicting declaration of a duplicate binding.
 - `AUTO` (default) — resolved at configuration time. Non-empty `NO_COLOR`, `--console=plain`, and IDE-invoked builds (whose build output windows don't render ANSI) get `PLAIN`; other builds, including CI builds, get `RICH`.
 
 The mode can also be set via the `diagnosticsRenderMode` Gradle property or the `metro.diagnosticsRenderMode` system property (which the compiler reads directly and wins over everything). Because rendering is presentation-only, the resolved mode is excluded from compilation task inputs — switching between IDE and CLI never invalidates compilation or splits build caches.

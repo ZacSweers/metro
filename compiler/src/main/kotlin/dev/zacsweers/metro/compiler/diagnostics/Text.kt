@@ -16,10 +16,16 @@ internal enum class Style {
   DIM,
   /** Error-colored content (red in rich output). */
   ERROR,
-  /** Warning-colored content (yellow in rich output). */
+  /** Warning-colored content in rich output. */
   WARNING,
-  /** Positive/suggestion content (green in rich output). */
+  /** Informational/guidance content. */
+  INFO,
+  /** Positive/suggestion content in rich output. */
   SUCCESS,
+  /** Bold error-colored content (red + bold in rich output). */
+  ERROR_EMPHASIS,
+  /** Bold warning-colored content (yellow + bold in rich output). */
+  WARNING_EMPHASIS,
   UNDERLINE,
 }
 

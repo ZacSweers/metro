@@ -20,6 +20,9 @@ object AnsiMarkup {
       "\u001B[31m" to "<red>",
       "\u001B[32m" to "<green>",
       "\u001B[33m" to "<yellow>",
+      "\u001B[36m" to "<cyan>",
+      "\u001B[22m" to "</intensity>",
+      "\u001B[39m" to "</fg>",
       "\u001B[0m" to "</>",
     )
 
