@@ -427,15 +427,16 @@ class AnvilInteropTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ContributedInterface.kt:18:11 [Metro/DuplicateBinding] Multiple bindings found for ContributedInterface
+        e: ContributedInterface.kt:18:11
+        [Metro/DuplicateBinding] Multiple bindings found for ContributedInterface
 
               ContributedInterface.kt:8:1
-                test.Impl1 contributes a binding of test.ContributedInterface
-                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~
+                test.Impl1 contributes a binding of ContributedInterface
+                ~~~~~~~~~~                          ~~~~~~~~~~~~~~~~~~~~
 
               ContributedInterface.kt:14:1
-                test.Impl3 contributes a binding of test.ContributedInterface
-                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~
+                test.Impl3 contributes a binding of ContributedInterface
+                ~~~~~~~~~~                          ~~~~~~~~~~~~~~~~~~~~
 
           help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
                 @IntoSet/@IntoMap if you intended a multibinding
@@ -478,15 +479,16 @@ class AnvilInteropTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ContributedInterface.kt:15:11 [Metro/DuplicateBinding] Multiple bindings found for ContributedInterface
+        e: ContributedInterface.kt:15:11
+        [Metro/DuplicateBinding] Multiple bindings found for ContributedInterface
 
               ContributedInterface.kt:8:1
-                test.Impl1 contributes a binding of test.ContributedInterface
-                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~
+                test.Impl1 contributes a binding of ContributedInterface
+                ~~~~~~~~~~                          ~~~~~~~~~~~~~~~~~~~~
 
               ContributedInterface.kt:11:1
-                test.Impl2 contributes a binding of test.ContributedInterface
-                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~
+                test.Impl2 contributes a binding of ContributedInterface
+                ~~~~~~~~~~                          ~~~~~~~~~~~~~~~~~~~~
 
           help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
                 @IntoSet/@IntoMap if you intended a multibinding

@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
+import dev.zacsweers.metro.compiler.appendLineWithUnderlinedRanges
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBinding
@@ -315,14 +316,14 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
-        val originName = renderOriginName(short)
+        val originName = renderOriginName()
         if (originName != null) {
           // For contribution provider bindings, show the origin class instead of the
           // generated provides function
-          val content =
-            "$originName contributes a binding of ${providerFactory.typeKey.renderForDiagnostic(short = short)}"
+          val renderedType = providerFactory.typeKey.renderForDiagnostic(short = short)
+          val content = "$originName contributes a binding of $renderedType"
           if (underlineTypeKey) {
-            appendLineWithUnderlinedContent(content, target = originName)
+            appendContributionSummaryWithUnderlines(content, originName, renderedType)
           } else {
             append(content)
           }
@@ -343,16 +344,15 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       short: Boolean,
       shortLocation: Boolean,
     ): LocationDiagnostic? {
-      val originName = renderOriginName(short) ?: return null
+      val originName = renderOriginName() ?: return null
       val location =
         originClass?.renderSourceLocation(short = shortLocation)
           ?: originClassId?.asSingleFqName()?.asString()
           ?: return null
+      val renderedType = providerFactory.typeKey.renderForDiagnostic(short = short)
+      val content = "$originName contributes a binding of $renderedType"
       val description = buildString {
-        appendLineWithUnderlinedContent(
-          "$originName contributes a binding of ${providerFactory.typeKey.renderForDiagnostic(short = short)}",
-          target = originName,
-        )
+        appendContributionSummaryWithUnderlines(content, originName, renderedType)
       }
       return LocationDiagnostic(
         location,
@@ -361,18 +361,29 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       )
     }
 
-    private fun renderOriginName(short: Boolean): String? {
+    private fun renderOriginName(): String? {
       originClass?.let { originClass ->
-        return if (short) originClass.name.asString() else originClass.kotlinFqName.asString()
+        return originClass.kotlinFqName.asString()
       }
       originClassId?.let { originClassId ->
-        return if (short) {
-          originClassId.shortClassName.asString()
-        } else {
-          originClassId.asSingleFqName().asString()
-        }
+        return originClassId.asSingleFqName().asString()
       }
       return null
+    }
+
+    context(builder: StringBuilder)
+    private fun appendContributionSummaryWithUnderlines(
+      content: String,
+      originName: String,
+      renderedType: String,
+    ) {
+      builder.appendLineWithUnderlinedRanges(
+        content,
+        listOf(
+          0 until originName.length,
+          content.length - renderedType.length until content.length,
+        ),
+      )
     }
 
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)

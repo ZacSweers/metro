@@ -1898,12 +1898,12 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for ExampleClass
 
               ExampleGraph.kt:10:13
-                @Provides fun provideExampleClass1(): test.ExampleClass
-                                                      ~~~~~~~~~~~~~~~~~
+                @Provides fun provideExampleClass1(): ExampleClass
+                                                      ~~~~~~~~~~~~
 
               ExampleGraph.kt:11:13
-                @Provides fun provideExampleClass2(): test.ExampleClass
-                                                      ~~~~~~~~~~~~~~~~~
+                @Provides fun provideExampleClass2(): ExampleClass
+                                                      ~~~~~~~~~~~~
 
           help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
                 @IntoSet/@IntoMap if you intended a multibinding
@@ -1940,12 +1940,12 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for ExampleClass
 
               ExampleGraph.kt:10:13
-                @Provides fun provideExampleClass1(): test.ExampleClass
-                                                      ~~~~~~~~~~~~~~~~~
+                @Provides fun provideExampleClass1(): ExampleClass
+                                                      ~~~~~~~~~~~~
 
               ExampleGraph.kt:11:10
-                @Binds fun test.Impl2.provideExampleClass2(): test.ExampleClass
-                                                              ~~~~~~~~~~~~~~~~~
+                @Binds fun Impl2.provideExampleClass2(): ExampleClass
+                                                         ~~~~~~~~~~~~
 
           help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
                 @IntoSet/@IntoMap if you intended a multibinding
@@ -1982,12 +1982,12 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for ExampleClass
 
               ExampleGraph.kt:10:10
-                @Binds fun test.Impl1.provideExampleClass1(): test.ExampleClass
-                                                              ~~~~~~~~~~~~~~~~~
+                @Binds fun Impl1.provideExampleClass1(): ExampleClass
+                                                         ~~~~~~~~~~~~
 
               ExampleGraph.kt:11:10
-                @Binds fun test.Impl2.provideExampleClass2(): test.ExampleClass
-                                                              ~~~~~~~~~~~~~~~~~
+                @Binds fun Impl2.provideExampleClass2(): ExampleClass
+                                                         ~~~~~~~~~~~~
 
           help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
                 @IntoSet/@IntoMap if you intended a multibinding
@@ -2027,12 +2027,12 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for ExampleClass
 
               ExampleGraph.kt:13:1
-                test.Impl1 contributes a binding of test.ExampleClass
-                                                    ~~~~~~~~~~~~~~~~~
+                test.Impl1 contributes a binding of ExampleClass
+                ~~~~~~~~~~                          ~~~~~~~~~~~~
 
               ExampleGraph.kt:17:1
-                test.Impl2 contributes a binding of test.ExampleClass
-                                                    ~~~~~~~~~~~~~~~~~
+                test.Impl2 contributes a binding of ExampleClass
+                ~~~~~~~~~~                          ~~~~~~~~~~~~
 
           help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
                 @IntoSet/@IntoMap if you intended a multibinding
@@ -2081,15 +2081,16 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:8:11 [Metro/DuplicateBinding] Multiple bindings found for OtherClass
+        e: ExampleGraph.kt:8:11
+        [Metro/DuplicateBinding] Multiple bindings found for OtherClass
 
               <unknown location, likely a separate compilation>
-                other.ExampleClass contributes a binding of other.OtherClass
-                                                            ~~~~~~~~~~~~~~~~
+                other.ExampleClass contributes a binding of OtherClass
+                ~~~~~~~~~~~~~~~~~~                          ~~~~~~~~~~
 
               <unknown location, likely a separate compilation>
-                other.ExampleClass2 contributes a binding of other.OtherClass
-                                                             ~~~~~~~~~~~~~~~~
+                other.ExampleClass2 contributes a binding of OtherClass
+                ~~~~~~~~~~~~~~~~~~~                          ~~~~~~~~~~
 
           help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
                 @IntoSet/@IntoMap if you intended a multibinding
@@ -2146,12 +2147,12 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         e: ExampleGraph.kt:8:11 [Metro/DuplicateBinding] Multiple bindings found for OtherClass
 
               <unknown location, likely a separate compilation>
-                other.ExampleClass contributes a binding of other.OtherClass
-                                                            ~~~~~~~~~~~~~~~~
+                other.ExampleClass contributes a binding of OtherClass
+                ~~~~~~~~~~~~~~~~~~                          ~~~~~~~~~~
 
               ExampleClass2.kt:7:1
-                test.ExampleClass2 contributes a binding of other.OtherClass
-                                                            ~~~~~~~~~~~~~~~~
+                test.ExampleClass2 contributes a binding of OtherClass
+                ~~~~~~~~~~~~~~~~~~                          ~~~~~~~~~~
 
           help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
                 @IntoSet/@IntoMap if you intended a multibinding

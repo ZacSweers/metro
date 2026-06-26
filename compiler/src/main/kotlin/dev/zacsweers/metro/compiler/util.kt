@@ -235,6 +235,25 @@ internal fun StringBuilder.appendLineWithUnderlinedContent(
   repeat(target.length) { append(char) }
 }
 
+internal fun StringBuilder.appendLineWithUnderlinedRanges(
+  content: String,
+  ranges: List<IntRange>,
+  char: Char = '~',
+) {
+  appendLine(content)
+  val underline = CharArray(content.length) { ' ' }
+  for (range in ranges) {
+    val start = range.first.coerceAtLeast(0)
+    val end = range.last.coerceAtMost(content.lastIndex)
+    if (start > end) continue
+    for (index in start..end) {
+      underline[index] = char
+    }
+  }
+  if (underline.none { it == char }) return
+  append(underline.concatToString().trimEnd())
+}
+
 internal fun computeMetroDefault(
   behavior: OptionalBindingBehavior,
   isAnnotatedOptionalDep: () -> Boolean,
