@@ -4,18 +4,17 @@
 
       SuspiciousUnusedMultibindingSet.kt:20:1
         Impl2 contributes a binding of BaseViewModel
-                                       ~~~~~~~~~~~~~
+        ~~~~~
 
       SuspiciousUnusedMultibindingSet.kt:24:1
         Impl3 contributes a binding of BaseViewModel
-                                       ~~~~~~~~~~~~~
+        ~~~~~
 
       SuspiciousUnusedMultibindingSet.kt:28:1
         Impl4 contributes a binding of BaseViewModel
-                                       ~~~~~~~~~~~~~
+        ~~~~~
       ...and 1 more
 
   help: did you possibly bind them to the wrong type or contribute them to the wrong scope?
   note: similar multibindings: Set<ViewModel>
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#suspiciousunusedmultibinding
-

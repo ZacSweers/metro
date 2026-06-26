@@ -298,7 +298,8 @@ internal class DiagnosticRenderer(
             SourceFrameItem(
               span = item.span!!,
               label = item.span.label ?: item.description,
-              excerpt = item.code?.toSourceExcerpt(),
+              excerpt = if (item.preferSourceSnippet) null else item.code?.toSourceExcerpt(),
+              includeLeadingAnnotations = item.includeLeadingAnnotations,
             )
           }
           if (
@@ -358,7 +359,12 @@ internal class DiagnosticRenderer(
     val sorted =
       items
         .map { item ->
-          val span = item.span.collapseMultilineForLocation(lines, collapseMultilineSpans)
+          val span =
+            if (item.excerpt == null && item.includeLeadingAnnotations) {
+              item.span.expandToLeadingAnnotations(lines, collapseMultilineSpans)
+            } else {
+              item.span.collapseMultilineForLocation(lines, collapseMultilineSpans)
+            }
           item.copy(span = span)
         }
         .sortedBy { it.span.line }
@@ -478,6 +484,41 @@ internal class DiagnosticRenderer(
     if (!collapse || endLine <= line) return this
     val sourceLine = lines?.getOrNull(line - 1) ?: return copy(endLine = line)
     return copy(endLine = line, endColumn = sourceLine.trimEnd().length + 1)
+  }
+
+  private fun DiagnosticSpan.expandToLeadingAnnotations(
+    lines: List<String>?,
+    collapse: Boolean,
+  ): DiagnosticSpan {
+    if (lines == null) return collapseMultilineForLocation(lines, collapse)
+    val declarationLine =
+      lines.getOrNull(line - 1) ?: return collapseMultilineForLocation(lines, collapse)
+    var startLine = line
+    var previousIndex = line - 2
+    while (previousIndex >= 0 && lines[previousIndex].trimStart().startsWith("@")) {
+      startLine = previousIndex + 1
+      previousIndex--
+    }
+    if (startLine == line) return collapseMultilineForLocation(lines, collapse)
+    val startColumn =
+      lines[startLine - 1]
+        .indexOfFirst { !it.isWhitespace() }
+        .let { index ->
+          if (index == -1) 1 else index + 1
+        }
+    val newEndLine = if (collapse) line else endLine
+    val newEndColumn =
+      if (collapse) {
+        declarationLine.trimEnd().length + 1
+      } else {
+        endColumn
+      }
+    return copy(
+      line = startLine,
+      column = startColumn,
+      endLine = newEndLine,
+      endColumn = newEndColumn,
+    )
   }
 
   private fun buildTopPointer(span: DiagnosticSpan, firstLine: String): String {
@@ -630,6 +671,7 @@ private data class SourceFrameItem(
   val span: DiagnosticSpan,
   val label: Text?,
   val excerpt: SourceExcerpt? = null,
+  val includeLeadingAnnotations: Boolean = true,
 )
 
 private data class SourceExcerpt(val line: String, val start: Int, val end: Int)

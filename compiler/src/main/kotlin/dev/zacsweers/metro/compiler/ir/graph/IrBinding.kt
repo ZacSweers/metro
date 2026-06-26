@@ -35,6 +35,7 @@ import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
 import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
+import dev.zacsweers.metro.compiler.ir.toNameDiagnosticSpan
 import dev.zacsweers.metro.compiler.ir.toTypeDiagnosticSpan
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -314,19 +315,16 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
-        val originName =
-          originClass?.kotlinFqName?.asString() ?: originClassId?.asSingleFqName()?.asString()
+        val originName = renderOriginName(short)
         if (originName != null) {
           // For contribution provider bindings, show the origin class instead of the
           // generated provides function
-          append(originName)
-          append(" contributes a binding of ")
+          val content =
+            "$originName contributes a binding of ${providerFactory.typeKey.renderForDiagnostic(short = short)}"
           if (underlineTypeKey) {
-            appendLineWithUnderlinedContent(
-              providerFactory.typeKey.renderForDiagnostic(short = short)
-            )
+            appendLineWithUnderlinedContent(content, target = originName)
           } else {
-            append(providerFactory.typeKey.renderForDiagnostic(short = short))
+            append(content)
           }
         } else {
           renderForDiagnostic(
@@ -340,6 +338,42 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           )
         }
       }
+
+    fun renderContributionLocationDiagnostic(
+      short: Boolean,
+      shortLocation: Boolean,
+    ): LocationDiagnostic? {
+      val originName = renderOriginName(short) ?: return null
+      val location =
+        originClass?.renderSourceLocation(short = shortLocation)
+          ?: originClassId?.asSingleFqName()?.asString()
+          ?: return null
+      val description = buildString {
+        appendLineWithUnderlinedContent(
+          "$originName contributes a binding of ${providerFactory.typeKey.renderForDiagnostic(short = short)}",
+          target = originName,
+        )
+      }
+      return LocationDiagnostic(
+        location,
+        description,
+        originClass?.toNameDiagnosticSpan(shortDisplayPath = shortLocation),
+      )
+    }
+
+    private fun renderOriginName(short: Boolean): String? {
+      originClass?.let { originClass ->
+        return if (short) originClass.name.asString() else originClass.kotlinFqName.asString()
+      }
+      originClassId?.let { originClassId ->
+        return if (short) {
+          originClassId.shortClassName.asString()
+        } else {
+          originClassId.asSingleFqName().asString()
+        }
+      }
+      return null
+    }
 
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
   }

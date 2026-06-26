@@ -389,14 +389,24 @@ internal fun IrDeclaration.toDiagnosticSpan(
 internal fun IrDeclaration.toTypeDiagnosticSpan(
   shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
 ): DiagnosticSpan? {
-  val sourceElement =
-    sourceElement() as? KtPsiSourceElement ?: return toDiagnosticSpan(shortDisplayPath)
-  val sourceDeclaration =
-    sourceElement.psi as? KtDeclaration ?: return toDiagnosticSpan(shortDisplayPath)
+  val fallback = toDiagnosticSpan(shortDisplayPath)
+  val sourceElement = sourceElement() as? KtPsiSourceElement ?: return fallback
+  val sourceDeclaration = sourceElement.psi as? KtDeclaration ?: return fallback
   val textRange =
     PositioningStrategies.DECLARATION_RETURN_TYPE.mark(sourceDeclaration).firstOrNull()
-      ?: return toDiagnosticSpan(shortDisplayPath)
-  return toDiagnosticSpan(textRange, shortDisplayPath) ?: toDiagnosticSpan(shortDisplayPath)
+      ?: return fallback
+  return toDiagnosticSpan(textRange, shortDisplayPath) ?: fallback
+}
+
+internal fun IrDeclaration.toNameDiagnosticSpan(
+  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+): DiagnosticSpan? {
+  val fallback = toDiagnosticSpan(shortDisplayPath)
+  val sourceElement = sourceElement() as? KtPsiSourceElement ?: return fallback
+  val sourceDeclaration = sourceElement.psi as? KtDeclaration ?: return fallback
+  val textRange =
+    PositioningStrategies.DECLARATION_NAME.mark(sourceDeclaration).firstOrNull() ?: return fallback
+  return toDiagnosticSpan(textRange, shortDisplayPath) ?: fallback
 }
 
 private fun IrDeclaration.toDiagnosticSpan(

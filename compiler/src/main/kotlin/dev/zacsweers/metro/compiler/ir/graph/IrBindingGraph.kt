@@ -461,7 +461,17 @@ internal class IrBindingGraph(
             // Report the first few bindings
             val examples =
               unusedSources
-                .mapNotNull { source -> bindingLookup[source]?.renderLocationDiagnostic() }
+                .mapNotNull { source ->
+                  val sourceBinding = bindingLookup[source] ?: return@mapNotNull null
+                  if (sourceBinding is IrBinding.Provided) {
+                    sourceBinding.renderContributionLocationDiagnostic(
+                      short = true,
+                      shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+                    ) ?: sourceBinding.renderLocationDiagnostic(underlineTypeKey = false)
+                  } else {
+                    sourceBinding.renderLocationDiagnostic(underlineTypeKey = false)
+                  }
+                }
                 // Stable sort
                 .sortedBy { it.location }
             val locationItems = buildList {
@@ -470,6 +480,8 @@ internal class IrBindingGraph(
                   LocatedItem(
                     location = example.location,
                     code = example.description,
+                    preferSourceSnippet = true,
+                    includeLeadingAnnotations = false,
                     span = example.span,
                   )
                 )

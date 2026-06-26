@@ -86,15 +86,20 @@ internal class BindsCallable(
 
     val description = buildString {
       if (isContributed) {
-        append((sourceDeclaration as IrDeclarationParent).kotlinFqName)
-        append(" contributes a binding of ")
-        appendLineWithUnderlinedContent(
-          typeKey.renderForDiagnostic(
-            short = short,
-            includeQualifier = true,
-            useOriginalQualifier = true,
-          )
-        )
+        val sourceName =
+          if (short) {
+            sourceDeclaration.name.asString()
+          } else {
+            (sourceDeclaration as IrDeclarationParent).kotlinFqName.asString()
+          }
+        val content =
+          "$sourceName contributes a binding of " +
+            typeKey.renderForDiagnostic(
+              short = short,
+              includeQualifier = true,
+              useOriginalQualifier = true,
+            )
+        appendLineWithUnderlinedContent(content, target = sourceName)
       } else {
         renderForDiagnostic(
           declaration = function,
@@ -107,7 +112,13 @@ internal class BindsCallable(
         )
       }
     }
-    return LocationDiagnostic(location, description)
+    val span =
+      if (isContributed) {
+        sourceDeclaration.toNameDiagnosticSpan(shortDisplayPath = shortLocation)
+      } else {
+        null
+      }
+    return LocationDiagnostic(location, description, span)
   }
 }
 

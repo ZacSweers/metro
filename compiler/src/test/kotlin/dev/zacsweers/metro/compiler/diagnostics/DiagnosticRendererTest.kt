@@ -407,6 +407,104 @@ class DiagnosticRendererTest {
   }
 
   @Test
+  fun `rich locations expand source snippets to include annotations`() {
+    val source =
+      List(14) { "" } +
+        listOf(
+          "  @Provides",
+          "  @IntoMap",
+          "  @IntKey(3)",
+          "  fun provideString(): String {",
+          "    return \"one\"",
+          "  }",
+          "",
+          "  @Provides",
+          "  @IntoMap",
+          "  @IntKey(3)",
+          "  fun provideString2(): String = \"two\"",
+        )
+    val renderer =
+      DiagnosticRenderer(
+        RenderProfile.RICH,
+        sourceLines = { path ->
+          if (path == "/src/ExampleGraph.kt") source else null
+        },
+      )
+    val diagnostic =
+      MetroDiagnostic(
+        id = MetroDiagnosticId.DUPLICATE_MAP_KEYS,
+        severity = MetroSeverity.ERROR,
+        title =
+          buildText {
+            append("Duplicate map keys found for multibinding ")
+            appendType("kotlin.collections.Map")
+          },
+        sections =
+          listOf(
+            DiagnosticSection.Locations(
+              header = textOf("The following bindings contribute the same map key '@IntKey(3)'"),
+              items =
+                listOf(
+                  LocatedItem(
+                    location = "ExampleGraph.kt:18:3",
+                    code =
+                      """
+                      @Provides
+                      @IntoMap
+                      @IntKey(3)
+                      fun provideString(): String
+                      """
+                        .trimIndent(),
+                    span =
+                      DiagnosticSpan(
+                        filePath = "/src/ExampleGraph.kt",
+                        line = 18,
+                        column = 3,
+                        endLine = 20,
+                        endColumn = 4,
+                        displayPath = "/src/ExampleGraph.kt",
+                      ),
+                  ),
+                  LocatedItem(
+                    location = "ExampleGraph.kt:25:3",
+                    code =
+                      """
+                      @Provides
+                      @IntoMap
+                      @IntKey(3)
+                      fun provideString2(): String
+                      """
+                        .trimIndent(),
+                    span =
+                      DiagnosticSpan(
+                        filePath = "/src/ExampleGraph.kt",
+                        line = 25,
+                        column = 3,
+                        endLine = 25,
+                        endColumn = 43,
+                        displayPath = "/src/ExampleGraph.kt",
+                      ),
+                  ),
+                ),
+            )
+          ),
+        includeDocsUrl = false,
+      )
+
+    val rendered = stripAnsi(renderer.render(diagnostic))
+    assertThat(rendered).contains("The following bindings contribute the same map key '@IntKey(3)'")
+    assertThat(rendered).contains("15 │   @Provides")
+    assertThat(rendered).contains("16 │   @IntoMap")
+    assertThat(rendered).contains("17 │   @IntKey(3)")
+    assertThat(rendered).contains("18 │   fun provideString(): String {")
+    assertThat(rendered).contains("22 │   @Provides")
+    assertThat(rendered).contains("23 │   @IntoMap")
+    assertThat(rendered).contains("24 │   @IntKey(3)")
+    assertThat(rendered).contains("25 │   fun provideString2(): String = \"two\"")
+    assertThat(rendered).doesNotContain("return \"one\"")
+  }
+
+  @Test
   fun `deduped trace renders continuation pointer to sibling`() {
     val diagnostic =
       MetroDiagnostic(
