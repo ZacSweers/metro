@@ -32,9 +32,9 @@ public fun testMetroTrace(block: MetroTraceTestScope.() -> Unit) {
 /**
  * Assertions for Metro trace events recorded while [tracer] is used.
  *
- * [events] is the queue of generated Metro trace events recorded by AndroidX tracing. [assertEvent]
- * flushes the trace driver, then consumes the next recorded event so tests can assert a span at the
- * point they expect generated code to have emitted it.
+ * [events] is the queue of generated Metro trace events recorded by AndroidX tracing. Assertions
+ * flush the trace driver, then consume the next recorded event so tests can assert the trace event
+ * generated code should have emitted at that point.
  */
 @TestOnly
 public class MetroTraceTestScope(
@@ -44,8 +44,8 @@ public class MetroTraceTestScope(
   public val tracer: Tracer
     get() = traceDriver.tracer
 
-  /** Flushes tracing and asserts the next generated Metro event. */
-  public fun assertEvent(
+  /** Flushes tracing and asserts the next generated Metro trace span. */
+  public fun assertTrace(
     name: String,
     graph: String,
     path: String,
@@ -62,14 +62,45 @@ public class MetroTraceTestScope(
       qualifier?.let { put("metro.qualifier", it) }
       kind?.let { put("metro.binding_kind", it) }
     }
-    val expected = ExpectedMetroTraceEvent(name, metadata)
+    assertRecordedEvent(MetroTraceEventType.Span, name, metadata)
+  }
+
+  /** Flushes tracing and asserts the next generated Metro instant event. */
+  public fun assertInstant(
+    name: String,
+    graph: String,
+    path: String,
+    callable: String,
+    type: String,
+    contextualType: String? = null,
+    qualifier: String? = null,
+    kind: String? = null,
+  ) {
+    val metadata = buildMap {
+      put("metro.graph", graph)
+      put("metro.graph_path", path)
+      put("metro.callable", callable)
+      put("metro.type", type)
+      contextualType?.let { put("metro.contextual_type", it) }
+      qualifier?.let { put("metro.qualifier", it) }
+      kind?.let { put("metro.entry_point_kind", it) }
+    }
+    assertRecordedEvent(MetroTraceEventType.Instant, name, metadata)
+  }
+
+  private fun assertRecordedEvent(
+    eventType: MetroTraceEventType,
+    name: String,
+    metadata: Map<String, String>,
+  ) {
+    val expected = ExpectedMetroTraceEvent(eventType, name, metadata)
     traceDriver.flush()
     assertNextEvent(expected)
   }
 
   private fun assertNextEvent(expected: ExpectedMetroTraceEvent) {
     val actualEvent = events.pollFirst()
-    val actual = actualEvent?.let { ExpectedMetroTraceEvent(it.name, it.metadata) }
+    val actual = actualEvent?.let { ExpectedMetroTraceEvent(it.eventType, it.name, it.metadata) }
     check(actual == expected) {
       throw AssertionError(
         buildString {
@@ -95,9 +126,17 @@ public class MetroTraceTestScope(
   }
 }
 
+/** Trace event type used by Metro runtime tracing tests. */
+@TestOnly
+public enum class MetroTraceEventType {
+  Span,
+  Instant,
+}
+
 /** A named trace event and its string metadata. */
 @TestOnly
 public data class MetroTraceEvent(
+  public val eventType: MetroTraceEventType,
   public val name: String,
   public val metadata: Map<String, String>,
 )
@@ -105,6 +144,7 @@ public data class MetroTraceEvent(
 /** Expected trace event used internally by [MetroTraceTestScope] assertions. */
 @TestOnly
 public data class ExpectedMetroTraceEvent(
+  public val eventType: MetroTraceEventType,
   public val name: String,
   public val metadata: Map<String, String>,
 )
@@ -128,7 +168,13 @@ private class RecordingTraceSink : AbstractTraceSink() {
       }
       val eventName = traceEvent.name ?: return@forEach
       if ("metro.graph" !in metadata) return@forEach
-      events += MetroTraceEvent(eventName, metadata)
+      val eventType =
+        when (traceEvent.type) {
+          1 -> MetroTraceEventType.Span
+          3 -> MetroTraceEventType.Instant
+          else -> return@forEach
+        }
+      events += MetroTraceEvent(eventType, eventName, metadata)
     }
     pooledPacketArray.recycle()
   }
