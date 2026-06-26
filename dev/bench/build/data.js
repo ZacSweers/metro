@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782277591637,
+  "lastUpdate": 1782507363072,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18032,6 +18032,62 @@ window.BENCHMARK_DATA = {
             "value": 19278.768,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.00%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "56de400c~1",
+          "message": "[before] Use Mordant + align rendering with ktoolchain (#24",
+          "timestamp": "2026-06-26T20:16:35Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/56de400cf78edfb0f1f684976af92dc9fd018daf"
+        },
+        "date": 1782507363072,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18781.197999999997,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "56de400cf78edfb0f1f684976af92dc9fd018daf",
+          "message": "[after] Use Mordant + align rendering with ktoolchain (#24",
+          "timestamp": "2026-06-26T20:16:35Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/56de400cf78edfb0f1f684976af92dc9fd018daf"
+        },
+        "date": 1782507363073,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 16637.878,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -11.41%"
           }
         ]
       }
