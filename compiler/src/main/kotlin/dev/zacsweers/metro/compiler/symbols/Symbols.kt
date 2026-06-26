@@ -404,6 +404,10 @@ internal class Symbols(
     metroTraceContext?.owner?.functions?.single { it.name.asString() == "trace" }?.symbol
   }
 
+  val metroTraceContextInstant: IrSimpleFunctionSymbol? by lazy {
+    metroTraceContext?.owner?.functions?.single { it.name.asString() == "instant" }?.symbol
+  }
+
   val metroTraceContextChild: IrSimpleFunctionSymbol? by lazy {
     metroTraceContext?.owner?.functions?.single { it.name.asString() == "child" }?.symbol
   }
