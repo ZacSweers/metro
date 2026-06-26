@@ -299,7 +299,7 @@ Also, disable the default `TraceDriver` initialization hook (`androidx.tracing.p
     android:name="androidx.tracing.profiler.ConnectedProfilerTracingInitializer"
     android:value="androidx.startup"
     tools:node="remove" />
-`
+```
 
 With AndroidX Tracing 2.0.0-alpha09 and newer, `TraceSink` defers file setup. Graph creation no longer needs to be delayed with `lazy` just to avoid early trace output initialization.
 
