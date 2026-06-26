@@ -27,14 +27,15 @@ fun box(): String {
   testMetroTrace {
     val graph = createGraphFactory<Graphs.AppGraph.Factory>().create(tracer)
     graph.factory
-    assertEvent(
-      name = "Types.Factory",
+    assertInstant(
+      name = "Graphs.AppGraph.factory",
       graph = "Graphs.AppGraph",
       path = "Graphs.AppGraph",
+      callable = "factory",
       type = "Types.Factory",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "Types.Factory",
       graph = "Graphs.AppGraph",
       path = "Graphs.AppGraph",

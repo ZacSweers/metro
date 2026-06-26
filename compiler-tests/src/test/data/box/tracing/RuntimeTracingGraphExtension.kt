@@ -31,21 +31,23 @@ fun box(): String {
   testMetroTrace {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
     assertEquals(3, graph.createChildGraph().count)
-    assertEvent(
-      name = "ChildGraph",
+    assertInstant(
+      name = "AppGraph.createChildGraph",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "createChildGraph",
       type = "ChildGraph",
       kind = "Accessor",
     )
-    assertEvent(
-      name = "Int",
+    assertInstant(
+      name = "ChildGraph.count",
       graph = "ChildGraph",
       path = "AppGraph/ChildGraph",
+      callable = "count",
       type = "Int",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "Int",
       graph = "ChildGraph",
       path = "AppGraph/ChildGraph",

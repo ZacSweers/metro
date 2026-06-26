@@ -28,15 +28,16 @@ fun box(): String {
   testMetroTrace {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
     assertEquals(0, graph.intProvider())
-    assertEvent(
-      name = "Provider<Int>",
+    assertInstant(
+      name = "AppGraph.intProvider",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "intProvider",
       type = "Int",
       contextualType = "Provider<Int>",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "Int",
       graph = "AppGraph",
       path = "AppGraph",
@@ -44,10 +45,11 @@ fun box(): String {
       kind = "Provided",
     )
     assertEquals(0, graph.intProvider())
-    assertEvent(
-      name = "Provider<Int>",
+    assertInstant(
+      name = "AppGraph.intProvider",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "intProvider",
       type = "Int",
       contextualType = "Provider<Int>",
       kind = "Accessor",

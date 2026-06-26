@@ -28,14 +28,15 @@ fun box(): String {
   testMetroTrace {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
     assertEquals("string", graph.string)
-    assertEvent(
-      name = "String",
+    assertInstant(
+      name = "AppGraph.string",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "string",
       type = "String",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "String",
       graph = "AppGraph",
       path = "AppGraph",
@@ -43,15 +44,16 @@ fun box(): String {
       kind = "Provided",
     )
     assertEquals("string", graph.stringProvider())
-    assertEvent(
-      name = "Provider<String>",
+    assertInstant(
+      name = "AppGraph.stringProvider",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "stringProvider",
       type = "String",
       contextualType = "Provider<String>",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "String",
       graph = "AppGraph",
       path = "AppGraph",
@@ -59,16 +61,17 @@ fun box(): String {
       kind = "Provided",
     )
     assertEquals("qualified", graph.qualifiedStringProvider())
-    assertEvent(
-      name = """@Named("qualified") Provider<String>""",
+    assertInstant(
+      name = "AppGraph.qualifiedStringProvider",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "qualifiedStringProvider",
       type = "String",
       contextualType = "Provider<String>",
       qualifier = """@Named("qualified")""",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = """@Named("qualified") String""",
       graph = "AppGraph",
       path = "AppGraph",

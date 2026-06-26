@@ -43,28 +43,31 @@ fun box(): String {
     val child = graph.createChild()
     val grandchild = child.createGrandchild()
     assertEquals(5, grandchild.int)
-    assertEvent(
-      name = "ChildGraph",
+    assertInstant(
+      name = "AppGraph.createChild",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "createChild",
       type = "ChildGraph",
       kind = "Accessor",
     )
-    assertEvent(
-      name = "GrandchildGraph",
+    assertInstant(
+      name = "ChildGraph.createGrandchild",
       graph = "ChildGraph",
       path = "AppGraph/ChildGraph",
+      callable = "createGrandchild",
       type = "GrandchildGraph",
       kind = "Accessor",
     )
-    assertEvent(
-      name = "Int",
+    assertInstant(
+      name = "GrandchildGraph.int",
       graph = "GrandchildGraph",
       path = "AppGraph/ChildGraph/GrandchildGraph",
+      callable = "int",
       type = "Int",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "Int",
       graph = "GrandchildGraph",
       path = "AppGraph/ChildGraph/GrandchildGraph",

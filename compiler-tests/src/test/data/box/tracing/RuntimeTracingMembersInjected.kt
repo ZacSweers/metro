@@ -29,14 +29,15 @@ fun box(): String {
     val target = Target()
     graph.inject(target)
     assertEquals("injected", target.string)
-    assertEvent(
-      name = "Target",
+    assertInstant(
+      name = "AppGraph.inject",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "inject",
       type = "Target",
       kind = "Member Injector",
     )
-    assertEvent(
+    assertTrace(
       name = "String",
       graph = "AppGraph",
       path = "AppGraph",

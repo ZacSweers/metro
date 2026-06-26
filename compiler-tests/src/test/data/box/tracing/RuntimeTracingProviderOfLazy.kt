@@ -24,15 +24,16 @@ fun box(): String {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
     val lazyString = graph.lazyStringProvider()
     assertEquals("lazy", lazyString.value)
-    assertEvent(
-      name = "Provider<Lazy<String>>",
+    assertInstant(
+      name = "AppGraph.lazyStringProvider",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "lazyStringProvider",
       type = "String",
       contextualType = "Provider<Lazy<String>>",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "String",
       graph = "AppGraph",
       path = "AppGraph",
