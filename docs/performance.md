@@ -303,14 +303,26 @@ Also, disable the default `TraceDriver` initialization hook (`androidx.tracing.p
 
 With AndroidX Tracing 2.0.0-alpha09 and newer, `TraceSink` defers file setup. Graph creation no longer needs to be delayed with `lazy` just to avoid early trace output initialization.
 
-Generated trace sections use the short rendered binding name, including the qualifier when present. Metro also attaches string metadata for filtering and grouping:
+Generated binding spans use the short rendered binding name, including the qualifier when present. Entry-point markers, such as accessors and member injectors, are emitted as instant events named after the implemented graph callable. Metro also attaches string metadata for filtering and grouping:
 
 - `metro.graph`: the graph that owns the binding.
 - `metro.graph_path`: the root-to-current graph path, useful for graph extensions.
+
+Binding span metadata:
+
 - `metro.type`: the canonical unqualified type.
-- `metro.contextual_type`: the requested unqualified type, when it differs from `metro.type`, such as `Provider<T>` or `Lazy<T>`. Only present for accessors.
-- `metro.qualifier`: the binding qualifier, when present.
 - `metro.binding_kind`: the generated binding implementation kind, such as `Provided`, `ConstructorInjected`, or `Multibinding`.
+
+Entry-point instant metadata:
+
+- `metro.callable`: the callable name without the graph prefix, such as `foo` for `AppGraph.foo`.
+- `metro.type`: the canonical unqualified requested type.
+- `metro.entry_point_kind`: the generated graph entry-point kind, such as `Accessor` or `Member Injector`.
+
+Both binding spans and entry-point instants may also include:
+
+- `metro.contextual_type`: the requested unqualified type, when it differs from `metro.type`, such as `Provider<T>` or `Lazy<T>`.
+- `metro.qualifier`: the binding qualifier, when present.
 
 Here is what a trace looks like.
 
