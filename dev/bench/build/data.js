@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782507363072,
+  "lastUpdate": 1782596122916,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18088,6 +18088,62 @@ window.BENCHMARK_DATA = {
             "value": 16637.878,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -11.41%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c4221f87~1",
+          "message": "[before] Add instant support to runtime tracing (#2494)",
+          "timestamp": "2026-06-27T17:00:32-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c4221f87524a3363ee5fec01eea088f00c153470"
+        },
+        "date": 1782596122916,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19511.662,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c4221f87524a3363ee5fec01eea088f00c153470",
+          "message": "[after] Add instant support to runtime tracing (#2494)",
+          "timestamp": "2026-06-27T17:00:32-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c4221f87524a3363ee5fec01eea088f00c153470"
+        },
+        "date": 1782596122917,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19434.644,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.39%"
           }
         ]
       }

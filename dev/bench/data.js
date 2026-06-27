@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782507362918,
+  "lastUpdate": 1782596122091,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -18088,6 +18088,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21076222287293275,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.85%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c4221f87~1",
+          "message": "[before] Add instant support to runtime tracing (#2494)",
+          "timestamp": "2026-06-27T17:00:32-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c4221f87524a3363ee5fec01eea088f00c153470"
+        },
+        "date": 1782596122091,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2149820584245085,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c4221f87524a3363ee5fec01eea088f00c153470",
+          "message": "[after] Add instant support to runtime tracing (#2494)",
+          "timestamp": "2026-06-27T17:00:32-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c4221f87524a3363ee5fec01eea088f00c153470"
+        },
+        "date": 1782596122092,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22029941787157914,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +2.47%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
