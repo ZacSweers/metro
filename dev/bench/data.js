@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782596122091,
+  "lastUpdate": 1782599665055,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -18144,6 +18144,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22029941787157914,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +2.47%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "40102a51~1",
+          "message": "[before] Fix: GraphPrivate bindings can leak to chained Gra",
+          "timestamp": "2026-06-27T21:59:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/40102a5111baaf25613e89816de3881e6e5ff24a"
+        },
+        "date": 1782599665055,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21527345792631197,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "40102a5111baaf25613e89816de3881e6e5ff24a",
+          "message": "[after] Fix: GraphPrivate bindings can leak to chained Gra",
+          "timestamp": "2026-06-27T21:59:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/40102a5111baaf25613e89816de3881e6e5ff24a"
+        },
+        "date": 1782599665056,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21349709266658348,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.83%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

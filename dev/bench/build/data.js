@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782596122916,
+  "lastUpdate": 1782599665314,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18144,6 +18144,62 @@ window.BENCHMARK_DATA = {
             "value": 19434.644,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.39%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "40102a51~1",
+          "message": "[before] Fix: GraphPrivate bindings can leak to chained Gra",
+          "timestamp": "2026-06-27T21:59:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/40102a5111baaf25613e89816de3881e6e5ff24a"
+        },
+        "date": 1782599665314,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19653.404000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "40102a5111baaf25613e89816de3881e6e5ff24a",
+          "message": "[after] Fix: GraphPrivate bindings can leak to chained Gra",
+          "timestamp": "2026-06-27T21:59:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/40102a5111baaf25613e89816de3881e6e5ff24a"
+        },
+        "date": 1782599665315,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19830.044,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.90%"
           }
         ]
       }
