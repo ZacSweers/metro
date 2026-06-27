@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsLikeCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
+import dev.zacsweers.metro.compiler.ir.InjectConstructorBindsCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -184,6 +185,7 @@ internal class BindingGraphGenerator(
     val inheritedProviderFactoryKeys = inheritedData.providerFactoryKeys
     val inheritedProviderFactories = inheritedData.providerFactories
     val inheritedBindsCallableKeys = inheritedData.bindsCallableKeys
+    val inheritedInjectConstructorBindsCallableKeys = inheritedData.injectConstructorBindsCallableKeys
 
     val ownProviderFactoryCount = node.providerFactories.values.sumOf { it.size }
     val inheritedProviderFactoryCount = inheritedProviderFactories.size
@@ -340,6 +342,67 @@ internal class BindingGraphGenerator(
             }
 
         // Add the binding to the lookup (duplicates tracked as lists)
+        putBinding(binding.typeKey, isLocallyDeclared = !isInherited, binding)
+      }
+    }
+
+    val ownInjectConstructorBindsCount = node.injectConstructorBindsCallables.values.sumOf { it.size }
+    val inheritedInjectConstructorBindsCount = inheritedData.injectConstructorBindsCallables.size
+    trace(
+      "Collect inject constructor binds callables (own=$ownInjectConstructorBindsCount, inh=$inheritedInjectConstructorBindsCount)"
+    ) {
+      val injectConstructorBindsCallablesToAdd = buildList {
+        node.injectConstructorBindsCallables.values.flatten().forEach { callable ->
+          add(callable.typeKey to callable)
+        }
+        addAll(inheritedData.injectConstructorBindsCallables)
+      }
+
+      trace("Track IC for inject constructor binds") {
+        batchTrackForCallingDeclaration(node.sourceGraph) {
+          for ((_, callable) in injectConstructorBindsCallablesToAdd) {
+            trackFunctionCall(callable.function)
+            trackFunctionCall(callable.callableMetadata.mirrorFunction)
+            trackClassLookup(callable.function.parentAsClass)
+            trackClassLookup(callable.callableMetadata.mirrorFunction.parentAsClass)
+          }
+        }
+      }
+
+      for ((typeKey, callable) in injectConstructorBindsCallablesToAdd) {
+        val isInherited = typeKey in inheritedInjectConstructorBindsCallableKeys
+        if (typeKey in bindingLookup && isInherited) {
+          continue
+        }
+
+        if (!callable.isDynamic && typeKey in node.dynamicTypeKeys) {
+          continue
+        }
+
+        val targetTypeKey = callable.typeKey
+        val isDynamic = callable.isDynamic
+        val existingBinding = bindingLookup[targetTypeKey]
+
+        if (isDynamic && existingBinding != null) {
+          val existingAreDynamic =
+            when (existingBinding) {
+              is Provided -> existingBinding.providerFactory.isDynamic
+              is Alias -> existingBinding.bindsCallable?.isDynamic == true
+              is IrBinding.ConstructorInjected ->
+                existingBinding.injectConstructorBindsCallable?.isDynamic == true
+              else -> false
+            }
+          if (!existingAreDynamic) {
+            bindingLookup.clearBindings(targetTypeKey)
+          }
+        }
+
+        val binding =
+          bindingLookup.createInjectConstructorBindsBinding(
+            callable,
+            graph.bindingsSnapshot(),
+            bindingStack,
+          )
         putBinding(binding.typeKey, isLocallyDeclared = !isInherited, binding)
       }
     }
@@ -734,6 +797,8 @@ internal class BindingGraphGenerator(
     val providerFactoryKeys = mutableSetOf<IrTypeKey>()
     val bindsCallableKeys = mutableSetOf<IrTypeKey>()
     val bindsCallables = mutableListOf<RawBindsCallableEntry>()
+    val injectConstructorBindsCallableKeys = mutableSetOf<IrTypeKey>()
+    val injectConstructorBindsCallables = mutableListOf<RawInjectConstructorBindsCallableEntry>()
     val bindingContainers = mutableSetOf<IrClass>()
     val multibindsCallables = mutableSetOf<MultibindsCallable>()
     val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
@@ -744,7 +809,8 @@ internal class BindingGraphGenerator(
       val isDynamicParent =
         extendedNode is GraphNode.Local && extendedNode.dynamicTypeKeys.isNotEmpty()
 
-      val alreadyCollectedKeys = providerFactoryKeys + bindsCallableKeys
+      val alreadyCollectedKeys =
+        providerFactoryKeys + bindsCallableKeys + injectConstructorBindsCallableKeys
 
       // Collect provider factories (non-scoped, not already collected from a closer parent).
       // Skip @GraphPrivate factories — private contributions should not leak to child graphs.
@@ -790,6 +856,23 @@ internal class BindingGraphGenerator(
         }
       }
 
+      // Collect parameterless binds callables.
+      for ((key, callables) in extendedNode.injectConstructorBindsCallables) {
+        if (
+          key in alreadyCollectedKeys && !(isDynamicParent && key in extendedNode.dynamicTypeKeys)
+        ) {
+          continue
+        }
+        for (callable in callables) {
+          if (key in extendedNode.graphPrivateKeys) continue
+          val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
+          injectConstructorBindsCallableKeys.add(key)
+          injectConstructorBindsCallables.add(
+            RawInjectConstructorBindsCallableEntry(key, callable, isDynamicInParent)
+          )
+        }
+      }
+
       // Collect binding containers (only from Local nodes).
       if (extendedNode is GraphNode.Local) {
         bindingContainers.addAll(extendedNode.bindingContainers)
@@ -826,6 +909,7 @@ internal class BindingGraphGenerator(
     return RawInheritedGraphData(
       providerFactories = providerFactories,
       bindsCallables = bindsCallables,
+      injectConstructorBindsCallables = injectConstructorBindsCallables,
       bindingContainers = bindingContainers,
       multibindsCallables = multibindsCallables,
       optionalKeys = optionalKeys,
@@ -842,6 +926,7 @@ internal class BindingGraphGenerator(
 private class RawInheritedGraphData(
   val providerFactories: List<RawProviderFactoryEntry>,
   val bindsCallables: List<RawBindsCallableEntry>,
+  val injectConstructorBindsCallables: List<RawInjectConstructorBindsCallableEntry>,
   val bindingContainers: Set<IrClass>,
   val multibindsCallables: Set<MultibindsCallable>,
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
@@ -853,6 +938,9 @@ private class RawInheritedGraphData(
     val outProviderFactoryKeys = mutableSetOf<IrTypeKey>()
     val outBindsCallableKeys = mutableSetOf<IrTypeKey>()
     val outBindsCallables = mutableListOf<Pair<IrTypeKey, BindsCallable>>()
+    val outInjectConstructorBindsCallableKeys = mutableSetOf<IrTypeKey>()
+    val outInjectConstructorBindsCallables =
+      mutableListOf<Pair<IrTypeKey, InjectConstructorBindsCallable>>()
     for ((key, factory, isDynamicInParent) in providerFactories) {
       if (isDynamicInParent || key !in directlyProvidedKeys) {
         outProviderFactories.add(key to factory)
@@ -865,11 +953,19 @@ private class RawInheritedGraphData(
         outBindsCallables.add(key to callable)
       }
     }
+    for ((key, callable, isDynamicInParent) in injectConstructorBindsCallables) {
+      if (isDynamicInParent || key !in directlyProvidedKeys) {
+        outInjectConstructorBindsCallableKeys.add(key)
+        outInjectConstructorBindsCallables.add(key to callable)
+      }
+    }
     return InheritedGraphData(
       providerFactories = outProviderFactories,
       providerFactoryKeys = outProviderFactoryKeys,
       bindsCallableKeys = outBindsCallableKeys,
       bindsCallables = outBindsCallables,
+      injectConstructorBindsCallableKeys = outInjectConstructorBindsCallableKeys,
+      injectConstructorBindsCallables = outInjectConstructorBindsCallables,
       bindingContainers = bindingContainers,
       multibindsCallables = multibindsCallables,
       optionalKeys = optionalKeys,
@@ -891,6 +987,12 @@ private data class RawBindsCallableEntry(
   val isDynamicInParent: Boolean,
 )
 
+private data class RawInjectConstructorBindsCallableEntry(
+  val key: IrTypeKey,
+  val callable: InjectConstructorBindsCallable,
+  val isDynamicInParent: Boolean,
+)
+
 /**
  * Data collected from parent nodes in a single pass. Avoids multiple iterations over
  * allParentGraphs.
@@ -900,6 +1002,8 @@ private data class InheritedGraphData(
   val providerFactoryKeys: Set<IrTypeKey>,
   val bindsCallableKeys: Set<IrTypeKey>,
   val bindsCallables: List<Pair<IrTypeKey, BindsCallable>>,
+  val injectConstructorBindsCallableKeys: Set<IrTypeKey>,
+  val injectConstructorBindsCallables: List<Pair<IrTypeKey, InjectConstructorBindsCallable>>,
   val bindingContainers: Set<IrClass>,
   val multibindsCallables: Set<MultibindsCallable>,
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,

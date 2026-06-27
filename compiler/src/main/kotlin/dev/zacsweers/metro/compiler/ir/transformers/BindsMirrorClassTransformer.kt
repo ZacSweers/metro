@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
+import dev.zacsweers.metro.compiler.ir.InjectConstructorBindsCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
@@ -125,6 +126,8 @@ internal data class BindsMirror(
   val ir: IrClass,
   /** Set of binds callables by their [CallableId]. */
   val bindsCallables: Set<BindsCallable>,
+  /** Parameterless `@Binds` callables that explicitly claim constructor-injected bindings. */
+  val injectConstructorBindsCallables: Set<InjectConstructorBindsCallable>,
   /** Set of multibinds callables by their [BindsCallable]. */
   val multibindsCallables: Set<MultibindsCallable>,
   /**
@@ -133,7 +136,10 @@ internal data class BindsMirror(
   val optionalKeys: Set<BindsOptionalOfCallable>,
 ) {
   fun isEmpty() =
-    bindsCallables.isEmpty() && multibindsCallables.isEmpty() && optionalKeys.isEmpty()
+    bindsCallables.isEmpty() &&
+      injectConstructorBindsCallables.isEmpty() &&
+      multibindsCallables.isEmpty() &&
+      optionalKeys.isEmpty()
 }
 
 context(context: IrMetroContext)

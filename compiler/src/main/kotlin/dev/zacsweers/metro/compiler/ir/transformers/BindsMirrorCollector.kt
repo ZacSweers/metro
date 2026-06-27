@@ -4,14 +4,17 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
+import dev.zacsweers.metro.compiler.ir.InjectConstructorBindsCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.toBindsCallable
 import dev.zacsweers.metro.compiler.ir.toBindsOptionalOfCallable
+import dev.zacsweers.metro.compiler.ir.toInjectConstructorBindsCallable
 import dev.zacsweers.metro.compiler.ir.toMultibindsCallable
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 
 /**
  * Simple helper class to collect binds callables and build a [BindsMirror].
@@ -21,13 +24,18 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
  */
 internal class BindsMirrorCollector(private val isInterop: Boolean) {
   private val bindsCallables = mutableSetOf<BindsCallable>()
+  private val injectConstructorBindsCallables = mutableSetOf<InjectConstructorBindsCallable>()
   private val multibindsCallables = mutableSetOf<MultibindsCallable>()
   private val optionalTypes = mutableSetOf<BindsOptionalOfCallable>()
 
   context(context: IrMetroContext)
   operator fun plusAssign(function: MetroSimpleFunction) {
     if (function.annotations.isBinds) {
-      bindsCallables += function.toBindsCallable(isInterop)
+      if (function.ir.nonDispatchParameters.isEmpty()) {
+        injectConstructorBindsCallables += function.toInjectConstructorBindsCallable(isInterop)
+      } else {
+        bindsCallables += function.toBindsCallable(isInterop)
+      }
     } else if (function.annotations.isMultibinds) {
       multibindsCallables += function.toMultibindsCallable(isInterop)
     } else if (function.annotations.isBindsOptionalOf) {
@@ -38,6 +46,12 @@ internal class BindsMirrorCollector(private val isInterop: Boolean) {
   }
 
   fun buildMirror(clazz: IrClass): BindsMirror {
-    return BindsMirror(clazz, bindsCallables, multibindsCallables, optionalTypes)
+    return BindsMirror(
+      clazz,
+      bindsCallables,
+      injectConstructorBindsCallables,
+      multibindsCallables,
+      optionalTypes,
+    )
   }
 }

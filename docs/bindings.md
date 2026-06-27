@@ -30,10 +30,11 @@ Like Dagger, Metro supports this with `@Binds`.
 !!! tip "For multi-module projects"
     If you're working across multiple modules and want bindings to be automatically discovered, see [`@ContributesBinding`](aggregation.md#contributesbinding) for a more powerful approach that supports aggregation.
 
-For these cases, an abstract provider can be specified with the following conditions.
+For these cases, an abstract alias binding can be specified with the following conditions.
 
 * It must be abstract
-* It must define one extension receiver that is a subtype of its provided type
+* It must define one source type, either as an extension receiver or as a single value parameter
+* The source type must be a subtype of its provided type
 
 ```kotlin
 @DependencyGraph
@@ -51,9 +52,36 @@ interface AppGraph {
 class MessageImpl(val text: String) : Message
 ```
 
-If you want to limit access to these from your API, you can make these declarations `private` and just return `this`. Note it’s still important to annotate them with `@Binds` so that the Metro compiler understands its intent! Otherwise, it’s an error to *implement* these declarations.
+The alias source can also be a single value parameter, for example
+`@Binds fun bindMessage(impl: MessageImpl): Message`.
 
-`@Binds` declarations can also declare multibinding annotations.
+Metro also supports parameterless `@Binds` functions for constructor-injected concrete classes.
+These declarations explicitly claim the returned class's own `@Inject` constructor binding in the
+graph, which makes duplicate and override behavior explicit. They are not provider functions and
+are never called to construct the object.
+
+```kotlin
+@DependencyGraph(bindingContainers = [Bindings::class])
+interface AppGraph {
+  val message: MessageImpl
+}
+
+@BindingContainer
+interface Bindings {
+  @Binds fun bindMessageImpl(): MessageImpl
+}
+
+@Inject
+class MessageImpl
+```
+
+Parameterless `@Binds` functions may not declare qualifiers, scopes, graph-private visibility,
+multibinding annotations, or map keys. Their return type must be a non-generic concrete class with
+exactly one unscoped `@Inject` constructor.
+
+If you want to limit access to alias binds from your API, you can make these declarations `private` and just return `this`. Note it’s still important to annotate them with `@Binds` so that the Metro compiler understands its intent! Otherwise, it’s an error to *implement* these declarations.
+
+Alias `@Binds` declarations can also declare multibinding annotations.
 
 ```kotlin
 @DependencyGraph

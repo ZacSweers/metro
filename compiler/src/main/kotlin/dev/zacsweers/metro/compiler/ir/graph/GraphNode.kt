@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
+import dev.zacsweers.metro.compiler.ir.InjectConstructorBindsCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerCallable
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -49,6 +50,8 @@ internal sealed class GraphNode {
    */
   abstract val accessors: List<GraphAccessor>
   abstract val bindsCallables: Map<IrTypeKey, List<BindsCallable>>
+  abstract val injectConstructorBindsCallables:
+    Map<IrTypeKey, List<InjectConstructorBindsCallable>>
   abstract val multibindsCallables: Set<MultibindsCallable>
   abstract val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>
   abstract val parentGraph: GraphNode?
@@ -72,6 +75,7 @@ internal sealed class GraphNode {
     buildSet {
       addAll(providerFactories.keys)
       addAll(bindsCallables.keys)
+      addAll(injectConstructorBindsCallables.keys)
     }
   }
 
@@ -160,6 +164,8 @@ internal sealed class GraphNode {
     override val providerFactories: Map<IrTypeKey, List<ProviderFactory>>,
     override val accessors: List<GraphAccessor>,
     override val bindsCallables: Map<IrTypeKey, List<BindsCallable>>,
+    override val injectConstructorBindsCallables:
+      Map<IrTypeKey, List<InjectConstructorBindsCallable>>,
     override val multibindsCallables: Set<MultibindsCallable>,
     override val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
     override val parentGraph: GraphNode?,
@@ -179,6 +185,8 @@ internal sealed class GraphNode {
     override val providerFactories: Map<IrTypeKey, List<ProviderFactory>>,
     override val accessors: List<GraphAccessor>,
     override val bindsCallables: Map<IrTypeKey, List<BindsCallable>>,
+    override val injectConstructorBindsCallables:
+      Map<IrTypeKey, List<InjectConstructorBindsCallable>>,
     override val multibindsCallables: Set<MultibindsCallable>,
     override val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
     /** Binding containers that need a managed instance. */
@@ -210,6 +218,7 @@ internal sealed class GraphNode {
       buildSet {
         addAll(providerFactories.keys)
         addAll(bindsCallables.keys)
+        addAll(injectConstructorBindsCallables.keys)
         creator?.parameters?.regularParameters?.forEach { param ->
           if (param.isBindsInstance) {
             add(param.typeKey)

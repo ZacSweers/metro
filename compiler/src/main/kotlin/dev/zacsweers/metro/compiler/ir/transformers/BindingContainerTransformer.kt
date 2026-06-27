@@ -1330,6 +1330,8 @@ internal class BindingContainer(
       BindsMirror(
         ir = mirror.ir,
         bindsCallables = mirror.bindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
+        injectConstructorBindsCallables =
+          mirror.injectConstructorBindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
         multibindsCallables =
           mirror.multibindsCallables.mapTo(mutableSetOf()) { it.remapTypes(remapper) },
         optionalKeys = mirror.optionalKeys.mapTo(mutableSetOf()) { it.remapTypes(remapper) },

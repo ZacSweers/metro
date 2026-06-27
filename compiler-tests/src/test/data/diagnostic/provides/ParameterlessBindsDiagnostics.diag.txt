@@ -1,0 +1,19 @@
+/ParameterlessBindsDiagnostics.kt:23:14: error: Parameterless @Binds declarations must be functions.
+
+/ParameterlessBindsDiagnostics.kt:25:30: error: Parameterless @Binds declarations must return a class with exactly one @Inject constructor.
+
+/ParameterlessBindsDiagnostics.kt:27:29: error: Parameterless @Binds declarations must return a non-generic class type.
+
+/ParameterlessBindsDiagnostics.kt:29:30: error: Parameterless @Binds declarations must return a concrete class type.
+
+/ParameterlessBindsDiagnostics.kt:31:10: error: Parameterless @Binds declarations may not have qualifiers.
+
+/ParameterlessBindsDiagnostics.kt:33:10: error: @Binds declarations may not have scopes.
+
+/ParameterlessBindsDiagnostics.kt:35:28: error: Parameterless @Binds declarations may not be @GraphPrivate.
+
+/ParameterlessBindsDiagnostics.kt:37:23: error: Parameterless @Binds declarations may not use multibinding or map key annotations.
+
+/ParameterlessBindsDiagnostics.kt:39:50: error: Parameterless @Binds declarations may not use multibinding or map key annotations.
+
+/ParameterlessBindsDiagnostics.kt:41:34: error: Parameterless @Binds declarations may not return scoped injected classes.

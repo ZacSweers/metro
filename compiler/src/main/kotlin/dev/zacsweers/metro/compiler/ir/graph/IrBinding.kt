@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.Format
+import dev.zacsweers.metro.compiler.ir.InjectConstructorBindsCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -134,6 +135,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val typeKey: IrTypeKey,
     val injectedMembers: Set<IrContextualTypeKey>,
+    @Poko.Skip val injectConstructorBindsCallable: InjectConstructorBindsCallable? = null,
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
@@ -180,7 +182,33 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         )
       }
 
+    override fun renderLocationDiagnostic(
+      short: Boolean,
+      shortLocation: Boolean,
+      underlineTypeKey: Boolean,
+    ): LocationDiagnostic {
+      val callable = injectConstructorBindsCallable
+      return if (callable != null) {
+        callable.renderLocationDiagnostic(short, shortLocation, parameters)
+      } else {
+        super<IrBinding>.renderLocationDiagnostic(short, shortLocation, underlineTypeKey)
+      }
+    }
+
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
+
+    fun withInjectConstructorBindsCallable(
+      callable: InjectConstructorBindsCallable
+    ): ConstructorInjected {
+      return ConstructorInjected(
+        type = type,
+        classFactory = classFactory,
+        annotations = annotations,
+        typeKey = typeKey,
+        injectedMembers = injectedMembers,
+        injectConstructorBindsCallable = callable,
+      )
+    }
 
     override fun withMapKey(mapKey: IrAnnotation?): ConstructorInjected {
       if (mapKey == null) return this
@@ -190,6 +218,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         annotations = annotations.copy(mapKey = mapKey),
         typeKey = typeKey,
         injectedMembers = injectedMembers,
+        injectConstructorBindsCallable = injectConstructorBindsCallable,
       )
     }
   }

@@ -823,6 +823,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("ParameterlessBinds.kt")
+    public void testParameterlessBinds() {
+      run("ParameterlessBinds.kt");
+    }
+
+    @Test
     @TestMetadata("PrivateBindsProperty.kt")
     public void testPrivateBindsProperty() {
       run("PrivateBindsProperty.kt");

@@ -54,6 +54,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
+import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -1996,15 +1997,18 @@ internal class IrGraphGenerator(
             declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
           }
           // This override is the graph impl's concrete implementation of the inherited @Binds
-          // member. @Binds is an identity conversion from the source parameter to the declared
-          // return type, so emit that body directly rather than a placeholder stub. KLIB backends
-          // deserialize and validate these inherited members before later Metro mirror code can
-          // cover for them.
+          // member. Classic @Binds is an identity conversion from the source parameter to the
+          // declared return type, so emit that body directly. Parameterless @Binds is metadata for
+          // an injected-constructor binding claim and has no source parameter to return, so a stub
+          // body is sufficient and should never be called.
           val sourceParameter =
-            extensionReceiverParameterCompat
-              ?: regularParameters.singleOrNull()
-              ?: reportCompilerBug("No source parameter found for @Binds function $kotlinFqName")
-          body = createIrBuilder(symbol).run { irExprBodySafe(irGet(sourceParameter)) }
+            extensionReceiverParameterCompat ?: regularParameters.singleOrNull()
+          body =
+            if (sourceParameter != null) {
+              createIrBuilder(symbol).run { irExprBodySafe(irGet(sourceParameter)) }
+            } else {
+              stubExpressionBody()
+            }
         }
       }
     }

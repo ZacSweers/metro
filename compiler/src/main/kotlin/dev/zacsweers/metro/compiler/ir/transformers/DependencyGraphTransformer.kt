@@ -859,6 +859,11 @@ internal class DependencyGraphTransformer(
             .map { it.metroFunction.ir }
             .plus(node.injectors.map { it.metroFunction.ir })
             .plus(node.bindsCallables.values.flatten().map { it.callableMetadata.function })
+            .plus(
+              node.injectConstructorBindsCallables.values.flatten().map {
+                it.callableMetadata.function
+              }
+            )
             .plus(node.graphExtensions.flatMap { it.value }.map { it.accessor.ir })
             .filterNot { it.isExternalParent }
             .forEach { function ->

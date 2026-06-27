@@ -30,7 +30,9 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.EffectiveVisibility
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -529,6 +531,19 @@ internal object BindingContainerCallableChecker :
 
       val returnType = returnTypeRef.coneTypeOrNull ?: return
 
+      val isZeroSourceBinds =
+        annotations.isBinds &&
+          declaration.receiverParameter == null &&
+          when (declaration) {
+            is FirFunction -> declaration.valueParameters.isEmpty()
+            is FirProperty -> true
+            else -> false
+          }
+      if (isZeroSourceBinds) {
+        validateParameterlessBindsDeclaration(declaration, source, annotations, bodyExpression)
+        return
+      }
+
       // Report a warning if this is `@IntoSet` and also returns a `Set`, as it's probably not what
       // they mean!
       if (annotations.isIntoSet && (returnType.isSet || returnType.isList)) {
@@ -623,6 +638,119 @@ internal object BindingContainerCallableChecker :
     }
 
     session.trace({ "Validate binding declaration" }) { validateBindingDeclaration() }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun validateParameterlessBindsDeclaration(
+    declaration: FirCallableDeclaration,
+    source: KtSourceElement,
+    annotations: MetroAnnotations<MetroFirAnnotation>,
+    bodyExpression: FirExpression?,
+  ) {
+    val session = context.session
+    val returnTypeRef = declaration.propertyIfAccessor.returnTypeRef
+    val returnType = returnTypeRef.coneTypeOrNull ?: return
+
+    fun report(message: String, reportSource: KtSourceElement? = source) {
+      reporter.reportOn(reportSource, MetroDiagnostics.BINDS_ERROR, message)
+    }
+
+    val isNamedFunction =
+      declaration is FirFunction && with(session.compatContext) { declaration.isNamedFunction() }
+    if (!isNamedFunction) {
+      report("Parameterless @Binds declarations must be functions.")
+      return
+    }
+
+    if (bodyExpression != null) {
+      if (declaration.visibility == Visibilities.Private) {
+        report("Parameterless @Binds declarations must be abstract and not have a body.")
+      }
+      return
+    }
+
+    if (annotations.qualifier != null) {
+      report(
+        "Parameterless @Binds declarations may not have qualifiers.",
+        annotations.qualifier.fir.source,
+      )
+      return
+    }
+
+    if (annotations.isGraphPrivate) {
+      report("Parameterless @Binds declarations may not be @GraphPrivate.")
+      return
+    }
+
+    if (annotations.isIntoMultibinding) {
+      report("Parameterless @Binds declarations may not use multibinding or map key annotations.")
+      return
+    }
+
+    if (returnType.typeArguments.isNotEmpty()) {
+      report(
+        "Parameterless @Binds declarations must return a non-generic class type.",
+        returnTypeRef.source,
+      )
+      return
+    }
+
+    val returnClass = returnType.toClassSymbolCompat(session)
+    if (returnClass == null) {
+      report(
+        "Parameterless @Binds declarations must return a concrete class type.",
+        returnTypeRef.source,
+      )
+      return
+    }
+
+    val returnClassKind = returnClass.classKind
+    val returnClassModality = returnClass.rawStatus.modality
+    val hasConcreteModality =
+      returnClassModality == null ||
+        returnClassModality == Modality.FINAL ||
+        returnClassModality == Modality.OPEN
+    val returnsConcreteClass =
+      returnClassKind == ClassKind.CLASS && hasConcreteModality
+    if (!returnsConcreteClass) {
+      report(
+        "Parameterless @Binds declarations must return a concrete class type.",
+        returnTypeRef.source,
+      )
+      return
+    }
+
+    if (returnClass.typeParameterSymbols.isNotEmpty()) {
+      report(
+        "Parameterless @Binds declarations must return a non-generic class type.",
+        returnTypeRef.source,
+      )
+      return
+    }
+
+    val injectConstructors = returnClass.findInjectConstructors(session)
+    if (injectConstructors.size != 1) {
+      report(
+        "Parameterless @Binds declarations must return a class with exactly one @Inject constructor.",
+        returnTypeRef.source,
+      )
+      return
+    }
+
+    val classScope =
+      returnClass.resolvedCompilerAnnotationsWithClassIds.scopeAnnotations(session).firstOrNull()
+    val injectConstructor = injectConstructors.single()
+    val constructorScope =
+      injectConstructor.constructor
+        ?.resolvedCompilerAnnotationsWithClassIds
+        ?.scopeAnnotations(session)
+        ?.firstOrNull()
+    if (classScope != null || constructorScope != null) {
+      report(
+        "Parameterless @Binds declarations may not return scoped injected classes.",
+        returnTypeRef.source,
+      )
+    }
   }
 
   private fun FirExpression.returnsThis(): Boolean {

@@ -451,6 +451,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ParameterlessBindsDuplicate.kt")
+    public void testParameterlessBindsDuplicate() {
+      run("ParameterlessBindsDuplicate.kt");
+    }
+
+    @Test
     @TestMetadata("RuntimeTracingRequiresGraphFactory.kt")
     public void testRuntimeTracingRequiresGraphFactory() {
       run("RuntimeTracingRequiresGraphFactory.kt");
@@ -1218,6 +1224,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("LazyAssistedFactoryProvides.kt")
     public void testLazyAssistedFactoryProvides() {
       run("LazyAssistedFactoryProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("ParameterlessBindsDiagnostics.kt")
+    public void testParameterlessBindsDiagnostics() {
+      run("ParameterlessBindsDiagnostics.kt");
     }
 
     @Test

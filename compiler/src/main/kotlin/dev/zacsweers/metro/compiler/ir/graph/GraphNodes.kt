@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.getOrInit
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
+import dev.zacsweers.metro.compiler.ir.InjectConstructorBindsCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerCallable
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
@@ -209,6 +210,8 @@ internal class GraphNodes(
     private val accessors = mutableListOf<GraphAccessor>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsCallables = mutableMapOf<IrTypeKey, MutableList<BindsCallable>>()
+    private val injectConstructorBindsCallables =
+      mutableMapOf<IrTypeKey, MutableList<InjectConstructorBindsCallable>>()
     private val multibindsCallables = mutableSetOf<MultibindsCallable>()
     private val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
     private val scopes = mutableSetOf<IrAnnotation>()
@@ -1283,6 +1286,26 @@ internal class GraphNodes(
                 bindsCallables.getAndAdd(typeKey, callable)
               }
             }
+            for (callable in bindsMirror.injectConstructorBindsCallables) {
+              if (callable.callableMetadata.annotations.isGraphPrivate) {
+                graphPrivateKeys += callable.typeKey
+              }
+              val typeKey = callable.typeKey
+              val existingIsDynamic = typeKey in dynamicTypeKeys
+              when {
+                isDynamicContainer && !existingIsDynamic -> {
+                  injectConstructorBindsCallables[typeKey] = mutableListOf(callable)
+                  dynamicTypeKeys.getAndAdd(typeKey, callable)
+                }
+                isDynamicContainer -> {
+                  injectConstructorBindsCallables.getAndAdd(typeKey, callable)
+                  dynamicTypeKeys.getAndAdd(typeKey, callable)
+                }
+                !existingIsDynamic -> {
+                  injectConstructorBindsCallables.getAndAdd(typeKey, callable)
+                }
+              }
+            }
             for (callable in bindsMirror.multibindsCallables) {
               if (callable.callableMetadata.annotations.isGraphPrivate) {
                 graphPrivateKeys += callable.typeKey
@@ -1322,6 +1345,7 @@ internal class GraphNodes(
             scopes = scopes,
             aggregationScopes = aggregationScopes,
             bindsCallables = bindsCallables,
+            injectConstructorBindsCallables = injectConstructorBindsCallables,
             bindsFunctions = bindsFunctions.map { it.first },
             multibindsCallables = multibindsCallables,
             optionalKeys = optionalKeys,
@@ -1445,6 +1469,9 @@ internal class GraphNodes(
               for (callable in bindsMirror.bindsCallables) {
                 bindsCallables.getAndAdd(callable.typeKey, callable)
               }
+              for (callable in bindsMirror.injectConstructorBindsCallables) {
+                injectConstructorBindsCallables.getAndAdd(callable.typeKey, callable)
+              }
               multibindsCallables += bindsMirror.multibindsCallables
               for (callable in bindsMirror.optionalKeys) {
                 optionalKeys.getAndAdd(callable.typeKey, callable)
@@ -1475,6 +1502,13 @@ internal class GraphNodes(
           }
         }
       }
+      for ((_, callables) in injectConstructorBindsCallables) {
+        for (callable in callables) {
+          if (callable.callableMetadata.annotations.isGraphPrivate) {
+            externalGraphPrivateKeys += callable.typeKey
+          }
+        }
+      }
       for (callable in multibindsCallables) {
         if (callable.callableMetadata.annotations.isGraphPrivate) {
           externalGraphPrivateKeys += callable.typeKey
@@ -1491,6 +1525,7 @@ internal class GraphNodes(
           providerFactories = providerFactories,
           accessors = accessors,
           bindsCallables = bindsCallables,
+          injectConstructorBindsCallables = injectConstructorBindsCallables,
           multibindsCallables = multibindsCallables,
           optionalKeys = optionalKeys,
           parentGraph = parentGraph,

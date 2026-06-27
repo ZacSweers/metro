@@ -124,6 +124,43 @@ internal class BindsCallable(
 }
 
 @Poko
+internal class InjectConstructorBindsCallable(
+  override val callableMetadata: IrCallableMetadata,
+  override val typeKey: IrTypeKey,
+) : BindsLikeCallable {
+  fun remapTypes(remapper: TypeRemapper): InjectConstructorBindsCallable {
+    return InjectConstructorBindsCallable(
+      callableMetadata = callableMetadata,
+      typeKey = typeKey.remapTypes(remapper),
+    )
+  }
+
+  /** Renders a [LocationDiagnostic] for this callable. */
+  fun renderLocationDiagnostic(
+    short: Boolean,
+    shortLocation: Boolean,
+    parameters: Parameters,
+  ): LocationDiagnostic {
+    val location =
+      function.renderSourceLocation(short = shortLocation)
+        ?: "<unknown location, likely a separate compilation>"
+
+    val description = buildString {
+      renderForDiagnostic(
+        declaration = function,
+        short = short,
+        typeKey = typeKey,
+        annotations = callableMetadata.annotations,
+        parameters = parameters,
+        isProperty = callableMetadata.isPropertyAccessor,
+        underlineTypeKey = true,
+      )
+    }
+    return LocationDiagnostic(location, description, null)
+  }
+}
+
+@Poko
 internal class MultibindsCallable(
   override val callableMetadata: IrCallableMetadata,
   override val typeKey: IrTypeKey,
@@ -159,6 +196,16 @@ internal fun MetroSimpleFunction.toBindsCallable(isInterop: Boolean): BindsCalla
     source = IrContextualTypeKey.from(ir.nonDispatchParameters.single()).typeKey,
     typeKey = typeKey,
     rawTarget = rawTarget,
+  )
+}
+
+context(context: IrMetroContext)
+internal fun MetroSimpleFunction.toInjectConstructorBindsCallable(
+  isInterop: Boolean
+): InjectConstructorBindsCallable {
+  return InjectConstructorBindsCallable(
+    callableMetadata = ir.irCallableMetadata(annotations, isInterop),
+    typeKey = IrContextualTypeKey.from(ir).typeKey,
   )
 }
 

@@ -169,6 +169,10 @@ internal class GraphMetadataReporter(
     return buildJsonObject {
       put("providerFactories", JsonPrimitive(node.providerFactories.values.sumOf { it.size }))
       put("bindsCallables", JsonPrimitive(node.bindsCallables.values.sumOf { it.size }))
+      put(
+        "injectConstructorBindsCallables",
+        JsonPrimitive(node.injectConstructorBindsCallables.values.sumOf { it.size }),
+      )
       put("multibindsCallables", JsonPrimitive(node.multibindsCallables.size))
       put("optionalBindings", JsonPrimitive(node.optionalKeys.values.sumOf { it.size }))
       put("accessors", JsonPrimitive(node.accessors.size))

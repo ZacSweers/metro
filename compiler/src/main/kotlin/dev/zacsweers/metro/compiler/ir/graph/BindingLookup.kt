@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
+import dev.zacsweers.metro.compiler.ir.InjectConstructorBindsCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -255,6 +256,24 @@ internal class BindingLookup(
   /** Tracks a key as locally declared without adding a binding to the cache. */
   fun trackDeclaredKey(typeKey: IrTypeKey) {
     locallyDeclaredKeys += typeKey
+  }
+
+  context(context: IrMetroContext)
+  fun createInjectConstructorBindsBinding(
+    callable: InjectConstructorBindsCallable,
+    currentBindings: ScatterMap<IrTypeKey, IrBinding>,
+    stack: IrBindingStack,
+  ): IrBinding.ConstructorInjected {
+    val contextKey = IrContextualTypeKey.create(callable.typeKey)
+    val classBindings = lookupClassBinding(contextKey, currentBindings, stack)
+    val constructorBindings = classBindings.filterIsInstance<IrBinding.ConstructorInjected>()
+    val constructorBinding =
+      constructorBindings.singleOrNull()
+        ?: reportCompilerBug(
+          "Expected exactly one constructor-injected binding for parameterless @Binds " +
+            "${callable.function}, found ${constructorBindings.size}"
+        )
+    return constructorBinding.withInjectConstructorBindsCallable(callable)
   }
 
   /**
