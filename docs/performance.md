@@ -303,6 +303,18 @@ Also, disable the default `TraceDriver` initialization hook (`androidx.tracing.p
 
 With AndroidX Tracing 2.0.0-alpha09 and newer, `TraceSink` defers file setup. Graph creation no longer needs to be delayed with `lazy` just to avoid early trace output initialization.
 
+!!! tip "Tracing inside bindings"
+
+    Metro traces the generated binding boundary. If a binding does meaningful work inside that boundary and you want more granular events, inject or depend on `Tracer` like any other binding and use AndroidX Tracing directly from that code.
+
+    ```kotlin
+    @Provides
+    fun provideDatabase(driver: SqlDriver, tracer: Tracer): AppDatabase =
+      tracer.trace(category = "app.database", name = "Open database") {
+        AppDatabase(driver)
+      }
+    ```
+
 Generated binding spans use the short rendered binding name, including the qualifier when present. Entry-point markers, such as accessors and member injectors, are emitted as instant events named after the implemented graph callable. Metro also attaches string metadata for filtering and grouping:
 
 - `metro.graph`: the graph that owns the binding.
