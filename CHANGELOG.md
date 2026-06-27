@@ -52,7 +52,7 @@ Changelog
       docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
     ```
 
-- **[runtime/JVM]** Add experimental runtime tracing for generated graph code, backed by AndroidX Tracing 2.x. Enable it with `metro.enableRuntimeTracing`.
+- **[runtime/JVM]** Add experimental runtime tracing for generated graph code, backed by AndroidX Tracing 2.x. Enable it with `metro.enableRuntimeTracing`. See the [runtime tracing performance docs](https://zacsweers.github.io/metro/latest/performance/#runtime-tracing) for setup guidance.
   - Metro will add the JVM-only `metro-trace` runtime helper artifact.
   - Graphs must bind an `androidx.tracing.Tracer` instances as a graph input as a parent tracer.
   - This is experimental as AndroidX Tracing 2.x is still actively being developed.
