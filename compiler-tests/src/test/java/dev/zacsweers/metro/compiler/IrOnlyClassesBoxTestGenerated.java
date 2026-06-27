@@ -1640,6 +1640,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("GraphPrivateMultibindingsAreGraphLocal.kt")
+      public void testGraphPrivateMultibindingsAreGraphLocal() {
+        run("GraphPrivateMultibindingsAreGraphLocal.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivatePreventsLeakingParentScopedInstance.kt")
       public void testGraphPrivatePreventsLeakingParentScopedInstance() {
         run("GraphPrivatePreventsLeakingParentScopedInstance.kt");
