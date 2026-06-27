@@ -42,6 +42,8 @@ They inherit the parent graph's trace context.
 
 - `MetroTraceContext`: immutable graph-local trace state.
 - `TracedProvider`: a Metro `Provider<T>` decorator that traces each provider invocation.
+- `TracedMembersInjector`: a Metro `MembersInjector<T>` decorator that marks each
+  `injectMembers(...)` invocation with an `instant` event.
 - `TraceTestUtil`: test-only helpers used by compiler box tests.
 
 `MetroTraceContext` stores the AndroidX `Tracer`, a category, the current graph name, and the
@@ -64,7 +66,7 @@ compiler directly. `RuntimeTracingAvailability` memoizes one compilation-wide de
 - the platform must support tracing
 - `androidx.tracing.Tracer` must be resolvable
 - `MetroTraceContext`, `MetroTraceContext.trace`, `MetroTraceContext.instant`,
-  `MetroTraceContext.child`, and `TracedProvider` must be resolvable
+  `MetroTraceContext.child`, `TracedMembersInjector`, and `TracedProvider` must be resolvable
 
 `DependencyGraphTransformer` reports the unavailable reason once as `METRO_TRACE_ERROR`, then exits
 processing. FIR intentionally does not do classpath symbol checks for these helper classes.
@@ -118,6 +120,10 @@ traced provider.
 Multibinding code uses the same hooks. The aggregate getter is traced as `Multibinding`, and each
 element binding can still emit its own binding span when it is realized.
 
+Requested `MembersInjector<T>` bindings use `TracedMembersInjector`. Creating or accessing the
+injector is not treated as its own binding span, but later `injectMembers(...)` calls emit instant
+events named like `MembersInjector<T>`.
+
 ## Entry-Point Instants
 
 `IrGraphGenerator.traceGeneratedGraphEntryPoint(...)` emits generated graph APIs as instant events.
@@ -127,7 +133,8 @@ the graph entry point look like its own binding.
 Current entry-point kinds are:
 
 - `Accessor`: graph accessors and graph extension creators.
-- `Member Injector`: generated member-injection functions.
+- `Member Injector`: generated member-injection functions and requested `MembersInjector<T>`
+  invocations.
 
 These entry-point markers use `MetroTraceContext.instant(...)`. Their visible names render the
 implemented graph member, such as `AppGraph.foo` or `AppGraph.createChildGraph`. Metadata records

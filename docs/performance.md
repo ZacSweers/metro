@@ -315,7 +315,7 @@ With AndroidX Tracing 2.0.0-alpha09 and newer, `TraceSink` defers file setup. Gr
       }
     ```
 
-Generated binding spans use the short rendered binding name, including the qualifier when present. Entry-point markers, such as accessors and member injectors, are emitted as instant events named after the implemented graph callable. Metro also attaches string metadata for filtering and grouping:
+Generated binding spans use the short rendered binding name, including the qualifier when present. Entry-point markers, such as accessors and member injectors, are emitted as instant events named after the implemented graph callable. Requested `MembersInjector<T>` values also emit instant events named like `MembersInjector<T>` when `injectMembers(...)` is called. Metro also attaches string metadata for filtering and grouping:
 
 - `metro.graph`: the graph that owns the binding.
 - `metro.graph_path`: the root-to-current graph path, useful for graph extensions.

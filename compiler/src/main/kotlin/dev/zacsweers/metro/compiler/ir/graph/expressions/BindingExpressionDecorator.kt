@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.stripProvider
+import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -48,6 +49,8 @@ import org.jetbrains.kotlin.ir.util.constructors
  * - Direct values become `MetroTraceContext.trace { value }`
  * - Newly-created provider values become `TracedProvider(...)` before any final
  *   Dagger/Javax/Jakarta/Guice provider conversion.
+ * - `MembersInjector<T>` values become `TracedMembersInjector(...)` so later `injectMembers(...)`
+ *   calls are visible as instant events.
  * - Reads of generated provider properties are not wrapped again; those fields are expected to have
  *   been initialized with the traced provider already.
  */
@@ -97,9 +100,7 @@ internal interface GraphBindingExpressionDecorator {
   fun decorateDirectExpression(
     expression: IrExpression,
     request: DirectExpressionRequest,
-  ): IrExpression {
-    return expression
-  }
+  ) = expression
 
   /**
    * Called by [BindingExpressionGenerator.toTargetType] after Metro has produced provider-shaped
@@ -110,9 +111,14 @@ internal interface GraphBindingExpressionDecorator {
   fun decorateProviderExpression(
     expression: IrExpression,
     request: ProviderExpressionRequest,
-  ): IrExpression {
-    return expression
-  }
+  ) = expression
+
+  /** Called after Metro has produced a direct `MembersInjector<T>` value. */
+  context(scope: IrBuilderWithScope)
+  fun decorateMembersInjectorExpression(
+    expression: IrExpression,
+    targetTypeKey: IrContextualTypeKey,
+  ) = expression
 
   object None : GraphBindingExpressionDecorator
 }
@@ -268,6 +274,18 @@ private class TraceExpressionDecorator(
   }
 
   context(scope: IrBuilderWithScope)
+  override fun decorateMembersInjectorExpression(
+    expression: IrExpression,
+    targetTypeKey: IrContextualTypeKey,
+  ): IrExpression {
+    val traceContext = traceContextFor(targetTypeKey) ?: return expression
+    return expression.wrapInTracedMembersInjector(
+      targetTypeKey = targetTypeKey,
+      traceContext = traceContext,
+    )
+  }
+
+  context(scope: IrBuilderWithScope)
   private fun traceContextFor(contextualTypeKey: IrContextualTypeKey): IrExpression? {
     if (contextualTypeKey.isRuntimeTracingInfra) return null
     return traceContextAccessor.traceContextExpression()
@@ -359,6 +377,33 @@ private class TraceExpressionDecorator(
           arguments[3] = kindExpression
           // provider
           arguments[4] = this@wrapInTracedProvider
+        }
+    }
+  }
+
+  context(scope: IrBuilderWithScope)
+  private fun IrExpression.wrapInTracedMembersInjector(
+    targetTypeKey: IrContextualTypeKey,
+    traceContext: IrExpression,
+  ): IrExpression {
+    val tracedMembersInjector = metroSymbols.tracedMembersInjector!!
+    val targetType = targetTypeKey.toIrType()
+    val qualifier = targetTypeKey.runtimeTraceQualifier()
+    val type = targetTypeKey.runtimeTraceType()
+    return with(scope) {
+      irCallConstructor(
+          tracedMembersInjector.constructors.first { it.owner.isPrimary },
+          listOf(targetType),
+        )
+        .apply {
+          // traceContext
+          arguments[0] = traceContext
+          // qualifier
+          arguments[1] = qualifier.toNullableStringExpression()
+          // type
+          arguments[2] = irString(type)
+          // injector
+          arguments[3] = this@wrapInTracedMembersInjector
         }
     }
   }
