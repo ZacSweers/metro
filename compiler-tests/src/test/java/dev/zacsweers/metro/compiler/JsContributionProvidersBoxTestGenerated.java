@@ -1366,6 +1366,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("GraphPrivateMultibindingMapNotExposedToGrandChild.kt")
+      public void testGraphPrivateMultibindingMapNotExposedToGrandChild() {
+        run("GraphPrivateMultibindingMapNotExposedToGrandChild.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateMultibindingSetNotExposedToChild.kt")
       public void testGraphPrivateMultibindingSetNotExposedToChild() {
         run("GraphPrivateMultibindingSetNotExposedToChild.kt");
