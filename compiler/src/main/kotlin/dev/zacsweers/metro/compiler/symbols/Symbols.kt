@@ -722,6 +722,10 @@ internal class Symbols(
       .single()
   }
 
+  val graphPrivateConstructor by lazy {
+    builtinsFinder.findClass(classIds.graphPrivateAnnotation)!!.constructors.single()
+  }
+
   val assistedConstructor by lazy {
     builtinsFinder
       .findClass(ClassId(metroRuntime.packageFqName, StringNames.ASSISTED.asName()))!!

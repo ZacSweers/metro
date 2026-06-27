@@ -1,3 +1,4 @@
+// https://github.com/ZacSweers/metro/issues/2496
 // MODULE: lib
 @GraphExtension
 interface ChildGraph {

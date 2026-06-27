@@ -782,6 +782,9 @@ internal fun MetroAnnotations<IrAnnotation>.mirrorIrConstructorCalls(
     } else if (isBinds) {
       add(buildAnnotation(symbol, context.metroSymbols.bindsConstructor))
     }
+    if (isGraphPrivate) {
+      add(buildAnnotation(symbol, context.metroSymbols.graphPrivateConstructor))
+    }
     if (isIntoSet) {
       add(buildAnnotation(symbol, context.metroSymbols.intoSetConstructor))
     } else if (isElementsIntoSet) {
