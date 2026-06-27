@@ -796,7 +796,10 @@ internal class BindingGraphGenerator(
       }
 
       // Collect multibinds callables.
-      multibindsCallables.addAll(extendedNode.multibindsCallables)
+      for (callable in extendedNode.multibindsCallables) {
+        if (callable.typeKey in extendedNode.graphPrivateKeys) continue
+        multibindsCallables.add(callable)
+      }
 
       // Collect optional keys.
       for ((optKey, callables) in extendedNode.optionalKeys) {
@@ -817,6 +820,7 @@ internal class BindingGraphGenerator(
 
       // Collect multibinding accessors.
       for (accessor in extendedNode.accessors) {
+        if (accessor.contextKey.typeKey in extendedNode.graphPrivateKeys) continue
         if (accessor.metroFunction.annotations.isMultibinds) {
           multibindingAccessors.add(accessor)
         }
