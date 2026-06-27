@@ -1851,10 +1851,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#entry-point-spans" class="md-nav__link">
+  <a href="#entry-point-instants" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Entry-Point Spans
+        Entry-Point Instants
       </span>
     </span>
   </a>
@@ -1929,21 +1929,23 @@
 <p>Internal notes for Metro&rsquo;s generated runtime tracing implementation. User-facing setup docs live in<br />
 <a href="../../performance/#runtime-tracing"><code>docs/performance.md</code></a>.</p>
 <h2 id="goal">Goal<a class="headerlink" href="#goal" title="Permanent link">&para;</a></h2>
-<p><code>metro { enableRuntimeTracing.set(true) }</code> makes generated graph code emit AndroidX Tracing spans<br />
+<p><code>metro { enableRuntimeTracing.set(true) }</code> makes generated graph code emit AndroidX Tracing events<br />
 while user code runs. This is separate from Metro&rsquo;s compiler self-tracing, which records FIR and IR<br />
 extension work during compilation.</p>
 <p>Runtime tracing records two kinds of work:</p>
 <ul>
-<li>graph entry points, such as accessors, graph extension creators, and member-injection functions</li>
-<li>binding realization, such as constructor injection, <code>@Provides</code>, multibindings, and provider<br />
-  invocation</li>
+<li>graph entry-point instants, such as accessors, graph extension creators, and member-injection<br />
+  functions</li>
+<li>binding-realization spans, such as constructor injection, <code>@Provides</code>, multibindings, and<br />
+  provider invocation</li>
 </ul>
 <p>The implementation currently targets JVM and Android JVM code (what androix.trace targets). The helper runtime lives in <br />
 the JVM-only <code>metro-trace</code> artifact.</p>
 <h2 id="graph-input-contract">Graph Input Contract<a class="headerlink" href="#graph-input-contract" title="Permanent link">&para;</a></h2>
-<p>Runtime tracing needs an AndroidX <code>Tracer</code> instance before generated graph code can create any binding<br />
-spans. Metro does not synthesize this binding. Root dependency graphs must use a graph factory whose<br />
-create function takes a <code>@Provides tracer: androidx.tracing.Tracer</code> graph input.</p>
+<p>Runtime tracing needs an AndroidX <code>Tracer</code> instance before generated graph code can create any<br />
+binding spans or entry-point instant events. Metro does not synthesize this binding. Root dependency<br />
+graphs must use a graph factory whose create function takes a<br />
+<code>@Provides tracer: androidx.tracing.Tracer</code> graph input.</p>
 <p>FIR enforces that contract in two places:</p>
 <ul>
 <li><code>DependencyGraphChecker</code>: root <code>@DependencyGraph</code> declarations must declare a<br />
@@ -1958,6 +1960,8 @@ They inherit the parent graph&rsquo;s trace context.</p>
 <ul>
 <li><code>MetroTraceContext</code>: immutable graph-local trace state.</li>
 <li><code>TracedProvider</code>: a Metro <code>Provider&lt;T&gt;</code> decorator that traces each provider invocation.</li>
+<li><code>TracedMembersInjector</code>: a Metro <code>MembersInjector&lt;T&gt;</code> decorator that marks each<br />
+<code>injectMembers(...)</code> invocation with an <code>instant</code> event.</li>
 <li><code>TraceTestUtil</code>: test-only helpers used by compiler box tests.</li>
 </ul>
 <p><code>MetroTraceContext</code> stores the AndroidX <code>Tracer</code>, a category, the current graph name, and the<br />
@@ -1975,8 +1979,8 @@ compiler directly. <code>RuntimeTracingAvailability</code> memoizes one compilat
 <li>the option must be enabled</li>
 <li>the platform must support tracing</li>
 <li><code>androidx.tracing.Tracer</code> must be resolvable</li>
-<li><code>MetroTraceContext</code>, <code>MetroTraceContext.trace</code>, <code>MetroTraceContext.child</code>, and <code>TracedProvider</code><br />
-  must be resolvable</li>
+<li><code>MetroTraceContext</code>, <code>MetroTraceContext.trace</code>, <code>MetroTraceContext.instant</code>,<br />
+<code>MetroTraceContext.child</code>, <code>TracedMembersInjector</code>, and <code>TracedProvider</code> must be resolvable</li>
 </ul>
 <p><code>DependencyGraphTransformer</code> reports the unavailable reason once as <code>METRO_TRACE_ERROR</code>, then exits<br />
 processing. FIR intentionally does not do classpath symbol checks for these helper classes.</p>
@@ -2017,32 +2021,50 @@ stored provider properties are not wrapped again because those fields are initia
 traced provider.</p>
 <p>Multibinding code uses the same hooks. The aggregate getter is traced as <code>Multibinding</code>, and each<br />
 element binding can still emit its own binding span when it is realized.</p>
-<h2 id="entry-point-spans">Entry-Point Spans<a class="headerlink" href="#entry-point-spans" title="Permanent link">&para;</a></h2>
-<p><code>IrGraphGenerator.traceGeneratedGraphEntryPoint(...)</code> wraps generated graph APIs in parent spans.<br />
-These spans make it clear which graph operation caused lower-level binding spans.</p>
+<p>Requested <code>MembersInjector&lt;T&gt;</code> bindings use <code>TracedMembersInjector</code>. Creating or accessing the<br />
+injector is not treated as its own binding span, but later <code>injectMembers(...)</code> calls emit instant<br />
+events named like <code>MembersInjector&lt;T&gt;</code>.</p>
+<h2 id="entry-point-instants">Entry-Point Instants<a class="headerlink" href="#entry-point-instants" title="Permanent link">&para;</a></h2>
+<p><code>IrGraphGenerator.traceGeneratedGraphEntryPoint(...)</code> emits generated graph APIs as instant events.<br />
+These markers make it clear which graph operation caused lower-level binding spans without making<br />
+the graph entry point look like its own binding.</p>
 <p>Current entry-point kinds are:</p>
 <ul>
 <li><code>Accessor</code>: graph accessors and graph extension creators.</li>
-<li><code>Member Injector</code>: generated member-injection functions.</li>
+<li><code>Member Injector</code>: generated member-injection functions and requested <code>MembersInjector&lt;T&gt;</code><br />
+  invocations.</li>
 </ul>
-<p>These parent spans use the same <code>MetroTraceContext.trace(...)</code> helper as binding spans.</p>
+<p>These entry-point markers use <code>MetroTraceContext.instant(...)</code>. Their visible names render the<br />
+implemented graph member, such as <code>AppGraph.foo</code> or <code>AppGraph.createChildGraph</code>. Metadata records<br />
+the callable name separately without using binding-kind metadata.</p>
 <h2 id="names-and-metadata">Names And Metadata<a class="headerlink" href="#names-and-metadata" title="Permanent link">&para;</a></h2>
-<p>Trace names are intentionally readable rather than globally unique. The visible name is:</p>
+<p>Binding span names are intentionally readable rather than globally unique. The visible name is:</p>
 <div class="highlight"><pre><span></span><code>&lt;qualifier&gt; &lt;contextual type&gt;
 </code></pre></div>
 <p>The qualifier is omitted for unqualified bindings. The contextual type falls back to the canonical<br />
 type when they are the same.</p>
-<p>Every span records:</p>
+<p>Every Metro runtime trace event records:</p>
 <ul>
 <li><code>metro.graph</code>: the graph that owns the generated code.</li>
 <li><code>metro.graph_path</code>: the root-to-current graph path.</li>
+</ul>
+<p>Binding span metadata:</p>
+<ul>
 <li><code>metro.type</code>: the canonical unqualified type.</li>
+<li><code>metro.binding_kind</code>: the generated binding kind.</li>
 </ul>
 <p>Optional metadata:</p>
 <ul>
 <li><code>metro.contextual_type</code>: the requested unqualified type when it differs from <code>metro.type</code>.</li>
 <li><code>metro.qualifier</code>: the rendered qualifier.</li>
-<li><code>metro.binding_kind</code>: the generated binding or entry-point kind.</li>
+</ul>
+<p>Entry-point instant metadata:</p>
+<ul>
+<li><code>metro.callable</code>: the callable name without the graph prefix.</li>
+<li><code>metro.type</code>: the canonical unqualified requested type.</li>
+<li><code>metro.contextual_type</code>: the requested unqualified type when it differs from <code>metro.type</code>.</li>
+<li><code>metro.qualifier</code>: the rendered qualifier.</li>
+<li><code>metro.entry_point_kind</code>: <code>Accessor</code> or <code>Member Injector</code>.</li>
 </ul>
 <p>Multibinding element rendering is special-cased. The element&rsquo;s visible type remains the element<br />
 type, but qualifier rendering uses the target multibinding when that is the useful user-facing key.</p>

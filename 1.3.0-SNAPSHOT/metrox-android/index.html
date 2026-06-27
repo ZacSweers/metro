@@ -1957,7 +1957,13 @@
 </code></pre></div><br />
 3. Make your <code>Application</code> subclass implement <code>MetroApplication</code> and implement <code>appComponentProviders</code>.<br />
 <div class="highlight"><pre><span></span><code><span class="kd">class</span><span class="w"> </span><span class="nc">MyApp</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Application</span><span class="p">(),</span><span class="w"> </span><span class="n">MetroApplication</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">appGraph</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">lazy</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">createGraph</span><span class="o">&lt;</span><span class="n">AppGraph</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">lateinit</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">appGraph</span><span class="p">:</span><span class="w"> </span><span class="n">AppGraph</span>
+
+<span class="w">  </span><span class="kd">override</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">onCreate</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">super</span><span class="p">.</span><span class="na">onCreate</span><span class="p">()</span>
+<span class="w">    </span><span class="n">appGraph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createGraph</span><span class="o">&lt;</span><span class="n">AppGraph</span><span class="o">&gt;</span><span class="p">()</span>
+<span class="w">  </span><span class="p">}</span>
+
 <span class="w">  </span><span class="kd">override</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">appComponentProviders</span><span class="p">:</span><span class="w"> </span><span class="n">MetroAppComponentProviders</span>
 <span class="w">    </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">appGraph</span>
 <span class="p">}</span>
@@ -1972,6 +1978,7 @@
 <span class="kd">class</span><span class="w"> </span><span class="nc">MainActivity</span><span class="p">(</span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">fragmentFactory</span><span class="p">:</span><span class="w"> </span><span class="n">FragmentFactory</span><span class="p">):</span><span class="w"> </span><span class="n">AppCompatActivity</span><span class="p">()</span>
 </code></pre></div>
 <p>For other types of components, use <code>@BroadcastReceiverKey</code>, <code>@ContentProviderKey</code>, and <code>@ServiceKey</code> the same way.</p>
+<p>Android creates <code>ContentProvider</code>s before <code>Application.onCreate()</code>. If you constructor-inject your own <code>ContentProvider</code>s through <code>MetroAppComponentFactory</code>, make sure <code>appComponentProviders</code> can be read before <code>onCreate()</code>.</p>
 <p>Note that the built-in <code>MetroAppComponentFactory</code> uses the base <code>Activity</code>, <code>Service</code>, etc types. If you want to use your own bases (<code>ComponentActivity</code>, etc), you&rsquo;ll need to create your own <code>AppComponentFactory</code> + relevant multibindings typed to the key you need.</p>
 <h2 id="advanced">Advanced<a class="headerlink" href="#advanced" title="Permanent link">&para;</a></h2>
 <p>If you have your own custom <code>AppComponentFactory</code>, you will need to exclude the MetroX implementation in your <code>AndroidManifest.xml</code> via <code>tools:replace</code> attribute.</p>
