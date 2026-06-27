@@ -139,25 +139,11 @@ jobs:
 
       - name: Run JS box tests
         if: github.ref == 'refs/heads/main'
-        # JS box tests can flake on an IO/download issue, so retry once. The retry adds --stacktrace to
-        # pin down where the failure originates if it recurs.
         run: |
-          set +e
-          run_tests() {
-            ./gradlew :compiler-tests:test --continue --quiet "$@" \
-              --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*' \
-              --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*' \
-              --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
-          }
-          run_tests
-          status=$?
-          if [ $status -ne 0 ]; then
-            echo "::warning::JS box tests failed (exit $status); retrying once"
-            sleep 15
-            run_tests --stacktrace
-            status=$?
-          fi
-          exit $status
+          ./gradlew :compiler-tests:test --continue --quiet -Pmetro.jsBoxTestRetries=3 \
+            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*' \
+            --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*' \
+            --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
 
       - name: (Fail-only) Upload reports
         if: failure()
@@ -328,6 +314,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
+      # https://github.com/gradle/actions/issues/1013
       - name: Setup Gradle
         if: github.ref == 'refs/heads/main'
         uses: ./.github/actions/setup-gradle

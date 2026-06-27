@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.tooling.core.toKotlinVersion
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.buildConfig)
+  alias(libs.plugins.gradleTestRetry)
   java
 }
 
@@ -303,6 +304,8 @@ val generateTests =
 
 val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
+val jsBoxTestRetries =
+  providers.gradleProperty("metro.jsBoxTestRetries").map(String::toInt).orElse(0)
 
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
@@ -366,6 +369,12 @@ tasks.withType<Test> {
   }
 
   useJUnitPlatform()
+
+  retry {
+    maxRetries.set(jsBoxTestRetries)
+    failOnPassedAfterRetry.set(false)
+    failOnSkippedAfterRetry.set(true)
+  }
 
   if (largeTestMode) {
     filter { includeTestsMatching("*StressTest*") }
