@@ -48,7 +48,11 @@ private val DAGGER_BINDS_OPTIONAL_OF = ClassId.fromString("dagger/BindsOptionalO
 internal val JAVA_OPTIONAL_CLASS_ID = ClassId.fromString("java/util/Optional")
 
 internal fun bindsOptionalOfAnnotations(options: MetroOptions): Set<ClassId> {
-  return if (options.enableDaggerRuntimeInterop) setOf(DAGGER_BINDS_OPTIONAL_OF) else emptySet()
+  return if (options.enableDaggerRuntimeInterop) {
+    setOf(DAGGER_BINDS_OPTIONAL_OF)
+  } else {
+    emptySet()
+  }
 }
 
 private val COLLECTION_LIKE_CLASS_IDS =
@@ -139,9 +143,12 @@ private fun KaSession.callableBindingData(
 ): List<BindingData> {
   val symbol = declaration.symbol as? KaCallableSymbol ?: return emptyList()
   val getterSymbol = (symbol as? KaPropertySymbol)?.getter
+  val fieldSymbol = (symbol as? KaPropertySymbol)?.backingFieldSymbol
 
   fun has(classIds: Set<ClassId>): Boolean {
-    return symbol.hasAnyAnnotation(classIds) || getterSymbol?.hasAnyAnnotation(classIds) == true
+    return symbol.hasAnyAnnotation(classIds) ||
+      getterSymbol?.hasAnyAnnotation(classIds) == true ||
+      fieldSymbol?.hasAnyAnnotation(classIds) == true
   }
 
   val qualifier = qualifierAnnotation(symbol, options)
