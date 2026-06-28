@@ -447,9 +447,14 @@ internal class BindingPropertyCollector(
 
     // For aliases, resolve to the final target and mark that instead.
     val targetBinding =
-      if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {
-        val targetKey = resolveAliasTarget(binding.aliasedType) ?: return
-        graph.findBinding(targetKey) ?: return
+      if (binding is IrBinding.Alias) {
+        val aliasedType = binding.aliasedType
+        if (binding.typeKey == aliasedType) {
+          binding
+        } else {
+          val targetKey = resolveAliasTarget(aliasedType) ?: return
+          graph.findBinding(targetKey) ?: return
+        }
       } else {
         binding
       }
@@ -489,8 +494,13 @@ internal class BindingPropertyCollector(
     val binding = graph.findBinding(current) ?: return null
 
     val target =
-      if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {
-        resolveAliasTarget(binding.aliasedType)
+      if (binding is IrBinding.Alias) {
+        val aliasedType = binding.aliasedType
+        if (binding.typeKey == aliasedType) {
+          current
+        } else {
+          resolveAliasTarget(aliasedType)
+        }
       } else {
         current
       }

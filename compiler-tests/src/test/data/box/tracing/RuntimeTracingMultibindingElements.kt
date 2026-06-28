@@ -28,21 +28,22 @@ fun box(): String {
   testMetroTrace {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
     assertEquals(setOf("string"), graph.strings)
-    assertEvent(
-      name = "Set<String>",
+    assertInstant(
+      name = "AppGraph.strings",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "strings",
       type = "Set<String>",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "Set<String>",
       graph = "AppGraph",
       path = "AppGraph",
       type = "Set<String>",
       kind = "Multibinding",
     )
-    assertEvent(
+    assertTrace(
       name = "String",
       graph = "AppGraph",
       path = "AppGraph",
@@ -51,21 +52,22 @@ fun box(): String {
     )
 
     assertEquals(mapOf("one" to 1), graph.intsByName)
-    assertEvent(
-      name = "Map<String, Int>",
+    assertInstant(
+      name = "AppGraph.intsByName",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "intsByName",
       type = "Map<String, Int>",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "Map<String, Int>",
       graph = "AppGraph",
       path = "AppGraph",
       type = "Map<String, Int>",
       kind = "Multibinding",
     )
-    assertEvent(
+    assertTrace(
       name = "Int",
       graph = "AppGraph",
       path = "AppGraph",

@@ -312,12 +312,11 @@ internal class InjectedClassTransformer(
     addHiddenFromObjCAnnotation(invokeFunction)
     metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(invokeFunction)
 
-    val allParameters =
-      buildList {
-          add(constructorParameters)
-          addAll(memberInjectParameters)
-        }
-        .distinct()
+    val allParameters = buildList {
+      add(constructorParameters)
+      addAll(memberInjectParameters)
+    }
+      .distinct()
     val allValueParameters = allParameters.flatMap { it.regularParameters }
     val nonAssistedParameters = allValueParameters.filterNot { it.isAssisted }
 

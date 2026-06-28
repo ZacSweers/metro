@@ -41,7 +41,6 @@ import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
-import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.metroMetadata
@@ -76,6 +75,7 @@ import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addProperty
+import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
@@ -84,14 +84,13 @@ import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irNull
-import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
-import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.irAttribute
@@ -224,15 +223,14 @@ internal class IrGraphGenerator(
     propertyKind: PropertyKind,
     visibility: DescriptorVisibility = DescriptorVisibilities.PRIVATE,
   ): IrProperty {
-    val property =
-      addProperty {
-          this.name = propertyNameAllocator.newName(name)
-          this.visibility = visibility
-        }
-        .apply {
-          graphPropertyData = GraphPropertyData(contextKey, type)
-          contextKey.typeKey.qualifier?.ir?.let { addAnnotationCompat(it.deepCopyWithSymbols()) }
-        }
+    val property = addProperty {
+      this.name = propertyNameAllocator.newName(name)
+      this.visibility = visibility
+    }
+      .apply {
+        graphPropertyData = GraphPropertyData(contextKey, type)
+        contextKey.typeKey.qualifier?.ir?.let { addAnnotationCompat(it.deepCopyWithSymbols()) }
+      }
 
     return property.ensureInitialized(propertyKind, type)
   }
@@ -534,14 +532,10 @@ internal class IrGraphGenerator(
     }
   }
 
-  /**
-   * Wraps a generated graph API call in one parent runtime trace span.
-   *
-   * The expression inside the block may emit lower-level binding spans. This parent span records
-   * the graph entry point that caused those binding reads, such as an accessor getter.
-   */
+  /** Emits a zero-duration runtime trace event for a generated graph API call. */
   private fun IrBuilderWithScope.traceGeneratedGraphEntryPoint(
     thisReceiverParameter: IrValueParameter,
+    function: IrSimpleFunction,
     contextualTypeKey: IrContextualTypeKey,
     kind: String,
     returnType: IrType,
@@ -549,34 +543,24 @@ internal class IrGraphGenerator(
   ): IrExpression {
     if (contextualTypeKey.isRuntimeTracingInfra) return expression()
     val traceContextProperty = graphClass.runtimeTraceContextProperty ?: return expression()
-    val traceBlock =
-      irLambda(
-        parent = parent,
-        receiverParameter = null,
-        valueParameters = emptyList(),
-        returnType = returnType,
-        suspend = false,
-      ) {
-        +irReturn(expression())
-      }
-    return runtimeTraceCall(
-      thisReceiverParameter = thisReceiverParameter,
-      traceContextProperty = traceContextProperty,
-      contextualTypeKey = contextualTypeKey,
-      kind = kind,
-      returnType = returnType,
-      traceBlock = traceBlock,
-    )
+    val callableName = runtimeTraceCallableName(function)
+    return irBlock(resultType = returnType) {
+      +runtimeTraceInstant(
+        thisReceiverParameter = thisReceiverParameter,
+        traceContextProperty = traceContextProperty,
+        name = runtimeTraceEntryPointName(callableName),
+        callableName = callableName,
+        contextualTypeKey = contextualTypeKey,
+        kind = kind,
+      )
+      +expression()
+    }
   }
 
-  /**
-   * Emits [content] inside a parent runtime trace span for a generated `Unit` graph API call.
-   *
-   * Member-injection functions generate statement bodies rather than a single expression. This
-   * helper keeps that body structure while still tracing the function as the parent operation.
-   */
+  /** Emits a zero-duration runtime trace event for a generated `Unit` graph API call. */
   private fun IrBlockBodyBuilder.traceGeneratedGraphEntryPoint(
     thisReceiverParameter: IrValueParameter,
+    function: IrSimpleFunction,
     contextualTypeKey: IrContextualTypeKey,
     kind: String,
     content: IrBlockBodyBuilder.() -> Unit,
@@ -590,34 +574,28 @@ internal class IrGraphGenerator(
       content()
       return
     }
-    val traceBlock =
-      irLambda(
-        parent = parent,
-        receiverParameter = null,
-        valueParameters = emptyList(),
-        returnType = irBuiltIns.unitType,
-        suspend = false,
-      ) {
-        content()
-      }
-    +runtimeTraceCall(
+    val callableName = runtimeTraceCallableName(function)
+    +runtimeTraceInstant(
       thisReceiverParameter = thisReceiverParameter,
       traceContextProperty = traceContextProperty,
+      name = runtimeTraceEntryPointName(callableName),
+      callableName = callableName,
       contextualTypeKey = contextualTypeKey,
       kind = kind,
-      returnType = irBuiltIns.unitType,
-      traceBlock = traceBlock,
     )
+    content()
   }
 
-  /** Builds `this.metroTraceContext.trace(qualifier, type, contextualType, kind) { ... }`. */
-  private fun IrBuilderWithScope.runtimeTraceCall(
+  /**
+   * Builds `this.metroTraceContext.instant(name, callable, qualifier, type, contextualType, kind)`.
+   */
+  private fun IrBuilderWithScope.runtimeTraceInstant(
     thisReceiverParameter: IrValueParameter,
     traceContextProperty: IrProperty,
+    name: String,
+    callableName: String,
     contextualTypeKey: IrContextualTypeKey,
     kind: String,
-    returnType: IrType,
-    traceBlock: IrExpression,
   ): IrExpression {
     val traceContext = irGetProperty(irGet(thisReceiverParameter), traceContextProperty)
     val qualifier = contextualTypeKey.runtimeTraceQualifier()
@@ -625,11 +603,14 @@ internal class IrGraphGenerator(
     val contextualType = contextualTypeKey.runtimeTraceContextualType()
     return irInvoke(
       dispatchReceiver = traceContext,
-      callee = metroSymbols.metroTraceContextTrace!!,
-      typeHint = returnType,
-      typeArgs = listOf(returnType),
+      callee = metroSymbols.metroTraceContextInstant!!,
+      typeHint = irBuiltIns.unitType,
       args =
         listOf(
+          // name
+          irString(name),
+          // callable
+          irString(callableName),
           // qualifier
           nullableString(qualifier),
           // type
@@ -638,8 +619,6 @@ internal class IrGraphGenerator(
           nullableString(contextualType),
           // kind
           nullableString(kind),
-          // block
-          traceBlock,
         ),
     )
   }
@@ -649,6 +628,19 @@ internal class IrGraphGenerator(
       irNull()
     } else {
       irString(value)
+    }
+  }
+
+  private fun runtimeTraceEntryPointName(callableName: String): String {
+    return "${runtimeTraceGraphName()}.$callableName"
+  }
+
+  private fun runtimeTraceCallableName(function: IrSimpleFunction): String {
+    val declaration = function.propertyIfAccessor
+    return if (declaration is IrProperty) {
+      declaration.name.asString()
+    } else {
+      function.name.asString()
     }
   }
 
@@ -672,19 +664,19 @@ internal class IrGraphGenerator(
       if (parentGraphParam != null) {
         val parentGraphType = parentGraphParam.type
         addProperty {
-            name =
-              propertyNameAllocator
-                .allocateName(memberNamer, MemberNamer.Kind.INSTANCE) {
-                  parentGraphParam.name.asString()
-                }
-                .asName()
-            visibility = DescriptorVisibilities.PRIVATE
-          }
+          name =
+            propertyNameAllocator
+              .allocateName(memberNamer, MemberNamer.Kind.INSTANCE) {
+                parentGraphParam.name.asString()
+              }
+              .asName()
+          visibility = DescriptorVisibilities.PRIVATE
+        }
           .apply {
             addBackingFieldCompat {
-                type = parentGraphType
-                visibility = DescriptorVisibilities.PRIVATE
-              }
+              type = parentGraphType
+              visibility = DescriptorVisibilities.PRIVATE
+            }
               .apply {
                 initializer = createIrBuilder(symbol).run { irExprBody(irGet(parentGraphParam)) }
               }
@@ -721,27 +713,27 @@ internal class IrGraphGenerator(
     val parentImplClass = parentImplType.rawTypeOrNull()
 
     return buildMap {
-        if (parentImplClass != null) {
-          // Use the same key construction as GraphNode.typeKey:
-          // - Synthetic graphs use the impl
-          // - Non-synthetic graphs use sourceGraphIfMetroGraph (the interface)
-          val keyClass =
-            if (parentImplClass.origin.isSyntheticGeneratedGraph) {
-              parentImplClass
-            } else {
-              parentImplClass.sourceGraphIfMetroGraph
-            }
-          put(IrTypeKey(keyClass.typeWith()), listOf(parentGraphInstanceProperty))
-        }
-
-        // For chained extensions, copy parent's ancestor chains with our property prepended.
-        // This avoids walking the chain - parent already computed its ancestors.
-        parentImplClass?.ancestorGraphPropertiesMap?.let { parentAncestors ->
-          for ((ancestorKey, ancestorChain) in parentAncestors) {
-            put(ancestorKey, listOf(parentGraphInstanceProperty) + ancestorChain)
+      if (parentImplClass != null) {
+        // Use the same key construction as GraphNode.typeKey:
+        // - Synthetic graphs use the impl
+        // - Non-synthetic graphs use sourceGraphIfMetroGraph (the interface)
+        val keyClass =
+          if (parentImplClass.origin.isSyntheticGeneratedGraph) {
+            parentImplClass
+          } else {
+            parentImplClass.sourceGraphIfMetroGraph
           }
+        put(IrTypeKey(keyClass.typeWith()), listOf(parentGraphInstanceProperty))
+      }
+
+      // For chained extensions, copy parent's ancestor chains with our property prepended.
+      // This avoids walking the chain - parent already computed its ancestors.
+      parentImplClass?.ancestorGraphPropertiesMap?.let { parentAncestors ->
+        for ((ancestorKey, ancestorChain) in parentAncestors) {
+          put(ancestorKey, listOf(parentGraphInstanceProperty) + ancestorChain)
         }
       }
+    }
       .also {
         // Store on graph class so child extensions can access it
         graphClass.ancestorGraphPropertiesMap = it
@@ -1188,17 +1180,16 @@ internal class IrGraphGenerator(
     if (!shardResult.isGraphAsShard) {
       val result = MutableIntObjectMap<IrProperty>(shardResult.shards.size)
       shardResult.shards.forEach { shard ->
-        val shardField =
-          addProperty {
-              name = propertyNameAllocator.newName("shard${shard.index + 1}").asName()
-              visibility = DescriptorVisibilities.INTERNAL
+        val shardField = addProperty {
+          name = propertyNameAllocator.newName("shard${shard.index + 1}").asName()
+          visibility = DescriptorVisibilities.INTERNAL
+        }
+          .apply {
+            addBackingFieldCompat {
+              type = shard.shardClass.typeWith()
+              visibility = DescriptorVisibilities.PRIVATE
             }
-            .apply {
-              addBackingFieldCompat {
-                type = shard.shardClass.typeWith()
-                visibility = DescriptorVisibilities.PRIVATE
-              }
-            }
+          }
         result[shard.index] = shardField
       }
       result
@@ -1830,13 +1821,12 @@ internal class IrGraphGenerator(
     typeKey: IrTypeKey,
     fieldType: IrType = typeKey.type,
     initializerExpression: IrBuilderWithScope.() -> IrExpression,
-  ): IrProperty =
-    addProperty {
-        this.name = name.decapitalizeUS().asName()
-        this.visibility = DescriptorVisibilities.PRIVATE
-      }
-      .apply { this.addBackingFieldCompat { this.type = fieldType } }
-      .initFinal { initializerExpression() }
+  ): IrProperty = addProperty {
+    this.name = name.decapitalizeUS().asName()
+    this.visibility = DescriptorVisibilities.PRIVATE
+  }
+    .apply { this.addBackingFieldCompat { this.type = fieldType } }
+    .initFinal { initializerExpression() }
 
   private fun GraphNode.Local.implementOverrides(
     expressionGeneratorFactory: GraphExpressionGenerator.Factory
@@ -1864,6 +1854,7 @@ internal class IrGraphGenerator(
             irExprBodySafe(
               traceGeneratedGraphEntryPoint(
                 thisReceiverParameter = irFunction.dispatchReceiverParameter!!,
+                function = irFunction,
                 contextualTypeKey = contextualTypeKey,
                 kind = TRACE_KIND_ACCESSOR,
                 returnType = irFunction.returnType,
@@ -1901,6 +1892,7 @@ internal class IrGraphGenerator(
           createIrBuilder(symbol).irBlockBody {
             traceGeneratedGraphEntryPoint(
               thisReceiverParameter = overriddenFunction.ir.dispatchReceiverParameter!!,
+              function = overriddenFunction.ir,
               contextualTypeKey = injectionTraceKey,
               kind = TRACE_KIND_MEMBER_INJECTOR,
             ) {
@@ -2004,9 +1996,7 @@ internal class IrGraphGenerator(
           // deserialize and validate these inherited members before later Metro mirror code can
           // cover for them.
           val sourceParameter =
-            extensionReceiverParameterCompat
-              ?: regularParameters.singleOrNull()
-              ?: reportCompilerBug("No source parameter found for @Binds function $kotlinFqName")
+            extensionReceiverParameterCompat ?: regularParameters.singleOrNull() ?: continue
           body = createIrBuilder(symbol).run { irExprBodySafe(irGet(sourceParameter)) }
         }
       }
@@ -2045,6 +2035,7 @@ internal class IrGraphGenerator(
                 irExprBodySafe(
                   traceGeneratedGraphEntryPoint(
                     thisReceiverParameter = irFunction.dispatchReceiverParameter!!,
+                    function = irFunction,
                     contextualTypeKey = contextKey,
                     kind = TRACE_KIND_ACCESSOR,
                     returnType = irFunction.returnType,

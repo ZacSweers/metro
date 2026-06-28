@@ -24,17 +24,18 @@ jobs:
         with:
           lfs: true
 
-      - name: Configure JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version-file: .github/workflows/.java-version
+      - parallel:
+          - name: Configure JDK
+            uses: actions/setup-java@v5
+            with:
+              distribution: 'zulu'
+              java-version-file: .github/workflows/.java-version
 
-      - name: Cache kempt formatter binaries
-        uses: actions/cache@v6
-        with:
-          path: ~/.kempt/cache
-          key: kempt-${{ hashFiles('.kempt.toml') }}
+          - name: Cache kempt formatter binaries
+            uses: actions/cache@v6
+            with:
+              path: ~/.kempt/cache
+              key: kempt-${{ hashFiles('.kempt.toml') }}
 
       - name: Install kempt
         run: |
@@ -139,7 +140,7 @@ jobs:
       - name: Run JS box tests
         if: github.ref == 'refs/heads/main'
         run: |
-          ./gradlew :compiler-tests:test --continue --quiet \
+          ./gradlew :compiler-tests:test --continue --quiet -Pmetro.jsBoxTestRetries=3 \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*' \
             --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*' \
             --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
@@ -313,6 +314,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
+      # https://github.com/gradle/actions/issues/1013
       - name: Setup Gradle
         if: github.ref == 'refs/heads/main'
         uses: ./.github/actions/setup-gradle

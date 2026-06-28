@@ -4,6 +4,7 @@
 import androidx.tracing.Tracer
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.MembersInjector
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.trace.internal.testMetroTrace
 
@@ -14,6 +15,7 @@ class Target {
 @DependencyGraph
 interface AppGraph {
   fun inject(target: Target)
+  val targetInjector: MembersInjector<Target>
 
   @Provides fun provideString(): String = "injected"
 
@@ -29,14 +31,42 @@ fun box(): String {
     val target = Target()
     graph.inject(target)
     assertEquals("injected", target.string)
-    assertEvent(
-      name = "Target",
+    assertInstant(
+      name = "AppGraph.inject",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "inject",
       type = "Target",
       kind = "Member Injector",
     )
-    assertEvent(
+    assertTrace(
+      name = "String",
+      graph = "AppGraph",
+      path = "AppGraph",
+      type = "String",
+      kind = "Provided",
+    )
+
+    val secondTarget = Target()
+    graph.targetInjector.injectMembers(secondTarget)
+    assertEquals("injected", secondTarget.string)
+    assertInstant(
+      name = "AppGraph.targetInjector",
+      graph = "AppGraph",
+      path = "AppGraph",
+      callable = "targetInjector",
+      type = "MembersInjector<Target>",
+      kind = "Accessor",
+    )
+    assertInstant(
+      name = "MembersInjector<Target>",
+      graph = "AppGraph",
+      path = "AppGraph",
+      callable = "injectMembers",
+      type = "Target",
+      kind = "Member Injector",
+    )
+    assertTrace(
       name = "String",
       graph = "AppGraph",
       path = "AppGraph",

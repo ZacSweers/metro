@@ -1959,12 +1959,12 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
       [Metro/DuplicateBinding] Multiple bindings found for String
 
             BindingContainerA.kt:8:3
-              @Provides fun provideString(): kotlin.String
-                                             ~~~~~~~~~~~~~
+              @Provides fun provideString(): String
+                                             ~~~~~~
 
             BindingContainerB.kt:8:3
-              @Provides fun provideString(): kotlin.String
-                                             ~~~~~~~~~~~~~
+              @Provides fun provideString(): String
+                                             ~~~~~~
       """
         .trimIndent()
     )

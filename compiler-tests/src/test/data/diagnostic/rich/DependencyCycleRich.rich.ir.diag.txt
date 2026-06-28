@@ -1,17 +1,18 @@
 /DependencyCycleRich.kt:18:11: error: 
-<red>[Metro/DependencyCycle]</> Found a dependency cycle while processing <b>CycleGraph</>
+<red>[Metro/DependencyCycle]</fg> Found a dependency cycle while processing <b>CycleGraph</intensity>
 
   cycle:
-      <dim>╭─▶ </><b>C</><dim> → </><b>A</><dim> → </><b>B</><dim> ─╮</>
-      <dim>╰──────────────╯</>
+      <dim>╭─▶ </intensity><b>C</intensity><dim> → </intensity><b>A</intensity><dim> → </intensity><b>B</intensity><dim> ─╮</intensity>
+      <dim>╰──────────────╯</intensity>
 
-  trace (in <b>CycleGraph</>):
-      <b>C</> is injected at B(…, c)
-      <b>A</> is injected at C(…, a)
-      <b>B</> is injected at A(…, b)
-      <b>C</> is injected at B(…, c)
+  trace (in <b>CycleGraph</intensity>):
+      <b>C</intensity> is injected at B(…, c)
+      <b>A</intensity> is injected at C(…, a)
+      <b>B</intensity> is injected at A(…, b)
+      <b>C</intensity> is injected at B(…, c)
       ...
 
-  <green>help:</> break the cycle by injecting a deferred type at one edge, e.g. `() -> C` or `Lazy<C>`
-  <dim>docs:</> https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+  <cyan>help:</fg> you can break the cycle by injecting a deferred type at one edge, e.g. `() -> C` or
+        `Lazy<C>`. Only do this if you know what you're doing though!
+  <dim>docs:</intensity> https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
 

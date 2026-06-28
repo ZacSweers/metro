@@ -892,10 +892,10 @@ internal class ContributionIrTransformer(
           // different return types
           val name = nameAllocator.newName(callableName + suffix).asName()
           addFunction {
-              this.name = name
-              this.returnType = bindingTypeKey.type
-              this.modality = Modality.ABSTRACT
-            }
+            this.name = name
+            this.returnType = bindingTypeKey.type
+            this.modality = Modality.ABSTRACT
+          }
             .apply {
               addAnnotationsCompat(buildAnnotations())
               setDispatchReceiver(parentAsClass.thisReceiver?.copyTo(this))

@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.diagnostics.render
 
+import com.github.ajalt.mordant.rendering.AnsiLevel
+import com.github.ajalt.mordant.rendering.TextStyles
+import com.github.ajalt.mordant.terminal.Terminal
 import dev.zacsweers.metro.compiler.DiagnosticsRenderMode
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.Style
@@ -51,8 +54,8 @@ internal data class RenderProfile(
      */
     const val DEFAULT_WIDTH = 100
 
-    val PLAIN = RenderProfile(GlyphSet.ASCII, Styler.None)
-    val RICH = RenderProfile(GlyphSet.UNICODE, Styler.Ansi, renderSourceSnippets = true)
+    val PLAIN = RenderProfile(GlyphSet.ASCII, Styler.Plain)
+    val RICH = RenderProfile(GlyphSet.UNICODE, Styler.Rich, renderSourceSnippets = true)
   }
 }
 
@@ -76,14 +79,16 @@ internal data class GlyphSet(
   val loopBottomEnd: String,
   /** Separator between an item and its location: ` - ` / ` — `. */
   val locationSeparator: String,
-  /** Opening of a source frame header: `+-[` / `╭─[`. */
-  val frameOpen: String,
+  /** Opening of a source frame headline: `+-` / `╭─`. */
+  val frameHeaderOpen: String,
   /** Closing corner of a source frame: `+-` / `╰─`. */
   val frameClose: String,
-  /** Pointer in the middle of a span underline: `+` / `┬`. */
-  val underlineTee: String,
   /** Elbow connecting an underline to its label: `+--` / `╰──`. */
   val labelElbow: String,
+  /** Pointer above a multi-line source range: `v` / `⌄`. */
+  val topPointer: String,
+  /** Pointer below a source range: `^` / `⌃`. */
+  val bottomPointer: String,
 ) {
   companion object {
     val ASCII =
@@ -98,10 +103,11 @@ internal data class GlyphSet(
         loopBottomStart = "+",
         loopBottomEnd = "+",
         locationSeparator = " - ",
-        frameOpen = "+-[",
+        frameHeaderOpen = "+-",
         frameClose = "+-",
-        underlineTee = "+",
         labelElbow = "+--",
+        topPointer = "v",
+        bottomPointer = "^",
       )
 
     val UNICODE =
@@ -116,10 +122,11 @@ internal data class GlyphSet(
         loopBottomStart = "╰",
         loopBottomEnd = "╯",
         locationSeparator = " — ",
-        frameOpen = "╭─[",
+        frameHeaderOpen = "╭─",
         frameClose = "╰─",
-        underlineTee = "┬",
         labelElbow = "╰──",
+        topPointer = "⌄",
+        bottomPointer = "⌃",
       )
   }
 }
@@ -129,34 +136,30 @@ internal fun interface Styler {
   fun apply(style: Style, text: String): String
 
   companion object {
-    val None = Styler { _, text -> text }
+    val Plain: Styler = MordantStyler(AnsiLevel.NONE)
 
-    val Ansi = Styler { style, text ->
-      val code =
-        when (style) {
-          Style.NONE -> return@Styler text
-          Style.EMPHASIS -> AnsiCodes.BOLD
-          Style.DIM -> AnsiCodes.DIM
-          Style.ERROR -> AnsiCodes.RED
-          Style.WARNING -> AnsiCodes.YELLOW
-          Style.SUCCESS -> AnsiCodes.GREEN
-          Style.UNDERLINE -> AnsiCodes.UNDERLINE
-        }
-      "$code$text${AnsiCodes.RESET}"
-    }
+    val Rich: Styler = MordantStyler(AnsiLevel.ANSI16)
   }
 }
 
-internal object AnsiCodes {
-  const val BOLD = "\u001B[1m"
-  const val DIM = "\u001B[2m"
-  const val UNDERLINE = "\u001B[4m"
-  const val RED = "\u001B[31m"
-  const val GREEN = "\u001B[32m"
-  const val YELLOW = "\u001B[33m"
-  const val RESET = "\u001B[0m"
+private class MordantStyler(ansiLevel: AnsiLevel) : Styler {
+  private val terminal = Terminal(ansiLevel = ansiLevel, hyperlinks = false, interactive = false)
 
-  private val ANSI_PATTERN = Regex("\u001B\\[[;:\\d]*m")
+  override fun apply(style: Style, text: String): String {
+    val styled =
+      when (style) {
+        Style.NONE -> text
+        Style.EMPHASIS -> TextStyles.bold(text)
+        Style.DIM -> terminal.theme.muted(text)
+        Style.ERROR -> terminal.theme.danger(text)
+        Style.WARNING -> terminal.theme.warning(text)
+        Style.INFO -> terminal.theme.info(text)
+        Style.SUCCESS -> terminal.theme.success(text)
+        Style.ERROR_EMPHASIS -> (terminal.theme.danger + TextStyles.bold)(text)
+        Style.WARNING_EMPHASIS -> (terminal.theme.warning + TextStyles.bold)(text)
+        Style.UNDERLINE -> TextStyles.underline(text)
+      }
 
-  fun strip(text: String): String = text.replace(ANSI_PATTERN, "")
+    return terminal.render(styled)
+  }
 }

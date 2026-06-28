@@ -205,6 +205,8 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
     val metroTraceContext = ClassId(FqNames.metroTraceInternalPackage, "MetroTraceContext".asName())
     val tracer = ClassId(FqNames.androidxTracing, "Tracer".asName())
+    val tracedMembersInjector =
+      ClassId(FqNames.metroTraceInternalPackage, "TracedMembersInjector".asName())
     val tracedProvider = ClassId(FqNames.metroTraceInternalPackage, "TracedProvider".asName())
 
     val function0 = StandardClassIds.FunctionN(0)
@@ -404,6 +406,10 @@ internal class Symbols(
     metroTraceContext?.owner?.functions?.single { it.name.asString() == "trace" }?.symbol
   }
 
+  val metroTraceContextInstant: IrSimpleFunctionSymbol? by lazy {
+    metroTraceContext?.owner?.functions?.single { it.name.asString() == "instant" }?.symbol
+  }
+
   val metroTraceContextChild: IrSimpleFunctionSymbol? by lazy {
     metroTraceContext?.owner?.functions?.single { it.name.asString() == "child" }?.symbol
   }
@@ -414,6 +420,10 @@ internal class Symbols(
 
   val tracedProvider: IrClassSymbol? by lazy {
     pluginContext.referenceClass(ClassIds.tracedProvider)
+  }
+
+  val tracedMembersInjector: IrClassSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.tracedMembersInjector)
   }
 
   val asContribution: IrSimpleFunctionSymbol by lazy {
@@ -720,6 +730,10 @@ internal class Symbols(
       .findClass(ClassId(metroRuntime.packageFqName, Names.Provides))!!
       .constructors
       .single()
+  }
+
+  val graphPrivateConstructor by lazy {
+    builtinsFinder.findClass(classIds.graphPrivateAnnotation)!!.constructors.single()
   }
 
   val assistedConstructor by lazy {

@@ -22,13 +22,12 @@ internal class RuntimeTracingAvailability(context: IrMetroContext) {
         "Runtime tracing is not supported on the given platform (${context.platform})."
       context.metroSymbols.tracer == null ->
         "androidx.tracing.Tracer is missing from the classpath."
-      context.metroSymbols.metroTraceContext == null ->
-        "Metro tracing infra is missing from the classpath."
-      context.metroSymbols.metroTraceContextTrace == null ->
-        "Metro tracing infra is missing from the classpath."
-      context.metroSymbols.metroTraceContextChild == null ->
-        "Metro tracing infra is missing from the classpath."
-      context.metroSymbols.tracedProvider == null ->
+      context.metroSymbols.metroTraceContext == null ||
+        context.metroSymbols.metroTraceContextTrace == null ||
+        context.metroSymbols.metroTraceContextInstant == null ||
+        context.metroSymbols.metroTraceContextChild == null ||
+        context.metroSymbols.tracedMembersInjector == null ||
+        context.metroSymbols.tracedProvider == null ->
         "Metro tracing infra is missing from the classpath."
       else -> null
     }

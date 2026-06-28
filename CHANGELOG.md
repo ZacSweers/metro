@@ -16,34 +16,30 @@ Changelog
   - Diagnostics now wrap to 100 columns and start on their own line after the compiler location prefix
   - **Example plain output**
     ```
-    ExampleGraph.kt:7:11: error: 
-    [Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
+    ExampleGraph.kt:9:3: error: 
+    [Metro/MissingBinding] No binding found for String
     
-      cycle:
-          +-> Double -> String -> Int --+
-          +-----------------------------+
+      trace (in dev.zacsweers.example.ExampleGraph):
+          String is requested at dev.zacsweers.example.ExampleGraph.a
     
-      trace (in test.ExampleGraph):
-          Double is injected at test.ExampleGraph.provideInt(…, double)
-          String is injected at test.ExampleGraph.provideDouble(…, string)
-          Int is injected at test.ExampleGraph.provideString(…, int)
-          Double is injected at test.ExampleGraph.provideInt(…, double)
-          ...
+      similar bindings:
+          - CharSequence (Supertype. Type: Provided) - ExampleGraph.kt:12:3
     
-      help: break the cycle by injecting a deferred type at one edge, e.g. `() -> Double` or
-            `Lazy<Double>`
-      docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+      help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+            declaration visible to ExampleGraph
+      docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
     ```
   - **Example rich output**
     
     _(note that in rich terminals this would have color and markup too!)_
     ```
-    [Metro/MissingBinding] No binding found for String
-    
-        ╭─[ /.../src/commonMain/kotlin/dev/zacsweers/example/ExampleGraph.kt:9:3 ]
-      9 │   val a: String
-        │   ─────────────
-        ╰─
+    ExampleGraph.kt:9:3: error: 
+      ╭─ [Metro/MissingBinding] No binding found for String
+      │ → ExampleGraph.kt:9:3
+      │
+    9 │   val a: String
+      │   ⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃
+      ╰─
     
       trace (in dev.zacsweers.example.ExampleGraph):
           String is requested at dev.zacsweers.example.ExampleGraph.a
@@ -56,7 +52,7 @@ Changelog
       docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
     ```
 
-- **[runtime/JVM]** Add experimental runtime tracing for generated graph code, backed by AndroidX Tracing 2.x. Enable it with `metro.enableRuntimeTracing`.
+- **[runtime/JVM]** Add experimental runtime tracing for generated graph code, backed by AndroidX Tracing 2.x. Enable it with `metro.enableRuntimeTracing`. See the [runtime tracing performance docs](https://zacsweers.github.io/metro/latest/performance/#runtime-tracing) for setup guidance.
   - Metro will add the JVM-only `metro-trace` runtime helper artifact.
   - Graphs must bind an `androidx.tracing.Tracer` instances as a graph input as a parent tracer.
   - This is experimental as AndroidX Tracing 2.x is still actively being developed.
@@ -64,6 +60,7 @@ Changelog
   - `AUTO` defaults to rich output and falls back to plain output for non-empty `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
   - The resolved mode is passed as a non-input compiler option, so render-mode changes do not invalidate compilation or poison build caches.
 - **[docs]** Add a generated [Diagnostics Reference](https://zacsweers.github.io/metro/latest/diagnostics/) docs page for Metro's common graph validation diagnostics.
+- **[FIR/IR]** Add support for parameterless `@Binds` declarations for constructor-injected classes.
 
 ### Enhancements
 
@@ -72,6 +69,7 @@ Changelog
 - **[FIR]** Add a diagnostic to report scope annotations on graph factory parameters.
 - **[IR]** Add cycle-breaking `help:` guidance for dependency cycle errors, suggesting deferred types such as `() -> T` or `Lazy<T>`.
 - **[IR/reporting]** Collapse sibling missing-binding errors with identical trace tails to a `... same as for X` continuation, and fully qualify type names only when two distinct types in one diagnostic share a simple name.
+- **[docs]** Improve docs around `@GraphPrivate`.
 
 ### Fixes
 
@@ -82,6 +80,7 @@ Changelog
 - **[IR]** Fix dispatch receivers for generated graph factory functions and companion/object factory accessors.
 - **[IR]** Manage transitive simple class binding containers included by contributed binding containers when they have instance providers.
 - **[IR]** Patch declaration parents for generated `@Binds` mirror declarations so copied declarations remain attached to the correct generated class.
+- **[IR]** Preserve `@GraphPrivate` on cross-module mirror functions so private multibinding contributions do not leak through chained graph extensions.
 - **[IR/Dagger interop]** Fix an IR gen crash when an unscoped parent `@Provides` binding is injected as `dagger.Lazy<T>` from a child graph.
 - **[IR/JS]** Fix `Map<K, () -> V>` multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro `Provider` objects.
 - **[IR/KLIB]** Fix generated `@Binds` implementations on KLIB backends. Metro now emits concrete identity bodies for inherited `@Binds` members where JS, Native, and Wasm validate abstract members during deserialization.
@@ -93,7 +92,11 @@ Changelog
 - Run Metro's functional compiler unit tests on JS.
 - Redundant checksum files are no longer published: checksums of `.asc` signature files ([gradle/gradle#20232](https://github.com/gradle/gradle/issues/20232)) and the `sha256`/`sha512`. If you rely on these, let me know.
 - Remove `binding-contributions-as-containers` flag, only `binding-contributions-as-containers` is supported going forward.
-- **[gradle]** Build against Gradle `9.6.0`.
+- **[gradle]** Build against Gradle `9.6.1`.
+- Test Kotlin `2.4.10-RC`.
+- Test Kotlin `2.4.20-Beta1`.
+- Test Android Studio Quail 2 RCs.
+- Test Android Studio Quail 3 canaries.
 
 ### Contributors
 
@@ -101,6 +104,7 @@ Special thanks to the following contributors for contributing to this release!
 
 - [@BraisGabin](https://github.com/BraisGabin)
 - [@FletchMcKee](https://github.com/FletchMcKee)
+- [@jonamireh](https://github.com/jonamireh)
 - [@tikurahul](https://github.com/tikurahul)
 - [@ychescale9](https://github.com/ychescale9)
 

@@ -181,6 +181,10 @@ val shadowJar =
       "kotlinx.serialization",
       "dev.zacsweers.metro.compiler.shaded.kotlinx.serialization",
     )
+    relocate(
+      "com.github.ajalt.mordant",
+      "dev.zacsweers.metro.compiler.shaded.com.github.ajalt.mordant",
+    )
     relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
     // Relocate the metro runtime while excluding the compiler's own package
     relocate("dev.zacsweers.metro", "dev.zacsweers.metro.compiler.shaded.metro") {
@@ -228,6 +232,7 @@ dependencies {
   add(embedded.name, libs.androidx.collection)
   add(embedded.name, libs.androidx.tracing.wire)
   add(embedded.name, libs.picnic)
+  add(embedded.name, libs.mordant)
   add(embedded.name, libs.wire.runtime)
   add(embedded.name, libs.kotlinx.serialization.json)
   add(embedded.name, project(":compiler-compat"))

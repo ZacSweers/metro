@@ -12,7 +12,6 @@ import org.gradle.api.Project
 import org.gradle.api.problems.ProblemGroup
 import org.gradle.api.problems.ProblemId
 import org.gradle.api.problems.Problems
-import org.gradle.api.problems.Severity
 import org.gradle.api.provider.Provider
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.buildtools.api.ExperimentalBuildToolsApi
@@ -140,9 +139,9 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
                 "Kotlin version is too old for Metro",
                 PROBLEM_GROUP,
               )
+            // TODO should this use throwing() and fail the build instead?
             problemReporter.report(problemId) { spec ->
               spec
-                .severity(Severity.WARNING)
                 .contextualLabel(label)
                 .details(details)
                 .solution(solution)
@@ -166,7 +165,6 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               )
             problemReporter.report(problemId) { spec ->
               spec
-                .severity(Severity.WARNING)
                 .contextualLabel(label)
                 .details(details)
                 .solution(solution)

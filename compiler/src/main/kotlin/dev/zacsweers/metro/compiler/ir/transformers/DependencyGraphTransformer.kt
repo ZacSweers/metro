@@ -589,6 +589,12 @@ internal class DependencyGraphTransformer(
       // Batch by declaration to avoid kotlinc diagnostic deduplication
       val privateBindingErrors = mutableMapOf<IrDeclaration, MutableList<String>>()
       for (accessor in node.accessors) {
+        val annotations = accessor.metroFunction.annotations
+        val accessorDeclaresGraphPrivateMultibinds =
+          annotations.isGraphPrivate && annotations.isMultibinds
+        if (accessorDeclaresGraphPrivateMultibinds) {
+          continue
+        }
         if (accessor.contextKey.typeKey in node.graphPrivateKeys) {
           // Resolve to the source declaration (the user-authored property/function in the
           // interface, not the fake override in the generated impl class)

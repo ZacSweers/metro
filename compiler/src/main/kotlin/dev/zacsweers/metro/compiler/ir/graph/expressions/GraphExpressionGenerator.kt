@@ -501,6 +501,8 @@ private constructor(
         is MembersInjected -> {
           val injectedClass = node.metroGraphOrFail.lookupClass(binding.targetClassId)!!.owner
           val injectedType = injectedClass.defaultType
+          val targetTypeKey =
+            IrContextualTypeKey(IrTypeKey(injectedType, binding.typeKey.qualifier))
 
           // When looking for an injector, try the current class.
           // If the current class doesn't have one but the parent does have injections, traverse up
@@ -515,10 +517,16 @@ private constructor(
 
           if (injectorClass == null) {
             // Return a noop
-            irInvoke(
+            val membersInjector =
+              irInvoke(
                 dispatchReceiver = irGetObject(metroSymbols.metroMembersInjectors),
                 callee = metroSymbols.metroMembersInjectorsNoOp,
                 typeArgs = listOf(injectedType),
+              )
+            expressionDecorator
+              .decorateMembersInjectorExpression(
+                membersInjector,
+                targetTypeKey = targetTypeKey,
               )
               .toTargetType(
                 actual = AccessType.INSTANCE,
@@ -540,7 +548,12 @@ private constructor(
 
             // InjectableClass_MembersInjector.create(stringValueProvider,
             // exampleComponentProvider)
-            irInvoke(callee = createFunction, args = args)
+            val membersInjector = irInvoke(callee = createFunction, args = args)
+            expressionDecorator
+              .decorateMembersInjectorExpression(
+                membersInjector,
+                targetTypeKey = targetTypeKey,
+              )
               .toTargetType(
                 actual = AccessType.INSTANCE,
                 contextualTypeKey = contextualTypeKey,

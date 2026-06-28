@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
@@ -20,6 +21,7 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
+import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.fir.validateBindingSource
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.memoize
@@ -44,6 +46,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
 import org.jetbrains.kotlin.fir.analysis.checkers.fullyExpandedClassId
 import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.correspondingProperty
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirFunction
@@ -75,6 +78,7 @@ import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.classId
@@ -445,6 +449,82 @@ internal object BindingContainerCallableChecker :
         )
       }
 
+      if (declaration.isParameterlessBinds(annotations)) {
+        if (bodyExpression != null) {
+          reporter.reportOn(
+            source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds declarations must be abstract and not have a function or getter body.",
+          )
+          return
+        }
+
+        if (annotations.scope != null) {
+          return
+        }
+
+        if (annotations.isQualified || annotations.isIntoMultibinding) {
+          val multibindingSource = declaration.multibindingAnnotationSource(session, annotations)
+          val errorSource = if (multibindingSource != null) multibindingSource else source
+          reporter.reportOn(
+            errorSource,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds declarations may not be qualified or used as multibindings.",
+          )
+          return
+        }
+
+        val returnType = returnTypeRef.coneTypeOrNull ?: return
+        if (returnType.typeArguments.isNotEmpty()) {
+          reporter.reportOn(
+            returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds declarations may not return generic types.",
+          )
+          return
+        }
+
+        val returnClass = returnType.toClassSymbolCompat(session)
+        if (returnClass == null) {
+          reporter.reportOn(
+            returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds declarations must return a concrete constructor-injected class.",
+          )
+          return
+        }
+
+        if (returnClass.typeParameterSymbols.isNotEmpty()) {
+          reporter.reportOn(
+            returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds declarations may not return generic classes.",
+          )
+          return
+        }
+
+        if (returnClass.usesContributionProviderPath(session)) {
+          val fqName = returnClass.classId.diagnosticString
+          reporter.reportOn(
+            returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds target '$fqName' is hidden by `generateContributionProviders`. " +
+              "Bind the contributed type instead, or annotate '$fqName' with `@ExposeImplBinding`.",
+          )
+          return
+        }
+
+        val injectConstructor = returnClass.findInjectConstructors(session).singleOrNull()
+        if (injectConstructor == null) {
+          reporter.reportOn(
+            returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds target `${returnType.render(short = false)}` must be constructor-injected.",
+          )
+        }
+        return
+      }
+
       // TODO support first, non-receiver parameter
       if (declaration.receiverParameter != null) {
         if (bodyExpression == null) {
@@ -568,9 +648,14 @@ internal object BindingContainerCallableChecker :
                 returnClass.resolvedCompilerAnnotationsWithClassIds
                   .scopeAnnotations(session)
                   .singleOrNull()
+              val isExplicitParameterlessBindsTarget =
+                (containingClassSymbol as? FirClassSymbol<*>)?.hasParameterlessBindsTarget(
+                  session,
+                  providerTypeKey,
+                ) == true
               // TODO maybe we should report matching keys but different scopes? Feels like it could
               //  be confusing at best
-              if (providerScope == classScope) {
+              if (providerScope == classScope && !isExplicitParameterlessBindsTarget) {
                 reporter.reportOn(
                   source,
                   MetroDiagnostics.REDUNDANT_PROVIDES,
@@ -623,6 +708,52 @@ internal object BindingContainerCallableChecker :
     }
 
     session.trace({ "Validate binding declaration" }) { validateBindingDeclaration() }
+  }
+
+  private fun FirCallableDeclaration.multibindingAnnotationSource(
+    session: FirSession,
+    annotations: MetroAnnotations<MetroFirAnnotation>,
+  ): KtSourceElement? {
+    if (!annotations.isIntoMultibinding) return null
+
+    val classIds = session.classIds
+    val intoSetSource = annotationsIn(session, classIds.intoSetAnnotations).firstOrNull()?.source
+    if (intoSetSource != null) return intoSetSource
+
+    val elementsIntoSetSource =
+      annotationsIn(session, classIds.elementsIntoSetAnnotations).firstOrNull()?.source
+    if (elementsIntoSetSource != null) return elementsIntoSetSource
+
+    val intoMapSource = annotationsIn(session, classIds.intoMapAnnotations).firstOrNull()?.source
+    if (intoMapSource != null) return intoMapSource
+
+    return annotations.mapKey?.fir?.source
+  }
+
+  private fun FirCallableDeclaration.isParameterlessBinds(
+    annotations: MetroAnnotations<MetroFirAnnotation>
+  ): Boolean {
+    if (!annotations.isBinds) return false
+    if (receiverParameter != null) return false
+    if (symbol.contextParameterSymbols.isNotEmpty()) return false
+    if (this !is FirFunction) return true
+    return valueParameters.isEmpty()
+  }
+
+  @OptIn(DirectDeclarationsAccess::class, SymbolInternals::class)
+  private fun FirClassSymbol<*>.hasParameterlessBindsTarget(
+    session: FirSession,
+    targetKey: FirTypeKey,
+  ): Boolean {
+    return declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().any { symbol ->
+      val declaration = symbol.fir as? FirCallableDeclaration ?: return@any false
+      val annotations = symbol.metroAnnotations(session)
+      if (!declaration.isParameterlessBinds(annotations)) return@any false
+
+      val returnType = declaration.returnTypeRef.coneTypeOrNull ?: return@any false
+      val bindTargetKey = FirTypeKey.from(session, returnType, declaration.annotations)
+      bindTargetKey == targetKey
+    }
   }
 
   private fun FirExpression.returnsThis(): Boolean {

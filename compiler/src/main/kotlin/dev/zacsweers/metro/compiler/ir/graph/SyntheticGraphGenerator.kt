@@ -591,10 +591,12 @@ internal class SyntheticGraphGenerator(
               LocatedItem(
                 location = loc1.location,
                 code = loc1.description?.let { "$it (defined in '$parent1')" },
+                span = loc1.span,
               ),
               LocatedItem(
                 location = loc2.location,
                 code = loc2.description?.let { "$it (defined in '$parent2')" },
+                span = loc2.span,
               ),
             ),
         ),
@@ -641,10 +643,12 @@ internal class SyntheticGraphGenerator(
               LocatedItem(
                 location = loc1.location,
                 code = underlinedCode(loc1, parent1, type1Str),
+                span = loc1.span,
               ),
               LocatedItem(
                 location = loc2.location,
                 code = underlinedCode(loc2, parent2, type2Str),
+                span = loc2.span,
               ),
             ),
         ),

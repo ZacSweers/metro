@@ -44,13 +44,14 @@ public open class MetroAppComponentFactory : AppComponentFactory() {
 
   override fun instantiateApplicationCompat(cl: ClassLoader, className: String): Application {
     val app = super.instantiateApplicationCompat(cl, className)
-    appComponentFactoryBindings = (app as MetroApplication).appComponentProviders
+    metroApplication = app as MetroApplication
     return app
   }
 
   override fun instantiateProviderCompat(cl: ClassLoader, className: String): ContentProvider {
-    return getInstance(cl, className, appComponentFactoryBindings.providerProviders)
-      ?: super.instantiateProviderCompat(cl, className)
+    val bindings = appComponentFactoryBindingsOrNull()
+    val provider = bindings?.let { getInstance(cl, className, it.providerProviders) }
+    return provider ?: super.instantiateProviderCompat(cl, className)
   }
 
   override fun instantiateReceiverCompat(
@@ -71,8 +72,20 @@ public open class MetroAppComponentFactory : AppComponentFactory() {
       ?: super.instantiateServiceCompat(cl, className, intent)
   }
 
+  private fun appComponentFactoryBindingsOrNull(): MetroAppComponentProviders? {
+    return try {
+      appComponentFactoryBindings
+    } catch (_: UninitializedPropertyAccessException) {
+      // ContentProviders can be instantiated before Application.onCreate().
+      null
+    }
+  }
+
   // AppComponentFactory can be created multiple times
   internal companion object {
-    private lateinit var appComponentFactoryBindings: MetroAppComponentProviders
+    private lateinit var metroApplication: MetroApplication
+
+    private val appComponentFactoryBindings: MetroAppComponentProviders
+      get() = metroApplication.appComponentProviders
   }
 }

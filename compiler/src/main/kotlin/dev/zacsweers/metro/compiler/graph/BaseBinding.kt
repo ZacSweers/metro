@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.graph
 
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSpan
+import dev.zacsweers.metro.compiler.diagnostics.Note
 
 internal interface BaseBinding<
   Type : Any,
@@ -28,6 +29,9 @@ internal interface BaseBinding<
    */
   val isTransient: Boolean
     get() = false
+
+  val diagnosticNotes: List<Note>
+    get() = emptyList()
 
   /**
    * Some types may be implicitly deferrable such as lazy/provider types, instance-based bindings,

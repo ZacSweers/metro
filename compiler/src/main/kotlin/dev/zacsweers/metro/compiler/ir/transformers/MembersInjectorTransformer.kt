@@ -514,9 +514,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       )
       .apply {
         addConstructor {
-            visibility = DescriptorVisibilities.PRIVATE
-            isPrimary = true
-          }
+          visibility = DescriptorVisibilities.PRIVATE
+          isPrimary = true
+        }
           .apply {
             addParameters(
               allParameters,
@@ -872,17 +872,17 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     membersExtractor: (IrClass, ClassId, NameAllocator) -> List<Parameters>,
   ): Map<ClassId, List<Parameters>> {
     return buildList {
-        val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+      val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
 
-        for (clazz in types) {
-          val classId = clazz.classIdOrFail
-          val injectedMembers = membersExtractor(clazz, classId, nameAllocator)
+      for (clazz in types) {
+        val classId = clazz.classIdOrFail
+        val injectedMembers = membersExtractor(clazz, classId, nameAllocator)
 
-          if (injectedMembers.isNotEmpty()) {
-            add(classId to injectedMembers)
-          }
+        if (injectedMembers.isNotEmpty()) {
+          add(classId to injectedMembers)
         }
       }
+    }
       // Reverse it such that the supertypes are first
       .asReversed()
       .associate { it.first to it.second }

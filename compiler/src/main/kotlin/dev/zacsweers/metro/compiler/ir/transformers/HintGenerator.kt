@@ -153,14 +153,13 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
 
   companion object {
     fun hintFileName(sourceClassId: ClassId, hintName: Name): String {
-      val fileNameWithoutExtension =
-        sequence {
-            yieldAll(sourceClassId.packageFqName.pathSegments())
-            yield(sourceClassId.joinSimpleNames(separator = "", camelCase = true).shortClassName)
-            yield(hintName)
-          }
-          .joinToString(separator = "") { it.asString().capitalizeUS() }
-          .decapitalizeUS()
+      val fileNameWithoutExtension = sequence {
+        yieldAll(sourceClassId.packageFqName.pathSegments())
+        yield(sourceClassId.joinSimpleNames(separator = "", camelCase = true).shortClassName)
+        yield(hintName)
+      }
+        .joinToString(separator = "") { it.asString().capitalizeUS() }
+        .decapitalizeUS()
       return "$fileNameWithoutExtension.kt"
     }
   }

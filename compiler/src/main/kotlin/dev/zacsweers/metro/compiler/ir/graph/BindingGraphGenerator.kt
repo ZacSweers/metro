@@ -231,6 +231,7 @@ internal class BindingGraphGenerator(
             when (existingBinding) {
               is Provided -> existingBinding.providerFactory.isDynamic
               is Alias -> existingBinding.bindsCallable?.isDynamic == true
+              is ConstructorInjected -> existingBinding.explicitBinding?.isDynamic == true
               else -> false
             }
 
@@ -310,6 +311,7 @@ internal class BindingGraphGenerator(
             when (existingBinding) {
               is Provided -> existingBinding.providerFactory.isDynamic
               is Alias -> existingBinding.bindsCallable?.isDynamic == true
+              is ConstructorInjected -> existingBinding.explicitBinding?.isDynamic == true
               else -> false
             }
           if (!existingAreDynamic) {
@@ -318,26 +320,28 @@ internal class BindingGraphGenerator(
           }
         }
 
-        val mirrorFunction = bindsCallable.callableMetadata.mirrorFunction
+        val source = bindsCallable.source
 
-        // Use cached binding if available, otherwise create and cache
         val binding =
-          mirrorFunction.cachedAliasBinding
-            ?: trace("Resolve binds alias binding") {
-              val parameters = bindsCallable.function.parameters()
-              val bindsImplType =
-                parameters.extensionOrFirstParameter?.contextualTypeKey
-                  ?: reportCompilerBug(
-                    "Missing receiver parameter for @Binds function: ${bindsCallable.function}"
-                  )
-              IrBinding.Alias(
-                  typeKey = targetTypeKey,
-                  aliasedType = bindsImplType.typeKey,
-                  bindsCallable = bindsCallable,
-                  parameters = parameters,
-                )
-                .also { mirrorFunction.cachedAliasBinding = it }
+          if (source == null) {
+            trace("Resolve explicit constructor-injected binding") {
+              bindingLookup.createExplicitConstructorInjectedBinding(bindsCallable)
             }
+          } else {
+            val mirrorFunction = bindsCallable.callableMetadata.mirrorFunction
+            // Use cached binding if available, otherwise create and cache
+            mirrorFunction.cachedAliasBinding
+              ?: trace("Resolve binds alias binding") {
+                val parameters = bindsCallable.function.parameters()
+                IrBinding.Alias(
+                    typeKey = targetTypeKey,
+                    aliasedType = source,
+                    bindsCallable = bindsCallable,
+                    parameters = parameters,
+                  )
+                  .also { mirrorFunction.cachedAliasBinding = it }
+              }
+          }
 
         // Add the binding to the lookup (duplicates tracked as lists)
         putBinding(binding.typeKey, isLocallyDeclared = !isInherited, binding)
@@ -783,7 +787,8 @@ internal class BindingGraphGenerator(
           continue
         }
         for (callable in callables) {
-          if (callable.source in extendedNode.graphPrivateKeys) continue
+          val source = callable.source
+          if (source != null && source in extendedNode.graphPrivateKeys) continue
           val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
           bindsCallableKeys.add(key)
           bindsCallables.add(RawBindsCallableEntry(key, callable, isDynamicInParent))
@@ -796,7 +801,10 @@ internal class BindingGraphGenerator(
       }
 
       // Collect multibinds callables.
-      multibindsCallables.addAll(extendedNode.multibindsCallables)
+      for (callable in extendedNode.multibindsCallables) {
+        if (callable.typeKey in extendedNode.graphPrivateKeys) continue
+        multibindsCallables.add(callable)
+      }
 
       // Collect optional keys.
       for ((optKey, callables) in extendedNode.optionalKeys) {
@@ -817,6 +825,7 @@ internal class BindingGraphGenerator(
 
       // Collect multibinding accessors.
       for (accessor in extendedNode.accessors) {
+        if (accessor.contextKey.typeKey in extendedNode.graphPrivateKeys) continue
         if (accessor.metroFunction.annotations.isMultibinds) {
           multibindingAccessors.add(accessor)
         }

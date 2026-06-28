@@ -49,42 +49,45 @@ fun box(): String {
     val appGraph = createGraphFactory<AppGraph.Factory>().create(tracer, sourceGraph)
 
     assertEquals("source", appGraph.createChildGraph().sourceMessage)
-    assertEvent(
-      name = "ChildGraph",
+    assertInstant(
+      name = "AppGraph.createChildGraph",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "createChildGraph",
       type = "ChildGraph",
       kind = "Accessor",
     )
-    assertEvent(
-      name = "String",
+    assertInstant(
+      name = "ChildGraph.sourceMessage",
       graph = "ChildGraph",
       path = "AppGraph/ChildGraph",
+      callable = "sourceMessage",
       type = "String",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "String",
       graph = "ChildGraph",
       path = "AppGraph/ChildGraph",
       type = "String",
       kind = "Provided",
     )
-    assertEvent(
+    assertTrace(
       name = "SourceGraph",
       graph = "ChildGraph",
       path = "AppGraph/ChildGraph",
       type = "SourceGraph",
       kind = "GraphDependency",
     )
-    assertEvent(
-      name = "String",
+    assertInstant(
+      name = "SourceGraph.message",
       graph = "SourceGraph",
       path = "SourceGraph",
+      callable = "message",
       type = "String",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "String",
       graph = "SourceGraph",
       path = "SourceGraph",

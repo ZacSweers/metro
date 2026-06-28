@@ -1,18 +1,20 @@
 /MissingBindingRich.kt:14:22: error: 
-<red>[Metro/MissingBinding]</> No binding found for <b>Dependency</>
+<dim>   ╭─ </intensity><b>[Metro/MissingBinding] No binding found for Dependency</intensity>
+<dim>   │ → </intensity>MissingBindingRich.kt:14:22
+<dim>   │</intensity>
+<dim>   │ </intensity><red>⌄⌄⌄⌄⌄⌄⌄</fg>
+<dim>13 │ </intensity><red>@Inject</fg>
+<dim>14 │ </intensity><red>class RepositoryImpl(dep: Dependency</fg>) : Repository
+<dim>   │ </intensity><red>⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃⌃</fg>
+<dim>   ╰─</intensity>
 
-  <dim>   ╭─[ MissingBindingRich.kt:14:22 ]</>
-  <dim>14 │ </>class RepositoryImpl(dep: Dependency) : Repository
-  <dim>   │ </>                     <dim>───────────────</>
-  <dim>   ╰─</>
+  AppGraph.repo <dim>→ </intensity><b>RepositoryImpl</intensity> <dim>→ </intensity><b>Dependency</intensity>
 
-  AppGraph.repo <dim>→ </><b>RepositoryImpl</> <dim>→ </><b>Dependency</>
+  trace (in <b>AppGraph</intensity>):
+      <b>Dependency</intensity> is injected at RepositoryImpl(…, dep)
+      <b>RepositoryImpl</intensity> is requested at AppGraph.repo
 
-  trace (in <b>AppGraph</>):
-      <b>Dependency</> is injected at RepositoryImpl(…, dep)
-      <b>RepositoryImpl</> is requested at AppGraph.repo
-
-  <green>help:</> ensure <b>Dependency</> has an @Inject constructor or is provided by an @Provides or @Binds
-        declaration visible to <b>AppGraph</>
-  <dim>docs:</> https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+  <cyan>help:</fg> ensure <b>Dependency</intensity> has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to <b>AppGraph</intensity>
+  <dim>docs:</intensity> https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 

@@ -23,14 +23,15 @@ fun box(): String {
   testMetroTrace {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
     assertEquals(emptySet<String>(), graph.strings)
-    assertEvent(
-      name = "Set<String>",
+    assertInstant(
+      name = "AppGraph.strings",
       graph = "AppGraph",
       path = "AppGraph",
+      callable = "strings",
       type = "Set<String>",
       kind = "Accessor",
     )
-    assertEvent(
+    assertTrace(
       name = "Set<String>",
       graph = "AppGraph",
       path = "AppGraph",

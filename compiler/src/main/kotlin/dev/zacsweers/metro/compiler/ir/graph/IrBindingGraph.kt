@@ -111,13 +111,6 @@ internal class IrBindingGraph(
     val factory: KtDiagnosticFactory1<String>
     val declaration: IrDeclaration
 
-    /** Raw preformatted message from call sites not yet migrated to the structured model. */
-    data class Raw(
-      override val factory: KtDiagnosticFactory1<String>,
-      override val declaration: IrDeclaration,
-      val message: String,
-    ) : PendingDiagnostic
-
     data class Structured(
       override val factory: KtDiagnosticFactory1<String>,
       override val declaration: IrDeclaration,
@@ -126,15 +119,6 @@ internal class IrBindingGraph(
   }
 
   private val pendingDiagnostics = mutableListOf<PendingDiagnostic>()
-
-  private fun collectError(
-    message: String,
-    declaration: IrDeclaration,
-    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
-  ) {
-    hasErrors = true
-    pendingDiagnostics += PendingDiagnostic.Raw(factory, declaration, message)
-  }
 
   private fun collectDiagnostic(diagnostic: MetroDiagnostic, declaration: IrDeclaration) {
     hasErrors = true
@@ -206,7 +190,6 @@ internal class IrBindingGraph(
         val (factory, declaration) = key
         val rendered = diagnostics.map { pending ->
           when (pending) {
-            is PendingDiagnostic.Raw -> pending.message
             is PendingDiagnostic.Structured -> renderedStructured.getValue(pending)
           }
         }
@@ -447,9 +430,9 @@ internal class IrBindingGraph(
         if (unusedMultibindingElements.isNotEmpty()) {
           val allMultibindings by memoize {
             buildList {
-                realGraph.bindings.forEachValue { b -> if (b is IrBinding.Multibinding) add(b) }
-                addAll(bindingLookup.getAvailableMultibindings().values)
-              }
+              realGraph.bindings.forEachValue { b -> if (b is IrBinding.Multibinding) add(b) }
+              addAll(bindingLookup.getAvailableMultibindings().values)
+            }
               .distinctBy { it.typeKey }
           }
           val suspiciousDiagnostics = mutableListOf<MetroDiagnostic>()
@@ -461,12 +444,30 @@ internal class IrBindingGraph(
             // Report the first few bindings
             val examples =
               unusedSources
-                .mapNotNull { source -> bindingLookup[source]?.renderLocationDiagnostic() }
+                .mapNotNull { source ->
+                  val sourceBinding = bindingLookup[source] ?: return@mapNotNull null
+                  if (sourceBinding is IrBinding.Provided) {
+                    sourceBinding.renderContributionLocationDiagnostic(
+                      short = true,
+                      shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+                    ) ?: sourceBinding.renderLocationDiagnostic(underlineTypeKey = false)
+                  } else {
+                    sourceBinding.renderLocationDiagnostic(underlineTypeKey = false)
+                  }
+                }
                 // Stable sort
                 .sortedBy { it.location }
             val locationItems = buildList {
               for (example in examples.take(MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT)) {
-                add(LocatedItem(location = example.location, code = example.description))
+                add(
+                  LocatedItem(
+                    location = example.location,
+                    code = example.description,
+                    preferSourceSnippet = true,
+                    includeLeadingAnnotations = false,
+                    span = example.span,
+                  )
+                )
               }
               if (unusedSources.size > MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT) {
                 val remaining = unusedSources.size - MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT
@@ -802,6 +803,7 @@ internal class IrBindingGraph(
                   LocatedItem(
                     location = locationDiagnostic.location,
                     code = locationDiagnostic.description,
+                    span = locationDiagnostic.span,
                   )
                 ),
             )
@@ -1151,6 +1153,7 @@ internal class IrBindingGraph(
         LocatedItem(
           location = locationDiagnostic.location,
           code = locationDiagnostic.description,
+          span = locationDiagnostic.span,
         )
       }
 

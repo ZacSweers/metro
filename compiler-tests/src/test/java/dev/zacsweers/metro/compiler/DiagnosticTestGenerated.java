@@ -543,6 +543,24 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ParameterlessBindsConstructorCycle.kt")
+    public void testParameterlessBindsConstructorCycle() {
+      run("ParameterlessBindsConstructorCycle.kt");
+    }
+
+    @Test
+    @TestMetadata("ParameterlessBindsDuplicateBinding.kt")
+    public void testParameterlessBindsDuplicateBinding() {
+      run("ParameterlessBindsDuplicateBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("ParameterlessBindsExternalFactoryUnavailable.kt")
+    public void testParameterlessBindsExternalFactoryUnavailable() {
+      run("ParameterlessBindsExternalFactoryUnavailable.kt");
+    }
+
+    @Test
     @TestMetadata("RuntimeTracingRequiresGraphFactory.kt")
     public void testRuntimeTracingRequiresGraphFactory() {
       run("RuntimeTracingRequiresGraphFactory.kt");
@@ -1380,6 +1398,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("LazyAssistedFactoryProvides.kt")
     public void testLazyAssistedFactoryProvides() {
       run("LazyAssistedFactoryProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("ParameterlessBindsContributionProviders.kt")
+    public void testParameterlessBindsContributionProviders() {
+      run("ParameterlessBindsContributionProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("ParameterlessBindsDiagnostics.kt")
+    public void testParameterlessBindsDiagnostics() {
+      run("ParameterlessBindsDiagnostics.kt");
     }
 
     @Test

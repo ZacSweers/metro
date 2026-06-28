@@ -74,4 +74,34 @@ public class MetroTraceContext(
       block()
     }
   }
+
+  /**
+   * Emits a zero-duration event with Metro-specific metadata.
+   *
+   * The visible event [name] describes the generated graph entry point. [callable] records the
+   * callable name without the graph prefix, and the remaining metadata records the requested key.
+   */
+  public fun instant(
+    name: String,
+    callable: String,
+    qualifier: String?,
+    type: String,
+    contextualType: String?,
+    kind: String?,
+  ) {
+    val renderedContextualType = contextualType?.takeIf { it != type }
+    tracer.instant(
+      category = category,
+      name = name,
+      metadataBlock = {
+        addMetadataEntry("metro.graph", graphName)
+        addMetadataEntry("metro.graph_path", graphPath)
+        addMetadataEntry("metro.callable", callable)
+        addMetadataEntry("metro.type", type)
+        renderedContextualType?.let { addMetadataEntry("metro.contextual_type", it) }
+        qualifier?.let { addMetadataEntry("metro.qualifier", it) }
+        kind?.let { addMetadataEntry("metro.entry_point_kind", it) }
+      },
+    )
+  }
 }

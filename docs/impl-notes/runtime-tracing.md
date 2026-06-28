@@ -5,24 +5,26 @@ Internal notes for Metro's generated runtime tracing implementation. User-facing
 
 ## Goal
 
-`metro { enableRuntimeTracing.set(true) }` makes generated graph code emit AndroidX Tracing spans
+`metro { enableRuntimeTracing.set(true) }` makes generated graph code emit AndroidX Tracing events
 while user code runs. This is separate from Metro's compiler self-tracing, which records FIR and IR
 extension work during compilation.
 
 Runtime tracing records two kinds of work:
 
-- graph entry points, such as accessors, graph extension creators, and member-injection functions
-- binding realization, such as constructor injection, `@Provides`, multibindings, and provider
-  invocation
+- graph entry-point instants, such as accessors, graph extension creators, and member-injection
+  functions
+- binding-realization spans, such as constructor injection, `@Provides`, multibindings, and
+  provider invocation
 
 The implementation currently targets JVM and Android JVM code (what androix.trace targets). The helper runtime lives in 
 the JVM-only `metro-trace` artifact.
 
 ## Graph Input Contract
 
-Runtime tracing needs an AndroidX `Tracer` instance before generated graph code can create any binding
-spans. Metro does not synthesize this binding. Root dependency graphs must use a graph factory whose
-create function takes a `@Provides tracer: androidx.tracing.Tracer` graph input.
+Runtime tracing needs an AndroidX `Tracer` instance before generated graph code can create any
+binding spans or entry-point instant events. Metro does not synthesize this binding. Root dependency
+graphs must use a graph factory whose create function takes a
+`@Provides tracer: androidx.tracing.Tracer` graph input.
 
 FIR enforces that contract in two places:
 
@@ -40,6 +42,8 @@ They inherit the parent graph's trace context.
 
 - `MetroTraceContext`: immutable graph-local trace state.
 - `TracedProvider`: a Metro `Provider<T>` decorator that traces each provider invocation.
+- `TracedMembersInjector`: a Metro `MembersInjector<T>` decorator that marks each
+  `injectMembers(...)` invocation with an `instant` event.
 - `TraceTestUtil`: test-only helpers used by compiler box tests.
 
 `MetroTraceContext` stores the AndroidX `Tracer`, a category, the current graph name, and the
@@ -61,8 +65,8 @@ compiler directly. `RuntimeTracingAvailability` memoizes one compilation-wide de
 - the option must be enabled
 - the platform must support tracing
 - `androidx.tracing.Tracer` must be resolvable
-- `MetroTraceContext`, `MetroTraceContext.trace`, `MetroTraceContext.child`, and `TracedProvider`
-  must be resolvable
+- `MetroTraceContext`, `MetroTraceContext.trace`, `MetroTraceContext.instant`,
+  `MetroTraceContext.child`, `TracedMembersInjector`, and `TracedProvider` must be resolvable
 
 `DependencyGraphTransformer` reports the unavailable reason once as `METRO_TRACE_ERROR`, then exits
 processing. FIR intentionally does not do classpath symbol checks for these helper classes.
@@ -116,21 +120,29 @@ traced provider.
 Multibinding code uses the same hooks. The aggregate getter is traced as `Multibinding`, and each
 element binding can still emit its own binding span when it is realized.
 
-## Entry-Point Spans
+Requested `MembersInjector<T>` bindings use `TracedMembersInjector`. Creating or accessing the
+injector is not treated as its own binding span, but later `injectMembers(...)` calls emit instant
+events named like `MembersInjector<T>`.
 
-`IrGraphGenerator.traceGeneratedGraphEntryPoint(...)` wraps generated graph APIs in parent spans.
-These spans make it clear which graph operation caused lower-level binding spans.
+## Entry-Point Instants
+
+`IrGraphGenerator.traceGeneratedGraphEntryPoint(...)` emits generated graph APIs as instant events.
+These markers make it clear which graph operation caused lower-level binding spans without making
+the graph entry point look like its own binding.
 
 Current entry-point kinds are:
 
 - `Accessor`: graph accessors and graph extension creators.
-- `Member Injector`: generated member-injection functions.
+- `Member Injector`: generated member-injection functions and requested `MembersInjector<T>`
+  invocations.
 
-These parent spans use the same `MetroTraceContext.trace(...)` helper as binding spans.
+These entry-point markers use `MetroTraceContext.instant(...)`. Their visible names render the
+implemented graph member, such as `AppGraph.foo` or `AppGraph.createChildGraph`. Metadata records
+the callable name separately without using binding-kind metadata.
 
 ## Names And Metadata
 
-Trace names are intentionally readable rather than globally unique. The visible name is:
+Binding span names are intentionally readable rather than globally unique. The visible name is:
 
 ```text
 <qualifier> <contextual type>
@@ -139,17 +151,28 @@ Trace names are intentionally readable rather than globally unique. The visible 
 The qualifier is omitted for unqualified bindings. The contextual type falls back to the canonical
 type when they are the same.
 
-Every span records:
+Every Metro runtime trace event records:
 
 - `metro.graph`: the graph that owns the generated code.
 - `metro.graph_path`: the root-to-current graph path.
+
+Binding span metadata:
+
 - `metro.type`: the canonical unqualified type.
+- `metro.binding_kind`: the generated binding kind.
 
 Optional metadata:
 
 - `metro.contextual_type`: the requested unqualified type when it differs from `metro.type`.
 - `metro.qualifier`: the rendered qualifier.
-- `metro.binding_kind`: the generated binding or entry-point kind.
+
+Entry-point instant metadata:
+
+- `metro.callable`: the callable name without the graph prefix.
+- `metro.type`: the canonical unqualified requested type.
+- `metro.contextual_type`: the requested unqualified type when it differs from `metro.type`.
+- `metro.qualifier`: the rendered qualifier.
+- `metro.entry_point_kind`: `Accessor` or `Member Injector`.
 
 Multibinding element rendering is special-cased. The element's visible type remains the element
 type, but qualifier rendering uses the target multibinding when that is the useful user-facing key.

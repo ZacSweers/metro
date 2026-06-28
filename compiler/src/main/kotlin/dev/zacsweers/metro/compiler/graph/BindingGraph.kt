@@ -419,16 +419,20 @@ internal open class MutableBindingGraph<
           },
         sections = listOf(DiagnosticSection.Cycle(nodes), trace),
         notes =
-          listOf(
-            Note.help(
-              buildText {
-                append("break the cycle by injecting a deferred type at one edge, e.g. ")
-                appendCode("() -> $deferredExample")
-                append(" or ")
-                appendCode("Lazy<$deferredExample>")
-              }
+          buildList {
+            addAll(entriesToReport.flatMap { it.diagnosticNotes }.distinct())
+            add(
+              Note.help(
+                buildText {
+                  append("you can break the cycle by injecting a deferred type at one edge, e.g. ")
+                  appendCode("() -> $deferredExample")
+                  append(" or ")
+                  appendCode("Lazy<$deferredExample>")
+                  append(". Only do this if you know what you're doing though!")
+                }
+              )
             )
-          ),
+          },
       )
     errorReporter.reportFatal(diagnostic, stack)
   }
@@ -457,6 +461,7 @@ internal open class MutableBindingGraph<
 
   fun reportDuplicateBindings(key: TypeKey, bindings: List<Binding>, bindingStack: BindingStack) {
     val notes = buildList {
+      addAll(bindings.flatMap { it.diagnosticNotes }.distinct())
       if (bindings.distinctBy { System.identityHashCode(it) }.size == 1) {
         add(Note.note("the duplicate bindings are all the same instance"))
       } else if (bindings.allElementsAreEqual()) {
@@ -465,7 +470,7 @@ internal open class MutableBindingGraph<
     }
     reportDuplicateBindings(
       key,
-      bindings.map { it.renderLocationDiagnostic() },
+      bindings.map { it.renderLocationDiagnostic(short = true) },
       bindingStack,
       notes,
     )
@@ -552,6 +557,7 @@ internal open class MutableBindingGraph<
             },
           notes =
             hints.notes +
+              bindingStack.entries.flatMap { it.diagnosticNotes }.distinct() +
               Note.help(
                 buildText {
                   append("ensure ")

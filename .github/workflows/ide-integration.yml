@@ -97,41 +97,54 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
-      - name: Download Metro artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: metro-repo
-          path: build/functionalTestRepo
+      - parallel:
+          - name: Download Metro artifacts
+            uses: actions/download-artifact@v8
+            with:
+              name: metro-repo
+              path: build/functionalTestRepo
 
-      - name: Setup Gradle
-        uses: ./.github/actions/setup-gradle
-        with:
-          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          - name: Setup Gradle
+            uses: ./.github/actions/setup-gradle
+            with:
+              encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+              cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Install aria2 and xvfb
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y aria2 xvfb
+          - name: Install aria2 and xvfb
+            run: |
+              sudo apt-get update
+              sudo apt-get install -y aria2 xvfb
 
-      - name: Filter IDE version for this matrix entry
-        run: |
-          echo "${{ matrix.ide }}" > ide-integration-tests/ide-versions.txt
-          echo "IDE_SLUG=${IDE//:/-}" >> "$GITHUB_ENV"
-        env:
-          IDE: ${{ matrix.ide }}
+          - name: Filter IDE version for this matrix entry
+            run: |
+              echo "${{ matrix.ide }}" > ide-integration-tests/ide-versions.txt
+              echo "IDE_SLUG=${IDE//:/-}" >> "$GITHUB_ENV"
+            env:
+              IDE: ${{ matrix.ide }}
 
-      - name: Write local.properties for Android Studio
-        if: startsWith(matrix.ide, 'AS:')
-        run: echo "sdk.dir=$ANDROID_HOME" > ide-integration-tests/test-project/local.properties
+          - name: Write local.properties for Android Studio
+            if: startsWith(matrix.ide, 'AS:')
+            run: echo "sdk.dir=$ANDROID_HOME" > ide-integration-tests/test-project/local.properties
 
       # We don't cache IDE downloads with a separate cache step because they download in a few seconds
       - name: Download IDE
         run: ide-integration-tests/download-ides.sh
 
       - name: Run IDE tests
+        # The :intellijPlatformTestRuntimeClasspath resolution flakes with a
+        # ClosedFileSystemException (IO/download issue), so retry once. The retry adds --stacktrace to
+        # pin down where the failure originates if it recurs.
         run: |
+          set +e
           ./gradlew -p ide-integration-tests test --quiet
+          status=$?
+          if [ $status -ne 0 ]; then
+            echo "::warning::IDE tests failed (exit $status); retrying once"
+            sleep 15
+            ./gradlew -p ide-integration-tests test --quiet --stacktrace
+            status=$?
+          fi
+          exit $status
 
       - name: Upload logs
         if: failure()

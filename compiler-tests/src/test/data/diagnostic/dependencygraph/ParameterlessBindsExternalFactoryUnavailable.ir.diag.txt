@@ -1,0 +1,1 @@
+/main.kt:19:10: error: Parameter-less @Binds target `ExternalTarget` must be constructor-injected. Make sure Metro's compiler runs over `ExternalTarget`.

@@ -149,50 +149,49 @@ internal class SwitchingProviderGenerator(
    */
   private fun IrClass.addConstructorAndFields(): Triple<IrConstructor, IrProperty, IrProperty> {
     // TODO switch to direct initializers? For some reason when I try, the fields are not set
-    val graphProperty =
-      addProperty {
-          name = Name.identifier(Symbols.StringNames.GRAPH)
-          visibility = DescriptorVisibilities.PRIVATE
-        }
-        .apply { addBackingFieldCompat { type = graphOrShardClass.defaultType } }
+    val graphProperty = addProperty {
+      name = Name.identifier(Symbols.StringNames.GRAPH)
+      visibility = DescriptorVisibilities.PRIVATE
+    }
+      .apply { addBackingFieldCompat { type = graphOrShardClass.defaultType } }
 
-    val idProperty =
-      addProperty {
-          name = Name.identifier("id")
-          visibility = DescriptorVisibilities.PRIVATE
-        }
-        .apply { addBackingFieldCompat { type = irBuiltIns.intType } }
+    val idProperty = addProperty {
+      name = Name.identifier("id")
+      visibility = DescriptorVisibilities.PRIVATE
+    }
+      .apply { addBackingFieldCompat { type = irBuiltIns.intType } }
 
     // Add constructor
-    val constructor =
-      addConstructor { isPrimary = true }
-        .apply {
-          val graphParam = addValueParameter {
-            name = Name.identifier(Symbols.StringNames.GRAPH)
-            type = graphOrShardClass.defaultType
-          }
-          val idParam = addValueParameter {
-            name = Name.identifier("id")
-            type = irBuiltIns.intType
-          }
-
-          val switchingThisReceiver = this@addConstructorAndFields.thisReceiverOrFail
-
-          buildBlockBody {
-            // Call super constructor (Any)
-            +irDelegatingConstructorCall(irBuiltIns.anyClass.owner.primaryConstructor!!)
-
-            // Initialize graph field
-            +irSetField(
-              irGet(switchingThisReceiver),
-              graphProperty.backingField!!,
-              irGet(graphParam),
-            )
-
-            // Initialize id field
-            +irSetField(irGet(switchingThisReceiver), idProperty.backingField!!, irGet(idParam))
-          }
+    val constructor = addConstructor {
+      isPrimary = true
+    }
+      .apply {
+        val graphParam = addValueParameter {
+          name = Name.identifier(Symbols.StringNames.GRAPH)
+          type = graphOrShardClass.defaultType
         }
+        val idParam = addValueParameter {
+          name = Name.identifier("id")
+          type = irBuiltIns.intType
+        }
+
+        val switchingThisReceiver = this@addConstructorAndFields.thisReceiverOrFail
+
+        buildBlockBody {
+          // Call super constructor (Any)
+          +irDelegatingConstructorCall(irBuiltIns.anyClass.owner.primaryConstructor!!)
+
+          // Initialize graph field
+          +irSetField(
+            irGet(switchingThisReceiver),
+            graphProperty.backingField!!,
+            irGet(graphParam),
+          )
+
+          // Initialize id field
+          +irSetField(irGet(switchingThisReceiver), idProperty.backingField!!, irGet(idParam))
+        }
+      }
 
     return Triple(constructor, graphProperty, idProperty)
   }
@@ -258,9 +257,9 @@ internal class SwitchingProviderGenerator(
     isOnly: Boolean,
   ) {
     addFunction {
-        name = Symbols.Names.invoke
-        returnType = typeParam.defaultType
-      }
+      name = Symbols.Names.invoke
+      returnType = typeParam.defaultType
+    }
       .apply {
         // Pass explicit type to avoid type parameter remapping (class has T, function has none)
         val localDispatchReceiver =
@@ -299,10 +298,10 @@ internal class SwitchingProviderGenerator(
     nameAllocator: NameAllocator,
   ): IrSimpleFunction {
     return addFunction {
-        name = nameAllocator.newName(Symbols.Names.invoke)
-        returnType = typeParam.defaultType
-        visibility = DescriptorVisibilities.PRIVATE
-      }
+      name = nameAllocator.newName(Symbols.Names.invoke)
+      returnType = typeParam.defaultType
+      visibility = DescriptorVisibilities.PRIVATE
+    }
       .apply {
         val localDispatchReceiver =
           this@addInvokeChunkFunction.thisReceiverOrFail.copyTo(

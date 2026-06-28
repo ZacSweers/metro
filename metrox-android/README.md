@@ -22,7 +22,13 @@ For simple cases, all you need to do is
 3. Make your `Application` subclass implement `MetroApplication` and implement `appComponentProviders`.
     ```kotlin
     class MyApp : Application(), MetroApplication {
-      private val appGraph by lazy { createGraph<AppGraph>() }
+      private lateinit var appGraph: AppGraph
+
+      override fun onCreate() {
+        super.onCreate()
+        appGraph = createGraph<AppGraph>()
+      }
+
       override val appComponentProviders: MetroAppComponentProviders
         get() = appGraph
     }
@@ -41,6 +47,8 @@ class MainActivity(private val fragmentFactory: FragmentFactory): AppCompatActiv
 ```
 
 For other types of components, use `@BroadcastReceiverKey`, `@ContentProviderKey`, and `@ServiceKey` the same way.
+
+Android creates `ContentProvider`s before `Application.onCreate()`. If you constructor-inject your own `ContentProvider`s through `MetroAppComponentFactory`, make sure `appComponentProviders` can be read before `onCreate()`.
 
 Note that the built-in `MetroAppComponentFactory` uses the base `Activity`, `Service`, etc types. If you want to use your own bases (`ComponentActivity`, etc), you'll need to create your own `AppComponentFactory` + relevant multibindings typed to the key you need.
 

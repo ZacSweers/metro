@@ -2,7 +2,7 @@
 # Run `kempt --help` to see all options.
 
 [ktfmt]
-version = "0.63"
+version = "0.64"
 
 [gjf]
 version = "1.35.0"

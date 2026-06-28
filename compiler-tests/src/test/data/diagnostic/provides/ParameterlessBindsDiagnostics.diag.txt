@@ -1,0 +1,15 @@
+/ParameterlessBindsDiagnostics.kt:7:31: error: Parameter-less @Binds target `MissingInject` must be constructor-injected.
+
+/ParameterlessBindsDiagnostics.kt:9:30: error: Parameter-less @Binds declarations may not return generic types.
+
+/ParameterlessBindsDiagnostics.kt:11:31: error: Parameter-less @Binds declarations may not return generic types.
+
+/ParameterlessBindsDiagnostics.kt:13:31: error: Parameter-less @Binds target `Service` must be constructor-injected.
+
+/ParameterlessBindsDiagnostics.kt:17:7: error: Parameter-less @Binds declarations may not be qualified or used as multibindings.
+
+/ParameterlessBindsDiagnostics.kt:20:3: error: Parameter-less @Binds declarations may not be qualified or used as multibindings.
+
+/ParameterlessBindsDiagnostics.kt:24:3: error: Parameter-less @Binds declarations may not be qualified or used as multibindings.
+
+/ParameterlessBindsDiagnostics.kt:28:3: error: @Binds declarations may not have scopes.

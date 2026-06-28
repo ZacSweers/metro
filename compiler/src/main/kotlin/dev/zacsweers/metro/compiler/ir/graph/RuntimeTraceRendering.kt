@@ -6,7 +6,7 @@ import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.symbols.Symbols
 
-/** Rendering rules shared by runtime trace spans for bindings and generated graph entry points. */
+/** Rendering rules shared by runtime trace events for bindings and generated graph entry points. */
 internal fun IrContextualTypeKey.runtimeTraceQualifier(): String? {
   val multibindingKeyData = typeKey.multibindingKeyData
   return if (multibindingKeyData == null) {

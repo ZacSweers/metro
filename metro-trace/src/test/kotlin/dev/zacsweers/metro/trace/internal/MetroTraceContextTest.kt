@@ -51,6 +51,39 @@ class MetroTraceContextTest {
     assertSame(exception, assertFailsWith<IllegalStateException> { provider() })
   }
 
+  @Test
+  fun tracedMembersInjectorDelegatesToWrappedInjector() {
+    val target = Target()
+    val injector =
+      TracedMembersInjector<Target>(
+        traceContext = traceContext(),
+        qualifier = null,
+        type = "Target",
+        injector = { it.value = "injected" },
+      )
+
+    injector.injectMembers(target)
+
+    assertEquals("injected", target.value)
+  }
+
+  @Test
+  fun tracedMembersInjectorPropagatesDelegateExceptions() {
+    val exception = IllegalStateException("boom")
+    val injector =
+      TracedMembersInjector<Target>(
+        traceContext = traceContext(),
+        qualifier = null,
+        type = "Target",
+        injector = { throw exception },
+      )
+
+    assertSame(
+      exception,
+      assertFailsWith<IllegalStateException> { injector.injectMembers(Target()) },
+    )
+  }
+
   private fun traceContext(): MetroTraceContext {
     return MetroTraceContext(
       tracer = Tracer.getStubTracer(),
@@ -58,5 +91,9 @@ class MetroTraceContextTest {
       graphName = "AppGraph",
       graphPath = "AppGraph",
     )
+  }
+
+  private class Target {
+    var value: String? = null
   }
 }

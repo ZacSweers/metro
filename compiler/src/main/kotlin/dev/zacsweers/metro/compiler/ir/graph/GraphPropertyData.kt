@@ -42,11 +42,10 @@ internal fun IrProperty.ensureInitialized(
             this.visibility = backingFieldVisibility ?: this@ensureInitialized.visibility
           }
         }
-      GETTER ->
-        addGetter {
-            this.returnType = type
-            this.visibility = this@ensureInitialized.visibility
-          }
+      GETTER -> addGetter {
+          this.returnType = type
+          this.visibility = this@ensureInitialized.visibility
+        }
           .apply {
             setDispatchReceiver(
               this@ensureInitialized.parentAsClass.thisReceiverOrFail.copyTo(this)

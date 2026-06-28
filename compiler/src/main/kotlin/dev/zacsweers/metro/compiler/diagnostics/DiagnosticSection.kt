@@ -77,6 +77,10 @@ internal data class LocatedItem(
   /** Preformatted code excerpt (IR-rendered signature), possibly multi-line. */
   val code: String?,
   val description: Text? = null,
+  /** True when rich source frames should ignore [code] and render source from [span]. */
+  val preferSourceSnippet: Boolean = false,
+  /** True when source frames should include immediately preceding annotation lines. */
+  val includeLeadingAnnotations: Boolean = true,
   /**
    * Resolved source span, when known. Snippet-rendering profiles use this to draw a source frame;
    * other profiles fall back to [location] and [code].

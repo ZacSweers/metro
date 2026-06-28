@@ -1060,12 +1060,11 @@ internal fun FirAnnotation.includesArgument(session: FirSession) =
 internal fun FirAnnotation.subcomponentsArgument(session: FirSession) =
   arrayArgument(session, Symbols.Names.subcomponents, index = 1)
 
-internal fun FirAnnotation.allScopeClassIds(session: FirSession): Set<ClassId> =
-  buildSet {
-      resolvedScopeClassId(session)?.let(::add)
-      resolvedAdditionalScopesClassIds(session)?.let(::addAll)
-    }
-    .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
+internal fun FirAnnotation.allScopeClassIds(session: FirSession): Set<ClassId> = buildSet {
+  resolvedScopeClassId(session)?.let(::add)
+  resolvedAdditionalScopesClassIds(session)?.let(::addAll)
+}
+  .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
 internal fun FirAnnotation.excludesArgument(session: FirSession) =
   arrayArgument(session, Symbols.Names.excludes, index = 2)

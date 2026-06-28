@@ -1412,7 +1412,6 @@ private fun IrOverridableDeclaration<*>.daggerProviderSourceName(): String {
         } else {
           name.asString()
         }
-      else -> reportCompilerBug("Unexpected Dagger provider declaration: $this")
     }
   return if (name.startsWith("<get-") && name.endsWith(">")) {
     name.removePrefix("<get-").removeSuffix(">")
