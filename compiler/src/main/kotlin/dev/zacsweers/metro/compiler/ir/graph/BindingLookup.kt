@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.getOrInit
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
+import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -709,6 +710,37 @@ internal class BindingLookup(
       }
 
       return classBindings
+    }
+
+  internal fun createExplicitConstructorInjectedBinding(
+    bindsCallable: BindsCallable
+  ): IrBinding.ConstructorInjected =
+    context(metroContext) {
+      val key = bindsCallable.typeKey
+      val irClass = key.type.rawType()
+      val classFactory =
+        findClassFactory(irClass)
+          ?: reportCompilerBug(
+            "Parameter-less @Binds target ${key.render(short = false)} was not validated before binding graph generation."
+          )
+
+      trackFunctionCall(sourceGraph, classFactory.function)
+      trackClassLookup(sourceGraph, classFactory.factoryClass)
+
+      val remapper = irClass.deepRemapperFor(key.type)
+      val injectedMembers =
+        irClass.computeMembersInjectorBindings(remapper).mapToSet { binding ->
+          binding.contextualTypeKey
+        }
+
+      IrBinding.ConstructorInjected(
+        type = irClass,
+        classFactory = classFactory.remapTypes(remapper),
+        annotations = irClass.metroAnnotations(metroContext.metroSymbols.classIds),
+        typeKey = key,
+        injectedMembers = injectedMembers,
+        explicitBinding = bindsCallable,
+      )
     }
 
   private fun createParentGraphDependency(
