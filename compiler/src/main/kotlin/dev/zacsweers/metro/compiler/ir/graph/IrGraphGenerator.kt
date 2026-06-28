@@ -2001,9 +2001,7 @@ internal class IrGraphGenerator(
           // deserialize and validate these inherited members before later Metro mirror code can
           // cover for them.
           val sourceParameter =
-            extensionReceiverParameterCompat
-              ?: regularParameters.singleOrNull()
-              ?: reportCompilerBug("No source parameter found for @Binds function $kotlinFqName")
+            extensionReceiverParameterCompat ?: regularParameters.singleOrNull() ?: continue
           body = createIrBuilder(symbol).run { irExprBodySafe(irGet(sourceParameter)) }
         }
       }

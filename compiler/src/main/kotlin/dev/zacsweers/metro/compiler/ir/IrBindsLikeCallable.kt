@@ -6,6 +6,7 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedRanges
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -31,7 +32,7 @@ internal sealed interface BindsLikeCallable : IrBindingContainerCallable {
 @Poko
 internal class BindsCallable(
   override val callableMetadata: IrCallableMetadata,
-  val source: IrTypeKey,
+  val source: IrTypeKey?,
   /**
    * The canonical typeKey for this binding. For `@IntoSet`/`@IntoMap` bindings, this includes the
    * unique `@MultibindingElement` qualifier. For non-multibinding binds, this equals [rawTarget].
@@ -66,7 +67,7 @@ internal class BindsCallable(
   fun remapTypes(remapper: TypeRemapper): BindsCallable {
     return BindsCallable(
       callableMetadata = callableMetadata,
-      source = source.remapTypes(remapper),
+      source = source?.remapTypes(remapper),
       typeKey = typeKey.remapTypes(remapper),
       rawTarget = rawTarget.remapTypes(remapper),
     )
@@ -154,9 +155,16 @@ internal fun MetroSimpleFunction.toBindsCallable(isInterop: Boolean): BindsCalla
   val callableMetadata = ir.irCallableMetadata(annotations, isInterop)
   val rawTarget = IrContextualTypeKey.from(ir).typeKey
   val typeKey = rawTarget.transformIfIntoMultibinding(callableMetadata.annotations)
+  val nonDispatchParameters = ir.nonDispatchParameters
+  val source =
+    when (nonDispatchParameters.size) {
+      0 -> null
+      1 -> IrContextualTypeKey.from(nonDispatchParameters.single()).typeKey
+      else -> reportCompilerBug("@Binds declarations should have at most one source parameter: $ir")
+    }
   return BindsCallable(
     callableMetadata = callableMetadata,
-    source = IrContextualTypeKey.from(ir.nonDispatchParameters.single()).typeKey,
+    source = source,
     typeKey = typeKey,
     rawTarget = rawTarget,
   )
