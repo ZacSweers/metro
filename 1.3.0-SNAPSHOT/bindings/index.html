@@ -914,6 +914,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="@Binds">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameter-less-binds" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Parameter-less <code>@Binds</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1917,6 +1934,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="@Binds">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameter-less-binds" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Parameter-less <code>@Binds</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2040,6 +2074,41 @@
 <p class="admonition-title">Note</p>
 <p>In theory, you can implement a provider with a getter that replicates this (similar to how kotlin-inject uses <code>@get:Provider</code> + <code>this</code>), but this will be an error in FIR because Metro can generate more efficient code at compile-time if you use <code>@Binds</code>. This is because Metro can avoid calling the function entirely and just use this information at compile-time to optimize the generated code.</p>
 </div>
+<h3 id="parameter-less-binds">Parameter-less <code>@Binds</code><a class="headerlink" href="#parameter-less-binds" title="Permanent link">&para;</a></h3>
+<p><code>@Binds</code> can also declare a constructor-injected class as an explicit binding for itself.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="n">MessageImpl</span>
+
+<span class="w">  </span><span class="nd">@Binds</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">bindMessage</span><span class="p">():</span><span class="w"> </span><span class="n">MessageImpl</span>
+
+<span class="w">  </span><span class="nd">@Provides</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideText</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Hello, world!&quot;</span>
+<span class="p">}</span>
+
+<span class="nd">@Inject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">MessageImpl</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">text</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span>
+</code></pre></div>
+<p>This is useful when you want Metro to fail if another explicit binding for <code>MessageImpl</code> is added<br />
+to the same graph.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="n">MessageImpl</span>
+
+<span class="w">  </span><span class="nd">@Binds</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">bindMessage</span><span class="p">():</span><span class="w"> </span><span class="n">MessageImpl</span>
+
+<span class="w">  </span><span class="c1">// Error: duplicate binding for MessageImpl.</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="n">MessageImpl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MessageImpl</span><span class="p">(</span><span class="s">&quot;Hello, world!&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="nd">@Inject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">MessageImpl</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">text</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span>
+</code></pre></div>
+<p>The target must be a non-generic constructor-injected class and the<br />
+<code>@Binds</code> declaration cannot have parameters, a receiver, qualifiers, scopes, or multibinding<br />
+annotations. If <code>generateContributionProviders</code> hides the implementation binding, bind the<br />
+contributed type instead or annotate the implementation with <code>@ExposeImplBinding</code>.</p>
+<p>This matches Dagger 2.60+&rsquo;s behavior: <a href="https://dagger.dev/dev-guide/#parameterless-binds">https://dagger.dev/dev-guide/#parameterless-binds</a></p>
 <h2 id="multibindings">Multibindings<a class="headerlink" href="#multibindings" title="Permanent link">&para;</a></h2>
 <p>Like Dagger and KI, Metro supports <code>Set</code> and <code>Map</code> multibindings. Multibindings are collections of bindings of a common type. Multibindings are implicitly declared by the existence of providers annotated with <code>@IntoSet</code>, <code>@IntoMap</code>, or <code>@ElementsIntoSet</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
