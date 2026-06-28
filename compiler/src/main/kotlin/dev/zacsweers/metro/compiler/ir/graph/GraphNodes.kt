@@ -584,6 +584,50 @@ internal class GraphNodes(
       qualifierMismatches.clear()
     }
 
+    private fun isValidBindsCallable(callable: BindsCallable): Boolean {
+      if (callable.source != null) return true
+
+      val targetClass = callable.rawTarget.type.rawTypeOrNull()
+      val hasClassFactory =
+        targetClass != null &&
+          metroDeclarations.findClassFactory(
+            targetClass,
+            previouslyFoundConstructor = null,
+            doNotErrorOnMissing = true,
+          ) != null
+
+      if (hasClassFactory) return true
+
+      reportCompat(
+        callable.function,
+        MetroDiagnostics.BINDS_ERROR,
+        "Parameter-less @Binds target `${callable.rawTarget.render(short = false)}` must be a constructor-injected class with an available generated factory.",
+      )
+      hasErrors = true
+      return false
+    }
+
+    private fun addBindsCallable(callable: BindsCallable, isDynamic: Boolean) {
+      if (!isValidBindsCallable(callable)) return
+
+      if (callable.callableMetadata.annotations.isGraphPrivate) {
+        graphPrivateKeys += callable.typeKey
+      }
+
+      val typeKey = callable.typeKey
+      val existingIsDynamic = typeKey in dynamicTypeKeys
+      if (isDynamic) {
+        if (!existingIsDynamic) {
+          bindsCallables[typeKey] = mutableListOf(callable)
+        } else {
+          bindsCallables.getAndAdd(typeKey, callable)
+        }
+        dynamicTypeKeys.getAndAdd(typeKey, callable)
+      } else if (!existingIsDynamic) {
+        bindsCallables.getAndAdd(typeKey, callable)
+      }
+    }
+
     private fun manageBindingContainer(container: BindingContainer) {
       linkDeclarationsInCompilation(graphDeclaration, container.ir)
       if (container.canBeManaged) {
@@ -1263,25 +1307,7 @@ internal class GraphNodes(
 
           container.bindsMirror?.let { bindsMirror ->
             for (callable in bindsMirror.bindsCallables) {
-              if (callable.callableMetadata.annotations.isGraphPrivate) {
-                graphPrivateKeys += callable.typeKey
-              }
-              val typeKey = callable.typeKey
-              // Dynamic containers should override non-dynamic ones with the same typeKey
-              val existingIsDynamic = typeKey in dynamicTypeKeys
-              if (isDynamicContainer) {
-                if (!existingIsDynamic) {
-                  // Dynamic overrides non-dynamic, clear existing and add new
-                  bindsCallables[typeKey] = mutableListOf(callable)
-                } else {
-                  // Both are dynamic, add to list for duplicate detection
-                  bindsCallables.getAndAdd(typeKey, callable)
-                }
-                dynamicTypeKeys.getAndAdd(typeKey, callable)
-              } else if (!existingIsDynamic) {
-                // Neither is dynamic, add to list for duplicate detection
-                bindsCallables.getAndAdd(typeKey, callable)
-              }
+              addBindsCallable(callable, isDynamic = isDynamicContainer)
             }
             for (callable in bindsMirror.multibindsCallables) {
               if (callable.callableMetadata.annotations.isGraphPrivate) {
@@ -1443,7 +1469,7 @@ internal class GraphNodes(
 
             bindingContainer.bindsMirror?.let { bindsMirror ->
               for (callable in bindsMirror.bindsCallables) {
-                bindsCallables.getAndAdd(callable.typeKey, callable)
+                addBindsCallable(callable, isDynamic = false)
               }
               multibindsCallables += bindsMirror.multibindsCallables
               for (callable in bindsMirror.optionalKeys) {
@@ -1516,8 +1542,11 @@ private fun computePublishedBindsKeys(
   return buildSet {
     for ((_, callables) in bindsCallables) {
       val callable = callables.firstOrNull() ?: continue
+      val source = callable.source
       if (
-        !callable.callableMetadata.annotations.isGraphPrivate && callable.source in graphPrivateKeys
+        !callable.callableMetadata.annotations.isGraphPrivate &&
+          source != null &&
+          source in graphPrivateKeys
       ) {
         add(callable.typeKey)
       }
