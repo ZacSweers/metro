@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
@@ -41,8 +42,6 @@ import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPropertyAccessor
 
-internal val SET_CLASS_ID = ClassId.fromString("kotlin/collections/Set")
-internal val MAP_CLASS_ID = ClassId.fromString("kotlin/collections/Map")
 // Dagger interop: `@BindsOptionalOf fun foo(): Foo` makes `java.util.Optional<Foo>` available,
 // mirroring the compiler's IrBinding.CustomWrapper. Only active when Dagger runtime interop is on.
 private val DAGGER_BINDS_OPTIONAL_OF = ClassId.fromString("dagger/BindsOptionalOf")
@@ -54,10 +53,10 @@ internal fun bindsOptionalOfAnnotations(options: MetroOptions): Set<ClassId> {
 
 private val COLLECTION_LIKE_CLASS_IDS =
   setOf(
-    SET_CLASS_ID,
-    ClassId.fromString("kotlin/collections/Collection"),
-    ClassId.fromString("kotlin/collections/List"),
-    ClassId.fromString("kotlin/collections/Iterable"),
+    StandardClassIds.Set,
+    StandardClassIds.Collection,
+    StandardClassIds.List,
+    StandardClassIds.Iterable,
   )
 
 internal fun bindingContributionAnnotations(options: MetroOptions): Set<ClassId> {

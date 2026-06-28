@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
+import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.Variance
 
 /** Renders a type as a stable, fully-qualified binding key string. */
@@ -102,7 +103,7 @@ private fun KaType.asWrappedType(options: MetroOptions): WrappedType<KaTypeSnaps
   val wrapped =
     buildWrappedType(
       type = with(session) { fullyExpandedType },
-      mapClassId = MAP_CLASS_ID,
+      mapClassId = StandardClassIds.Map,
       providerTypes = options.providerTypes,
       lazyTypes = options.lazyTypes,
       classIdOf = { (it as? KaClassType)?.classId },
@@ -186,12 +187,12 @@ private fun KaSession.aggregateMultibindingId(
 ): String? {
   if (classType == null) return null
   return when (classType.classId) {
-    SET_CLASS_ID -> {
+    StandardClassIds.Set -> {
       val elementType = classType.typeArguments.firstOrNull()?.type ?: return null
       val elementKeyType = elementType.asWrappedType(options).canonicalType()
       contextKey.typeKey.copy(type = elementKeyType).computeMultibindingId()
     }
-    MAP_CLASS_ID -> {
+    StandardClassIds.Map -> {
       // The Map node may sit under Provider/Lazy wrappers in the contextual key's wrapped type.
       val wrappedMap =
         contextKey.wrappedType.innerTypesSequence

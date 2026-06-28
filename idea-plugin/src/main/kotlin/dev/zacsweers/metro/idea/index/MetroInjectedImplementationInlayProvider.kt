@@ -19,6 +19,7 @@ import com.intellij.psi.PsiFile
 import dev.zacsweers.metro.idea.MetroSettings
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingKind
+import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -80,8 +81,8 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
       if (contributions > 0) {
         val noun =
           when {
-            consumer.typeClassId == MAP_CLASS_ID && contributions == 1 -> "entry"
-            consumer.typeClassId == MAP_CLASS_ID -> "entries"
+            consumer.typeClassId == StandardClassIds.Map && contributions == 1 -> "entry"
+            consumer.typeClassId == StandardClassIds.Map -> "entries"
             contributions == 1 -> "element"
             else -> "elements"
           }
