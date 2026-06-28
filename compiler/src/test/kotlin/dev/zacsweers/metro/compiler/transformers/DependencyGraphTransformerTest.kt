@@ -782,7 +782,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           trace (in test.ExampleGraph):
               Int is injected at test.ExampleGraph.provideInt(…, value)
 
-          help: break the cycle by injecting a deferred type at one edge, e.g. `() -> Int` or `Lazy<Int>`
+          help: you can break the cycle by injecting a deferred type at one edge, e.g. `() -> Int` or
+                `Lazy<Int>`. Only do this if you know what you're doing though!
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
         """
           .trimIndent()
@@ -823,7 +824,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:11 [Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
+        e: ExampleGraph.kt:7:11
+        [Metro/DependencyCycle] Found a dependency cycle while processing test.ExampleGraph
 
           cycle:
               +-> Double -> String -> Int --+
@@ -836,8 +838,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
               Double is injected at test.ExampleGraph.provideInt(…, double)
               ...
 
-          help: break the cycle by injecting a deferred type at one edge, e.g. `() -> Double` or
-                `Lazy<Double>`
+          help: you can break the cycle by injecting a deferred type at one edge, e.g. `() -> Double` or
+                `Lazy<Double>`. Only do this if you know what you're doing though!
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
         """
           .trimIndent()

@@ -103,7 +103,8 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
               B
               ...
 
-          help: break the cycle by injecting a deferred type at one edge, e.g. `() -> B` or `Lazy<B>`
+          help: you can break the cycle by injecting a deferred type at one edge, e.g. `() -> B` or
+                `Lazy<B>`. Only do this if you know what you're doing though!
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
         """
           .trimIndent()
