@@ -9,14 +9,16 @@ package dev.zacsweers.metro.compiler.graph
  */
 public sealed interface BoundTypeResolution<out T : Any> {
   /** A single bound type was determined. */
-  public data class Resolved<T : Any>(public val type: T) : BoundTypeResolution<T>
+  @JvmInline public value class Resolved<T : Any>(public val type: T) : BoundTypeResolution<T>
 
   /** Multiple supertypes declare a `@DefaultBinding`; the bound type is ambiguous. */
-  public data class AmbiguousDefaultBinding<T : Any>(public val types: List<T>) :
+  @JvmInline
+  public value class AmbiguousDefaultBinding<T : Any>(public val types: List<T>) :
     BoundTypeResolution<T>
 
   /** No `@DefaultBinding` and more than one supertype, so no implicit bound type can be picked. */
-  public data class MultipleSupertypes<T : Any>(public val supertypes: List<T>) :
+  @JvmInline
+  public value class MultipleSupertypes<T : Any>(public val supertypes: List<T>) :
     BoundTypeResolution<T>
 
   /** The class has no (non-`Any`) supertype to bind to. */
@@ -30,6 +32,7 @@ public sealed interface BoundTypeResolution<out T : Any> {
  * `@DefaultBinding<T>` wins — ambiguous if more than one declares it — otherwise the sole supertype
  * is used. Callers handle the explicit `binding<T>()`/`boundType` case before calling this.
  *
+ * @param T The "type" model of whatever system (FIR, IR, KA) is being used here.
  * @param defaultBindingOf the `@DefaultBinding<T>` type declared by a supertype, or null if it
  *   declares none.
  */
@@ -41,9 +44,8 @@ public fun <T : Any> resolveImplicitBoundType(
   val defaultBindings = supertypesExcludingAny.mapNotNull(defaultBindingOf)
   return when {
     defaultBindings.size > 1 -> BoundTypeResolution.AmbiguousDefaultBinding(defaultBindings)
-    defaultBindings.size == 1 -> BoundTypeResolution.Resolved(defaultBindings.single())
-    supertypesExcludingAny.size == 1 ->
-      BoundTypeResolution.Resolved(supertypesExcludingAny.single())
+    defaultBindings.size == 1 -> BoundTypeResolution.Resolved(defaultBindings[0])
+    supertypesExcludingAny.size == 1 -> BoundTypeResolution.Resolved(supertypesExcludingAny[0])
     else -> BoundTypeResolution.MultipleSupertypes(supertypesExcludingAny)
   }
 }
