@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
@@ -20,6 +21,7 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
+import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.fir.validateBindingSource
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.memoize
@@ -443,6 +445,86 @@ internal object BindingContainerCallableChecker :
           factory,
           "Non-private @$kind declarations must be abstract and not have a function or getter body.",
         )
+      }
+
+      val isParameterlessBinds =
+        annotations.isBinds &&
+          declaration.receiverParameter == null &&
+          (declaration !is FirFunction || declaration.valueParameters.isEmpty()) &&
+          declaration.symbol.contextParameterSymbols.isEmpty()
+
+      if (isParameterlessBinds) {
+        if (bodyExpression != null) {
+          reporter.reportOn(
+            source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds declarations must be abstract and not have a function or getter body.",
+          )
+          return
+        }
+
+        if (annotations.scope != null) {
+          return
+        }
+
+        if (annotations.isQualified || annotations.isIntoMultibinding) {
+          reporter.reportOn(
+            source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds declarations may not be qualified or used as multibindings.",
+          )
+          return
+        }
+
+        val returnType = returnTypeRef.coneTypeOrNull ?: return
+        if (returnType.typeArguments.isNotEmpty()) {
+          reporter.reportOn(
+            returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds declarations may not return generic types.",
+          )
+          return
+        }
+
+        val returnClass = returnType.toClassSymbolCompat(session)
+        if (returnClass == null) {
+          reporter.reportOn(
+            returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds declarations must return a concrete constructor-injected class.",
+          )
+          return
+        }
+
+        if (returnClass.typeParameterSymbols.isNotEmpty()) {
+          reporter.reportOn(
+            returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds declarations may not return generic classes.",
+          )
+          return
+        }
+
+        if (returnClass.usesContributionProviderPath(session)) {
+          val fqName = returnClass.classId.diagnosticString
+          reporter.reportOn(
+            returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds target '$fqName' is hidden by `generateContributionProviders`. " +
+              "Bind the contributed type instead, or annotate '$fqName' with `@ExposeImplBinding`.",
+          )
+          return
+        }
+
+        val injectConstructor = returnClass.findInjectConstructors(session).singleOrNull()
+        if (injectConstructor == null) {
+          reporter.reportOn(
+            returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_ERROR,
+            "Parameter-less @Binds target `${returnType.render(short = false)}` must be constructor-injected.",
+          )
+        }
+        return
       }
 
       // TODO support first, non-receiver parameter
