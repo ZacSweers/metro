@@ -8,6 +8,7 @@ import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
@@ -53,6 +54,7 @@ internal interface IrBindingStack :
     graphContext: String?,
     val declaration: IrDeclarationWithName?,
     override val displayTypeKey: IrTypeKey = contextKey.typeKey,
+    override val diagnosticNotes: List<Note> = emptyList(),
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
      * participate in validation.
@@ -151,10 +153,12 @@ internal interface IrBindingStack :
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
         isMirrorFunction: Boolean = false,
+        diagnosticNotes: List<Note> = emptyList(),
       ): Entry {
         return Entry(
           contextKey = contextKey,
           displayTypeKey = displayTypeKey,
+          diagnosticNotes = diagnosticNotes,
           usage = "is injected at",
           graphContext = null,
           declaration = declaration,
@@ -466,16 +470,20 @@ internal fun bindingStackEntryForDependency(
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
         isMirrorFunction = true,
+        diagnosticNotes = callingBinding.diagnosticNotes,
       )
     }
     is CustomWrapper -> {
       Entry.injectedAt(contextKey, callingBinding.declaration, displayTypeKey = targetKey)
     }
     is Alias -> {
+      val sourceParameter =
+        callingBinding.parameters.extensionOrFirstParameter?.ir?.expectAs<IrValueParameter>()
       Entry.injectedAt(
         contextKey,
         callingBinding.ir,
-        callingBinding.parameters.extensionOrFirstParameter?.ir?.expectAs(),
+        sourceParameter,
+        declaration = sourceParameter ?: callingBinding.ir,
         displayTypeKey = targetKey,
       )
     }
