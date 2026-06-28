@@ -111,13 +111,6 @@ internal class IrBindingGraph(
     val factory: KtDiagnosticFactory1<String>
     val declaration: IrDeclaration
 
-    /** Raw preformatted message from call sites not yet migrated to the structured model. */
-    data class Raw(
-      override val factory: KtDiagnosticFactory1<String>,
-      override val declaration: IrDeclaration,
-      val message: String,
-    ) : PendingDiagnostic
-
     data class Structured(
       override val factory: KtDiagnosticFactory1<String>,
       override val declaration: IrDeclaration,
@@ -126,15 +119,6 @@ internal class IrBindingGraph(
   }
 
   private val pendingDiagnostics = mutableListOf<PendingDiagnostic>()
-
-  private fun collectError(
-    message: String,
-    declaration: IrDeclaration,
-    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
-  ) {
-    hasErrors = true
-    pendingDiagnostics += PendingDiagnostic.Raw(factory, declaration, message)
-  }
 
   private fun collectDiagnostic(diagnostic: MetroDiagnostic, declaration: IrDeclaration) {
     hasErrors = true
@@ -206,7 +190,6 @@ internal class IrBindingGraph(
         val (factory, declaration) = key
         val rendered = diagnostics.map { pending ->
           when (pending) {
-            is PendingDiagnostic.Raw -> pending.message
             is PendingDiagnostic.Structured -> renderedStructured.getValue(pending)
           }
         }
