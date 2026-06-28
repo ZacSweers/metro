@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedRanges
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBinding
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
@@ -134,6 +135,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val typeKey: IrTypeKey,
     val injectedMembers: Set<IrContextualTypeKey>,
+    val explicitBinding: BindsCallable? = null,
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
@@ -156,6 +158,19 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val reportableDeclaration: IrDeclarationWithName
       get() = type
+
+    override val diagnosticNotes: List<Note> by memoize {
+      explicitBinding?.let { binding ->
+        val location =
+          binding.function.renderSourceLocation(short = true)
+            ?: binding.callableId.asSingleFqName().asString()
+        listOf(
+          Note.help(
+            "this constructor-injected binding is explicitly declared with a parameter-less `@Binds` at $location"
+          )
+        )
+      } ?: emptyList()
+    }
 
     /**
      * Returns true this binding can be invoked directly without going through the factory. This is
@@ -190,6 +205,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         annotations = annotations.copy(mapKey = mapKey),
         typeKey = typeKey,
         injectedMembers = injectedMembers,
+        explicitBinding = explicitBinding,
       )
     }
   }
