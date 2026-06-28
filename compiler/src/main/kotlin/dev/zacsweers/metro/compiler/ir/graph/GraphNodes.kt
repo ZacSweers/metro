@@ -598,10 +598,11 @@ internal class GraphNodes(
 
       if (hasClassFactory) return true
 
+      val target = callable.rawTarget.render(short = false)
       reportCompat(
         callable.function,
         MetroDiagnostics.BINDS_ERROR,
-        "Parameter-less @Binds target `${callable.rawTarget.render(short = false)}` must be a constructor-injected class with an available generated factory.",
+        "Parameter-less @Binds target `$target` must be constructor-injected. Make sure Metro's compiler runs over `$target`.",
       )
       hasErrors = true
       return false

@@ -46,6 +46,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
 import org.jetbrains.kotlin.fir.analysis.checkers.fullyExpandedClassId
 import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.correspondingProperty
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirFunction
@@ -77,6 +78,7 @@ import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.classId
@@ -447,13 +449,7 @@ internal object BindingContainerCallableChecker :
         )
       }
 
-      val isParameterlessBinds =
-        annotations.isBinds &&
-          declaration.receiverParameter == null &&
-          (declaration !is FirFunction || declaration.valueParameters.isEmpty()) &&
-          declaration.symbol.contextParameterSymbols.isEmpty()
-
-      if (isParameterlessBinds) {
+      if (declaration.isParameterlessBinds(annotations)) {
         if (bodyExpression != null) {
           reporter.reportOn(
             source,
@@ -468,8 +464,10 @@ internal object BindingContainerCallableChecker :
         }
 
         if (annotations.isQualified || annotations.isIntoMultibinding) {
+          val multibindingSource = declaration.multibindingAnnotationSource(session, annotations)
+          val errorSource = if (multibindingSource != null) multibindingSource else source
           reporter.reportOn(
-            source,
+            errorSource,
             MetroDiagnostics.BINDS_ERROR,
             "Parameter-less @Binds declarations may not be qualified or used as multibindings.",
           )
@@ -650,9 +648,14 @@ internal object BindingContainerCallableChecker :
                 returnClass.resolvedCompilerAnnotationsWithClassIds
                   .scopeAnnotations(session)
                   .singleOrNull()
+              val isExplicitParameterlessBindsTarget =
+                (containingClassSymbol as? FirClassSymbol<*>)?.hasParameterlessBindsTarget(
+                  session,
+                  providerTypeKey,
+                ) == true
               // TODO maybe we should report matching keys but different scopes? Feels like it could
               //  be confusing at best
-              if (providerScope == classScope) {
+              if (providerScope == classScope && !isExplicitParameterlessBindsTarget) {
                 reporter.reportOn(
                   source,
                   MetroDiagnostics.REDUNDANT_PROVIDES,
@@ -705,6 +708,52 @@ internal object BindingContainerCallableChecker :
     }
 
     session.trace({ "Validate binding declaration" }) { validateBindingDeclaration() }
+  }
+
+  private fun FirCallableDeclaration.multibindingAnnotationSource(
+    session: FirSession,
+    annotations: MetroAnnotations<MetroFirAnnotation>,
+  ): KtSourceElement? {
+    if (!annotations.isIntoMultibinding) return null
+
+    val classIds = session.classIds
+    val intoSetSource = annotationsIn(session, classIds.intoSetAnnotations).firstOrNull()?.source
+    if (intoSetSource != null) return intoSetSource
+
+    val elementsIntoSetSource =
+      annotationsIn(session, classIds.elementsIntoSetAnnotations).firstOrNull()?.source
+    if (elementsIntoSetSource != null) return elementsIntoSetSource
+
+    val intoMapSource = annotationsIn(session, classIds.intoMapAnnotations).firstOrNull()?.source
+    if (intoMapSource != null) return intoMapSource
+
+    return annotations.mapKey?.fir?.source
+  }
+
+  private fun FirCallableDeclaration.isParameterlessBinds(
+    annotations: MetroAnnotations<MetroFirAnnotation>
+  ): Boolean {
+    if (!annotations.isBinds) return false
+    if (receiverParameter != null) return false
+    if (symbol.contextParameterSymbols.isNotEmpty()) return false
+    if (this !is FirFunction) return true
+    return valueParameters.isEmpty()
+  }
+
+  @OptIn(DirectDeclarationsAccess::class, SymbolInternals::class)
+  private fun FirClassSymbol<*>.hasParameterlessBindsTarget(
+    session: FirSession,
+    targetKey: FirTypeKey,
+  ): Boolean {
+    return declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().any { symbol ->
+      val declaration = symbol.fir as? FirCallableDeclaration ?: return@any false
+      val annotations = symbol.metroAnnotations(session)
+      if (!declaration.isParameterlessBinds(annotations)) return@any false
+
+      val returnType = declaration.returnTypeRef.coneTypeOrNull ?: return@any false
+      val bindTargetKey = FirTypeKey.from(session, returnType, declaration.annotations)
+      bindTargetKey == targetKey
+    }
   }
 
   private fun FirExpression.returnsThis(): Boolean {

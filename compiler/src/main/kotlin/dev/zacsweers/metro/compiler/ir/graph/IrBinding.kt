@@ -166,7 +166,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
             ?: binding.callableId.asSingleFqName().asString()
         listOf(
           Note.help(
-            "this constructor-injected binding is explicitly declared with a parameter-less `@Binds` at $location"
+            "the constructor-injected binding for ${typeKey.renderForDiagnostic(short = true)} is explicitly declared with a parameter-less `@Binds` at $location"
           )
         )
       } ?: emptyList()

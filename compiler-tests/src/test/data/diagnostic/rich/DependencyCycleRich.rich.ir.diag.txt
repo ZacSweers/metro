@@ -12,6 +12,7 @@
       <b>C</intensity> is injected at B(…, c)
       ...
 
-  <cyan>help:</fg> break the cycle by injecting a deferred type at one edge, e.g. `() -> C` or `Lazy<C>`
+  <cyan>help:</fg> you can break the cycle by injecting a deferred type at one edge, e.g. `() -> C` or
+        `Lazy<C>`. Only do this if you know what you're doing though!
   <dim>docs:</intensity> https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
 

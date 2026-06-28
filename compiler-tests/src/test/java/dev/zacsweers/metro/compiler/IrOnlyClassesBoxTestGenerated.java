@@ -1245,6 +1245,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("ParameterlessBinds.kt")
+    public void testParameterlessBinds() {
+      run("ParameterlessBinds.kt");
+    }
+
+    @Test
     @TestMetadata("PrivateBinds.kt")
     public void testPrivateBinds() {
       run("PrivateBinds.kt");
@@ -1381,6 +1387,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       @TestMetadata("GenericBindingContainerTypeSubstitution.kt")
       public void testGenericBindingContainerTypeSubstitution() {
         run("GenericBindingContainerTypeSubstitution.kt");
+      }
+
+      @Test
+      @TestMetadata("ParameterlessBindsBindingContainer.kt")
+      public void testParameterlessBindsBindingContainer() {
+        run("ParameterlessBindsBindingContainer.kt");
       }
     }
 
