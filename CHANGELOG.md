@@ -60,6 +60,7 @@ Changelog
   - `AUTO` defaults to rich output and falls back to plain output for non-empty `NO_COLOR`, `--console=plain`, and IDE-invoked builds.
   - The resolved mode is passed as a non-input compiler option, so render-mode changes do not invalidate compilation or poison build caches.
 - **[docs]** Add a generated [Diagnostics Reference](https://zacsweers.github.io/metro/latest/diagnostics/) docs page for Metro's common graph validation diagnostics.
+- **[FIR/IR]** Add support for parameterless `@Binds` declarations for constructor-injected classes.
 
 ### Enhancements
 
