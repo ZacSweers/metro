@@ -2056,7 +2056,3 @@ private inline fun <reified T : Any> Any.expectAs(): T {
 private fun Any.diagnosticSeverity(): MetroOptions.DiagnosticSeverity {
   return MetroOptions.DiagnosticSeverity.valueOf(expectAs<String>().uppercase(Locale.US))
 }
-
-private fun <T, R> Sequence<T>.mapToSet(transform: (T) -> R): Set<R> {
-  return mapTo(mutableSetOf(), transform)
-}

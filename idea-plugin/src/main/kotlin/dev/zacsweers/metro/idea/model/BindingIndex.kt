@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea.model
 
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.applyExcludesAndReplaces
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
@@ -151,12 +152,12 @@ internal class BindingIndex(
 
     return GraphContext(
       chain = chain,
-      scopes = contexts.flatMapTo(hashSetOf()) { it.scopes },
-      scopingAnnotations = contexts.flatMapTo(hashSetOf()) { it.scopingAnnotations },
-      excludes = contexts.flatMapTo(hashSetOf()) { it.excludes },
-      containers = contexts.flatMapTo(hashSetOf()) { it.containers },
-      includedDependencies = contexts.flatMapTo(hashSetOf()) { it.includedDependencies },
-      graphClassIds = contexts.flatMapTo(hashSetOf()) { it.graphClassIds },
+      scopes = contexts.flatMapToSet { it.scopes },
+      scopingAnnotations = contexts.flatMapToSet { it.scopingAnnotations },
+      excludes = contexts.flatMapToSet { it.excludes },
+      containers = contexts.flatMapToSet { it.containers },
+      includedDependencies = contexts.flatMapToSet { it.includedDependencies },
+      graphClassIds = contexts.flatMapToSet { it.graphClassIds },
     )
   }
 
@@ -213,10 +214,10 @@ internal class BindingIndex(
   }
 
   private fun buildContext(chain: List<KaGraphNode>): GraphContext {
-    val scopes = chain.flatMapTo(hashSetOf()) { it.scopeKeys }
-    val excludes = chain.flatMapTo(hashSetOf()) { it.excludes }
-    val graphClassIds = chain.flatMapTo(hashSetOf()) { it.selfIds }
-    val includedDependencies = chain.flatMapTo(hashSetOf()) { it.includedDependencies }
+    val scopes = chain.flatMapToSet { it.scopeKeys }
+    val excludes = chain.flatMapToSet { it.excludes }
+    val graphClassIds = chain.flatMapToSet { it.selfIds }
+    val includedDependencies = chain.flatMapToSet { it.includedDependencies }
 
     // Containers: declared on the graphs, contributed into scope, or transitively included
     val containerRoots = chain.flatMapTo(hashSetOf()) { it.bindingContainers }
@@ -237,7 +238,7 @@ internal class BindingIndex(
     return GraphContext(
       chain = chain,
       scopes = scopes,
-      scopingAnnotations = chain.flatMapTo(hashSetOf()) { it.scopingAnnotations },
+      scopingAnnotations = chain.flatMapToSet { it.scopingAnnotations },
       excludes = excludes,
       containers = containers,
       includedDependencies = includedDependencies,

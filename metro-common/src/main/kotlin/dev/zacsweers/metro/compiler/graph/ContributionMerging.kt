@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.flatMapToSet
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -52,7 +53,7 @@ public fun computeMergePlan(
   // Replaces are collected only from survivors, mirroring the compiler: excluded contributions
   // don't get their `replaces` honored, and replacement matching is against the post-exclude set.
   val survivors = presentIds - removed
-  val replaced = survivors.flatMapTo(mutableSetOf()) { replacesOf(it) }
+  val replaced = survivors.flatMapToSet { replacesOf(it) }
 
   val unmatchedReplacements = mutableSetOf<ClassId>()
   for (target in replaced) {

@@ -4,20 +4,15 @@ package dev.zacsweers.metro.idea.index
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.compiler.MetroClassIds
-import dev.zacsweers.metro.compiler.MetroHints
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.OptionalBindingBehavior
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
+import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.idea.annotationScopeKeys
-import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.implicitSingleInAnnotation
 import dev.zacsweers.metro.idea.model.AssistedSite
@@ -25,22 +20,14 @@ import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.BindingKind
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
-import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
-import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
-import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotations
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
@@ -49,8 +36,6 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
-import org.jetbrains.kotlin.idea.stubindex.KotlinTopLevelFunctionFqnNameIndex
-import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
@@ -65,63 +50,6 @@ import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
-
-/** Key plus display metadata for a consuming site. */
-internal class ConsumedSite(
-  val contextKey: KaContextualTypeKey,
-  val isAbstractType: Boolean,
-  /** For `Set`/`Map` aggregate sites, the multibinding id collecting contributed elements. */
-  val multibindingId: String? = null,
-  /** The consumed type's class, when it is a class type. */
-  val typeClassId: ClassId? = null,
-) {
-  val key: KaTypeKey
-    get() = contextKey.typeKey
-}
-
-/** Key plus display metadata for a single binding originated by a provider declaration. */
-internal class BindingData(
-  val key: KaTypeKey,
-  val kind: BindingKind,
-  val scope: KaAnnotationSnapshot?,
-  val implementationName: String?,
-  /** For `@Binds`-style bindings, the key of the source/impl binding this delegates to. */
-  val consumedKey: KaTypeKey? = null,
-  /** For multibinding contributions, the aggregate binding id. See [KaBinding]. */
-  val multibindingId: String? = null,
-  /** See [KaBinding.originClassId]. */
-  val originClassId: ClassId? = null,
-  /** See [KaBinding.replaces]. */
-  val replaces: Set<ClassId> = emptySet(),
-  /** See [KaBinding.contributionScopes]. */
-  val contributionScopes: Set<ClassId> = emptySet(),
-)
-
-// ---------------------------------------------------------------------------------------------
-// Index building
-// ---------------------------------------------------------------------------------------------
-
-/** The Metro declarations extracted from a single file, cached against that file's PSI. */
-internal class FileShard(
-  val bindings: List<KaBinding>,
-  val consumers: List<ConsumerEntry>,
-  val graphs: List<KaGraphNode>,
-  val contributions: List<ContributionEntry>,
-  val assistedSites: List<AssistedSite>,
-  val bindingContainers: List<BindingContainerEntry>,
-) {
-  companion object {
-    val EMPTY =
-      FileShard(
-        emptyList(),
-        emptyList(),
-        emptyList(),
-        emptyList(),
-        emptyList(),
-        emptyList(),
-      )
-  }
-}
 
 /**
  * Two-phase index construction: [buildShard] extracts one file's declarations (cached per file by
@@ -144,7 +72,6 @@ internal class IndexBuilder(
   private val processedInjectClasses = HashSet<KtClassOrObject>()
   private val processedMemberInjects = HashSet<KtDeclaration>()
   private val processedContributions = HashSet<KtClassOrObject>()
-  private val processedLibraryContributionScopes = HashMap<KtClassOrObject, MutableSet<ClassId>>()
   private val processedGraphs = HashSet<KtClassOrObject>()
   private val processedCircuitInjects = HashSet<KtDeclaration>()
   private val processedAssistedFactories = HashSet<KtClassOrObject>()
@@ -190,262 +117,14 @@ internal class IndexBuilder(
     )
   }
 
-  private fun shortNames(classIds: Set<ClassId>): Set<String> {
-    return classIds.mapTo(mutableSetOf()) { it.shortClassName.asString() }
-  }
-
   /** Runs the cross-file library passes over previously merged shard accumulators. */
   fun postProcess() {
-    // Seed dedup with classes already contributed from project sources
-    contributions.mapNotNullTo(processedContributions) { it.pointer.element as? KtClassOrObject }
-    scanLibraryContributionHints()
-    resolveLibraryInjectBindings()
-  }
-
-  /**
-   * Discovers contributions from compiled dependencies the way the compiler does for classpath
-   * merging (`ContributionHintFirGenerator` / `ContributedInterfaceSupertypeGenerator`): scanning
-   * top-level hint functions in the `metro.hints` package, named after the scope class, whose
-   * single parameter type is the contributing class.
-   */
-  private fun scanLibraryContributionHints() {
-    val scopeIds = buildSet {
-      graphs.forEach { addAll(it.scopeKeys) }
-      contributions.forEach { addAll(it.scopeKeys) }
-    }
-    if (scopeIds.isEmpty()) return
-    // Analyze from a project-source use site: library-use-site sessions deserialize annotation
-    // values differently (e.g. unresolved class literal ids).
-    val context =
-      graphs.firstNotNullOfOrNull { it.pointer.element }
-        ?: contributions.firstNotNullOfOrNull { it.pointer.element }
-        ?: return
-    val useSiteModulesByScope = useSiteModulesByScope()
-    val fileIndex = ProjectFileIndex.getInstance(project)
-    val allScope = GlobalSearchScope.allScope(project)
-    for (scopeId in scopeIds) {
-      ProgressManager.checkCanceled()
-      val hintFqName = MetroHints.hintCallableId(scopeId).asSingleFqName().asString()
-      for (hintFunction in KotlinTopLevelFunctionFqnNameIndex[hintFqName, project, allScope]) {
-        val virtualFile = hintFunction.containingFile.virtualFile ?: continue
-        // Project-source contributions are already covered by the annotation sweeps; hints only
-        // exist as generated declarations in binaries.
-        if (fileIndex.isInContent(virtualFile)) continue
-        // Mirrors the compiler's visibility filtering: internal hints are visible only from their
-        // own module and formal friend/associated compilations.
-        if (
-          hintFunction.hasModifier(KtTokens.INTERNAL_KEYWORD) &&
-            !isVisibleInternalHint(hintFunction, useSiteModulesByScope[scopeId].orEmpty())
-        ) {
-          continue
-        }
-        processLibraryHint(hintFunction, scopeId, context)
-      }
-    }
-  }
-
-  private fun useSiteModulesByScope(): Map<ClassId, Set<KaModule>> {
-    val result = mutableMapOf<ClassId, MutableSet<KaModule>>()
-
-    fun addUseSite(element: PsiElement?, scopeKeys: Set<ClassId>) {
-      if (element !is KtElement) return
-      val module = KaModuleProvider.getModule(project, element, useSiteModule = null)
-      for (scopeKey in scopeKeys) {
-        result.getOrPut(scopeKey, ::mutableSetOf) += module
-      }
-    }
-
-    graphs.forEach { addUseSite(it.pointer.element, it.scopeKeys) }
-    contributions.forEach { addUseSite(it.pointer.element, it.scopeKeys) }
-    return result
-  }
-
-  private fun processLibraryHint(
-    hintFunction: KtNamedFunction,
-    scopeId: ClassId,
-    context: KtElement,
-  ) {
-    analyze(context) {
-      val symbol = hintFunction.symbol as? KaNamedFunctionSymbol ?: return@analyze
-      val contributedType =
-        symbol.valueParameters.singleOrNull()?.returnType?.fullyExpandedType ?: return@analyze
-      val classSymbol = (contributedType as? KaClassType)?.symbol as? KaNamedClassSymbol
-      val ktClass = classSymbol?.psi as? KtClassOrObject ?: return@analyze
-      val processedScopes = processedLibraryContributionScopes.getOrPut(ktClass) { mutableSetOf() }
-      if (!processedScopes.add(scopeId)) return@analyze
-
-      // Contribution-provider containers carry @Origin pointing back at the real contributing
-      // class; prefer it for presentation and as the contribution anchor.
-      val originClassId =
-        classSymbol.annotations
-          .firstOrNull { it.classId in options.originAnnotations }
-          ?.arguments
-          ?.firstOrNull { it.name.asString() == "value" }
-          ?.let { classLiteralClassId(it.expression) }
-      val originPsi = originClassId?.let { findClass(it)?.psi as? KtClassOrObject }
-      val contributionAnchor = originPsi ?: ktClass
-
-      val contributedClassId = originClassId ?: ktClass.getClassId()
-      contributions +=
-        ContributionEntry(
-          pointerManager.createSmartPsiElementPointer(contributionAnchor),
-          setOf(scopeId),
-          contributedClassId,
-        )
-      val classReplaces =
-        classSymbol.annotations
-          .filter { it.classId in options.allContributesAnnotations }
-          .flatMapTo(hashSetOf()) { classListArgument(it, "replaces") }
-      for (data in bindingData(ktClass, options)) {
-        bindings +=
-          bindingFrom(
-            ptr(ktClass),
-            data,
-            originClassId = data.originClassId ?: contributedClassId,
-            replaces = data.replaces + classReplaces,
-            contributionScopes = data.contributionScopes.ifEmpty { setOf(scopeId) },
-          )
-      }
-      // Generated members hold the machine-readable binding declarations that annotation
-      // arguments in binaries can't carry (e.g. binding<T>() type args): contribution-provider
-      // containers hold @Provides members directly, and contributed classes hold nested
-      // MetroContribution interfaces with @Binds members.
-      val memberHolders = listOf(ktClass) + ktClass.declarations.filterIsInstance<KtClassOrObject>()
-      for (holder in memberHolders) {
-        for (member in holder.declarations.filterIsInstance<KtCallableDeclaration>()) {
-          for (data in bindingData(member, options)) {
-            bindings +=
-              bindingFrom(
-                ptr(member),
-                data,
-                originClassId = contributedClassId,
-                implementationName =
-                  data.implementationName ?: originClassId?.shortClassName?.asString(),
-                replaces = classReplaces,
-                contributionScopes = setOf(scopeId),
-              )
-          }
-        }
-      }
-    }
-  }
-
-  /** Whether an internal [hintFunction] is visible from a formal friend/associated use site. */
-  private fun isVisibleInternalHint(
-    hintFunction: KtNamedFunction,
-    useSiteModules: Set<KaModule>,
-  ): Boolean {
-    for (useSiteModule in useSiteModules) {
-      val hintModule = KaModuleProvider.getModule(project, hintFunction, useSiteModule)
-      if (hintModule == useSiteModule) return true
-      if (useSiteModule is KaSourceModule && hintModule in useSiteModule.directFriendDependencies) {
-        return true
-      }
-    }
-    return false
-  }
-
-  /**
-   * Demand-driven resolution of constructor-injected classes from compiled dependencies: the
-   * annotation sweeps only cover project sources, but inject annotations survive in library
-   * metadata. For each consumer key with no project-source binding, checks whether the consumed
-   * class itself is injectable and synthesizes a binding entry targeting the library declaration.
-   */
-  private fun resolveLibraryInjectBindings() {
-    val bindingKeys = bindings.mapTo(HashSet()) { it.key }
-    val unresolved =
-      consumers
-        .filter {
-          it.multibindingId == null &&
-            it.typeClassId != null &&
-            it.key.qualifier == null &&
-            it.key !in bindingKeys
-        }
-        .groupBy { it.key }
-    if (unresolved.isEmpty()) return
-
-    val fileIndex = ProjectFileIndex.getInstance(project)
-    for ((key, sites) in unresolved) {
-      ProgressManager.checkCanceled()
-      val context = sites.firstNotNullOfOrNull { it.pointer.element } ?: continue
-      analyze(context) {
-        val classSymbol =
-          findClass(sites.first().typeClassId!!) as? KaNamedClassSymbol ?: return@analyze
-        val psi = classSymbol.psi ?: return@analyze
-        // Project sources were already swept; finding nothing there was authoritative
-        val virtualFile = psi.containingFile?.virtualFile ?: return@analyze
-        if (fileIndex.isInContent(virtualFile)) return@analyze
-        if (classSymbol.classKind != KaClassKind.CLASS) return@analyze
-
-        val constructors = classSymbol.memberScope.constructors.toList()
-        val hasInject =
-          classSymbol.hasAnyAnnotation(options.injectAnnotations) ||
-            constructors.any { it.hasAnyAnnotation(options.injectAnnotations) }
-        val isAssisted =
-          classSymbol.hasAnyAnnotation(options.assistedInjectAnnotations) ||
-            constructors.any { it.hasAnyAnnotation(options.assistedInjectAnnotations) }
-        if (!hasInject || isAssisted) return@analyze
-
-        bindings +=
-          KaBinding(
-            pointerManager.createSmartPsiElementPointer(psi),
-            key,
-            BindingKind.INJECT,
-            scopeAnnotation(classSymbol, options),
-            classSymbol.name.asString(),
-          )
-      }
-    }
+    LibraryIndexPostProcessor(project, options, bindings, consumers, graphs, contributions)
+      .postProcess()
   }
 
   private fun ptr(element: KtElement): SmartPsiElementPointer<KtElement> {
     return pointerManager.createSmartPsiElementPointer(element)
-  }
-
-  /**
-   * Builds a [KaBinding] from a [BindingData], anchoring it at [pointer]. Callers override only the
-   * fields that differ from the computed data (e.g. contribution-derived origin/scopes).
-   */
-  private fun bindingFrom(
-    pointer: SmartPsiElementPointer<out PsiElement>,
-    data: BindingData,
-    containerId: ClassId? = null,
-    originClassId: ClassId? = data.originClassId,
-    implementationName: String? = data.implementationName,
-    replaces: Set<ClassId> = data.replaces,
-    contributionScopes: Set<ClassId> = data.contributionScopes,
-  ): KaBinding {
-    return KaBinding(
-      pointer,
-      data.key,
-      data.kind,
-      data.scope,
-      implementationName,
-      data.multibindingId,
-      originClassId = originClassId,
-      containerId = containerId,
-      replaces = replaces,
-      contributionScopes = contributionScopes,
-    )
-  }
-
-  /**
-   * The graph an instance binding (a `@Provides` factory parameter) belongs to: the factory's
-   * enclosing graph when the factory is nested, otherwise the graph type the factory's creator
-   * function returns (top-level `createGraphFactory`-style factories).
-   */
-  private fun KaSession.instanceBindingContainerId(parameter: KtParameter): ClassId? {
-    val createFunction = parameter.ownerFunction as? KtNamedFunction ?: return null
-    val factory = createFunction.containingClassOrObject
-    factory?.containingClassOrObject?.getClassId()?.let {
-      return it
-    }
-    val returnType =
-      (createFunction.symbol as? KaNamedFunctionSymbol)?.returnType?.fullyExpandedType
-    (returnType as? KaClassType)?.classId?.let {
-      return it
-    }
-    return factory?.getClassId()
   }
 
   /** `@Provides`/`@Binds`/`@Multibinds` callables, including instance-binding factory params. */
@@ -469,10 +148,9 @@ internal class IndexBuilder(
             }
           val dataEntries = bindingData(target, options)
           val consumerOriginClassId = dataEntries.firstNotNullOfOrNull { it.originClassId }
-          val consumerContributionScopes =
-            dataEntries.flatMapTo(mutableSetOf()) { it.contributionScopes }
+          val consumerContributionScopes = dataEntries.flatMapToSet { it.contributionScopes }
           for (data in dataEntries) {
-            bindings += bindingFrom(ptr(target), data, containerId = containerId)
+            bindings += data.toKaBinding(ptr(target), containerId = containerId)
             // The @Binds source/impl side is itself a consumer of the impl binding.
             if (data.consumedKey != null) {
               val consumerAnchor =
@@ -490,7 +168,7 @@ internal class IndexBuilder(
             }
           }
           // Provider function parameters are consumers themselves.
-          if (target is KtNamedFunction && !target.hasAnyOfAnnotations(options.bindsAnnotations)) {
+          if (target is KtNamedFunction && !target.isAnnotatedWithAny(options.bindsAnnotations)) {
             for (parameter in target.valueParameters) {
               addParameterConsumer(
                 parameter,
@@ -544,16 +222,15 @@ internal class IndexBuilder(
       // bindingData verifies injectability/contributions itself; classes without an explicit
       // primary constructor still provide their own type.
       val dataEntries = bindingData(ktClass, options)
-      val consumerContributionScopes =
-        dataEntries.flatMapTo(mutableSetOf()) { it.contributionScopes }
+      val consumerContributionScopes = dataEntries.flatMapToSet { it.contributionScopes }
       for (data in dataEntries) {
-        bindings += bindingFrom(ptr(ktClass), data)
+        bindings += data.toKaBinding(ptr(ktClass))
       }
       // Gate the constructor consumers on the owning class's binding only when it originates one.
       // Assisted-injected classes provide no own-type binding (they're built via their factory), so
       // gating by origin would wrongly drop their dependencies from every graph.
       val originClassId = ktClass.getClassId().takeIf { dataEntries.isNotEmpty() }
-      val injectConstructor = findInjectConstructor(ktClass, classSymbol)
+      val injectConstructor = findInjectConstructor(ktClass, classSymbol, options)
       for (parameter in injectConstructor?.valueParameters.orEmpty()) {
         addParameterConsumer(
           parameter,
@@ -569,7 +246,7 @@ internal class IndexBuilder(
     if (!processedContributions.add(ktClass)) return
     analyze(ktClass) {
       val classSymbol = ktClass.symbol as? KaNamedClassSymbol ?: return@analyze
-      val scopeKeys = scopeKeysFor(classSymbol, options.allContributesAnnotations) ?: return@analyze
+      val scopeKeys = classSymbol.scopeKeys(options.allContributesAnnotations) ?: return@analyze
       contributions +=
         ContributionEntry(
           pointerManager.createSmartPsiElementPointer(ktClass),
@@ -593,10 +270,9 @@ internal class IndexBuilder(
         classSymbol.annotations.filter { it.classId in options.graphExtensionAnnotations }
       val annotations = graphAnnotations + extensionAnnotations
       if (annotations.isEmpty()) return@analyze
-      val scopeKeys = annotations.flatMapTo(mutableSetOf()) { annotationScopeKeys(it) }
-      val excludes = annotations.flatMapTo(mutableSetOf()) { classListArgument(it, "excludes") }
-      val containerIds =
-        annotations.flatMapTo(mutableSetOf()) { classListArgument(it, "bindingContainers") }
+      val scopeKeys = annotations.flatMapToSet { annotationScopeKeys(it) }
+      val excludes = annotations.flatMapToSet { classListArgument(it, "excludes") }
+      val containerIds = annotations.flatMapToSet { classListArgument(it, "bindingContainers") }
       val graphClassId = ktClass.getClassId()
       val factoryAnnotations =
         options.dependencyGraphFactoryAnnotations + options.graphExtensionFactoryAnnotations
@@ -630,7 +306,7 @@ internal class IndexBuilder(
             val symbol = member.symbol as? KaCallableSymbol ?: continue
             // @OptionalBinding accessors carry a default body, so they're concrete but still
             // consume.
-            val isOptionalAccessor = isOptionalConsumer(symbol)
+            val isOptionalAccessor = symbol.isOptionalConsumer(options)
             if (symbol.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) continue
             if (symbol.hasAnyAnnotation(nonAccessorCallableAnnotations(options))) continue
             if (symbol.returnType.isUnitType) continue
@@ -753,19 +429,6 @@ internal class IndexBuilder(
   }
 
   /**
-   * Scope class ids from [annotated]'s annotations matching [annotationClassIds], or null when none
-   * of the annotations are present.
-   */
-  private fun scopeKeysFor(
-    annotated: KaAnnotated,
-    annotationClassIds: Set<ClassId>,
-  ): Set<ClassId>? {
-    val annotations = annotated.annotations.filter { it.classId in annotationClassIds }
-    if (annotations.isEmpty()) return null
-    return annotations.flatMapTo(mutableSetOf()) { annotationScopeKeys(it) }
-  }
-
-  /**
    * Mirrors the compiler's Metro-native Circuit codegen (`CircuitContributionExtension` and
    * `CircuitFirExtension`): a `@CircuitInject(screen, scope)` declaration generates a factory
    * contributed into `Set<Ui.Factory>`/`Set<Presenter.Factory>` at the scope, with the
@@ -879,24 +542,6 @@ internal class IndexBuilder(
     }
   }
 
-  private fun KaSession.findInjectConstructor(
-    ktClass: KtClassOrObject,
-    classSymbol: KaNamedClassSymbol,
-  ): KtConstructor<*>? {
-    // Non-injectable kinds have no graph-resolved constructor, so they originate no consumers.
-    if (!classSymbol.isInjectableKind()) return null
-    val injectish = options.allInjectAnnotations
-    val classLevel =
-      classSymbol.hasAnyAnnotation(injectish) ||
-        (options.contributesAsInject &&
-          classSymbol.annotations.any { it.classId in bindingContributionAnnotations(options) })
-    val constructors = listOfNotNull(ktClass.primaryConstructor) + ktClass.secondaryConstructors
-    val annotatedConstructor = constructors.firstOrNull { ctor ->
-      ctor.symbol.hasAnyAnnotation(injectish)
-    }
-    return annotatedConstructor ?: if (classLevel) ktClass.primaryConstructor else null
-  }
-
   private fun KaSession.addParameterConsumer(
     parameter: KtParameter,
     originClassId: ClassId? = null,
@@ -936,29 +581,7 @@ internal class IndexBuilder(
         originClassId = originClassId,
         contributionScopes = contributionScopes,
         containerId = containerId,
-        isOptional = isOptionalConsumer(symbol),
+        isOptional = symbol.isOptionalConsumer(options),
       )
-  }
-
-  /**
-   * Whether a consumer permits absence: a native `@OptionalBinding`/`@OptionalDependency` marker,
-   * or a defaulted parameter under `DEFAULT` behavior. Under `REQUIRE_OPTIONAL_BINDING` only the
-   * annotation counts; `DISABLED` never treats a site as optional.
-   */
-  private fun isOptionalConsumer(symbol: KaCallableSymbol): Boolean {
-    val behavior = options.optionalBindingBehavior
-    if (behavior == OptionalBindingBehavior.DISABLED) return false
-    if (symbol.hasAnyAnnotation(options.optionalBindingAnnotations)) return true
-    if (!behavior.requiresAnnotatedParameters) {
-      return (symbol as? KaValueParameterSymbol)?.hasDefaultValue == true
-    }
-    return false
-  }
-
-  private fun KtCallableDeclaration.hasAnyOfAnnotations(classIds: Set<ClassId>): Boolean {
-    // Cheap PSI pre-check by short name only; used to avoid registering @Binds params as consumers
-    // twice (the analysis-verified path already handles them).
-    val shortNames = classIds.mapTo(mutableSetOf()) { it.shortClassName.asString() }
-    return annotationEntries.any { it.shortName?.asString() in shortNames }
   }
 }

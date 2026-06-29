@@ -25,22 +25,6 @@ internal fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
   return filterTo(mutableSetOf(), predicate)
 }
 
-internal fun <T, R> Iterable<T>.mapToSet(transform: (T) -> R): Set<R> {
-  return mapTo(mutableSetOf(), transform)
-}
-
-internal fun <T, R> Sequence<T>.mapToSet(transform: (T) -> R): Set<R> {
-  return mapTo(mutableSetOf(), transform)
-}
-
-internal fun <T, R> Iterable<T>.flatMapToSet(transform: (T) -> Iterable<R>): Set<R> {
-  return flatMapTo(mutableSetOf(), transform)
-}
-
-internal fun <T, R> Sequence<T>.flatMapToSet(transform: (T) -> Sequence<R>): Set<R> {
-  return flatMapTo(mutableSetOf(), transform)
-}
-
 internal fun <T, R : Any> Iterable<T>.mapNotNullToSet(transform: (T) -> R?): Set<R> {
   return mapNotNullTo(mutableSetOf(), transform)
 }
@@ -74,10 +58,6 @@ internal fun <T, R> Iterable<T>.mapToSetWithDupes(transform: (T) -> R): Pair<Set
 
 internal fun <T> List<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
   return filterTo(mutableSetOf(), predicate)
-}
-
-internal fun <T, R> List<T>.mapToSet(transform: (T) -> R): Set<R> {
-  return mapTo(mutableSetOf(), transform)
 }
 
 internal fun <T> List<T>.allElementsAreEqual(): Boolean {

@@ -16,6 +16,7 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.MetroSettings
 import dev.zacsweers.metro.idea.metroIdeState
@@ -128,7 +129,7 @@ class MetroResolutionService(private val project: Project) {
   /** Files containing any Metro-relevant annotation by short name, via stub indexes. */
   private fun candidateFiles(options: MetroOptions): Set<KtFile> {
     val shortNames =
-      projectSweepAnnotationIds(options).mapTo(sortedSetOf()) { it.shortClassName.asString() }
+      projectSweepAnnotationIds(options).mapToSet { it.shortClassName.asString() }.sorted()
     val searchScope = GlobalSearchScope.projectScope(project)
     val files = LinkedHashSet<KtFile>()
     for (shortName in shortNames) {
