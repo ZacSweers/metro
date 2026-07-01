@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782883490432,
+  "lastUpdate": 1782930553320,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18368,6 +18368,62 @@ window.BENCHMARK_DATA = {
             "value": 18148.05,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.66%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "4a238472~1",
+          "message": "[before] Fix accessing graph factories across modules with ",
+          "timestamp": "2026-07-01T17:52:58Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/4a238472a86b4f9e3e14445a223bae8b3333e7e9"
+        },
+        "date": 1782930553320,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19647.146,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "4a238472a86b4f9e3e14445a223bae8b3333e7e9",
+          "message": "[after] Fix accessing graph factories across modules with ",
+          "timestamp": "2026-07-01T17:52:58Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/4a238472a86b4f9e3e14445a223bae8b3333e7e9"
+        },
+        "date": 1782930553321,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19917.448,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.38%"
           }
         ]
       }
