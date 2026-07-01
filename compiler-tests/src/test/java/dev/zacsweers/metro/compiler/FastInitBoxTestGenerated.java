@@ -1077,6 +1077,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("CreateGraphFactoryExternalInterfaceFactory.kt")
+    public void testCreateGraphFactoryExternalInterfaceFactory() {
+      run("CreateGraphFactoryExternalInterfaceFactory.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultAccessorBodiesWorkAcrossModules.kt")
     public void testDefaultAccessorBodiesWorkAcrossModules() {
       run("DefaultAccessorBodiesWorkAcrossModules.kt");
