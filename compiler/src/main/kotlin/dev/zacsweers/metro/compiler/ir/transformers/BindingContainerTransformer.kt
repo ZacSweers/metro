@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -939,10 +940,19 @@ internal class BindingContainerTransformer(
                   }
 
                 if (factoryClass == null) {
+                  val message = buildString {
+                    append("[${MetroDiagnosticId.UNPROCESSED_UPSTREAM_DECLARATION.fullId}] ")
+                    append("Cannot use Dagger module `$declarationFqName` because Dagger did ")
+                    appendLine("not generate a provider factory for `${decl.name}`.")
+                    appendLine()
+                    append(
+                      "Run Dagger's compiler for the upstream module, or process that module with Metro instead."
+                    )
+                  }
                   reportCompat(
                     decl,
-                    MetroDiagnostics.METRO_ERROR,
-                    "Couldn't find Dagger-generated provider factory class for $declaration.$decl",
+                    MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION,
+                    message,
                   )
                   // Cache the failure so subsequent lookups don't re-report the same diagnostic.
                   cache.putIfAbsent(declarationFqName, Optional.empty())
@@ -1006,10 +1016,14 @@ internal class BindingContainerTransformer(
         declaration.isAnnotatedWithAny(metroSymbols.classIds.dependencyGraphAnnotations) ||
           declaration.isBindingContainer()
       if (requireMetadata) {
-        val message =
-          "No metadata found for ${metadataDeclaration.kotlinFqName} from " +
-            "another module. Did you run the Metro compiler plugin on this module?"
-        reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
+        val message = buildString {
+          append("[${MetroDiagnosticId.UNPROCESSED_UPSTREAM_DECLARATION.fullId}] ")
+          append("Cannot use binding container `${metadataDeclaration.kotlinFqName}` because ")
+          appendLine("the upstream declaration was not processed by Metro.")
+          appendLine()
+          append("Run Metro's compiler for the upstream module.")
+        }
+        reportCompat(declaration, MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION, message)
         // Cache the failure so subsequent lookups don't re-report the same diagnostic.
         cache.putIfAbsent(declarationFqName, Optional.empty())
         return null

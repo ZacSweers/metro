@@ -162,7 +162,7 @@ enabled only in the downstream module while the referenced declaration lives ups
 
 Enable Metro in the upstream module too. If this happens while using framework interop, make
 sure the upstream module also runs that framework's code generation when Metro relies on its
-generated declarations.
+generated code.
 
 ## UnusedGraphInputs
 

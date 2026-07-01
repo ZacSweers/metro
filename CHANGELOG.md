@@ -81,6 +81,7 @@ Changelog
 - **[IR]** Manage transitive simple class binding containers included by contributed binding containers when they have instance providers.
 - **[IR]** Patch declaration parents for generated `@Binds` mirror declarations so copied declarations remain attached to the correct generated class.
 - **[IR]** Preserve `@GraphPrivate` on cross-module mirror functions so private multibinding contributions do not leak through chained graph extensions.
+- **[IR/Dagger interop]** Report a clear diagnostic when an injected declaration or binding container from an upstream module was not processed by Metro, instead of crashing or reporting a generic compiler error.
 - **[IR/Dagger interop]** Fix an IR gen crash when an unscoped parent `@Provides` binding is injected as `dagger.Lazy<T>` from a child graph.
 - **[IR/JS]** Fix `Map<K, () -> V>` multibindings accessed through provider-style map factories on Kotlin/JS. Generated maps now store callable function values instead of Metro `Provider` objects.
 - **[IR/KLIB]** Fix generated `@Binds` implementations on KLIB backends. Metro now emits concrete identity bodies for inherited `@Binds` members where JS, Native, and Wasm validate abstract members during deserialization.

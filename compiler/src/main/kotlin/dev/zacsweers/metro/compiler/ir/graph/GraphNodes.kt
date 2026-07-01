@@ -599,10 +599,17 @@ internal class GraphNodes(
       if (hasClassFactory) return true
 
       val target = callable.rawTarget.render(short = false)
+      val message = buildString {
+        append("[${MetroDiagnosticId.UNPROCESSED_UPSTREAM_DECLARATION.fullId}] ")
+        append("Cannot use parameter-less @Binds for `$target` because the upstream ")
+        appendLine("injected declaration was not processed by Metro.")
+        appendLine()
+        append("Run Metro's compiler for the upstream module.")
+      }
       reportCompat(
         callable.function,
-        MetroDiagnostics.BINDS_ERROR,
-        "Parameter-less @Binds target `$target` must be constructor-injected. Make sure Metro's compiler runs over `$target`.",
+        MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION,
+        message,
       )
       hasErrors = true
       return false

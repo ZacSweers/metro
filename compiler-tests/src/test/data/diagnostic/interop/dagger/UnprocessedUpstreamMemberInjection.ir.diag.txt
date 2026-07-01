@@ -2,6 +2,6 @@
 
 Metro can read inherited member injections across modules only when Metro processed the upstream declaration. Dagger interop can also use Dagger-generated `_MembersInjector` classes.
 
-Run Metro over the upstream module too, or (if you want to use Dagger interop) run Dagger code generation for that module.
+Run Metro's compiler for the upstream module. If Dagger owns that upstream declaration instead, run Dagger's compiler there.
 
 Expected 2 member-injection parameters from generated injector fields, but only reconstructed 1.

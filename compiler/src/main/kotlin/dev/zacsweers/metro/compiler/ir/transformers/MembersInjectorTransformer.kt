@@ -635,11 +635,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       }
       appendLine()
       appendLine()
-      append("Run Metro over the upstream module too")
+      append("Run Metro's compiler for the upstream module")
       if (options.enableDaggerRuntimeInterop) {
-        append(
-          ", or (if you want to use Dagger interop) run Dagger code generation for that module"
-        )
+        append(". If Dagger owns that upstream declaration instead, run Dagger's compiler there")
       }
       appendLine(".")
       appendLine()

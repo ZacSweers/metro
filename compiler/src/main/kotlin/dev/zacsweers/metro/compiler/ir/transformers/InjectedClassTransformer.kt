@@ -8,6 +8,7 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ClassFactory
@@ -149,16 +150,19 @@ internal class InjectedClassTransformer(
 
       fun reportAndReturn(): ClassFactory? {
         val message = buildString {
-          append(
-            "Could not find generated factory for '${declaration.kotlinFqName}' in the upstream module where it's defined. "
-          )
-          append("Run the Metro compiler over that module too")
+          append("[${MetroDiagnosticId.UNPROCESSED_UPSTREAM_DECLARATION.fullId}] ")
+          append("Cannot use injected declaration `${declaration.kotlinFqName}` because ")
+          appendLine("the upstream declaration was not processed by Metro.")
+          appendLine()
+          append("Run Metro's compiler for the upstream module")
           if (options.enableDaggerRuntimeInterop) {
-            append(" (or Dagger if you're using its interop)")
+            append(
+              ". If Dagger owns that upstream declaration instead, run Dagger's compiler there"
+            )
           }
           appendLine(".")
         }
-        reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
+        reportCompat(declaration, MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION, message)
         return null
       }
 
