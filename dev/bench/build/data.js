@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782625013281,
+  "lastUpdate": 1782883490432,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18312,6 +18312,62 @@ window.BENCHMARK_DATA = {
             "value": 19486.256,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.15%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "db382318~1",
+          "message": "[before] Improve error messaging on missing upstream factor",
+          "timestamp": "2026-07-01T04:51:17Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/db3823180150d2256ee95aeda43c79fcb9a7c1b4"
+        },
+        "date": 1782883490432,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18029.432,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "db3823180150d2256ee95aeda43c79fcb9a7c1b4",
+          "message": "[after] Improve error messaging on missing upstream factor",
+          "timestamp": "2026-07-01T04:51:17Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/db3823180150d2256ee95aeda43c79fcb9a7c1b4"
+        },
+        "date": 1782883490433,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18148.05,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.66%"
           }
         ]
       }
