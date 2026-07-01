@@ -18,7 +18,6 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
-import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
@@ -130,26 +129,6 @@ internal fun IrClass.getOrCreateGraphImplClassShell(): IrClass {
             context.metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
           }
       }
-    }
-}
-
-context(context: IrMetroContext)
-internal fun IrClass.getOrCreateGraphFactoryImplShell(): IrClass {
-  return getOrCreateMetadataVisibleHiddenNestedClass(
-      name = Symbols.Names.Impl,
-      origin = Origins.GraphFactoryImplClassDeclaration,
-      superTypesProvider = {
-        listOf(
-          this@getOrCreateGraphFactoryImplShell.symbol.typeWith(
-            typeParameters.map { it.defaultType }
-          )
-        )
-      },
-    )
-    .apply {
-      addMetroImplMarkerAnnotation()
-      addMetadataVisibleDefaultConstructor()
-      addFakeOverrides(context.irTypeSystemContext)
     }
 }
 

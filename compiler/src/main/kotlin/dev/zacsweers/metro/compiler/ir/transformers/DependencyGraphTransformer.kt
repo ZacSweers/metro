@@ -32,12 +32,14 @@ import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.RuntimeTracingAvailability
 import dev.zacsweers.metro.compiler.ir.UsedKeyCollector
+import dev.zacsweers.metro.compiler.ir.addMetadataVisibleDefaultConstructor
+import dev.zacsweers.metro.compiler.ir.addMetroImplMarkerAnnotation
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.chunkSupertypesIfNeeded
 import dev.zacsweers.metro.compiler.ir.computePromotedParents
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
-import dev.zacsweers.metro.compiler.ir.getOrCreateGraphFactoryImplShell
+import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.BindingLookupCache
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
@@ -80,6 +82,7 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.diagnosticTag
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.concurrent.ForkJoinPool
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irBlockBody
@@ -95,6 +98,7 @@ import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
 import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -1011,6 +1015,24 @@ internal class DependencyGraphTransformer(
     } else {
       requireNestedClass(Symbols.Names.Impl)
     }
+  }
+
+  context(context: IrMetroContext)
+  private fun IrClass.getOrCreateGraphFactoryImplShell(): IrClass {
+    return getOrCreateMetadataVisibleHiddenNestedClass(
+        name = Symbols.Names.Impl,
+        origin = Origins.GraphFactoryImplClassDeclaration,
+        kind = ClassKind.OBJECT,
+        superTypesProvider = {
+          listOf(this@getOrCreateGraphFactoryImplShell.symbol.defaultType)
+        },
+        copyTypeParameters = false,
+      )
+      .apply {
+        addMetroImplMarkerAnnotation()
+        addMetadataVisibleDefaultConstructor()
+        addFakeOverrides(context.irTypeSystemContext)
+      }
   }
 }
 

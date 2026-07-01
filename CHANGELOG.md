@@ -4,6 +4,12 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[IR]** Fix `createGraphFactory()` calls for graph factory interfaces compiled in upstream modules with IR-only class generation.
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
 1.3.0
 -----
 
