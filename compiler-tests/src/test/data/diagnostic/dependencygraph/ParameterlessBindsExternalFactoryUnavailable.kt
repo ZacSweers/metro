@@ -15,5 +15,5 @@ import dev.zacsweers.metro.Inject;
 interface AppGraph {
   val target: ExternalTarget
 
-  @Binds <!BINDS_ERROR!>fun bindExternalTarget(): ExternalTarget<!>
+  @Binds <!UNPROCESSED_UPSTREAM_DECLARATION!>fun bindExternalTarget(): ExternalTarget<!>
 }

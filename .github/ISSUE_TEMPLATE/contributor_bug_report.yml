@@ -51,6 +51,15 @@ body:
       label: Metro environment
       description: |
         Run `./gradlew :path:to:project:metroEnv` (Metro 1.1.2+) in the affected project and paste the relevant report from `build/reports/metro/env/`. If on an older version, just put the Metro and Kotlin versions.
+      value: |
+        <details>
+        <summary>Metro environment</summary>
+
+        ```text
+        Paste metroEnv output here.
+        ```
+
+        </details>
     validations:
       required: true
   - type: input

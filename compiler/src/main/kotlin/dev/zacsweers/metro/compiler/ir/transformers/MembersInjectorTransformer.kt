@@ -11,7 +11,9 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.escapeIfNull
+import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -346,6 +348,16 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
         assignConstructorParamsToFields(ctor, injectorClass, namer = memberNamer)
       }
 
+    val fieldCount = constructorParametersToFields.size
+    val hasUnmatchedInjectorFields = fieldCount > allParameters.size
+    if (hasUnmatchedInjectorFields) {
+      reportUnprocessedUpstreamDeclaration(
+        declaration = declaration,
+        fieldCount = fieldCount,
+        parameterCount = allParameters.size,
+      )
+    }
+
     // TODO This is ugly. Can we just source all the params directly from the FIR class now?
     val sourceParametersToFields: Map<Parameter, IrField> =
       constructorParametersToFields.entries.withIndex().associate { (index, pair) ->
@@ -603,6 +615,37 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       }
 
     return result
+  }
+
+  private fun reportUnprocessedUpstreamDeclaration(
+    declaration: IrClass,
+    fieldCount: Int,
+    parameterCount: Int,
+  ): Nothing {
+    val message = buildString {
+      append("[${MetroDiagnosticId.UNPROCESSED_UPSTREAM_DECLARATION.fullId}] ")
+      append("Cannot generate a members injector for ${declaration.kotlinFqName} because ")
+      append("Metro found inherited member-injection state, but the ")
+      appendLine("upstream declaration was not processed by Metro.")
+      appendLine()
+      append("Metro can read inherited member injections across modules only when Metro ")
+      append("processed the upstream declaration.")
+      if (options.enableDaggerRuntimeInterop) {
+        append(" Dagger interop can also use Dagger-generated `_MembersInjector` classes.")
+      }
+      appendLine()
+      appendLine()
+      append("Run Metro's compiler for the upstream module")
+      if (options.enableDaggerRuntimeInterop) {
+        append(". If Dagger owns that upstream declaration instead, run Dagger's compiler there")
+      }
+      appendLine(".")
+      appendLine()
+      append("Expected $fieldCount member-injection parameters from generated injector fields, ")
+      append("but only reconstructed $parameterCount.")
+    }
+    reportCompat(declaration, MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION, message)
+    exitProcessing()
   }
 
   /**

@@ -1232,6 +1232,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testPositionalAnnotationArgsWarning() {
         run("PositionalAnnotationArgsWarning.kt");
       }
+
+      @Test
+      @TestMetadata("UnprocessedUpstreamMemberInjection.kt")
+      public void testUnprocessedUpstreamMemberInjection() {
+        run("UnprocessedUpstreamMemberInjection.kt");
+      }
     }
   }
 

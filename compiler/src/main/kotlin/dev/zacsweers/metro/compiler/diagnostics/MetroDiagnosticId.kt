@@ -137,6 +137,20 @@ internal enum class MetroDiagnosticId(
     """,
     MetroDiagnostics.INVALID_ASSISTED_BINDING,
   ),
+  UNPROCESSED_UPSTREAM_DECLARATION(
+    "Metro/UnprocessedUpstreamDeclaration",
+    "An upstream declaration does not appear to have been processed by Metro.",
+    """
+    Metro was asked to use an injected declaration from another module or compilation unit, but that
+    declaration does not appear to have been processed by Metro. This usually means Metro was
+    enabled only in the downstream module while the referenced declaration lives upstream.
+
+    Enable Metro in the upstream module too. If this happens while using framework interop, make
+    sure the upstream module also runs that framework's code generation when Metro relies on its
+    generated code.
+    """,
+    MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION,
+  ),
   UNUSED_GRAPH_INPUTS(
     "Metro/UnusedGraphInputs",
     "A graph input is unused and can be removed.",

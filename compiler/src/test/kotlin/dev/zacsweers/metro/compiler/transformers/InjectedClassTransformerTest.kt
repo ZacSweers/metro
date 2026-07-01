@@ -395,7 +395,9 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Could not find generated factory for 'test.ExampleClass' in the upstream module where it's defined. Run the Metro compiler over that module too (or Dagger if you're using its interop).
+        e: [Metro/UnprocessedUpstreamDeclaration] Cannot use injected declaration `test.ExampleClass` because the upstream declaration was not processed by Metro.
+
+        Run Metro's compiler for the upstream module. If Dagger owns that upstream declaration instead, run Dagger's compiler there.
 
         e: ExampleGraph.kt:8:7 [Metro/MissingBinding] No binding found for ExampleClass
 

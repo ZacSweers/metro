@@ -19,6 +19,8 @@ import kotlin.system.exitProcess
 internal object DiagnosticsDocGenerator {
 
   fun generate(): String = buildString {
+    val diagnosticIds = MetroDiagnosticId.entries.sortedBy { it.fullId.substringAfter('/') }
+
     appendLine("# Diagnostics Reference")
     appendLine()
     appendLine("<!-- Generated from MetroDiagnosticId by DiagnosticsDocGenerator. -->")
@@ -42,10 +44,10 @@ internal object DiagnosticsDocGenerator {
     appendLine()
     appendLine("| Diagnostic | Summary |")
     appendLine("|------------|---------|")
-    for (id in MetroDiagnosticId.entries) {
+    for (id in diagnosticIds) {
       appendLine("| [`${id.fullId}`](#${id.anchor}) | ${id.brief} |")
     }
-    for (id in MetroDiagnosticId.entries) {
+    for (id in diagnosticIds) {
       appendLine()
       appendLine("## ${id.fullId.substringAfter('/')}")
       appendLine()

@@ -97,6 +97,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_MEMBER_INJEC
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_SET_INTO_SET
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
 import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
@@ -239,6 +240,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val INVALID_ASSISTED_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val EMPTY_MULTIBINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val QUALIFIER_OVERRIDE_MISMATCH by error1<KtElement, String>(NAME_IDENTIFIER)
+  val UNPROCESSED_UPSTREAM_DECLARATION by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_TRACE_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -423,6 +425,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(INVALID_ASSISTED_BINDING, "{0}", TO_STRING)
         put(EMPTY_MULTIBINDING, "{0}", TO_STRING)
         put(QUALIFIER_OVERRIDE_MISMATCH, "{0}", TO_STRING)
+        put(UNPROCESSED_UPSTREAM_DECLARATION, "{0}", TO_STRING)
       }
     }
 }
