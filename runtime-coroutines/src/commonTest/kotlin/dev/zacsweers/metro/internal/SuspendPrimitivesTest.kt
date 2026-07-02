@@ -47,8 +47,8 @@ class SuspendPrimitivesTest {
   fun `MapSuspendProviderFactory builds a map of suspend providers`() = runTest {
     val factory =
       MapSuspendProviderFactory.builder<String, Int>(2)
-        .put("one", Provider { 1 })
-        .put("two", Provider { 2 })
+        .put("one", SuspendProvider { 1 })
+        .put("two", SuspendProvider { 2 })
         .build()
     val map = factory()
     assertEquals(setOf("one", "two"), map.keys)
