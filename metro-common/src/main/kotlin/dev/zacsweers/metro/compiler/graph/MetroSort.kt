@@ -25,7 +25,7 @@ import java.util.SortedSet
  * @param components The strongly connected components computed during sorting.
  * @param componentOf Mapping from vertex to component ID.
  */
-internal data class GraphTopology<T>(
+public data class GraphTopology<T>(
   val sortedKeys: List<T>,
   val deferredTypes: Set<T>,
   val reachableKeys: Set<T>,
@@ -40,7 +40,7 @@ internal data class GraphTopology<T>(
  * @property forward Maps each vertex to its dependencies (outgoing edges).
  * @property reverse Maps each vertex to its dependents (incoming edges).
  */
-internal data class GraphAdjacency<T>(
+public data class GraphAdjacency<T>(
   val forward: SortedMap<T, SortedSet<T>>,
   val reverse: Map<T, Set<T>>,
 )
@@ -114,7 +114,7 @@ internal data class GraphAdjacency<T>(
  * @param onSortedCycle optional callback reporting (sorted) cycles.
  */
 context(traceScope: TraceScope)
-internal fun <V : Comparable<V>> metroSort(
+public fun <V : Comparable<V>> metroSort(
   fullAdjacency: SortedMap<V, SortedSet<V>>,
   isDeferrable: (from: V, to: V) -> Boolean,
   onCycle: (List<V>) -> Unit,
@@ -542,9 +542,9 @@ private fun <V : Comparable<V>> sortVerticesInSCC(
   return result
 }
 
-internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mutableListOf())
+public data class Component<V>(val id: Int, val vertices: MutableList<V> = mutableListOf())
 
-internal data class TarjanResult<V : Comparable<V>>(
+public data class TarjanResult<V : Comparable<V>>(
   val components: List<Component<V>>,
   val componentOf: ObjectIntMap<V>,
   /**
@@ -657,7 +657,7 @@ internal data class TarjanResult<V : Comparable<V>>(
  *   href="https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm">Tarjan's
  *   algorithm</a>
  */
-internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnectedComponents(
+public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnectedComponents(
   roots: SortedSet<V>? = null
 ): TarjanResult<V> {
   // Map vertices to dense int ids in sorted order so adjacency lookups, visited bookkeeping, and
@@ -871,7 +871,7 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
 private const val UNVISITED = -1
 private val EMPTY_INT_ARRAY = IntArray(0)
 
-internal fun <T : Comparable<T>> buildFullAdjacency(
+public fun <T : Comparable<T>> buildFullAdjacency(
   map: ScatterMap<T, *>,
   sourceToTarget: (T) -> Iterable<T>,
   onMissing: (source: T, missing: T) -> Unit,

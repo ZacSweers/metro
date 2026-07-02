@@ -5,26 +5,26 @@ package dev.zacsweers.metro.compiler.graph
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import org.jetbrains.kotlin.name.FqName
 
-internal interface BaseBindingStack<
+public interface BaseBindingStack<
   ClassType : Any,
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, *>,
   Entry : BaseBindingStack.BaseEntry<Type, TypeKey, *>,
   Impl : BaseBindingStack<ClassType, Type, TypeKey, Entry, Impl>,
 > {
-  val graph: ClassType
-  val entries: List<Entry>
-  val graphFqName: FqName
+  public val graph: ClassType
+  public val entries: List<Entry>
+  public val graphFqName: FqName
 
-  fun push(entry: Entry)
+  public fun push(entry: Entry)
 
-  fun pop()
+  public fun pop()
 
-  fun copy(): Impl
+  public fun copy(): Impl
 
-  fun entryFor(key: TypeKey): Entry?
+  public fun entryFor(key: TypeKey): Entry?
 
-  fun entriesSince(key: TypeKey): List<Entry> {
+  public fun entriesSince(key: TypeKey): List<Entry> {
     // Top entry is always the key currently being processed, so exclude it from analysis with
     // dropLast(1)
     val inFocus = entries.asReversed().dropLast(1)
@@ -37,27 +37,27 @@ internal interface BaseBindingStack<
     return inFocus.subList(first, inFocus.size)
   }
 
-  interface BaseEntry<
+  public interface BaseEntry<
     Type : Any,
     TypeKey : BaseTypeKey<Type, *, *>,
     ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, *>,
   > {
-    val contextKey: ContextualTypeKey
-    val usage: String?
-    val graphContext: String?
-    val displayTypeKey: TypeKey
-    val diagnosticNotes: List<Note>
+    public val contextKey: ContextualTypeKey
+    public val usage: String?
+    public val graphContext: String?
+    public val displayTypeKey: TypeKey
+    public val diagnosticNotes: List<Note>
       get() = emptyList()
 
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
      * participate in validation.
      */
-    val isSynthetic: Boolean
-    val typeKey: TypeKey
+    public val isSynthetic: Boolean
+    public val typeKey: TypeKey
       get() = contextKey.typeKey
 
-    fun render(graph: FqName, short: Boolean): String {
+    public fun render(graph: FqName, short: Boolean): String {
       return buildString {
         append(displayTypeKey.render(short))
         usage?.let {
@@ -76,4 +76,18 @@ internal interface BaseBindingStack<
       }
     }
   }
+}
+
+public inline fun <
+  T,
+  Type : Any,
+  TypeKey : BaseTypeKey<Type, *, *>,
+  Entry : BaseBindingStack.BaseEntry<Type, TypeKey, *>,
+  Impl : BaseBindingStack<*, Type, TypeKey, Entry, Impl>,
+> Impl.withEntry(entry: Entry?, block: () -> T): T {
+  if (entry == null) return block()
+  push(entry)
+  val result = block()
+  pop()
+  return result
 }

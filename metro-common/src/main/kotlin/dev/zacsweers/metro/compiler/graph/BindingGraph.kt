@@ -19,7 +19,6 @@ import dev.zacsweers.metro.compiler.diagnostics.TraceEntry
 import dev.zacsweers.metro.compiler.diagnostics.buildText
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.getValue
-import dev.zacsweers.metro.compiler.ir.graph.withEntry
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -29,7 +28,7 @@ import java.util.SortedSet
 import java.util.TreeSet
 import org.jetbrains.kotlin.name.FqName
 
-internal interface BindingGraph<
+public interface BindingGraph<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, TypeKey>,
   ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, ContextualTypeKey>,
@@ -37,18 +36,18 @@ internal interface BindingGraph<
   BindingStackEntry : BaseBindingStack.BaseEntry<Type, TypeKey, ContextualTypeKey>,
   BindingStack : BaseBindingStack<*, Type, TypeKey, BindingStackEntry, BindingStack>,
 > {
-  val bindings: ScatterMap<TypeKey, Binding>
+  public val bindings: ScatterMap<TypeKey, Binding>
 
-  operator fun get(key: TypeKey): Binding?
+  public operator fun get(key: TypeKey): Binding?
 
-  operator fun contains(key: TypeKey): Boolean
+  public operator fun contains(key: TypeKey): Boolean
 
-  fun TypeKey.dependsOn(other: TypeKey): Boolean
+  public fun TypeKey.dependsOn(other: TypeKey): Boolean
 }
 
 // TODO instead of implementing BindingGraph, maybe just make this a builder and have build()
 //  produce one?
-internal open class MutableBindingGraph<
+public open class MutableBindingGraph<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, TypeKey>,
   ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, ContextualTypeKey>,
@@ -83,11 +82,11 @@ internal open class MutableBindingGraph<
   },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
-  override val bindings = MutableScatterMap<TypeKey, Binding>(256)
+  override val bindings: MutableScatterMap<TypeKey, Binding> = MutableScatterMap(256)
   private val bindingIndices = MutableObjectIntMap<TypeKey>()
   private val reportedMissingKeys = mutableSetOf<TypeKey>()
 
-  var sealed = false
+  public var sealed: Boolean = false
     private set
 
   /**
@@ -114,7 +113,7 @@ internal open class MutableBindingGraph<
    * @param keep optional set of keys to keep, even if they are unused.
    */
   context(traceScope: TraceScope)
-  fun seal(
+  public fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     keep: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     shrinkUnusedBindings: Boolean = true,
@@ -437,7 +436,7 @@ internal open class MutableBindingGraph<
     errorReporter.reportFatal(diagnostic, stack)
   }
 
-  fun replace(binding: Binding) {
+  public fun replace(binding: Binding) {
     bindings[binding.typeKey] = binding
   }
 
@@ -445,7 +444,7 @@ internal open class MutableBindingGraph<
    * @param key The key to put the binding under. Can be customized to link/alias a key to another
    *   binding
    */
-  fun tryPut(binding: Binding, bindingStack: BindingStack, key: TypeKey = binding.typeKey) {
+  public fun tryPut(binding: Binding, bindingStack: BindingStack, key: TypeKey = binding.typeKey) {
     check(!sealed) { "Graph already sealed" }
     if (binding.isTransient) {
       // Absent binding or otherwise not something we store
@@ -459,7 +458,11 @@ internal open class MutableBindingGraph<
     }
   }
 
-  fun reportDuplicateBindings(key: TypeKey, bindings: List<Binding>, bindingStack: BindingStack) {
+  public fun reportDuplicateBindings(
+    key: TypeKey,
+    bindings: List<Binding>,
+    bindingStack: BindingStack,
+  ) {
     val notes = buildList {
       addAll(bindings.flatMap { it.diagnosticNotes }.distinct())
       if (bindings.distinctBy { System.identityHashCode(it) }.size == 1) {
@@ -476,7 +479,7 @@ internal open class MutableBindingGraph<
     )
   }
 
-  fun reportDuplicateBindings(
+  public fun reportDuplicateBindings(
     key: TypeKey,
     locations: List<LocationDiagnostic>,
     bindingStack: BindingStack,
@@ -526,7 +529,7 @@ internal open class MutableBindingGraph<
     return bindingIndices[this] >= bindingIndices[other]
   }
 
-  fun reportMissingBinding(typeKey: TypeKey, bindingStack: BindingStack) {
+  public fun reportMissingBinding(typeKey: TypeKey, bindingStack: BindingStack) {
     if (reportedMissingKeys.add(typeKey)) {
       val hints = missingBindingHints(typeKey)
       // Don't have access to an IrPluginContext here to check it's an anyType

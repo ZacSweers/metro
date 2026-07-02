@@ -8,7 +8,7 @@ package dev.zacsweers.metro.compiler.diagnostics
  * Render profiles decide how these become ANSI codes or plain text; model code never deals in
  * escape sequences.
  */
-internal enum class Style {
+public enum class Style {
   NONE,
   /** Key content like type names and declaration names. Bold in rich output. */
   EMPHASIS,
@@ -35,15 +35,15 @@ internal enum class Style {
  * Type names are first-class spans so renderers can use simple names by default and switch to fully
  * qualified names only for ambiguous simple names in the same diagnostic.
  */
-internal class Text(internal val spans: List<Span>) {
+public class Text(public val spans: List<Span>) {
 
-  internal sealed interface Span {
-    val style: Style
+  public sealed interface Span {
+    public val style: Style
 
-    data class Plain(val text: String, override val style: Style = Style.NONE) : Span
+    public data class Plain(val text: String, override val style: Style = Style.NONE) : Span
 
     /** Inline code, rendered with backticks in all modes. */
-    data class Code(val text: String) : Span {
+    public data class Code(val text: String) : Span {
       override val style: Style
         get() = Style.NONE
     }
@@ -52,7 +52,7 @@ internal class Text(internal val spans: List<Span>) {
      * A type reference. Renderers prefer [simpleRender] and use [fqRender] when [fqName] is
      * ambiguous in the current diagnostic.
      */
-    data class Type(
+    public data class Type(
       val fqName: String,
       val simpleRender: String,
       val fqRender: String,
@@ -60,9 +60,10 @@ internal class Text(internal val spans: List<Span>) {
     ) : Span
   }
 
-  fun isEmpty(): Boolean = spans.isEmpty() || spans.all { it is Span.Plain && it.text.isEmpty() }
+  public fun isEmpty(): Boolean =
+    spans.isEmpty() || spans.all { it is Span.Plain && it.text.isEmpty() }
 
-  val typeSpans: List<Span.Type>
+  public val typeSpans: List<Span.Type>
     get() = spans.filterIsInstance<Span.Type>()
 
   /** Unstyled rendering with simple type names. For tests and fallbacks. */
@@ -79,38 +80,39 @@ internal class Text(internal val spans: List<Span>) {
 
   override fun hashCode(): Int = spans.hashCode()
 
-  companion object {
-    val EMPTY = Text(emptyList())
+  public companion object {
+    public val EMPTY: Text = Text(emptyList())
   }
 }
 
-internal fun textOf(text: String, style: Style = Style.NONE): Text =
+public fun textOf(text: String, style: Style = Style.NONE): Text =
   Text(listOf(Text.Span.Plain(text, style)))
 
-internal inline fun buildText(block: TextBuilder.() -> Unit): Text =
+public inline fun buildText(block: TextBuilder.() -> Unit): Text =
   TextBuilder().apply(block).build()
 
-internal class TextBuilder {
+public class TextBuilder {
   private val spans = mutableListOf<Text.Span>()
 
   @IgnorableReturnValue
-  fun append(text: String, style: Style = Style.NONE) = apply {
+  public fun append(text: String, style: Style = Style.NONE): TextBuilder = apply {
     spans += Text.Span.Plain(text, style)
   }
 
-  @IgnorableReturnValue fun append(text: Text) = apply { spans += text.spans }
-
-  @IgnorableReturnValue fun appendCode(text: String) = apply { spans += Text.Span.Code(text) }
+  @IgnorableReturnValue public fun append(text: Text): TextBuilder = apply { spans += text.spans }
 
   @IgnorableReturnValue
-  fun appendType(
+  public fun appendCode(text: String): TextBuilder = apply { spans += Text.Span.Code(text) }
+
+  @IgnorableReturnValue
+  public fun appendType(
     fqName: String,
     simpleRender: String = fqName.substringAfterLast('.'),
     fqRender: String = fqName,
     style: Style = Style.EMPHASIS,
-  ) = apply {
+  ): TextBuilder = apply {
     spans += Text.Span.Type(fqName, simpleRender, fqRender, style)
   }
 
-  fun build(): Text = Text(spans.toList())
+  public fun build(): Text = Text(spans.toList())
 }

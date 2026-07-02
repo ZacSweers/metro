@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.diagnostics.factory
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
@@ -22,6 +23,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
 import dev.zacsweers.metro.compiler.graph.toTraceSection
+import dev.zacsweers.metro.compiler.graph.withEntry
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation

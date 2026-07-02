@@ -21,10 +21,6 @@ import androidx.collection.ScatterMap
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.ForkJoinTask
 
-internal fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
-  return filterTo(mutableSetOf(), predicate)
-}
-
 internal fun <T, R : Any> Iterable<T>.mapNotNullToSet(transform: (T) -> R?): Set<R> {
   return mapNotNullTo(mutableSetOf(), transform)
 }
@@ -54,41 +50,6 @@ internal fun <T, R> Iterable<T>.mapToSetWithDupes(transform: (T) -> R): Pair<Set
     }
   }
   return destination to dupes
-}
-
-internal fun <T> List<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
-  return filterTo(mutableSetOf(), predicate)
-}
-
-internal fun <T> List<T>.allElementsAreEqual(): Boolean {
-  if (size < 2) return true
-  val firstElement = get(0)
-  for (i in 1 until size) {
-    if (get(i) != firstElement) return false
-  }
-  return true
-}
-
-@Suppress("NOTHING_TO_INLINE")
-internal inline fun <K, V> ScatterMap<K, V>.getValue(key: K): V =
-  get(key) ?: throw NoSuchElementException("Key $key is missing in the map.")
-
-@IgnorableReturnValue
-@Suppress("NOTHING_TO_INLINE")
-internal inline fun <K, V> MutableScatterMap<K, MutableSet<V>>.getAndAdd(
-  key: K,
-  value: V,
-): MutableSet<V> {
-  return getOrPut(key, ::mutableSetOf).also { it.add(value) }
-}
-
-@IgnorableReturnValue
-@Suppress("NOTHING_TO_INLINE")
-internal inline fun <K, V> MutableScatterMap<K, MutableScatterSet<V>>.getAndAdd(
-  key: K,
-  value: V,
-): MutableScatterSet<V> {
-  return getOrPut(key, ::MutableScatterSet).also { it.add(value) }
 }
 
 /**

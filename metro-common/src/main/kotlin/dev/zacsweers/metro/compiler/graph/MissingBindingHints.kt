@@ -6,7 +6,7 @@ import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.SimilarBindingItem
 
-internal data class MissingBindingHints(
+public data class MissingBindingHints(
   val notes: List<Note> = emptyList(),
   /** Extra body sections (e.g. a near-miss binding's location + signature). */
   val sections: List<DiagnosticSection> = emptyList(),

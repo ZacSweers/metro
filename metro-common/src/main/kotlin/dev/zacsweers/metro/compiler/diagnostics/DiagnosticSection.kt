@@ -10,14 +10,14 @@ import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
  * Sections render in declaration order, separated by blank lines. Each section type describes the
  * content it carries; [DiagnosticRenderer] owns the actual layout.
  */
-internal sealed interface DiagnosticSection {
+public sealed interface DiagnosticSection {
 
   /**
    * A compact dependency path such as `AppGraph.repo -> RepositoryImpl -> Dependency`.
    *
    * The renderer keeps each arrow and target together, so wrapped chains break between steps.
    */
-  data class Chain(val items: List<Text>) : DiagnosticSection {
+  public data class Chain(val items: List<Text>) : DiagnosticSection {
     init {
       require(items.isNotEmpty()) { "Chain requires at least one item" }
     }
@@ -30,33 +30,33 @@ internal sealed interface DiagnosticSection {
    * differs from that header. [continuation] is set by [DiagnosticBatch] when another diagnostic in
    * the same batch already printed the shared tail of this trace.
    */
-  data class BindingTrace(
+  public data class BindingTrace(
     val graphName: String,
     val entries: List<TraceEntry>,
     val continuation: Text? = null,
   ) : DiagnosticSection
 
   /** A dependency cycle, drawn as a closed loop. */
-  data class Cycle(val nodes: List<CycleNode>) : DiagnosticSection {
+  public data class Cycle(val nodes: List<CycleNode>) : DiagnosticSection {
     init {
       require(nodes.isNotEmpty()) { "Cycle requires at least one node" }
     }
   }
 
   /** Source locations with optional code excerpts, used for diagnostics such as duplicates. */
-  data class Locations(val header: Text?, val items: List<LocatedItem>) : DiagnosticSection
+  public data class Locations(val header: Text?, val items: List<LocatedItem>) : DiagnosticSection
 
   /** Near-miss bindings for a missing binding diagnostic. */
-  data class SimilarBindings(val items: List<SimilarBindingItem>) : DiagnosticSection
+  public data class SimilarBindings(val items: List<SimilarBindingItem>) : DiagnosticSection
 
   /** Preformatted code (typically an IR-rendered signature). Never wrapped or restyled. */
-  data class CodeBlock(val code: String, val location: String? = null) : DiagnosticSection
+  public data class CodeBlock(val code: String, val location: String? = null) : DiagnosticSection
 
   /** Free-form prose for content with no better-fitting section type. */
-  data class Generic(val text: Text) : DiagnosticSection
+  public data class Generic(val text: Text) : DiagnosticSection
 }
 
-internal data class TraceEntry(
+public data class TraceEntry(
   val key: Text,
   /** Usage phrase such as "is injected at" or "is requested at". */
   val usage: String?,
@@ -66,13 +66,13 @@ internal data class TraceEntry(
   val graphName: String? = null,
 )
 
-internal data class CycleNode(
+public data class CycleNode(
   val name: Text,
   /** True when the edge from this node to the next is a `@Binds` alias rather than a dependency. */
   val aliasEdgeToNext: Boolean = false,
 )
 
-internal data class LocatedItem(
+public data class LocatedItem(
   val location: String?,
   /** Preformatted code excerpt (IR-rendered signature), possibly multi-line. */
   val code: String?,
@@ -88,7 +88,7 @@ internal data class LocatedItem(
   val span: DiagnosticSpan? = null,
 )
 
-internal data class SimilarBindingItem(
+public data class SimilarBindingItem(
   val key: Text,
   /** Why it's similar but not a match, e.g. "same type, different qualifier". */
   val description: String,

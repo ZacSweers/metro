@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.Text
 import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.diagnostics.factory
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver

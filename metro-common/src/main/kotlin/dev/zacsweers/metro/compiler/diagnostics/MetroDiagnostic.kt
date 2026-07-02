@@ -8,7 +8,7 @@ package dev.zacsweers.metro.compiler.diagnostics
  * This is the renderer-independent model for one problem Metro wants to report. Detection code
  * builds the model; the configured console renderer renders it later.
  */
-internal data class MetroDiagnostic(
+public data class MetroDiagnostic(
   val id: MetroDiagnosticId,
   val severity: MetroSeverity,
   /** One-line headline. Rendered after the `[Metro/...]` tag; kotlinc prepends its own severity. */
@@ -21,7 +21,7 @@ internal data class MetroDiagnostic(
   val includeDocsUrl: Boolean = true,
 )
 
-internal enum class MetroSeverity {
+public enum class MetroSeverity {
   ERROR,
   WARNING,
 }
@@ -31,19 +31,19 @@ internal enum class MetroSeverity {
  *
  * [NoteKind.HELP] is an actionable suggestion, while [NoteKind.NOTE] is supporting context.
  */
-internal data class Note(val kind: NoteKind, val text: Text) {
-  companion object {
-    fun help(text: Text): Note = Note(NoteKind.HELP, text)
+public data class Note(val kind: NoteKind, val text: Text) {
+  public companion object {
+    public fun help(text: Text): Note = Note(NoteKind.HELP, text)
 
-    fun help(text: String): Note = help(textOf(text))
+    public fun help(text: String): Note = help(textOf(text))
 
-    fun note(text: Text): Note = Note(NoteKind.NOTE, text)
+    public fun note(text: Text): Note = Note(NoteKind.NOTE, text)
 
-    fun note(text: String): Note = note(textOf(text))
+    public fun note(text: String): Note = note(textOf(text))
   }
 }
 
-internal enum class NoteKind {
+public enum class NoteKind {
   HELP,
   NOTE,
 }
@@ -54,7 +54,7 @@ internal enum class NoteKind {
  * [filePath] is used to read source text. [displayPath], when present, is the shorter path shown in
  * rendered output. [label] annotates the span in source-frame profiles.
  */
-internal data class DiagnosticSpan(
+public data class DiagnosticSpan(
   val filePath: String,
   val line: Int,
   val column: Int,
