@@ -12,6 +12,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDeclaration
@@ -101,6 +102,24 @@ internal fun Project.setMetroOptions(vararg options: Pair<String, String>) {
         .toTypedArray()
         .takeUnless { it.isEmpty() }
   }
+}
+
+/**
+ * Configures a Kotlin file with the `test` package and a `dev.zacsweers.metro.*` import prepended.
+ * Fixture sources only need their declarations, plus any non-Metro imports.
+ */
+internal fun CodeInsightTestFixture.configureMetroFile(
+  @Language("kotlin") source: String,
+  fileName: String = "Test.kt",
+): KtFile {
+  val text = buildString {
+    appendLine("package test")
+    appendLine()
+    appendLine("import dev.zacsweers.metro.*")
+    appendLine()
+    appendLine(source.trimIndent())
+  }
+  return configureByText(fileName, text) as KtFile
 }
 
 internal fun KtFile.declarationsIncludingNested(): List<KtDeclaration> {

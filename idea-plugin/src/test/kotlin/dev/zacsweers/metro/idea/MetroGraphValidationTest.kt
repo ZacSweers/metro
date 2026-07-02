@@ -1,0 +1,388 @@
+// Copyright (C) 2026 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
+package dev.zacsweers.metro.idea
+
+import com.intellij.openapi.components.service
+import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.idea.graph.GraphValidationResult
+import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.index.MetroResolutionService
+
+/** Seals graphs through [MetroGraphValidationService] and asserts the reported diagnostics. */
+class MetroGraphValidationTest : BasePlatformTestCase() {
+
+  override fun setUp() {
+    super.setUp()
+    project.setMetroOptions()
+    module.addMetroRuntimeLibrary()
+  }
+
+  private fun validate(source: String, graphName: String = "AppGraph"): GraphValidationResult {
+    val file = myFixture.configureMetroFile(source)
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single { it.name == graphName }
+    return project.service<MetroGraphValidationService>().validate(file, graph)
+  }
+
+  fun testCleanGraphHasNoDiagnostics() {
+    val result =
+      validate(
+        """
+
+        interface Service
+        interface Analytics
+
+        @Inject class ServiceImpl : Service
+
+        interface ServiceBindings {
+          @Binds fun bindService(impl: ServiceImpl): Service
+        }
+
+        @Inject @ContributesIntoSet(AppScope::class) class DebugAnalytics : Analytics
+
+        @Inject class Consumer(val service: Service, val analytics: Set<Analytics>)
+
+        @DependencyGraph(AppScope::class, bindingContainers = [ServiceBindings::class])
+        interface AppGraph {
+          val consumer: Consumer
+        }
+        """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val topology = result.topology!!
+    assertTrue(topology.sortedKeys.any { it.renderedType == "test.Consumer" })
+    assertTrue(topology.deferredTypes.isEmpty())
+    // The aggregate node participates in the sealed bindings
+    assertTrue(
+      result.bindings.any { key, _ -> key.renderedType.startsWith("kotlin.collections.Set") }
+    )
+  }
+
+  fun testMissingBindingIsReportedWithRequestTrace() {
+    val result =
+      validate(
+        """
+
+        interface MissingThing
+
+        @DependencyGraph
+        interface AppGraph {
+          val missing: MissingThing
+        }
+        """
+      )
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
+    val rendered = diagnostic.render()
+    assertTrue(rendered, "No binding found for MissingThing" in rendered)
+    assertTrue(rendered, "MissingThing is requested at test.AppGraph.missing" in rendered)
+  }
+
+  fun testOptionalAbsenceIsNotAnError() {
+    val result =
+      validate(
+        """
+
+        interface HttpClient
+
+        @DependencyGraph
+        interface AppGraph {
+          @OptionalBinding val httpClient: HttpClient? get() = null
+        }
+        """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  fun testHardCycleAbortsWithDependencyCycle() {
+    val result =
+      validate(
+        """
+
+        @Inject class A(val b: B)
+        @Inject class B(val a: A)
+
+        @DependencyGraph
+        interface AppGraph {
+          val a: A
+        }
+        """
+      )
+    assertEquals(
+      listOf(MetroDiagnosticId.DEPENDENCY_CYCLE),
+      result.diagnostics.map { it.id },
+    )
+    assertNull(result.topology)
+  }
+
+  fun testProviderBreaksCycle() {
+    val result =
+      validate(
+        """
+
+        @Inject class A(val b: Provider<B>)
+        @Inject class B(val a: A)
+
+        @DependencyGraph
+        interface AppGraph {
+          val a: A
+        }
+        """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.topology!!.deferredTypes.isNotEmpty())
+  }
+
+  fun testDuplicateBindingsAreReported() {
+    val result =
+      validate(
+        """
+
+        interface UrlProviders {
+          @Provides fun provideUrl(): String = "a"
+          @Provides fun provideOtherUrl(): String = "b"
+        }
+
+        @DependencyGraph(bindingContainers = [UrlProviders::class])
+        interface AppGraph {
+          val url: String
+        }
+        """
+      )
+    assertEquals(listOf(MetroDiagnosticId.DUPLICATE_BINDING), result.diagnostics.map { it.id })
+    val rendered = result.diagnostics.single().render()
+    assertTrue(rendered, "Multiple bindings found for" in rendered)
+  }
+
+  fun testDuplicateMapKeysAreReported() {
+    val result =
+      validate(
+        """
+
+        interface Service
+
+        interface HandlerProviders {
+          @Provides @IntoMap @StringKey("a") fun handlerA(): Service = object : Service {}
+          @Provides @IntoMap @StringKey("a") fun handlerB(): Service = object : Service {}
+        }
+
+        @DependencyGraph(bindingContainers = [HandlerProviders::class])
+        interface AppGraph {
+          val handlers: Map<String, Service>
+        }
+        """
+      )
+    assertEquals(listOf(MetroDiagnosticId.DUPLICATE_MAP_KEYS), result.diagnostics.map { it.id })
+    val rendered = result.diagnostics.single().render()
+    assertTrue(rendered, "same map key" in rendered)
+  }
+
+  fun testEmptyMultibindingIsReported() {
+    val result =
+      validate(
+        """
+
+        interface Service
+
+        interface Declarations {
+          @Multibinds fun services(): Set<Service>
+        }
+
+        @DependencyGraph(bindingContainers = [Declarations::class])
+        interface AppGraph {
+          val services: Set<Service>
+        }
+        """
+      )
+    assertEquals(listOf(MetroDiagnosticId.EMPTY_MULTIBINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testEmptyMultibindingAllowedWhenDeclared() {
+    val result =
+      validate(
+        """
+
+        interface Service
+
+        interface Declarations {
+          @Multibinds(allowEmpty = true) fun services(): Set<Service>
+        }
+
+        @DependencyGraph(bindingContainers = [Declarations::class])
+        interface AppGraph {
+          val services: Set<Service>
+        }
+        """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  fun testScopeFilteredCandidateIsHinted() {
+    val result =
+      validate(
+        """
+
+        interface Api
+
+        interface ApiProviders {
+          @Provides @SingleIn(AppScope::class) fun provideApi(): Api = object : Api {}
+        }
+
+        @DependencyGraph(bindingContainers = [ApiProviders::class])
+        interface AppGraph {
+          val api: Api
+        }
+        """
+      )
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
+    assertTrue(diagnostic.render(), "not a member of this graph" in diagnostic.render())
+  }
+
+  fun testAssistedClassInjectionIsHinted() {
+    val result =
+      validate(
+        """
+
+        @AssistedInject class Widget(@Assisted val id: String)
+
+        @AssistedFactory
+        interface WidgetFactory {
+          fun create(id: String): Widget
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val widget: Widget
+        }
+        """
+      )
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
+    assertTrue(diagnostic.render(), "assisted-injected" in diagnostic.render())
+  }
+
+  fun testGraphExtensionSealsAgainstParentChain() {
+    val result =
+      validate(
+        """
+
+        interface Api
+
+        interface ApiProviders {
+          @Provides fun provideApi(): Api = object : Api {}
+        }
+
+        @Inject class ChildThing(val api: Api)
+
+        @GraphExtension
+        interface ChildGraph {
+          val childThing: ChildThing
+        }
+
+        @DependencyGraph(bindingContainers = [ApiProviders::class])
+        interface AppGraph {
+          val child: ChildGraph
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.ChildThing" })
+  }
+
+  fun testGraphInstanceIsInjectable() {
+    val result =
+      validate(
+        """
+
+        @Inject class NeedsGraph(val graph: AppGraph)
+
+        @DependencyGraph
+        interface AppGraph {
+          val needsGraph: NeedsGraph
+        }
+        """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  fun testGraphLocalProvidersDoNotConflictAcrossGraphs() {
+    val source =
+      """
+
+      @Inject class SharedConsumer(val url: String)
+
+      @DependencyGraph
+      interface AppGraph {
+        val consumer: SharedConsumer
+
+        @Provides fun provideUrl(): String = "app"
+      }
+
+      @DependencyGraph
+      interface OtherGraph {
+        val consumer: SharedConsumer
+
+        @Provides fun provideUrl(): String = "other"
+      }
+      """
+    val appResult = validate(source, graphName = "AppGraph")
+    assertTrue(appResult.diagnostics.joinToString { it.render() }, appResult.diagnostics.isEmpty())
+
+    val otherResult = validate(source, graphName = "OtherGraph")
+    assertTrue(
+      otherResult.diagnostics.joinToString { it.render() },
+      otherResult.diagnostics.isEmpty(),
+    )
+  }
+
+  fun testValidatingAParentAlsoValidatesItsExtensions() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface MissingThing
+
+        @GraphExtension
+        interface ChildGraph {
+          val missing: MissingThing
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val appGraph = index.graphs.single { it.name == "AppGraph" }
+    val results =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, appGraph)
+
+    // Extensions seal first, the requested graph last
+    assertEquals(listOf("ChildGraph", "AppGraph"), results.map { it.graph.name })
+    val childResult = results.first()
+    assertEquals(
+      listOf(MetroDiagnosticId.MISSING_BINDING),
+      childResult.diagnostics.map { it.id },
+    )
+    assertTrue(results.last().diagnostics.isEmpty())
+  }
+
+  fun testResultsAreCachedPerIndex() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single()
+    val validationService = project.service<MetroGraphValidationService>()
+    val first = validationService.validate(file, graph)
+    val second = validationService.validate(file, graph)
+    assertSame(first, second)
+  }
+}

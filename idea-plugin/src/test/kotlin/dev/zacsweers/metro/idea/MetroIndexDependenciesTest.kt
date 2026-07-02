@@ -23,28 +23,8 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
   }
 
   private fun configure(): KtFile {
-    return myFixture.configureByText(
-      "Test.kt",
+    return myFixture.configureMetroFile(
       """
-      package test
-
-      import dev.zacsweers.metro.AppScope
-      import dev.zacsweers.metro.Assisted
-      import dev.zacsweers.metro.AssistedFactory
-      import dev.zacsweers.metro.AssistedInject
-      import dev.zacsweers.metro.Binds
-      import dev.zacsweers.metro.ContributesBinding
-      import dev.zacsweers.metro.ContributesIntoSet
-      import dev.zacsweers.metro.DependencyGraph
-      import dev.zacsweers.metro.HasMemberInjections
-      import dev.zacsweers.metro.Inject
-      import dev.zacsweers.metro.IntoMap
-      import dev.zacsweers.metro.Named
-      import dev.zacsweers.metro.Provider
-      import dev.zacsweers.metro.Provides
-      import dev.zacsweers.metro.SingleIn
-      import dev.zacsweers.metro.StringKey
-
       interface Service
       interface HttpApi
       interface Analytics
@@ -121,8 +101,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         fun inject(target: Screen)
       }
       """
-        .trimIndent(),
-    ) as KtFile
+    )
   }
 
   fun testProvidesFunctionParametersAreDependencies() {
@@ -323,18 +302,14 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
   fun testLibraryInjectBindingsCarryConstructorDependencies() {
     module.withMetroLibFixtureLibrary {
       val file =
-        myFixture.configureByText(
-          "LibConsumer.kt",
+        myFixture.configureMetroFile(
           """
-          package test
-
-          import dev.zacsweers.metro.Inject
           import libtest.LibClientWithDeps
 
           @Inject class LibConsumer(val client: LibClientWithDeps)
-          """
-            .trimIndent(),
-        ) as KtFile
+          """,
+          fileName = "LibConsumer.kt",
+        )
       val index = project.service<MetroResolutionService>().index(file)
       val declarations = file.declarationsIncludingNested()
 
