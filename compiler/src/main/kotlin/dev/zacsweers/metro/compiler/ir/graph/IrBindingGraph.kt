@@ -110,8 +110,8 @@ internal class IrBindingGraph(
 
   /**
    * Type keys whose bindings transitively require a suspend context. Populated during
-   * [validateSuspendBindings]. Consumed by codegen (parallel-suspend optimization) to decide which
-   * dependency resolutions need to be wrapped in `async { … }`.
+   * [validateSuspendBindings]. Consumed by codegen to pick suspend-flavored shapes (SuspendProvider
+   * fields, nested SuspendFactory classes, SuspendDoubleCheck, SuspendDelegateFactory).
    */
   private var transitivelySuspendKeys: Set<IrTypeKey> = emptySet()
 

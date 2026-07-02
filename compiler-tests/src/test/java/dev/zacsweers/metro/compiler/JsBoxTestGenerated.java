@@ -2581,12 +2581,6 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
-    @TestMetadata("ParallelResolution.kt")
-    public void testParallelResolution() {
-      run("ParallelResolution.kt");
-    }
-
-    @Test
     @TestMetadata("ProvidedWithSuspendDep.kt")
     public void testProvidedWithSuspendDep() {
       run("ProvidedWithSuspendDep.kt");

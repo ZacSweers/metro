@@ -17,7 +17,6 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
-import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment
@@ -220,10 +219,6 @@ internal class Symbols(
 
     val function0 = StandardClassIds.FunctionN(0)
     val suspendFunction0 = ClassId(FqName("kotlin.coroutines"), "SuspendFunction0".asName())
-
-    private val kotlinxCoroutinesPackage = FqName("kotlinx.coroutines")
-    val coroutineScope = ClassId(kotlinxCoroutinesPackage, "CoroutineScope".asName())
-    val deferred = ClassId(kotlinxCoroutinesPackage, "Deferred".asName())
 
     val commonMetroProviders by lazy {
       setOf(metroProvider, metroFactory, metroSuspendFactory, metroInstanceFactory)
@@ -655,37 +650,6 @@ internal class Symbols(
 
   val metroSuspendDelegateFactorySetDelegate: IrFunctionSymbol by lazy {
     metroSuspendDelegateFactoryCompanion.requireSimpleFunction("setDelegate")
-  }
-
-  /**
-   * kotlinx.coroutines symbols for the parallel-suspend optimization. These are nullable: the
-   * coroutines runtime is only required for builds that actually use suspend providers.
-   */
-  val coroutineScopeClass: IrClassSymbol? by lazy {
-    pluginContext.referenceClass(ClassIds.coroutineScope)
-  }
-
-  val deferredClass: IrClassSymbol? by lazy { pluginContext.referenceClass(ClassIds.deferred) }
-
-  val coroutineScopeFunction: IrSimpleFunctionSymbol? by lazy {
-    pluginContext
-      .referenceFunctions(
-        CallableId(ClassIds.coroutineScope.packageFqName, "coroutineScope".asName())
-      )
-      .singleOrNull()
-  }
-
-  val asyncFunction: IrSimpleFunctionSymbol? by lazy {
-    pluginContext
-      .referenceFunctions(CallableId(ClassIds.coroutineScope.packageFqName, "async".asName()))
-      .singleOrNull { it.owner.parameters.any { p -> p.kind == IrParameterKind.ExtensionReceiver } }
-      ?: pluginContext
-        .referenceFunctions(CallableId(ClassIds.coroutineScope.packageFqName, "async".asName()))
-        .firstOrNull()
-  }
-
-  val deferredAwait: IrSimpleFunctionSymbol? by lazy {
-    deferredClass?.functions?.firstOrNull { it.owner.name.asString() == "await" }
   }
 
   val metroMembersInjector: IrClassSymbol by lazy {

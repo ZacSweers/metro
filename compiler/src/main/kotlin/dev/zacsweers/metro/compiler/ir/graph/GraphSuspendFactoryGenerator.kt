@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
-import dev.zacsweers.metro.compiler.ir.graph.expressions.parallelizeSuspendArgs
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
@@ -53,8 +52,8 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
  *
  * The nested class takes only the binding's dependencies (no graph reference): each dep is held as
  * a `SuspendProvider<X>` when `X` is suspend in this graph, or a `Provider<X>` otherwise (receivers
- * are held as plain instances). Its suspend `invoke()` awaits the suspend deps (optionally in
- * parallel via [parallelizeSuspendArgs]) and calls the source constructor/function directly.
+ * are held as plain instances). Its suspend `invoke()` awaits the suspend deps and calls the source
+ * constructor/function directly.
  *
  * Example:
  * ```kotlin
@@ -104,11 +103,7 @@ internal class GraphSuspendFactoryGenerator(
    * instances; deps are held as SuspendProvider<X> when suspend in this graph, Provider<X>
    * otherwise. Params already declared as deferred wrappers keep their declared shape.
    */
-  private data class ParamField(
-    val param: Parameter,
-    val field: IrField,
-    val isSuspendResolution: Boolean,
-  )
+  private data class ParamField(val param: Parameter, val field: IrField)
 
   private fun buildShell(name: String, supertype: org.jetbrains.kotlin.ir.types.IrType): IrClass =
     irFactory
@@ -140,10 +135,10 @@ internal class GraphSuspendFactoryGenerator(
               param.kind == IrParameterKind.DispatchReceiver ||
               param.kind == IrParameterKind.ExtensionReceiver
           val ctxKey = param.contextualTypeKey
-          val fieldTypeAndSuspend: Pair<org.jetbrains.kotlin.ir.types.IrType, Boolean> =
+          val fieldType: org.jetbrains.kotlin.ir.types.IrType =
             when {
-              isReceiver -> ctxKey.toIrType() to false
-              ctxKey.isWrappedInSuspendProvider -> ctxKey.toIrType() to false
+              isReceiver -> ctxKey.toIrType()
+              ctxKey.isWrappedInSuspendProvider -> ctxKey.toIrType()
               ctxKey.isWrapped -> {
                 // Provider<X>/Lazy<X> etc. — X can't be suspend here (validated), hold a
                 // Provider<canonical> and let typeAsProviderArgument adapt.
@@ -151,13 +146,12 @@ internal class GraphSuspendFactoryGenerator(
                 while (stripped.isWrapped) {
                   stripped = stripped.stripOuterProviderOrLazy()
                 }
-                stripped.wrapInProvider().toIrType() to false
+                stripped.wrapInProvider().toIrType()
               }
               bindingGraph.isTransitivelySuspend(ctxKey.typeKey) ->
-                ctxKey.wrapInSuspendProvider().toIrType() to true
-              else -> ctxKey.wrapInProvider().toIrType() to false
+                ctxKey.wrapInSuspendProvider().toIrType()
+              else -> ctxKey.wrapInProvider().toIrType()
             }
-          val (fieldType, isSuspendResolution) = fieldTypeAndSuspend
           val valueParam =
             addValueParameter(
               name = fieldNameAllocator.newName(param.name.asString()).asName(),
@@ -172,7 +166,7 @@ internal class GraphSuspendFactoryGenerator(
               .apply { addBackingFieldCompat { type = fieldType } }
           val field = property.backingField!!
           paramInits += valueParam to field
-          paramFields += ParamField(param, field, isSuspendResolution)
+          paramFields += ParamField(param, field)
         }
 
         buildBlockBody {
@@ -214,29 +208,18 @@ internal class GraphSuspendFactoryGenerator(
         setDispatchReceiver(localDispatchReceiver)
         overriddenSymbols = listOf(metroSymbols.suspendProviderInvoke)
 
-        val invokeFunction = this
         body =
           withIrBuilder(symbol) {
-            val argPairs = paramFields.map { (param, field, isSuspendResolution) ->
+            val args = paramFields.map { (param, field) ->
               val fieldAccess = irGetField(irGet(localDispatchReceiver), field)
-              val arg =
-                typeAsProviderArgument(
-                  param.contextualTypeKey,
-                  fieldAccess,
-                  isAssisted = false,
-                  isGraphInstance = param.isGraphInstance,
-                )
-              arg to isSuspendResolution
+              typeAsProviderArgument(
+                param.contextualTypeKey,
+                fieldAccess,
+                isAssisted = false,
+                isGraphInstance = param.isGraphInstance,
+              )
             }
-            irExprBodySafe(
-              parallelizeSuspendArgs(
-                args = argPairs,
-                parent = invokeFunction,
-                resultType = boundType,
-              ) { resolved ->
-                buildSourceCall(resolved)
-              }
-            )
+            irExprBodySafe(buildSourceCall(args))
           }
       }
 
@@ -303,38 +286,27 @@ internal class GraphSuspendFactoryGenerator(
             }
             .toMap()
 
-        val overrideFunction = this
         body =
           withIrBuilder(symbol) {
-            val argPairs = ctorParams.map { param ->
+            val args = ctorParams.map { param ->
               if (param.isAssisted) {
                 val samParam =
                   samParamsByKey[param.assistedParameterKey]
                     ?: reportCompilerBug(
                       "Could not find matching assisted parameter for ${param.assistedParameterKey} on ${implClass.name}"
                     )
-                irGet(samParam) to false
+                irGet(samParam)
               } else {
-                val (_, field, isSuspendResolution) = fieldsByParam.getValue(param)
-                val arg =
-                  typeAsProviderArgument(
-                    param.contextualTypeKey,
-                    irGetField(irGet(localDispatchReceiver), field),
-                    isAssisted = false,
-                    isGraphInstance = param.isGraphInstance,
-                  )
-                arg to isSuspendResolution
+                val (_, field) = fieldsByParam.getValue(param)
+                typeAsProviderArgument(
+                  param.contextualTypeKey,
+                  irGetField(irGet(localDispatchReceiver), field),
+                  isAssisted = false,
+                  isGraphInstance = param.isGraphInstance,
+                )
               }
             }
-            irExprBodySafe(
-              parallelizeSuspendArgs(
-                args = argPairs,
-                parent = overrideFunction,
-                resultType = target.typeKey.type,
-              ) { resolved ->
-                buildTargetCall(resolved)
-              }
-            )
+            irExprBodySafe(buildTargetCall(args))
           }
       }
 

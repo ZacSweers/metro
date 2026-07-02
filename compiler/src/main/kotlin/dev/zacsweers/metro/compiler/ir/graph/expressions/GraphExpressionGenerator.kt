@@ -245,18 +245,10 @@ private constructor(
                   binding = binding,
                   fieldInitKey = fieldInitKey,
                 )
-              val argPairs =
-                pairArgsWithSuspendFlags(rawArgs, classFactory.targetFunctionParameters, binding)
               val directExpr =
-                parallelizeSuspendArgs(
-                  args = argPairs,
-                  parent = scope.parent,
-                  resultType = binding.typeKey.type,
-                ) { resolved ->
-                  irCallConstructor(targetConstructor.symbol, typeArgs).apply {
-                    for ((i, expr) in resolved.withIndex()) {
-                      if (expr != null) arguments[i] = expr
-                    }
+                irCallConstructor(targetConstructor.symbol, typeArgs).apply {
+                  for ((i, expr) in rawArgs.withIndex()) {
+                    if (expr != null) arguments[i] = expr
                   }
                 }
               maybeTraceDirectExpression(
@@ -1027,42 +1019,6 @@ private constructor(
         }
         .decorateNewSuspendProvider(contextualTypeKey, binding.diagnosticTypeName)
     }
-
-  /**
-   * Pairs the result of [generateBindingArguments] with per-arg "is this a suspend resolution?"
-   * flags, so [parallelizeSuspendArgs] can decide whether to wrap the call in a coroutine scope.
-   *
-   * An arg is considered a suspend resolution when its parameter is requested as INSTANCE
-   * (unwrapped) and the binding for its type key is transitively suspend per [IrBindingGraph].
-   * Wrapped requests (Provider/Lazy/SuspendProvider) defer the work, so they don't trigger
-   * parallelization.
-   */
-  private fun pairArgsWithSuspendFlags(
-    args: List<IrExpression?>,
-    targetParams: Parameters,
-    binding: IrBinding,
-  ): List<Pair<IrExpression?, Boolean>> {
-    val paramsToMap = buildList {
-      if (
-        binding is IrBinding.Provided &&
-          targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
-      ) {
-        targetParams.dispatchReceiverParameter?.let(::add)
-      }
-      addAll(targetParams.contextParameters.filterNot { it.isAssisted })
-      targetParams.extensionReceiverParameter?.let(::add)
-      addAll(targetParams.regularParameters.filterNot { it.isAssisted })
-    }
-    return args.mapIndexed { i, arg ->
-      val ctk = paramsToMap.getOrNull(i)?.contextualTypeKey
-      val isSuspend =
-        arg != null &&
-          ctk != null &&
-          !ctk.requiresProviderInstance &&
-          bindingGraph.isTransitivelySuspend(ctk.typeKey)
-      arg to isSuspend
-    }
-  }
 
   context(scope: IrBuilderWithScope)
   private fun generateBindingArguments(

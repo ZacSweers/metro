@@ -924,19 +924,6 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  ENABLE_PARALLEL_SUSPEND_RESOLUTION(
-    RawMetroOption.boolean(
-      name = "enable-parallel-suspend-resolution",
-      defaultValue = false,
-      valueDescription = "<true | false>",
-      description =
-        "Enable parallel resolution of independent suspend dependencies via " +
-          "coroutineScope { async { … } }. When off (the default), suspend dependencies resolve " +
-          "sequentially. Experimental — does not gate suspend binding support itself.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   DESUGARED_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "desugared-provider-severity",
@@ -1205,8 +1192,6 @@ public class MetroOptions(
     MetroOption.ENABLE_PROVIDER_INLINING.raw.defaultValue.expectAs(),
   public val enableFunctionProviders: Boolean =
     MetroOption.ENABLE_FUNCTION_PROVIDERS.raw.defaultValue.expectAs(),
-  public val enableParallelSuspendResolution: Boolean =
-    MetroOption.ENABLE_PARALLEL_SUSPEND_RESOLUTION.raw.defaultValue.expectAs(),
   public val desugaredProviderSeverity: DiagnosticSeverity =
     MetroOption.DESUGARED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -1518,7 +1503,6 @@ public class MetroOptions(
     public var bufferedIcTracking: Boolean = base.bufferedIcTracking
     public var enableProviderInlining: Boolean = base.enableProviderInlining
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
-    public var enableParallelSuspendResolution: Boolean = base.enableParallelSuspendResolution
     public var desugaredProviderSeverity: DiagnosticSeverity = base.desugaredProviderSeverity
     public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
     public var generateContributionProviders: Boolean = base.generateContributionProviders
@@ -1868,8 +1852,6 @@ public class MetroOptions(
         MetroOption.BUFFERED_IC_TRACKING -> bufferedIcTracking = value.expectAs()
         MetroOption.ENABLE_PROVIDER_INLINING -> enableProviderInlining = value.expectAs()
         MetroOption.ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = value.expectAs()
-        MetroOption.ENABLE_PARALLEL_SUSPEND_RESOLUTION ->
-          enableParallelSuspendResolution = value.expectAs()
         MetroOption.DESUGARED_PROVIDER_SEVERITY ->
           desugaredProviderSeverity = value.diagnosticSeverity()
         MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP -> enableKClassToClassInterop = value.expectAs()
@@ -1957,7 +1939,6 @@ public class MetroOptions(
         bufferedIcTracking = bufferedIcTracking,
         enableProviderInlining = enableProviderInlining,
         enableFunctionProviders = enableFunctionProviders,
-        enableParallelSuspendResolution = enableParallelSuspendResolution,
         desugaredProviderSeverity =
           if (enableFunctionProviders) {
             desugaredProviderSeverity

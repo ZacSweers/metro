@@ -107,13 +107,6 @@ object MetroDirectives : SimpleDirectivesContainer() {
     ) {
       it.toBoolean()
     }
-  val ENABLE_PARALLEL_SUSPEND_RESOLUTION by
-    valueDirective(
-      "Enable parallel suspend resolution via coroutineScope { async { … } } in generated factories and bypass paths."
-    ) {
-      it.toBoolean()
-    }
-
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
   val WITH_KI_ANVIL by

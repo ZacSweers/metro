@@ -259,7 +259,6 @@ class MetroArtifactsTest {
                 "bufferedIcTracking": true,
                 "enableProviderInlining": true,
                 "enableFunctionProviders": true,
-                "enableParallelSuspendResolution": false,
                 "desugaredProviderSeverity": "WARN",
                 "enableKClassToClassInterop": false,
                 "generateContributionProviders": false,
