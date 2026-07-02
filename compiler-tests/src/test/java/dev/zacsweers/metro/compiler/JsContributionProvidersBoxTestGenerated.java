@@ -2719,5 +2719,11 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     public void testRuntimeTracingScopedProvider() {
       run("RuntimeTracingScopedProvider.kt");
     }
+
+    @Test
+    @TestMetadata("RuntimeTracingSuspend.kt")
+    public void testRuntimeTracingSuspend() {
+      run("RuntimeTracingSuspend.kt");
+    }
   }
 }

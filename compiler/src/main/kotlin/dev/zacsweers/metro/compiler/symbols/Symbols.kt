@@ -215,6 +215,8 @@ internal class Symbols(
     val tracedMembersInjector =
       ClassId(FqNames.metroTraceInternalPackage, "TracedMembersInjector".asName())
     val tracedProvider = ClassId(FqNames.metroTraceInternalPackage, "TracedProvider".asName())
+    val tracedSuspendProvider =
+      ClassId(FqNames.metroTraceInternalPackage, "TracedSuspendProvider".asName())
 
     val function0 = StandardClassIds.FunctionN(0)
     val suspendFunction0 = ClassId(FqName("kotlin.coroutines"), "SuspendFunction0".asName())
@@ -422,6 +424,14 @@ internal class Symbols(
     metroTraceContext?.owner?.functions?.single { it.name.asString() == "trace" }?.symbol
   }
 
+  val metroTraceContextTraceSuspend: IrSimpleFunctionSymbol? by lazy {
+    metroTraceContext
+      ?.owner
+      ?.functions
+      ?.singleOrNull { it.name.asString() == "traceSuspend" }
+      ?.symbol
+  }
+
   val metroTraceContextInstant: IrSimpleFunctionSymbol? by lazy {
     metroTraceContext?.owner?.functions?.single { it.name.asString() == "instant" }?.symbol
   }
@@ -436,6 +446,10 @@ internal class Symbols(
 
   val tracedProvider: IrClassSymbol? by lazy {
     pluginContext.referenceClass(ClassIds.tracedProvider)
+  }
+
+  val tracedSuspendProvider: IrClassSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.tracedSuspendProvider)
   }
 
   val tracedMembersInjector: IrClassSymbol? by lazy {

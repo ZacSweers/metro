@@ -107,7 +107,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
     ) {
       it.toBoolean()
     }
-  val ENABLE_SUSPEND_PROVIDERS by
+  val ENABLE_PARALLEL_SUSPEND_RESOLUTION by
     valueDirective(
       "Enable parallel suspend resolution via coroutineScope { async { … } } in generated factories and bypass paths."
     ) {

@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
+import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -197,7 +198,7 @@ private constructor(
           val propertyAccess = generatePropertyAccess(property, shardProperty, shardIndex)
 
           val providerOrigin =
-            if (storedKey.isWrappedInProvider) {
+            if (storedKey.isWrappedInProvider || storedKey.isWrappedInSuspendProvider) {
               ProviderExpressionOrigin.ProviderProperty
             } else {
               ProviderExpressionOrigin.NewExpression
@@ -258,7 +259,12 @@ private constructor(
                     }
                   }
                 }
-              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+              maybeTraceDirectExpression(
+                  directExpr,
+                  contextualTypeKey,
+                  bindingKind,
+                  isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+                )
                 .toTargetType(
                   actual = AccessType.INSTANCE,
                   contextualTypeKey = contextualTypeKey,
@@ -280,7 +286,12 @@ private constructor(
                     fieldInitKey = null,
                   )
                 }
-              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+              maybeTraceDirectExpression(
+                  directExpr,
+                  contextualTypeKey,
+                  bindingKind,
+                  isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+                )
                 .toTargetType(
                   actual = AccessType.INSTANCE,
                   contextualTypeKey = contextualTypeKey,
@@ -419,9 +430,17 @@ private constructor(
                   fieldInitKey = fieldInitKey,
                 )
 
-              val directExpr =
+              val directExpr: IrExpression =
                 irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
-              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+              directExpr
+                .letIf(accessType == AccessType.INSTANCE) {
+                  maybeTraceDirectExpression(
+                    it,
+                    contextualTypeKey,
+                    bindingKind,
+                    isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+                  )
+                }
                 .toTargetType(
                   actual = AccessType.INSTANCE,
                   contextualTypeKey = contextualTypeKey,
@@ -442,7 +461,15 @@ private constructor(
                     fieldInitKey = fieldInitKey,
                   )
                 }
-              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+              directExpr
+                .letIf(accessType == AccessType.INSTANCE) {
+                  maybeTraceDirectExpression(
+                    it,
+                    contextualTypeKey,
+                    bindingKind,
+                    isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+                  )
+                }
                 .toTargetType(
                   actual = AccessType.INSTANCE,
                   contextualTypeKey = contextualTypeKey,
@@ -874,6 +901,24 @@ private constructor(
     }
 
   /**
+   * Decorates a freshly constructed nested `SuspendFactory<T>` expression (e.g. wrapping it in
+   * `TracedSuspendProvider` when runtime tracing is enabled).
+   */
+  context(scope: IrBuilderWithScope)
+  private fun IrExpression.decorateNewSuspendProvider(
+    contextualTypeKey: IrContextualTypeKey,
+    bindingKind: String?,
+  ): IrExpression =
+    expressionDecorator.decorateSuspendProviderExpression(
+      this,
+      ProviderExpressionRequest(
+        contextualTypeKey = contextualTypeKey,
+        bindingKind = bindingKind,
+        origin = ProviderExpressionOrigin.NewExpression,
+      ),
+    )
+
+  /**
    * The source callable's parameters in call order — the same decomposition
    * [generateBindingArguments] uses to map args (dispatch receiver for non-object provides, context
    * params, extension receiver, regular params; assisted excluded).
@@ -974,11 +1019,13 @@ private constructor(
           binding = binding,
           fieldInitKey = fieldInitKey,
         )
-      return irCallConstructor(nested.constructor.symbol, emptyList()).apply {
-        for ((i, arg) in ctorArgs.withIndex()) {
-          if (arg != null) arguments[i] = arg
+      return irCallConstructor(nested.constructor.symbol, emptyList())
+        .apply {
+          for ((i, arg) in ctorArgs.withIndex()) {
+            if (arg != null) arguments[i] = arg
+          }
         }
-      }
+        .decorateNewSuspendProvider(contextualTypeKey, binding.diagnosticTypeName)
     }
 
   /**

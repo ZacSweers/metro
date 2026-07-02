@@ -2719,5 +2719,11 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     public void testRuntimeTracingScopedProvider() {
       run("RuntimeTracingScopedProvider.kt");
     }
+
+    @Test
+    @TestMetadata("RuntimeTracingSuspend.kt")
+    public void testRuntimeTracingSuspend() {
+      run("RuntimeTracingSuspend.kt");
+    }
   }
 }

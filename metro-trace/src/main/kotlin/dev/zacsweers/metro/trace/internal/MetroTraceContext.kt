@@ -76,6 +76,44 @@ public class MetroTraceContext(
   }
 
   /**
+   * Traces a suspending [block] with Metro-specific metadata.
+   *
+   * Unlike [trace], this uses the tracer's coroutine-aware section API so the recorded section
+   * stays attached to the coroutine across suspension points and thread hops rather than being
+   * split or misattributed by thread-bound begin/end pairs.
+   */
+  public suspend inline fun <T> traceSuspend(
+    qualifier: String?,
+    type: String,
+    contextualType: String?,
+    kind: String?,
+    crossinline block: suspend () -> T,
+  ): T {
+    val renderedContextualType = contextualType?.takeIf { it != type }
+    val nameType = renderedContextualType ?: type
+    val name =
+      if (qualifier == null) {
+        nameType
+      } else {
+        "$qualifier $nameType"
+      }
+    return tracer.traceCoroutine(
+      category = category,
+      name = name,
+      metadataBlock = {
+        addMetadataEntry("metro.graph", graphName)
+        addMetadataEntry("metro.graph_path", graphPath)
+        addMetadataEntry("metro.type", type)
+        renderedContextualType?.let { addMetadataEntry("metro.contextual_type", it) }
+        qualifier?.let { addMetadataEntry("metro.qualifier", it) }
+        kind?.let { addMetadataEntry("metro.binding_kind", it) }
+      },
+    ) {
+      block()
+    }
+  }
+
+  /**
    * Emits a zero-duration event with Metro-specific metadata.
    *
    * The visible event [name] describes the generated graph entry point. [callable] records the

@@ -3517,5 +3517,11 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     public void testRuntimeTracingScopedProvider() {
       run("RuntimeTracingScopedProvider.kt");
     }
+
+    @Test
+    @TestMetadata("RuntimeTracingSuspend.kt")
+    public void testRuntimeTracingSuspend() {
+      run("RuntimeTracingSuspend.kt");
+    }
   }
 }

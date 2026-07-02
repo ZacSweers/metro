@@ -1,6 +1,6 @@
-// ENABLE_SUSPEND_PROVIDERS: true
+// ENABLE_PARALLEL_SUSPEND_RESOLUTION: true
 
-// With `enableSuspendProviders` on, the bypass-factory inline path resolves multiple suspend
+// With `enableParallelSuspendResolution` on, the bypass-factory inline path resolves multiple suspend
 // deps in parallel via `coroutineScope { async { … } }.await()`. This test exercises the
 // codegen by constructing a class with several suspend deps from a suspend accessor.
 

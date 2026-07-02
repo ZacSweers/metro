@@ -152,20 +152,30 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
 
     // Step 2: Convert provider if needed (e.g., Metro -> Dagger)
     // Only do this if we're in PROVIDER mode (or transformed to it)
-    // SuspendProvider doesn't need framework conversion (no Dagger/Javax equivalent)
+    // SuspendProvider doesn't need framework conversion (no Dagger/Javax equivalent) but does get
+    // its own decoration hook (e.g. TracedSuspendProvider when runtime tracing is enabled).
     val maybeTraced =
-      if (requested == AccessType.PROVIDER) {
-        expressionDecorator.decorateProviderExpression(
-          accessTransformed,
-          ProviderExpressionRequest(
-            contextualTypeKey = contextualTypeKey,
-            bindingKind = bindingKind,
-            origin = providerOrigin,
-            providerType = providerType,
-          ),
-        )
-      } else {
-        accessTransformed
+      when (requested) {
+        AccessType.PROVIDER ->
+          expressionDecorator.decorateProviderExpression(
+            accessTransformed,
+            ProviderExpressionRequest(
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = bindingKind,
+              origin = providerOrigin,
+              providerType = providerType,
+            ),
+          )
+        AccessType.SUSPEND_PROVIDER ->
+          expressionDecorator.decorateSuspendProviderExpression(
+            accessTransformed,
+            ProviderExpressionRequest(
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = bindingKind,
+              origin = providerOrigin,
+            ),
+          )
+        else -> accessTransformed
       }
 
     val finalAccessType = if (requested == AccessType.PROVIDER) requested else actual
@@ -286,12 +296,15 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     directExpr: IrExpression,
     contextualTypeKey: IrContextualTypeKey,
     bindingKind: String?,
+    /** True when [directExpr] contains suspend calls — the trace wrapper must be suspend. */
+    isSuspend: Boolean = false,
   ): IrExpression {
     return expressionDecorator.decorateDirectExpression(
       directExpr,
       DirectExpressionRequest(
         contextualTypeKey = contextualTypeKey,
         bindingKind = bindingKind,
+        isSuspend = isSuspend,
       ),
     )
   }

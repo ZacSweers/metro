@@ -196,8 +196,8 @@ class MetroExtensionRegistrarConfigurator(
           ?.toString()
           ?.toBoolean() ?: false
 
-      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_SUSPEND_PROVIDERS)?.let {
-        enableSuspendProviders = it
+      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_PARALLEL_SUSPEND_RESOLUTION)?.let {
+        enableParallelSuspendResolution = it
       }
 
       // Configure interop annotations using builder helper methods

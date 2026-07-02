@@ -1,5 +1,5 @@
 // A constructor-injected class with several suspend deps, resolved sequentially by default
-// (enableSuspendProviders off).
+// (enableParallelSuspendResolution off).
 
 @Inject
 class AccountCreator(val database: String, val tlsConnection: Int, val region: Long)

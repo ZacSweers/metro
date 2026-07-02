@@ -54,7 +54,7 @@ internal fun parallelizeSuspendArgs(
   val deferredClass = symbols.deferredClass
 
   val canParallelize =
-    context.options.enableSuspendProviders &&
+    context.options.enableParallelSuspendResolution &&
       suspendCount >= 2 &&
       coroutineScopeFn != null &&
       asyncFn != null &&
