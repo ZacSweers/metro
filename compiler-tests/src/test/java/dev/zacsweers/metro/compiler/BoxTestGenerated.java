@@ -3415,6 +3415,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("SharedUnscopedSuspendDep.kt")
+    public void testSharedUnscopedSuspendDep() {
+      run("SharedUnscopedSuspendDep.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendProviderParam.kt")
     public void testSuspendProviderParam() {
       run("SuspendProviderParam.kt");

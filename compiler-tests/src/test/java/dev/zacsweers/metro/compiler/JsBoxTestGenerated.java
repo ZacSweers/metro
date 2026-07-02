@@ -2617,6 +2617,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("SharedUnscopedSuspendDep.kt")
+    public void testSharedUnscopedSuspendDep() {
+      run("SharedUnscopedSuspendDep.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendProviderParam.kt")
     public void testSuspendProviderParam() {
       run("SuspendProviderParam.kt");

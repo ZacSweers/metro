@@ -1,0 +1,25 @@
+/MemberInjectionOverSuspendBinding.kt:9:24: error: [Metro/MemberInjectionOverSuspendBinding] 'Target' members are injected with suspend binding 'String', but member injection cannot await suspend bindings. Change the member's type to `suspend () -> String` to defer its resolution.
+
+Trace:
+    String is injected at
+        [ExampleGraph] Target.database // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideDatabase(…)
+
+
+/MemberInjectionOverSuspendBinding.kt:13:7: error: [Metro/MemberInjectionOverSuspendBinding] 'ConstructedTarget' members are injected with suspend binding 'String', but member injection cannot await suspend bindings. Change the member's type to `suspend () -> String` to defer its resolution.
+
+Trace:
+    String is injected at
+        [ExampleGraph] ConstructedTarget() // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideDatabase(…)
+
+
+/MemberInjectionOverSuspendBinding.kt:14:24: error: [Metro/MemberInjectionOverSuspendBinding] 'ConstructedTarget' members are injected with suspend binding 'String', but member injection cannot await suspend bindings. Change the member's type to `suspend () -> String` to defer its resolution.
+
+Trace:
+    String is injected at
+        [ExampleGraph] ConstructedTarget.database // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideDatabase(…)

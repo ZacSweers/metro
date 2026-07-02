@@ -359,8 +359,16 @@ internal class BindingPropertyCollector(
             switchingId = switchingId,
           )
       } else if (effectiveScalarRefCount > 1 && !node.binding.isSimpleBinding()) {
-        keysWithBackingProperties[contextKey] =
-          CollectedProperty(binding, PropertyKind.GETTER, contextKey)
+        if (binding.isSuspend || graph.isTransitivelySuspend(binding.typeKey)) {
+          // A GETTER property is a non-suspend function and can't await suspend resolutions.
+          // Shared suspend bindings get a SuspendProvider<T> FIELD instead; each consumer awaits
+          // it in its own suspend context.
+          keysWithBackingProperties[contextKey] =
+            CollectedProperty(binding, PropertyKind.FIELD, contextKey)
+        } else {
+          keysWithBackingProperties[contextKey] =
+            CollectedProperty(binding, PropertyKind.GETTER, contextKey)
+        }
       }
     }
 

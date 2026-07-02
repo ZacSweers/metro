@@ -31,7 +31,12 @@ interface ExampleGraph {
 
   @Provides fun provideInt(s: String): Int = s.length
 
-  @Provides @SingleIn(AppScope::class) fun provideLong(i: Int): Long = i.toLong()
+  @Provides
+  @SingleIn(AppScope::class)
+  fun provideLong(i: Int): Long {
+    longComputations++
+    return i.toLong()
+  }
 
   @Provides suspend fun provideDouble(l: SuspendProvider<Long>): Double = l().toDouble()
 
@@ -43,8 +48,26 @@ interface ExampleGraph {
   suspend fun longValue(): Long
 }
 
+var longComputations = 0
+
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  assertNotNull(graph)
-  return "OK"
+  return kotlinx.coroutines.runBlocking {
+    val sink = graph.sink()
+
+    // Short inlined via the deferred `suspend () -> Double` wrapper
+    assertEquals(7, sink.short.toInt())
+    // Double = Long.toDouble() = "hallo".length = 5
+    assertEquals(5.0, sink.doubleScalar)
+    // Deferred wrappers resolve on demand
+    assertEquals(5, sink.intProviderFn())
+    assertEquals(5L, sink.longProvider())
+    // Multi-ref accessors resolve through the shared nested suspend factories
+    assertEquals(5, graph.intValue())
+    assertEquals(5L, graph.longValue())
+    // Long is scoped — SuspendDoubleCheck must have computed it exactly once across all of the
+    // above (sink construction, longProvider(), longValue(), and Double's dep)
+    assertEquals(1, longComputations)
+    "OK"
+  }
 }

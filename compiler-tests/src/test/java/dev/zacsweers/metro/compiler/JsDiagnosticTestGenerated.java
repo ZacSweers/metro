@@ -1489,9 +1489,27 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MemberInjectionOverSuspendBinding.kt")
+    public void testMemberInjectionOverSuspendBinding() {
+      run("MemberInjectionOverSuspendBinding.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindsIsNotAllowed.kt")
     public void testMultibindsIsNotAllowed() {
       run("MultibindsIsNotAllowed.kt");
+    }
+
+    @Test
+    @TestMetadata("ScalarMapMultibindingOverSuspendValues.kt")
+    public void testScalarMapMultibindingOverSuspendValues() {
+      run("ScalarMapMultibindingOverSuspendValues.kt");
+    }
+
+    @Test
+    @TestMetadata("SetMultibindingOverSuspendElements.kt")
+    public void testSetMultibindingOverSuspendElements() {
+      run("SetMultibindingOverSuspendElements.kt");
     }
   }
 }

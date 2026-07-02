@@ -3415,6 +3415,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("SharedUnscopedSuspendDep.kt")
+    public void testSharedUnscopedSuspendDep() {
+      run("SharedUnscopedSuspendDep.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendProviderParam.kt")
     public void testSuspendProviderParam() {
       run("SuspendProviderParam.kt");

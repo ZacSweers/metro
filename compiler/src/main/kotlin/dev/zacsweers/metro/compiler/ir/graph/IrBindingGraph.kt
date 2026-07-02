@@ -1109,11 +1109,89 @@ internal class IrBindingGraph(
 
     transitivelySuspendKeys = suspendSet.toSet()
 
-    // Step 2: Validate accessors
+    // Step 2: Multibinding aggregates over suspend elements. Aggregation code (buildSet/buildMap
+    // getters, Map*Factory invokes) is non-suspend and can't await element resolutions, so the
+    // only supported consumption of a suspend multibinding is the deferred-value map form
+    // `Map<K, suspend () -> V>`. Sets have no deferred-value form and always error.
+    val suspendMultibindingKeys = mutableSetOf<IrTypeKey>()
+    bindings.forEachValue { binding ->
+      if (binding !is IrBinding.Multibinding) return@forEachValue
+      if (binding.typeKey !in suspendSet) return@forEachValue
+      suspendMultibindingKeys += binding.typeKey
+
+      val firstSuspendElement =
+        binding.dependencies.firstOrNull { it.typeKey in suspendSet } ?: return@forEachValue
+
+      fun reportUnsupportedConsumption(
+        consumptionKey: IrContextualTypeKey,
+        element: IrDeclarationWithName,
+        head: IrBindingStack.Entry,
+      ) {
+        val typeRender = binding.typeKey.render(short = true)
+        val trace = buildSuspendTrace(bindings, suspendSet, firstSuspendElement.typeKey, head)
+        val message = buildString {
+          appendLine(
+            if (binding.isSet) {
+              "[Metro/MultibindingOverSuspendBindings] $typeRender aggregates suspend bindings, which is not supported — Set aggregation cannot defer suspend element resolution. Remove the suspend contribution(s) or provide them eagerly."
+            } else {
+              val (keyType, valueType) =
+                binding.typeKey.type.requireSimpleType().arguments.map {
+                  it.typeOrFail.render(short = true)
+                }
+              "[Metro/MultibindingOverSuspendBindings] $typeRender aggregates suspend bindings and must be consumed as `Map<$keyType, suspend () -> $valueType>` so each value defers its resolution."
+            }
+          )
+          appendLine()
+          appendLine("Trace:")
+          appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
+        }
+        reportError(element.originalDeclarationIfOverride(), message)
+      }
+
+      // Roots consuming this multibinding
+      for ((contextKey, _) in roots) {
+        if (contextKey.typeKey != binding.typeKey) continue
+        if (!binding.isSet && contextKey.isMapSuspendProvider) continue
+        val accessor =
+          node.accessors.find { it.contextKey.typeKey == contextKey.typeKey } ?: continue
+        val head =
+          IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
+            .withAnnotation(NEEDS_SUSPEND_SUPPORT)
+        reportUnsupportedConsumption(
+          contextKey,
+          accessor.metroFunction.ir.propertyIfAccessor.expectAs<IrDeclarationWithName>(),
+          head,
+        )
+      }
+
+      // Dependency edges consuming this multibinding
+      bindings.forEachValue inner@{ consumer ->
+        if (consumer is IrBinding.AssistedFactory) return@inner
+        for (dep in consumer.dependencies) {
+          if (dep.typeKey != binding.typeKey) continue
+          if (!binding.isSet && dep.isMapSuspendProvider) continue
+          val parameterDeclaration =
+            consumer.parameters.allParameters.find { it.typeKey == dep.typeKey }?.ir
+          val element =
+            parameterDeclaration as? IrDeclarationWithName
+              ?: consumer.reportableDeclaration
+              ?: continue
+          val head =
+            bindingStackEntryForDependency(consumer, dep, dep.typeKey)
+              .withAnnotation(NEEDS_SUSPEND_SUPPORT)
+          reportUnsupportedConsumption(dep, element, head)
+        }
+      }
+    }
+
+    // Step 3: Validate accessors
     for ((contextKey, _) in roots) {
       val accessor = node.accessors.find { it.contextKey.typeKey == contextKey.typeKey } ?: continue
       val accessorIsSuspend = accessor.metroFunction.ir.isSuspend
       val requiresSuspend = contextKey.typeKey in suspendSet
+
+      // Suspend multibindings are reported by step 2 with a more specific message
+      if (contextKey.typeKey in suspendMultibindingKeys) continue
 
       if (requiresSuspend && !accessorIsSuspend && !contextKey.defersSuspendAtAccess) {
         val typeRender = contextKey.typeKey.render(short = true)
@@ -1145,13 +1223,64 @@ internal class IrBindingGraph(
       }
     }
 
-    // Step 3: Validate wrapping conflicts — Provider<T>/Lazy<T> wrapping a suspend binding
+    // Step 3b: Member injection has no suspend form — MembersInjector.injectMembers and injector
+    // functions can't await suspend bindings, and constructor-injected classes with injected
+    // members don't route through suspend factories. Error rather than silently mis-generate.
+    bindings.forEachValue { binding ->
+      if (binding.typeKey !in suspendSet) return@forEachValue
+      val (firstSuspendDep, subject) =
+        when (binding) {
+          is IrBinding.MembersInjected -> {
+            val dep =
+              binding.dependencies.firstOrNull { dep ->
+                dep.typeKey in suspendSet && !dep.defersSuspendAtAccess
+              } ?: return@forEachValue
+            dep to "'${binding.targetClassId.asFqNameString()}' members"
+          }
+          is IrBinding.ConstructorInjected if binding.injectedMembers.isNotEmpty() -> {
+            val memberInjectorDep =
+              binding.injectedMembers.firstOrNull { dep ->
+                dep.typeKey in suspendSet && !dep.defersSuspendAtAccess
+              } ?: return@forEachValue
+            // Resolve through the MembersInjected binding to name the actual member's type
+            // rather than the synthetic MembersInjector<T> key.
+            val memberBinding = bindings[memberInjectorDep.typeKey] as? IrBinding.MembersInjected
+            val dep =
+              memberBinding?.dependencies?.firstOrNull {
+                it.typeKey in suspendSet && !it.defersSuspendAtAccess
+              } ?: memberInjectorDep
+            dep to "'${binding.type.kotlinFqName}' members"
+          }
+          else -> return@forEachValue
+        }
+      val depRender = firstSuspendDep.typeKey.render(short = true)
+      val head =
+        bindingStackEntryForDependency(binding, firstSuspendDep, firstSuspendDep.typeKey)
+          .withAnnotation(NEEDS_SUSPEND_SUPPORT)
+      val trace = buildSuspendTrace(bindings, suspendSet, firstSuspendDep.typeKey, head)
+      val message = buildString {
+        appendLine(
+          "[Metro/MemberInjectionOverSuspendBinding] $subject are injected with suspend binding '$depRender', but member injection cannot await suspend bindings. Change the member's type to `${suspendFunctionRender(depRender)}` to defer its resolution."
+        )
+        appendLine()
+        appendLine("Trace:")
+        appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
+      }
+      val element =
+        (binding as? IrBinding.MembersInjected)?.parameterFor(firstSuspendDep.typeKey)?.ir
+          as? IrDeclarationWithName ?: binding.reportableDeclaration ?: return@forEachValue
+      reportError(element.originalDeclarationIfOverride(), message)
+    }
+
+    // Step 4: Validate wrapping conflicts — Provider<T>/Lazy<T> wrapping a suspend binding
     bindings.forEachValue { binding ->
       // Assisted factories' dependencies are synthetically Provider-wrapped for cycle detection;
-      // their suspend handling is validated in step 4 below.
+      // their suspend handling is validated in step 5 below.
       if (binding is IrBinding.AssistedFactory) return@forEachValue
       for (dep in binding.dependencies) {
         if (dep.typeKey !in suspendSet) continue
+        // Suspend multibindings are reported by step 2 with a more specific message
+        if (dep.typeKey in suspendMultibindingKeys) continue
 
         // Prefer landing on the specific parameter that wraps the suspend binding rather
         // than the enclosing function/property declaration.
@@ -1180,7 +1309,7 @@ internal class IrBindingGraph(
       }
     }
 
-    // Step 4: An assisted factory whose target consumes suspend bindings (unwrapped) must declare
+    // Step 5: An assisted factory whose target consumes suspend bindings (unwrapped) must declare
     // its SAM as `suspend` so the generated impl can await them.
     bindings.forEachValue { binding ->
       if (binding !is IrBinding.AssistedFactory) return@forEachValue
