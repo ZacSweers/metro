@@ -12,4 +12,4 @@ Either:
   - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
   - Make the return type `suspend () -> Int`.
 
-/BindingWrappedInLazy.kt:11:28: error: [Metro/SuspendBindingWrappedInLazy] Cannot depend on suspend binding 'String' via Lazy.
+/BindingWrappedInLazy.kt:11:28: error: [Metro/SuspendBindingWrappedInLazy] Cannot depend on suspend binding 'String' via Lazy. Use `SuspendLazy<String>` instead.

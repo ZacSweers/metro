@@ -119,6 +119,8 @@ public class ClassIds(private val options: MetroOptions = MetroOptions()) {
     }
   }
 
+  internal val suspendLazyTypes = setOf(Symbols.ClassIds.metroSuspendLazy)
+
   internal val nonFunctionProviderTypes by memoize { providerTypes - MetroClassIds.function0 }
 
   internal val lazyTypes = options.lazyTypes

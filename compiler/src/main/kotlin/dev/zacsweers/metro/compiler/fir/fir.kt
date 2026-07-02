@@ -1868,6 +1868,7 @@ internal fun ClassId?.isIntrinsicType(session: FirSession): Boolean {
   return when (this) {
     in classIds.providerTypes,
     in classIds.suspendProviderTypes,
+    in classIds.suspendLazyTypes,
     in classIds.lazyTypes -> true
     else -> false
   }

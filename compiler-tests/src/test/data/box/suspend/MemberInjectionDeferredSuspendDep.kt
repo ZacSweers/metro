@@ -6,6 +6,7 @@
 
 class Target {
   @Inject lateinit var database: suspend () -> String
+  @Inject lateinit var lazyDatabase: SuspendLazy<String>
 }
 
 @DependencyGraph
@@ -21,6 +22,7 @@ fun box(): String {
   graph.inject(target)
   return kotlinx.coroutines.runBlocking {
     assertEquals("db", target.database())
+    assertEquals("db", target.lazyDatabase.value())
     "OK"
   }
 }

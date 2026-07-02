@@ -29,6 +29,8 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider as wrapTypeInPr
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.stripSuspendLazy
+import dev.zacsweers.metro.compiler.ir.suspendDoubleCheckLazy
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
@@ -178,6 +180,15 @@ private constructor(
       ) {
         // Should be caught in FIR
         reportCompilerBug("Assisted inject factories should only be accessed as instances")
+      }
+
+      if (contextualTypeKey.isWrappedInSuspendLazy) {
+        // SuspendLazy<T> materializes as SuspendDoubleCheck.lazy over the binding's
+        // SuspendProvider form. For scoped bindings the runtime lazy() short-circuits when the
+        // delegate is already the graph's SuspendDoubleCheck, so the graph cache is shared.
+        val providerKey = contextualTypeKey.stripSuspendLazy().wrapInSuspendProvider()
+        return generateBindingCode(binding, providerKey, AccessType.SUSPEND_PROVIDER, fieldInitKey)
+          .suspendDoubleCheckLazy(metroSymbols, contextualTypeKey.typeKey)
       }
 
       val bindingKind = binding.diagnosticTypeName
@@ -1111,7 +1122,8 @@ private constructor(
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
         val accessType =
           when {
-            param.contextualTypeKey.isWrappedInSuspendProvider -> AccessType.SUSPEND_PROVIDER
+            param.contextualTypeKey.isWrappedInSuspendProvider ||
+              param.contextualTypeKey.isWrappedInSuspendLazy -> AccessType.SUSPEND_PROVIDER
             param.contextualTypeKey.requiresProviderInstance -> AccessType.PROVIDER
             else -> AccessType.INSTANCE
           }
@@ -1144,10 +1156,11 @@ private constructor(
           when (accessType) {
             AccessType.PROVIDER -> contextualTypeKey.wrapInProvider()
             AccessType.SUSPEND_PROVIDER ->
-              if (contextualTypeKey.isWrappedInSuspendProvider) {
-                contextualTypeKey
-              } else {
-                contextualTypeKey.wrapInSuspendProvider()
+              when {
+                contextualTypeKey.isWrappedInSuspendProvider -> contextualTypeKey
+                contextualTypeKey.isWrappedInSuspendLazy ->
+                  contextualTypeKey.stripSuspendLazy().wrapInSuspendProvider()
+                else -> contextualTypeKey.wrapInSuspendProvider()
               }
             else -> contextualTypeKey
           }

@@ -1098,7 +1098,11 @@ internal class IrBindingGraph(
         if (binding is IrBinding.AssistedFactory) return@forEachValue
 
         for (dep in binding.dependencies) {
-          if (dep.typeKey in suspendSet && !dep.isWrappedInSuspendProvider) {
+          if (
+            dep.typeKey in suspendSet &&
+              !dep.isWrappedInSuspendProvider &&
+              !dep.isWrappedInSuspendLazy
+          ) {
             suspendSet.add(binding.typeKey)
             changed = true
             break
@@ -1153,7 +1157,9 @@ internal class IrBindingGraph(
         if (contextKey.typeKey != binding.typeKey) continue
         if (!binding.isSet && contextKey.isMapSuspendProvider) continue
         val accessor =
-          node.accessors.find { it.contextKey.typeKey == contextKey.typeKey } ?: continue
+          node.accessors.find { it.contextKey == contextKey }
+            ?: node.accessors.find { it.contextKey.typeKey == contextKey.typeKey }
+            ?: continue
         val head =
           IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
             .withAnnotation(NEEDS_SUSPEND_SUPPORT)
@@ -1186,7 +1192,10 @@ internal class IrBindingGraph(
 
     // Step 3: Validate accessors
     for ((contextKey, _) in roots) {
-      val accessor = node.accessors.find { it.contextKey.typeKey == contextKey.typeKey } ?: continue
+      val accessor =
+        node.accessors.find { it.contextKey == contextKey }
+          ?: node.accessors.find { it.contextKey.typeKey == contextKey.typeKey }
+          ?: continue
       val accessorIsSuspend = accessor.metroFunction.ir.isSuspend
       val requiresSuspend = contextKey.typeKey in suspendSet
 
@@ -1288,9 +1297,10 @@ internal class IrBindingGraph(
           binding.parameters.allParameters.find { it.typeKey == dep.typeKey }?.ir
 
         if (dep.isWrappedInProvider) {
+          val depRender = dep.typeKey.render(short = true)
           val message = buildString {
             append(
-              "[Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding '${dep.typeKey.render(short = true)}' via Provider. Use SuspendProvider instead."
+              "[Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding '$depRender' via Provider. Use `${suspendFunctionRender(depRender)}` instead."
             )
           }
           val element = parameterDeclaration ?: binding.reportableDeclaration ?: continue
@@ -1298,9 +1308,10 @@ internal class IrBindingGraph(
         }
 
         if (dep.isWrappedInLazy) {
+          val depRender = dep.typeKey.render(short = true)
           val message = buildString {
             append(
-              "[Metro/SuspendBindingWrappedInLazy] Cannot depend on suspend binding '${dep.typeKey.render(short = true)}' via Lazy."
+              "[Metro/SuspendBindingWrappedInLazy] Cannot depend on suspend binding '$depRender' via Lazy. Use `SuspendLazy<$depRender>` instead."
             )
           }
           val element = parameterDeclaration ?: binding.reportableDeclaration ?: continue
@@ -1379,7 +1390,9 @@ internal class IrBindingGraph(
       }
       val nextDep =
         current.dependencies.firstOrNull { dep ->
-          dep.typeKey in suspendSet && !dep.isWrappedInSuspendProvider
+          dep.typeKey in suspendSet &&
+            !dep.isWrappedInSuspendProvider &&
+            !dep.isWrappedInSuspendLazy
         } ?: break
       result +=
         bindingStackEntryForDependency(current, nextDep, nextDep.typeKey)

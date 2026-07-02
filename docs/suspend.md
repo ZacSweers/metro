@@ -86,11 +86,35 @@ interface AppGraph {
 
 Each invocation resolves the binding again, or returns the cached instance if the binding is scoped.
 
+## Deferring and memoizing with `SuspendLazy<T>`
+
+`SuspendLazy<T>` is the suspend analog of Kotlin's `Lazy<T>`. Injecting it defers the work like `suspend () -> T` does, and additionally memoizes the result per injected instance. Since a suspending computation can't back a plain `val`, it exposes a `suspend fun value()` instead of a property.
+
+```kotlin
+@Inject
+class Repository(val database: SuspendLazy<Database>) {
+  suspend fun load(id: String): Row = database.value().query(id)
+}
+
+@DependencyGraph
+interface AppGraph {
+  // Not a suspend accessor. SuspendLazy defers, so this is legal.
+  val database: SuspendLazy<Database>
+
+  @Provides
+  suspend fun provideDatabase(): Database = openDatabase()
+}
+```
+
+Like `Lazy<T>`, the memoization is per wrapper instance. Two injection sites each compute their own value for an unscoped binding. For a scoped binding, all `SuspendLazy` wrappers share the graph's single cached instance, so there is no double computation.
+
+The memoization is coroutine-safe with the same semantics as scoping: one caller computes, concurrent callers share the result, failures are retried, and cancellation doesn't poison the cache. Injecting `SuspendLazy<T>` requires the `dev.zacsweers.metro:runtime-coroutines` artifact.
+
+It also works over non-suspend bindings if you want a uniform suspend API.
+
 ### What you can't do
 
-`Provider<T>` and `Lazy<T>` cannot wrap a suspend binding. Their accessors are not suspend functions, so they have no way to await the work. Metro reports an error and suggests `suspend () -> T` instead.
-
-There is no injectable lazy form for suspend bindings today. If you want call-site memoization of an unscoped suspend binding, inject `suspend () -> T` and memoize it yourself with the [runtime helpers](#runtime-helpers) below, or scope the binding.
+`Provider<T>` and `Lazy<T>` cannot wrap a suspend binding. Their accessors are not suspend functions, so they have no way to await the work. Metro reports an error and suggests `suspend () -> T` or `SuspendLazy<T>` instead.
 
 ## Scoping
 
@@ -135,7 +159,7 @@ interface AppGraph {
 
 Suspend and non-suspend contributions can be mixed. Each value resolves when you invoke it.
 
-Scalar aggregates over suspend bindings are errors:
+Scalar multibindings over suspend bindings are errors:
 
 - `Set<T>` multibindings cannot contain suspend contributions at all. Building the set would require awaiting each element inside non-suspend aggregation code.
 - `Map<K, V>` over suspend values must be consumed as `Map<K, suspend () -> V>` instead.
@@ -167,7 +191,7 @@ The factory itself is not suspend to hold or create. Suspension happens when you
 
 ## Member injection
 
-Member injection does not support suspend bindings. Injector functions and `MembersInjector` are not suspend and cannot await anything. Metro reports an error. Change the member's type to `suspend () -> T` to defer the resolution instead:
+Member injection does not support suspend bindings. Injector functions and `MembersInjector` are not suspend and cannot await anything. Metro reports an error. Change the member's type to `suspend () -> T` (or `SuspendLazy<T>`) to defer the resolution instead:
 
 ```kotlin
 class ProfileActivity {
@@ -181,14 +205,14 @@ The `runtime` artifact includes small utilities for working with suspend provide
 
 ```kotlin
 // Wrap a lambda
-val provider: SuspendProvider<String> = suspendProvider { fetchToken() }
+val provider: suspend () -> String = suspendProvider { fetchToken() }
 
 // Wrap an existing value
-val fixed: SuspendProvider<String> = suspendProviderOf("token")
+val fixed: suspend () -> String = suspendProviderOf("token")
 
 // Transform lazily
-val mapped: SuspendProvider<Int> = provider.map { it.length }
-val zipped: SuspendProvider<Pair<String, Int>> = provider.zip(mapped) { a, b -> a to b }
+val mapped: suspend () -> Int = provider.map { it.length }
+val zipped: suspend () -> Pair<String, Int> = provider.zip(mapped) { a, b -> a to b }
 ```
 
 The `runtime-coroutines` artifact adds memoization:
@@ -203,14 +227,14 @@ println(lazy.isInitialized()) // false
 val value = lazy.value() // suspends and computes
 ```
 
-`SuspendLazy<T>` is the suspend analog of Kotlin's `Lazy<T>`. Since a suspending computation can't back a plain `val`, it exposes a `suspend fun value()` instead of a property. You can also create one directly:
+You can also create a `SuspendLazy<T>` directly, outside of injection:
 
 ```kotlin
 val config: SuspendLazy<Config> = suspendLazy { loadConfig() }
 val fixedConfig: SuspendLazy<Config> = suspendLazyOf(Config())
 ```
 
-`suspendLazy` accepts the same `LazyThreadSafetyMode` values as `lazy`. Note that `SuspendLazy<T>` is a runtime utility type only. It is not injectable as a dependency.
+`suspendLazy` accepts the same `LazyThreadSafetyMode` values as `lazy`.
 
 ## Multiplatform
 

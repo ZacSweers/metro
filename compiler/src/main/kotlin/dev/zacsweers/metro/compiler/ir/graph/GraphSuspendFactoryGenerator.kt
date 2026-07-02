@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
+import dev.zacsweers.metro.compiler.ir.stripSuspendLazy
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
@@ -139,6 +140,10 @@ internal class GraphSuspendFactoryGenerator(
             when {
               isReceiver -> ctxKey.toIrType()
               ctxKey.isWrappedInSuspendProvider -> ctxKey.toIrType()
+              // SuspendLazy params are held as SuspendProvider fields; the invoke body memoizes
+              // via SuspendDoubleCheck.lazy when adapting the arg.
+              ctxKey.isWrappedInSuspendLazy ->
+                ctxKey.stripSuspendLazy().wrapInSuspendProvider().toIrType()
               ctxKey.isWrapped -> {
                 // Provider<X>/Lazy<X> etc. — X can't be suspend here (validated), hold a
                 // Provider<canonical> and let typeAsProviderArgument adapt.

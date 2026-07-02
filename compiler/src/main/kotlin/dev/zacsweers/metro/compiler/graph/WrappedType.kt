@@ -129,6 +129,36 @@ internal sealed interface WrappedType<T : Any> {
     override fun toString() = cachedToString
   }
 
+  /** A type wrapped in a SuspendLazy. */
+  class SuspendLazy<T : Any>(val innerType: WrappedType<T>, val lazyType: ClassId) :
+    WrappedType<T> {
+    private val cachedHashCode by memoize {
+      var result = innerType.hashCode()
+      result = 31 * result + lazyType.hashCode()
+      result
+    }
+
+    private val cachedToString by memoize { "${lazyType.asFqNameString()}<$innerType>" }
+
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+
+      other as SuspendLazy<*>
+
+      if (cachedHashCode != other.cachedHashCode) return false
+
+      if (innerType != other.innerType) return false
+      if (lazyType != other.lazyType) return false
+
+      return true
+    }
+
+    override fun hashCode() = cachedHashCode
+
+    override fun toString() = cachedToString
+  }
+
   /** A map type with special handling for the value type. */
   class Map<T : Any>(val keyType: T, val valueType: WrappedType<T>, val type: () -> T) :
     WrappedType<T> {
@@ -166,6 +196,7 @@ internal sealed interface WrappedType<T : Any> {
       is Provider -> innerType.canonicalType()
       is SuspendProvider -> innerType.canonicalType()
       is Lazy -> innerType.canonicalType()
+      is SuspendLazy -> innerType.canonicalType()
       is Map -> type()
     }
 
@@ -176,6 +207,7 @@ internal sealed interface WrappedType<T : Any> {
       is Provider -> true
       is SuspendProvider -> true
       is Lazy -> true
+      is SuspendLazy -> true
       is Map -> valueType.isDeferrable()
     }
 
@@ -185,6 +217,7 @@ internal sealed interface WrappedType<T : Any> {
       is Provider -> innerType.findMapValueType()
       is SuspendProvider -> innerType.findMapValueType()
       is Lazy -> innerType.findMapValueType()
+      is SuspendLazy -> innerType.findMapValueType()
       is Map -> valueType
     }
   }
@@ -195,6 +228,7 @@ internal sealed interface WrappedType<T : Any> {
       is Provider -> "Provider<${innerType.render(renderType)}>"
       is SuspendProvider -> "SuspendProvider<${innerType.render(renderType)}>"
       is Lazy -> "Lazy<${innerType.render(renderType)}>"
+      is SuspendLazy -> "SuspendLazy<${innerType.render(renderType)}>"
       is Map -> "Map<${renderType(keyType)}, ${valueType.render(renderType)}>"
     }
 
@@ -206,5 +240,6 @@ internal sealed interface WrappedType<T : Any> {
         is Map -> sequenceOf<WrappedType<T>>(this) + valueType.innerTypesSequence
         is Provider -> sequenceOf<WrappedType<T>>(this) + innerType.innerTypesSequence
         is SuspendProvider -> sequenceOf<WrappedType<T>>(this) + innerType.innerTypesSequence
+        is SuspendLazy -> sequenceOf<WrappedType<T>>(this) + innerType.innerTypesSequence
       }
 }

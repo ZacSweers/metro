@@ -3427,6 +3427,18 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("SuspendLazyInjection.kt")
+    public void testSuspendLazyInjection() {
+      run("SuspendLazyInjection.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendLazyScoped.kt")
+    public void testSuspendLazyScoped() {
+      run("SuspendLazyScoped.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendProviderParam.kt")
     public void testSuspendProviderParam() {
       run("SuspendProviderParam.kt");

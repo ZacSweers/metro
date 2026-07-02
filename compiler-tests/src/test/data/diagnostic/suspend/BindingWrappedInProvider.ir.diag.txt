@@ -12,4 +12,4 @@ Either:
   - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
   - Make the return type `suspend () -> Int`.
 
-/BindingWrappedInProvider.kt:11:28: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use SuspendProvider instead.
+/BindingWrappedInProvider.kt:11:28: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use `suspend () -> String` instead.

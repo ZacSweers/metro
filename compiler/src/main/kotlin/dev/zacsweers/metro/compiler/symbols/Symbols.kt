@@ -586,6 +586,10 @@ internal class Symbols(
     pluginContext.referenceClass(ClassIds.metroSuspendProvider)!!
   }
 
+  val metroSuspendLazy: IrClassSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.metroSuspendLazy)!!
+  }
+
   val metroSuspendProviderFunction: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(metroRuntime.packageFqName, "suspendProvider".asName()))
@@ -614,6 +618,10 @@ internal class Symbols(
   }
   val suspendDoubleCheckProvider by lazy {
     suspendDoubleCheckCompanionObject?.requireSimpleFunction("provider")
+  }
+
+  val suspendDoubleCheckLazy by lazy {
+    suspendDoubleCheckCompanionObject?.requireSimpleFunction("lazy")
   }
 
   private val metroDelegateFactory: IrClassSymbol by lazy {
@@ -893,6 +901,9 @@ internal class Symbols(
 
   val suspendProviderTypes
     get() = classIds.suspendProviderTypes
+
+  val suspendLazyTypes
+    get() = classIds.suspendLazyTypes
 
   val lazyTypes
     get() = classIds.lazyTypes

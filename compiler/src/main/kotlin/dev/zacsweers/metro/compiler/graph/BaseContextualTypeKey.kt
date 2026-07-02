@@ -22,13 +22,17 @@ internal interface BaseContextualTypeKey<
       isWrappedInProvider ||
         isWrappedInLazy ||
         isLazyWrappedInProvider ||
-        isWrappedInSuspendProvider
+        isWrappedInSuspendProvider ||
+        isWrappedInSuspendLazy
 
   val isWrappedInProvider: Boolean
     get() = wrappedType is WrappedType.Provider
 
   val isWrappedInSuspendProvider: Boolean
     get() = wrappedType is WrappedType.SuspendProvider
+
+  val isWrappedInSuspendLazy: Boolean
+    get() = wrappedType is WrappedType.SuspendLazy
 
   val isWrappedInLazy: Boolean
     get() = wrappedType is WrappedType.Lazy
@@ -54,7 +58,11 @@ internal interface BaseContextualTypeKey<
    */
   val defersSuspendAtAccess: Boolean
     get() =
-      isWrappedInSuspendProvider || isMapSuspendProvider || isWrappedInProvider || isWrappedInLazy
+      isWrappedInSuspendProvider ||
+        isWrappedInSuspendLazy ||
+        isMapSuspendProvider ||
+        isWrappedInProvider ||
+        isWrappedInLazy
 
   val isMapProviderLazy: Boolean
     get() {

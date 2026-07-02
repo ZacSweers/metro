@@ -731,6 +731,10 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   // implement Provider, so the existing implementsProviderType-based path doesn't apply.
   val bindingClassId = irType.classOrNull?.owner?.classId
   if (bindingClassId in symbols.classIds.suspendProviderTypes) {
+    if (contextKey.isWrappedInSuspendLazy) {
+      // Consumer wants SuspendLazy<T>; memoize the SuspendProvider.
+      return bindingCode.suspendDoubleCheckLazy(symbols, contextKey.typeKey)
+    }
     if (
       isAssisted ||
         isGraphInstance ||
@@ -1020,6 +1024,32 @@ internal fun IrExpression.doubleCheck(symbols: Symbols, typeKey: IrTypeKey): IrE
       typeHint = providerType,
       typeArgs = listOf(providerType, typeKey.type),
       args = listOf(this@doubleCheck),
+    )
+  }
+
+context(context: IrMetroContext, scope: IrBuilderWithScope)
+internal fun IrExpression.suspendDoubleCheckLazy(
+  symbols: Symbols,
+  typeKey: IrTypeKey,
+): IrExpression =
+  with(scope) {
+    val companionObject =
+      symbols.suspendDoubleCheckCompanionObject
+        ?: reportCompilerBug(
+          "SuspendDoubleCheck not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+        )
+    val lazyFun =
+      symbols.suspendDoubleCheckLazy
+        ?: reportCompilerBug(
+          "SuspendDoubleCheck.lazy not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+        )
+    val suspendLazyType = symbols.metroSuspendLazy.typeWith(typeKey.type)
+    irInvoke(
+      dispatchReceiver = irGetObject(companionObject),
+      callee = lazyFun,
+      typeHint = suspendLazyType,
+      typeArgs = listOf(symbols.metroSuspendProvider.typeWith(typeKey.type), typeKey.type),
+      args = listOf(this@suspendDoubleCheckLazy),
     )
   }
 

@@ -42,6 +42,9 @@ internal class FirContextualTypeKey(
   val isWrappedInSuspendProvider: Boolean
     get() = wrappedType is WrappedType.SuspendProvider
 
+  val isWrappedInSuspendLazy: Boolean
+    get() = wrappedType is WrappedType.SuspendLazy
+
   val isWrappedInLazy: Boolean
     get() = wrappedType is WrappedType.Lazy
 
@@ -67,6 +70,12 @@ internal class FirContextualTypeKey(
         innerType.wrapInProviderIfNecessary(session, wt.providerType)
       }
       is WrappedType.Lazy -> {
+        val innerType =
+          FirContextualTypeKey(typeKey, wt.innerType, hasDefault, isDeferrable)
+            .originalType(session)
+        innerType.wrapInLazyIfNecessary(session, wt.lazyType)
+      }
+      is WrappedType.SuspendLazy -> {
         val innerType =
           FirContextualTypeKey(typeKey, wt.innerType, hasDefault, isDeferrable)
             .originalType(session)
@@ -239,6 +248,16 @@ private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeK
     val innerWrappedType = innerType.asWrappedType(session)
 
     return WrappedType.SuspendProvider(innerWrappedType, rawClassId!!)
+  }
+
+  // Check if this is a SuspendLazy type
+  if (rawClassId in session.classIds.suspendLazyTypes) {
+    val innerType = typeArguments[0].expectAs<ConeKotlinTypeProjection>().type
+
+    // Recursively analyze the inner type
+    val innerWrappedType = innerType.asWrappedType(session)
+
+    return WrappedType.SuspendLazy(innerWrappedType, rawClassId!!)
   }
 
   // Check if this is a Lazy type
