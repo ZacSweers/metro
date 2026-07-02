@@ -81,6 +81,12 @@ public class MetroTraceContext(
    * Unlike [trace], this uses the tracer's coroutine-aware section API so the recorded section
    * stays attached to the coroutine across suspension points and thread hops rather than being
    * split or misattributed by thread-bound begin/end pairs.
+   *
+   * `traceCoroutine` installs a propagation token into the coroutine context, so sections opened by
+   * child coroutines launched inside [block] (e.g. `coroutineScope { async { … } }` in generated
+   * parallel-resolution code) parent to this section automatically. Manual token propagation is
+   * only needed when execution leaves structured concurrency (executors, detached scopes), which
+   * Metro-generated code currently never does.
    */
   public suspend inline fun <T> traceSuspend(
     qualifier: String?,
