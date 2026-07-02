@@ -89,7 +89,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val entry = index.bindingEntriesAt(declarations.function("bindService")).single()
     assertEquals("binds", entry.label)
-    assertEquals("test.Service", entry.key.renderedType)
+    assertEquals("test.Service", entry.typeKey.renderedType)
     assertEquals("ServiceImpl", entry.implementationName)
 
     // The @Binds impl parameter consumes the impl binding
@@ -104,7 +104,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val entry = index.bindingEntriesAt(declarations.klass("Consumer")).single()
     assertEquals("injected class", entry.label)
-    assertEquals("test.Consumer", entry.key.renderedType)
+    assertEquals("test.Consumer", entry.typeKey.renderedType)
 
     val serviceParam = index.consumerEntryAt(declarations.parameter("service"))!!
     assertEquals("test.Service", serviceParam.key.renderedType)
@@ -122,7 +122,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val entries = index.bindingEntriesAt(declarations.klass("RealHttpApi"))
     val contributed = entries.single { it.label == "contributed binding" }
-    assertEquals("test.HttpApi", contributed.key.renderedType)
+    assertEquals("test.HttpApi", contributed.typeKey.renderedType)
     assertEquals("RealHttpApi", contributed.implementationName)
     assertEquals("@SingleIn(scope = AppScope::class)", contributed.scope?.render(short = true))
 
@@ -143,7 +143,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val contributors = index.bindingsFor(analyticsParam)
     assertEquals(2, contributors.size)
     assertTrue(contributors.all { it.label == "multibinding contribution" })
-    assertTrue(contributors.all { it.key.renderedType == "test.Analytics" })
+    assertTrue(contributors.all { it.typeKey.renderedType == "test.Analytics" })
 
     // And the reverse direction: a contribution's consumers include the aggregate site
     val debugAnalytics = index.bindingEntriesAt(declarations.klass("DebugAnalytics"))
@@ -365,11 +365,11 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals("multibinding contribution", presenterEntry.label)
     assertEquals(
       "com.slack.circuit.runtime.presenter.Presenter.Factory",
-      presenterEntry.key.renderedType,
+      presenterEntry.typeKey.renderedType,
     )
 
     val uiEntry = index.bindingEntriesAt(declarations.function("HomeUi")).single()
-    assertEquals("com.slack.circuit.runtime.ui.Ui.Factory", uiEntry.key.renderedType)
+    assertEquals("com.slack.circuit.runtime.ui.Ui.Factory", uiEntry.typeKey.renderedType)
     assertEquals(
       setOf(ClassId.topLevel(FqName("dev.zacsweers.metro.AppScope"))),
       uiEntry.contributionScopes,
@@ -454,7 +454,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertNull(index.consumerEntryAt(factoryParam))
     val instanceEntry = index.bindingEntriesAt(factoryParam).single()
     assertEquals("instance binding", instanceEntry.label)
-    assertEquals("test.Config", instanceEntry.key.renderedType)
+    assertEquals("test.Config", instanceEntry.typeKey.renderedType)
 
     // And consumers of its type resolve to it
     val configParam = index.consumerEntryAt(declarations.parameter("config"))!!
@@ -692,7 +692,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // The @BindsOptionalOf declaration exposes an Optional<Service> binding.
     val optionalBinding = index.bindingEntriesAt(declarations.function("optionalService")).single()
     assertEquals("optional binding", optionalBinding.label)
-    assertEquals("java.util.Optional<test.Service>", optionalBinding.key.renderedType)
+    assertEquals("java.util.Optional<test.Service>", optionalBinding.typeKey.renderedType)
 
     val consumer = index.consumerEntryAt(declarations.property("service"))!!
     assertEquals("java.util.Optional<test.Service>", consumer.key.renderedType)
@@ -889,7 +889,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val factoryEntry = index.bindingEntriesAt(declarations.klass("EngineFactory")).single()
     assertEquals("assisted factory", factoryEntry.label)
-    assertEquals("test.EngineFactory", factoryEntry.key.renderedType)
+    assertEquals("test.EngineFactory", factoryEntry.typeKey.renderedType)
     assertEquals("Engine", factoryEntry.implementationName)
 
     val factoryParam = index.consumerEntryAt(declarations.parameter("factory"))!!
@@ -935,7 +935,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val accessor = index.consumerEntryAt(declarations.property("factories"))!!
     val contributors = index.bindingsFor(accessor)
     assertEquals(listOf("HomeFactory"), contributors.map { it.implementationName })
-    assertEquals("test.BaseFactory<*>", contributors.single().key.renderedType)
+    assertEquals("test.BaseFactory<*>", contributors.single().typeKey.renderedType)
   }
 
   fun testAmbiguousDefaultBindingsLeaveContributionUnresolved() {

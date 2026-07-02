@@ -176,7 +176,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
     val entries = index.bindingEntriesAt(declarations.klass("RealHttpApi"))
     val contributed = entries.single { it.label == "contributed binding" }
-    assertEquals("test.HttpApi", contributed.key.renderedType)
+    assertEquals("test.HttpApi", contributed.typeKey.renderedType)
     assertEquals(
       listOf("test.RealHttpApi"),
       contributed.dependencies.map { it.typeKey.renderedType },
@@ -267,7 +267,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
     val provideTag = declarations.function("provideTag")
     val entry = index.bindingEntriesAt(provideTag).single()
-    assertEquals("kotlin.Int", entry.key.renderedType)
+    assertEquals("kotlin.Int", entry.typeKey.renderedType)
     assertEquals(listOf("test.Service"), entry.dependencies.map { it.typeKey.renderedType })
 
     // The receiver is a consumer site anchored at its type reference
