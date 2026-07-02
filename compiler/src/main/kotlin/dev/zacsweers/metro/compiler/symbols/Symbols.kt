@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment
@@ -663,7 +664,7 @@ internal class Symbols(
   val asyncFunction: IrSimpleFunctionSymbol? by lazy {
     pluginContext
       .referenceFunctions(CallableId(ClassIds.coroutineScope.packageFqName, "async".asName()))
-      .singleOrNull { it.owner.parameters.any { p -> p.kind.toString() == "ExtensionReceiver" } }
+      .singleOrNull { it.owner.parameters.any { p -> p.kind == IrParameterKind.ExtensionReceiver } }
       ?: pluginContext
         .referenceFunctions(CallableId(ClassIds.coroutineScope.packageFqName, "async".asName()))
         .firstOrNull()
