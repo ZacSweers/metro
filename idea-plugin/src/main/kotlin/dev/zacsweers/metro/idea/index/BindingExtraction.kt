@@ -230,15 +230,23 @@ private fun KaSession.callableBindingData(
         )
       )
     }
-    has(options.multibindsAnnotations) ->
+    has(options.multibindsAnnotations) -> {
+      val allowEmpty =
+        (symbol.annotations + listOfNotNull(getterSymbol).flatMap { it.annotations })
+          .firstOrNull { it.classId in options.multibindsAnnotations }
+          ?.arguments
+          ?.firstOrNull { it.name.asString() == "allowEmpty" }
+          ?.let { (it.expression as? KaAnnotationValue.ConstantValue)?.value?.value } == true
       listOf(
         BindingData(
           typeKey(returnType, qualifier),
           BindingData.Kind.MULTIBINDING,
           scope,
           null,
+          allowEmpty = allowEmpty,
         )
       )
+    }
     has(options.providesAnnotations) -> {
       val elementType =
         if (has(options.elementsIntoSetAnnotations)) {
