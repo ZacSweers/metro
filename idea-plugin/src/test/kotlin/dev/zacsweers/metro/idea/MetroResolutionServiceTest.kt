@@ -5,7 +5,6 @@ package dev.zacsweers.metro.idea
 import com.intellij.openapi.components.service
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.idea.index.MetroResolutionService
-import dev.zacsweers.metro.idea.model.BindingKind
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
@@ -89,7 +88,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val entry = index.bindingEntriesAt(declarations.function("bindService")).single()
-    assertEquals(BindingKind.BINDS, entry.kind)
+    assertEquals("binds", entry.label)
     assertEquals("test.Service", entry.key.renderedType)
     assertEquals("ServiceImpl", entry.implementationName)
 
@@ -104,7 +103,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val entry = index.bindingEntriesAt(declarations.klass("Consumer")).single()
-    assertEquals(BindingKind.INJECT, entry.kind)
+    assertEquals("injected class", entry.label)
     assertEquals("test.Consumer", entry.key.renderedType)
 
     val serviceParam = index.consumerEntryAt(declarations.parameter("service"))!!
@@ -113,7 +112,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     // The consumer's Service key resolves to the @Binds provider
     val bindings = index.bindingsFor(serviceParam)
-    assertEquals(listOf(BindingKind.BINDS), bindings.map { it.kind })
+    assertEquals(listOf("binds"), bindings.map { it.label })
   }
 
   fun testContributedBindingBindsItsSoleSupertypeWithScope() {
@@ -122,7 +121,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val entries = index.bindingEntriesAt(declarations.klass("RealHttpApi"))
-    val contributed = entries.single { it.kind == BindingKind.CONTRIBUTED }
+    val contributed = entries.single { it.label == "contributed binding" }
     assertEquals("test.HttpApi", contributed.key.renderedType)
     assertEquals("RealHttpApi", contributed.implementationName)
     assertEquals("@SingleIn(scope = AppScope::class)", contributed.scope?.render(short = true))
@@ -143,7 +142,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // Contributions keep their element key, mirroring the compiler's @MultibindingElement model
     val contributors = index.bindingsFor(analyticsParam)
     assertEquals(2, contributors.size)
-    assertTrue(contributors.all { it.kind == BindingKind.MULTIBINDING_CONTRIBUTION })
+    assertTrue(contributors.all { it.label == "multibinding contribution" })
     assertTrue(contributors.all { it.key.renderedType == "test.Analytics" })
 
     // And the reverse direction: a contribution's consumers include the aggregate site
@@ -166,7 +165,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val contributors = index.bindingsFor(handlersParam)
     assertEquals(2, contributors.size)
-    assertTrue(contributors.all { it.kind == BindingKind.MULTIBINDING_CONTRIBUTION })
+    assertTrue(contributors.all { it.label == "multibinding contribution" })
     assertEquals(
       setOf("handlerA", "handlerB"),
       contributors.mapNotNull { (it.pointer.element as? KtNamedDeclaration)?.name }.toSet(),
@@ -174,7 +173,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     // The plain Service consumer is not polluted by map contributions
     val serviceParam = index.consumerEntryAt(declarations.parameter("service"))!!
-    assertEquals(listOf(BindingKind.BINDS), index.bindingsFor(serviceParam).map { it.kind })
+    assertEquals(listOf("binds"), index.bindingsFor(serviceParam).map { it.label })
   }
 
   fun testQualifiersDisambiguateKeys() {
@@ -225,7 +224,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val repositoryEntries = index.bindingEntriesAt(declarations.klass("Repository"))
-    assertEquals(listOf(BindingKind.INJECT), repositoryEntries.map { it.kind })
+    assertEquals(listOf("injected class"), repositoryEntries.map { it.label })
 
     val consumerElements =
       index.consumersFor(repositoryEntries).mapNotNull {
@@ -363,7 +362,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     // Both functions contribute generated factories into the scope's factory sets
     val presenterEntry = index.bindingEntriesAt(declarations.function("HomePresenter")).single()
-    assertEquals(BindingKind.MULTIBINDING_CONTRIBUTION, presenterEntry.kind)
+    assertEquals("multibinding contribution", presenterEntry.label)
     assertEquals(
       "com.slack.circuit.runtime.presenter.Presenter.Factory",
       presenterEntry.key.renderedType,
@@ -454,13 +453,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val factoryParam = declarations.parameter("providedConfig")
     assertNull(index.consumerEntryAt(factoryParam))
     val instanceEntry = index.bindingEntriesAt(factoryParam).single()
-    assertEquals(BindingKind.INSTANCE, instanceEntry.kind)
+    assertEquals("instance binding", instanceEntry.label)
     assertEquals("test.Config", instanceEntry.key.renderedType)
 
     // And consumers of its type resolve to it
     val configParam = index.consumerEntryAt(declarations.parameter("config"))!!
     val bindings = index.bindingsFor(configParam)
-    assertEquals(listOf(BindingKind.INSTANCE), bindings.map { it.kind })
+    assertEquals(listOf("instance binding"), bindings.map { it.label })
     assertTrue(bindings.single().pointer.element === factoryParam)
   }
 
@@ -484,7 +483,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
       val clientParam = index.consumerEntryAt(declarations.parameter("client"))!!
       val bindings = index.bindingsFor(clientParam)
-      assertEquals(listOf(BindingKind.INJECT), bindings.map { it.kind })
+      assertEquals(listOf("injected class"), bindings.map { it.label })
       val target = bindings.single().pointer.element
       assertEquals("LibHttpClient", (target as? KtNamedDeclaration)?.name)
       assertEquals(
@@ -526,14 +525,14 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
       val serviceAccessor = index.consumerEntryAt(declarations.property("service"))!!
       val serviceBindings = index.bindingsFor(serviceAccessor)
-      assertEquals(listOf(BindingKind.CONTRIBUTED), serviceBindings.map { it.kind })
+      assertEquals(listOf("contributed binding"), serviceBindings.map { it.label })
       assertEquals("LibServiceImpl", serviceBindings.single().implementationName)
 
       val analyticsAccessor = index.consumerEntryAt(declarations.property("analytics"))!!
       val analyticsBindings = index.bindingsFor(analyticsAccessor)
       assertEquals(
-        listOf(BindingKind.MULTIBINDING_CONTRIBUTION),
-        analyticsBindings.map { it.kind },
+        listOf("multibinding contribution"),
+        analyticsBindings.map { it.label },
       )
       assertEquals("LibAnalyticsImpl", analyticsBindings.single().implementationName)
 
@@ -541,14 +540,14 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       // resolve through the generated nested MetroContribution @Binds members instead
       val explicitAccessor = index.consumerEntryAt(declarations.property("explicit"))!!
       val explicitBindings = index.bindingsFor(explicitAccessor)
-      assertEquals(listOf(BindingKind.BINDS), explicitBindings.map { it.kind })
+      assertEquals(listOf("binds"), explicitBindings.map { it.label })
       assertEquals("LibExplicitImpl", explicitBindings.single().implementationName)
 
       // Contribution-provider container objects expose their @Provides members, attributed to
       // the @Origin class
       val containedAccessor = index.consumerEntryAt(declarations.property("contained"))!!
       val containedBindings = index.bindingsFor(containedAccessor)
-      assertEquals(listOf(BindingKind.PROVIDES), containedBindings.map { it.kind })
+      assertEquals(listOf("provides"), containedBindings.map { it.label })
       assertEquals("LibContainedImpl", containedBindings.single().implementationName)
 
       // Internal hints from non-friend modules are filtered, mirroring the compiler
@@ -636,7 +635,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     for (name in listOf("serviceProvider", "serviceLazy")) {
       val consumer = index.consumerEntryAt(declarations.parameter(name))!!
       assertEquals("test.Service", consumer.key.renderedType)
-      assertEquals(listOf(BindingKind.BINDS), index.bindingsFor(consumer).map { it.kind })
+      assertEquals(listOf("binds"), index.bindingsFor(consumer).map { it.label })
     }
   }
 
@@ -692,16 +691,16 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     // The @BindsOptionalOf declaration exposes an Optional<Service> binding.
     val optionalBinding = index.bindingEntriesAt(declarations.function("optionalService")).single()
-    assertEquals(BindingKind.OPTIONAL, optionalBinding.kind)
+    assertEquals("optional binding", optionalBinding.label)
     assertEquals("java.util.Optional<test.Service>", optionalBinding.key.renderedType)
 
     val consumer = index.consumerEntryAt(declarations.property("service"))!!
     assertEquals("java.util.Optional<test.Service>", consumer.key.renderedType)
-    assertEquals(listOf(BindingKind.OPTIONAL), index.bindingsFor(consumer).map { it.kind })
+    assertEquals(listOf("optional binding"), index.bindingsFor(consumer).map { it.label })
     val context = index.contextFor(index.graphEntryAt(declarations.klass("AppGraph"))!!)
     assertEquals(
-      listOf(BindingKind.OPTIONAL),
-      index.bindingsFor(consumer, context).map { it.kind },
+      listOf("optional binding"),
+      index.bindingsFor(consumer, context).map { it.label },
     )
   }
 
@@ -889,14 +888,14 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val factoryEntry = index.bindingEntriesAt(declarations.klass("EngineFactory")).single()
-    assertEquals(BindingKind.ASSISTED_FACTORY, factoryEntry.kind)
+    assertEquals("assisted factory", factoryEntry.label)
     assertEquals("test.EngineFactory", factoryEntry.key.renderedType)
     assertEquals("Engine", factoryEntry.implementationName)
 
     val factoryParam = index.consumerEntryAt(declarations.parameter("factory"))!!
     assertEquals(
-      listOf(BindingKind.ASSISTED_FACTORY),
-      index.bindingsFor(factoryParam).map { it.kind },
+      listOf("assisted factory"),
+      index.bindingsFor(factoryParam).map { it.label },
     )
   }
 
@@ -969,8 +968,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // Two supertypes both declare @DefaultBinding, so the bound type is ambiguous — no contributed
     // binding is originated (matching the compiler, rather than arbitrarily picking the first).
     val entries = index.bindingEntriesAt(declarations.klass("Impl"))
-    assertTrue(entries.any { it.kind == BindingKind.INJECT })
-    assertTrue(entries.none { it.kind == BindingKind.CONTRIBUTED })
+    assertTrue(entries.any { it.label == "injected class" })
+    assertTrue(entries.none { it.label == "contributed binding" })
   }
 
   fun testClassKeyMapContributionsResolve() {
@@ -1005,7 +1004,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val handlersParam = index.consumerEntryAt(declarations.parameter("handlers"))!!
     val contributors = index.bindingsFor(handlersParam)
-    assertEquals(listOf(BindingKind.MULTIBINDING_CONTRIBUTION), contributors.map { it.kind })
+    assertEquals(listOf("multibinding contribution"), contributors.map { it.label })
   }
 
   fun testReplacedContributionsLosePerGraph() {
@@ -1048,11 +1047,11 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val realEntry =
       index.bindingEntriesAt(declarations.klass("RealRepo")).single {
-        it.kind == BindingKind.CONTRIBUTED
+        it.label == "contributed binding"
       }
     val fakeEntry =
       index.bindingEntriesAt(declarations.klass("FakeRepo")).single {
-        it.kind == BindingKind.CONTRIBUTED
+        it.label == "contributed binding"
       }
     assertTrue(index.consumersFor(listOf(realEntry)).isEmpty())
     assertEquals(
@@ -1192,7 +1191,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val accessor = index.consumerEntryAt(declarations.property("graphClient"))!!
     val bindings = index.bindingsFor(accessor, context)
-    assertEquals(listOf(BindingKind.INCLUDED), bindings.map { it.kind })
+    assertEquals(listOf("included dependency accessor"), bindings.map { it.label })
     // Anchored at the dependency's accessor declaration
     assertEquals(
       "client",
@@ -1470,8 +1469,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // @DependencyGraph(AppScope::class) implicitly conveys @SingleIn(AppScope::class)
     val appContext = index.contextFor(index.graphEntryAt(declarations.klass("AppGraph"))!!)
     assertEquals(
-      listOf(BindingKind.INJECT),
-      index.bindingsFor(consumer, appContext).map { it.kind },
+      listOf("injected class"),
+      index.bindingsFor(consumer, appContext).map { it.label },
     )
 
     // A graph with a different scope is not a home for this binding
@@ -1482,8 +1481,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val explicitContext =
       index.contextFor(index.graphEntryAt(declarations.klass("ExplicitGraph"))!!)
     assertEquals(
-      listOf(BindingKind.INJECT),
-      index.bindingsFor(consumer, explicitContext).map { it.kind },
+      listOf("injected class"),
+      index.bindingsFor(consumer, explicitContext).map { it.label },
     )
   }
 
