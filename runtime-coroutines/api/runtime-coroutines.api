@@ -1,0 +1,11 @@
+public final class dev/zacsweers/metro/SuspendLazyKt {
+	public static final fun suspendLazy (Lkotlin/LazyThreadSafetyMode;Lkotlin/jvm/functions/Function1;)Ldev/zacsweers/metro/SuspendLazy;
+	public static synthetic fun suspendLazy$default (Lkotlin/LazyThreadSafetyMode;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Ldev/zacsweers/metro/SuspendLazy;
+	public static final fun suspendLazyOf (Ljava/lang/Object;)Ldev/zacsweers/metro/SuspendLazy;
+}
+
+public final class dev/zacsweers/metro/SuspendProviderExtensionsKt {
+	public static final fun memoize (Ldev/zacsweers/metro/SuspendProvider;)Ldev/zacsweers/metro/SuspendProvider;
+	public static final fun memoizeAsLazy (Ldev/zacsweers/metro/SuspendProvider;)Ldev/zacsweers/metro/SuspendLazy;
+}
+

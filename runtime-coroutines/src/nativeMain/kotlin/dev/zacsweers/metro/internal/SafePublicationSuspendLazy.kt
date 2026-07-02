@@ -37,7 +37,7 @@ internal class SafePublicationSuspendLazy<T>(initializer: suspend () -> T) :
       val newValue = initializerRef()
       if (atomicValue.compareAndSet(UNINITIALIZED, newValue)) {
         initializer = null
-        return newValue as T
+        return newValue
       }
     }
 
