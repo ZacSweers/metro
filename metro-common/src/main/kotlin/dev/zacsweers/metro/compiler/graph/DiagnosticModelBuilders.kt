@@ -2,9 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
+import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.Text
 import dev.zacsweers.metro.compiler.diagnostics.TraceEntry
+import dev.zacsweers.metro.compiler.diagnostics.buildText
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import org.jetbrains.kotlin.name.FqName
 
@@ -71,4 +78,58 @@ public fun BaseBindingStack<*, *, *, *, *>.toChainSection(): DiagnosticSection.C
     }
   }
   return if (items.size < 2) null else DiagnosticSection.Chain(items)
+}
+
+/** The diagnostic for a multibinding with no contributions that does not allow empty. */
+public fun emptyMultibindingDiagnostic(
+  typeKey: BaseTypeKey<*, *, *>,
+  extraNotes: List<Note> = emptyList(),
+): MetroDiagnostic {
+  return MetroDiagnostic(
+    id = MetroDiagnosticId.EMPTY_MULTIBINDING,
+    severity = MetroSeverity.ERROR,
+    title =
+      buildText {
+        append("Multibinding ")
+        append(typeKey.toText())
+        append(" was unexpectedly empty")
+      },
+    notes =
+      buildList {
+        add(
+          Note.help(
+            "annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be empty"
+          )
+        )
+        addAll(extraNotes)
+      },
+  )
+}
+
+/** The diagnostic for map multibinding contributions that share the same map key. */
+public fun duplicateMapKeysDiagnostic(
+  typeKey: BaseTypeKey<*, *, *>,
+  mapKeyRender: String,
+  locations: List<LocatedItem>,
+  trace: DiagnosticSection.BindingTrace? = null,
+): MetroDiagnostic {
+  return MetroDiagnostic(
+    id = MetroDiagnosticId.DUPLICATE_MAP_KEYS,
+    severity = MetroSeverity.ERROR,
+    title =
+      buildText {
+        append(DiagnosticHeadlines.DUPLICATE_MAP_KEYS_PREFIX)
+        append(typeKey.toText())
+      },
+    sections =
+      buildList {
+        add(
+          DiagnosticSection.Locations(
+            header = textOf("The following bindings contribute the same map key '$mapKeyRender'"),
+            items = locations,
+          )
+        )
+        trace?.let(::add)
+      },
+  )
 }

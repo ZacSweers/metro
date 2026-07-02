@@ -6,7 +6,6 @@ import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticBatch
-import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
 import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
@@ -29,6 +28,8 @@ import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
+import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
+import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
@@ -604,12 +605,7 @@ internal class IrBindingGraph(
     val errors = mutableListOf<GraphError>()
     for (multibinding in multibindings) {
       if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
-        val notes = buildList {
-          add(
-            Note.help(
-              "annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be empty"
-            )
-          )
+        val extraNotes = buildList {
           similarMultibindingsNote(multibinding, allMultibindings)?.let(::add)
 
           val elementType =
@@ -620,18 +616,7 @@ internal class IrBindingGraph(
             }
           functionProviderMigrationHint(elementType)?.let { add(Note.help(it)) }
         }
-        val diagnostic =
-          MetroDiagnostic(
-            id = MetroDiagnosticId.EMPTY_MULTIBINDING,
-            severity = MetroSeverity.ERROR,
-            title =
-              buildText {
-                append("Multibinding ")
-                append(multibinding.typeKey.toText())
-                append(" was unexpectedly empty")
-              },
-            notes = notes,
-          )
+        val diagnostic = emptyMultibindingDiagnostic(multibinding.typeKey, extraNotes)
         val declarationToReport =
           if (multibinding.declaration?.isFakeOverride == true) {
             multibinding.declaration!!
@@ -1159,27 +1144,11 @@ internal class IrBindingGraph(
       }
 
       val diagnostic =
-        MetroDiagnostic(
-          id = MetroDiagnosticId.DUPLICATE_MAP_KEYS,
-          severity = MetroSeverity.ERROR,
-          title =
-            buildText {
-              append(DiagnosticHeadlines.DUPLICATE_MAP_KEYS_PREFIX)
-              append(binding.typeKey.toText())
-            },
-          sections =
-            buildList {
-              add(
-                DiagnosticSection.Locations(
-                  header =
-                    textOf(
-                      "The following bindings contribute the same map key '${mapKey.render(short = false)}'"
-                    ),
-                  items = locationItems,
-                )
-              )
-              stack.toTraceSection()?.let(::add)
-            },
+        duplicateMapKeysDiagnostic(
+          binding.typeKey,
+          mapKey.render(short = false),
+          locationItems,
+          stack.toTraceSection(),
         )
       report(diagnostic, stack)
     }
