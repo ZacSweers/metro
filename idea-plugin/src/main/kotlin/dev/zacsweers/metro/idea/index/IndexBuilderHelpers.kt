@@ -32,7 +32,7 @@ internal fun shortNames(classIds: Set<ClassId>): Set<String> {
 
 /**
  * Builds a [KaBinding] from a [BindingData], anchoring it at [pointer]. Callers override only the
- * fields that differ from the computed data (e.g. contribution-derived origin/scopes).
+ * fields that differ from the computed data, such as contribution-derived origin and scopes.
  */
 internal fun BindingData.toKaBinding(
   pointer: SmartPsiElementPointer<out PsiElement>,
@@ -42,18 +42,70 @@ internal fun BindingData.toKaBinding(
   replaces: Set<ClassId> = this.replaces,
   contributionScopes: Set<ClassId> = this.contributionScopes,
 ): KaBinding {
-  return KaBinding(
-    pointer = pointer,
-    key = key,
-    kind = kind,
-    scope = scope,
-    implementationName = implementationName,
-    multibindingId = multibindingId,
-    originClassId = originClassId,
-    containerId = containerId,
-    replaces = replaces,
-    contributionScopes = contributionScopes,
-  )
+  return when (kind) {
+    BindingData.Kind.CONSTRUCTOR_INJECTED ->
+      KaBinding.ConstructorInjected(
+        pointer = pointer,
+        key = key,
+        scope = scope,
+        implementationName = implementationName,
+        originClassId = originClassId,
+        replaces = replaces,
+        contributionScopes = contributionScopes,
+        dependencies = dependencies,
+      )
+    BindingData.Kind.PROVIDED ->
+      KaBinding.Provided(
+        pointer = pointer,
+        key = key,
+        scope = scope,
+        implementationName = implementationName,
+        multibindingId = multibindingId,
+        mapKeyValue = mapKeyValue,
+        originClassId = originClassId,
+        containerId = containerId,
+        replaces = replaces,
+        contributionScopes = contributionScopes,
+        dependencies = dependencies,
+      )
+    BindingData.Kind.ALIAS ->
+      KaBinding.Alias(
+        pointer = pointer,
+        key = key,
+        consumedKey = consumedKey,
+        scope = scope,
+        implementationName = implementationName,
+        multibindingId = multibindingId,
+        mapKeyValue = mapKeyValue,
+        originClassId = originClassId,
+        containerId = containerId,
+        replaces = replaces,
+        contributionScopes = contributionScopes,
+        isClassContribution = isClassContribution,
+      )
+    BindingData.Kind.MULTIBINDING ->
+      KaBinding.Multibinding(
+        pointer = pointer,
+        key = key,
+        scope = scope,
+        originClassId = originClassId,
+        containerId = containerId,
+        replaces = replaces,
+        contributionScopes = contributionScopes,
+      )
+    BindingData.Kind.BOUND_INSTANCE ->
+      KaBinding.BoundInstance(pointer = pointer, key = key, containerId = containerId)
+    BindingData.Kind.CUSTOM_WRAPPER ->
+      KaBinding.CustomWrapper(
+        pointer = pointer,
+        key = key,
+        implementationName = implementationName,
+        originClassId = originClassId,
+        containerId = containerId,
+        replaces = replaces,
+        contributionScopes = contributionScopes,
+      )
+  }
 }
 
 /**
