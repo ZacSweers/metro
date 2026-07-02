@@ -1,0 +1,22 @@
+/DepInConstructorInjectedNonSuspendAccessor.kt:10:19: error: [Metro/SuspendAwareRequired] 'Foo' depends on suspend bindings and must be annotated `@SuspendAware` so Metro can generate a suspend-aware factory for it.
+
+Trace:
+    String is injected at
+        [ExampleGraph] Foo(…, dep) // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)
+
+
+/DepInConstructorInjectedNonSuspendAccessor.kt:14:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Foo bindings must be a suspend function or suspend () -> Foo because it depends on suspend bindings and requires a suspend context.
+
+Trace:
+    Foo is requested at
+        [ExampleGraph] ExampleGraph.foo // ❌ needs suspend support
+    String is injected at
+        [ExampleGraph] Foo(…, dep) // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)
+
+Either:
+  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
+  - Make the return type `suspend () -> Foo`.

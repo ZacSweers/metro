@@ -1,0 +1,15 @@
+/BindingWrappedInProvider.kt:9:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Int bindings must be a suspend function or suspend () -> Int because it depends on suspend bindings and requires a suspend context.
+
+Trace:
+    Int is requested at
+        [ExampleGraph] ExampleGraph.value // ❌ needs suspend support
+    String is injected at
+        [ExampleGraph] ExampleGraph.provideInt(…, dep) // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)
+
+Either:
+  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
+  - Make the return type `suspend () -> Int`.
+
+/BindingWrappedInProvider.kt:11:28: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use SuspendProvider instead.

@@ -8,6 +8,8 @@ import dev.zacsweers.metro.ExperimentalMetroSuspendApi
 import dev.zacsweers.metro.SuspendLazy
 import dev.zacsweers.metro.SuspendProvider
 import kotlin.concurrent.Volatile
+import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -19,13 +21,32 @@ private val UNINITIALIZED_SUSPEND = Any()
  *
  * The provider instance is released after it's called.
  *
- * Modeled after [BaseDoubleCheck] but adapted for suspend context.
+ * Modeled after [BaseDoubleCheck] but adapted for suspend context. Key differences:
+ * - Synchronization uses a coroutine [Mutex] (a thread lock can't be held across a suspension
+ *   point). The mutex is **not reentrant**, so unlike [BaseDoubleCheck] a reentrant (cyclic)
+ *   invocation can't be allowed to proceed into the initializer — it would deadlock instead.
+ *   Reentrant calls from the *initializing coroutine itself* are detected via its [Job] identity
+ *   and fail fast with an [IllegalStateException] pointing at the circular dependency.
+ * - A failed initializer is NOT cached; the next caller retries (same as [BaseDoubleCheck]).
+ * - If the initializing coroutine is cancelled mid-initialization, the mutex is released and the
+ *   next waiter re-runs the initializer; the cache is never poisoned.
  */
-public class SuspendDoubleCheck<T> private constructor(provider: suspend () -> T) :
+public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider<T>) :
   SuspendProvider<T>, SuspendLazy<T> {
-  private var provider: (suspend () -> T)? = provider
+  // Stored as SuspendProvider (not `suspend () -> T`) so invocation dispatches through the
+  // interface — on Kotlin/JS a fun interface instance is not a callable JS function, so invoking
+  // it through the suspend function type fails at runtime.
+  private var provider: SuspendProvider<T>? = provider
   @Volatile private var _value: Any? = UNINITIALIZED_SUSPEND
   private val mutex = Mutex()
+
+  /**
+   * The [Job] of the coroutine currently running the initializer, or null when no initialization is
+   * in flight. Used to detect reentrant (cyclic) invocations that would otherwise suspend forever
+   * on the non-reentrant [mutex]. Written only while holding the mutex; read on the unlocked fast
+   * path (volatile for visibility).
+   */
+  @Volatile private var initializingJob: Job? = null
 
   override suspend fun invoke(): T {
     val result1 = _value
@@ -34,17 +55,28 @@ public class SuspendDoubleCheck<T> private constructor(provider: suspend () -> T
       return result1 as T
     }
 
+    val callerJob = coroutineContext[Job]
+    check(callerJob == null || callerJob !== initializingJob) {
+      "Scoped suspend provider was invoked recursively during its own initialization. " +
+        "This is likely due to a circular dependency."
+    }
+
     return mutex.withLock {
       val result2 = _value
       if (result2 !== UNINITIALIZED_SUSPEND) {
         @Suppress("UNCHECKED_CAST") (result2 as T)
       } else {
-        val typedValue = provider!!()
-        _value = reentrantCheck(_value, typedValue)
-        // Null out the reference to the provider. We are never going to need it again, so we
-        // can make it eligible for GC.
-        provider = null
-        typedValue
+        initializingJob = callerJob
+        try {
+          val typedValue = provider!!()
+          _value = typedValue
+          // Null out the reference to the provider. We are never going to need it again, so we
+          // can make it eligible for GC.
+          provider = null
+          typedValue
+        } finally {
+          initializingJob = null
+        }
       }
     }
   }
@@ -68,7 +100,7 @@ public class SuspendDoubleCheck<T> private constructor(provider: suspend () -> T
         @Suppress("UNCHECKED_CAST")
         return delegate as SuspendProvider<T>
       }
-      return SuspendDoubleCheck(delegate)
+      return SuspendDoubleCheck(delegate.asSuspendProvider())
     }
 
     /** Returns a [SuspendLazy] that caches the value from the given delegate provider. */
@@ -78,21 +110,12 @@ public class SuspendDoubleCheck<T> private constructor(provider: suspend () -> T
         @Suppress("UNCHECKED_CAST")
         return delegate as SuspendLazy<T>
       }
-      return SuspendDoubleCheck(delegate)
+      return SuspendDoubleCheck(delegate.asSuspendProvider())
+    }
+
+    private fun <T> (suspend () -> T).asSuspendProvider(): SuspendProvider<T> {
+      @Suppress("UNCHECKED_CAST")
+      return this as? SuspendProvider<T> ?: SuspendProvider { invoke() }
     }
   }
-}
-
-/**
- * Checks to see if creating the new instance has resulted in a recursive call. If it has, and the
- * new instance is the same as the current instance, return the instance. However, if the new
- * instance differs from the current instance, an [IllegalStateException] is thrown.
- */
-@Suppress("NOTHING_TO_INLINE")
-private inline fun reentrantCheck(currentInstance: Any?, newInstance: Any?): Any? {
-  val isReentrant = currentInstance !== UNINITIALIZED_SUSPEND
-  check(!isReentrant || currentInstance == newInstance) {
-    "Scoped suspend provider was invoked recursively returning different results: $currentInstance & $newInstance. This is likely due to a circular dependency."
-  }
-  return newInstance
 }
