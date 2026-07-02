@@ -137,6 +137,49 @@ internal class BindingIndex(
     return applyReplaces(visible.filter { isBindingInContext(it, context) })
   }
 
+  /**
+   * The bindings for [key] that are members of [context]'s graph. Multibinding contributions are
+   * resolved separately by [multibindingContributions].
+   */
+  fun bindingsForKey(
+    key: KaTypeKey,
+    context: GraphContext,
+    useSiteModule: KaModule? = null,
+  ): List<KaBinding> {
+    // Membership filtering already applies context-wide excludes and replaces via the cached
+    // replacedOrigins set.
+    return bindingsByKey[key].orEmpty().filter {
+      isVisibleFrom(it.pointer, useSiteModule) && isBindingInContext(it, context)
+    }
+  }
+
+  /** The contributions collected into [multibindingId] that are members of [context]'s graph. */
+  fun multibindingContributions(
+    multibindingId: String,
+    context: GraphContext,
+    useSiteModule: KaModule? = null,
+  ): List<KaBinding> {
+    return contributionsByMultibindingId[multibindingId].orEmpty().filter {
+      isVisibleFrom(it.pointer, useSiteModule) && isBindingInContext(it, context)
+    }
+  }
+
+  /**
+   * Every binding that is a member of [context]'s graph. Linear over all bindings, so call on
+   * demand only.
+   */
+  fun bindingsInContext(context: GraphContext, useSiteModule: KaModule? = null): List<KaBinding> {
+    return bindings.filter {
+      isVisibleFrom(it.pointer, useSiteModule) && isBindingInContext(it, context)
+    }
+  }
+
+  /** The consumer sites declared on [graph] itself, used as seal roots. */
+  fun accessorsFor(graph: KaGraphNode): List<ConsumerEntry> {
+    val graphClassId = graph.classId ?: return emptyList()
+    return consumers.filter { it.graphClassId == graphClassId }
+  }
+
   /** The aggregated context of [graph], following extension parent chains. */
   fun contextFor(graph: KaGraphNode): GraphContext {
     val contexts = contextsFor(graph)
@@ -313,23 +356,23 @@ internal class BindingIndex(
     ) {
       return false
     }
-    return when (entry.kind) {
+    return when (entry) {
       // Container callables are only live in graphs that wire their container in (or that
-      // declare them directly on the graph)
-      BindingKind.PROVIDES,
-      BindingKind.BINDS,
-      BindingKind.MULTIBINDING_DECLARATION,
-      BindingKind.OPTIONAL -> {
+      // declare them directly on the graph). Contributed bindings pass via their scopes.
+      is KaBinding.Provided,
+      is KaBinding.Alias,
+      is KaBinding.Multibinding,
+      is KaBinding.CustomWrapper -> {
         entry.contributionScopes.isNotEmpty() ||
           entry.containerId == null ||
           entry.containerId in context.graphClassIds ||
           entry.containerId in context.containers
       }
-      BindingKind.INSTANCE -> entry.containerId in context.graphClassIds
-      BindingKind.INCLUDED -> entry.containerId in context.includedDependencies
-      // Injected classes are implicit bindings; contributed bindings already passed the
-      // scope/excludes checks above
-      else -> true
+      is KaBinding.BoundInstance -> entry.containerId in context.graphClassIds
+      is KaBinding.GraphDependency -> entry.containerId in context.includedDependencies
+      // Injected classes and assisted factories are implicit bindings
+      is KaBinding.ConstructorInjected,
+      is KaBinding.AssistedFactory -> true
     }
   }
 
