@@ -183,8 +183,8 @@ val libFixtureJar =
 
 val shaded = configurations.dependencyScope("shaded")
 
-// androidx.tracing pulls a plain kotlinx-coroutines that must never shadow the platform's patched
-// coroutines (bundled by the IDE) in the plugin jar or test runtime.
+// androidx.tracing pulls a plain kotlinx-coroutines that must not shadow the IDE's patched
+// coroutines in the plugin jar or test runtime.
 val coroutinesExclude =
   mapOf("group" to "org.jetbrains.kotlinx", "module" to "kotlinx-coroutines-core")
 
