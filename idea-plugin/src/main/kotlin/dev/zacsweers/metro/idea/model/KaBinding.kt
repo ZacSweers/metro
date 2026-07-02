@@ -162,7 +162,7 @@ internal sealed interface KaBinding :
   }
 
   /**
-   * A `Set`/`Map` aggregate. Index entries anchor `@Multibinds` declarations; graph sealing
+   * A `Set`/`Map` aggregate. Index entries anchor `@Multibinds` declarations. Graph sealing
    * synthesizes aggregate nodes whose [dependencies] are the collected [MultibindingElement] keys.
    */
   class Multibinding(
@@ -184,8 +184,8 @@ internal sealed interface KaBinding :
   }
 
   /**
-   * A contribution's seal-time key swap: the contribution under a synthetic per-element qualifier,
-   * emulating the compiler's `@MultibindingElement` model.
+   * A contribution keyed under a synthetic per-element qualifier during sealing. Matches the
+   * compiler's `@MultibindingElement` model.
    */
   class MultibindingElement(
     val delegate: KaBinding,
