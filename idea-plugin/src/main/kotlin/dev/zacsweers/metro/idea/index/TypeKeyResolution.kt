@@ -138,7 +138,16 @@ internal fun KaSession.consumedSite(
     return ConsumedSite(contextKey, isAbstractType = false, typeClassId = JAVA_OPTIONAL_CLASS_ID)
   }
 
-  val contextKey = contextualTypeKey(returnType, qualifier, options)
+  val rawContextKey = contextualTypeKey(returnType, qualifier, options)
+  val contextKey =
+    rawContextKey.copy(
+      aggregateMultibindingId =
+        aggregateMultibindingId(
+          (returnType as? KaClassType)?.aggregateType(options),
+          rawContextKey,
+          options,
+        )
+    )
   val classSymbol = contextKey.typeKey.type.classId?.let { findClass(it) }
   val isAbstract =
     classSymbol != null &&
@@ -147,13 +156,20 @@ internal fun KaSession.consumedSite(
   return ConsumedSite(
     contextKey,
     isAbstract,
-    aggregateMultibindingId(
-      (returnType as? KaClassType)?.aggregateType(options),
-      contextKey,
-      options,
-    ),
     contextKey.typeKey.type.classId,
   )
+}
+
+/**
+ * The contextual key a binding depends on for [symbol]. Optional sites are marked via
+ * [KaContextualTypeKey.hasDefault].
+ */
+internal fun KaSession.dependencyKey(
+  symbol: KaCallableSymbol,
+  options: MetroOptions,
+): KaContextualTypeKey {
+  val site = consumedSite(symbol, options)
+  return site.contextKey.copy(hasDefault = symbol.isOptionalConsumer(options))
 }
 
 /** The `X` of a `java.util.Optional<X>` consumed type, when Dagger interop is enabled. */
