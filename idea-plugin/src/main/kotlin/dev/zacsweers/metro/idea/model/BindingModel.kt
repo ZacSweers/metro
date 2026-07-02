@@ -10,7 +10,8 @@ import org.jetbrains.kotlin.psi.KtElement
 /** A site that consumes a binding for [key]: an injected parameter/property or graph accessor. */
 internal class ConsumerEntry(
   val pointer: SmartPsiElementPointer<out KtElement>,
-  val key: KaTypeKey,
+  /** The consumed key with its `Provider`/`Lazy`/`Map` wrapper structure preserved. */
+  val contextKey: KaContextualTypeKey,
   /** Whether the declared type is an interface or abstract class (drives implementation inlays). */
   val isAbstractType: Boolean = false,
   /** For `Set`/`Map` aggregate sites, the multibinding id collecting contributed elements. */
@@ -31,7 +32,10 @@ internal class ConsumerEntry(
    * not an error.
    */
   val isOptional: Boolean = false,
-)
+) {
+  val key: KaTypeKey
+    get() = contextKey.typeKey
+}
 
 /**
  * A parameter supplied at runtime rather than injected from the graph: `@Assisted` parameters and
