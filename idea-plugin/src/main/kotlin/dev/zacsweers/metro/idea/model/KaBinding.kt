@@ -15,8 +15,8 @@ import org.jetbrains.kotlin.name.ClassId
  * `IrBinding`, with subtypes named after their IR counterparts. The pointer usually targets a
  * source declaration, but may target a decompiled library declaration.
  *
- * Most subtypes are built by the index sweep. [Multibinding] aggregates, [MultibindingElement] key
- * swaps, and [GraphInstance] nodes are also synthesized during graph sealing.
+ * Most subtypes are built by the index sweep. [Multibinding] aggregates, re-keyed multibinding
+ * elements, and [GraphInstance] nodes are also synthesized during graph sealing.
  */
 internal sealed interface KaBinding :
   BaseBinding<KaTypeSnapshot, KaTypeKey, KaContextualTypeKey>, MergeContribution {
@@ -163,7 +163,7 @@ internal sealed interface KaBinding :
 
   /**
    * A `Set`/`Map` aggregate. Index entries anchor `@Multibinds` declarations. Graph sealing
-   * synthesizes aggregate nodes whose [dependencies] are the collected [MultibindingElement] keys.
+   * synthesizes aggregate nodes whose [dependencies] are the collected element keys.
    */
   class Multibinding(
     override val pointer: SmartPsiElementPointer<out PsiElement>,
@@ -181,18 +181,6 @@ internal sealed interface KaBinding :
 
     override val label: String
       get() = if (dependencies.isEmpty()) "multibinding declaration" else "multibinding"
-  }
-
-  /**
-   * A contribution keyed under a synthetic per-element qualifier during sealing. Matches the
-   * compiler's `@MultibindingElement` model.
-   */
-  class MultibindingElement(
-    val delegate: KaBinding,
-    override val contextualTypeKey: KaContextualTypeKey,
-  ) : KaBinding by delegate {
-    override val typeKey: KaTypeKey
-      get() = contextualTypeKey.typeKey
   }
 
   /** An instance binding from a graph factory `@Provides` parameter. */

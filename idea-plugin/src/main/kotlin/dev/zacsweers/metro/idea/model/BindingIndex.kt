@@ -180,6 +180,14 @@ internal class BindingIndex(
     return consumers.filter { it.graphClassId == graphClassId }
   }
 
+  /** The extension graphs created by [graph]'s accessors. */
+  fun extensionsOf(graph: KaGraphNode): List<KaGraphNode> {
+    if (graph.extensionCreationIds.isEmpty()) return emptyList()
+    return graphs.filter { candidate ->
+      candidate.isExtension && candidate.selfIds.any { it in graph.extensionCreationIds }
+    }
+  }
+
   /** The aggregated context of [graph], following extension parent chains. */
   fun contextFor(graph: KaGraphNode): GraphContext {
     val contexts = contextsFor(graph)
@@ -370,11 +378,10 @@ internal class BindingIndex(
       }
       is KaBinding.BoundInstance -> entry.containerId in context.graphClassIds
       is KaBinding.GraphDependency -> entry.containerId in context.includedDependencies
-      // Injected classes and assisted factories are implicit bindings. Seal-time nodes never
-      // appear in the index.
+      // Injected classes and assisted factories are implicit bindings. Graph instances are
+      // seal-time nodes that never appear in the index.
       is KaBinding.ConstructorInjected,
       is KaBinding.AssistedFactory,
-      is KaBinding.MultibindingElement,
       is KaBinding.GraphInstance -> true
     }
   }
