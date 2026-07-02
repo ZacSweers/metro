@@ -1,7 +1,7 @@
-// `@SuspendAware` class whose constructor explicitly takes a `SuspendProvider<T>` (deferred
-// resolution). The factory ctor field is the same SuspendProvider; the graph passes through.
+// A class whose ctor param is already SuspendProvider<String> — the wrapper breaks the suspend
+// chain, so the class itself is NOT in the suspend set and uses a plain factory. The graph passes
+// the suspend binding through as a SuspendProvider.
 
-@SuspendAware
 @Inject
 class AccountCreator(val database: SuspendProvider<String>)
 

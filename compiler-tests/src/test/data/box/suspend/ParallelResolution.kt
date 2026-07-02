@@ -1,7 +1,9 @@
-// `@SuspendAware` class with multiple suspend dependencies. Exercises the suspend factory
-// invoke body resolving each `SuspendProvider` field in turn.
+// ENABLE_SUSPEND_PROVIDERS: true
 
-@SuspendAware
+// With `enableSuspendProviders` on, the bypass-factory inline path resolves multiple suspend
+// deps in parallel via `coroutineScope { async { … } }.await()`. This test exercises the
+// codegen by constructing a class with several suspend deps from a suspend accessor.
+
 @Inject
 class AccountCreator(val database: String, val tlsConnection: Int, val region: Long)
 

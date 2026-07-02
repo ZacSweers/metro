@@ -97,6 +97,21 @@ val metroRuntimeKlibClasspath =
     }
   }
 
+// Coroutines klibs for suspend box tests. Resolved transitively (unlike the intransitive configs
+// above) so kotlinx-coroutines' own klib deps (e.g. atomicfu) come along for JS linking.
+val metroRuntimeKlibCoroutinesClasspath =
+  configurations.create("metroRuntimeKlibCoroutinesClasspath") {
+    attributes {
+      attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
+      attribute(Usage.USAGE_ATTRIBUTE, objects.named(KotlinUsages.KOTLIN_RUNTIME))
+      attribute(KotlinPlatformType.attribute, KotlinPlatformType.js)
+      attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
+    }
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-js")
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-dom-api-compat")
+  }
+
 val runtimeTracingClasspath = configurations.create("runtimeTracingClasspath")
 val anvilRuntimeClasspath = configurations.create("anvilRuntimeClasspath") { isTransitive = false }
 val kiAnvilRuntimeClasspath =
@@ -228,7 +243,13 @@ dependencies {
 
   metroRuntimeClasspath(project(":runtime"))
   metroRuntimeClasspath(project(":runtime-coroutines"))
+  // metroRuntimeClasspath is intransitive, so runtime-coroutines' coroutines dep is added directly
+  metroRuntimeClasspath(libs.coroutines)
   metroRuntimeKlibClasspath(project(path = ":runtime", configuration = "jsRuntimeElements"))
+  metroRuntimeKlibClasspath(
+    project(path = ":runtime-coroutines", configuration = "jsRuntimeElements")
+  )
+  metroRuntimeKlibCoroutinesClasspath(libs.coroutines)
   runtimeTracingClasspath(project(":metro-trace"))
 
   daggerInteropClasspath(project(":interop-dagger"))
@@ -326,6 +347,7 @@ tasks.withType<Test> {
 
   dependsOn(metroRuntimeClasspath)
   dependsOn(metroRuntimeKlibClasspath)
+  dependsOn(metroRuntimeKlibCoroutinesClasspath)
   dependsOn(daggerInteropClasspath)
   dependsOn(hiltCoreClasspath)
   dependsOn(guiceClasspath)

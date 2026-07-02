@@ -101,10 +101,11 @@ internal fun parallelizeSuspendArgs(
                 extensionReceiver = irGet(coroutineScopeReceiver),
                 typeArgs = listOf(argType),
                 typeHint = deferredClass!!.typeWith(argType),
-                args = listOf(asyncLambda),
+                // (context, start) use their default values
+                args = listOf(null, null, asyncLambda),
               )
+            // irTemporary adds the variable statement itself
             val tmp = irTemporary(asyncCall, nameHint = "deferred")
-            +tmp
             deferredVars += tmp
           } else {
             deferredVars += null

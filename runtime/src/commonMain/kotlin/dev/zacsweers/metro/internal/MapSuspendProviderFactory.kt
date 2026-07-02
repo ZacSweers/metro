@@ -9,44 +9,40 @@ import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.SuspendProvider
 
 /**
- * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K,
- * SuspendProvider<V>>` when calling [invoke] (as specified by [Factory]).
+ * A [Factory] implementation used to implement `Map<K, SuspendProvider<V>>` bindings. Unlike
+ * [MapProviderFactory], values are held directly as [SuspendProvider]s — suspend bindings
+ * contribute their `SuspendFactory` and non-suspend bindings are adapted via [SyncSuspendProvider]
+ * by the compiler, so [invoke] is allocation-free.
  */
 public class MapSuspendProviderFactory<K : Any, V : Any>
-private constructor(map: Map<K, Provider<V>>) : AbstractMapFactory<K, V, SuspendProvider<V>>(map) {
+private constructor(private val map: Map<K, SuspendProvider<V>>) :
+  Factory<Map<K, SuspendProvider<V>>> {
   /**
    * Returns a `Map<K, SuspendProvider<V>>` whose iteration order is that of the elements given by
-   * each of the providers, which are invoked in the order given at creation.
+   * each of the providers, in the order given at creation.
    */
-  override fun invoke(): Map<K, SuspendProvider<V>> {
-    val result = newLinkedHashMapWithExpectedSize<K, SuspendProvider<V>>(contributingMap().size)
-    for (entry in contributingMap().entries) {
-      val provider = entry.value
-      result[entry.key] = SuspendProvider { provider() }
-    }
-    return result.toUnmodifiableMap()
-  }
+  override fun invoke(): Map<K, SuspendProvider<V>> = map
 
   /** A builder for [MapSuspendProviderFactory]. */
-  public class Builder<K : Any, V : Any> internal constructor(size: Int) :
-    AbstractMapFactory.Builder<K, V, SuspendProvider<V>>(size) {
-    public override fun put(key: K, providerOfValue: Provider<V>): Builder<K, V> = apply {
-      super.put(key, providerOfValue)
+  public class Builder<K : Any, V : Any> internal constructor(size: Int) {
+    private val map = newLinkedHashMapWithExpectedSize<K, SuspendProvider<V>>(size)
+
+    public fun put(key: K, providerOfValue: SuspendProvider<V>): Builder<K, V> = apply {
+      map[key] = providerOfValue
     }
 
-    override fun putAll(mapOfProviders: Provider<Map<K, SuspendProvider<V>>>): Builder<K, V> =
-      apply {
-        super.putAll(mapOfProviders)
-      }
+    public fun putAll(mapOfProviders: Provider<Map<K, SuspendProvider<V>>>): Builder<K, V> = apply {
+      map.putAll(mapOfProviders())
+    }
 
     /** Returns a new [MapSuspendProviderFactory]. */
     public fun build(): MapSuspendProviderFactory<K, V> {
-      return MapSuspendProviderFactory(map)
+      return MapSuspendProviderFactory(map.toUnmodifiableMap())
     }
   }
 
   public companion object {
-    private val EMPTY: Provider<Map<Any, Any>> = InstanceFactory(mutableMapOf())
+    private val EMPTY: MapSuspendProviderFactory<Any, Any> = MapSuspendProviderFactory(emptyMap())
 
     /** Returns a new [Builder] */
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {

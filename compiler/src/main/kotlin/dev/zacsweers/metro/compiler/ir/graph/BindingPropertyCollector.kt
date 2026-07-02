@@ -114,6 +114,9 @@ internal class BindingPropertyCollector(
   private fun shouldUseSwitchingProvider(binding: IrBinding, propertyKind: PropertyKind): Boolean {
     if (!metroContext.options.enableSwitchingProviders) return false
     if (propertyKind != PropertyKind.FIELD) return false
+    // Suspend bindings can't be dispatched through SwitchingProvider — its invoke() is not a
+    // suspend function. They get SuspendProvider<T> fields instead.
+    if (binding.isSuspend || graph.isTransitivelySuspend(binding.typeKey)) return false
 
     return when (binding) {
       // These use specialized initialization, not SwitchingProvider

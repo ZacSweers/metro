@@ -1,11 +1,10 @@
-// One `@SuspendAware` class depending on another. The outer class's factory ctor takes the
-// inner class's `SuspendProvider<…>` directly (no wrap needed).
+// Suspend-ness propagates through constructor-injected chains: Database depends on a suspend
+// @Provides, AccountCreator depends on Database. Both are transitively suspend and must be
+// accessed from a suspend context.
 
-@SuspendAware
 @Inject
 class Database(val region: String)
 
-@SuspendAware
 @Inject
 class AccountCreator(val database: Database)
 

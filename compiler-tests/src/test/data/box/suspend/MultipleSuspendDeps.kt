@@ -1,10 +1,6 @@
-// ENABLE_SUSPEND_PROVIDERS: true
+// A constructor-injected class with several suspend deps, resolved sequentially by default
+// (enableSuspendProviders off).
 
-// With `enableSuspendProviders` on, the bypass-factory inline path resolves multiple suspend
-// deps in parallel via `coroutineScope { async { … } }.await()`. This test exercises the
-// codegen by constructing a class with several suspend deps from a suspend accessor.
-
-@SuspendAware
 @Inject
 class AccountCreator(val database: String, val tlsConnection: Int, val region: Long)
 

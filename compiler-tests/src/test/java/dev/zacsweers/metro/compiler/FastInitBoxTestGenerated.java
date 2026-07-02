@@ -3325,57 +3325,9 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
-    @TestMetadata("AwareAssistedInject.kt")
-    public void testAwareAssistedInject() {
-      run("AwareAssistedInject.kt");
-    }
-
-    @Test
-    @TestMetadata("AwareConstructorInjection.kt")
-    public void testAwareConstructorInjection() {
-      run("AwareConstructorInjection.kt");
-    }
-
-    @Test
-    @TestMetadata("AwareMixedSuspendNonSuspend.kt")
-    public void testAwareMixedSuspendNonSuspend() {
-      run("AwareMixedSuspendNonSuspend.kt");
-    }
-
-    @Test
-    @TestMetadata("AwareParallelResolution.kt")
-    public void testAwareParallelResolution() {
-      run("AwareParallelResolution.kt");
-    }
-
-    @Test
-    @TestMetadata("AwareScoped.kt")
-    public void testAwareScoped() {
-      run("AwareScoped.kt");
-    }
-
-    @Test
-    @TestMetadata("AwareSuspendProviderParam.kt")
-    public void testAwareSuspendProviderParam() {
-      run("AwareSuspendProviderParam.kt");
-    }
-
-    @Test
-    @TestMetadata("AwareTransitiveDep.kt")
-    public void testAwareTransitiveDep() {
-      run("AwareTransitiveDep.kt");
-    }
-
-    @Test
-    @TestMetadata("AwareViaProviderAccess.kt")
-    public void testAwareViaProviderAccess() {
-      run("AwareViaProviderAccess.kt");
-    }
-
-    @Test
-    @TestMetadata("AwareWithMultipleSuspendDeps.kt")
-    public void testAwareWithMultipleSuspendDeps() {
-      run("AwareWithMultipleSuspendDeps.kt");
+    @TestMetadata("AssistedInjectSuspendSam.kt")
+    public void testAssistedInjectSuspendSam() {
+      run("AssistedInjectSuspendSam.kt");
     }
 
     @Test
@@ -3409,6 +3361,24 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("MixedSuspendNonSuspendDeps.kt")
+    public void testMixedSuspendNonSuspendDeps() {
+      run("MixedSuspendNonSuspendDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleSuspendDeps.kt")
+    public void testMultipleSuspendDeps() {
+      run("MultipleSuspendDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("ParallelResolution.kt")
+    public void testParallelResolution() {
+      run("ParallelResolution.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidedWithSuspendDep.kt")
     public void testProvidedWithSuspendDep() {
       run("ProvidedWithSuspendDep.kt");
@@ -3430,6 +3400,30 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("ProviderTransitiveDep.kt")
     public void testProviderTransitiveDep() {
       run("ProviderTransitiveDep.kt");
+    }
+
+    @Test
+    @TestMetadata("Scoped.kt")
+    public void testScoped() {
+      run("Scoped.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendProviderParam.kt")
+    public void testSuspendProviderParam() {
+      run("SuspendProviderParam.kt");
+    }
+
+    @Test
+    @TestMetadata("TransitiveConstructorInjected.kt")
+    public void testTransitiveConstructorInjected() {
+      run("TransitiveConstructorInjected.kt");
+    }
+
+    @Test
+    @TestMetadata("ViaSuspendProviderAccess.kt")
+    public void testViaSuspendProviderAccess() {
+      run("ViaSuspendProviderAccess.kt");
     }
   }
 

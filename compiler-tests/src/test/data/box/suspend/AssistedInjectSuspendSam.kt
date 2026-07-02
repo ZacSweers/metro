@@ -1,8 +1,6 @@
-// `@SuspendAware @AssistedInject` — the assisted factory's SAM `create` is `suspend` because
-// the underlying factory's `invoke()` is suspend.
+// An @AssistedInject class whose non-assisted dep is a suspend binding in this graph. The
+// assisted factory's SAM must be declared `suspend` so the impl can await the suspend deps.
 
-@SuspendAware
-@Inject
 class AccountCreator
 @AssistedInject
 constructor(@Assisted val region: String, val database: Int) {

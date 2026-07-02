@@ -1,8 +1,6 @@
-// `@SuspendAware` class with a mix of suspend and non-suspend dependencies. Non-suspend deps
-// are still held as `SuspendProvider<T>` ctor fields — the graph wraps the underlying
-// `Provider<T>` in `CompositeProvider` (allocation-free intrinsic) to satisfy the field type.
+// A class mixing suspend and non-suspend deps. The non-suspend dep is adapted into the
+// suspend-flavored slot via the allocation-free SyncSuspendProvider intrinsic where needed.
 
-@SuspendAware
 @Inject
 class AccountCreator(val database: String, val region: Long)
 

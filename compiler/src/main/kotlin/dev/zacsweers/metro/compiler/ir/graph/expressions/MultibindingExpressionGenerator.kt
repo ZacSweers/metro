@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.ir.stripIfLazy
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.FrameworkSymbols
@@ -952,6 +953,11 @@ internal class MultibindingExpressionGenerator(
               val valueContextKey =
                 if (useMapFunctionFactory) {
                   originalValueContextKey.withIrTypeKey(sourceBinding.typeKey)
+                } else if (valueIsWrappedInSuspendProvider) {
+                  // MapSuspendProviderFactory.Builder.put takes SuspendProvider<V> directly.
+                  canonicalValueContextKey
+                    .wrapInSuspendProvider()
+                    .withIrTypeKey(sourceBinding.typeKey)
                 } else {
                   // Non-function map factories take Provider<V> where V is canonical.
                   canonicalValueContextKey
@@ -969,7 +975,12 @@ internal class MultibindingExpressionGenerator(
                       sourceBinding,
                       valueContextKey,
                       fieldInitKey,
-                      accessType = AccessType.PROVIDER,
+                      accessType =
+                        if (valueIsWrappedInSuspendProvider) {
+                          AccessType.SUSPEND_PROVIDER
+                        } else {
+                          AccessType.PROVIDER
+                        },
                     ),
                   ),
               )

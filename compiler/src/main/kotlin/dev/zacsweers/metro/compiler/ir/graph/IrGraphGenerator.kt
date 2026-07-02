@@ -421,6 +421,10 @@ internal class IrGraphGenerator(
     return bindingPropertyContext
   }
 
+  private val suspendFactoryGenerator by lazy {
+    GraphSuspendFactoryGenerator(this, graphClass, bindingGraph)
+  }
+
   private fun createExpressionGeneratorFactory(
     ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
     traceContextProperty: IrProperty?,
@@ -437,6 +441,7 @@ internal class IrGraphGenerator(
       graphExtensionGenerator = graphExtensionGenerator,
       codegenStats = codegenStats,
       bindingExpressionDecorator = bindingExpressionDecorator,
+      suspendFactoryGenerator = suspendFactoryGenerator,
     )
   }
 
@@ -1384,7 +1389,7 @@ internal class IrGraphGenerator(
       val isDeferred = shardBinding.isDeferred
       val switchingId = shardBinding.switchingId
 
-      val isSuspendBinding = binding.isSuspend
+      val isSuspendBinding = binding.isSuspendInGraph
       val requiresDoubleCheck = isScoped && (isProviderType || isSuspendBinding)
 
       context(scope: IrBuilderWithScope)
@@ -1736,6 +1741,15 @@ internal class IrGraphGenerator(
       }
   }
 
+  /**
+   * Returns true if this binding must be resolved in a suspend context in this graph — either it's
+   * directly provided by a `suspend fun` or it transitively depends on one (unwrapped). Drives all
+   * suspend-flavored codegen decisions: `SuspendProvider<T>` field storage, `SuspendDoubleCheck`
+   * scoping, and `SuspendDelegateFactory` cycle-breaking.
+   */
+  private val IrBinding.isSuspendInGraph: Boolean
+    get() = isSuspend || bindingGraph.isTransitivelySuspend(typeKey)
+
   /** Computes binding metadata for property generation. */
   private fun computeBindingMetadata(
     binding: IrBinding,
@@ -1745,7 +1759,7 @@ internal class IrGraphGenerator(
   ): BindingMetadata {
     val key = binding.typeKey
     var isProviderType = collectedIsProviderType
-    val isSuspendBinding = binding.isSuspend
+    val isSuspendBinding = binding.isSuspendInGraph
     val finalContextKey =
       if (isSuspendBinding && propertyType == PropertyKind.FIELD) {
         collectedContextKey.wrapInSuspendProvider()
@@ -1847,7 +1861,7 @@ internal class IrGraphGenerator(
             }
         } else {
           val accessType =
-            if (binding.isSuspend) {
+            if (binding.isSuspendInGraph) {
               BindingExpressionGenerator.AccessType.SUSPEND_PROVIDER
             } else {
               BindingExpressionGenerator.AccessType.PROVIDER
@@ -1863,7 +1877,7 @@ internal class IrGraphGenerator(
         }
 
       return if (applyScoping) {
-        if (binding.isSuspend) {
+        if (binding.isSuspendInGraph) {
           providerExpr.suspendDoubleCheck(metroSymbols, binding.typeKey)
         } else {
           providerExpr.doubleCheck(metroSymbols, binding.typeKey)

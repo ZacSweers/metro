@@ -1,9 +1,8 @@
-// Verifies `@SuspendAware` factory shape works when the class is requested as
-// `SuspendProvider<T>` (which exercises the factory's create() and invoke() — not the inline
-// canBypassFactory path). The factory ctor takes `SuspendProvider<…>` fields, so the graph can
-// pass suspend deps through.
+// A transitively-suspend constructor-injected class accessed as SuspendProvider<T> — exercises
+// the graph's IR-only nested SuspendFactory (not the inline canBypassFactory path). The nested
+// factory holds each suspend dep as a SuspendProvider<…> field and awaits them in its suspend
+// invoke().
 
-@SuspendAware
 @Inject
 class AccountCreator(val database: String, val tlsConnection: Int)
 
