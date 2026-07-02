@@ -18,7 +18,6 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import dev.zacsweers.metro.idea.MetroSettings
 import dev.zacsweers.metro.idea.metroIdeState
-import dev.zacsweers.metro.idea.model.BindingKind
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
@@ -75,7 +74,7 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
       val bindings = index.resolveConsumer(consumer).effective
       if (bindings.isEmpty()) return
 
-      val contributions = bindings.count { it.kind == BindingKind.MULTIBINDING_CONTRIBUTION }
+      val contributions = bindings.count { it.multibindingId != null }
       val hint: String
       val target: PsiPointerInlayActionPayload?
       if (contributions > 0) {

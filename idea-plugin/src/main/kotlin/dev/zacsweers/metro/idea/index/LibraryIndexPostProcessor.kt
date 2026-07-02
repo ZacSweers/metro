@@ -15,7 +15,6 @@ import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
-import dev.zacsweers.metro.idea.model.BindingKind
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -240,12 +239,12 @@ internal class LibraryIndexPostProcessor(
         if (!hasInject || isAssisted) return@analyze
 
         bindings +=
-          KaBinding(
+          KaBinding.ConstructorInjected(
             pointerManager.createSmartPsiElementPointer(psi),
             key,
-            BindingKind.INJECT,
             scopeAnnotation(classSymbol, options),
             classSymbol.name.asString(),
+            dependencies = injectClassDependencyKeys(classSymbol, options),
           )
       }
     }
