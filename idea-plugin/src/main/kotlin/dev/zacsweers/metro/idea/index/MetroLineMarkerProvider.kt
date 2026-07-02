@@ -97,7 +97,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       entries.joinToString(separator = "\n") { entry ->
         buildString {
           append("Metro ")
-          append(entry.kind.label)
+          append(entry.label)
           append(": ")
           append(entry.key.render(short = true))
           entry.scope?.let {
