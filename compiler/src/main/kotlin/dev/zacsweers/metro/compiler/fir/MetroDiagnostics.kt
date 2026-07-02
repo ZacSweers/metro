@@ -228,6 +228,8 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val QUALIFIER_OVERRIDE_MISMATCH by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val SUSPEND_AWARE_REQUIRED by error1<KtElement, String>(NAME_IDENTIFIER)
+  val SUSPEND_AWARE_RECOMMENDED by warning1<KtElement, String>(NAME_IDENTIFIER)
   val KNOWN_KOTLINC_BUG_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val KNOWN_KOTLINC_BUG_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SOURCELESS_METRO_ERROR by errorWithoutSource()
@@ -383,6 +385,8 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         // IR diagnostics
         put(METRO_ERROR, "{0}", TO_STRING)
         put(METRO_WARNING, "{0}", TO_STRING)
+        put(MetroDiagnostics.SUSPEND_AWARE_REQUIRED, "{0}", TO_STRING)
+        put(MetroDiagnostics.SUSPEND_AWARE_RECOMMENDED, "{0}", TO_STRING)
         put(KNOWN_KOTLINC_BUG_ERROR, "{0}", TO_STRING)
         put(KNOWN_KOTLINC_BUG_WARNING, "{0}", TO_STRING)
         put(SOURCELESS_METRO_ERROR, "{0}")

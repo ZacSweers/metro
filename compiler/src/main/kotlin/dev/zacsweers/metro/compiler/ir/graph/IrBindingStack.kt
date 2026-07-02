@@ -64,6 +64,7 @@ internal interface IrBindingStack :
      * actually rendered — i.e. error reports or when logging is enabled.
      */
     graphContextProvider: (() -> String?)? = null,
+    override val annotation: String? = null,
   ) : BaseBindingStack.BaseEntry<IrType, IrTypeKey, IrContextualTypeKey> {
 
     private val graphContextLazy: Lazy<String?> =
@@ -72,6 +73,24 @@ internal interface IrBindingStack :
 
     override val graphContext: String?
       get() = graphContextLazy.value
+
+    /**
+     * Returns a copy of this entry with [annotation] applied. Used by diagnostics that build a
+     * trace from existing entry factories and want to mark specific entries.
+     */
+    fun withAnnotation(annotation: String?): Entry {
+      if (annotation == this.annotation) return this
+      return Entry(
+        contextKey = contextKey,
+        usage = usage,
+        graphContext = null,
+        declaration = declaration,
+        displayTypeKey = displayTypeKey,
+        isSynthetic = isSynthetic,
+        graphContextProvider = { graphContextLazy.value },
+        annotation = annotation,
+      )
+    }
 
     override fun toString(): String = render(FqName("..."), short = true)
 
@@ -194,7 +213,17 @@ internal interface IrBindingStack :
                 } else {
                   "(…, ${param.name.asString()})"
                 }
-              "$targetFqName$middle$end"
+              val suspendPrefix =
+                if (
+                  functionToUse is IrSimpleFunction &&
+                    functionToUse.isSuspend &&
+                    !functionToUse.isPropertyAccessor
+                ) {
+                  "suspend "
+                } else {
+                  ""
+                }
+              "$suspendPrefix$targetFqName$middle$end"
             }
           },
         )
@@ -240,7 +269,9 @@ internal interface IrBindingStack :
           graphContextProvider = {
             val targetFqName = function.parent.kotlinFqName
             val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
-            "$targetFqName$middle(…)"
+            val suspendPrefix =
+              if (function is IrSimpleFunction && function.isSuspend) "suspend " else ""
+            "$suspendPrefix$targetFqName$middle(…)"
           },
         )
       }

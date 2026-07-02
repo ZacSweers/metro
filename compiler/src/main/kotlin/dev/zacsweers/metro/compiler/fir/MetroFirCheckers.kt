@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.fir.checkers.MapKeyChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MembersInjectChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MergedContributionChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MultibindsChecker
+import dev.zacsweers.metro.compiler.fir.checkers.SuspendAwareChecker
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
@@ -43,6 +44,7 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
             MergedContributionChecker,
             MapKeyChecker,
             DefaultBindingChecker,
+            SuspendAwareChecker,
           )
 
       override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>

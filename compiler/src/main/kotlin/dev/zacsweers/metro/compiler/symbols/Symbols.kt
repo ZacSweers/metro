@@ -188,6 +188,10 @@ internal class Symbols(
     val metroOrigin = ClassId(FqNames.metroRuntimePackage, "Origin".asName())
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
     val metroSuspendProvider = ClassId(FqNames.metroRuntimePackage, Names.SuspendProviderClass)
+    val metroSuspendLazy = ClassId(FqNames.metroRuntimePackage, "SuspendLazy".asName())
+    val metroSuspendAware = ClassId(FqNames.metroRuntimePackage, "SuspendAware".asName())
+    val metroSyncSuspendProvider =
+      ClassId(FqNames.metroRuntimeInternalPackage, "SyncSuspendProvider".asName())
     val metroProvides = ClassId(FqNames.metroRuntimePackage, StringNames.PROVIDES.asName())
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())
     val metroInstanceFactory =
@@ -195,6 +199,10 @@ internal class Symbols(
 
     val function0 = StandardClassIds.FunctionN(0)
     val suspendFunction0 = ClassId(FqName("kotlin.coroutines"), "SuspendFunction0".asName())
+
+    private val kotlinxCoroutinesPackage = FqName("kotlinx.coroutines")
+    val coroutineScope = ClassId(kotlinxCoroutinesPackage, "CoroutineScope".asName())
+    val deferred = ClassId(kotlinxCoroutinesPackage, "Deferred".asName())
 
     val commonMetroProviders by lazy {
       setOf(metroProvider, metroFactory, metroSuspendFactory, metroInstanceFactory)
@@ -510,6 +518,14 @@ internal class Symbols(
     metroSuspendProvider.requireSimpleFunction("invoke")
   }
 
+  val metroSyncSuspendProvider: IrClassSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.metroSyncSuspendProvider)!!
+  }
+
+  val metroSyncSuspendProviderConstructor: IrConstructorSymbol by lazy {
+    metroSyncSuspendProvider.constructors.single()
+  }
+
   private val suspendDoubleCheck: IrClassSymbol? by lazy {
     pluginContext.referenceClass(
       ClassId(metroRuntimeInternal.packageFqName, "SuspendDoubleCheck".asName())
@@ -538,6 +554,55 @@ internal class Symbols(
 
   val metroDelegateFactorySetDelegate: IrFunctionSymbol by lazy {
     metroDelegateFactoryCompanion.requireSimpleFunction("setDelegate")
+  }
+
+  private val metroSuspendDelegateFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntimeInternal.packageFqName, "SuspendDelegateFactory".asName())
+    )!!
+  }
+
+  val metroSuspendDelegateFactoryConstructor: IrConstructorSymbol by lazy {
+    metroSuspendDelegateFactory.constructors.single()
+  }
+
+  val metroSuspendDelegateFactoryCompanion: IrClassSymbol by lazy {
+    metroSuspendDelegateFactory.owner.companionObject()!!.symbol
+  }
+
+  val metroSuspendDelegateFactorySetDelegate: IrFunctionSymbol by lazy {
+    metroSuspendDelegateFactoryCompanion.requireSimpleFunction("setDelegate")
+  }
+
+  /**
+   * kotlinx.coroutines symbols for the parallel-suspend optimization. These are nullable: the
+   * coroutines runtime is only required for builds that actually use suspend providers.
+   */
+  val coroutineScopeClass: IrClassSymbol? by lazy {
+    pluginContext.referenceClass(ClassIds.coroutineScope)
+  }
+
+  val deferredClass: IrClassSymbol? by lazy { pluginContext.referenceClass(ClassIds.deferred) }
+
+  val coroutineScopeFunction: IrSimpleFunctionSymbol? by lazy {
+    pluginContext
+      .referenceFunctions(
+        CallableId(ClassIds.coroutineScope.packageFqName, "coroutineScope".asName())
+      )
+      .singleOrNull()
+  }
+
+  val asyncFunction: IrSimpleFunctionSymbol? by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(ClassIds.coroutineScope.packageFqName, "async".asName()))
+      .singleOrNull { it.owner.parameters.any { p -> p.kind.toString() == "ExtensionReceiver" } }
+      ?: pluginContext
+        .referenceFunctions(CallableId(ClassIds.coroutineScope.packageFqName, "async".asName()))
+        .firstOrNull()
+  }
+
+  val deferredAwait: IrSimpleFunctionSymbol? by lazy {
+    deferredClass?.functions?.firstOrNull { it.owner.name.asString() == "await" }
   }
 
   val metroMembersInjector: IrClassSymbol by lazy {

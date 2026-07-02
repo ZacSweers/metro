@@ -2707,12 +2707,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("MapSuspendProviderValues.kt")
-    public void testMapSuspendProviderValues() {
-      runTest("compiler-tests/src/test/data/box/multibindings/MapSuspendProviderValues.kt");
-    }
-
-    @Test
     @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
     public void testMultibindingGraphWithWithScopedMapProviderDeps() {
       runTest("compiler-tests/src/test/data/box/multibindings/MultibindingGraphWithWithScopedMapProviderDeps.kt");
@@ -2867,36 +2861,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("SuspendAccessorDirect.kt")
-    public void testSuspendAccessorDirect() {
-      runTest("compiler-tests/src/test/data/box/provides/SuspendAccessorDirect.kt");
-    }
-
-    @Test
-    @TestMetadata("SuspendFunctionProvider.kt")
-    public void testSuspendFunctionProvider() {
-      runTest("compiler-tests/src/test/data/box/provides/SuspendFunctionProvider.kt");
-    }
-
-    @Test
-    @TestMetadata("SuspendProviderAccessor.kt")
-    public void testSuspendProviderAccessor() {
-      runTest("compiler-tests/src/test/data/box/provides/SuspendProviderAccessor.kt");
-    }
-
-    @Test
-    @TestMetadata("SuspendProviderBreaksSuspendChain.kt")
-    public void testSuspendProviderBreaksSuspendChain() {
-      runTest("compiler-tests/src/test/data/box/provides/SuspendProviderBreaksSuspendChain.kt");
-    }
-
-    @Test
-    @TestMetadata("SuspendProviderTransitiveDep.kt")
-    public void testSuspendProviderTransitiveDep() {
-      runTest("compiler-tests/src/test/data/box/provides/SuspendProviderTransitiveDep.kt");
-    }
-
-    @Test
     @TestMetadata("SwitchingProviderWithNullableBinding.kt")
     public void testSwitchingProviderWithNullableBinding() {
       runTest("compiler-tests/src/test/data/box/provides/SwitchingProviderWithNullableBinding.kt");
@@ -2928,6 +2892,130 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ReallyLongPackageNameHandledWhenWritingDebugReports.kt")
     public void testReallyLongPackageNameHandledWhenWritingDebugReports() {
       runTest("compiler-tests/src/test/data/box/reports/ReallyLongPackageNameHandledWhenWritingDebugReports.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/suspend")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Suspend {
+    @Test
+    @TestMetadata("AccessorDirect.kt")
+    public void testAccessorDirect() {
+      runTest("compiler-tests/src/test/data/box/suspend/AccessorDirect.kt");
+    }
+
+    @Test
+    public void testAllFilesPresentInSuspend() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/suspend"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("AwareAssistedInject.kt")
+    public void testAwareAssistedInject() {
+      runTest("compiler-tests/src/test/data/box/suspend/AwareAssistedInject.kt");
+    }
+
+    @Test
+    @TestMetadata("AwareConstructorInjection.kt")
+    public void testAwareConstructorInjection() {
+      runTest("compiler-tests/src/test/data/box/suspend/AwareConstructorInjection.kt");
+    }
+
+    @Test
+    @TestMetadata("AwareMixedSuspendNonSuspend.kt")
+    public void testAwareMixedSuspendNonSuspend() {
+      runTest("compiler-tests/src/test/data/box/suspend/AwareMixedSuspendNonSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("AwareParallelResolution.kt")
+    public void testAwareParallelResolution() {
+      runTest("compiler-tests/src/test/data/box/suspend/AwareParallelResolution.kt");
+    }
+
+    @Test
+    @TestMetadata("AwareScoped.kt")
+    public void testAwareScoped() {
+      runTest("compiler-tests/src/test/data/box/suspend/AwareScoped.kt");
+    }
+
+    @Test
+    @TestMetadata("AwareSuspendProviderParam.kt")
+    public void testAwareSuspendProviderParam() {
+      runTest("compiler-tests/src/test/data/box/suspend/AwareSuspendProviderParam.kt");
+    }
+
+    @Test
+    @TestMetadata("AwareTransitiveDep.kt")
+    public void testAwareTransitiveDep() {
+      runTest("compiler-tests/src/test/data/box/suspend/AwareTransitiveDep.kt");
+    }
+
+    @Test
+    @TestMetadata("AwareViaProviderAccess.kt")
+    public void testAwareViaProviderAccess() {
+      runTest("compiler-tests/src/test/data/box/suspend/AwareViaProviderAccess.kt");
+    }
+
+    @Test
+    @TestMetadata("AwareWithMultipleSuspendDeps.kt")
+    public void testAwareWithMultipleSuspendDeps() {
+      runTest("compiler-tests/src/test/data/box/suspend/AwareWithMultipleSuspendDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("ConstructorInjection.kt")
+    public void testConstructorInjection() {
+      runTest("compiler-tests/src/test/data/box/suspend/ConstructorInjection.kt");
+    }
+
+    @Test
+    @TestMetadata("CycleViaDelegateFactory.kt")
+    public void testCycleViaDelegateFactory() {
+      runTest("compiler-tests/src/test/data/box/suspend/CycleViaDelegateFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("DepInConstructorInjectedAccessor.kt")
+    public void testDepInConstructorInjectedAccessor() {
+      runTest("compiler-tests/src/test/data/box/suspend/DepInConstructorInjectedAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProvider.kt")
+    public void testFunctionProvider() {
+      runTest("compiler-tests/src/test/data/box/suspend/FunctionProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("MapSuspendProviderValues.kt")
+    public void testMapSuspendProviderValues() {
+      runTest("compiler-tests/src/test/data/box/suspend/MapSuspendProviderValues.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidedWithSuspendDep.kt")
+    public void testProvidedWithSuspendDep() {
+      runTest("compiler-tests/src/test/data/box/suspend/ProvidedWithSuspendDep.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderAccessor.kt")
+    public void testProviderAccessor() {
+      runTest("compiler-tests/src/test/data/box/suspend/ProviderAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderBreaksSuspendChain.kt")
+    public void testProviderBreaksSuspendChain() {
+      runTest("compiler-tests/src/test/data/box/suspend/ProviderBreaksSuspendChain.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderTransitiveDep.kt")
+    public void testProviderTransitiveDep() {
+      runTest("compiler-tests/src/test/data/box/suspend/ProviderTransitiveDep.kt");
     }
   }
 }

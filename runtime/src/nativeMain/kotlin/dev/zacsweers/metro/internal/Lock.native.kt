@@ -21,7 +21,6 @@ internal actual class Lock {
 
   // TODO: make it properly reschedule instead of spinning.
   actual fun lock() {
-    lazy { 1 }
     val lockData = CurrentThread.id.hashCode()
     loop@ do {
       val old = locker_.compareAndExchange(0, lockData)

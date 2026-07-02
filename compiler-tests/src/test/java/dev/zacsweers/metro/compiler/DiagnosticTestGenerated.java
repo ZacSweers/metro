@@ -1349,35 +1349,75 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testProvides_ReturnTypeCannotBeIntrinsic_DaggerInterop() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_ReturnTypeCannotBeIntrinsic_DaggerInterop.kt");
     }
+  }
 
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/suspend")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Suspend {
     @Test
-    @TestMetadata("SuspendBindingFromNonSuspendAccessor.kt")
-    public void testSuspendBindingFromNonSuspendAccessor() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/SuspendBindingFromNonSuspendAccessor.kt");
+    public void testAllFilesPresentInSuspend() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/suspend"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
-    @TestMetadata("SuspendBindingWrappedInLazy.kt")
-    public void testSuspendBindingWrappedInLazy() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/SuspendBindingWrappedInLazy.kt");
+    @TestMetadata("AwareAssistedFactoryRequiresSuspend.kt")
+    public void testAwareAssistedFactoryRequiresSuspend() {
+      runTest("compiler-tests/src/test/data/diagnostic/suspend/AwareAssistedFactoryRequiresSuspend.kt");
     }
 
     @Test
-    @TestMetadata("SuspendBindingWrappedInProvider.kt")
-    public void testSuspendBindingWrappedInProvider() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/SuspendBindingWrappedInProvider.kt");
+    @TestMetadata("AwareRecommendedForSuspendAwareDep.kt")
+    public void testAwareRecommendedForSuspendAwareDep() {
+      runTest("compiler-tests/src/test/data/diagnostic/suspend/AwareRecommendedForSuspendAwareDep.kt");
     }
 
     @Test
-    @TestMetadata("SuspendBindsIsNotAllowed.kt")
-    public void testSuspendBindsIsNotAllowed() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/SuspendBindsIsNotAllowed.kt");
+    @TestMetadata("AwareRequiredForTransitiveSuspendDep.kt")
+    public void testAwareRequiredForTransitiveSuspendDep() {
+      runTest("compiler-tests/src/test/data/diagnostic/suspend/AwareRequiredForTransitiveSuspendDep.kt");
     }
 
     @Test
-    @TestMetadata("SuspendMultibindsIsNotAllowed.kt")
-    public void testSuspendMultibindsIsNotAllowed() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/SuspendMultibindsIsNotAllowed.kt");
+    @TestMetadata("BindingFromNonSuspendAccessor.kt")
+    public void testBindingFromNonSuspendAccessor() {
+      runTest("compiler-tests/src/test/data/diagnostic/suspend/BindingFromNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingFromNonSuspendProvider.kt")
+    public void testBindingFromNonSuspendProvider() {
+      runTest("compiler-tests/src/test/data/diagnostic/suspend/BindingFromNonSuspendProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingWrappedInLazy.kt")
+    public void testBindingWrappedInLazy() {
+      runTest("compiler-tests/src/test/data/diagnostic/suspend/BindingWrappedInLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingWrappedInProvider.kt")
+    public void testBindingWrappedInProvider() {
+      runTest("compiler-tests/src/test/data/diagnostic/suspend/BindingWrappedInProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("BindsIsNotAllowed.kt")
+    public void testBindsIsNotAllowed() {
+      runTest("compiler-tests/src/test/data/diagnostic/suspend/BindsIsNotAllowed.kt");
+    }
+
+    @Test
+    @TestMetadata("DepInConstructorInjectedNonSuspendAccessor.kt")
+    public void testDepInConstructorInjectedNonSuspendAccessor() {
+      runTest("compiler-tests/src/test/data/diagnostic/suspend/DepInConstructorInjectedNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsIsNotAllowed.kt")
+    public void testMultibindsIsNotAllowed() {
+      runTest("compiler-tests/src/test/data/diagnostic/suspend/MultibindsIsNotAllowed.kt");
     }
   }
 }

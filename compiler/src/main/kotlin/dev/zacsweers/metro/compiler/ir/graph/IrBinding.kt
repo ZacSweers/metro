@@ -117,6 +117,16 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val typeKey: IrTypeKey,
     val injectedMembers: Set<IrContextualTypeKey>,
+    /**
+     * True if the source class is annotated with `@SuspendAware`. Drives factory *shape*:
+     * `SuspendFactory<T>` supertype, suspend `invoke()`, ctor params wrapped in
+     * `SuspendProvider<…>`. It is **not** the source of truth for whether this binding is "suspend"
+     * in the binding graph — that's determined by transitive propagation in
+     * [IrBindingGraph.validateSuspendBindings] based on the binding's actual unwrapped suspend
+     * deps. A `@SuspendAware` class with all-deferred ctor params (e.g. `SuspendProvider<X>`)
+     * produces a `SuspendFactory` but the binding itself isn't propagated into the suspend set.
+     */
+    val isSuspendAware: Boolean = false,
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
@@ -172,6 +182,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         annotations = annotations.copy(mapKey = mapKey),
         typeKey = typeKey,
         injectedMembers = injectedMembers,
+        isSuspendAware = isSuspendAware,
       )
     }
   }

@@ -1099,15 +1099,20 @@ internal class IrGraphGenerator(
       shardPropertiesToTypeKeys[property] = contextKey.typeKey
 
       if (isDeferred) {
-        // Deferred properties are initialized with empty DelegateFactory(),
-        // then setDelegate is called after all properties in this shard are initialized
-        shardDeferredProperties += DeferredPropertyInfo(contextKey.typeKey, property, switchingId)
+        // Deferred properties are initialized with empty DelegateFactory()
+        // (or SuspendDelegateFactory() for suspend bindings), then setDelegate is called
+        // after all properties in this shard are initialized.
+        shardDeferredProperties +=
+          DeferredPropertyInfo(contextKey.typeKey, property, switchingId, isSuspendBinding)
         val deferredType = contextKey.typeKey.type
+        val delegateCtor =
+          if (isSuspendBinding) {
+            metroSymbols.metroSuspendDelegateFactoryConstructor
+          } else {
+            metroSymbols.metroDelegateFactoryConstructor
+          }
         val init: PropertyInitializer = { _, _ ->
-          irInvoke(
-            callee = metroSymbols.metroDelegateFactoryConstructor,
-            typeArgs = listOf(deferredType),
-          )
+          irInvoke(callee = delegateCtor, typeArgs = listOf(deferredType))
         }
         shardPropertyInitializers += property to init
       } else {
@@ -1171,19 +1176,28 @@ internal class IrGraphGenerator(
       thisReceiver: IrValueParameter,
       switchingProvider: SwitchingProviderGenerator.SwitchingProvider?,
     ): List<IrStatement> = buildList {
-      for ((deferredTypeKey, deferredProperty, switchingId) in shardDeferredProperties) {
+      for ((deferredTypeKey, deferredProperty, switchingId, isSuspend) in shardDeferredProperties) {
         val binding = bindingGraph.requireBinding(deferredTypeKey)
+        val companion =
+          if (isSuspend) metroSymbols.metroSuspendDelegateFactoryCompanion
+          else metroSymbols.metroDelegateFactoryCompanion
+        val setDelegate =
+          if (isSuspend) metroSymbols.metroSuspendDelegateFactorySetDelegate
+          else metroSymbols.metroDelegateFactorySetDelegate
+        val wrappedContextKey =
+          if (isSuspend) binding.contextualTypeKey.wrapInSuspendProvider()
+          else binding.contextualTypeKey.wrapInProvider()
         add(
           irInvoke(
-            dispatchReceiver = irGetObject(metroSymbols.metroDelegateFactoryCompanion),
-            callee = metroSymbols.metroDelegateFactorySetDelegate,
+            dispatchReceiver = irGetObject(companion),
+            callee = setDelegate,
             typeArgs = listOf(deferredTypeKey.type),
             args =
               listOf(
                 irGetProperty(irGet(thisReceiver), deferredProperty),
                 generateProviderExpression(
                   binding = binding,
-                  contextKey = binding.contextualTypeKey.wrapInProvider(),
+                  contextKey = wrappedContextKey,
                   switchingId = switchingId,
                   switchingProvider = switchingProvider,
                   thisReceiver = thisReceiver,
@@ -1343,19 +1357,28 @@ internal class IrGraphGenerator(
     constructorStatements: MutableList<InitStatement>,
   ) {
     constructorStatements +=
-      shardDeferredProperties.map { (deferredTypeKey, deferredProperty, switchingId) ->
+      shardDeferredProperties.map { (deferredTypeKey, deferredProperty, switchingId, isSuspend) ->
         val initStatement: InitStatement = { thisReceiver ->
           val binding = bindingGraph.requireBinding(deferredTypeKey)
+          val companion =
+            if (isSuspend) metroSymbols.metroSuspendDelegateFactoryCompanion
+            else metroSymbols.metroDelegateFactoryCompanion
+          val setDelegate =
+            if (isSuspend) metroSymbols.metroSuspendDelegateFactorySetDelegate
+            else metroSymbols.metroDelegateFactorySetDelegate
+          val wrappedContextKey =
+            if (isSuspend) binding.contextualTypeKey.wrapInSuspendProvider()
+            else binding.contextualTypeKey.wrapInProvider()
           irInvoke(
-            dispatchReceiver = irGetObject(metroSymbols.metroDelegateFactoryCompanion),
-            callee = metroSymbols.metroDelegateFactorySetDelegate,
+            dispatchReceiver = irGetObject(companion),
+            callee = setDelegate,
             typeArgs = listOf(deferredTypeKey.type),
             args =
               listOf(
                 irGetProperty(irGet(thisReceiver), deferredProperty),
                 generateProviderExpression(
                   binding = binding,
-                  contextKey = binding.contextualTypeKey.wrapInProvider(),
+                  contextKey = wrappedContextKey,
                   switchingId = switchingId,
                   switchingProvider = switchingProvider,
                   thisReceiver = thisReceiver,
@@ -1437,6 +1460,8 @@ internal class IrGraphGenerator(
     val typeKey: IrTypeKey,
     val property: IrProperty,
     val switchingId: Int?,
+    /** True when the bound type is suspend; the delegate is a SuspendDelegateFactory then. */
+    val isSuspend: Boolean,
   )
 
   /**

@@ -1,0 +1,25 @@
+/SuspendBindingFromNonSuspendProvider.kt:(370,375): error: [Metro/SuspendBindingFromNonSuspendAccessor] Int bindings must be a suspend function or SuspendProvider<Int> because it depends on suspend bindings and requires a suspend context.
+
+Trace:
+    Int is requested at
+        [ExampleGraph] ExampleGraph.value // ❌ needs suspend support
+    String is injected at
+        [ExampleGraph] ExampleGraph.provideInt(…, dep) // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)
+
+Either:
+  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
+  - Make the return type `SuspendProvider<Int>`.
+
+/SuspendBindingFromNonSuspendProvider.kt:(409,420): error: [Metro/SuspendBindingFromNonSuspendProvider] 'provideInt' depends on suspend bindings and requires a suspend context.
+
+Trace:
+    String is injected at
+        [ExampleGraph] ExampleGraph.provideInt(…, dep) // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)
+
+Either:
+  - Mark this @Provides as `suspend fun` so it can await suspend dependencies, or
+  - Wrap the parameter in `SuspendProvider<String>`.

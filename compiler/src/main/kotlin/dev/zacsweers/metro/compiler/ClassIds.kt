@@ -257,6 +257,9 @@ public class ClassIds(
     }
   }
 
+  /** Marker annotation for `@Inject`/`@AssistedInject` classes that consume suspend bindings. */
+  internal val metroSuspendAware: ClassId = Symbols.ClassIds.metroSuspendAware
+
   internal val nonFunctionProviderTypes by memoize { providerTypes - Symbols.ClassIds.function0 }
 
   internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses

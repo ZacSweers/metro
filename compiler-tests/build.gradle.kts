@@ -139,6 +139,7 @@ dependencies {
   testImplementation(libs.dagger.compiler)
 
   metroRuntimeClasspath(project(":runtime"))
+  metroRuntimeClasspath(project(":runtime-coroutines"))
   daggerInteropClasspath(project(":interop-dagger"))
   guiceClasspath(project(":interop-guice"))
   guiceClasspath(libs.guice)

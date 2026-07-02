@@ -8,10 +8,11 @@ package dev.zacsweers.metro
  *
  * This is the suspend analogue to [lazy].
  */
+@ExperimentalMetroSuspendApi
 public expect fun <T> suspendLazy(
   mode: LazyThreadSafetyMode = LazyThreadSafetyMode.SYNCHRONIZED,
   initializer: suspend () -> T,
 ): SuspendLazy<T>
 
 /** Returns an already-initialized [SuspendLazy] wrapping the given [value]. */
-public expect fun <T> suspendLazyOf(value: T): SuspendLazy<T>
+@ExperimentalMetroSuspendApi public expect fun <T> suspendLazyOf(value: T): SuspendLazy<T>

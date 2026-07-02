@@ -30,6 +30,7 @@ import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -87,6 +88,7 @@ internal fun generateStaticCreateFunction(
   sourceFunction: IrFunction?,
   patchCreationParams: Boolean = true,
   isAssistedInject: Boolean = false,
+  wrapInSuspendProvider: Boolean = false,
 ): IrSimpleFunction {
   val createFunction =
     objectClassToGenerateIn
@@ -113,6 +115,7 @@ internal fun generateStaticCreateFunction(
           wrapInProvider = true,
           copyQualifiers = true,
           typeRemapper = { type -> typeRemapper.remapType(type) },
+          wrapInSuspendProvider = wrapInSuspendProvider,
         )
         addHiddenFromObjCAnnotation(this)
         addStaticAnnotations(this)
@@ -235,6 +238,7 @@ internal fun generateStaticNewInstanceFunction(
   sourceParameters: List<IrValueParameter>,
   functionName: String = Symbols.StringNames.NEW_INSTANCE,
   targetFunction: IrFunction? = null,
+  isSuspend: Boolean = false,
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
 ): IrSimpleFunction {
   val newInstanceFunction =
@@ -244,6 +248,7 @@ internal fun generateStaticNewInstanceFunction(
         // Placeholder, replaced in body
         returnType = context.irBuiltIns.unitType,
         origin = Origins.FactoryNewInstanceFunction,
+        isSuspend = isSuspend,
       )
       .apply {
         val typeParams = copyTypeParametersFrom(sourceTypeParameters)
@@ -423,19 +428,41 @@ internal fun IrFunction.addParameters(
   copyQualifiers: Boolean = false,
   typeRemapper: ((IrType) -> IrType)? = null,
   stubDefaults: Boolean = true,
+  /**
+   * Wrap non-dispatch-receiver params in `SuspendProvider<…>` instead of `Provider<…>`. Used when
+   * generating constructors / `create()` / etc. for a factory that backs a suspend `@Provides`, so
+   * the field type can be invoked from the suspend `invoke()` body and so the graph can pass a
+   * `SuspendProvider<…>` directly when the dep is itself suspend.
+   */
+  wrapInSuspendProvider: Boolean = false,
   onParam: (IrTypeKey, IrValueParameter) -> Unit = { _, _ -> },
 ) {
   for (param in params) {
     val isInstanceParam = param.asValueParameter.kind == IrParameterKind.DispatchReceiver
     val baseType =
       if (wrapInProvider && !isInstanceParam) {
-        // Strip all outer Provider/Lazy layers (e.g. Provider<Lazy<T>> → T) but preserve
-        // inner structure like Map<K, Provider<V>>, then wrap in a single Provider.
-        var stripped = param.contextualTypeKey
-        while (stripped.isWrapped) {
-          stripped = stripped.stripOuterProviderOrLazy()
+        val ctxKey = param.contextualTypeKey
+        if (ctxKey.isWrappedInSuspendProvider) {
+          // SuspendProvider<T> is already a provider-like wrapper that the factory holds
+          // directly — wrapping it again in Provider<…> would create the wrong field type.
+          ctxKey.toIrType()
+        } else if (wrapInSuspendProvider) {
+          // Strip outer Provider/Lazy/SuspendProvider layers, then wrap in a single
+          // SuspendProvider so the field can be invoked from the suspend factory's body.
+          var stripped = ctxKey
+          while (stripped.isWrapped || stripped.isWrappedInSuspendProvider) {
+            stripped = stripped.stripOuterProviderOrLazy()
+          }
+          stripped.wrapInSuspendProvider().toIrType()
+        } else {
+          // Strip all outer Provider/Lazy layers (e.g. Provider<Lazy<T>> → T) but preserve
+          // inner structure like Map<K, Provider<V>>, then wrap in a single Provider.
+          var stripped = ctxKey
+          while (stripped.isWrapped) {
+            stripped = stripped.stripOuterProviderOrLazy()
+          }
+          stripped.wrapInProvider().toIrType()
         }
-        stripped.wrapInProvider().toIrType()
       } else {
         param.contextualTypeKey.toIrType()
       }

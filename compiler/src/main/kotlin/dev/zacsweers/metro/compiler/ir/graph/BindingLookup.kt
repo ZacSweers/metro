@@ -52,6 +52,7 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isNullable
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.name.CallableId
@@ -822,6 +823,12 @@ internal class BindingLookup(
           return@getOrPut emptySet()
         }
 
+        val isSuspendAware =
+          irClass.hasAnnotation(context.metroSymbols.classIds.metroSuspendAware) ||
+            classFactory.targetConstructor?.hasAnnotation(
+              context.metroSymbols.classIds.metroSuspendAware
+            ) == true
+
         val binding =
           bindingLookupCache.getOrPutConstructorInjected(
             irClass.takeIf { remapper == NOOP_TYPE_REMAPPER }
@@ -833,6 +840,7 @@ internal class BindingLookup(
               typeKey = key,
               injectedMembers =
                 membersInjectBindings.value.mapToSet { binding -> binding.contextualTypeKey },
+              isSuspendAware = isSuspendAware,
             )
           }
 
@@ -866,6 +874,12 @@ internal class BindingLookup(
         val targetAnnotations = targetClass.metroAnnotations(context.metroSymbols.classIds)
         val targetRemapper = targetClass.deepRemapperFor(targetType)
 
+        val targetIsSuspendAware =
+          targetClass.hasAnnotation(context.metroSymbols.classIds.metroSuspendAware) ||
+            targetClassFactory.targetConstructor?.hasAnnotation(
+              context.metroSymbols.classIds.metroSuspendAware
+            ) == true
+
         // Create the target's ConstructorInjected binding (NOT added to graph)
         val targetBinding =
           bindingLookupCache.getOrPutConstructorInjected(
@@ -878,6 +892,7 @@ internal class BindingLookup(
               typeKey = targetKey,
               // Assisted-inject classes don't have member injections in this context
               injectedMembers = emptySet(),
+              isSuspendAware = targetIsSuspendAware,
             )
           }
 

@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -123,9 +124,9 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
               }
             }
             PROVIDER -> {
-              // Unwrap provider to instance, then wrap in suspend provider
-              val instance = unwrapProvider(contextualTypeKey.typeKey.type)
-              scope.wrapInSuspendProviderFunction(contextualTypeKey.typeKey.type) { instance }
+              // Adapt Provider<T> -> SuspendProvider<T> via SyncSuspendProvider intrinsic
+              // (allocation-free typed view; avoids a captured suspend lambda).
+              with(scope) { wrapInSyncSuspendProvider(contextualTypeKey.typeKey.type) }
             }
             else -> this
           }
@@ -192,6 +193,21 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
       typeArgs = listOf(type),
       args = listOf(lambda),
     )
+  }
+
+  /**
+   * Wraps a `Provider<T>` expression as a `SuspendProvider<T>` via the `SyncSuspendProvider`
+   * value-class intrinsic. Allocation-free at runtime and avoids the captured-lambda allocation of
+   * [wrapInSuspendProviderFunction] for the common Provider→SuspendProvider adaption.
+   */
+  context(scope: IrBuilderWithScope)
+  protected fun IrExpression.wrapInSyncSuspendProvider(type: IrType): IrExpression {
+    val provider = this
+    return with(scope) {
+      irCallConstructor(metroSymbols.metroSyncSuspendProviderConstructor, listOf(type)).apply {
+        arguments[0] = provider
+      }
+    }
   }
 
   context(scope: IrBuilderWithScope)

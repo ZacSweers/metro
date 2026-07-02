@@ -3,11 +3,13 @@
 package dev.zacsweers.metro
 
 /** A simple class that produces instances of [T] in a suspend context. */
+@ExperimentalMetroSuspendApi
 public fun interface SuspendProvider<T> : suspend () -> T {
   public override suspend operator fun invoke(): T
 }
 
 /** A helper function to create a new [SuspendProvider] wrapper around a given [provider] lambda. */
+@ExperimentalMetroSuspendApi
 @Suppress("NOTHING_TO_INLINE")
 public inline fun <T> suspendProvider(noinline provider: suspend () -> T): SuspendProvider<T> =
   SuspendProvider {
@@ -15,4 +17,5 @@ public inline fun <T> suspendProvider(noinline provider: suspend () -> T): Suspe
   }
 
 /** Returns a [SuspendProvider] wrapper around the given [value]. */
+@ExperimentalMetroSuspendApi
 public fun <T> suspendProviderOf(value: T): SuspendProvider<T> = SuspendProvider { value }

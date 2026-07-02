@@ -73,6 +73,7 @@ import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 
 private const val MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT = 3
@@ -102,11 +103,15 @@ internal class IrBindingGraph(
   private var hasErrors = false
 
   /**
-   * Set of type keys whose bindings transitively require a suspend context. Computed during
-   * [validateSuspendBindings] and used during code generation.
+   * Type keys whose bindings transitively require a suspend context. Populated during
+   * [validateSuspendBindings]. Consumed by codegen (parallel-suspend optimization) to decide which
+   * dependency resolutions need to be wrapped in `async { … }`.
    */
-  internal var requiresSuspendContext: Set<IrTypeKey> = emptySet()
-    private set
+  private var transitivelySuspendKeys: Set<IrTypeKey> = emptySet()
+
+  /** Returns true if the binding for [typeKey] transitively requires a suspend context. */
+  internal fun isTransitivelySuspend(typeKey: IrTypeKey): Boolean =
+    typeKey in transitivelySuspendKeys
 
   private data class PendingError(
     val factory: KtDiagnosticFactory1<String>,
@@ -662,37 +667,46 @@ internal class IrBindingGraph(
     }
   }
 
-  // When function-provider mode is enabled, `() -> T` is treated as a provider wrapper for
-  // `T` rather than a bindable value type. An empty multibinding or a missing binding for a
-  // `Function0<T>` key often means either (a) contributors weren't migrated from
-  // `Provider<T>`, or (b) the author intended the function itself to be the bound value —
-  // which is no longer supported at the top level under this mode. Returns null when the
-  // mode is off or the type isn't a zero-arg function.
+  // When function-provider mode is enabled, `() -> T` and `suspend () -> T` are treated as
+  // (suspend) provider wrappers for `T` rather than bindable value types. An empty multibinding
+  // or a missing binding for a `Function0<T>` / `SuspendFunction0<T>` key often means either
+  // (a) contributors weren't migrated from `Provider<T>` / `SuspendProvider<T>`, or
+  // (b) the author intended the function itself to be the bound value — which is no longer
+  // supported at the top level under this mode. Returns null when the mode is off or the type
+  // isn't a zero-arg (suspend) function.
   private fun functionProviderMigrationHint(type: IrType): String? {
     if (!metroContext.options.enableFunctionProviders) return null
-    if (type.rawTypeOrNull()?.classId != Symbols.ClassIds.function0) return null
+    val rawClassId = type.rawTypeOrNull()?.classId
+    val isSuspend = rawClassId == Symbols.ClassIds.suspendFunction0
+    if (rawClassId != Symbols.ClassIds.function0 && !isSuspend) return null
     val targetType = type.requireSimpleType().arguments[0].typeOrFail.render(short = true)
-    return "`() -> $targetType` is treated as a provider for `$targetType` when `enableFunctionProviders` is enabled " +
-      "(desugared: `Provider<$targetType>`). As a result, Metro treats them as an intrinsic and unwraps them when " +
-      "resolving bindings. If the binding itself was meant to be the literal `() -> $targetType` function type, you " +
+    val suspendPrefix = if (isSuspend) "suspend " else ""
+    val providerName = if (isSuspend) "SuspendProvider" else "Provider"
+    return "`$suspendPrefix() -> $targetType` is treated as a provider for `$targetType` when `enableFunctionProviders` is enabled " +
+      "(desugared: `$providerName<$targetType>`). As a result, Metro treats them as an intrinsic and unwraps them when " +
+      "resolving bindings. If the binding itself was meant to be the literal `$suspendPrefix() -> $targetType` function type, you " +
       "need to migrate it to a named type. For example: " +
-      "`fun interface SomeType : () -> $targetType`".trimIndent()
+      "`fun interface SomeType : $suspendPrefix() -> $targetType`".trimIndent()
   }
 
   // For missing-binding diagnostics, [key] is the unwrapped inner type (e.g. `T` for a
-  // `() -> T` request under function-provider mode). Scan the graph's root contextual keys
-  // to recover whether any entry point was originally a `() -> T` wrapper, and if so emit
-  // the migration hint using the wrapper's raw type so `$targetType` renders correctly.
+  // `() -> T` or `suspend () -> T` request under function-provider mode). Scan the graph's
+  // root contextual keys to recover whether any entry point was originally such a wrapper,
+  // and if so emit the migration hint using the wrapper's raw type so `$targetType` renders
+  // correctly.
   private fun functionProviderMigrationHintForMissing(key: IrTypeKey): String? {
     if (!metroContext.options.enableFunctionProviders) return null
-    val function0RawType =
+    val functionRawType =
       sequenceOf(accessors, injectors, extraKeeps)
         .flatMap { it.keys.asSequence() }
         .firstOrNull { ctx ->
-          ctx.typeKey == key && ctx.rawType?.rawTypeOrNull()?.classId == Symbols.ClassIds.function0
+          val rawClassId = ctx.rawType?.rawTypeOrNull()?.classId
+          ctx.typeKey == key &&
+            (rawClassId == Symbols.ClassIds.function0 ||
+              rawClassId == Symbols.ClassIds.suspendFunction0)
         }
         ?.rawType ?: return null
-    return functionProviderMigrationHint(function0RawType)
+    return functionProviderMigrationHint(functionRawType)
   }
 
   private fun missingBindingHints(key: IrTypeKey): List<String> {
@@ -1022,7 +1036,7 @@ internal class IrBindingGraph(
 
     // If no suspend bindings, nothing to validate
     if (suspendSet.isEmpty()) {
-      requiresSuspendContext = emptySet()
+      transitivelySuspendKeys = emptySet()
       return
     }
 
@@ -1045,7 +1059,7 @@ internal class IrBindingGraph(
       }
     }
 
-    requiresSuspendContext = suspendSet
+    transitivelySuspendKeys = suspendSet.toSet()
 
     // Step 2: Validate accessors
     for ((contextKey, _) in roots) {
@@ -1053,13 +1067,33 @@ internal class IrBindingGraph(
       val accessorIsSuspend = accessor.metroFunction.ir.isSuspend
       val requiresSuspend = contextKey.typeKey in suspendSet
 
-      if (requiresSuspend && !accessorIsSuspend && !contextKey.isWrappedInSuspendProvider) {
+      if (requiresSuspend && !accessorIsSuspend && !contextKey.defersSuspendAtAccess) {
+        val typeRender = contextKey.typeKey.render(short = true)
+        val deferredFormRender = suspendFunctionRender(typeRender)
+        val head =
+          IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
+            .withAnnotation(NEEDS_SUSPEND_SUPPORT)
+        val trace = buildSuspendTrace(bindings, suspendSet, contextKey.typeKey, head)
         val message = buildString {
-          append(
-            "[Metro/SuspendBindingFromNonSuspendAccessor] Accessor '${accessor.metroFunction.ir.name}' must be a suspend function because it transitively depends on suspend binding(s)."
+          appendLine(
+            "[Metro/SuspendBindingFromNonSuspendAccessor] $typeRender bindings must be a suspend function or $deferredFormRender because it depends on suspend bindings and requires a suspend context."
           )
+          appendLine()
+          appendLine("Trace:")
+          appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
+          appendLine()
+          appendLine("Either:")
+          appendLine(
+            "  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or"
+          )
+          append("  - Make the return type `$deferredFormRender`.")
         }
-        reportError(accessor.metroFunction.ir, message)
+        // Resolve to the property (if it's a getter) so the diagnostic lands on the
+        // property declaration, then walk fake overrides back to the original interface
+        // declaration since the accessor IR is typically the implementation graph's override.
+        val accessorDeclaration =
+          accessor.metroFunction.ir.propertyIfAccessor.expectAs<IrDeclarationWithName>()
+        reportError(accessorDeclaration.originalDeclarationIfOverride(), message)
       }
     }
 
@@ -1068,14 +1102,19 @@ internal class IrBindingGraph(
       for (dep in binding.dependencies) {
         if (dep.typeKey !in suspendSet) continue
 
+        // Prefer landing on the specific parameter that wraps the suspend binding rather
+        // than the enclosing function/property declaration.
+        val parameterDeclaration =
+          binding.parameters.allParameters.find { it.typeKey == dep.typeKey }?.ir
+
         if (dep.isWrappedInProvider) {
           val message = buildString {
             append(
               "[Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding '${dep.typeKey.render(short = true)}' via Provider. Use SuspendProvider instead."
             )
           }
-          val element = binding.reportableDeclaration ?: continue
-          reportError(element, message)
+          val element = parameterDeclaration ?: binding.reportableDeclaration ?: continue
+          reportError(element.originalDeclarationIfOverride(), message)
         }
 
         if (dep.isWrappedInLazy) {
@@ -1084,16 +1123,154 @@ internal class IrBindingGraph(
               "[Metro/SuspendBindingWrappedInLazy] Cannot depend on suspend binding '${dep.typeKey.render(short = true)}' via Lazy."
             )
           }
-          val element = binding.reportableDeclaration ?: continue
-          reportError(element, message)
+          val element = parameterDeclaration ?: binding.reportableDeclaration ?: continue
+          reportError(element.originalDeclarationIfOverride(), message)
         }
+      }
+    }
+
+    // Step 4: A non-suspend @Provides cannot accept an unwrapped transitively-suspend dep — the
+    // factory's invoke is non-suspend and can't await a suspend resolution to fill its ctor
+    // field. Suspend @Provides are fine: their factory.invoke is suspend and the ctor field is
+    // a SuspendProvider. Constructor-injected bindings are exempt because graph codegen inlines
+    // their construction (canBypassFactory) when accessed from a suspend context.
+    bindings.forEachValue { binding ->
+      if (binding !is IrBinding.Provided || binding.isSuspend) return@forEachValue
+      for (dep in binding.dependencies) {
+        if (dep.typeKey !in suspendSet) continue
+        if (dep.isWrappedInSuspendProvider || dep.isWrappedInProvider || dep.isWrappedInLazy) {
+          continue
+        }
+        val parameterDeclaration =
+          binding.parameters.allParameters.find { it.typeKey == dep.typeKey }?.ir
+        val element = parameterDeclaration ?: binding.reportableDeclaration ?: continue
+        val depRender = dep.typeKey.render(short = true)
+        val deferredDepRender = suspendFunctionRender(depRender)
+        val head =
+          bindingStackEntryForDependency(binding, dep, dep.typeKey)
+            .withAnnotation(NEEDS_SUSPEND_SUPPORT)
+        val trace = buildSuspendTrace(bindings, suspendSet, dep.typeKey, head)
+        val message = buildString {
+          appendLine(
+            "[Metro/SuspendBindingFromNonSuspendProvider] '${binding.providerFactory.callableId.callableName}' depends on suspend bindings and requires a suspend context."
+          )
+          appendLine()
+          appendLine("Trace:")
+          appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
+          appendLine()
+          appendLine("Either:")
+          appendLine(
+            "  - Mark this @Provides as `suspend fun` so it can await suspend dependencies, or"
+          )
+          append("  - Change the parameter type to `$deferredDepRender`.")
+        }
+        reportError(element.originalDeclarationIfOverride(), message)
+      }
+    }
+
+    // Step 5: A `ConstructorInjected` binding that consumes suspend bindings transitively must
+    // be annotated `@SuspendAware`. Without the annotation, its factory's ctor expects
+    // `Provider<…>` fields but the graph holds `SuspendProvider<…>` for suspend deps, which
+    // mismatches at runtime. The FIR-level check warns when the source signature already shows
+    // a suspend type; this IR-level check catches the transitive cases (e.g. `String` that
+    // happens to be bound to a suspend `@Provides` in this graph).
+    bindings.forEachValue { binding ->
+      if (binding !is IrBinding.ConstructorInjected) return@forEachValue
+      if (binding.isSuspendAware) return@forEachValue
+      for (dep in binding.dependencies) {
+        if (dep.typeKey !in suspendSet) continue
+        if (dep.isWrappedInSuspendProvider || dep.isWrappedInProvider || dep.isWrappedInLazy) {
+          continue
+        }
+        val parameterDeclaration =
+          binding.parameters.allParameters.find { it.typeKey == dep.typeKey }?.ir
+        val element =
+          parameterDeclaration as? IrDeclarationWithName ?: binding.reportableDeclaration
+        val head =
+          bindingStackEntryForDependency(binding, dep, dep.typeKey)
+            .withAnnotation(NEEDS_SUSPEND_SUPPORT)
+        val trace = buildSuspendTrace(bindings, suspendSet, dep.typeKey, head)
+        val message = buildString {
+          appendLine(
+            "[Metro/SuspendAwareRequired] '${binding.type.kotlinFqName}' depends on suspend bindings and must be annotated `@SuspendAware` so Metro can generate a suspend-aware factory for it."
+          )
+          appendLine()
+          appendLine("Trace:")
+          appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
+        }
+        reportError(
+          element.originalDeclarationIfOverride(),
+          message,
+          MetroDiagnostics.SUSPEND_AWARE_REQUIRED,
+        )
+        return@forEachValue
       }
     }
   }
 
-  private fun reportError(element: IrDeclarationWithName, message: String) {
+  /**
+   * Renders the recommended deferred-suspend wrapper for a type. Prefers `suspend () -> T` when
+   * function-providers are enabled (the default and idiomatic form), falls back to
+   * `SuspendProvider<T>` otherwise.
+   */
+  private fun suspendFunctionRender(typeRender: String): String {
+    return if (metroContext.options.enableFunctionProviders) {
+      "suspend () -> $typeRender"
+    } else {
+      "SuspendProvider<$typeRender>"
+    }
+  }
+
+  /**
+   * Builds a list of [IrBindingStack.Entry] tracing dep edges from [start] to a directly-suspend
+   * source binding. Each step uses [bindingStackEntryForDependency] (which produces an `injectedAt`
+   * entry) and the trace ends with a `providedAt` entry naming the suspend function. The
+   * caller-supplied [head] is placed at the top of the trace. Each non-suspend step is annotated
+   * with [NEEDS_SUSPEND_SUPPORT] so the user can see exactly which declarations stand in the way.
+   */
+  private fun buildSuspendTrace(
+    bindings: ScatterMap<IrTypeKey, IrBinding>,
+    suspendSet: Set<IrTypeKey>,
+    start: IrTypeKey,
+    head: IrBindingStack.Entry,
+  ): List<IrBindingStack.Entry> {
+    val result = mutableListOf(head)
+    val visited = mutableSetOf<IrTypeKey>()
+    var currentKey: IrTypeKey? = start
+    while (currentKey != null && visited.add(currentKey)) {
+      val current = bindings[currentKey] ?: break
+      if (current.isSuspend) {
+        // Suspend source — emit a `providedAt` entry naming the function and stop. No
+        // annotation: the function is already suspend, it isn't blocking the chain.
+        val fn = (current as? IrBinding.Provided)?.providerFactory?.function
+        if (fn != null) {
+          result += IrBindingStack.Entry.providedAt(current.contextualTypeKey, fn)
+        }
+        break
+      }
+      val nextDep =
+        current.dependencies.firstOrNull { dep ->
+          dep.typeKey in suspendSet && !dep.isWrappedInSuspendProvider
+        } ?: break
+      result +=
+        bindingStackEntryForDependency(current, nextDep, nextDep.typeKey)
+          .withAnnotation(NEEDS_SUSPEND_SUPPORT)
+      currentKey = nextDep.typeKey
+    }
+    return result
+  }
+
+  private companion object {
+    private const val NEEDS_SUSPEND_SUPPORT = "❌ needs suspend support"
+  }
+
+  private fun reportError(
+    element: IrDeclarationWithName,
+    message: String,
+    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  ) {
     hasErrors = true
-    metroContext.reportCompat(element, MetroDiagnostics.METRO_ERROR, message)
+    metroContext.reportCompat(element, factory, message)
   }
 
   // Check scoping compatibility

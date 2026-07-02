@@ -144,6 +144,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           ?.toString()
           ?.toBoolean() ?: false
 
+      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_SUSPEND_PROVIDERS)?.let {
+        enableSuspendProviders = it
+      }
+
       // Configure interop annotations using builder helper methods
       if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
         includeKotlinInjectAnvilAnnotations()

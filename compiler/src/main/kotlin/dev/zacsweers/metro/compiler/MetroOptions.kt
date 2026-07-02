@@ -816,6 +816,19 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_SUSPEND_PROVIDERS(
+    RawMetroOption.boolean(
+      name = "enable-suspend-providers",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable parallel resolution of suspend dependencies via coroutineScope { async { … } }. " +
+          "When off, suspend dependencies resolve sequentially. Off by default while the suspend " +
+          "runtime stabilises.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   DESUGARED_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "desugared-provider-severity",
@@ -1038,6 +1051,8 @@ public data class MetroOptions(
   public val parallelThreads: Int = MetroOption.PARALLEL_THREADS.raw.defaultValue.expectAs(),
   public val enableFunctionProviders: Boolean =
     MetroOption.ENABLE_FUNCTION_PROVIDERS.raw.defaultValue.expectAs(),
+  public val enableSuspendProviders: Boolean =
+    MetroOption.ENABLE_SUSPEND_PROVIDERS.raw.defaultValue.expectAs(),
   public val desugaredProviderSeverity: DiagnosticSeverity =
     MetroOption.DESUGARED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -1167,6 +1182,7 @@ public data class MetroOptions(
     public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
     public var parallelThreads: Int = base.parallelThreads
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
+    public var enableSuspendProviders: Boolean = base.enableSuspendProviders
     public var desugaredProviderSeverity: DiagnosticSeverity = base.desugaredProviderSeverity
     public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
     public var generateContributionProviders: Boolean = base.generateContributionProviders
@@ -1352,6 +1368,7 @@ public data class MetroOptions(
         compilerVersionAliases = compilerVersionAliases,
         parallelThreads = parallelThreads,
         enableFunctionProviders = enableFunctionProviders,
+        enableSuspendProviders = enableSuspendProviders,
         desugaredProviderSeverity =
           if (enableFunctionProviders) {
             desugaredProviderSeverity
@@ -1662,6 +1679,7 @@ public data class MetroOptions(
           }
           PARALLEL_THREADS -> parallelThreads = configuration.getAsInt(entry)
           ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = configuration.getAsBoolean(entry)
+          ENABLE_SUSPEND_PROVIDERS -> enableSuspendProviders = configuration.getAsBoolean(entry)
           DESUGARED_PROVIDER_SEVERITY ->
             desugaredProviderSeverity =
               configuration.getAsString(entry).let {

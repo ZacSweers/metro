@@ -163,21 +163,25 @@ private constructor(
             if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
               // Call constructor directly
               val targetConstructor = classFactory.targetConstructor!!
-              irCallConstructor(
-                  targetConstructor.symbol,
-                  binding.type.typeParameters.map { it.defaultType },
+              val typeArgs = binding.type.typeParameters.map { it.defaultType }
+              val rawArgs =
+                generateBindingArguments(
+                  targetParams = classFactory.targetFunctionParameters,
+                  function = targetConstructor,
+                  binding = binding,
+                  fieldInitKey = fieldInitKey,
                 )
-                .apply {
-                  val args =
-                    generateBindingArguments(
-                      targetParams = classFactory.targetFunctionParameters,
-                      function = targetConstructor,
-                      binding = binding,
-                      fieldInitKey = fieldInitKey,
-                    )
-                  for ((i, arg) in args.withIndex()) {
-                    if (arg == null) continue
-                    arguments[i] = arg
+              val argPairs =
+                pairArgsWithSuspendFlags(rawArgs, classFactory.targetFunctionParameters, binding)
+              parallelizeSuspendArgs(
+                  args = argPairs,
+                  parent = node.metroGraphOrFail,
+                  resultType = binding.typeKey.type,
+                ) { resolved ->
+                  irCallConstructor(targetConstructor.symbol, typeArgs).apply {
+                    for ((i, expr) in resolved.withIndex()) {
+                      if (expr != null) arguments[i] = expr
+                    }
                   }
                 }
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
@@ -621,6 +625,42 @@ private constructor(
         }
       }
     }
+
+  /**
+   * Pairs the result of [generateBindingArguments] with per-arg "is this a suspend resolution?"
+   * flags, so [parallelizeSuspendArgs] can decide whether to wrap the call in a coroutine scope.
+   *
+   * An arg is considered a suspend resolution when its parameter is requested as INSTANCE
+   * (unwrapped) and the binding for its type key is transitively suspend per [IrBindingGraph].
+   * Wrapped requests (Provider/Lazy/SuspendProvider) defer the work, so they don't trigger
+   * parallelization.
+   */
+  private fun pairArgsWithSuspendFlags(
+    args: List<IrExpression?>,
+    targetParams: Parameters,
+    binding: IrBinding,
+  ): List<Pair<IrExpression?, Boolean>> {
+    val paramsToMap = buildList {
+      if (
+        binding is IrBinding.Provided &&
+          targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
+      ) {
+        targetParams.dispatchReceiverParameter?.let(::add)
+      }
+      addAll(targetParams.contextParameters.filterNot { it.isAssisted })
+      targetParams.extensionReceiverParameter?.let(::add)
+      addAll(targetParams.regularParameters.filterNot { it.isAssisted })
+    }
+    return args.mapIndexed { i, arg ->
+      val ctk = paramsToMap.getOrNull(i)?.contextualTypeKey
+      val isSuspend =
+        arg != null &&
+          ctk != null &&
+          !ctk.requiresProviderInstance &&
+          bindingGraph.isTransitivelySuspend(ctk.typeKey)
+      arg to isSuspend
+    }
+  }
 
   context(scope: IrBuilderWithScope)
   private fun generateBindingArguments(

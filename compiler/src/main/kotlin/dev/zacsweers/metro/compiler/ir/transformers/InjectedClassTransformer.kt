@@ -77,6 +77,7 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -266,10 +267,19 @@ internal class InjectedClassTransformer(
         it.isAnnotatedWithAny(metroSymbols.classIds.assistedInjectAnnotations)
       }
 
+    val isSuspendAware =
+      declaration.hasAnnotation(metroSymbols.classIds.metroSuspendAware) ||
+        targetConstructor.hasAnnotation(metroSymbols.classIds.metroSuspendAware)
+
+    val factorySuperTypeSymbol =
+      if (isSuspendAware) metroSymbols.metroSuspendFactory else metroSymbols.metroFactory
+    val invokeOverriddenSymbol =
+      if (isSuspendAware) metroSymbols.suspendProviderInvoke else metroSymbols.providerInvoke
+
     if (!isAssistedInject) {
       // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to read
       // directly since we'll read the mirror function to get the target type
-      factoryCls.superTypes += metroSymbols.metroFactory.typeWith(declaration.defaultType)
+      factoryCls.superTypes += factorySuperTypeSymbol.typeWith(declaration.defaultType)
     }
 
     // Cannot call addFakeOverrides because FIR2IR has already done that, so we need to add the
@@ -280,11 +290,12 @@ internal class InjectedClassTransformer(
           Symbols.StringNames.INVOKE,
           declaration.defaultType,
           isFakeOverride = !isAssistedInject,
+          isSuspend = isSuspendAware,
         )
         .apply {
           isOperator = true
           if (!isAssistedInject) {
-            overriddenSymbols = listOf(metroSymbols.providerInvoke)
+            overriddenSymbols = listOf(invokeOverriddenSymbol)
           } else {
             val assistedInvokeParamTypeRemapper =
               declaration.deepRemapperFor(factoryCls.defaultType)
@@ -339,6 +350,7 @@ internal class InjectedClassTransformer(
               wrapInProvider = true,
               stubDefaults = false,
               typeRemapper = { type -> typeRemapper.remapType(type) },
+              wrapInSuspendProvider = isSuspendAware,
             ) { typeKey, irParam ->
               val field = irParam.addBackingFieldTo(factoryCls)
               nameToField[irParam.name] = field
@@ -358,6 +370,7 @@ internal class InjectedClassTransformer(
         constructorParameters,
         allParameters,
         isAssistedInject,
+        isSuspendAware,
       )
 
     /*
@@ -678,6 +691,7 @@ internal class InjectedClassTransformer(
     constructorParameters: Parameters,
     allParameters: List<Parameters>,
     isAssistedInject: Boolean,
+    isSuspendAware: Boolean,
   ): IrSimpleFunction {
     // If this is an object, we can generate directly into this object
     val isObject = factoryCls.kind == ClassKind.OBJECT
@@ -698,18 +712,22 @@ internal class InjectedClassTransformer(
         regularParameters = mergedParameters.regularParameters.dedupeParameters()
       )
 
+    val factoryReturnSymbol =
+      if (isSuspendAware) metroSymbols.metroSuspendFactory else metroSymbols.metroFactory
+
     // Generate create()
     generateStaticCreateFunction(
       objectClassToGenerateIn = classToGenerateCreatorsIn,
       factoryClass = factoryCls,
       sourceTypeParameters = targetClass,
       returnTypeProvider = { typeParams ->
-        metroSymbols.metroFactory.typeWith(targetClass.symbol.typeWithParameters(typeParams))
+        factoryReturnSymbol.typeWith(targetClass.symbol.typeWithParameters(typeParams))
       },
       targetConstructor = factoryConstructor,
       parameters = dedupedMerged,
       isAssistedInject = isAssistedInject,
       sourceFunction = null,
+      wrapInSuspendProvider = isSuspendAware,
     )
 
     // newInstance() preserves the original constructor signature (no deduplication)
@@ -721,6 +739,7 @@ internal class InjectedClassTransformer(
         returnTypeProvider = { typeParams -> targetClass.symbol.typeWithParameters(typeParams) },
         sourceMetroParameters = constructorParameters,
         sourceParameters = constructorParameters.regularParameters.map { it.asValueParameter },
+        isSuspend = isSuspendAware,
       ) { function ->
         irCallConstructor(
             callee = targetConstructor,

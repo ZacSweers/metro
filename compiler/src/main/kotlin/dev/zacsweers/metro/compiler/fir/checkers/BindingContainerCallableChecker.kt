@@ -303,11 +303,12 @@ internal object BindingContainerCallableChecker :
         val message =
           if (
             session.metroFirBuiltIns.options.enableFunctionProviders &&
-              returnClassId == Symbols.ClassIds.function0
+              (returnClassId == Symbols.ClassIds.function0 ||
+                returnClassId == Symbols.ClassIds.suspendFunction0)
           ) {
             base +
               " Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function types " +
-              "are treated as provider types by Metro and cannot be unique bindings on the graph."
+              "(including `suspend () -> T`) are treated as provider types by Metro and cannot be unique bindings on the graph."
           } else {
             base
           }

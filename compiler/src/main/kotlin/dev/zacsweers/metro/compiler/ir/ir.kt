@@ -703,9 +703,30 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 
   val irType = bindingCode.type
 
+  // SuspendProvider receivers need to be invoked via `suspendProviderInvoke` (not the regular
+  // `Provider.invoke`) when the consumer wants the unwrapped value. SuspendProvider doesn't
+  // implement Provider, so the existing implementsProviderType-based path doesn't apply.
+  val bindingClassId = irType.classOrNull?.owner?.classId
+  if (bindingClassId in symbols.classIds.suspendProviderTypes) {
+    if (
+      isAssisted ||
+        isGraphInstance ||
+        contextKey.isWrappedInSuspendProvider ||
+        contextKey.isWrappedInProvider ||
+        contextKey.isWrappedInLazy
+    ) {
+      // Consumer wants the SuspendProvider-shaped wrapper itself; pass through.
+      return maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
+    }
+    return irInvoke(
+      dispatchReceiver = bindingCode,
+      callee = symbols.suspendProviderInvoke,
+      typeHint = contextKey.typeKey.type,
+    )
+  }
+
   if (!irType.implementsLazyType() && !irType.implementsProviderType()) {
     // Not a provider or suspend provider, nothing else to do here!
-    // SuspendProvider doesn't need provider framework conversion.
     // If KClass/Class interop is enabled and the consumer declared Map<Class<*>, V>,
     // convert the canonical Map<KClass<*>, V> to Map<Class<*>, V> via `mapKeys { it.key.java }`
     return maybeConvertMapKeysToJavaClass(bindingCode, contextKey)

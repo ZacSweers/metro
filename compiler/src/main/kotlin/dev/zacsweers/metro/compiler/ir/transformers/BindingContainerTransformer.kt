@@ -351,17 +351,26 @@ internal class BindingContainerTransformer(
           }
       }
 
+    val factorySuperTypeSymbol =
+      if (reference.isSuspend) metroSymbols.metroSuspendFactory else metroSymbols.metroFactory
+    val invokeOverriddenSymbol =
+      if (reference.isSuspend) metroSymbols.suspendProviderInvoke else metroSymbols.providerInvoke
     val invokeFunction =
       trace("Add factory supertype + invoke shell") {
         // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to
         // read directly since we'll read the mirror function to get the target type
-        factoryCls.superTypes += metroSymbols.metroFactory.typeWith(reference.typeKey.type)
+        factoryCls.superTypes += factorySuperTypeSymbol.typeWith(reference.typeKey.type)
         // Cannot call addFakeOverrides because FIR2IR has already done that, so we need to add
         // the invoke override directly later
         factoryCls
-          .addFunction(Symbols.StringNames.INVOKE, reference.typeKey.type, isFakeOverride = true)
+          .addFunction(
+            Symbols.StringNames.INVOKE,
+            reference.typeKey.type,
+            isFakeOverride = true,
+            isSuspend = reference.isSuspend,
+          )
           .apply {
-            overriddenSymbols = listOf(metroSymbols.providerInvoke)
+            overriddenSymbols = listOf(invokeOverriddenSymbol)
             isOperator = true
           }
           .also {
@@ -435,6 +444,7 @@ internal class BindingContainerTransformer(
             wrapInProvider = true,
             stubDefaults = false,
             typeRemapper = { type -> typeRemapper.remapType(type) },
+            wrapInSuspendProvider = reference.isSuspend,
           ) { typeKey, irParam ->
             val field = irParam.addBackingFieldTo(factoryCls)
             nameToField[irParam.name] = field
@@ -561,6 +571,7 @@ internal class BindingContainerTransformer(
         callee = function.symbol,
         backingField = null,
         annotations = annotations,
+        isSuspend = function.isSuspend,
       )
     }
   }
@@ -612,6 +623,8 @@ internal class BindingContainerTransformer(
         callee = callee,
         backingField = useBackingField,
         annotations = annotations,
+        // Properties cannot be suspend in Kotlin
+        isSuspend = false,
       )
     }
   }
@@ -631,6 +644,9 @@ internal class BindingContainerTransformer(
         factoryCls.companionObject()!!
       }
 
+    val factoryReturnSymbol =
+      if (reference.isSuspend) metroSymbols.metroSuspendFactory else metroSymbols.metroFactory
+
     // Generate create()
     @Suppress("RETURN_VALUE_NOT_USED")
     generateStaticCreateFunction(
@@ -639,8 +655,9 @@ internal class BindingContainerTransformer(
       targetConstructor = factoryConstructor,
       parameters = factoryParameters,
       sourceFunction = reference.callee?.owner,
-      returnTypeProvider = { metroSymbols.metroFactory.typeWith(reference.typeKey.type) },
+      returnTypeProvider = { factoryReturnSymbol.typeWith(reference.typeKey.type) },
       sourceTypeParameters = reference.parent.owner,
+      wrapInSuspendProvider = reference.isSuspend,
     )
 
     // Generate the named newInstance function
@@ -653,6 +670,7 @@ internal class BindingContainerTransformer(
         sourceTypeParameters = reference.parent.owner,
         returnTypeProvider = { reference.typeKey.type },
         functionName = reference.name.asString(),
+        isSuspend = reference.isSuspend,
       ) { function ->
         val parameters = function.regularParameters
 
@@ -703,6 +721,8 @@ internal class BindingContainerTransformer(
      */
     val backingField: IrField?,
     val annotations: MetroAnnotations<IrAnnotation>,
+    /** True if the source provider is a `suspend fun`. Properties are never suspend. */
+    val isSuspend: Boolean,
   ) {
     val isInObject: Boolean
       get() = parent.owner.isObject

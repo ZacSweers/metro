@@ -267,7 +267,9 @@ private class CircuitIrTransformer(
             paramClassId != null &&
               (paramClassId in Symbols.ClassIds.commonMetroProviders ||
                 paramClassId == Symbols.ClassIds.Lazy ||
-                paramClassId == Symbols.ClassIds.function0)
+                paramClassId == Symbols.ClassIds.function0 ||
+                paramClassId == Symbols.ClassIds.metroSuspendProvider ||
+                paramClassId == Symbols.ClassIds.suspendFunction0)
           arguments[ctorParam.indexInParameters] =
             if (isAlreadyWrapped) {
               fieldGet
@@ -434,7 +436,9 @@ private class CircuitIrTransformer(
           paramClassId != null &&
             (paramClassId in Symbols.ClassIds.commonMetroProviders ||
               paramClassId == Symbols.ClassIds.Lazy ||
-              paramClassId == Symbols.ClassIds.function0)
+              paramClassId == Symbols.ClassIds.function0 ||
+              paramClassId == Symbols.ClassIds.metroSuspendProvider ||
+              paramClassId == Symbols.ClassIds.suspendFunction0)
 
         val localVar =
           if (isAlreadyWrapped) {
