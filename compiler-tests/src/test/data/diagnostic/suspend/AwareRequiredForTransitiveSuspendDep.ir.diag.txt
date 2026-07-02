@@ -1,7 +1,0 @@
-/AwareRequiredForTransitiveSuspendDep.kt:11:22: error: [Metro/SuspendAwareRequired] 'AccountCreator' depends on suspend bindings and must be annotated `@SuspendAware` so Metro can generate a suspend-aware factory for it.
-
-Trace:
-    String is injected at
-        [ExampleGraph] AccountCreator(…, database) // ❌ needs suspend support
-    String is provided at
-        [ExampleGraph] suspend ExampleGraph.provideDatabase(…)

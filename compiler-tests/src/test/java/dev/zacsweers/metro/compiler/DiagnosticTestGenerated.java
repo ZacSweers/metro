@@ -1627,27 +1627,9 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("AwareRecommendedForSuspendAwareDep.kt")
-    public void testAwareRecommendedForSuspendAwareDep() {
-      run("AwareRecommendedForSuspendAwareDep.kt");
-    }
-
-    @Test
-    @TestMetadata("AwareRequiredForTransitiveSuspendDep.kt")
-    public void testAwareRequiredForTransitiveSuspendDep() {
-      run("AwareRequiredForTransitiveSuspendDep.kt");
-    }
-
-    @Test
     @TestMetadata("BindingFromNonSuspendAccessor.kt")
     public void testBindingFromNonSuspendAccessor() {
       run("BindingFromNonSuspendAccessor.kt");
-    }
-
-    @Test
-    @TestMetadata("BindingFromNonSuspendProvider.kt")
-    public void testBindingFromNonSuspendProvider() {
-      run("BindingFromNonSuspendProvider.kt");
     }
 
     @Test

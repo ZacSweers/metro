@@ -203,7 +203,6 @@ internal class Symbols(
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
     val metroSuspendProvider = ClassId(FqNames.metroRuntimePackage, Names.SuspendProviderClass)
     val metroSuspendLazy = ClassId(FqNames.metroRuntimePackage, "SuspendLazy".asName())
-    val metroSuspendAware = ClassId(FqNames.metroRuntimePackage, "SuspendAware".asName())
     val metroSyncSuspendProvider =
       ClassId(FqNames.metroRuntimeInternalPackage, "SyncSuspendProvider".asName())
     val metroProvides = ClassId(FqNames.metroRuntimePackage, StringNames.PROVIDES.asName())

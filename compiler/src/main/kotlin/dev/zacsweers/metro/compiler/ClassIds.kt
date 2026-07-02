@@ -119,9 +119,6 @@ public class ClassIds(private val options: MetroOptions = MetroOptions()) {
     }
   }
 
-  /** Marker annotation for `@Inject`/`@AssistedInject` classes that consume suspend bindings. */
-  internal val metroSuspendAware: ClassId = Symbols.ClassIds.metroSuspendAware
-
   internal val nonFunctionProviderTypes by memoize { providerTypes - MetroClassIds.function0 }
 
   internal val lazyTypes = options.lazyTypes
