@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.model
 
+import com.intellij.util.containers.Interner
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -12,10 +13,14 @@ import org.jetbrains.kotlin.name.ClassId
  * snapshot can outlive the [org.jetbrains.kotlin.analysis.api.KaSession] it was built in.
  */
 internal class KaTypeSnapshot(
-  val renderedType: String,
-  val shortType: String = renderedType,
+  renderedType: String,
+  shortType: String = renderedType,
   val classId: ClassId?,
 ) {
+  // Renders repeat heavily across entries, so intern them to keep the index's retained size flat.
+  val renderedType: String = RENDER_INTERNER.intern(renderedType)
+  val shortType: String = RENDER_INTERNER.intern(shortType)
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other !is KaTypeSnapshot) return false
@@ -25,4 +30,8 @@ internal class KaTypeSnapshot(
   override fun hashCode(): Int = renderedType.hashCode()
 
   override fun toString(): String = renderedType
+
+  companion object {
+    private val RENDER_INTERNER = Interner.createWeakInterner<String>()
+  }
 }
